@@ -1,0 +1,21 @@
+name: sesori_shared
+repository: https://github.com/sesori-ai/sesori_shared_dart
+description: Shared crypto and protocol for Sesori relay. Pure Dart, no Flutter.
+version: 0.3.0
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  cryptography: ^2.7.0
+  freezed_annotation: ^3.1.0
+  json_annotation: ^4.11.0
+  collection: ^1.19.0
+  rxdart: ^0.28.0
+
+dev_dependencies:
+  build_runner: any
+  freezed: ^3.2.5
+  json_serializable: ^6.13.0
+  lints: any
+  test: any

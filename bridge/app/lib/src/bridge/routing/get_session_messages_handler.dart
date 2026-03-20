@@ -1,0 +1,90 @@
+import "dart:convert";
+
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart";
+
+import "request_handler.dart";
+
+const _idParam = "id";
+
+/// Handles `GET /session/:id/message` — returns all messages for a session.
+class GetSessionMessagesHandler extends RequestHandler {
+  final BridgePlugin _plugin;
+
+  GetSessionMessagesHandler(this._plugin) : super(HttpMethod.get, "/session/:$_idParam/message");
+
+  @override
+  Future<RelayResponse> handle(
+    RelayRequest request, {
+    required Map<String, String> pathParams,
+    required Map<String, String> queryParams,
+    String? fragment,
+  }) async {
+    final sessionId = pathParams[_idParam]!;
+    final pluginMessages = await _plugin.getSessionMessages(sessionId);
+
+    final messages = pluginMessages
+        .map(
+          (m) => MessageWithParts(
+            info: Message(
+              role: m.info.role,
+              id: m.info.id,
+              sessionID: m.info.sessionID,
+              parentID: m.info.parentID,
+              agent: m.info.agent,
+              modelID: m.info.modelID,
+              providerID: m.info.providerID,
+              cost: m.info.cost,
+              time: switch (m.info.time) {
+                PluginMessageTime(:final created, :final completed) => MessageTime(
+                  created: created,
+                  completed: completed,
+                ),
+                null => null,
+              },
+              finish: m.info.finish,
+              // tokens:
+            ),
+            parts: m.parts
+                .map(
+                  (p) => MessagePart(
+                    id: p.id,
+                    sessionID: p.sessionID,
+                    messageID: p.messageID,
+                    type: p.type,
+                    text: p.text,
+                    tool: p.tool,
+                    callID: p.callID,
+                    state: switch (p.state) {
+                      PluginToolState(:final status, :final title, :final output, :final error) => ToolState(
+                        status: status,
+                        title: title,
+                        output: output,
+                        error: error,
+                      ),
+                      null => null,
+                    },
+                    mime: p.mime,
+                    url: p.url,
+                    filename: p.filename,
+                    cost: p.cost,
+                    reason: p.reason,
+                    prompt: p.prompt,
+                    description: p.description,
+                    agent: p.agent,
+                    snapshot: p.snapshot,
+                    time: switch (p.time) {
+                      PluginPartTime(:final start, :final end) => PartTime(start: start, end: end),
+                      null => null,
+                    },
+                  ),
+                )
+                .toList(),
+          ),
+        )
+        .toList();
+
+    final body = jsonEncode(messages.map((m) => m.toJson()).toList());
+    return buildOkJsonResponse(request, body);
+  }
+}

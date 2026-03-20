@@ -1,0 +1,13 @@
+{
+  "name": "@sesori/bridge-linux-x64",
+  "version": "0.2.0",
+  "description": "Sesori Bridge binary for Linux x64",
+  "os": ["linux"],
+  "cpu": ["x64"],
+  "files": ["bin/"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sesori-ai/sesori_bridge_dart"
+  }
+}

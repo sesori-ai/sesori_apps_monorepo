@@ -1,0 +1,43 @@
+type: http_request
+model: http_request
+id: rq_AzuoAzjtUK
+createdAt: 2026-03-13T12:44:03.283053
+updatedAt: 2026-03-13T12:56:35.307806
+workspaceId: wk_CKpMKQdH7W
+folderId: fl_yk5jRTWYoF
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: |-
+  #### GET /session
+
+  > `operationId: session.list`
+
+  List sessions for the current project.
+
+  **Query params:**
+
+  | Param       | Type    | Default | Description                                   |
+  | ----------- | ------- | ------- | --------------------------------------------- |
+  | `directory` | string  | current | Filter by project directory                   |
+  | `roots`     | boolean | false   | Only root sessions (no children)              |
+  | `start`     | number  | —       | Sessions updated on/after this timestamp (ms) |
+  | `search`    | string  | —       | Case-insensitive title search                 |
+  | `limit`     | number  | —       | Max results                                   |
+
+  **Response 200:** `Session[]`
+headers: []
+method: GET
+name: Session By ID
+sortPriority: 0.0
+url: ${[ base_url ]}/session/:sessionID
+urlParameters:
+- enabled: true
+  name: :sessionID
+  value: ses_318d2c9e3ffeZ6s6SJu83vXQv3
+  id: kz6efcSPKb
+- enabled: true
+  name: ''
+  value: ''
+  id: E7Q3MKJyIZ

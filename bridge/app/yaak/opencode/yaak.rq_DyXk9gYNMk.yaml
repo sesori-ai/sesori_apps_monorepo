@@ -1,0 +1,71 @@
+type: http_request
+model: http_request
+id: rq_DyXk9gYNMk
+createdAt: 2026-03-13T12:59:52.823596
+updatedAt: 2026-03-13T13:03:04.956535
+workspaceId: wk_CKpMKQdH7W
+folderId: fl_Y6vgggGpzk
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "parts": [
+        { "type": "text", "text": "Write a hello world in Python" },
+        { "type": "file", "mime": "image/png", "url": "data:image/png;base64,..." }
+      ],
+      "agent": "build",
+      "model": {
+        "providerID": "anthropic",
+        "modelID": "claude-sonnet-4-20250514"
+      },
+      "tools": { "bash": true, "edit": true },
+      "system": "Additional system prompt instructions"
+    }
+bodyType: application/json
+description: |-
+  > `operationId: session.prompt`
+
+  **Send a message to the AI.** This is the core chat endpoint.
+
+  Returns a streaming response — the HTTP connection stays open until the AI finishes. Use this for synchronous flow, or use `prompt_async` + SSE for event-driven flow.
+
+  **Request body (`PromptInput`):**
+
+  ```json
+  {
+    "parts": [
+      { "type": "text", "text": "Write a hello world in Python" },
+      { "type": "file", "mime": "image/png", "url": "data:image/png;base64,..." }
+    ],
+    "agent": "build",
+    "model": {
+      "providerID": "anthropic",
+      "modelID": "claude-sonnet-4-20250514"
+    },
+    "tools": { "bash": true, "edit": true },
+    "system": "Additional system prompt instructions"
+  }
+  ```
+
+  Only `parts` is required. All other fields are optional overrides.
+
+  **Response 200:** `MessageWithParts` (the assistant's response)
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: K9D9GSZ9nj
+method: POST
+name: Send Messages SYNC
+sortPriority: 2000.0
+url: ${[ base_url ]}/session/:sessionID/message
+urlParameters:
+- enabled: true
+  name: :sessionID
+  value: ses_318d2c9e3ffeZ6s6SJu83vXQv3
+  id: kz6efcSPKb
+- enabled: true
+  name: ''
+  value: ''
+  id: DHI5EH0usq

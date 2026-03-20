@@ -1,0 +1,19 @@
+type: http_request
+model: http_request
+id: rq_3Fo3bbPBqt
+createdAt: 2026-03-20T14:11:06.346545
+updatedAt: 2026-03-20T14:16:45.916923
+workspaceId: wk_CKpMKQdH7W
+folderId: null
+authentication: {}
+authenticationType: null
+body:
+  text: ''
+bodyType: null
+description: "**Request body:** `Config`  \n**Response 200:** Updated `Config`"
+headers: []
+method: GET
+name: All Providers
+sortPriority: 6000.0
+url: ${[ base_url ]}/provider
+urlParameters: []

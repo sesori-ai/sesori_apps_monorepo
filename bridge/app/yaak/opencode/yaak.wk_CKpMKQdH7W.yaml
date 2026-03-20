@@ -1,0 +1,15 @@
+type: workspace
+model: workspace
+id: wk_CKpMKQdH7W
+createdAt: 2026-03-13T12:14:59.017417
+updatedAt: 2026-03-13T12:14:59.017417
+authentication: {}
+authenticationType: null
+description: ''
+headers: []
+name: OpenCode
+encryptionKeyChallenge: null
+settingValidateCertificates: true
+settingFollowRedirects: true
+settingRequestTimeout: 0
+settingDnsOverrides: []

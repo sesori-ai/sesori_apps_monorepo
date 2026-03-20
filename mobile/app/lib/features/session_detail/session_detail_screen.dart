@@ -1,0 +1,514 @@
+import "dart:async";
+
+import "package:flutter/material.dart";
+import "package:flutter_bloc/flutter_bloc.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart";
+
+import "../../core/di/injection.dart";
+import "../../core/extensions/build_context_x.dart";
+import "../../l10n/app_localizations.dart";
+import "widgets/agent_picker_sheet.dart";
+import "widgets/assistant_message_card.dart";
+import "widgets/background_tasks_bar.dart";
+import "widgets/model_picker_sheet.dart";
+import "widgets/prompt_input.dart";
+import "widgets/question_modal.dart";
+import "widgets/queued_message_bubble.dart";
+import "widgets/user_message_card.dart";
+
+class SessionDetailScreen extends StatelessWidget {
+  final String sessionId;
+  final String? sessionTitle;
+  final bool readOnly;
+
+  const SessionDetailScreen({
+    super.key,
+    required this.sessionId,
+    this.sessionTitle,
+    this.readOnly = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => SessionDetailCubit(
+        getIt<SessionService>(),
+        getIt<ConnectionService>(),
+        sessionId: sessionId,
+      ),
+      child: _SessionDetailBody(
+        sessionTitle: sessionTitle,
+        readOnly: readOnly,
+      ),
+    );
+  }
+}
+
+class _SessionDetailBody extends StatefulWidget {
+  final String? sessionTitle;
+  final bool readOnly;
+
+  const _SessionDetailBody({this.sessionTitle, this.readOnly = false});
+
+  @override
+  State<_SessionDetailBody> createState() => _SessionDetailBodyState();
+}
+
+class _SessionDetailBodyState extends State<_SessionDetailBody> {
+  StreamSubscription<SesoriQuestionAsked>? _questionSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _questionSub = context.read<SessionDetailCubit>().questionStream.listen(_onNewQuestion);
+  }
+
+  @override
+  void dispose() {
+    _questionSub?.cancel();
+    super.dispose();
+  }
+
+  void _onNewQuestion(SesoriQuestionAsked question) {
+    if (!mounted) return;
+    _showQuestionModal(question);
+  }
+
+  void _openAgentPicker(SessionDetailLoaded loaded) {
+    final cubit = context.read<SessionDetailCubit>();
+    AgentPickerSheet.show(
+      context,
+      agents: loaded.availableAgents,
+      selectedAgent: loaded.selectedAgent,
+      onAgentChanged: cubit.selectAgent,
+    );
+  }
+
+  void _openModelPicker(SessionDetailLoaded loaded) {
+    final cubit = context.read<SessionDetailCubit>();
+    ModelPickerSheet.show(
+      context,
+      providers: loaded.availableProviders,
+      selectedProviderID: loaded.selectedProviderID,
+      selectedModelID: loaded.selectedModelID,
+      onModelChanged: cubit.selectModel,
+    );
+  }
+
+  String _buildAgentModelSubtitle(String? agent, String? modelID) {
+    final parts = <String>[];
+    if (agent != null) parts.add(agent);
+    if (modelID != null) parts.add(modelID);
+    return parts.join(" · ");
+  }
+
+  void _showQuestionModal(SesoriQuestionAsked question) {
+    QuestionModal.show(
+      context,
+      question: question,
+      onReply: (requestId, answers) {
+        context.read<SessionDetailCubit>().replyToQuestion(requestId, answers);
+
+        // Auto-open the next pending question, if any.
+        if (!mounted) return;
+        final current = context.read<SessionDetailCubit>().state;
+        if (current case SessionDetailLoaded(:final pendingQuestions) when pendingQuestions.isNotEmpty) {
+          // Schedule after the current modal finishes closing.
+          Future.delayed(const Duration(milliseconds: 200), () {
+            if (!mounted) return;
+            _showQuestionModal(pendingQuestions.first);
+          });
+        }
+      },
+      onReject: (requestId) {
+        context.read<SessionDetailCubit>().rejectQuestion(requestId);
+
+        if (!mounted) return;
+        final current = context.read<SessionDetailCubit>().state;
+        if (current case SessionDetailLoaded(:final pendingQuestions) when pendingQuestions.isNotEmpty) {
+          Future.delayed(const Duration(milliseconds: 200), () {
+            if (!mounted) return;
+            _showQuestionModal(pendingQuestions.first);
+          });
+        }
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+    final state = context.watch<SessionDetailCubit>().state;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Column(
+          crossAxisAlignment: .start,
+          children: [
+            Text(
+              switch (state) {
+                SessionDetailLoaded(:final sessionTitle) when sessionTitle != null => sessionTitle,
+                _ => widget.sessionTitle ?? loc.sessionDetailTitle,
+              },
+            ),
+            if (state case SessionDetailLoaded(
+              :final agent,
+              :final modelID,
+            ))
+              Text(
+                _buildAgentModelSubtitle(agent, modelID),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+          ],
+        ),
+        actions: [
+          if (state
+              case SessionDetailLoaded(
+                :final sessionStatus,
+                :final childStatuses,
+              )
+              when sessionStatus is! SessionStatusIdle ||
+                  childStatuses.values.any((s) => s is SessionStatusBusy || s is SessionStatusRetry))
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ),
+        ],
+      ),
+      body: switch (state) {
+        SessionDetailLoading() => const Center(
+          child: CircularProgressIndicator(),
+        ),
+        SessionDetailLoaded(
+          :final messages,
+          :final streamingText,
+          :final sessionStatus,
+          :final pendingQuestions,
+          :final children,
+          :final childStatuses,
+          :final queuedMessages,
+          :final availableProviders,
+          :final selectedAgent,
+          :final selectedProviderID,
+          :final selectedModelID,
+        ) =>
+          Column(
+            children: [
+              // Pending-questions banner
+              if (pendingQuestions.isNotEmpty)
+                _PendingQuestionsBanner(
+                  count: pendingQuestions.fold(0, (sum, q) => sum + q.questions.length),
+                  onTap: () => _showQuestionModal(pendingQuestions.first),
+                ),
+              Expanded(
+                child: messages.isEmpty
+                    ? Center(child: Text(loc.sessionDetailEmpty))
+                    : _MessageList(
+                        messages: messages,
+                        streamingText: streamingText,
+                        children: children,
+                        childStatuses: childStatuses,
+                      ),
+              ),
+              if (children.isNotEmpty && !widget.readOnly)
+                BackgroundTasksBar(
+                  children: children,
+                  childStatuses: childStatuses,
+                ),
+              if (!widget.readOnly) ...[
+                if (queuedMessages.isNotEmpty)
+                  _QueuedMessagesSection(
+                    messages: queuedMessages,
+                    onSendNow: (index) => context.read<SessionDetailCubit>().sendNow(index),
+                    onCancel: (index) => context.read<SessionDetailCubit>().cancelQueuedMessage(index),
+                  ),
+                PromptInput(
+                  isBusy: sessionStatus is! SessionStatusIdle,
+                  onSend: (text) => context.read<SessionDetailCubit>().sendMessage(text),
+                  onAbort: () => context.read<SessionDetailCubit>().abort(),
+                  header: _AgentModelButtons(
+                    providers: availableProviders,
+                    selectedAgent: selectedAgent,
+                    selectedProviderID: selectedProviderID,
+                    selectedModelID: selectedModelID,
+                    onAgentTap: () => _openAgentPicker(state),
+                    onModelTap: () => _openModelPicker(state),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        SessionDetailFailed(:final error) => _ErrorView(
+          error: error,
+          onRetry: () => context.read<SessionDetailCubit>().reload(),
+        ),
+      },
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Pending-questions banner
+// -----------------------------------------------------------------------------
+
+class _PendingQuestionsBanner extends StatelessWidget {
+  final int count;
+  final VoidCallback onTap;
+
+  const _PendingQuestionsBanner({required this.count, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final loc = context.loc;
+
+    return Material(
+      elevation: 2,
+      color: theme.colorScheme.primaryContainer,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            children: [
+              Icon(
+                Icons.help_outline,
+                size: 20,
+                color: theme.colorScheme.onPrimaryContainer,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  count == 1 ? loc.questionBannerSingle : loc.questionBannerMultiple(count),
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: theme.colorScheme.onPrimaryContainer,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.chevron_right,
+                size: 20,
+                color: theme.colorScheme.onPrimaryContainer,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MessageList extends StatelessWidget {
+  final List<MessageWithParts> messages;
+  final Map<String, String> streamingText;
+  final List<Session> children;
+  final Map<String, SessionStatus> childStatuses;
+
+  const _MessageList({
+    required this.messages,
+    required this.streamingText,
+    required this.children,
+    required this.childStatuses,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      reverse: true,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      itemCount: messages.length,
+      itemBuilder: (context, index) {
+        final message = messages[messages.length - 1 - index];
+        return _buildMessageWidget(message);
+      },
+    );
+  }
+
+  Widget _buildMessageWidget(MessageWithParts message) {
+    if (message.info.role == "user") {
+      return UserMessageCard(message: message);
+    }
+
+    return AssistantMessageCard(
+      message: message,
+      streamingText: streamingText,
+      children: children,
+      childStatuses: childStatuses,
+    );
+  }
+}
+
+class _ErrorView extends StatelessWidget {
+  final ApiError error;
+  final VoidCallback onRetry;
+
+  const _ErrorView({required this.error, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: .min,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 48,
+              color: Theme.of(context).colorScheme.error,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              loc.sessionDetailErrorTitle,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            Text(_describeError(loc, error), textAlign: .center),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: Text(loc.sessionDetailRetry),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _describeError(AppLocalizations loc, ApiError error) => switch (error) {
+    NotAuthenticatedError() => loc.apiErrorNotAuthenticated,
+    NonSuccessCodeError(:final errorCode, :final rawErrorString) =>
+      rawErrorString != null
+          ? loc.connectErrorNonSuccessCodeWithBody(errorCode, rawErrorString)
+          : loc.connectErrorNonSuccessCode(errorCode),
+    DartHttpClientError(:final innerError) => loc.connectErrorConnectionFailed(innerError.toString()),
+    JsonParsingError() => loc.connectErrorUnexpectedFormat,
+    GenericError() => loc.connectErrorUnknown,
+  };
+}
+
+// -----------------------------------------------------------------------------
+// Queued messages section
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// Agent + Model selection buttons (above prompt input)
+// -----------------------------------------------------------------------------
+
+class _AgentModelButtons extends StatelessWidget {
+  final List<ProviderInfo> providers;
+  final String selectedAgent;
+  final String selectedProviderID;
+  final String selectedModelID;
+  final VoidCallback onAgentTap;
+  final VoidCallback onModelTap;
+
+  const _AgentModelButtons({
+    required this.providers,
+    required this.selectedAgent,
+    required this.selectedProviderID,
+    required this.selectedModelID,
+    required this.onAgentTap,
+    required this.onModelTap,
+  });
+
+  String _resolveModelName(AppLocalizations loc) {
+    for (final provider in providers) {
+      if (provider.id == selectedProviderID) {
+        final model = provider.models[selectedModelID];
+        if (model != null) return model.name;
+      }
+    }
+    if (selectedModelID.isNotEmpty) return selectedModelID;
+    return loc.sessionDetailPickerModel;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final loc = context.loc;
+    final buttonStyle = OutlinedButton.styleFrom(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      minimumSize: .zero,
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      textStyle: theme.textTheme.labelSmall,
+      side: BorderSide(color: theme.colorScheme.outlineVariant),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 2),
+      child: Row(
+        children: [
+          Flexible(
+            child: OutlinedButton.icon(
+              onPressed: onAgentTap,
+              icon: Icon(Icons.smart_toy_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
+              label: Text(
+                selectedAgent,
+                style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                overflow: .ellipsis,
+                maxLines: 1,
+              ),
+              style: buttonStyle,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: OutlinedButton.icon(
+              onPressed: onModelTap,
+              icon: Icon(Icons.memory_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
+              label: Text(
+                _resolveModelName(loc),
+                style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                overflow: .ellipsis,
+                maxLines: 1,
+              ),
+              style: buttonStyle,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QueuedMessagesSection extends StatelessWidget {
+  final List<String> messages;
+  final ValueChanged<int> onSendNow;
+  final ValueChanged<int> onCancel;
+
+  const _QueuedMessagesSection({
+    required this.messages,
+    required this.onSendNow,
+    required this.onCancel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: .min,
+      children: [
+        for (var i = 0; i < messages.length; i++)
+          QueuedMessageBubble(
+            text: messages[i],
+            onSendNow: () => onSendNow(i),
+            onCancel: () => onCancel(i),
+          ),
+      ],
+    );
+  }
+}

@@ -1,0 +1,35 @@
+type: http_request
+model: http_request
+id: rq_wF9ZECFv3B
+createdAt: 2026-03-13T12:58:42.885992
+updatedAt: 2026-03-13T13:03:04.955762
+workspaceId: wk_CKpMKQdH7W
+folderId: fl_Y6vgggGpzk
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: |-
+  > `operationId: session.message`
+
+  Get a single message with its parts.
+
+  **Response 200:** `MessageWithParts`
+headers: []
+method: GET
+name: Specific Message
+sortPriority: 1000.0
+url: ${[ base_url ]}/session/:sessionID/message/:messageID
+urlParameters:
+- enabled: true
+  name: :sessionID
+  value: ses_318d2c9e3ffeZ6s6SJu83vXQv3
+  id: kz6efcSPKb
+- enabled: true
+  name: :messageID
+  value: msg_ce72d37a5001yyBvHZnV1wfmkR
+  id: thUXzDnqTk
+- enabled: true
+  name: ''
+  value: ''
+  id: msHkU69j74

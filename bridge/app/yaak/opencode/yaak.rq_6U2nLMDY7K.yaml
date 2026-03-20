@@ -1,0 +1,35 @@
+type: http_request
+model: http_request
+id: rq_6U2nLMDY7K
+createdAt: 2026-03-13T12:47:56.012412
+updatedAt: 2026-03-13T12:56:35.313282
+workspaceId: wk_CKpMKQdH7W
+folderId: fl_yk5jRTWYoF
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "title": "New title",
+      "archived": true
+    }
+bodyType: application/json
+description: ''
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: DmzMnZH95u
+method: DELETE
+name: Delete Session
+sortPriority: 6000.0
+url: ${[ base_url ]}/session/:sessionID
+urlParameters:
+- enabled: true
+  name: :sessionID
+  value: ''
+  id: kz6efcSPKb
+- enabled: true
+  name: ''
+  value: ''
+  id: WYqwwFSh9E

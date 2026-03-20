@@ -1,0 +1,47 @@
+type: http_request
+model: http_request
+id: rq_MBpgmJUDuF
+createdAt: 2026-03-13T12:49:08.853917
+updatedAt: 2026-03-13T12:56:35.314070
+workspaceId: wk_CKpMKQdH7W
+folderId: fl_yk5jRTWYoF
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "messageID": "message_..."
+    }
+bodyType: application/json
+description: |-
+  > `operationId: session.fork`
+
+  Fork a session, optionally at a specific message.
+
+  **Request body:**
+
+  ```json
+  {
+    "messageID": "message_..." // optional — fork point
+  }
+  ```
+
+  **Response 200:** New `Session`
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: DmzMnZH95u
+method: POST
+name: Fork Session
+sortPriority: 7000.0
+url: ${[ base_url ]}/session/:sessionID/fork
+urlParameters:
+- enabled: true
+  name: :sessionID
+  value: ''
+  id: kz6efcSPKb
+- enabled: true
+  name: ''
+  value: ''
+  id: WYqwwFSh9E

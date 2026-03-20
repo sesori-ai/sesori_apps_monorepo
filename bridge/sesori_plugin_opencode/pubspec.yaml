@@ -1,0 +1,22 @@
+name: opencode_plugin
+version: 0.1.0
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  sesori_plugin_interface:
+    path: ../sesori_plugin_interface
+  sesori_shared: ^0.3.0
+  http: ^1.3.0
+  freezed_annotation: ^3.1.0
+  json_annotation: ^4.11.0
+
+dev_dependencies:
+  build_runner: any
+  freezed: ^3.2.5
+  json_serializable: ^6.13.0
+  test: ^1.25.0
+  lints: ^6.1.0

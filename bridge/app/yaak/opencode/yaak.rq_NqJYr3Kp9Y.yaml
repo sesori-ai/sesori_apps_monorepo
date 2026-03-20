@@ -1,0 +1,18 @@
+type: http_request
+model: http_request
+id: rq_NqJYr3Kp9Y
+createdAt: 2026-03-13T12:27:42.455947
+updatedAt: 2026-03-13T13:07:13.578182
+workspaceId: wk_CKpMKQdH7W
+folderId: fl_2U6hLYmt3r
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: ''
+headers: []
+method: GET
+name: Config - Global Level
+sortPriority: -1773404101890.999
+url: ${[ base_url ]}/global/config
+urlParameters: []

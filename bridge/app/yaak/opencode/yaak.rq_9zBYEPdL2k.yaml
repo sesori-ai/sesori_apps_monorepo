@@ -1,0 +1,22 @@
+type: http_request
+model: http_request
+id: rq_9zBYEPdL2k
+createdAt: 2026-03-13T12:26:56.828193
+updatedAt: 2026-03-13T12:33:51.904975
+workspaceId: wk_CKpMKQdH7W
+folderId: fl_2U6hLYmt3r
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: ''
+headers: []
+method: GET
+name: Event (SSE)
+sortPriority: -1773404101891.0
+url: ${[ base_url ]}/global/event
+urlParameters:
+- enabled: true
+  name: ''
+  value: ''
+  id: neWUkR7v50

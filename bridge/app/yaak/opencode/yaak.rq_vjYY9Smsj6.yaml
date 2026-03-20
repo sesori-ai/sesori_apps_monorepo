@@ -1,0 +1,18 @@
+type: http_request
+model: http_request
+id: rq_vjYY9Smsj6
+createdAt: 2026-03-13T12:37:01.107807
+updatedAt: 2026-03-13T12:37:57.380394
+workspaceId: wk_CKpMKQdH7W
+folderId: fl_MnoHDmtDYi
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: ''
+headers: []
+method: GET
+name: current
+sortPriority: 2000.0
+url: ${[ base_url ]}/project/current
+urlParameters: []

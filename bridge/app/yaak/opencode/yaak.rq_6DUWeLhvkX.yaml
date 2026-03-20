@@ -1,0 +1,35 @@
+type: http_request
+model: http_request
+id: rq_6DUWeLhvkX
+createdAt: 2026-03-13T12:45:07.130166
+updatedAt: 2026-03-13T12:48:54.467329
+workspaceId: wk_CKpMKQdH7W
+folderId: fl_McTnzzzzcF
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: |-
+  > `operationId: session.create`
+
+  Create a new session.
+
+  **Request body:**
+
+  ```json
+  {
+    "parentID": "session_...", // optional — creates child session
+    "title": "My conversation", // optional — auto-generated if omitted
+    "permission": {} // optional — permission ruleset
+  }
+  ```
+headers: []
+method: POST
+name: Create New Session
+sortPriority: 3000.0
+url: ${[ base_url ]}/session
+urlParameters:
+- enabled: true
+  name: ''
+  value: ''
+  id: sHPiiQnMx4

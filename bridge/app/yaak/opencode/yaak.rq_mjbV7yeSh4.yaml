@@ -1,0 +1,35 @@
+type: http_request
+model: http_request
+id: rq_mjbV7yeSh4
+createdAt: 2026-03-13T12:50:27.946792
+updatedAt: 2026-03-13T12:56:35.315737
+workspaceId: wk_CKpMKQdH7W
+folderId: fl_yk5jRTWYoF
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "messageID": "message_..."
+    }
+bodyType: null
+description: |-
+  > `operationId: session.share`
+
+  Create a shareable link for this session.
+
+  **Response 200:** `Session` (with `.share.url` populated)
+headers: []
+method: POST
+name: Share Session
+sortPriority: 9000.0
+url: ${[ base_url ]}/session/:sessionID/share
+urlParameters:
+- enabled: true
+  name: :sessionID
+  value: ''
+  id: kz6efcSPKb
+- enabled: true
+  name: ''
+  value: ''
+  id: WYqwwFSh9E

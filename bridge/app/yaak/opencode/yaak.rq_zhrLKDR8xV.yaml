@@ -1,0 +1,49 @@
+type: http_request
+model: http_request
+id: rq_zhrLKDR8xV
+createdAt: 2026-03-13T12:57:40.667170
+updatedAt: 2026-03-13T13:03:04.954245
+workspaceId: wk_CKpMKQdH7W
+folderId: fl_Y6vgggGpzk
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: |-
+  > `operationId: session.messages`
+
+  List all messages in a session, with their parts.
+
+  **Response 200:** `MessageWithParts[]`
+
+  ```json
+  [
+    {
+      "info": { "role": "user", "id": "message_...", ... },
+      "parts": [
+        { "type": "text", "text": "Hello", ... }
+      ]
+    },
+    {
+      "info": { "role": "assistant", "id": "message_...", ... },
+      "parts": [
+        { "type": "text", "text": "Hi! How can I help?", ... },
+        { "type": "tool", "tool": "bash", "state": { "status": "completed", ... }, ... }
+      ]
+    }
+  ]
+  ```
+headers: []
+method: GET
+name: Messages
+sortPriority: 0.0
+url: ${[ base_url ]}/session/:sessionID/message
+urlParameters:
+- enabled: true
+  name: :sessionID
+  value: ses_318d2c9e3ffeZ6s6SJu83vXQv3
+  id: kz6efcSPKb
+- enabled: true
+  name: ''
+  value: ''
+  id: DHI5EH0usq

@@ -1,0 +1,23 @@
+type: http_request
+model: http_request
+id: rq_cEHJXf3GEj
+createdAt: 2026-03-13T13:06:47.588202
+updatedAt: 2026-03-13T13:08:02.679809
+workspaceId: wk_CKpMKQdH7W
+folderId: fl_BXbn2zEEeZ
+authentication: {}
+authenticationType: null
+body:
+  text: "{\n  \n}"
+bodyType: application/json
+description: "**Request body:** `Config`  \n**Response 200:** Updated `Config`"
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: ZZ6DQqTEnc
+method: PATCH
+name: Config (PATCH) - Project Level
+sortPriority: 1000.0
+url: ${[ base_url ]}/config
+urlParameters: []

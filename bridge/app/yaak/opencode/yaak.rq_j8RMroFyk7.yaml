@@ -1,0 +1,18 @@
+type: http_request
+model: http_request
+id: rq_j8RMroFyk7
+createdAt: 2026-03-13T12:32:17.337501
+updatedAt: 2026-03-13T12:32:24.051973
+workspaceId: wk_CKpMKQdH7W
+folderId: fl_2U6hLYmt3r
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: ''
+headers: []
+method: POST
+name: Dispose
+sortPriority: -1773404101890.997
+url: ${[ base_url ]}/global/dispose
+urlParameters: []

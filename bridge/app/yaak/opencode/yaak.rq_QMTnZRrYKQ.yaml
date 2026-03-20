@@ -1,0 +1,26 @@
+type: http_request
+model: http_request
+id: rq_QMTnZRrYKQ
+createdAt: 2026-03-13T12:17:59.419424
+updatedAt: 2026-03-15T10:57:52.695545
+workspaceId: wk_CKpMKQdH7W
+folderId: fl_8zJSeVv6ST
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: ''
+headers: []
+method: GET
+name: Session
+sortPriority: -1773404101891.0
+url: ${[ base_url ]}/experimental/session
+urlParameters:
+- enabled: true
+  name: worktree
+  value: /Users/alexandrudochioiu/sesori-ai/sesori_mobile
+  id: VWw5F4cXz7
+- enabled: true
+  name: ''
+  value: ''
+  id: 2XaCBKCQaH

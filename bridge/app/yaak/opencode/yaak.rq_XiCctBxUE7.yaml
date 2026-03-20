@@ -1,0 +1,19 @@
+type: http_request
+model: http_request
+id: rq_XiCctBxUE7
+createdAt: 2026-03-20T15:07:53.973081
+updatedAt: 2026-03-20T15:08:01.593041
+workspaceId: wk_CKpMKQdH7W
+folderId: null
+authentication: {}
+authenticationType: null
+body:
+  text: ''
+bodyType: null
+description: ''
+headers: []
+method: GET
+name: All Agents
+sortPriority: 6000.001
+url: ${[ base_url ]}/agent
+urlParameters: []

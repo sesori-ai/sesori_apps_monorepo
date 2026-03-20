@@ -1,0 +1,206 @@
+{
+  "@@locale": "en",
+  "appTitle": "Sesori Mobile",
+  "connectErrorNonSuccessCode": "Server returned {errorCode}",
+  "@connectErrorNonSuccessCode": {
+    "placeholders": {
+      "errorCode": {
+        "type": "int"
+      }
+    }
+  },
+  "connectErrorNonSuccessCodeWithBody": "Server returned {errorCode}: {body}",
+  "@connectErrorNonSuccessCodeWithBody": {
+    "placeholders": {
+      "errorCode": {
+        "type": "int"
+      },
+      "body": {
+        "type": "String"
+      }
+    }
+  },
+  "connectErrorConnectionFailed": "Connection failed: {detail}",
+  "@connectErrorConnectionFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "connectErrorUnexpectedFormat": "Unexpected response format",
+  "connectErrorUnknown": "An unknown error occurred",
+  "apiErrorNotAuthenticated": "Not authenticated — check your connection",
+  "projectListTitle": "Projects",
+  "projectListEmpty": "No projects found",
+  "projectListUpdated": "Updated {timestamp}",
+  "@projectListUpdated": {
+    "placeholders": {
+      "timestamp": {
+        "type": "String"
+      }
+    }
+  },
+   "projectListDefaultName": "Default Project",
+   "projectListRefreshSuccess": "Projects updated",
+   "projectListRefreshFailed": "Could not refresh projects",
+   "projectListErrorTitle": "Failed to load projects",
+   "projectListRetry": "Retry",
+   "projectListActiveSessions": "{count, plural, =1{1 active session} other{{count} active sessions}}",
+   "@projectListActiveSessions": {
+     "placeholders": {
+       "count": {
+         "type": "int"
+       }
+     }
+   },
+   "connectionLostTitle": "Connection Lost",
+   "connectionLostReconnect": "Reconnect",
+   "connectionLostDisconnect": "Disconnect",
+   "relayConnectionLost": "Bridge went offline",
+   "relayReconnecting": "Reconnecting to bridge...",
+   "bridgeOfflineTitle": "Bridge Offline",
+    "bridgeOfflineMessage": "Start sesori-bridge on your laptop",
+   "sessionListTitle": "Sessions",
+  "sessionListTitleWithName": "{name} — Sessions",
+  "@sessionListTitleWithName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionListEmpty": "No sessions found",
+  "sessionListUntitled": "Untitled session",
+  "sessionListUpdated": "Updated {timestamp}",
+  "@sessionListUpdated": {
+    "placeholders": {
+      "timestamp": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionListFilesChanged": "{count} files changed",
+  "@sessionListFilesChanged": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionListRefreshSuccess": "Sessions updated",
+  "sessionListRefreshFailed": "Could not refresh sessions",
+  "sessionListErrorTitle": "Failed to load sessions",
+  "sessionListRetry": "Retry",
+  "sessionListNewSession": "New session",
+  "sessionDetailTitle": "Session",
+  "sessionDetailEmpty": "No messages yet",
+  "sessionDetailErrorTitle": "Failed to load messages",
+  "sessionDetailRetry": "Retry",
+  "sessionDetailPromptHint": "Ask anything...",
+  "sessionDetailSend": "Send",
+  "sessionDetailAbort": "Stop",
+  "sessionDetailThinking": "Thinking...",
+  "sessionDetailThought": "Thought",
+  "sessionDetailToolUnknown": "Tool",
+  "sessionDetailToolPending": "Pending",
+  "sessionDetailToolRunning": "Running",
+  "sessionDetailToolCompleted": "Done",
+  "sessionDetailToolError": "Failed",
+  "sessionDetailFollowOutput": "Follow",
+  "questionModalTitle": "Question",
+  "questionModalReject": "Reject",
+  "questionModalCustomHint": "Type your own answer",
+  "questionModalSubmit": "Submit",
+  "questionModalNext": "Next",
+  "questionModalStepIndicator": "Question {current} of {total}",
+  "@questionModalStepIndicator": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "questionBannerSingle": "1 pending question",
+  "questionBannerMultiple": "{count} pending questions",
+  "@questionBannerMultiple": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionDetailSubtaskUnnamed": "Background task",
+  "sessionDetailQueue": "Queue message",
+  "sessionDetailQueuedMessage": "Queued",
+  "sessionDetailSendNow": "Send now",
+  "sessionDetailCancelQueued": "Cancel",
+  "sessionDetailPickerAgent": "Agent",
+  "sessionDetailPickerModel": "Model",
+  "sessionDetailSelectModel": "Select Model",
+  "sessionDetailModelSearch": "Search models...",
+  "backgroundTasksRunning": "{count, plural, =1{1 Task Running} other{{count} Tasks Running}}",
+  "@backgroundTasksRunning": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "backgroundTasksCompleted": "All tasks completed",
+  "backgroundTasksTitle": "Background Tasks",
+  "backgroundTaskStatusIdle": "Completed",
+  "backgroundTaskStatusBusy": "Running",
+  "backgroundTaskStatusRetry": "Retrying",
+  "backgroundTasksShowCompleted": "{count, plural, =1{Show 1 completed task} other{Show {count} completed tasks}}",
+  "@backgroundTasksShowCompleted": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "backgroundTasksHideCompleted": "Hide completed",
+  "sessionListToggleArchived": "Show archived",
+  "sessionListEmptyArchived": "No archived sessions",
+  "sessionListArchive": "Archive",
+  "sessionListUnarchive": "Unarchive",
+  "sessionListDelete": "Delete",
+  "sessionListArchived": "Session archived",
+  "sessionListUnarchived": "Session unarchived",
+  "sessionListDeleted": "Session deleted",
+  "sessionListUndo": "Undo",
+  "sessionListDeleteConfirmTitle": "Delete session?",
+  "sessionListDeleteConfirmMessage": "This will permanently remove the session and all its messages. This cannot be undone.",
+  "sessionListDeleteConfirmAction": "Delete",
+   "sessionListDeleteConfirmCancel": "Cancel",
+  "loginTitle": "Sign In",
+  "loginSubtitle": "Sign in to connect to your server",
+  "loginWithGithub": "Sign in with GitHub",
+  "loginWithGoogle": "Sign in with Google",
+   "loginError": "Sign in failed. Please try again.",
+   "loginAuthenticating": "Signing in...",
+   "loginAwaitingCallback": "Waiting for authorization...",
+   "loginBrowserOpenFailed": "Could not open browser",
+   "loginCallbackTimeout": "Authorization timed out. Please try again.",
+   "loginCallbackMissingParams": "Invalid authorization callback. Please try again.",
+   "loginStateMismatch": "Authorization state mismatch. Please try again.",
+   "loginPkceStateMissing": "Login session expired. Please start again.",
+   "sessionListStaleProjectTitle": "Project directory not found",
+   "sessionListStaleProjectMessage": "The directory for this project no longer exists or has been renamed. Sessions cannot be loaded because the server can no longer resolve this project.",
+   "sessionListStaleProjectBack": "Go back",
+   "voiceRecord": "Record voice",
+   "voiceStopRecording": "Stop recording",
+   "voiceCancelTranscription": "Cancel transcription",
+   "voiceTranscribing": "Transcribing...",
+   "voiceRecording": "Recording...",
+   "voiceErrorPermission": "Microphone permission is required for voice input",
+   "voiceErrorRecording": "Recording failed. Please try again.",
+   "voiceErrorTranscription": "Transcription failed. Please try again.",
+   "voiceErrorNetwork": "Could not reach the server. Check your connection.",
+    "voiceErrorNotAuthenticated": "Sign in to use voice input",
+    "voiceRecordingLimitReached": "Recording limit reached (15 minutes)"
+}

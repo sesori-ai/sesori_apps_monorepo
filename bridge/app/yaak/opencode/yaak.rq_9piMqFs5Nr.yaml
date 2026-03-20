@@ -1,0 +1,18 @@
+type: http_request
+model: http_request
+id: rq_9piMqFs5Nr
+createdAt: 2026-03-13T12:28:12.547486
+updatedAt: 2026-03-13T13:07:15.467875
+workspaceId: wk_CKpMKQdH7W
+folderId: fl_2U6hLYmt3r
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: ''
+headers: []
+method: PATCH
+name: Config (PATCH) - Global Level
+sortPriority: -1773404101890.998
+url: ${[ base_url ]}/global/config
+urlParameters: []

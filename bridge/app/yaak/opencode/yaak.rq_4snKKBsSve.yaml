@@ -1,0 +1,18 @@
+type: http_request
+model: http_request
+id: rq_4snKKBsSve
+createdAt: 2026-03-13T12:36:22.033061
+updatedAt: 2026-03-15T10:52:22.657786
+workspaceId: wk_CKpMKQdH7W
+folderId: fl_MnoHDmtDYi
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: ''
+headers: []
+method: GET
+name: List Projects
+sortPriority: 1000.0
+url: ${[ base_url ]}/project
+urlParameters: []

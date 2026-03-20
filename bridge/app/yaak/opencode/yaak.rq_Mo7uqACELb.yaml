@@ -1,0 +1,41 @@
+type: http_request
+model: http_request
+id: rq_Mo7uqACELb
+createdAt: 2026-03-13T12:55:32.014739
+updatedAt: 2026-03-13T12:56:35.311487
+workspaceId: wk_CKpMKQdH7W
+folderId: fl_yk5jRTWYoF
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: |-
+  > `operationId: session.diff`
+
+  Get file diffs for a specific message.
+
+  **Query params:** `messageID` (string), `partID` (string, optional)
+
+  **Response 200:** `FileDiff[]`
+headers: []
+method: GET
+name: Session Diff
+sortPriority: 4000.0
+url: ${[ base_url ]}/session/:sessionID/diff
+urlParameters:
+- enabled: true
+  name: :sessionID
+  value: ses_318d2c9e3ffeZ6s6SJu83vXQv3
+  id: kz6efcSPKb
+- enabled: true
+  name: messageID
+  value: required
+  id: XQWMQAhEWv
+- enabled: false
+  name: partID
+  value: (optional)
+  id: W5IszpGhyC
+- enabled: true
+  name: ''
+  value: ''
+  id: n6rrDDemJg

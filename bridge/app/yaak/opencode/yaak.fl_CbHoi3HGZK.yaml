@@ -1,0 +1,13 @@
+type: folder
+model: folder
+id: fl_CbHoi3HGZK
+createdAt: 2026-03-13T12:37:55.267875
+updatedAt: 2026-03-13T12:37:57.378087
+workspaceId: wk_CKpMKQdH7W
+folderId: fl_MnoHDmtDYi
+authentication: {}
+authenticationType: null
+description: ''
+headers: []
+name: git
+sortPriority: 0.0

@@ -1,0 +1,35 @@
+type: http_request
+model: http_request
+id: rq_uHvP6X9GLW
+createdAt: 2026-03-13T13:04:45.765670
+updatedAt: 2026-03-13T13:05:22.530085
+workspaceId: wk_CKpMKQdH7W
+folderId: fl_HfZ2GNqEB8
+authentication: {}
+authenticationType: null
+body:
+  text: "{\n  \n}"
+bodyType: application/json
+description: "Update a message part (e.g. approve a tool call result).\n\n**Request body:** Partial `Part` object  \n**Response 200:** Updated `Part`\n"
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: q4quNgEDWz
+method: PATCH
+name: Update Part
+sortPriority: 0.0
+url: ${[ base_url ]}/session/:sessionID/message/:messageID/part/:partID
+urlParameters:
+- enabled: true
+  name: :sessionID
+  value: ses_318d2c9e3ffeZ6s6SJu83vXQv3
+  id: kz6efcSPKb
+- enabled: true
+  name: :messageID
+  value: msg_ce72d37a5001yyBvHZnV1wfmkR
+  id: thUXzDnqTk
+- enabled: true
+  name: ''
+  value: ''
+  id: msHkU69j74

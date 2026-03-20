@@ -1,0 +1,47 @@
+type: http_request
+model: http_request
+id: rq_85uGEoShnV
+createdAt: 2026-03-13T12:53:20.497170
+updatedAt: 2026-03-13T12:56:35.318199
+workspaceId: wk_CKpMKQdH7W
+folderId: fl_yk5jRTWYoF
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "messageID": "message_...",
+      "partID": "part_..."
+    }
+bodyType: application/json
+description: |-
+  > `operationId: session.revert`
+
+  Revert file changes made by a specific message.
+
+  **Request body:**
+
+  ```json
+  {
+    "messageID": "message_...",
+    "partID": "part_..." // optional — specific part
+  }
+  ```
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: tBZR8R6Q8z
+method: POST
+name: Revert Session
+sortPriority: 12000.0
+url: ${[ base_url ]}/session/:sessionID/revert
+urlParameters:
+- enabled: true
+  name: :sessionID
+  value: ''
+  id: kz6efcSPKb
+- enabled: true
+  name: ''
+  value: ''
+  id: WYqwwFSh9E

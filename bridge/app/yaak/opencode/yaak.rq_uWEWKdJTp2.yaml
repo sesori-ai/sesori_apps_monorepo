@@ -1,0 +1,90 @@
+type: http_request
+model: http_request
+id: rq_uWEWKdJTp2
+createdAt: 2026-03-13T12:38:17.775650
+updatedAt: 2026-03-13T12:39:48.450863
+workspaceId: wk_CKpMKQdH7W
+folderId: fl_MnoHDmtDYi
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "name": "My Project",
+      "icon": {
+        "url": "https://...",
+        "override": "custom-icon",
+        "color": "#ff0000"
+      },
+      "commands": {
+        "start": "npm install && npm run dev"
+      }
+    }
+bodyType: application/json
+description: |-
+  Update project properties.
+
+  **Path params:** `projectID` (string)
+
+  **Request body:**
+
+  ```json
+  {
+    "name": "My Project",
+    "icon": {
+      "url": "https://...",
+      "override": "custom-icon",
+      "color": "#ff0000"
+    },
+    "commands": {
+      "start": "npm install && npm run dev"
+    }
+  }
+  ```
+
+  All fields optional.
+
+  **Response 200:** Updated `Project`
+
+  ### Project Schema
+
+  ```json
+  {
+    "id": "string",
+    "worktree": "string (absolute path)",
+    "vcs": "git",
+    "name": "string (optional)",
+    "icon": {
+      "url": "string?",
+      "override": "string?",
+      "color": "string?"
+    },
+    "commands": {
+      "start": "string? (startup script for new worktrees)"
+    },
+    "time": {
+      "created": "number (ms epoch)",
+      "updated": "number (ms epoch)",
+      "initialized": "number? (ms epoch)"
+    },
+    "sandboxes": ["string (directory paths)"]
+  }
+  ```
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: XStCX77RjN
+method: PATCH
+name: projectID
+sortPriority: 2000.001
+url: ${[ base_url ]}/project/:projectID
+urlParameters:
+- enabled: true
+  name: :projectID
+  value: ''
+  id: 0SgjNqT9Zt
+- enabled: true
+  name: ''
+  value: ''
+  id: 05Jezz6XXH

@@ -1,0 +1,49 @@
+type: http_request
+model: http_request
+id: rq_8qQzdWKdFL
+createdAt: 2026-03-13T13:01:04.771763
+updatedAt: 2026-03-13T13:03:04.957235
+workspaceId: wk_CKpMKQdH7W
+folderId: fl_Y6vgggGpzk
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "parts": [
+        { "type": "text", "text": "Write a hello world in Python" },
+        { "type": "file", "mime": "image/png", "url": "data:image/png;base64,..." }
+      ],
+      "agent": "build",
+      "model": {
+        "providerID": "anthropic",
+        "modelID": "claude-sonnet-4-20250514"
+      },
+      "tools": { "bash": true, "edit": true },
+      "system": "Additional system prompt instructions"
+    }
+bodyType: application/json
+description: |
+  > `operationId: session.prompt_async`
+
+  Same as `POST /session/{id}/message` but returns immediately with **204 No Content**. The AI processes in the background and you receive updates via SSE events.
+
+  **This is the recommended approach for mobile** — fire and listen on SSE.
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: K9D9GSZ9nj
+method: POST
+name: Send Messages ASYNC
+sortPriority: 3000.0
+url: ${[ base_url ]}/session/:sessionID/prompt_async
+urlParameters:
+- enabled: true
+  name: :sessionID
+  value: ses_318d2c9e3ffeZ6s6SJu83vXQv3
+  id: kz6efcSPKb
+- enabled: true
+  name: ''
+  value: ''
+  id: DHI5EH0usq

@@ -1,0 +1,13 @@
+type: folder
+model: folder
+id: fl_MnoHDmtDYi
+createdAt: 2026-03-13T12:35:52.204759
+updatedAt: 2026-03-20T14:16:19.229707
+workspaceId: wk_CKpMKQdH7W
+folderId: null
+authentication: {}
+authenticationType: null
+description: ''
+headers: []
+name: project
+sortPriority: 4000.0

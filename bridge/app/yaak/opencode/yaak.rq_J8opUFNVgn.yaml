@@ -1,0 +1,41 @@
+type: http_request
+model: http_request
+id: rq_J8opUFNVgn
+createdAt: 2026-03-13T12:54:12.550293
+updatedAt: 2026-03-13T12:56:35.318945
+workspaceId: wk_CKpMKQdH7W
+folderId: fl_yk5jRTWYoF
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "messageID": "message_...",
+      "partID": "part_..."
+    }
+bodyType: application/json
+description: |2-
+
+  > `operationId: session.unrevert`
+
+  Undo the last revert.
+
+  **Response 200:** `Session`
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: tBZR8R6Q8z
+method: POST
+name: Un-Revert Session
+sortPriority: 13000.0
+url: ${[ base_url ]}/session/:sessionID/unrevert
+urlParameters:
+- enabled: true
+  name: :sessionID
+  value: ''
+  id: kz6efcSPKb
+- enabled: true
+  name: ''
+  value: ''
+  id: WYqwwFSh9E

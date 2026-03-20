@@ -1,0 +1,35 @@
+type: http_request
+model: http_request
+id: rq_Nt8SnNRUJs
+createdAt: 2026-03-13T12:50:03.612944
+updatedAt: 2026-03-13T12:56:35.314965
+workspaceId: wk_CKpMKQdH7W
+folderId: fl_yk5jRTWYoF
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "messageID": "message_..."
+    }
+bodyType: null
+description: |
+  > `operationId: session.abort`
+
+  Abort an active AI processing task.
+
+  **Response 200:** `true`
+headers: []
+method: POST
+name: Abort Session
+sortPriority: 8000.0
+url: ${[ base_url ]}/session/:sessionID/abort
+urlParameters:
+- enabled: true
+  name: :sessionID
+  value: ''
+  id: kz6efcSPKb
+- enabled: true
+  name: ''
+  value: ''
+  id: WYqwwFSh9E

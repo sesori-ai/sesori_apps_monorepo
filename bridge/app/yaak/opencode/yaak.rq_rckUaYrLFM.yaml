@@ -1,0 +1,35 @@
+type: http_request
+model: http_request
+id: rq_rckUaYrLFM
+createdAt: 2026-03-13T12:51:28.302938
+updatedAt: 2026-03-13T12:56:35.317437
+workspaceId: wk_CKpMKQdH7W
+folderId: fl_yk5jRTWYoF
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "messageID": "message_..."
+    }
+bodyType: null
+description: |
+  > `operationId: session.summarize`
+
+  Trigger AI context compaction for this session.
+
+  **Response 200:** `true`
+headers: []
+method: POST
+name: Compact Session
+sortPriority: 11000.0
+url: ${[ base_url ]}/session/:sessionID/summarize
+urlParameters:
+- enabled: true
+  name: :sessionID
+  value: ''
+  id: kz6efcSPKb
+- enabled: true
+  name: ''
+  value: ''
+  id: WYqwwFSh9E

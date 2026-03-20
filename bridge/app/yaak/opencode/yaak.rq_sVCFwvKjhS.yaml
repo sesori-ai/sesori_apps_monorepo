@@ -1,0 +1,47 @@
+type: http_request
+model: http_request
+id: rq_sVCFwvKjhS
+createdAt: 2026-03-13T13:01:49.577890
+updatedAt: 2026-03-13T13:03:04.958092
+workspaceId: wk_CKpMKQdH7W
+folderId: fl_Y6vgggGpzk
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "command": "init"
+    }
+bodyType: application/json
+description: |
+  > `operationId: session.command`
+
+  Execute a slash command (e.g. `/init`, `/review`, custom commands).
+
+  **Request body:**
+
+  ```json
+  {
+    "command": "init"
+  }
+  ```
+
+  **Response 204**
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: K9D9GSZ9nj
+method: POST
+name: Send Command
+sortPriority: 4000.0
+url: ${[ base_url ]}/session/:sessionID/command
+urlParameters:
+- enabled: true
+  name: :sessionID
+  value: ses_318d2c9e3ffeZ6s6SJu83vXQv3
+  id: kz6efcSPKb
+- enabled: true
+  name: ''
+  value: ''
+  id: DHI5EH0usq

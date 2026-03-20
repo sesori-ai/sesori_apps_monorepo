@@ -1,0 +1,174 @@
+import "dart:collection";
+import "dart:convert";
+
+import "package:clock/clock.dart";
+import "package:cryptography/cryptography.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+import "package:sesori_shared/sesori_shared.dart";
+
+import "../relay_client.dart";
+
+class SSEManager {
+  /// How long a disconnected subscriber's orphan queue stays valid.
+  final Duration replayWindow;
+
+  /// Maximum number of events retained per subscriber queue.
+  static const int maxQueueSize = 50000;
+
+  final Map<int, EventQueue<SesoriSseEvent>> _subscribers = {};
+  final Queue<({EventQueue<SesoriSseEvent> queue, DateTime expiry})> _orphanQueues =
+      Queue<({EventQueue<SesoriSseEvent> queue, DateTime expiry})>();
+
+  List<int>? _roomKey;
+
+  SSEManager({required this.replayWindow});
+
+  /// Stores a copy of the room key used to encrypt outgoing SSE events.
+  void setRoomKey(List<int> roomKey) {
+    _roomKey = List<int>.from(roomKey);
+  }
+
+  /// Registers [connID] as an SSE subscriber.
+  ///
+  /// [path] is accepted for API compatibility with call sites but is not used
+  /// by this manager.
+  void subscribePath(int connID, String path, RelayClient client) {
+    final orphan = _popValidOrphan();
+
+    if (orphan != null) {
+      orphan.onDequeue = _createSendFunction(connID, client);
+      orphan.resume();
+      _subscribers[connID] = orphan;
+      return;
+    }
+
+    _subscribers[connID] = EventQueue<SesoriSseEvent>(
+      onDequeue: _createSendFunction(connID, client),
+      maxSize: maxQueueSize,
+    );
+  }
+
+  /// Removes [connID] from active subscribers.
+  ///
+  /// If other subscribers remain, the queue is paused and retained as an
+  /// orphan queue for replay during [replayWindow]. If this was the last
+  /// subscriber, orphan state is cleared.
+  void unsubscribe(int connID) {
+    final queue = _subscribers.remove(connID);
+    if (queue == null) return;
+
+    if (_subscribers.isEmpty) {
+      queue.dispose();
+      _disposeOrphans();
+      return;
+    }
+
+    queue.pause();
+    _orphanQueues.addLast((
+      queue: queue,
+      expiry: clock.now().add(replayWindow),
+    ));
+  }
+
+  /// Alias for [unsubscribe].
+  void removeSubscriber(int connID) => unsubscribe(connID);
+
+  /// Clears all subscribers and orphan state.
+  void stop() {
+    for (final sub in _subscribers.values) {
+      sub.dispose();
+    }
+    _subscribers.clear();
+    _disposeOrphans();
+  }
+
+  /// Current number of active subscribers.
+  int get subscriberCount => _subscribers.length;
+
+  /// Number of orphan queues from disconnected subscribers.
+  int get pendingReplayCount => _orphanQueues.length;
+
+  /// Enqueues [event] into all active and non-expired orphan queues.
+  void enqueueEvent(SesoriSseEvent event) {
+    for (final queue in _subscribers.values) {
+      queue.enqueue(event);
+    }
+
+    _purgeExpiredOrphans();
+    for (final orphan in _orphanQueues) {
+      orphan.queue.enqueue(event);
+    }
+  }
+
+  void _disposeOrphans() {
+    for (final orphan in _orphanQueues) {
+      orphan.queue.dispose();
+    }
+    _orphanQueues.clear();
+  }
+
+  EventQueue<SesoriSseEvent>? _popValidOrphan() {
+    final now = clock.now();
+    while (_orphanQueues.isNotEmpty) {
+      final oldest = _orphanQueues.removeFirst();
+      if (oldest.expiry.isAfter(now)) {
+        return oldest.queue;
+      }
+      oldest.queue.dispose();
+    }
+    return null;
+  }
+
+  Future<void> Function(SesoriSseEvent) _createSendFunction(
+    int connID,
+    RelayClient client,
+  ) {
+    SessionEncryptor? encryptor;
+
+    return (SesoriSseEvent event) async {
+      Log.v("[sse] dequeuing event for connID=$connID: ${event.runtimeType}");
+      if (_roomKey == null) {
+        Log.w("[sse] dropping — roomKey is null");
+        return;
+      }
+
+      encryptor ??= () {
+        final roomKey = List<int>.from(_roomKey!);
+        final cryptoService = RelayCryptoService();
+        final secretKey = SecretKey(roomKey);
+        return cryptoService.createSessionEncryptor(secretKey);
+      }();
+
+      final eventData = jsonEncode(_toOpenCodeFormat(event));
+      final relayMessage = RelayMessage.sseEvent(data: eventData);
+      final payloadBytes = utf8.encode(jsonEncode(relayMessage.toJson()));
+      Log.v("[sse] sending ${payloadBytes.length} bytes to connID=$connID");
+      final framed = await frame(payloadBytes, encryptor!);
+      client.send(connID, framed);
+    };
+  }
+
+  /// Converts a [SesoriSseEvent] to the OpenCode wire format expected by the
+  /// mobile client: {"payload": {"type": "...", "properties": {...rest...}}}
+  ///
+  /// The mobile's _onSseData extracts `payload.properties`, merges it with
+  /// `type`, then calls SseEventData.fromJson(merged). Sending the flat Sesori
+  /// format (no `properties` key) causes all required fields to be missing.
+  Map<String, dynamic> _toOpenCodeFormat(SesoriSseEvent event) {
+    final json = event.toJson();
+    final type = json['type'] as String;
+    final properties = Map<String, dynamic>.from(json)..remove('type');
+    return {
+      'payload': {'type': type, 'properties': properties},
+    };
+  }
+
+  void _purgeExpiredOrphans() {
+    final now = clock.now();
+    final expired = _orphanQueues.where((o) => !o.expiry.isAfter(now)).toList();
+    for (final orphan in expired) {
+      orphan.queue.dispose();
+      _orphanQueues.remove(orphan);
+    }
+  }
+}

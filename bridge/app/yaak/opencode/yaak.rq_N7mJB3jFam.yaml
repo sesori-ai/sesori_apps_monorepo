@@ -1,0 +1,35 @@
+type: http_request
+model: http_request
+id: rq_N7mJB3jFam
+createdAt: 2026-03-13T13:02:59.943083
+updatedAt: 2026-03-13T13:03:20.892223
+workspaceId: wk_CKpMKQdH7W
+folderId: fl_Y6vgggGpzk
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: |
+  > `operationId: session.shell`
+
+  Get the shell info for the session's project.
+
+  **Response 200:** Shell configuration object
+headers: []
+method: GET
+name: Shell
+sortPriority: 5000.0
+url: ${[ base_url ]}/session/:sessionID/shell
+urlParameters:
+- enabled: true
+  name: :sessionID
+  value: ses_318d2c9e3ffeZ6s6SJu83vXQv3
+  id: kz6efcSPKb
+- enabled: true
+  name: :messageID
+  value: msg_ce72d37a5001yyBvHZnV1wfmkR
+  id: thUXzDnqTk
+- enabled: true
+  name: ''
+  value: ''
+  id: msHkU69j74

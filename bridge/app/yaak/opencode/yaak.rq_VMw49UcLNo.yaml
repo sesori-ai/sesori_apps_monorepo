@@ -1,0 +1,65 @@
+type: http_request
+model: http_request
+id: rq_VMw49UcLNo
+createdAt: 2026-03-13T12:32:47.954857
+updatedAt: 2026-03-13T12:35:11.006695
+workspaceId: wk_CKpMKQdH7W
+folderId: fl_CEW8q5zwRE
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "type": "oauth",
+      "refresh": "refresh_token_...",
+      "access": "access_token_...",
+      "expires": 1700000000000,
+      "accountId": "acc_...",
+      "enterpriseUrl": "https://..."
+    }
+bodyType: application/json
+description: |-
+  **Request body** (discriminated by `type`):
+
+  ```jsonc
+  // OAuth credentials
+  {
+    "type": "oauth",
+    "refresh": "refresh_token_...",
+    "access": "access_token_...",
+    "expires": 1700000000000,
+    "accountId": "acc_...",         // optional
+    "enterpriseUrl": "https://..." // optional
+  }
+
+  // API Key
+  {
+    "type": "api",
+    "key": "sk-ant-..."
+  }
+
+  // WellKnown token
+  {
+    "type": "wellknown",
+    "key": "...",
+    "token": "..."
+  }
+  ```
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: BGz0mgp0xT
+method: PUT
+name: Provider (PUT)
+sortPriority: -1773404101890.997
+url: ${[ base_url ]}/global/:providerID
+urlParameters:
+- enabled: true
+  name: :providerID
+  value: anthropic
+  id: 8y4ICupfsC
+- enabled: true
+  name: ''
+  value: ''
+  id: GhvfyHH8K4

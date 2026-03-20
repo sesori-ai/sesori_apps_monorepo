@@ -1,0 +1,21 @@
+type: http_request
+model: http_request
+id: rq_PD6p3M7TyF
+createdAt: 2026-03-13T13:06:12.654901
+updatedAt: 2026-03-13T13:08:02.677910
+workspaceId: wk_CKpMKQdH7W
+folderId: fl_BXbn2zEEeZ
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: |
+  **Base path:** `/config`
+
+  Project-level configuration (as opposed to global config at `/global/config`).
+headers: []
+method: GET
+name: Config - Project Level
+sortPriority: 0.0
+url: ${[ base_url ]}/config
+urlParameters: []

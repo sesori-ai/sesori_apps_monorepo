@@ -1,0 +1,36 @@
+type: http_request
+model: http_request
+id: rq_TqJPQ2PVhp
+createdAt: 2026-03-13T13:05:32.481288
+updatedAt: 2026-03-13T13:05:48.252786
+workspaceId: wk_CKpMKQdH7W
+folderId: fl_HfZ2GNqEB8
+authentication: {}
+authenticationType: null
+body:
+  text: "{\n  \n}"
+bodyType: null
+description: |-
+  > `operationId: part.delete`
+
+  Delete a message part.
+
+  **Response 200:** `true`
+headers: []
+method: DELETE
+name: Delete Part
+sortPriority: 0.001
+url: ${[ base_url ]}/session/:sessionID/message/:messageID/part/:partID
+urlParameters:
+- enabled: true
+  name: :sessionID
+  value: ses_318d2c9e3ffeZ6s6SJu83vXQv3
+  id: kz6efcSPKb
+- enabled: true
+  name: :messageID
+  value: msg_ce72d37a5001yyBvHZnV1wfmkR
+  id: thUXzDnqTk
+- enabled: true
+  name: ''
+  value: ''
+  id: msHkU69j74

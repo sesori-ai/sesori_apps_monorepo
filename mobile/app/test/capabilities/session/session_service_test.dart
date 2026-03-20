@@ -1,0 +1,873 @@
+import "package:flutter_test/flutter_test.dart";
+import "package:mocktail/mocktail.dart";
+import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/src/capabilities/session/session_service.dart";
+import "package:sesori_shared/sesori_shared.dart";
+
+import "../../helpers/test_helpers.dart";
+
+void main() {
+  setUpAll(registerAllFallbackValues);
+
+  group("SessionService", () {
+    late MockRelayHttpApiClient mockClient;
+    late SessionService sessionService;
+
+    setUp(() {
+      mockClient = MockRelayHttpApiClient();
+      sessionService = SessionService(mockClient);
+    });
+
+    // -----------------------------------------------------------------------
+    // agents and providers
+    // -----------------------------------------------------------------------
+
+    group("listAgents", () {
+      test("success: returns List<AgentInfo> from GET /agent", () async {
+        final agents = [testAgentInfo()];
+        when(
+          () => mockClient.get<List<AgentInfo>>(
+            "/agent",
+            fromJson: any(named: "fromJson"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(agents));
+
+        final result = await sessionService.listAgents();
+
+        expect(result, isA<SuccessResponse<List<AgentInfo>>>());
+        expect((result as SuccessResponse<List<AgentInfo>>).data, equals(agents));
+        verify(
+          () => mockClient.get<List<AgentInfo>>(
+            "/agent",
+            fromJson: any(named: "fromJson"),
+          ),
+        ).called(1);
+      });
+
+      test("error: propagates API error from GET /agent", () async {
+        final error = ApiError.generic();
+        when(
+          () => mockClient.get<List<AgentInfo>>(
+            "/agent",
+            fromJson: any(named: "fromJson"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.error(error));
+
+        final result = await sessionService.listAgents();
+
+        expect(result, isA<ErrorResponse<List<AgentInfo>>>());
+        expect((result as ErrorResponse<List<AgentInfo>>).error, equals(error));
+        verify(
+          () => mockClient.get<List<AgentInfo>>(
+            "/agent",
+            fromJson: any(named: "fromJson"),
+          ),
+        ).called(1);
+      });
+    });
+
+    group("listProviders", () {
+      test("success: returns ProviderListResponse from GET /provider", () async {
+        final providers = testProviderListResponse();
+        when(
+          () => mockClient.get<ProviderListResponse>(
+            "/provider",
+            fromJson: any(named: "fromJson"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(providers));
+
+        final result = await sessionService.listProviders();
+
+        expect(result, isA<SuccessResponse<ProviderListResponse>>());
+        expect((result as SuccessResponse<ProviderListResponse>).data, equals(providers));
+        verify(
+          () => mockClient.get<ProviderListResponse>(
+            "/provider",
+            fromJson: any(named: "fromJson"),
+          ),
+        ).called(1);
+      });
+
+      test("error: propagates API error from GET /provider", () async {
+        final error = ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "Not Found");
+        when(
+          () => mockClient.get<ProviderListResponse>(
+            "/provider",
+            fromJson: any(named: "fromJson"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.error(error));
+
+        final result = await sessionService.listProviders();
+
+        expect(result, isA<ErrorResponse<ProviderListResponse>>());
+        expect((result as ErrorResponse<ProviderListResponse>).error, equals(error));
+        verify(
+          () => mockClient.get<ProviderListResponse>(
+            "/provider",
+            fromJson: any(named: "fromJson"),
+          ),
+        ).called(1);
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // session listing
+    // -----------------------------------------------------------------------
+
+    group("listSessions", () {
+      test("success: returns List<Session> from GET /session", () async {
+        final sessions = [testSession()];
+        when(
+          () => mockClient.get<List<Session>>(
+            "/session",
+            fromJson: any(named: "fromJson"),
+            queryParameters: any(named: "queryParameters"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(sessions));
+
+        final result = await sessionService.listSessions();
+
+        expect(result, isA<SuccessResponse<List<Session>>>());
+        expect((result as SuccessResponse<List<Session>>).data, equals(sessions));
+      });
+
+      test("error: propagates API error from GET /session", () async {
+        final error = ApiError.generic();
+        when(
+          () => mockClient.get<List<Session>>(
+            "/session",
+            fromJson: any(named: "fromJson"),
+            queryParameters: any(named: "queryParameters"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.error(error));
+
+        final result = await sessionService.listSessions();
+
+        expect(result, isA<ErrorResponse<List<Session>>>());
+        expect((result as ErrorResponse<List<Session>>).error, equals(error));
+      });
+
+      test("passes roots=true query parameter to GET /session", () async {
+        when(
+          () => mockClient.get<List<Session>>(
+            any(),
+            fromJson: any(named: "fromJson"),
+            queryParameters: any(named: "queryParameters"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(<Session>[]));
+
+        await sessionService.listSessions();
+
+        verify(
+          () => mockClient.get<List<Session>>(
+            "/session",
+            fromJson: any(named: "fromJson"),
+            queryParameters: {"roots": "true"},
+          ),
+        ).called(1);
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // session CRUD
+    // -----------------------------------------------------------------------
+
+    group("createSession", () {
+      test("success: returns Session from POST /session", () async {
+        final session = testSession();
+        when(
+          () => mockClient.post<Session>(
+            "/session",
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(session));
+
+        final result = await sessionService.createSession();
+
+        expect(result, isA<SuccessResponse<Session>>());
+        expect((result as SuccessResponse<Session>).data, equals(session));
+        verify(
+          () => mockClient.post<Session>(
+            "/session",
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).called(1);
+      });
+
+      test("error: propagates API error from POST /session", () async {
+        final error = ApiError.generic();
+        when(
+          () => mockClient.post<Session>(
+            "/session",
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.error(error));
+
+        final result = await sessionService.createSession();
+
+        expect(result, isA<ErrorResponse<Session>>());
+        expect((result as ErrorResponse<Session>).error, equals(error));
+        verify(
+          () => mockClient.post<Session>(
+            "/session",
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).called(1);
+      });
+    });
+
+    group("archiveSession", () {
+      const sessionId = "session-42";
+
+      test("success: returns Session from PATCH /session/:id", () async {
+        final session = testSession(id: sessionId);
+        when(
+          () => mockClient.patch<Session>(
+            "/session/$sessionId",
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(session));
+
+        final result = await sessionService.archiveSession(sessionId);
+
+        expect(result, isA<SuccessResponse<Session>>());
+        expect((result as SuccessResponse<Session>).data, equals(session));
+        verify(
+          () => mockClient.patch<Session>(
+            "/session/$sessionId",
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).called(1);
+      });
+
+      test("error: propagates API error from PATCH /session/:id", () async {
+        final error = ApiError.generic();
+        when(
+          () => mockClient.patch<Session>(
+            "/session/$sessionId",
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.error(error));
+
+        final result = await sessionService.archiveSession(sessionId);
+
+        expect(result, isA<ErrorResponse<Session>>());
+        expect((result as ErrorResponse<Session>).error, equals(error));
+      });
+
+      test("sends archived timestamp in body to PATCH /session/:id", () async {
+        when(
+          () => mockClient.patch<Session>(
+            "/session/$sessionId",
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(testSession()));
+
+        final beforeMs = DateTime.now().millisecondsSinceEpoch;
+        await sessionService.archiveSession(sessionId);
+        final afterMs = DateTime.now().millisecondsSinceEpoch;
+
+        final captured =
+            verify(
+                  () => mockClient.patch<Session>(
+                    "/session/$sessionId",
+                    fromJson: any(named: "fromJson"),
+                    body: captureAny(named: "body"),
+                  ),
+                ).captured.last
+                as Map<String, dynamic>;
+
+        final archivedAt = (captured["time"] as Map<String, dynamic>)["archived"] as int;
+        expect(archivedAt, inInclusiveRange(beforeMs, afterMs));
+      });
+    });
+
+    group("unarchiveSession", () {
+      const sessionId = "session-99";
+
+      test("success: returns Session from PATCH /session/:id", () async {
+        final session = testSession(id: sessionId);
+        when(
+          () => mockClient.patch<Session>(
+            "/session/$sessionId",
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(session));
+
+        final result = await sessionService.unarchiveSession(sessionId);
+
+        expect(result, isA<SuccessResponse<Session>>());
+        expect((result as SuccessResponse<Session>).data, equals(session));
+        verify(
+          () => mockClient.patch<Session>(
+            "/session/$sessionId",
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).called(1);
+      });
+
+      test("error: propagates API error from PATCH /session/:id", () async {
+        final error = ApiError.generic();
+        when(
+          () => mockClient.patch<Session>(
+            "/session/$sessionId",
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.error(error));
+
+        final result = await sessionService.unarchiveSession(sessionId);
+
+        expect(result, isA<ErrorResponse<Session>>());
+        expect((result as ErrorResponse<Session>).error, equals(error));
+      });
+
+      test("sends null archived value in body to PATCH /session/:id", () async {
+        when(
+          () => mockClient.patch<Session>(
+            "/session/$sessionId",
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(testSession()));
+
+        await sessionService.unarchiveSession(sessionId);
+
+        final captured =
+            verify(
+                  () => mockClient.patch<Session>(
+                    "/session/$sessionId",
+                    fromJson: any(named: "fromJson"),
+                    body: captureAny(named: "body"),
+                  ),
+                ).captured.last
+                as Map<String, dynamic>;
+
+        expect((captured["time"] as Map<String, dynamic>)["archived"], isNull);
+      });
+    });
+
+    group("deleteSession", () {
+      const sessionId = "session-del";
+
+      test("success: returns true from DELETE /session/:id", () async {
+        when(
+          () => mockClient.delete<bool>(
+            "/session/$sessionId",
+            fromJson: any(named: "fromJson"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(true));
+
+        final result = await sessionService.deleteSession(sessionId);
+
+        expect(result, isA<SuccessResponse<bool>>());
+        expect((result as SuccessResponse<bool>).data, isTrue);
+        verify(
+          () => mockClient.delete<bool>(
+            "/session/$sessionId",
+            fromJson: any(named: "fromJson"),
+          ),
+        ).called(1);
+      });
+
+      test("error: propagates API error from DELETE /session/:id", () async {
+        final error = ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "Not Found");
+        when(
+          () => mockClient.delete<bool>(
+            "/session/$sessionId",
+            fromJson: any(named: "fromJson"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.error(error));
+
+        final result = await sessionService.deleteSession(sessionId);
+
+        expect(result, isA<ErrorResponse<bool>>());
+        expect((result as ErrorResponse<bool>).error, equals(error));
+        verify(
+          () => mockClient.delete<bool>(
+            "/session/$sessionId",
+            fromJson: any(named: "fromJson"),
+          ),
+        ).called(1);
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // session data
+    // -----------------------------------------------------------------------
+
+    group("getChildren", () {
+      const sessionId = "session-parent";
+
+      test("success: returns List<Session> from GET /session/:id/children", () async {
+        final children = [testSession(id: "child-1"), testSession(id: "child-2")];
+        when(
+          () => mockClient.get<List<Session>>(
+            "/session/$sessionId/children",
+            fromJson: any(named: "fromJson"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(children));
+
+        final result = await sessionService.getChildren(sessionId);
+
+        expect(result, isA<SuccessResponse<List<Session>>>());
+        expect((result as SuccessResponse<List<Session>>).data, equals(children));
+        verify(
+          () => mockClient.get<List<Session>>(
+            "/session/$sessionId/children",
+            fromJson: any(named: "fromJson"),
+          ),
+        ).called(1);
+      });
+
+      test("error: propagates API error from GET /session/:id/children", () async {
+        final error = ApiError.generic();
+        when(
+          () => mockClient.get<List<Session>>(
+            "/session/$sessionId/children",
+            fromJson: any(named: "fromJson"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.error(error));
+
+        final result = await sessionService.getChildren(sessionId);
+
+        expect(result, isA<ErrorResponse<List<Session>>>());
+        expect((result as ErrorResponse<List<Session>>).error, equals(error));
+        verify(
+          () => mockClient.get<List<Session>>(
+            "/session/$sessionId/children",
+            fromJson: any(named: "fromJson"),
+          ),
+        ).called(1);
+      });
+    });
+
+    group("getSessionStatuses", () {
+      test("success: returns Map<String, SessionStatus> from GET /session/status", () async {
+        when(
+          () => mockClient.get<Map<String, SessionStatus>>(
+            "/session/status",
+            fromJson: any(named: "fromJson"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(<String, SessionStatus>{}));
+
+        final result = await sessionService.getSessionStatuses();
+
+        expect(result, isA<SuccessResponse<Map<String, SessionStatus>>>());
+        verify(
+          () => mockClient.get<Map<String, SessionStatus>>(
+            "/session/status",
+            fromJson: any(named: "fromJson"),
+          ),
+        ).called(1);
+      });
+
+      test("error: propagates API error from GET /session/status", () async {
+        final error = ApiError.generic();
+        when(
+          () => mockClient.get<Map<String, SessionStatus>>(
+            "/session/status",
+            fromJson: any(named: "fromJson"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.error(error));
+
+        final result = await sessionService.getSessionStatuses();
+
+        expect(result, isA<ErrorResponse<Map<String, SessionStatus>>>());
+        expect((result as ErrorResponse<Map<String, SessionStatus>>).error, equals(error));
+        verify(
+          () => mockClient.get<Map<String, SessionStatus>>(
+            "/session/status",
+            fromJson: any(named: "fromJson"),
+          ),
+        ).called(1);
+      });
+    });
+
+    group("getMessages", () {
+      const sessionId = "session-msg";
+
+      test("success: returns List<MessageWithParts> from GET /session/:id/message", () async {
+        final messages = [testMessageWithParts()];
+        when(
+          () => mockClient.get<List<MessageWithParts>>(
+            "/session/$sessionId/message",
+            fromJson: any(named: "fromJson"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(messages));
+
+        final result = await sessionService.getMessages(sessionId);
+
+        expect(result, isA<SuccessResponse<List<MessageWithParts>>>());
+        expect((result as SuccessResponse<List<MessageWithParts>>).data, equals(messages));
+        verify(
+          () => mockClient.get<List<MessageWithParts>>(
+            "/session/$sessionId/message",
+            fromJson: any(named: "fromJson"),
+          ),
+        ).called(1);
+      });
+
+      test("error: propagates API error from GET /session/:id/message", () async {
+        final error = ApiError.dartHttpClient(Exception("Timeout"));
+        when(
+          () => mockClient.get<List<MessageWithParts>>(
+            "/session/$sessionId/message",
+            fromJson: any(named: "fromJson"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.error(error));
+
+        final result = await sessionService.getMessages(sessionId);
+
+        expect(result, isA<ErrorResponse<List<MessageWithParts>>>());
+        expect((result as ErrorResponse<List<MessageWithParts>>).error, equals(error));
+        verify(
+          () => mockClient.get<List<MessageWithParts>>(
+            "/session/$sessionId/message",
+            fromJson: any(named: "fromJson"),
+          ),
+        ).called(1);
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // messaging
+    // -----------------------------------------------------------------------
+
+    group("sendMessage", () {
+      const sessionId = "session-send";
+
+      test("success: returns true from POST /session/:id/prompt_async", () async {
+        when(
+          () => mockClient.post<bool>(
+            "/session/$sessionId/prompt_async",
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(true));
+
+        final result = await sessionService.sendMessage(sessionId, "Hello");
+
+        expect(result, isA<SuccessResponse<bool>>());
+        expect((result as SuccessResponse<bool>).data, isTrue);
+        verify(
+          () => mockClient.post<bool>(
+            "/session/$sessionId/prompt_async",
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).called(1);
+      });
+
+      test("error: propagates API error from POST /session/:id/prompt_async", () async {
+        final error = ApiError.generic();
+        when(
+          () => mockClient.post<bool>(
+            "/session/$sessionId/prompt_async",
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.error(error));
+
+        final result = await sessionService.sendMessage(sessionId, "Hello");
+
+        expect(result, isA<ErrorResponse<bool>>());
+        expect((result as ErrorResponse<bool>).error, equals(error));
+      });
+
+      test("body contains text parts and omits agent/model when no optional params provided", () async {
+        when(
+          () => mockClient.post<bool>(
+            any(),
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(true));
+
+        await sessionService.sendMessage(sessionId, "Hello, world!");
+
+        final captured =
+            verify(
+                  () => mockClient.post<bool>(
+                    any(),
+                    fromJson: any(named: "fromJson"),
+                    body: captureAny(named: "body"),
+                  ),
+                ).captured.last
+                as Map<String, dynamic>;
+
+        expect(
+          captured["parts"],
+          equals([
+            {"type": "text", "text": "Hello, world!"},
+          ]),
+        );
+        expect(captured.containsKey("agent"), isFalse);
+        expect(captured.containsKey("model"), isFalse);
+      });
+
+      test("body includes agent and model when all optional params provided", () async {
+        when(
+          () => mockClient.post<bool>(
+            any(),
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(true));
+
+        await sessionService.sendMessage(
+          sessionId,
+          "Write a test",
+          agent: "coder",
+          providerID: "anthropic",
+          modelID: "claude-3-5-sonnet",
+        );
+
+        final captured =
+            verify(
+                  () => mockClient.post<bool>(
+                    any(),
+                    fromJson: any(named: "fromJson"),
+                    body: captureAny(named: "body"),
+                  ),
+                ).captured.last
+                as Map<String, dynamic>;
+
+        expect(captured["agent"], equals("coder"));
+        expect(
+          captured["model"],
+          equals({"providerID": "anthropic", "modelID": "claude-3-5-sonnet"}),
+        );
+      });
+    });
+
+    group("abortSession", () {
+      const sessionId = "session-abort";
+
+      test("success: returns true from POST /session/:id/abort", () async {
+        when(
+          () => mockClient.post<bool>(
+            "/session/$sessionId/abort",
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(true));
+
+        final result = await sessionService.abortSession(sessionId);
+
+        expect(result, isA<SuccessResponse<bool>>());
+        expect((result as SuccessResponse<bool>).data, isTrue);
+        verify(
+          () => mockClient.post<bool>(
+            "/session/$sessionId/abort",
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).called(1);
+      });
+
+      test("error: propagates API error from POST /session/:id/abort", () async {
+        final error = ApiError.generic();
+        when(
+          () => mockClient.post<bool>(
+            "/session/$sessionId/abort",
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.error(error));
+
+        final result = await sessionService.abortSession(sessionId);
+
+        expect(result, isA<ErrorResponse<bool>>());
+        expect((result as ErrorResponse<bool>).error, equals(error));
+        verify(
+          () => mockClient.post<bool>(
+            "/session/$sessionId/abort",
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).called(1);
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // questions
+    // -----------------------------------------------------------------------
+
+    group("getPendingQuestions", () {
+      test("success: returns List<SesoriQuestionAsked> from GET /question", () async {
+        final questions = [testSseQuestionAsked()];
+        when(
+          () => mockClient.get<List<SesoriQuestionAsked>>(
+            "/question",
+            fromJson: any(named: "fromJson"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(questions));
+
+        final result = await sessionService.getPendingQuestions();
+
+        expect(result, isA<SuccessResponse<List<SesoriQuestionAsked>>>());
+        expect((result as SuccessResponse<List<SesoriQuestionAsked>>).data, equals(questions));
+        verify(
+          () => mockClient.get<List<SesoriQuestionAsked>>(
+            "/question",
+            fromJson: any(named: "fromJson"),
+          ),
+        ).called(1);
+      });
+
+      test("error: propagates API error from GET /question", () async {
+        final error = ApiError.generic();
+        when(
+          () => mockClient.get<List<SesoriQuestionAsked>>(
+            "/question",
+            fromJson: any(named: "fromJson"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.error(error));
+
+        final result = await sessionService.getPendingQuestions();
+
+        expect(result, isA<ErrorResponse<List<SesoriQuestionAsked>>>());
+        expect((result as ErrorResponse<List<SesoriQuestionAsked>>).error, equals(error));
+        verify(
+          () => mockClient.get<List<SesoriQuestionAsked>>(
+            "/question",
+            fromJson: any(named: "fromJson"),
+          ),
+        ).called(1);
+      });
+    });
+
+    group("replyToQuestion", () {
+      const requestId = "request-1";
+
+      test("success: returns true from POST /question/:id/reply", () async {
+        when(
+          () => mockClient.post<bool>(
+            "/question/$requestId/reply",
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(true));
+
+        final result = await sessionService.replyToQuestion(requestId, [
+          ["Yes"],
+          ["Proceed"],
+        ]);
+
+        expect(result, isA<SuccessResponse<bool>>());
+        expect((result as SuccessResponse<bool>).data, isTrue);
+        verify(
+          () => mockClient.post<bool>(
+            "/question/$requestId/reply",
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).called(1);
+      });
+
+      test("error: propagates API error from POST /question/:id/reply", () async {
+        final error = ApiError.generic();
+        when(
+          () => mockClient.post<bool>(
+            "/question/$requestId/reply",
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.error(error));
+
+        final result = await sessionService.replyToQuestion(requestId, []);
+
+        expect(result, isA<ErrorResponse<bool>>());
+        expect((result as ErrorResponse<bool>).error, equals(error));
+      });
+
+      test("sends answers list in body to POST /question/:id/reply", () async {
+        final answers = [
+          ["Yes", "OK"],
+          ["No"],
+        ];
+        when(
+          () => mockClient.post<bool>(
+            any(),
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(true));
+
+        await sessionService.replyToQuestion(requestId, answers);
+
+        final captured =
+            verify(
+                  () => mockClient.post<bool>(
+                    any(),
+                    fromJson: any(named: "fromJson"),
+                    body: captureAny(named: "body"),
+                  ),
+                ).captured.last
+                as Map<String, dynamic>;
+
+        expect(captured["answers"], equals(answers));
+      });
+    });
+
+    group("rejectQuestion", () {
+      const requestId = "request-reject";
+
+      test("success: returns true from POST /question/:id/reject", () async {
+        when(
+          () => mockClient.post<bool>(
+            "/question/$requestId/reject",
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(true));
+
+        final result = await sessionService.rejectQuestion(requestId);
+
+        expect(result, isA<SuccessResponse<bool>>());
+        expect((result as SuccessResponse<bool>).data, isTrue);
+        verify(
+          () => mockClient.post<bool>(
+            "/question/$requestId/reject",
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).called(1);
+      });
+
+      test("error: propagates API error from POST /question/:id/reject", () async {
+        final error = ApiError.generic();
+        when(
+          () => mockClient.post<bool>(
+            "/question/$requestId/reject",
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.error(error));
+
+        final result = await sessionService.rejectQuestion(requestId);
+
+        expect(result, isA<ErrorResponse<bool>>());
+        expect((result as ErrorResponse<bool>).error, equals(error));
+        verify(
+          () => mockClient.post<bool>(
+            "/question/$requestId/reject",
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).called(1);
+      });
+    });
+  });
+}

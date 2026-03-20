@@ -1,0 +1,49 @@
+type: http_request
+model: http_request
+id: rq_kCdbCv3Pfy
+createdAt: 2026-03-13T12:46:05.029460
+updatedAt: 2026-03-13T12:56:35.312415
+workspaceId: wk_CKpMKQdH7W
+folderId: fl_yk5jRTWYoF
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "title": "New title",
+      "archived": true
+    }
+bodyType: application/json
+description: |-
+  > `operationId: session.update`
+
+  Update session properties (title, archive).
+
+  **Request body:**
+
+  ```json
+  {
+    "title": "New title",
+    "archived": true
+  }
+  ```
+
+  **Response 200:** Updated `Session`
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: DmzMnZH95u
+method: PATCH
+name: Update Session
+sortPriority: 5000.0
+url: ${[ base_url ]}/session/:sessionID
+urlParameters:
+- enabled: true
+  name: :sessionID
+  value: ''
+  id: kz6efcSPKb
+- enabled: true
+  name: ''
+  value: ''
+  id: WYqwwFSh9E
