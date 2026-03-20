@@ -1,24 +1,64 @@
 # Sesori Shared
 
-Shared Dart package containing the crypto primitives and protocol types for the Sesori relay system. Used by both `sesori_bridge_dart` and `sesori_mobile` to avoid duplicating core logic.
+Shared Dart package containing crypto primitives, relay protocol types, data models, and concurrency utilities. Used by both the bridge (`sesori_bridge_dart`) and the mobile client (`sesori_apps_monorepo`). Changes here affect both consumers.
 
-## What it exports
+## Crypto
 
-**Crypto**
+**`RelayCryptoService`**
 
-- `RelayCryptoService` — X25519 key generation, HKDF-SHA256 key derivation, XChaCha20-Poly1305 encryption/decryption
-- `SessionEncryptor` — stateful encryptor tied to a derived session key
+- X25519 key pair generation
+- HKDF-SHA256 session key derivation
+- XChaCha20-Poly1305 encrypt/decrypt
 
-**Protocol**
+**`SessionEncryptor`**
 
-- `RelayMessage` — Freezed sealed class with 11 message variants (`request`, `response`, `sseEvent`, `sseSubscribe`, `sseUnsubscribe`, `keyExchange`, `ready`, `resume`, `resumeAck`, `rekeyRequired`, `auth`)
-- `frame` / `unframe` — binary framing with version byte prefix for WebSocket transport
-- Protocol constants (message type strings, role identifiers)
-- Close codes
+Stateful encryptor bound to a derived session key. Wraps `RelayCryptoService` for use within an established relay session.
 
-## Adding as a dependency
+## Protocol
 
-In your `pubspec.yaml`:
+**`RelayMessage`**
+
+Freezed sealed class with 11 variants:
+
+| Variant | Direction |
+|---------|-----------|
+| `request` | Mobile to bridge |
+| `response` | Bridge to mobile |
+| `sseEvent` | Bridge to mobile |
+| `sseSubscribe` | Mobile to bridge |
+| `sseUnsubscribe` | Mobile to bridge |
+| `keyExchange` | Both |
+| `ready` | Relay to client |
+| `resume` | Client to relay |
+| `resumeAck` | Relay to client |
+| `rekeyRequired` | Relay to client |
+| `auth` | Client to relay |
+
+**`frame` / `unframe`**
+
+Binary WebSocket framing with a version byte prefix. Used by both ends of the relay connection.
+
+Protocol constants (message type strings, role identifiers) and close codes are also exported.
+
+## Data Models
+
+**Auth**
+
+`AuthUser`, `AuthResponse`, `AuthUrlResponse`, `AuthMeResponse`, `LogoutResponse`
+
+**Sesori**
+
+`Project`, `Session`, `Message`, `MessagePart`, `MessageWithParts`, `Question`, `AgentInfo`, `AgentMode`, `ProviderInfo`, `SessionStatus`, `HealthResponse`, `FileDiff`, `ProjectActivitySummary`, `SesoriSseEvent`
+
+## Concurrency
+
+`ConcurrentCache` — async-safe cache with per-key locking to prevent duplicate concurrent fetches.
+
+`EventQueue` — ordered async event dispatcher.
+
+`SingleTaskIsolate` / `MultiTaskIsolate` — typed isolate wrappers with persistent and transient pool variants. Constructed via factory constructors that select the right implementation based on `minPoolSize`/`maxPoolSize`.
+
+## Adding as a Dependency
 
 ```yaml
 dependencies:
@@ -32,4 +72,4 @@ Then run `dart pub get`.
 
 Pure Dart — no Flutter dependency. Works in any Dart environment including native binaries and Flutter apps.
 
-The package requires Dart 3.8+ for sealed class support and the `freezed` code generation output.
+Requires Dart 3.8.0 or later (sealed class support, `freezed` generated output).
