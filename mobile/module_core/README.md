@@ -1,41 +1,73 @@
-# sesori_dart_core
+# Sesori Core (sesori_dart_core)
 
-Pure Dart package containing all business logic, state management, services, and models for the Sesori ecosystem. Zero Flutter SDK dependency — shared by the Flutter app and future CLI/TUI tools.
+Pure Dart package containing all business logic, state management, services, and platform interfaces for the Sesori mobile client. Zero Flutter dependency — can be used from the Flutter app, a CLI, or any Dart environment.
 
 See the [root README](../README.md) for the full monorepo overview.
 
-## Usage
+## Key Exports
 
-Add as a path dependency:
+**Cubits**
 
-```yaml
-dependencies:
-  sesori_dart_core:
-    path: ../sesori_dart_core
-```
+| Cubit | Purpose |
+|-------|---------|
+| `LoginCubit` | OAuth sign-in flow, session restore |
+| `ProjectListCubit` | Fetches and holds the project list |
+| `SessionListCubit` | Fetches sessions for a project |
+| `SessionDetailCubit` | Manages live session state, messages, and SSE updates |
+| `ConnectionOverlayCubit` | Tracks relay connection status for the overlay widget |
 
-Initialize from your platform entry point:
+**Services**
+
+| Service | Purpose |
+|---------|---------|
+| `ProjectService` | CRUD operations for projects |
+| `SessionService` | Session creation, listing, and message fetching |
+| `ConnectionService` | Manages the relay WebSocket lifecycle |
+| `RelayClient` | Low-level relay WebSocket client with E2E encryption |
+| `SseEventRepository` | Buffers and dispatches SSE events from the relay |
+
+**Concurrency** (re-exported from `sesori_shared`)
+
+`SingleTaskIsolate`, `MultiTaskIsolate` — typed isolate wrappers with persistent and transient pool variants. `ConcurrentCache` — async-safe cache with per-key locking.
+
+**Platform Interfaces**
+
+These abstract interfaces are defined here and implemented by Flutter adapters in `app/lib/core/platform/`:
+
+| Interface | Flutter Adapter |
+|-----------|----------------|
+| `SecureStorage` | `FlutterSecureStorageAdapter` |
+| `UrlLauncher` | `FlutterUrlLauncher` |
+| `DeepLinkSource` | `DeepLinkSource` (app_links) |
+| `LifecycleSource` | `AppLifecycleObserver` |
+
+**Routing**
+
+`AppRoute` — enum of all named routes with path builders. `AuthRedirectService` — checks token state on startup to decide whether to skip the login screen.
+
+**Logging**
+
+`logd` / `logw` / `loge` — structured log helpers with a configurable `LogLevel`.
+
+## DI Registration
 
 ```dart
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
-// Register platform implementations first (SecureStorage, UrlLauncher, etc.)
-// Then initialize core DI:
+// Must be called after platform adapters and auth module are registered:
 configureCoreDependencies(getIt);
 ```
 
-## What's inside
+The auth module (`configureAuthDependencies`) must be initialized first. The full three-phase order is in `app/lib/core/di/injection.dart`.
 
-- **Cubits** — login, project list, session list, session detail, connection overlay
-- **Services** — auth, project, session, voice API, connection management, relay client
-- **API layer** — HTTP clients (direct + relay-routed), models, converters, JSON parsing
-- **Models** — auth state, connection status, SSE events, server config
-- **Concurrency** — isolate pool, message queue, concurrent cache
-- **Platform interfaces** — `SecureStorage`, `UrlLauncher`, `DeepLinkSource`
-- **Logging** — `logd`/`logw`/`loge` with configurable `LogLevel`
-
-## Test
+## Testing
 
 ```bash
 dart test
 ```
+
+Pure Dart — no Flutter toolchain needed.
+
+## Important
+
+This module must not import `package:flutter`. Any Flutter-specific code belongs in `app/`. If you need a new platform capability, define an abstract interface here and implement it as a Flutter adapter in `app/lib/core/platform/`.
