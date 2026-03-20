@@ -247,7 +247,7 @@ void main() {
 
 SesoriSseEvent _event(String worktree) {
   return SesoriSseEvent.projectsSummary(
-    projects: [ProjectActivitySummary(worktree: worktree, activeSessions: 1)],
+    projects: [ProjectActivitySummary(id: worktree, activeSessions: 1)],
   );
 }
 

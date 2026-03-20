@@ -69,10 +69,10 @@ class SessionListCubit extends Cubit<SessionListState> {
     }
   }
 
-  void _onSessionActivityUpdated(Map<String, Set<String>> activityByWorktree) {
+  void _onSessionActivityUpdated(Map<String, Set<String>> activityById) {
     if (isClosed) return;
     if (state is! SessionListLoaded) return;
-    final activeIds = activityByWorktree[_worktree] ?? {};
+    final activeIds = activityById[_worktree] ?? {};
     emit(
       SessionListState.loaded(
         sessions: (state as SessionListLoaded).sessions,

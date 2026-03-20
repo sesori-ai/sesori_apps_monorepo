@@ -319,7 +319,7 @@ void main() {
     test("buildSummary delegates to tracker", () {
       final tracker = FakeActiveSessionTracker(
         summary: [
-          const ProjectActivitySummary(worktree: "/repo", activeSessions: 3),
+          const ProjectActivitySummary(id: "/repo", activeSessions: 3),
         ],
       );
       final service = OpenCodeService(FakeOpenCodeRepository(), tracker);

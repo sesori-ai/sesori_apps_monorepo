@@ -44,10 +44,10 @@ class SseEventRepository with Disposable {
       final sessionMap = <String, Set<String>>{};
       for (final summary in projects) {
         if (summary.activeSessions > 0) {
-          projectMap[summary.worktree] = summary.activeSessions;
+          projectMap[summary.id] = summary.activeSessions;
         }
         if (summary.activeSessionIds.isNotEmpty) {
-          sessionMap[summary.worktree] = summary.activeSessionIds.toSet();
+          sessionMap[summary.id] = summary.activeSessionIds.toSet();
         }
       }
       _projectActivity.add(projectMap);

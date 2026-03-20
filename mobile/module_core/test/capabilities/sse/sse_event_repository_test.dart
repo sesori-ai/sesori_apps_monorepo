@@ -53,7 +53,7 @@ void main() {
         data: const SesoriProjectsSummary(
           projects: [
             ProjectActivitySummary(
-              worktree: "/foo",
+              id: "/foo",
               activeSessions: 2,
               activeSessionIds: ["s1", "s2"],
             ),
@@ -86,7 +86,7 @@ void main() {
         data: const SesoriProjectsSummary(
           projects: [
             ProjectActivitySummary(
-              worktree: "/bar",
+              id: "/bar",
             ),
           ],
         ),
@@ -119,12 +119,12 @@ void main() {
         data: const SesoriProjectsSummary(
           projects: [
             ProjectActivitySummary(
-              worktree: "/foo",
+              id: "/foo",
               activeSessions: 1,
               activeSessionIds: ["s1"],
             ),
             ProjectActivitySummary(
-              worktree: "/bar",
+              id: "/bar",
               activeSessions: 2,
               activeSessionIds: ["s2", "s3"],
             ),
@@ -163,7 +163,7 @@ void main() {
           data: const SesoriProjectsSummary(
             projects: [
               ProjectActivitySummary(
-                worktree: "/foo",
+                id: "/foo",
                 activeSessions: 1,
                 activeSessionIds: ["s1"],
               ),
@@ -181,7 +181,7 @@ void main() {
           data: const SesoriProjectsSummary(
             projects: [
               ProjectActivitySummary(
-                worktree: "/foo",
+                id: "/foo",
                 activeSessions: 2,
                 activeSessionIds: ["s1", "s2"],
               ),
@@ -234,7 +234,7 @@ void main() {
         data: const SesoriProjectsSummary(
           projects: [
             ProjectActivitySummary(
-              worktree: "/foo",
+              id: "/foo",
               activeSessions: 3,
               activeSessionIds: ["s1", "s2", "s3"],
             ),
@@ -265,7 +265,7 @@ void main() {
         data: const SesoriProjectsSummary(
           projects: [
             ProjectActivitySummary(
-              worktree: "/bar",
+              id: "/bar",
             ),
           ],
         ),

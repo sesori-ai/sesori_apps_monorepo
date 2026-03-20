@@ -478,7 +478,7 @@ class OpenCodePlugin implements BridgePlugin {
         .buildSummary()
         .map(
           (s) => PluginProjectActivitySummary(
-            worktree: s.worktree,
+            id: s.id,
             activeSessions: s.activeSessions,
             activeSessionIds: s.activeSessionIds,
           ),

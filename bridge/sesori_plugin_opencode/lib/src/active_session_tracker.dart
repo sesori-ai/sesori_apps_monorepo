@@ -101,7 +101,7 @@ class ActiveSessionTracker {
     return activeSessions.entries
         .map(
           (e) => ProjectActivitySummary(
-            worktree: e.key,
+            id: e.key,
             activeSessions: e.value,
             activeSessionIds: sessionIdsByWorktree[e.key] ?? [],
           ),

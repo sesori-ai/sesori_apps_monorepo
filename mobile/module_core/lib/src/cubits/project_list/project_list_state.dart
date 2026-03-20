@@ -10,7 +10,7 @@ sealed class ProjectListState with _$ProjectListState {
 
   const factory ProjectListState.loaded({
     required List<Project> projects,
-    required Map<String, int> activityByWorktree,
+    required Map<String, int> activityById,
   }) = ProjectListLoaded;
 
   const factory ProjectListState.failed({required ApiError error}) = ProjectListFailed;

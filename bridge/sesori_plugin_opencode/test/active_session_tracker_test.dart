@@ -213,7 +213,7 @@ void main() {
       tracker.handleEvent(_sessionBusy("s1"), null);
 
       final summary = tracker.buildSummary();
-      final pairs = summary.map((item) => (item.worktree, item.activeSessions)).toSet();
+      final pairs = summary.map((item) => (item.id, item.activeSessions)).toSet();
 
       expect(pairs, equals({("/repo-a", 1)}));
     });
@@ -308,8 +308,8 @@ void main() {
 
       expect(summary, hasLength(2));
 
-      final fooEntry = summary.firstWhere((e) => e.worktree == "/projects/foo");
-      final barEntry = summary.firstWhere((e) => e.worktree == "/projects/bar");
+      final fooEntry = summary.firstWhere((e) => e.id == "/projects/foo");
+      final barEntry = summary.firstWhere((e) => e.id == "/projects/bar");
 
       expect(fooEntry.activeSessionIds, equals(["s1"]));
       expect(barEntry.activeSessionIds, equals(["s2"]));

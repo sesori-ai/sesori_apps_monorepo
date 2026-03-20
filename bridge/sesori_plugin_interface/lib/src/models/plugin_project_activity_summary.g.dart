@@ -9,7 +9,7 @@ part of 'plugin_project_activity_summary.dart';
 Map<String, dynamic> _$PluginProjectActivitySummaryToJson(
   _PluginProjectActivitySummary instance,
 ) => <String, dynamic>{
-  'worktree': instance.worktree,
+  'id': instance.id,
   'activeSessions': instance.activeSessions,
   'activeSessionIds': instance.activeSessionIds,
 };

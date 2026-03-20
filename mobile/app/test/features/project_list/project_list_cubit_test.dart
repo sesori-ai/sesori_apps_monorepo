@@ -230,7 +230,7 @@ void main() {
     // -------------------------------------------------------------------------
 
     blocTest<ProjectListCubit, ProjectListState>(
-      "projectActivity update: emits loaded state with updated activityByWorktree",
+      "projectActivity update: emits loaded state with updated activityById",
       build: () {
         when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.success([testProject()]));
         return buildCubit();
@@ -242,7 +242,7 @@ void main() {
       },
       skip: 1, // skip initial loaded emission (no activity yet)
       expect: () => [
-        isA<ProjectListLoaded>().having((s) => s.activityByWorktree, "activityByWorktree", {_worktree: 3}),
+        isA<ProjectListLoaded>().having((s) => s.activityById, "activityById", {_worktree: 3}),
       ],
     );
 
@@ -271,14 +271,14 @@ void main() {
     // -------------------------------------------------------------------------
 
     blocTest<ProjectListCubit, ProjectListState>(
-      "_fetchProjects: seeds activityByWorktree from repository at load time",
+      "_fetchProjects: seeds activityById from repository at load time",
       build: () {
         mockSseEventRepository.emitProjectActivity({_worktree: 2});
         when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.success([testProject()]));
         return buildCubit();
       },
       expect: () => [
-        isA<ProjectListLoaded>().having((s) => s.activityByWorktree, "activityByWorktree", {_worktree: 2}),
+        isA<ProjectListLoaded>().having((s) => s.activityById, "activityById", {_worktree: 2}),
       ],
     );
 
@@ -300,9 +300,9 @@ void main() {
         mockSseEventRepository.emitProjectActivity(const {});
         await Future<void>.delayed(Duration.zero);
       },
-      skip: 1, // skip initial loaded emission (activityByWorktree: {_worktree: 1})
+      skip: 1, // skip initial loaded emission (activityById: {_worktree: 1})
       expect: () => [
-        isA<ProjectListLoaded>().having((s) => s.activityByWorktree, "activityByWorktree", isEmpty),
+        isA<ProjectListLoaded>().having((s) => s.activityById, "activityById", isEmpty),
       ],
     );
   });
