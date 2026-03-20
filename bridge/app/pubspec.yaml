@@ -14,14 +14,15 @@ dependencies:
   http: ^1.3.0
   crypto: ^3.0.0
   path: ^1.9.0
-  sesori_shared: ^0.3.0
+  sesori_shared:
+    path: ../../shared/sesori_shared
   clock: ^1.1.2
   freezed_annotation: ^3.1.0
   json_annotation: ^4.11.0
   sesori_plugin_interface:
     path: ../sesori_plugin_interface
   opencode_plugin:
-    path: ../opencode_plugin
+    path: ../sesori_plugin_opencode
 
 dev_dependencies:
   test: ^1.25.0

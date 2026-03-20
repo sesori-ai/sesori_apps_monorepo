@@ -5,6 +5,6 @@ environment:
   sdk: ^3.11.0
 
 workspace:
-  - bridge
-  - opencode_plugin
+  - app
+  - sesori_plugin_opencode
   - sesori_plugin_interface

@@ -9,7 +9,8 @@ environment:
 dependencies:
   sesori_plugin_interface:
     path: ../sesori_plugin_interface
-  sesori_shared: ^0.3.0
+  sesori_shared:
+    path: ../../shared/sesori_shared
   http: ^1.3.0
   freezed_annotation: ^3.1.0
   json_annotation: ^4.11.0

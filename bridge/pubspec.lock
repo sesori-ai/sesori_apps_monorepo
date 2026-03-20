@@ -388,10 +388,9 @@ packages:
   sesori_shared:
     dependency: transitive
     description:
-      name: sesori_shared
-      sha256: c3e550174430b475ffcd8b9662f5e966e7b270b15c9c88c7d117404605da7c80
-      url: "https://pub.dev"
-    source: hosted
+      path: "../shared/sesori_shared"
+      relative: true
+    source: path
     version: "0.3.0"
   shelf:
     dependency: transitive
