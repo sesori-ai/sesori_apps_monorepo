@@ -1,64 +1,52 @@
-# Sesori Mobile — Monorepo
+# Mobile Workspace — Agent Rules
 
-Multi-package Dart/Flutter repository for the Sesori mobile ecosystem.
+## Commands
 
-## Repository Structure
-
-```
-sesori_auth/        Pure Dart package — authentication, token lifecycle, OAuth flow
-sesori_dart_core/   Pure Dart package — business logic, services, cubits, models
-sesori_flutter/     Flutter app — UI screens, widgets, routing, platform adapters
-```
-
-Authentication is fully encapsulated in `sesori_auth` behind narrow interfaces (`AuthTokenProvider`, `OAuthFlowProvider`, `AuthSession`). All non-UI business logic lives in `sesori_dart_core`. The Flutter app is a thin shell that provides platform implementations and UI.
-
-## Shared Conventions
-
-- Dart SDK `^3.11.1`
-- Double quotes for all strings consistently
-- `http` package for networking (NOT dio)
-- `rxdart` for reactive streams (`BehaviorSubject`)
-- `get_it` + `injectable` for dependency injection
-  - Services: `@lazySingleton` — single shared instance
-  - Cubits: NOT registered in DI — constructed manually in `BlocProvider(create:)`
-  - Use positional constructor parameters for injectable auto-wiring
-- `freezed` for immutable models — always `sealed class`, `build.yaml` options: `format: false`, `map: false`, `when: false`
-- Errors always logged (`loge`/`logw` from `sesori_dart_core`), never silently swallowed
-
-## Architecture Layering
-
-```
-http.Client <- AuthenticatedHttpApiClient/HttpApiClient <- XyzApi <- 0+ Repository <- 1+ Service <- Cubit <- Widget
+```bash
+dart pub get                                              # from mobile/ — installs all modules
+dart analyze                                              # run per module (app/, module_core/, module_auth/)
+cd app && flutter test                                    # Flutter tests
+cd module_core && dart test                               # pure Dart tests
+cd module_auth && dart test                               # pure Dart tests
+dart run build_runner build --delete-conflicting-outputs  # per module, after modifying annotated classes
 ```
 
-- **DO NOT** inject/use `http.Client` into services/repositories/widgets — only API clients get direct access
-- **ALL** API calls go through an `XyzApi` class
-- **Authenticated API calls** use `AuthenticatedHttpApiClient` (from `sesori_auth`) which auto-injects Bearer tokens and handles 401 retry
-- **Repository** layer only when mixing multiple data sources
-- **Service** layer provides simple APIs for cubits
-- **Cubit** contains UI display logic (lives in `sesori_dart_core`)
-- **Widget** consumes cubits via `BlocProvider` (lives in `sesori_flutter`)
+## Module Dependency Direction
 
-## Authentication Architecture
+```
+app -> module_core -> module_auth -> sesori_shared
+```
 
-Auth is a separate package (`sesori_auth`) with package-boundary enforcement. Internal types are not exported.
+NEVER reverse this. NEVER skip layers. `app` does not import `module_auth` directly.
 
-- **`AuthManager`** (internal) — single owner of token lifecycle, OAuth flow, and auth state. Implements all 3 interfaces.
-- **`AuthTokenProvider`** — read-only fresh token access. Injected by `ConnectionService` for relay WebSocket auth.
-- **`OAuthFlowProvider`** — drives OAuth login (PKCE + code exchange). Injected by `LoginCubit`.
-- **`AuthSession`** — auth state stream + logout + getCurrentUser. Injected by `AuthRedirectService`, `ConnectionOverlayCubit`.
-- **`AuthenticatedHttpApiClient`** — HTTP decorator that adds Bearer token + 401 retry. Injected by `VoiceApi`.
+## Forbidden
 
-DI initialization order: **Flutter platform** (SecureStorage, etc.) → **`configureAuthDependencies`** → **`configureCoreDependencies`**
+- `module_core` MUST NOT import `package:flutter`. It is pure Dart.
+- `module_auth` MUST NOT import `module_core`.
+- Do NOT edit `*.freezed.dart`, `*.g.dart`, or `*.config.dart` — these are generated.
 
-## Testing
+## DI
 
-- Unit test all non-widget code. Use `mocktail`.
-- Never use `getIt<...>()` outside widget code — inject via constructor for testability
-- Core package tests use `package:test`; Flutter app tests use `package:flutter_test`
+3-phase init in `app/lib/core/di/injection.dart`:
 
-## Per-Package Details
+1. `getIt.init()` — Flutter platform deps
+2. `configureAuthDependencies(getIt)` — auth module
+3. `configureCoreDependencies(getIt)` — core module
 
-- [`sesori_auth/AGENTS.md`](sesori_auth/AGENTS.md) — auth package conventions, public API surface
-- [`sesori_dart_core/AGENTS.md`](sesori_dart_core/AGENTS.md) — pure Dart conventions, package structure
-- [`sesori_flutter/AGENTS.md`](sesori_flutter/AGENTS.md) — Flutter-specific conventions, UI patterns
+New services register in their module's `configure*Dependencies()` function, not in `app/`.
+
+## State Management
+
+BLoC/Cubit only. New features: add a Cubit in `module_core/`, add a UI widget in `app/`. Cubits are NOT registered in DI — construct them in `BlocProvider(create:)`.
+
+## Definition of Done
+
+- `dart pub get` exits 0 from `mobile/`
+- `dart analyze` exits 0 in all three modules
+- All tests pass (`flutter test` for `app/`, `dart test` for `module_core/` and `module_auth/`)
+
+## Per-Module Details
+
+- [`app/AGENTS.md`](app/AGENTS.md) — Flutter shell conventions, routing, widget patterns
+- [`module_core/AGENTS.md`](module_core/AGENTS.md) — pure Dart conventions, cubit/service patterns
+- [`module_auth/AGENTS.md`](module_auth/AGENTS.md) — auth package public API, token lifecycle
