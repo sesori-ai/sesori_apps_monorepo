@@ -2,6 +2,7 @@ name: sesori_dart_core
 description: Core business logic for Sesori — pure Dart, no Flutter dependency.
 version: 0.1.0
 publish_to: none
+resolution: workspace
 
 environment:
   sdk: ^3.11.1
@@ -19,8 +20,9 @@ dependencies:
   meta: ^1.16.0
   rxdart: ^0.28.0
   sesori_auth:
-    path: ../sesori_auth
-  sesori_shared: ^0.3.0
+    path: ../module_auth
+  sesori_shared:
+    path: ../../shared/sesori_shared
   web_socket_channel: ^3.0.1
 
 dev_dependencies:
@@ -33,8 +35,3 @@ dev_dependencies:
   test: ^1.25.0
   fake_async: ^1.3.3
 
-# dependency_overrides:
-#   sesori_shared:
-#     git:
-#       url: https://github.com/sesori-ai/sesori_shared_dart.git
-#       ref: fe434f9d4c20248036f078307a11d2cee02b2248
