@@ -12,7 +12,9 @@ _Session _$SessionFromJson(Map json) => _Session(
   directory: json['directory'] as String,
   parentID: json['parentID'] as String?,
   title: json['title'] as String?,
-  time: json['time'] == null ? null : SessionTime.fromJson(Map<String, dynamic>.from(json['time'] as Map)),
+  time: json['time'] == null
+      ? null
+      : SessionTime.fromJson(Map<String, dynamic>.from(json['time'] as Map)),
   summary: json['summary'] == null
       ? null
       : SessionSummary.fromJson(
@@ -36,11 +38,12 @@ _SessionTime _$SessionTimeFromJson(Map json) => _SessionTime(
   archived: (json['archived'] as num?)?.toInt(),
 );
 
-Map<String, dynamic> _$SessionTimeToJson(_SessionTime instance) => <String, dynamic>{
-  'created': instance.created,
-  'updated': instance.updated,
-  'archived': instance.archived,
-};
+Map<String, dynamic> _$SessionTimeToJson(_SessionTime instance) =>
+    <String, dynamic>{
+      'created': instance.created,
+      'updated': instance.updated,
+      'archived': instance.archived,
+    };
 
 _SessionSummary _$SessionSummaryFromJson(Map json) => _SessionSummary(
   additions: (json['additions'] as num?)?.toInt() ?? 0,
@@ -48,11 +51,12 @@ _SessionSummary _$SessionSummaryFromJson(Map json) => _SessionSummary(
   files: (json['files'] as num?)?.toInt() ?? 0,
 );
 
-Map<String, dynamic> _$SessionSummaryToJson(_SessionSummary instance) => <String, dynamic>{
-  'additions': instance.additions,
-  'deletions': instance.deletions,
-  'files': instance.files,
-};
+Map<String, dynamic> _$SessionSummaryToJson(_SessionSummary instance) =>
+    <String, dynamic>{
+      'additions': instance.additions,
+      'deletions': instance.deletions,
+      'files': instance.files,
+    };
 
 _GlobalSession _$GlobalSessionFromJson(Map json) => _GlobalSession(
   id: json['id'] as String,
@@ -60,7 +64,9 @@ _GlobalSession _$GlobalSessionFromJson(Map json) => _GlobalSession(
   directory: json['directory'] as String,
   parentID: json['parentID'] as String?,
   title: json['title'] as String?,
-  time: json['time'] == null ? null : SessionTime.fromJson(Map<String, dynamic>.from(json['time'] as Map)),
+  time: json['time'] == null
+      ? null
+      : SessionTime.fromJson(Map<String, dynamic>.from(json['time'] as Map)),
   summary: json['summary'] == null
       ? null
       : SessionSummary.fromJson(
@@ -73,16 +79,17 @@ _GlobalSession _$GlobalSessionFromJson(Map json) => _GlobalSession(
         ),
 );
 
-Map<String, dynamic> _$GlobalSessionToJson(_GlobalSession instance) => <String, dynamic>{
-  'id': instance.id,
-  'projectID': instance.projectID,
-  'directory': instance.directory,
-  'parentID': instance.parentID,
-  'title': instance.title,
-  'time': instance.time?.toJson(),
-  'summary': instance.summary?.toJson(),
-  'project': instance.project?.toJson(),
-};
+Map<String, dynamic> _$GlobalSessionToJson(_GlobalSession instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'projectID': instance.projectID,
+      'directory': instance.directory,
+      'parentID': instance.parentID,
+      'title': instance.title,
+      'time': instance.time?.toJson(),
+      'summary': instance.summary?.toJson(),
+      'project': instance.project?.toJson(),
+    };
 
 _SessionProject _$SessionProjectFromJson(Map json) => _SessionProject(
   id: json['id'] as String,
@@ -90,8 +97,9 @@ _SessionProject _$SessionProjectFromJson(Map json) => _SessionProject(
   worktree: json['worktree'] as String,
 );
 
-Map<String, dynamic> _$SessionProjectToJson(_SessionProject instance) => <String, dynamic>{
-  'id': instance.id,
-  'name': instance.name,
-  'worktree': instance.worktree,
-};
+Map<String, dynamic> _$SessionProjectToJson(_SessionProject instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'name': instance.name,
+      'worktree': instance.worktree,
+    };

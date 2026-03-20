@@ -14,7 +14,9 @@ _MessagePart _$MessagePartFromJson(Map json) => _MessagePart(
   text: json['text'] as String?,
   tool: json['tool'] as String?,
   callID: json['callID'] as String?,
-  state: json['state'] == null ? null : ToolState.fromJson(Map<String, dynamic>.from(json['state'] as Map)),
+  state: json['state'] == null
+      ? null
+      : ToolState.fromJson(Map<String, dynamic>.from(json['state'] as Map)),
   mime: json['mime'] as String?,
   url: json['url'] as String?,
   filename: json['filename'] as String?,
@@ -24,29 +26,32 @@ _MessagePart _$MessagePartFromJson(Map json) => _MessagePart(
   description: json['description'] as String?,
   agent: json['agent'] as String?,
   snapshot: json['snapshot'] as String?,
-  time: json['time'] == null ? null : PartTime.fromJson(Map<String, dynamic>.from(json['time'] as Map)),
+  time: json['time'] == null
+      ? null
+      : PartTime.fromJson(Map<String, dynamic>.from(json['time'] as Map)),
 );
 
-Map<String, dynamic> _$MessagePartToJson(_MessagePart instance) => <String, dynamic>{
-  'id': instance.id,
-  'sessionID': instance.sessionID,
-  'messageID': instance.messageID,
-  'type': instance.type,
-  'text': instance.text,
-  'tool': instance.tool,
-  'callID': instance.callID,
-  'state': instance.state?.toJson(),
-  'mime': instance.mime,
-  'url': instance.url,
-  'filename': instance.filename,
-  'cost': instance.cost,
-  'reason': instance.reason,
-  'prompt': instance.prompt,
-  'description': instance.description,
-  'agent': instance.agent,
-  'snapshot': instance.snapshot,
-  'time': instance.time?.toJson(),
-};
+Map<String, dynamic> _$MessagePartToJson(_MessagePart instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'sessionID': instance.sessionID,
+      'messageID': instance.messageID,
+      'type': instance.type,
+      'text': instance.text,
+      'tool': instance.tool,
+      'callID': instance.callID,
+      'state': instance.state?.toJson(),
+      'mime': instance.mime,
+      'url': instance.url,
+      'filename': instance.filename,
+      'cost': instance.cost,
+      'reason': instance.reason,
+      'prompt': instance.prompt,
+      'description': instance.description,
+      'agent': instance.agent,
+      'snapshot': instance.snapshot,
+      'time': instance.time?.toJson(),
+    };
 
 _ToolState _$ToolStateFromJson(Map json) => _ToolState(
   status: json['status'] as String,
@@ -55,12 +60,13 @@ _ToolState _$ToolStateFromJson(Map json) => _ToolState(
   error: json['error'] as String?,
 );
 
-Map<String, dynamic> _$ToolStateToJson(_ToolState instance) => <String, dynamic>{
-  'status': instance.status,
-  'title': instance.title,
-  'output': instance.output,
-  'error': instance.error,
-};
+Map<String, dynamic> _$ToolStateToJson(_ToolState instance) =>
+    <String, dynamic>{
+      'status': instance.status,
+      'title': instance.title,
+      'output': instance.output,
+      'error': instance.error,
+    };
 
 _PartTime _$PartTimeFromJson(Map json) => _PartTime(
   start: (json['start'] as num?)?.toInt(),

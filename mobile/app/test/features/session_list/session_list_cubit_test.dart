@@ -18,6 +18,7 @@ void main() {
     late MockSessionService mockSessionService;
     late MockProjectService mockProjectService;
     late MockConnectionService mockConnectionService;
+    late MockSseEventRepository mockSseEventRepository;
     late StreamController<SseEvent> eventController;
 
     const projectId = "project-1";
@@ -27,6 +28,7 @@ void main() {
       mockSessionService = MockSessionService();
       mockProjectService = MockProjectService();
       mockConnectionService = MockConnectionService();
+      mockSseEventRepository = MockSseEventRepository();
       eventController = StreamController<SseEvent>.broadcast();
 
       // Must be stubbed before any cubit is built — constructor subscribes immediately.
@@ -43,6 +45,7 @@ void main() {
       mockSessionService,
       mockProjectService,
       mockConnectionService,
+      mockSseEventRepository,
       projectId: projectId,
       worktree: worktree,
     );
@@ -702,6 +705,7 @@ void main() {
           mockSessionService,
           mockProjectService,
           mockConnectionService,
+          mockSseEventRepository,
           projectId: "global",
           worktree: "/",
         );
@@ -712,6 +716,133 @@ void main() {
           "all sessions under root",
           2,
         ),
+      ],
+    );
+
+    // -------------------------------------------------------------------------
+    // 20. activeSessionIds from SseEventRepository
+    // -------------------------------------------------------------------------
+
+    blocTest<SessionListCubit, SessionListState>(
+      "state includes activeSessionIds from SseEventRepository",
+      build: () {
+        when(() => mockSessionService.listSessions()).thenAnswer(
+          (_) async => ApiResponse.success([
+            testSession(id: "s1", title: "Session 1"),
+            testSession(id: "s2", title: "Session 2"),
+          ]),
+        );
+        // Mock the repository to emit activity for this worktree
+        mockSseEventRepository.emitSessionActivity({
+          worktree: {"s1", "s2"},
+        });
+        return buildCubit();
+      },
+      expect: () => [
+        isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions count", 2).having(
+          (s) => s.activeSessionIds,
+          "activeSessionIds",
+          {"s1", "s2"},
+        ),
+      ],
+    );
+
+    // -------------------------------------------------------------------------
+    // 21. activeSessionIds updates when activity changes
+    // -------------------------------------------------------------------------
+
+    blocTest<SessionListCubit, SessionListState>(
+      "activeSessionIds updates when activity changes",
+      build: () {
+        when(() => mockSessionService.listSessions()).thenAnswer(
+          (_) async => ApiResponse.success([
+            testSession(id: "s1", title: "Session 1"),
+            testSession(id: "s2", title: "Session 2"),
+          ]),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        // Wait for initial load
+        await Future<void>.delayed(Duration.zero);
+        // Emit initial activity
+        mockSseEventRepository.emitSessionActivity({
+          worktree: {"s1"},
+        });
+        // Wait for the activity update to be processed
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        // Emit updated activity
+        mockSseEventRepository.emitSessionActivity({
+          worktree: {"s1", "s2"},
+        });
+      },
+      skip: 1, // skip initial load
+      expect: () => [
+        // First activity update: only s1 is active
+        isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions count", 2).having(
+          (s) => s.activeSessionIds,
+          "activeSessionIds after first update",
+          {"s1"},
+        ),
+        // Second activity update: both s1 and s2 are active
+        isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions count", 2).having(
+          (s) => s.activeSessionIds,
+          "activeSessionIds after second update",
+          {"s1", "s2"},
+        ),
+      ],
+    );
+
+    // -------------------------------------------------------------------------
+    // 22. activeSessionIds excludes sessions from other worktrees
+    // -------------------------------------------------------------------------
+
+    blocTest<SessionListCubit, SessionListState>(
+      "activeSessionIds excludes sessions from other worktrees",
+      build: () {
+        when(() => mockSessionService.listSessions()).thenAnswer(
+          (_) async => ApiResponse.success([
+            testSession(id: "s1", title: "Session 1"),
+          ]),
+        );
+        // Emit activity for this worktree and another
+        mockSseEventRepository.emitSessionActivity({
+          worktree: {"s1"},
+          "/other/worktree": {"s2", "s3"},
+        });
+        return buildCubit();
+      },
+      expect: () => [
+        isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions count", 1).having(
+          (s) => s.activeSessionIds,
+          "activeSessionIds for this worktree only",
+          {"s1"},
+        ),
+      ],
+    );
+
+    // -------------------------------------------------------------------------
+    // 23. activeSessionIds is empty when no activity for this worktree
+    // -------------------------------------------------------------------------
+
+    blocTest<SessionListCubit, SessionListState>(
+      "activeSessionIds is empty when no activity for this worktree",
+      build: () {
+        when(() => mockSessionService.listSessions()).thenAnswer(
+          (_) async => ApiResponse.success([
+            testSession(id: "s1", title: "Session 1"),
+          ]),
+        );
+        // Emit activity for a different worktree
+        mockSseEventRepository.emitSessionActivity({
+          "/other/worktree": {"s2"},
+        });
+        return buildCubit();
+      },
+      expect: () => [
+        isA<SessionListLoaded>()
+            .having((s) => s.sessions.length, "sessions count", 1)
+            .having((s) => s.activeSessionIds, "activeSessionIds empty", isEmpty),
       ],
     );
   });

@@ -78,7 +78,7 @@ String toString() {
 
 
 class ProjectListLoaded implements ProjectListState {
-  const ProjectListLoaded({required final  List<Project> projects, required final  Map<String, int> activityByWorktree}): _projects = projects,_activityByWorktree = activityByWorktree;
+  const ProjectListLoaded({required final  List<Project> projects, required final  Map<String, int> activityById}): _projects = projects,_activityById = activityById;
   
 
  final  List<Project> _projects;
@@ -88,11 +88,11 @@ class ProjectListLoaded implements ProjectListState {
   return EqualUnmodifiableListView(_projects);
 }
 
- final  Map<String, int> _activityByWorktree;
- Map<String, int> get activityByWorktree {
-  if (_activityByWorktree is EqualUnmodifiableMapView) return _activityByWorktree;
+ final  Map<String, int> _activityById;
+ Map<String, int> get activityById {
+  if (_activityById is EqualUnmodifiableMapView) return _activityById;
   // ignore: implicit_dynamic_type
-  return EqualUnmodifiableMapView(_activityByWorktree);
+  return EqualUnmodifiableMapView(_activityById);
 }
 
 
@@ -106,16 +106,16 @@ $ProjectListLoadedCopyWith<ProjectListLoaded> get copyWith => _$ProjectListLoade
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectListLoaded&&const DeepCollectionEquality().equals(other._projects, _projects)&&const DeepCollectionEquality().equals(other._activityByWorktree, _activityByWorktree));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectListLoaded&&const DeepCollectionEquality().equals(other._projects, _projects)&&const DeepCollectionEquality().equals(other._activityById, _activityById));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_projects),const DeepCollectionEquality().hash(_activityByWorktree));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_projects),const DeepCollectionEquality().hash(_activityById));
 
 @override
 String toString() {
-  return 'ProjectListState.loaded(projects: $projects, activityByWorktree: $activityByWorktree)';
+  return 'ProjectListState.loaded(projects: $projects, activityById: $activityById)';
 }
 
 
@@ -126,7 +126,7 @@ abstract mixin class $ProjectListLoadedCopyWith<$Res> implements $ProjectListSta
   factory $ProjectListLoadedCopyWith(ProjectListLoaded value, $Res Function(ProjectListLoaded) _then) = _$ProjectListLoadedCopyWithImpl;
 @useResult
 $Res call({
- List<Project> projects, Map<String, int> activityByWorktree
+ List<Project> projects, Map<String, int> activityById
 });
 
 
@@ -143,10 +143,10 @@ class _$ProjectListLoadedCopyWithImpl<$Res>
 
 /// Create a copy of ProjectListState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? projects = null,Object? activityByWorktree = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? projects = null,Object? activityById = null,}) {
   return _then(ProjectListLoaded(
 projects: null == projects ? _self._projects : projects // ignore: cast_nullable_to_non_nullable
-as List<Project>,activityByWorktree: null == activityByWorktree ? _self._activityByWorktree : activityByWorktree // ignore: cast_nullable_to_non_nullable
+as List<Project>,activityById: null == activityById ? _self._activityById : activityById // ignore: cast_nullable_to_non_nullable
 as Map<String, int>,
   ));
 }

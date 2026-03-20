@@ -444,18 +444,7 @@ class OrchestratorSession {
         Log.v("[dbg] SseSubscribe: path=${subscribe.path}");
         try {
           _sseManager.subscribePath(connID, subscribe.path, _client);
-          final summary = _plugin.getActiveSessionsSummary();
-          final initialEvent = SesoriSseEvent.projectsSummary(
-            projects: summary
-                .map(
-                  (e) => ProjectActivitySummary(
-                    worktree: e.worktree,
-                    activeSessions: e.activeSessions,
-                  ),
-                )
-                .toList(),
-          );
-          _sseManager.enqueueEvent(initialEvent);
+          _sseManager.enqueueEvent(_buildProjectsSummaryEvent());
           Log.v("[dbg] initial projectsSummary enqueued");
         } catch (e) {
           Log.e("sse subscribe failed for connId $connID: $e");
@@ -584,8 +573,11 @@ class OrchestratorSession {
         );
       case BridgeSseTodoUpdated(:final sessionID):
         return SesoriSseEvent.todoUpdated(sessionID: sessionID);
+      // BridgeSseProjectUpdated is emitted on both activity changes and project
+      // metadata changes. We always send the full projectsSummary so the mobile
+      // client receives updated activity data in real time.
       case BridgeSseProjectUpdated():
-        return const SesoriSseEvent.projectUpdated();
+        return _buildProjectsSummaryEvent();
       case BridgeSseVcsBranchUpdated():
         return const SesoriSseEvent.vcsBranchUpdated();
       case BridgeSseFileEdited(:final file):
@@ -648,5 +640,19 @@ class OrchestratorSession {
     final encryptor = cryptoService.createSessionEncryptor(encryptionKey);
     final framed = await frame(utf8.encode(respJson), encryptor);
     _client.send(connID, framed);
+  }
+
+  SesoriSseEvent _buildProjectsSummaryEvent() {
+    final summary = _plugin.getActiveSessionsSummary();
+    return SesoriSseEvent.projectsSummary(
+      projects: summary
+          .map(
+            (e) => ProjectActivitySummary(
+              id: e.id,
+              activeSessionIds: e.activeSessionIds,
+            ),
+          )
+          .toList(),
+    );
   }
 }

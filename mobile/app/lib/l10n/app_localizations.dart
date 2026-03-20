@@ -685,6 +685,12 @@ abstract class AppLocalizations {
   /// **'Login session expired. Please start again.'**
   String get loginPkceStateMissing;
 
+  /// Label shown next to the green dot for sessions that are currently active
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get sessionListRunning;
+
   /// No description provided for @sessionListStaleProjectTitle.
   ///
   /// In en, this message translates to:

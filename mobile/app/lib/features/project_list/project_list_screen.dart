@@ -37,7 +37,7 @@ class _ProjectListBody extends StatelessWidget {
         ProjectListLoading() => const Center(
           child: CircularProgressIndicator(),
         ),
-        ProjectListLoaded(:final projects, :final activityByWorktree) => RefreshIndicator(
+        ProjectListLoaded(:final projects, :final activityById) => RefreshIndicator(
           onRefresh: () async {
             final success = await context.read<ProjectListCubit>().refreshProjects();
             if (!context.mounted) return;
@@ -62,7 +62,7 @@ class _ProjectListBody extends StatelessWidget {
                     final project = projects[index];
                     return _ProjectTile(
                       project: project,
-                      activeSessions: activityByWorktree[project.worktree] ?? 0,
+                      activeSessions: activityById[project.worktree] ?? 0,
                     );
                   },
                 ),

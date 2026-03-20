@@ -9,6 +9,7 @@ import "../../capabilities/project/project_service.dart";
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/sse_event.dart";
 import "../../capabilities/session/session_service.dart";
+import "../../capabilities/sse/sse_event_repository.dart";
 import "../../logging/logging.dart";
 import "session_list_state.dart";
 
@@ -17,6 +18,7 @@ class SessionListCubit extends Cubit<SessionListState> {
 
   final SessionService _service;
   final ProjectService _projectService;
+  final SseEventRepository _sseEventRepository;
   final String _projectId;
   final String _worktree;
 
@@ -27,16 +29,21 @@ class SessionListCubit extends Cubit<SessionListState> {
   SessionListCubit(
     SessionService service,
     ProjectService projectService,
-    ConnectionService connectionService, {
+    ConnectionService connectionService,
+    SseEventRepository sseEventRepository, {
     required String projectId,
     required String worktree,
   }) : _service = service,
        _projectService = projectService,
+       _sseEventRepository = sseEventRepository,
        _projectId = projectId,
        _worktree = worktree,
        super(const SessionListState.loading()) {
     loadSessions();
     _subscriptions.add(connectionService.events.listen(_handleEvent));
+    _subscriptions.add(
+      _sseEventRepository.sessionActivity.listen(_onSessionActivityUpdated),
+    );
   }
 
   /// Returns `true` when [session] belongs to this project's worktree.
@@ -60,6 +67,19 @@ class SessionListCubit extends Cubit<SessionListState> {
       default:
         break;
     }
+  }
+
+  void _onSessionActivityUpdated(Map<String, Set<String>> activityById) {
+    if (isClosed) return;
+    if (state is! SessionListLoaded) return;
+    final activeIds = activityById[_worktree] ?? {};
+    emit(
+      SessionListState.loaded(
+        sessions: (state as SessionListLoaded).sessions,
+        showArchived: (state as SessionListLoaded).showArchived,
+        activeSessionIds: activeIds,
+      ),
+    );
   }
 
   void _onSessionCreated(Session session) {
@@ -282,7 +302,13 @@ class SessionListCubit extends Cubit<SessionListState> {
     final sorted = visible.toList()..sort((a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0));
 
     if (isClosed) return;
-    emit(SessionListState.loaded(sessions: sorted, showArchived: _showArchived));
+    emit(
+      SessionListState.loaded(
+        sessions: sorted,
+        showArchived: _showArchived,
+        activeSessionIds: _sseEventRepository.currentSessionActivity[_worktree] ?? {},
+      ),
+    );
   }
 
   Future<void> loadSessions() async {

@@ -77,15 +77,24 @@ class MockLifecycleSource extends Mock implements LifecycleSource {
 }
 
 class MockSseEventRepository extends Mock implements SseEventRepository {
-  final BehaviorSubject<Map<String, int>> _activity = BehaviorSubject.seeded(const {});
+  final BehaviorSubject<Map<String, int>> _projectActivity = BehaviorSubject.seeded(const {});
+  final BehaviorSubject<Map<String, Set<String>>> _sessionActivity = BehaviorSubject.seeded(const {});
 
   @override
-  ValueStream<Map<String, int>> get projectActivity => _activity.stream;
+  ValueStream<Map<String, int>> get projectActivity => _projectActivity.stream;
 
   @override
-  Map<String, int> get currentProjectActivity => _activity.value;
+  Map<String, int> get currentProjectActivity => _projectActivity.value;
 
-  void emitActivity(Map<String, int> activity) => _activity.add(activity);
+  @override
+  ValueStream<Map<String, Set<String>>> get sessionActivity => _sessionActivity.stream;
+
+  @override
+  Map<String, Set<String>> get currentSessionActivity => _sessionActivity.value;
+
+  void emitProjectActivity(Map<String, int> activity) => _projectActivity.add(activity);
+
+  void emitSessionActivity(Map<String, Set<String>> activity) => _sessionActivity.add(activity);
 }
 
 // ---------------------------------------------------------------------------

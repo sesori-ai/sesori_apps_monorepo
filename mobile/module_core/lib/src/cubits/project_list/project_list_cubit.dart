@@ -35,13 +35,13 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     _connectionService.setActiveDirectory(project.worktree);
   }
 
-  void _onActivityUpdated(Map<String, int> activityByWorktree) {
+  void _onActivityUpdated(Map<String, int> activityById) {
     if (state is! ProjectListLoaded) return;
     if (isClosed) return;
     emit(
       ProjectListState.loaded(
         projects: (state as ProjectListLoaded).projects,
-        activityByWorktree: activityByWorktree,
+        activityById: activityById,
       ),
     );
   }
@@ -70,7 +70,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
         emit(
           ProjectListState.loaded(
             projects: projects,
-            activityByWorktree: _sseEventRepository.currentProjectActivity,
+            activityById: _sseEventRepository.currentProjectActivity,
           ),
         );
         return true;

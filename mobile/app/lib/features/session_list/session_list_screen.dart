@@ -29,6 +29,7 @@ class SessionListScreen extends StatelessWidget {
         getIt<SessionService>(),
         getIt<ProjectService>(),
         getIt<ConnectionService>(),
+        getIt<SseEventRepository>(),
         projectId: projectId,
         worktree: worktree,
       ),
@@ -250,6 +251,7 @@ class _SessionListBody extends StatelessWidget {
                     return _SessionTile(
                       session: session,
                       isArchived: isArchived,
+                      isActive: state.activeSessionIds.contains(session.id),
                       onLongPress: () => _showSessionActions(context, session),
                       onSwipe: () => isArchived
                           ? _unarchiveSession(context, cubit, session.id)
@@ -273,12 +275,14 @@ class _SessionListBody extends StatelessWidget {
 class _SessionTile extends StatelessWidget {
   final Session session;
   final bool isArchived;
+  final bool isActive;
   final VoidCallback onLongPress;
   final VoidCallback onSwipe;
 
   const _SessionTile({
     required this.session,
     required this.isArchived,
+    required this.isActive,
     required this.onLongPress,
     required this.onSwipe,
   });
@@ -336,9 +340,23 @@ class _SessionTile extends StatelessWidget {
                 loc.sessionListFilesChanged(filesChanged),
                 style: theme.textTheme.bodySmall,
               ),
+            if (isActive)
+              Row(
+                children: [
+                  Icon(Icons.circle, size: 8, color: theme.colorScheme.primary),
+                  const SizedBox(width: 4),
+                  Text(
+                    loc.sessionListRunning,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
           ],
         ),
-        isThreeLine: updatedAt != null && filesChanged > 0,
+        isThreeLine: updatedAt != null && (filesChanged > 0 || isActive),
         trailing: const Icon(Icons.chevron_right),
         onTap: () {
           context.pushRoute(

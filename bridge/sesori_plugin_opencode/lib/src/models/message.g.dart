@@ -20,7 +20,9 @@ _Message _$MessageFromJson(Map json) => _Message(
       : MessageTokens.fromJson(
           Map<String, dynamic>.from(json['tokens'] as Map),
         ),
-  time: json['time'] == null ? null : MessageTime.fromJson(Map<String, dynamic>.from(json['time'] as Map)),
+  time: json['time'] == null
+      ? null
+      : MessageTime.fromJson(Map<String, dynamic>.from(json['time'] as Map)),
   finish: json['finish'] as String?,
 );
 
@@ -43,31 +45,33 @@ _MessageTime _$MessageTimeFromJson(Map json) => _MessageTime(
   completed: (json['completed'] as num?)?.toInt(),
 );
 
-Map<String, dynamic> _$MessageTimeToJson(_MessageTime instance) => <String, dynamic>{
-  'created': instance.created,
-  'completed': instance.completed,
-};
+Map<String, dynamic> _$MessageTimeToJson(_MessageTime instance) =>
+    <String, dynamic>{
+      'created': instance.created,
+      'completed': instance.completed,
+    };
 
 _MessageTokens _$MessageTokensFromJson(Map json) => _MessageTokens(
   input: (json['input'] as num?)?.toInt() ?? 0,
   output: (json['output'] as num?)?.toInt() ?? 0,
   reasoning: (json['reasoning'] as num?)?.toInt() ?? 0,
-  cache: json['cache'] == null ? null : TokenCache.fromJson(Map<String, dynamic>.from(json['cache'] as Map)),
+  cache: json['cache'] == null
+      ? null
+      : TokenCache.fromJson(Map<String, dynamic>.from(json['cache'] as Map)),
 );
 
-Map<String, dynamic> _$MessageTokensToJson(_MessageTokens instance) => <String, dynamic>{
-  'input': instance.input,
-  'output': instance.output,
-  'reasoning': instance.reasoning,
-  'cache': instance.cache?.toJson(),
-};
+Map<String, dynamic> _$MessageTokensToJson(_MessageTokens instance) =>
+    <String, dynamic>{
+      'input': instance.input,
+      'output': instance.output,
+      'reasoning': instance.reasoning,
+      'cache': instance.cache?.toJson(),
+    };
 
 _TokenCache _$TokenCacheFromJson(Map json) => _TokenCache(
   read: (json['read'] as num?)?.toInt() ?? 0,
   write: (json['write'] as num?)?.toInt() ?? 0,
 );
 
-Map<String, dynamic> _$TokenCacheToJson(_TokenCache instance) => <String, dynamic>{
-  'read': instance.read,
-  'write': instance.write,
-};
+Map<String, dynamic> _$TokenCacheToJson(_TokenCache instance) =>
+    <String, dynamic>{'read': instance.read, 'write': instance.write};

@@ -213,7 +213,7 @@ void main() {
       tracker.handleEvent(_sessionBusy("s1"), null);
 
       final summary = tracker.buildSummary();
-      final pairs = summary.map((item) => (item.worktree, item.activeSessions)).toSet();
+      final pairs = summary.map((item) => (item.id, item.activeSessionIds.length)).toSet();
 
       expect(pairs, equals({("/repo-a", 1)}));
     });
@@ -255,6 +255,64 @@ void main() {
       await tracker.coldStart();
 
       expect(tracker.activeSessions, isEmpty);
+    });
+
+    test("buildSummary includes activeSessionIds for busy sessions", () async {
+      final tracker = await _coldStartedTracker(
+        projects: [const Project(id: "p1", worktree: "/projects/foo")],
+      );
+
+      tracker.handleEvent(_sessionCreated("s1", "/projects/foo"), null);
+      tracker.handleEvent(_sessionBusy("s1"), null);
+      tracker.handleEvent(_sessionCreated("s2", "/projects/foo"), null);
+      tracker.handleEvent(_sessionBusy("s2"), null);
+
+      final summary = tracker.buildSummary();
+
+      expect(summary, hasLength(1));
+      expect(summary.first.activeSessionIds, unorderedEquals(["s1", "s2"]));
+      expect(summary.first.activeSessionIds.length, equals(2));
+    });
+
+    test("buildSummary excludes idle sessions from activeSessionIds", () async {
+      final tracker = await _coldStartedTracker(
+        projects: [const Project(id: "p1", worktree: "/projects/foo")],
+      );
+
+      tracker.handleEvent(_sessionCreated("s1", "/projects/foo"), null);
+      tracker.handleEvent(_sessionBusy("s1"), null);
+      tracker.handleEvent(_sessionCreated("s2", "/projects/foo"), null);
+      tracker.handleEvent(_sessionBusy("s2"), null);
+      tracker.handleEvent(_sessionIdle("s1"), null);
+
+      final summary = tracker.buildSummary();
+
+      expect(summary.first.activeSessionIds, equals(["s2"]));
+      expect(summary.first.activeSessionIds.length, equals(1));
+    });
+
+    test("buildSummary groups session IDs by worktree correctly", () async {
+      final tracker = await _coldStartedTracker(
+        projects: [
+          const Project(id: "p1", worktree: "/projects/foo"),
+          const Project(id: "p2", worktree: "/projects/bar"),
+        ],
+      );
+
+      tracker.handleEvent(_sessionCreated("s1", "/projects/foo"), null);
+      tracker.handleEvent(_sessionBusy("s1"), null);
+      tracker.handleEvent(_sessionCreated("s2", "/projects/bar"), null);
+      tracker.handleEvent(_sessionBusy("s2"), null);
+
+      final summary = tracker.buildSummary();
+
+      expect(summary, hasLength(2));
+
+      final fooEntry = summary.firstWhere((e) => e.id == "/projects/foo");
+      final barEntry = summary.firstWhere((e) => e.id == "/projects/bar");
+
+      expect(fooEntry.activeSessionIds, equals(["s1"]));
+      expect(barEntry.activeSessionIds, equals(["s2"]));
     });
   });
 }

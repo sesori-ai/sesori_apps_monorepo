@@ -20,20 +20,22 @@ _QuestionInfo _$QuestionInfoFromJson(Map json) => _QuestionInfo(
   custom: json['custom'] as bool? ?? true,
 );
 
-Map<String, dynamic> _$QuestionInfoToJson(_QuestionInfo instance) => <String, dynamic>{
-  'question': instance.question,
-  'header': instance.header,
-  'options': instance.options.map((e) => e.toJson()).toList(),
-  'multiple': instance.multiple,
-  'custom': instance.custom,
-};
+Map<String, dynamic> _$QuestionInfoToJson(_QuestionInfo instance) =>
+    <String, dynamic>{
+      'question': instance.question,
+      'header': instance.header,
+      'options': instance.options.map((e) => e.toJson()).toList(),
+      'multiple': instance.multiple,
+      'custom': instance.custom,
+    };
 
 _QuestionOption _$QuestionOptionFromJson(Map json) => _QuestionOption(
   label: json['label'] as String,
   description: json['description'] as String,
 );
 
-Map<String, dynamic> _$QuestionOptionToJson(_QuestionOption instance) => <String, dynamic>{
-  'label': instance.label,
-  'description': instance.description,
-};
+Map<String, dynamic> _$QuestionOptionToJson(_QuestionOption instance) =>
+    <String, dynamic>{
+      'label': instance.label,
+      'description': instance.description,
+    };

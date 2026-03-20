@@ -6,7 +6,7 @@ part "plugin_project_activity_summary.g.dart";
 @freezed
 sealed class PluginProjectActivitySummary with _$PluginProjectActivitySummary {
   const factory PluginProjectActivitySummary({
-    required String worktree,
-    required int activeSessions,
+    required String id,
+    required List<String> activeSessionIds,
   }) = _PluginProjectActivitySummary;
 }

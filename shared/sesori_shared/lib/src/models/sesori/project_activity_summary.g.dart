@@ -8,13 +8,15 @@ part of 'project_activity_summary.dart';
 
 _ProjectActivitySummary _$ProjectActivitySummaryFromJson(Map json) =>
     _ProjectActivitySummary(
-      worktree: json['worktree'] as String,
-      activeSessions: (json['activeSessions'] as num?)?.toInt() ?? 0,
+      id: json['id'] as String,
+      activeSessionIds: (json['activeSessionIds'] as List<dynamic>)
+          .map((e) => e as String)
+          .toList(),
     );
 
 Map<String, dynamic> _$ProjectActivitySummaryToJson(
   _ProjectActivitySummary instance,
 ) => <String, dynamic>{
-  'worktree': instance.worktree,
-  'activeSessions': instance.activeSessions,
+  'id': instance.id,
+  'activeSessionIds': instance.activeSessionIds,
 };
