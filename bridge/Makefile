@@ -1,7 +1,7 @@
 DART_VERSION := $(shell grep '^dart' .tool-versions | awk '{print $$2}')
 DART := $(HOME)/.asdf/installs/dart/$(DART_VERSION)/bin/dart
 
-MODULES := sesori_plugin_interface opencode_plugin bridge
+MODULES := sesori_plugin_interface sesori_plugin_opencode app
 
 .PHONY: codegen pub-get test analyze
 

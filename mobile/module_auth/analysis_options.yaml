@@ -1,1 +1,1 @@
-include: ../sesori_flutter/analysis_options.yaml
+include: ../app/analysis_options.yaml

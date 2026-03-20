@@ -1,0 +1,10 @@
+name: sesori_mobile_workspace
+publish_to: none
+
+environment:
+  sdk: ^3.11.1
+
+workspace:
+  - app
+  - module_core
+  - module_auth

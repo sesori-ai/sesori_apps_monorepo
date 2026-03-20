@@ -1,0 +1,62 @@
+name: Mobile CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mobile/**'
+      - 'shared/**'
+  pull_request:
+    paths:
+      - 'mobile/**'
+      - 'shared/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Read Flutter version from .tool-versions
+        shell: bash
+        working-directory: mobile
+        run: |
+          FLUTTER_VERSION=$(awk '$1 == "flutter" { print $2 }' .tool-versions | sed 's/-stable$//')
+          if [ -z "$FLUTTER_VERSION" ]; then
+            echo "Unable to find a Flutter version in .tool-versions" >&2
+            exit 1
+          fi
+          echo "FLUTTER_VERSION=$FLUTTER_VERSION" >> "$GITHUB_ENV"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+
+      - name: Get dependencies (workspace)
+        run: dart pub get
+        working-directory: mobile
+
+      - name: Analyze mobile/app
+        run: dart analyze
+        working-directory: mobile/app
+
+      - name: Analyze module_core
+        run: dart analyze
+        working-directory: mobile/module_core
+
+      - name: Analyze module_auth
+        run: dart analyze
+        working-directory: mobile/module_auth
+
+      - name: Run tests for module_core
+        run: dart test
+        working-directory: mobile/module_core
+
+      - name: Run tests for module_auth
+        run: dart test
+        working-directory: mobile/module_auth
+
+      - name: Run tests for mobile/app
+        run: flutter test
+        working-directory: mobile/app

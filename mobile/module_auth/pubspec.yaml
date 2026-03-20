@@ -2,6 +2,7 @@ name: sesori_auth
 description: Authentication package for Sesori — token lifecycle, OAuth flow, authenticated HTTP client.
 version: 0.1.0
 publish_to: none
+resolution: workspace
 
 environment:
   sdk: ^3.11.1
@@ -15,7 +16,8 @@ dependencies:
   json_annotation: ^4.11.0
   meta: ^1.16.0
   rxdart: ^0.28.0
-  sesori_shared: ^0.3.0
+  sesori_shared:
+    path: ../../shared/sesori_shared
 
 dev_dependencies:
   build_runner: any
