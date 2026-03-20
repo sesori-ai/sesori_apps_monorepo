@@ -480,6 +480,7 @@ class OpenCodePlugin implements BridgePlugin {
           (s) => PluginProjectActivitySummary(
             worktree: s.worktree,
             activeSessions: s.activeSessions,
+            activeSessionIds: s.activeSessionIds,
           ),
         )
         .toList();

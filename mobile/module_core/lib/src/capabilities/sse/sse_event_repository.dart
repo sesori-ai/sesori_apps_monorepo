@@ -14,6 +14,7 @@ class SseEventRepository with Disposable {
   late final StreamSubscription<SseEvent> _subscription;
 
   final BehaviorSubject<Map<String, int>> _projectActivity = BehaviorSubject.seeded(const {});
+  final BehaviorSubject<Map<String, Set<String>>> _sessionActivity = BehaviorSubject.seeded(const {});
 
   SseEventRepository(ConnectionService connectionService) : _connectionService = connectionService {
     _subscription = _connectionService.events.listen(_handleEvent);
@@ -28,15 +29,29 @@ class SseEventRepository with Disposable {
   /// The latest project activity map, synchronously available.
   Map<String, int> get currentProjectActivity => _projectActivity.value;
 
+  /// Map of worktree path -> set of active session IDs.
+  ///
+  /// Only includes worktrees with active sessions.
+  /// Late subscribers immediately receive the latest cached value.
+  ValueStream<Map<String, Set<String>>> get sessionActivity => _sessionActivity.stream;
+
+  /// The latest session activity map, synchronously available.
+  Map<String, Set<String>> get currentSessionActivity => _sessionActivity.value;
+
   void _handleEvent(SseEvent event) {
     if (event.data case SesoriProjectsSummary(:final projects)) {
-      final map = <String, int>{};
+      final projectMap = <String, int>{};
+      final sessionMap = <String, Set<String>>{};
       for (final summary in projects) {
         if (summary.activeSessions > 0) {
-          map[summary.worktree] = summary.activeSessions;
+          projectMap[summary.worktree] = summary.activeSessions;
+        }
+        if (summary.activeSessionIds.isNotEmpty) {
+          sessionMap[summary.worktree] = summary.activeSessionIds.toSet();
         }
       }
-      _projectActivity.add(map);
+      _projectActivity.add(projectMap);
+      _sessionActivity.add(sessionMap);
     }
   }
 
@@ -44,5 +59,6 @@ class SseEventRepository with Disposable {
   FutureOr<void> onDispose() {
     _subscription.cancel();
     _projectActivity.close();
+    _sessionActivity.close();
   }
 }

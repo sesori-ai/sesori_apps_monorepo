@@ -11,6 +11,7 @@ sealed class SessionListState with _$SessionListState {
   const factory SessionListState.loaded({
     required List<Session> sessions,
     @Default(false) bool showArchived,
+    @Default({}) Set<String> activeSessionIds,
   }) = SessionListLoaded;
 
   /// The stored worktree no longer resolves to the expected project on the

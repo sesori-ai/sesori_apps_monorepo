@@ -11,4 +11,5 @@ Map<String, dynamic> _$PluginProjectActivitySummaryToJson(
 ) => <String, dynamic>{
   'worktree': instance.worktree,
   'activeSessions': instance.activeSessions,
+  'activeSessionIds': instance.activeSessionIds,
 };

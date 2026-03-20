@@ -86,9 +86,21 @@ class ActiveSessionTracker {
   }
 
   List<ProjectActivitySummary> buildSummary() {
+    // Collect session IDs per worktree
+    final sessionIdsByWorktree = <String, List<String>>{};
+    for (final entry in _sessionStatuses.entries) {
+      final worktree = _sessionWorktrees[entry.key];
+      if (worktree == null) continue;
+      sessionIdsByWorktree.putIfAbsent(worktree, () => []).add(entry.key);
+    }
+
     return activeSessions.entries
         .map(
-          (e) => ProjectActivitySummary(worktree: e.key, activeSessions: e.value),
+          (e) => ProjectActivitySummary(
+            worktree: e.key,
+            activeSessions: e.value,
+            activeSessionIds: sessionIdsByWorktree[e.key] ?? [],
+          ),
         )
         .toList();
   }

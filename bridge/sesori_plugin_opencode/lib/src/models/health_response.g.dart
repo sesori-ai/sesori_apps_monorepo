@@ -11,7 +11,5 @@ _HealthResponse _$HealthResponseFromJson(Map json) => _HealthResponse(
   version: json['version'] as String,
 );
 
-Map<String, dynamic> _$HealthResponseToJson(_HealthResponse instance) => <String, dynamic>{
-  'healthy': instance.healthy,
-  'version': instance.version,
-};
+Map<String, dynamic> _$HealthResponseToJson(_HealthResponse instance) =>
+    <String, dynamic>{'healthy': instance.healthy, 'version': instance.version};

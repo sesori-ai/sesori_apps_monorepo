@@ -17,11 +17,12 @@ _ProviderInfo _$ProviderInfoFromJson(Map json) => _ProviderInfo(
   ),
 );
 
-Map<String, dynamic> _$ProviderInfoToJson(_ProviderInfo instance) => <String, dynamic>{
-  'id': instance.id,
-  'name': instance.name,
-  'models': instance.models.map((k, e) => MapEntry(k, e.toJson())),
-};
+Map<String, dynamic> _$ProviderInfoToJson(_ProviderInfo instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'name': instance.name,
+      'models': instance.models.map((k, e) => MapEntry(k, e.toJson())),
+    };
 
 _ProviderModel _$ProviderModelFromJson(Map json) => _ProviderModel(
   id: json['id'] as String,
@@ -32,24 +33,28 @@ _ProviderModel _$ProviderModelFromJson(Map json) => _ProviderModel(
   releaseDate: json['release_date'] as String?,
 );
 
-Map<String, dynamic> _$ProviderModelToJson(_ProviderModel instance) => <String, dynamic>{
-  'id': instance.id,
-  'providerID': instance.providerID,
-  'name': instance.name,
-  'family': instance.family,
-  'status': instance.status,
-  'release_date': instance.releaseDate,
-};
+Map<String, dynamic> _$ProviderModelToJson(_ProviderModel instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'providerID': instance.providerID,
+      'name': instance.name,
+      'family': instance.family,
+      'status': instance.status,
+      'release_date': instance.releaseDate,
+    };
 
-_ProviderListResponse _$ProviderListResponseFromJson(Map json) => _ProviderListResponse(
-  all: (json['all'] as List<dynamic>)
-      .map(
-        (e) => ProviderInfo.fromJson(Map<String, dynamic>.from(e as Map)),
-      )
-      .toList(),
-  defaults: Map<String, String>.from(json['default'] as Map),
-  connected: (json['connected'] as List<dynamic>).map((e) => e as String).toList(),
-);
+_ProviderListResponse _$ProviderListResponseFromJson(Map json) =>
+    _ProviderListResponse(
+      all: (json['all'] as List<dynamic>)
+          .map(
+            (e) => ProviderInfo.fromJson(Map<String, dynamic>.from(e as Map)),
+          )
+          .toList(),
+      defaults: Map<String, String>.from(json['default'] as Map),
+      connected: (json['connected'] as List<dynamic>)
+          .map((e) => e as String)
+          .toList(),
+    );
 
 Map<String, dynamic> _$ProviderListResponseToJson(
   _ProviderListResponse instance,

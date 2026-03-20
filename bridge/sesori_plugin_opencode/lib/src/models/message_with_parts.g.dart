@@ -13,7 +13,8 @@ _MessageWithParts _$MessageWithPartsFromJson(Map json) => _MessageWithParts(
       .toList(),
 );
 
-Map<String, dynamic> _$MessageWithPartsToJson(_MessageWithParts instance) => <String, dynamic>{
-  'info': instance.info.toJson(),
-  'parts': instance.parts.map((e) => e.toJson()).toList(),
-};
+Map<String, dynamic> _$MessageWithPartsToJson(_MessageWithParts instance) =>
+    <String, dynamic>{
+      'info': instance.info.toJson(),
+      'parts': instance.parts.map((e) => e.toJson()).toList(),
+    };

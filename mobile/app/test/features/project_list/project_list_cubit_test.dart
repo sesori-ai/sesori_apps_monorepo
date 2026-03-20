@@ -237,7 +237,7 @@ void main() {
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero); // let initial load settle
-        mockSseEventRepository.emitActivity({_worktree: 3});
+        mockSseEventRepository.emitProjectActivity({_worktree: 3});
         await Future<void>.delayed(Duration.zero);
       },
       skip: 1, // skip initial loaded emission (no activity yet)
@@ -259,7 +259,7 @@ void main() {
         return buildCubit();
       },
       act: (cubit) async {
-        mockSseEventRepository.emitActivity({_worktree: 2});
+        mockSseEventRepository.emitProjectActivity({_worktree: 2});
         await Future<void>.delayed(Duration.zero);
       },
       // Still in loading state — no emission expected.
@@ -273,7 +273,7 @@ void main() {
     blocTest<ProjectListCubit, ProjectListState>(
       "_fetchProjects: seeds activityByWorktree from repository at load time",
       build: () {
-        mockSseEventRepository.emitActivity({_worktree: 2});
+        mockSseEventRepository.emitProjectActivity({_worktree: 2});
         when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.success([testProject()]));
         return buildCubit();
       },
@@ -290,14 +290,14 @@ void main() {
       "projectActivity update: activity clears when repository emits empty map",
       build: () {
         // Seed with activity so state starts non-empty.
-        mockSseEventRepository.emitActivity({_worktree: 1});
+        mockSseEventRepository.emitProjectActivity({_worktree: 1});
         when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.success([testProject()]));
         return buildCubit();
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero); // let load settle with activity
         // Now clear activity — repository filters out zeros and emits empty.
-        mockSseEventRepository.emitActivity(const {});
+        mockSseEventRepository.emitProjectActivity(const {});
         await Future<void>.delayed(Duration.zero);
       },
       skip: 1, // skip initial loaded emission (activityByWorktree: {_worktree: 1})

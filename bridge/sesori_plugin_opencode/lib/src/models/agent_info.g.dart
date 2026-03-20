@@ -9,7 +9,9 @@ part of 'agent_info.dart';
 _AgentInfo _$AgentInfoFromJson(Map json) => _AgentInfo(
   name: json['name'] as String,
   description: json['description'] as String?,
-  model: json['model'] == null ? null : AgentModel.fromJson(Map<String, dynamic>.from(json['model'] as Map)),
+  model: json['model'] == null
+      ? null
+      : AgentModel.fromJson(Map<String, dynamic>.from(json['model'] as Map)),
   variant: json['variant'] as String?,
   mode: $enumDecode(
     _$AgentModeEnumMap,
@@ -19,14 +21,15 @@ _AgentInfo _$AgentInfoFromJson(Map json) => _AgentInfo(
   hidden: json['hidden'] as bool? ?? false,
 );
 
-Map<String, dynamic> _$AgentInfoToJson(_AgentInfo instance) => <String, dynamic>{
-  'name': instance.name,
-  'description': instance.description,
-  'model': instance.model?.toJson(),
-  'variant': instance.variant,
-  'mode': _$AgentModeEnumMap[instance.mode]!,
-  'hidden': instance.hidden,
-};
+Map<String, dynamic> _$AgentInfoToJson(_AgentInfo instance) =>
+    <String, dynamic>{
+      'name': instance.name,
+      'description': instance.description,
+      'model': instance.model?.toJson(),
+      'variant': instance.variant,
+      'mode': _$AgentModeEnumMap[instance.mode]!,
+      'hidden': instance.hidden,
+    };
 
 const _$AgentModeEnumMap = {
   AgentMode.all: 'all',
@@ -40,7 +43,8 @@ _AgentModel _$AgentModelFromJson(Map json) => _AgentModel(
   providerID: json['providerID'] as String,
 );
 
-Map<String, dynamic> _$AgentModelToJson(_AgentModel instance) => <String, dynamic>{
-  'modelID': instance.modelID,
-  'providerID': instance.providerID,
-};
+Map<String, dynamic> _$AgentModelToJson(_AgentModel instance) =>
+    <String, dynamic>{
+      'modelID': instance.modelID,
+      'providerID': instance.providerID,
+    };

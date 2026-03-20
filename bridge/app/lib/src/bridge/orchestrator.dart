@@ -451,6 +451,7 @@ class OrchestratorSession {
                   (e) => ProjectActivitySummary(
                     worktree: e.worktree,
                     activeSessions: e.activeSessions,
+                    activeSessionIds: e.activeSessionIds,
                   ),
                 )
                 .toList(),
@@ -584,8 +585,22 @@ class OrchestratorSession {
         );
       case BridgeSseTodoUpdated(:final sessionID):
         return SesoriSseEvent.todoUpdated(sessionID: sessionID);
+      // BridgeSseProjectUpdated is emitted on both activity changes and project
+      // metadata changes. We always send the full projectsSummary so the mobile
+      // client receives updated activity data in real time.
       case BridgeSseProjectUpdated():
-        return const SesoriSseEvent.projectUpdated();
+        final summary = _plugin.getActiveSessionsSummary();
+        return SesoriSseEvent.projectsSummary(
+          projects: summary
+              .map(
+                (e) => ProjectActivitySummary(
+                  worktree: e.worktree,
+                  activeSessions: e.activeSessions,
+                  activeSessionIds: e.activeSessionIds,
+                ),
+              )
+              .toList(),
+        );
       case BridgeSseVcsBranchUpdated():
         return const SesoriSseEvent.vcsBranchUpdated();
       case BridgeSseFileEdited(:final file):

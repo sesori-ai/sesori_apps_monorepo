@@ -10,7 +10,9 @@ _Project _$ProjectFromJson(Map json) => _Project(
   id: json['id'] as String,
   worktree: json['worktree'] as String,
   name: json['name'] as String?,
-  time: json['time'] == null ? null : ProjectTime.fromJson(Map<String, dynamic>.from(json['time'] as Map)),
+  time: json['time'] == null
+      ? null
+      : ProjectTime.fromJson(Map<String, dynamic>.from(json['time'] as Map)),
 );
 
 Map<String, dynamic> _$ProjectToJson(_Project instance) => <String, dynamic>{
@@ -26,8 +28,9 @@ _ProjectTime _$ProjectTimeFromJson(Map json) => _ProjectTime(
   initialized: (json['initialized'] as num?)?.toInt(),
 );
 
-Map<String, dynamic> _$ProjectTimeToJson(_ProjectTime instance) => <String, dynamic>{
-  'created': instance.created,
-  'updated': instance.updated,
-  'initialized': instance.initialized,
-};
+Map<String, dynamic> _$ProjectTimeToJson(_ProjectTime instance) =>
+    <String, dynamic>{
+      'created': instance.created,
+      'updated': instance.updated,
+      'initialized': instance.initialized,
+    };

@@ -78,7 +78,7 @@ String toString() {
 
 
 class SessionListLoaded implements SessionListState {
-  const SessionListLoaded({required final  List<Session> sessions, this.showArchived = false}): _sessions = sessions;
+  const SessionListLoaded({required final  List<Session> sessions, this.showArchived = false, final  Set<String> activeSessionIds = const {}}): _sessions = sessions,_activeSessionIds = activeSessionIds;
   
 
  final  List<Session> _sessions;
@@ -89,6 +89,13 @@ class SessionListLoaded implements SessionListState {
 }
 
 @JsonKey() final  bool showArchived;
+ final  Set<String> _activeSessionIds;
+@JsonKey() Set<String> get activeSessionIds {
+  if (_activeSessionIds is EqualUnmodifiableSetView) return _activeSessionIds;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableSetView(_activeSessionIds);
+}
+
 
 /// Create a copy of SessionListState
 /// with the given fields replaced by the non-null parameter values.
@@ -100,16 +107,16 @@ $SessionListLoadedCopyWith<SessionListLoaded> get copyWith => _$SessionListLoade
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionListLoaded&&const DeepCollectionEquality().equals(other._sessions, _sessions)&&(identical(other.showArchived, showArchived) || other.showArchived == showArchived));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionListLoaded&&const DeepCollectionEquality().equals(other._sessions, _sessions)&&(identical(other.showArchived, showArchived) || other.showArchived == showArchived)&&const DeepCollectionEquality().equals(other._activeSessionIds, _activeSessionIds));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_sessions),showArchived);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_sessions),showArchived,const DeepCollectionEquality().hash(_activeSessionIds));
 
 @override
 String toString() {
-  return 'SessionListState.loaded(sessions: $sessions, showArchived: $showArchived)';
+  return 'SessionListState.loaded(sessions: $sessions, showArchived: $showArchived, activeSessionIds: $activeSessionIds)';
 }
 
 
@@ -120,7 +127,7 @@ abstract mixin class $SessionListLoadedCopyWith<$Res> implements $SessionListSta
   factory $SessionListLoadedCopyWith(SessionListLoaded value, $Res Function(SessionListLoaded) _then) = _$SessionListLoadedCopyWithImpl;
 @useResult
 $Res call({
- List<Session> sessions, bool showArchived
+ List<Session> sessions, bool showArchived, Set<String> activeSessionIds
 });
 
 
@@ -137,11 +144,12 @@ class _$SessionListLoadedCopyWithImpl<$Res>
 
 /// Create a copy of SessionListState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? sessions = null,Object? showArchived = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? sessions = null,Object? showArchived = null,Object? activeSessionIds = null,}) {
   return _then(SessionListLoaded(
 sessions: null == sessions ? _self._sessions : sessions // ignore: cast_nullable_to_non_nullable
 as List<Session>,showArchived: null == showArchived ? _self.showArchived : showArchived // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,activeSessionIds: null == activeSessionIds ? _self._activeSessionIds : activeSessionIds // ignore: cast_nullable_to_non_nullable
+as Set<String>,
   ));
 }
 
