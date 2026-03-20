@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$ProjectActivitySummary {
 
- String get id; int get activeSessions; List<String> get activeSessionIds;
+ String get id; List<String> get activeSessionIds;
 /// Create a copy of ProjectActivitySummary
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $ProjectActivitySummaryCopyWith<ProjectActivitySummary> get copyWith => _$Projec
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectActivitySummary&&(identical(other.id, id) || other.id == id)&&(identical(other.activeSessions, activeSessions) || other.activeSessions == activeSessions)&&const DeepCollectionEquality().equals(other.activeSessionIds, activeSessionIds));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectActivitySummary&&(identical(other.id, id) || other.id == id)&&const DeepCollectionEquality().equals(other.activeSessionIds, activeSessionIds));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,activeSessions,const DeepCollectionEquality().hash(activeSessionIds));
+int get hashCode => Object.hash(runtimeType,id,const DeepCollectionEquality().hash(activeSessionIds));
 
 @override
 String toString() {
-  return 'ProjectActivitySummary(id: $id, activeSessions: $activeSessions, activeSessionIds: $activeSessionIds)';
+  return 'ProjectActivitySummary(id: $id, activeSessionIds: $activeSessionIds)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $ProjectActivitySummaryCopyWith<$Res>  {
   factory $ProjectActivitySummaryCopyWith(ProjectActivitySummary value, $Res Function(ProjectActivitySummary) _then) = _$ProjectActivitySummaryCopyWithImpl;
 @useResult
 $Res call({
- String id, int activeSessions, List<String> activeSessionIds
+ String id, List<String> activeSessionIds
 });
 
 
@@ -65,11 +65,10 @@ class _$ProjectActivitySummaryCopyWithImpl<$Res>
 
 /// Create a copy of ProjectActivitySummary
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? activeSessions = null,Object? activeSessionIds = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? activeSessionIds = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
-as String,activeSessions: null == activeSessions ? _self.activeSessions : activeSessions // ignore: cast_nullable_to_non_nullable
-as int,activeSessionIds: null == activeSessionIds ? _self.activeSessionIds : activeSessionIds // ignore: cast_nullable_to_non_nullable
+as String,activeSessionIds: null == activeSessionIds ? _self.activeSessionIds : activeSessionIds // ignore: cast_nullable_to_non_nullable
 as List<String>,
   ));
 }
@@ -82,13 +81,12 @@ as List<String>,
 @JsonSerializable()
 
 class _ProjectActivitySummary implements ProjectActivitySummary {
-  const _ProjectActivitySummary({required this.id, this.activeSessions = 0, final  List<String> activeSessionIds = const []}): _activeSessionIds = activeSessionIds;
+  const _ProjectActivitySummary({required this.id, required final  List<String> activeSessionIds}): _activeSessionIds = activeSessionIds;
   factory _ProjectActivitySummary.fromJson(Map<String, dynamic> json) => _$ProjectActivitySummaryFromJson(json);
 
 @override final  String id;
-@override@JsonKey() final  int activeSessions;
  final  List<String> _activeSessionIds;
-@override@JsonKey() List<String> get activeSessionIds {
+@override List<String> get activeSessionIds {
   if (_activeSessionIds is EqualUnmodifiableListView) return _activeSessionIds;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_activeSessionIds);
@@ -108,16 +106,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectActivitySummary&&(identical(other.id, id) || other.id == id)&&(identical(other.activeSessions, activeSessions) || other.activeSessions == activeSessions)&&const DeepCollectionEquality().equals(other._activeSessionIds, _activeSessionIds));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectActivitySummary&&(identical(other.id, id) || other.id == id)&&const DeepCollectionEquality().equals(other._activeSessionIds, _activeSessionIds));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,activeSessions,const DeepCollectionEquality().hash(_activeSessionIds));
+int get hashCode => Object.hash(runtimeType,id,const DeepCollectionEquality().hash(_activeSessionIds));
 
 @override
 String toString() {
-  return 'ProjectActivitySummary(id: $id, activeSessions: $activeSessions, activeSessionIds: $activeSessionIds)';
+  return 'ProjectActivitySummary(id: $id, activeSessionIds: $activeSessionIds)';
 }
 
 
@@ -128,7 +126,7 @@ abstract mixin class _$ProjectActivitySummaryCopyWith<$Res> implements $ProjectA
   factory _$ProjectActivitySummaryCopyWith(_ProjectActivitySummary value, $Res Function(_ProjectActivitySummary) _then) = __$ProjectActivitySummaryCopyWithImpl;
 @override @useResult
 $Res call({
- String id, int activeSessions, List<String> activeSessionIds
+ String id, List<String> activeSessionIds
 });
 
 
@@ -145,11 +143,10 @@ class __$ProjectActivitySummaryCopyWithImpl<$Res>
 
 /// Create a copy of ProjectActivitySummary
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? activeSessions = null,Object? activeSessionIds = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? activeSessionIds = null,}) {
   return _then(_ProjectActivitySummary(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
-as String,activeSessions: null == activeSessions ? _self.activeSessions : activeSessions // ignore: cast_nullable_to_non_nullable
-as int,activeSessionIds: null == activeSessionIds ? _self._activeSessionIds : activeSessionIds // ignore: cast_nullable_to_non_nullable
+as String,activeSessionIds: null == activeSessionIds ? _self._activeSessionIds : activeSessionIds // ignore: cast_nullable_to_non_nullable
 as List<String>,
   ));
 }

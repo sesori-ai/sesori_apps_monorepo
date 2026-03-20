@@ -10,6 +10,5 @@ Map<String, dynamic> _$PluginProjectActivitySummaryToJson(
   _PluginProjectActivitySummary instance,
 ) => <String, dynamic>{
   'id': instance.id,
-  'activeSessions': instance.activeSessions,
   'activeSessionIds': instance.activeSessionIds,
 };

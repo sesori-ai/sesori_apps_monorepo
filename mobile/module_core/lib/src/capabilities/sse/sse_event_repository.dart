@@ -22,7 +22,7 @@ class SseEventRepository with Disposable {
 
   /// Map of worktree path -> active session count.
   ///
-  /// Only includes projects with `activeSessions > 0`.
+  /// Only includes projects with active sessions.
   /// Late subscribers immediately receive the latest cached value.
   ValueStream<Map<String, int>> get projectActivity => _projectActivity.stream;
 
@@ -43,8 +43,8 @@ class SseEventRepository with Disposable {
       final projectMap = <String, int>{};
       final sessionMap = <String, Set<String>>{};
       for (final summary in projects) {
-        if (summary.activeSessions > 0) {
-          projectMap[summary.id] = summary.activeSessions;
+        if (summary.activeSessionIds.isNotEmpty) {
+          projectMap[summary.id] = summary.activeSessionIds.length;
         }
         if (summary.activeSessionIds.isNotEmpty) {
           sessionMap[summary.id] = summary.activeSessionIds.toSet();

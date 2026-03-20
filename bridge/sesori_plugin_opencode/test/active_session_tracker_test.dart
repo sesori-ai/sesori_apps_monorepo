@@ -213,7 +213,7 @@ void main() {
       tracker.handleEvent(_sessionBusy("s1"), null);
 
       final summary = tracker.buildSummary();
-      final pairs = summary.map((item) => (item.id, item.activeSessions)).toSet();
+      final pairs = summary.map((item) => (item.id, item.activeSessionIds.length)).toSet();
 
       expect(pairs, equals({("/repo-a", 1)}));
     });
@@ -271,7 +271,7 @@ void main() {
 
       expect(summary, hasLength(1));
       expect(summary.first.activeSessionIds, unorderedEquals(["s1", "s2"]));
-      expect(summary.first.activeSessions, equals(2));
+      expect(summary.first.activeSessionIds.length, equals(2));
     });
 
     test("buildSummary excludes idle sessions from activeSessionIds", () async {
@@ -288,7 +288,7 @@ void main() {
       final summary = tracker.buildSummary();
 
       expect(summary.first.activeSessionIds, equals(["s2"]));
-      expect(summary.first.activeSessions, equals(1));
+      expect(summary.first.activeSessionIds.length, equals(1));
     });
 
     test("buildSummary groups session IDs by worktree correctly", () async {

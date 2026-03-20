@@ -102,7 +102,6 @@ class ActiveSessionTracker {
         .map(
           (e) => ProjectActivitySummary(
             id: e.key,
-            activeSessions: e.value,
             activeSessionIds: sessionIdsByWorktree[e.key] ?? [],
           ),
         )

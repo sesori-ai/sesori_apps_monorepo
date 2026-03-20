@@ -54,7 +54,6 @@ void main() {
           projects: [
             ProjectActivitySummary(
               id: "/foo",
-              activeSessions: 2,
               activeSessionIds: ["s1", "s2"],
             ),
           ],
@@ -87,6 +86,7 @@ void main() {
           projects: [
             ProjectActivitySummary(
               id: "/bar",
+              activeSessionIds: [],
             ),
           ],
         ),
@@ -120,12 +120,10 @@ void main() {
           projects: [
             ProjectActivitySummary(
               id: "/foo",
-              activeSessions: 1,
               activeSessionIds: ["s1"],
             ),
             ProjectActivitySummary(
               id: "/bar",
-              activeSessions: 2,
               activeSessionIds: ["s2", "s3"],
             ),
           ],
@@ -164,7 +162,6 @@ void main() {
             projects: [
               ProjectActivitySummary(
                 id: "/foo",
-                activeSessions: 1,
                 activeSessionIds: ["s1"],
               ),
             ],
@@ -182,7 +179,6 @@ void main() {
             projects: [
               ProjectActivitySummary(
                 id: "/foo",
-                activeSessions: 2,
                 activeSessionIds: ["s1", "s2"],
               ),
             ],
@@ -235,7 +231,6 @@ void main() {
           projects: [
             ProjectActivitySummary(
               id: "/foo",
-              activeSessions: 3,
               activeSessionIds: ["s1", "s2", "s3"],
             ),
           ],
@@ -266,6 +261,7 @@ void main() {
           projects: [
             ProjectActivitySummary(
               id: "/bar",
+              activeSessionIds: [],
             ),
           ],
         ),

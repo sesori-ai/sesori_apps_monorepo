@@ -7,7 +7,6 @@ part "plugin_project_activity_summary.g.dart";
 sealed class PluginProjectActivitySummary with _$PluginProjectActivitySummary {
   const factory PluginProjectActivitySummary({
     required String id,
-    required int activeSessions,
-    @Default([]) List<String> activeSessionIds,
+    required List<String> activeSessionIds,
   }) = _PluginProjectActivitySummary;
 }

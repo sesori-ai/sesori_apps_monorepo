@@ -649,7 +649,6 @@ class OrchestratorSession {
           .map(
             (e) => ProjectActivitySummary(
               id: e.id,
-              activeSessions: e.activeSessions,
               activeSessionIds: e.activeSessionIds,
             ),
           )

@@ -7,8 +7,7 @@ part "project_activity_summary.g.dart";
 sealed class ProjectActivitySummary with _$ProjectActivitySummary {
   const factory ProjectActivitySummary({
     required String id,
-    @Default(0) int activeSessions,
-    @Default([]) List<String> activeSessionIds,
+    required List<String> activeSessionIds,
   }) = _ProjectActivitySummary;
 
   factory ProjectActivitySummary.fromJson(Map<String, dynamic> json) => _$ProjectActivitySummaryFromJson(json);

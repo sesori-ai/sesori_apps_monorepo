@@ -197,8 +197,8 @@ void main() {
     test('serializes correctly', () {
       const event = SesoriSseEvent.projectsSummary(
         projects: [
-          ProjectActivitySummary(worktree: '/foo', activeSessions: 2),
-          ProjectActivitySummary(worktree: '/bar', activeSessions: 0),
+          ProjectActivitySummary(id: '/foo', activeSessionIds: ['s1', 's2']),
+          ProjectActivitySummary(id: '/bar', activeSessionIds: []),
         ],
       );
       final json = event.toJson();
@@ -206,18 +206,21 @@ void main() {
       expect(json['type'], 'projects.summary');
       expect(json['projects'], hasLength(2));
       final first = (json['projects'] as List)[0] as Map<String, dynamic>;
-      expect(first['worktree'], '/foo');
-      expect(first['activeSessions'], 2);
+      expect(first['id'], '/foo');
+      expect(first['activeSessionIds'], ['s1', 's2']);
       final second = (json['projects'] as List)[1] as Map<String, dynamic>;
-      expect(second['worktree'], '/bar');
-      expect(second['activeSessions'], 0);
+      expect(second['id'], '/bar');
+      expect(second['activeSessionIds'], <String>[]);
     });
 
     test('deserializes correctly', () {
       final json = {
         'type': 'projects.summary',
         'projects': [
-          {'worktree': '/foo', 'activeSessions': 3},
+          {
+            'id': '/foo',
+            'activeSessionIds': ['s1', 's2', 's3'],
+          },
         ],
       };
       final event = SesoriSseEvent.fromJson(json);
@@ -225,16 +228,16 @@ void main() {
       expect(event, isA<SesoriProjectsSummary>());
       final cast = event as SesoriProjectsSummary;
       expect(cast.projects, hasLength(1));
-      expect(cast.projects.first.worktree, '/foo');
-      expect(cast.projects.first.activeSessions, 3);
+      expect(cast.projects.first.id, '/foo');
+      expect(cast.projects.first.activeSessionIds, ['s1', 's2', 's3']);
     });
 
     test('round-trips correctly', () {
       const original = SesoriSseEvent.projectsSummary(
         projects: [
-          ProjectActivitySummary(worktree: '/alpha', activeSessions: 5),
-          ProjectActivitySummary(worktree: '/beta', activeSessions: 1),
-          ProjectActivitySummary(worktree: '/gamma', activeSessions: 0),
+          ProjectActivitySummary(id: '/alpha', activeSessionIds: ['s1', 's2', 's3', 's4', 's5']),
+          ProjectActivitySummary(id: '/beta', activeSessionIds: ['s1']),
+          ProjectActivitySummary(id: '/gamma', activeSessionIds: []),
         ],
       );
       final json = original.toJson();
@@ -243,12 +246,12 @@ void main() {
       expect(parsed, isA<SesoriProjectsSummary>());
       final cast = parsed as SesoriProjectsSummary;
       expect(cast.projects, hasLength(3));
-      expect(cast.projects[0].worktree, '/alpha');
-      expect(cast.projects[0].activeSessions, 5);
-      expect(cast.projects[1].worktree, '/beta');
-      expect(cast.projects[1].activeSessions, 1);
-      expect(cast.projects[2].worktree, '/gamma');
-      expect(cast.projects[2].activeSessions, 0);
+      expect(cast.projects[0].id, '/alpha');
+      expect(cast.projects[0].activeSessionIds.length, 5);
+      expect(cast.projects[1].id, '/beta');
+      expect(cast.projects[1].activeSessionIds.length, 1);
+      expect(cast.projects[2].id, '/gamma');
+      expect(cast.projects[2].activeSessionIds.length, 0);
     });
 
     test('empty projects list round-trips correctly', () {
@@ -327,36 +330,41 @@ void main() {
   // ---------------------------------------------------------------------------
 
   group('ProjectActivitySummary', () {
-    test('defaults activeSessions to 0', () {
-      const summary = ProjectActivitySummary(worktree: '/test');
-      expect(summary.activeSessions, 0);
+    test('requires id and activeSessionIds', () {
+      const summary = ProjectActivitySummary(id: '/test', activeSessionIds: []);
+      expect(summary.id, '/test');
+      expect(summary.activeSessionIds, <String>[]);
     });
 
-    test('accepts explicit activeSessions value', () {
-      const summary = ProjectActivitySummary(worktree: '/test', activeSessions: 7);
-      expect(summary.worktree, '/test');
-      expect(summary.activeSessions, 7);
+    test('accepts explicit activeSessionIds list', () {
+      const summary = ProjectActivitySummary(id: '/test', activeSessionIds: ['s1', 's2', 's3', 's4', 's5', 's6', 's7']);
+      expect(summary.id, '/test');
+      expect(summary.activeSessionIds.length, 7);
     });
 
-    test('serializes worktree and activeSessions to JSON', () {
-      const summary = ProjectActivitySummary(worktree: '/my/path', activeSessions: 4);
+    test('serializes id and activeSessionIds to JSON', () {
+      const summary = ProjectActivitySummary(id: '/my/path', activeSessionIds: ['s1', 's2', 's3', 's4']);
       final json = summary.toJson();
-      expect(json['worktree'], '/my/path');
-      expect(json['activeSessions'], 4);
+      expect(json['id'], '/my/path');
+      expect(json['activeSessionIds'], ['s1', 's2', 's3', 's4']);
     });
 
     test('deserializes from JSON correctly', () {
-      final json = {'worktree': '/from/json', 'activeSessions': 9};
+      final json = {
+        'id': '/from/json',
+        'activeSessionIds': ['s1', 's2', 's3', 's4', 's5', 's6', 's7', 's8', 's9'],
+      };
       final summary = ProjectActivitySummary.fromJson(json);
-      expect(summary.worktree, '/from/json');
-      expect(summary.activeSessions, 9);
+      expect(summary.id, '/from/json');
+      expect(summary.activeSessionIds.length, 9);
     });
 
-    test('fromJson uses 0 as default when activeSessions absent', () {
-      final json = {'worktree': '/no/count'};
-      final summary = ProjectActivitySummary.fromJson(json);
-      expect(summary.worktree, '/no/count');
-      expect(summary.activeSessions, 0);
+    test('fromJson requires activeSessionIds', () {
+      final json = {'id': '/no/sessions'};
+      expect(
+        () => ProjectActivitySummary.fromJson(json),
+        throwsA(isA<TypeError>()),
+      );
     });
   });
 
