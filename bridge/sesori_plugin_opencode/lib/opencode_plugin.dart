@@ -8,6 +8,7 @@ export "src/models/message.dart";
 export "src/models/message_part.dart";
 export "src/models/message_with_parts.dart";
 // Models
+export "src/models/pending_question.dart";
 export "src/models/project.dart";
 export "src/models/provider_info.dart";
 export "src/models/question.dart";

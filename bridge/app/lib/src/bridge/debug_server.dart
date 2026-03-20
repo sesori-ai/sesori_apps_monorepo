@@ -159,19 +159,12 @@ class DebugServer {
           as RelayResponse;
     }
 
-    // Fallback: proxy unhandled routes to the plugin's backend
-    // ignore: deprecated_member_use
-    final proxy = await _plugin.proxyRequest(
-      method: request.method,
-      path: request.path,
-      headers: request.headers,
-      body: request.body,
-    );
+    // Fallback: explicit handlers not implemented for this route yet.
     return RelayMessage.response(
           id: request.id,
-          status: proxy.status,
-          headers: proxy.headers,
-          body: proxy.body,
+          status: 404,
+          headers: {},
+          body: "route not handled",
         )
         as RelayResponse;
   }

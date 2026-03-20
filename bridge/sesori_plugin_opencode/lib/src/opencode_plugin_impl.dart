@@ -77,45 +77,6 @@ class OpenCodePlugin implements BridgePlugin {
     }
   }
 
-  // ignore: remove_deprecations_in_breaking_versions
-  @Deprecated("Temporary proxy — replace with typed plugin methods")
-  @override
-  Future<({int status, Map<String, String> headers, String? body})> proxyRequest({
-    required String method,
-    required String path,
-    required Map<String, String> headers,
-    String? body,
-  }) async {
-    final client = http.Client();
-    try {
-      final uri = Uri.parse("$_serverUrl$path");
-      final reqHeaders = Map<String, String>.from(headers);
-      if (_password != null) {
-        final creds = base64.encode(utf8.encode("opencode:$_password"));
-        reqHeaders["Authorization"] = "Basic $creds";
-      }
-
-      final request = http.Request(method, uri)..headers.addAll(reqHeaders);
-      if (body != null) {
-        request.body = body;
-      }
-
-      final streamed = await client.send(request).timeout(const Duration(seconds: 30));
-      final responseBody = await streamed.stream.bytesToString();
-      return (
-        status: streamed.statusCode,
-        headers: streamed.headers,
-        body: responseBody.isEmpty ? null : responseBody,
-      );
-    } on TimeoutException {
-      return (status: 504, headers: <String, String>{}, body: "Gateway Timeout");
-    } catch (e) {
-      return (status: 502, headers: <String, String>{}, body: "upstream unreachable: $e");
-    } finally {
-      client.close();
-    }
-  }
-
   @override
   Future<PluginProvidersResult> getProviders({required bool connectedOnly}) async {
     final response = await _service.repository.api.listProviders();
@@ -243,9 +204,110 @@ class OpenCodePlugin implements BridgePlugin {
   }
 
   @override
+  Future<PluginSession> createSession(String worktree) async {
+    final session = await _service.repository.api.createSession(worktree);
+    return _mapSession(session);
+  }
+
+  @override
+  Future<PluginSession> updateSessionArchiveStatus(String sessionId, {required int? archivedAt}) async {
+    final session = await _service.repository.api.updateSession(sessionId, {
+      "time": {"archived": archivedAt},
+    });
+    return _mapSession(session);
+  }
+
+  @override
+  Future<void> deleteSession(String sessionId) {
+    return _service.repository.api.deleteSession(sessionId);
+  }
+
+  @override
+  Future<List<PluginSession>> getChildSessions(String sessionId) async {
+    final sessions = await _service.repository.api.getChildren(sessionId);
+    return sessions.map(_mapSession).toList();
+  }
+
+  @override
+  Future<Map<String, PluginSessionStatus>> getSessionStatuses() async {
+    final statuses = await _service.repository.api.getSessionStatuses();
+    return statuses.map((key, value) => MapEntry(key, _mapSessionStatus(value)));
+  }
+
+  @override
   Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async {
     final messages = await _service.getLastExchange(sessionId);
     return messages.map(_mapMessage).toList();
+  }
+
+  @override
+  Future<void> sendPrompt({
+    required String sessionId,
+    required List<PluginPromptPart> parts,
+    String? agent,
+    String? providerID,
+    String? modelID,
+  }) {
+    final body = <String, dynamic>{
+      "parts": parts.map((part) {
+        final partBody = <String, dynamic>{"type": part.type};
+        if (part.text case final text?) {
+          partBody["text"] = text;
+        }
+        return partBody;
+      }).toList(),
+    };
+
+    if (agent case final agentName?) {
+      body["agent"] = agentName;
+    }
+
+    if (providerID case final provider?) {
+      if (modelID case final model?) {
+        body["model"] = {
+          "providerID": provider,
+          "modelID": model,
+        };
+      }
+    }
+
+    return _service.repository.api.sendPrompt(
+      sessionId,
+      body: body,
+    );
+  }
+
+  @override
+  Future<void> abortSession(String sessionId) {
+    return _service.repository.api.abortSession(sessionId);
+  }
+
+  @override
+  Future<List<PluginAgent>> getAgents() async {
+    final agents = await _service.repository.api.listAgents();
+    return agents.map(_mapAgent).toList();
+  }
+
+  @override
+  Future<List<PluginPendingQuestion>> getPendingQuestions() async {
+    final pending = await _service.repository.api.getPendingQuestions();
+    return pending.map(_mapPendingQuestion).toList();
+  }
+
+  @override
+  Future<void> replyToQuestion(String questionId, {required List<List<String>> answers}) {
+    return _service.repository.api.replyToQuestion(questionId, body: {"answers": answers});
+  }
+
+  @override
+  Future<void> rejectQuestion(String questionId) {
+    return _service.repository.api.rejectQuestion(questionId);
+  }
+
+  @override
+  Future<PluginProject> getCurrentProject(String worktree) async {
+    final project = await _service.repository.api.getCurrentProject(worktree);
+    return _mapProject(project);
   }
 
   void _handleRawSseEvent(String rawData) {
@@ -308,6 +370,60 @@ class OpenCodePlugin implements BridgePlugin {
       null => null,
     },
   );
+
+  PluginSessionStatus _mapSessionStatus(SessionStatus s) {
+    return switch (s) {
+      SessionStatusIdle() => const PluginSessionStatus.idle(),
+      SessionStatusBusy() => const PluginSessionStatus.busy(),
+      SessionStatusRetry(:final attempt, :final message, :final next) => PluginSessionStatus.retry(
+        attempt: attempt,
+        message: message,
+        next: next,
+      ),
+    };
+  }
+
+  PluginAgent _mapAgent(AgentInfo a) {
+    return PluginAgent(
+      name: a.name,
+      description: a.description,
+      model: switch (a.model) {
+        AgentModel(:final modelID, :final providerID) => PluginAgentModel(
+          modelID: modelID,
+          providerID: providerID,
+        ),
+        null => null,
+      },
+      variant: a.variant,
+      mode: switch (a.mode) {
+        AgentMode.all => PluginAgentMode.all,
+        AgentMode.primary => PluginAgentMode.primary,
+        AgentMode.subagent => PluginAgentMode.subagent,
+        AgentMode.unknown => PluginAgentMode.unknown,
+      },
+      hidden: a.hidden,
+    );
+  }
+
+  PluginPendingQuestion _mapPendingQuestion(PendingQuestion q) {
+    return PluginPendingQuestion(
+      id: q.id,
+      sessionID: q.sessionID,
+      questions: q.questions
+          .map(
+            (question) => PluginQuestionInfo(
+              question: question.question,
+              header: question.header,
+              options: question.options
+                  .map((option) => PluginQuestionOption(label: option.label, description: option.description))
+                  .toList(),
+              multiple: question.multiple,
+              custom: question.custom,
+            ),
+          )
+          .toList(),
+    );
+  }
 
   PluginMessageWithParts _mapMessage(MessageWithParts raw) {
     final info = raw.info;

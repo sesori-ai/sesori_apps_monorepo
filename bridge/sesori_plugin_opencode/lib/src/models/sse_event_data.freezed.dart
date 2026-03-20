@@ -981,7 +981,7 @@ $SessionStatusCopyWith<$Res> get status {
 
 /// @nodoc
 @JsonSerializable()
-@Deprecated("Use sessionStatus instead. Emitted for backward compatibility.")
+
 class SseSessionIdle implements SseEventData, SseSessionEventData {
   const SseSessionIdle({required this.sessionID, final  String? $type}): $type = $type ?? 'session.idle';
   factory SseSessionIdle.fromJson(Map<String, dynamic> json) => _$SseSessionIdleFromJson(json);

@@ -239,25 +239,79 @@ class _FakeBridgePlugin implements BridgePlugin {
   }) async => sessionsResult;
 
   @override
+  Future<PluginSession> createSession(String worktree) async => const PluginSession(
+    id: "",
+    projectID: "",
+    directory: "",
+    parentID: null,
+    title: null,
+    time: null,
+    summary: null,
+  );
+
+  @override
+  Future<PluginSession> updateSessionArchiveStatus(
+    String sessionId, {
+    required int? archivedAt,
+  }) async => const PluginSession(
+    id: "",
+    projectID: "",
+    directory: "",
+    parentID: null,
+    title: null,
+    time: null,
+    summary: null,
+  );
+
+  @override
+  Future<void> deleteSession(String sessionId) async {}
+
+  @override
+  Future<List<PluginSession>> getChildSessions(String sessionId) async => [];
+
+  @override
+  Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => {};
+
+  @override
   Future<List<PluginMessageWithParts>> getSessionMessages(
     String sessionId,
   ) async => messagesResult;
+
+  @override
+  Future<void> sendPrompt({
+    required String sessionId,
+    required List<PluginPromptPart> parts,
+    String? agent,
+    String? providerID,
+    String? modelID,
+  }) async {}
+
+  @override
+  Future<void> abortSession(String sessionId) async {}
+
+  @override
+  Future<List<PluginAgent>> getAgents() async => [];
+
+  @override
+  Future<List<PluginPendingQuestion>> getPendingQuestions() async => [];
+
+  @override
+  Future<void> replyToQuestion(
+    String questionId, {
+    required List<List<String>> answers,
+  }) async {}
+
+  @override
+  Future<void> rejectQuestion(String questionId) async {}
+
+  @override
+  Future<PluginProject> getCurrentProject(String worktree) async => const PluginProject(id: "", worktree: "");
 
   @override
   Future<String> healthCheck() async => '{"healthy":true}';
 
   @override
   List<PluginProjectActivitySummary> getActiveSessionsSummary() => [];
-
-  // ignore: remove_deprecations_in_breaking_versions
-  @Deprecated("Temporary proxy")
-  @override
-  Future<({int status, Map<String, String> headers, String? body})> proxyRequest({
-    required String method,
-    required String path,
-    required Map<String, String> headers,
-    String? body,
-  }) async => (status: 404, headers: <String, String>{}, body: "not found");
 
   @override
   Future<PluginProvidersResult> getProviders({required bool connectedOnly}) async =>
@@ -306,25 +360,79 @@ class _TrackingBridgePlugin implements BridgePlugin {
   }) async => [];
 
   @override
+  Future<PluginSession> createSession(String worktree) async => const PluginSession(
+    id: "",
+    projectID: "",
+    directory: "",
+    parentID: null,
+    title: null,
+    time: null,
+    summary: null,
+  );
+
+  @override
+  Future<PluginSession> updateSessionArchiveStatus(
+    String sessionId, {
+    required int? archivedAt,
+  }) async => const PluginSession(
+    id: "",
+    projectID: "",
+    directory: "",
+    parentID: null,
+    title: null,
+    time: null,
+    summary: null,
+  );
+
+  @override
+  Future<void> deleteSession(String sessionId) async {}
+
+  @override
+  Future<List<PluginSession>> getChildSessions(String sessionId) async => [];
+
+  @override
+  Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => {};
+
+  @override
   Future<List<PluginMessageWithParts>> getSessionMessages(
     String sessionId,
   ) async => [];
+
+  @override
+  Future<void> sendPrompt({
+    required String sessionId,
+    required List<PluginPromptPart> parts,
+    String? agent,
+    String? providerID,
+    String? modelID,
+  }) async {}
+
+  @override
+  Future<void> abortSession(String sessionId) async {}
+
+  @override
+  Future<List<PluginAgent>> getAgents() async => [];
+
+  @override
+  Future<List<PluginPendingQuestion>> getPendingQuestions() async => [];
+
+  @override
+  Future<void> replyToQuestion(
+    String questionId, {
+    required List<List<String>> answers,
+  }) async {}
+
+  @override
+  Future<void> rejectQuestion(String questionId) async {}
+
+  @override
+  Future<PluginProject> getCurrentProject(String worktree) async => const PluginProject(id: "", worktree: "");
 
   @override
   Future<String> healthCheck() async => '{"healthy":true}';
 
   @override
   List<PluginProjectActivitySummary> getActiveSessionsSummary() => [];
-
-  // ignore: remove_deprecations_in_breaking_versions
-  @Deprecated("Temporary proxy")
-  @override
-  Future<({int status, Map<String, String> headers, String? body})> proxyRequest({
-    required String method,
-    required String path,
-    required Map<String, String> headers,
-    String? body,
-  }) async => (status: 404, headers: <String, String>{}, body: "not found");
 
   @override
   Future<PluginProvidersResult> getProviders({required bool connectedOnly}) async =>

@@ -361,7 +361,40 @@ class FakeOpenCodeApi implements OpenCodeApi {
   }
 
   @override
+  Future<Session> createSession(String directory) async => throw UnimplementedError();
+
+  @override
+  Future<Session> updateSession(String sessionId, Map<String, dynamic> body) async => throw UnimplementedError();
+
+  @override
+  Future<void> deleteSession(String sessionId) async {}
+
+  @override
+  Future<List<Session>> getChildren(String sessionId) async => [];
+
+  @override
   Future<Map<String, SessionStatus>> getSessionStatuses() async => <String, SessionStatus>{};
+
+  @override
+  Future<void> sendPrompt(String sessionId, {required Map<String, dynamic> body}) async {}
+
+  @override
+  Future<void> abortSession(String sessionId) async {}
+
+  @override
+  Future<List<AgentInfo>> listAgents() async => [];
+
+  @override
+  Future<List<PendingQuestion>> getPendingQuestions() async => [];
+
+  @override
+  Future<void> replyToQuestion(String questionId, {required Map<String, dynamic> body}) async {}
+
+  @override
+  Future<void> rejectQuestion(String questionId) async {}
+
+  @override
+  Future<Project> getCurrentProject(String directory) async => throw UnimplementedError();
 
   @override
   Future<List<GlobalSession>> listGlobalSessions({

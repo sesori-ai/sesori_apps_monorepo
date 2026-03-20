@@ -68,23 +68,46 @@ void main() {
       expect(plugin.lastGetSessionsLimit, equals(7));
     });
 
-    test("unknown GET route falls through to ProxyHandler", () async {
-      plugin.proxyStatus = 404;
-      plugin.proxyBody = "not found";
-
-      final response = await router.route(makeRequest("GET", "/unknown/path"));
+    test("unknown route returns 404", () async {
+      final response = await router.route(makeRequest("GET", "/unknown"));
 
       expect(response.status, equals(404));
-      expect(plugin.lastProxyPath, equals("/unknown/path"));
+      expect(response.body, equals("no handler found for GET /unknown"));
     });
 
-    test("POST to a known path falls through to ProxyHandler", () async {
-      plugin.proxyStatus = 201;
-      final response = await router.route(
-        makeRequest("POST", "/session", body: "{}"),
+    test("routes POST /session to CreateSessionHandler", () async {
+      plugin.createSessionResult = const PluginSession(
+        id: "s1",
+        projectID: "p1",
+        directory: "/tmp",
+        parentID: null,
+        title: null,
+        time: null,
+        summary: null,
       );
-      expect(response.status, equals(201));
-      expect(plugin.lastProxyMethod, equals("POST"));
+
+      final response = await router.route(
+        makeRequest("POST", "/session", headers: {"x-opencode-directory": "/tmp"}),
+      );
+
+      expect(response.status, equals(200));
+      expect(plugin.lastCreateSessionWorktree, equals("/tmp"));
+    });
+
+    test("routes DELETE /session/:id to DeleteSessionHandler", () async {
+      final response = await router.route(makeRequest("DELETE", "/session/abc"));
+      expect(response.status, equals(200));
+      expect(plugin.lastDeleteSessionId, equals("abc"));
+    });
+
+    test("routes GET /agent to GetAgentsHandler", () async {
+      final response = await router.route(makeRequest("GET", "/agent"));
+      expect(response.status, equals(200));
+    });
+
+    test("routes GET /question to GetPendingQuestionsHandler", () async {
+      final response = await router.route(makeRequest("GET", "/question"));
+      expect(response.status, equals(200));
     });
 
     test("returns 502 when handler throws", () async {

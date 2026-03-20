@@ -391,6 +391,18 @@ class _FakeApi implements OpenCodeApi {
   Future<List<Session>> listSessions({String? directory}) async => _sessions;
 
   @override
+  Future<Session> createSession(String directory) async => throw UnimplementedError();
+
+  @override
+  Future<Session> updateSession(String sessionId, Map<String, dynamic> body) async => throw UnimplementedError();
+
+  @override
+  Future<void> deleteSession(String sessionId) async {}
+
+  @override
+  Future<List<Session>> getChildren(String sessionId) async => [];
+
+  @override
   Future<List<GlobalSession>> listGlobalSessions({
     String? directory,
     bool roots = false,
@@ -398,6 +410,27 @@ class _FakeApi implements OpenCodeApi {
 
   @override
   Future<List<MessageWithParts>> getMessages(String sessionId) async => [];
+
+  @override
+  Future<void> sendPrompt(String sessionId, {required Map<String, dynamic> body}) async {}
+
+  @override
+  Future<void> abortSession(String sessionId) async {}
+
+  @override
+  Future<List<AgentInfo>> listAgents() async => [];
+
+  @override
+  Future<List<PendingQuestion>> getPendingQuestions() async => [];
+
+  @override
+  Future<void> replyToQuestion(String questionId, {required Map<String, dynamic> body}) async {}
+
+  @override
+  Future<void> rejectQuestion(String questionId) async {}
+
+  @override
+  Future<Project> getCurrentProject(String directory) async => throw UnimplementedError();
 
   @override
   Future<Map<String, SessionStatus>> getSessionStatuses() async => _statuses;
