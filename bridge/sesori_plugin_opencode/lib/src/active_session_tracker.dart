@@ -1,3 +1,4 @@
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart" show ProjectActivitySummary, wait2;
 
 import "models/session_status.dart";
@@ -90,7 +91,10 @@ class ActiveSessionTracker {
     final sessionIdsByWorktree = <String, List<String>>{};
     for (final entry in _sessionStatuses.entries) {
       final worktree = _sessionWorktrees[entry.key];
-      if (worktree == null) continue;
+      if (worktree == null) {
+        Log.w("buildSummary: no worktree for session ${entry.key}");
+        continue;
+      }
       sessionIdsByWorktree.putIfAbsent(worktree, () => []).add(entry.key);
     }
 

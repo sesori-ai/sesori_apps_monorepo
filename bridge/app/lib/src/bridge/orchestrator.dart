@@ -444,19 +444,7 @@ class OrchestratorSession {
         Log.v("[dbg] SseSubscribe: path=${subscribe.path}");
         try {
           _sseManager.subscribePath(connID, subscribe.path, _client);
-          final summary = _plugin.getActiveSessionsSummary();
-          final initialEvent = SesoriSseEvent.projectsSummary(
-            projects: summary
-                .map(
-                  (e) => ProjectActivitySummary(
-                    worktree: e.worktree,
-                    activeSessions: e.activeSessions,
-                    activeSessionIds: e.activeSessionIds,
-                  ),
-                )
-                .toList(),
-          );
-          _sseManager.enqueueEvent(initialEvent);
+          _sseManager.enqueueEvent(_buildProjectsSummaryEvent());
           Log.v("[dbg] initial projectsSummary enqueued");
         } catch (e) {
           Log.e("sse subscribe failed for connId $connID: $e");
@@ -589,18 +577,7 @@ class OrchestratorSession {
       // metadata changes. We always send the full projectsSummary so the mobile
       // client receives updated activity data in real time.
       case BridgeSseProjectUpdated():
-        final summary = _plugin.getActiveSessionsSummary();
-        return SesoriSseEvent.projectsSummary(
-          projects: summary
-              .map(
-                (e) => ProjectActivitySummary(
-                  worktree: e.worktree,
-                  activeSessions: e.activeSessions,
-                  activeSessionIds: e.activeSessionIds,
-                ),
-              )
-              .toList(),
-        );
+        return _buildProjectsSummaryEvent();
       case BridgeSseVcsBranchUpdated():
         return const SesoriSseEvent.vcsBranchUpdated();
       case BridgeSseFileEdited(:final file):
@@ -663,5 +640,20 @@ class OrchestratorSession {
     final encryptor = cryptoService.createSessionEncryptor(encryptionKey);
     final framed = await frame(utf8.encode(respJson), encryptor);
     _client.send(connID, framed);
+  }
+
+  SesoriSseEvent _buildProjectsSummaryEvent() {
+    final summary = _plugin.getActiveSessionsSummary();
+    return SesoriSseEvent.projectsSummary(
+      projects: summary
+          .map(
+            (e) => ProjectActivitySummary(
+              worktree: e.worktree,
+              activeSessions: e.activeSessions,
+              activeSessionIds: e.activeSessionIds,
+            ),
+          )
+          .toList(),
+    );
   }
 }
