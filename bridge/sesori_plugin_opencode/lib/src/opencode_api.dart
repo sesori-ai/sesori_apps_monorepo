@@ -56,9 +56,13 @@ class OpenCodeApi {
     return decoded.cast<Map<String, dynamic>>().map(Session.fromJson).toList();
   }
 
-  Future<Session> createSession(String directory, {required String sessionId}) async {
+  Future<Session> createSession(String directory, {String? parentSessionId}) async {
     final client = http.Client();
     try {
+      final body = <String, dynamic>{};
+      if (parentSessionId case final id?) {
+        body["parentSessionId"] = id;
+      }
       final response = await client.post(
         Uri.parse("$serverURL/session"),
         headers: {
@@ -66,7 +70,7 @@ class OpenCodeApi {
           "content-type": "application/json",
           "x-opencode-directory": directory,
         },
-        body: jsonEncode({"id": sessionId}),
+        body: jsonEncode(body),
       );
       _ensureSuccess(response, "POST /session");
       return Session.fromJson(jsonDecode(response.body) as Map<String, dynamic>);

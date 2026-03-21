@@ -37,7 +37,7 @@ void main() {
       expect(response.body, contains("invalid JSON body"));
     });
 
-    test("returns 200 with null body", () async {
+    test("returns 200 with created session body", () async {
       plugin.createSessionResult = const PluginSession(
         id: "s1",
         projectID: "p1",
@@ -53,7 +53,7 @@ void main() {
           "POST",
           "/session",
           body: jsonEncode(
-            const CreateSessionRequest(id: "new-session", projectId: "/tmp").toJson(),
+            const CreateSessionRequest(projectId: "/tmp", parentSessionId: "parent-1").toJson(),
           ),
         ),
         pathParams: {},
@@ -61,9 +61,14 @@ void main() {
       );
 
       expect(plugin.lastCreateSessionProjectId, equals("/tmp"));
-      expect(plugin.lastCreateSessionId, equals("new-session"));
+      expect(plugin.lastCreateSessionParentId, equals("parent-1"));
       expect(response.status, equals(200));
-      expect(response.body, isNull);
+      final body = switch (jsonDecode(response.body!)) {
+        final Map<String, dynamic> map => map,
+        _ => throw StateError("expected JSON object"),
+      };
+      expect(body["id"], equals("s1"));
+      expect(body["projectID"], equals("p1"));
     });
 
     test("returns 400 on invalid JSON body", () async {

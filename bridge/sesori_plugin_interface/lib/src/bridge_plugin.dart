@@ -22,7 +22,11 @@ abstract class BridgePlugin {
   /// Get sessions for a worktree directory.
   Future<List<PluginSession>> getSessions(String worktree, {int? start, int? limit});
 
-  Future<PluginSession> createSession({required String projectId, required String sessionId});
+  /// Create a new session in the given project.
+  ///
+  /// If [parentSessionId] is provided, the new session is created as a
+  /// child (sub-session) of the specified parent.
+  Future<PluginSession> createSession({required String projectId, String? parentSessionId});
 
   Future<PluginSession> updateSessionArchiveStatus(String sessionId, {required bool archived});
 
@@ -49,6 +53,13 @@ abstract class BridgePlugin {
 
   Future<List<PluginPendingQuestion>> getPendingQuestions();
 
+  /// Reply to a pending question prompt.
+  ///
+  /// [answers] is a `List<List<String>>` because:
+  /// - The outer list contains one entry per question in the prompt
+  ///   (a single prompt can ask multiple questions at once).
+  /// - Each inner list contains the selected answers for that question
+  ///   (supports multi-select — one or more values can be chosen).
   Future<void> replyToQuestion(String questionId, {required List<List<String>> answers});
 
   Future<void> rejectQuestion(String questionId);

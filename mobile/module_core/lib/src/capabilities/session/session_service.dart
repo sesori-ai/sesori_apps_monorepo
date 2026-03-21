@@ -63,21 +63,14 @@ class SessionService {
   }
 
   Future<ApiResponse<Session>> createSession({required String projectId}) {
-    final sessionId = DateTime.now().millisecondsSinceEpoch.toRadixString(36);
-    return _client
-        .post<bool>(
-          "/session",
-          fromJson: (_) => true,
-          body: CreateSessionRequest(id: sessionId, projectId: projectId).toJson(),
-        )
-        .then(
-          (response) => switch (response) {
-            SuccessResponse() => ApiResponse.success(
-              Session(id: sessionId, projectID: "", directory: ""),
-            ),
-            ErrorResponse(:final error) => ApiResponse.error(error),
-          },
-        );
+    return _client.post(
+      "/session",
+      fromJson: (json) => switch (json) {
+        final Map<String, dynamic> map => Session.fromJson(map),
+        _ => throw FormatException("expected map, got ${json.runtimeType}"),
+      },
+      body: CreateSessionRequest(projectId: projectId).toJson(),
+    );
   }
 
   Future<ApiResponse<Session>> archiveSession(String sessionId) {

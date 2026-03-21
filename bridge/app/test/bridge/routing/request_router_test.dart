@@ -91,14 +91,14 @@ void main() {
           "POST",
           "/session",
           body: jsonEncode(
-            const CreateSessionRequest(id: "session-1", projectId: "/tmp").toJson(),
+            const CreateSessionRequest(projectId: "/tmp", parentSessionId: "parent-1").toJson(),
           ),
         ),
       );
 
       expect(response.status, equals(200));
       expect(plugin.lastCreateSessionProjectId, equals("/tmp"));
-      expect(plugin.lastCreateSessionId, equals("session-1"));
+      expect(plugin.lastCreateSessionParentId, equals("parent-1"));
     });
 
     test("routes DELETE /session/:id to DeleteSessionHandler", () async {

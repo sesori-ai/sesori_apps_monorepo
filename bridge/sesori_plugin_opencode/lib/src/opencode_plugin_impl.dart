@@ -214,8 +214,10 @@ class OpenCodePlugin implements BridgePlugin {
   }
 
   @override
-  Future<PluginSession> createSession({required String projectId, required String sessionId}) async {
-    final session = await _call(() => _service.repository.api.createSession(projectId, sessionId: sessionId));
+  Future<PluginSession> createSession({required String projectId, String? parentSessionId}) async {
+    final session = await _call(
+      () => _service.repository.api.createSession(projectId, parentSessionId: parentSessionId),
+    );
     return session.toPlugin();
   }
 

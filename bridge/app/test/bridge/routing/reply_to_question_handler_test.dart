@@ -31,7 +31,7 @@ void main() {
             const ReplyToQuestionRequest(
               answers: [
                 ReplyAnswer(values: ["yes"]),
-                ReplyAnswer(values: ["tool-a"]),
+                ReplyAnswer(values: ["tool-a", "tool-b"]),
               ],
             ).toJson(),
           ),
@@ -45,7 +45,7 @@ void main() {
         plugin.lastReplyAnswers,
         equals(const [
           ["yes"],
-          ["tool-a"],
+          ["tool-a", "tool-b"],
         ]),
       );
     });

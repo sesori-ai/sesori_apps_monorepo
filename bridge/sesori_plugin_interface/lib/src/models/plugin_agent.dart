@@ -11,7 +11,18 @@ enum PluginAgentMode {
   unknown,
 }
 
-enum PluginAgentVariant { none, minimal, low, medium, high, xhigh }
+enum PluginAgentVariant {
+  none("none"),
+  minimal("minimal"),
+  low("low"),
+  medium("medium"),
+  high("high"),
+  xhigh("xhigh")
+  ;
+
+  const PluginAgentVariant(this.safeName);
+  final String safeName;
+}
 
 @freezed
 sealed class PluginAgentModel with _$PluginAgentModel {

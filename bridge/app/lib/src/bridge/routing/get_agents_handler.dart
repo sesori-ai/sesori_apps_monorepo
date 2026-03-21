@@ -31,15 +31,7 @@ class GetAgentsHandler extends RequestHandler {
               ),
               null => null,
             },
-            variant: switch (a.variant) {
-              PluginAgentVariant.none => "none",
-              PluginAgentVariant.minimal => "minimal",
-              PluginAgentVariant.low => "low",
-              PluginAgentVariant.medium => "medium",
-              PluginAgentVariant.high => "high",
-              PluginAgentVariant.xhigh => "xhigh",
-              null => null,
-            },
+            variant: a.variant?.safeName,
             mode: switch (a.mode) {
               PluginAgentMode.all => AgentMode.all,
               PluginAgentMode.primary => AgentMode.primary,

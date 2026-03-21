@@ -239,7 +239,7 @@ class _FakeBridgePlugin implements BridgePlugin {
   }) async => sessionsResult;
 
   @override
-  Future<PluginSession> createSession({required String projectId, required String sessionId}) async =>
+  Future<PluginSession> createSession({required String projectId, String? parentSessionId}) async =>
       const PluginSession(
         id: "",
         projectID: "",
@@ -361,7 +361,7 @@ class _TrackingBridgePlugin implements BridgePlugin {
   }) async => [];
 
   @override
-  Future<PluginSession> createSession({required String projectId, required String sessionId}) async =>
+  Future<PluginSession> createSession({required String projectId, String? parentSessionId}) async =>
       const PluginSession(
         id: "",
         projectID: "",

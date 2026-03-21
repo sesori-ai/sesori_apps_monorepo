@@ -20,8 +20,12 @@ class CreateSessionHandler extends RequestHandler {
   }) async {
     final CreateSessionRequest createRequest;
     try {
+      final decoded = jsonDecode(request.body ?? "{}");
       createRequest = CreateSessionRequest.fromJson(
-        jsonDecode(request.body ?? "{}") as Map<String, dynamic>,
+        switch (decoded) {
+          final Map<String, dynamic> map => map,
+          _ => throw const FormatException("invalid JSON body"),
+        },
       );
     } on FormatException {
       return buildErrorResponse(request, 400, "invalid JSON body");
@@ -29,17 +33,35 @@ class CreateSessionHandler extends RequestHandler {
       return buildErrorResponse(request, 400, "invalid JSON body");
     }
 
-    await _plugin.createSession(
+    final created = await _plugin.createSession(
       projectId: createRequest.projectId,
-      sessionId: createRequest.id,
+      parentSessionId: createRequest.parentSessionId,
     );
 
-    return RelayMessage.response(
-          id: request.id,
-          status: 200,
-          headers: {},
-          body: null,
-        )
-        as RelayResponse;
+    final session = Session(
+      id: created.id,
+      projectID: created.projectID,
+      directory: created.directory,
+      parentID: created.parentID,
+      title: created.title,
+      time: switch (created.time) {
+        PluginSessionTime(:final created, :final updated, :final archived) => SessionTime(
+          created: created,
+          updated: updated,
+          archived: archived,
+        ),
+        null => null,
+      },
+      summary: switch (created.summary) {
+        PluginSessionSummary(:final additions, :final deletions, :final files) => SessionSummary(
+          additions: additions,
+          deletions: deletions,
+          files: files,
+        ),
+        null => null,
+      },
+    );
+
+    return buildOkJsonResponse(request, jsonEncode(session.toJson()));
   }
 }

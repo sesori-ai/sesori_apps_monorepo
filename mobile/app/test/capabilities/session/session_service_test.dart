@@ -174,20 +174,21 @@ void main() {
 
     group("createSession", () {
       test("success: returns Session from POST /session", () async {
+        final created = testSession(id: "server-session-id");
         when(
-          () => mockClient.post<bool>(
+          () => mockClient.post<Session>(
             "/session",
             fromJson: any(named: "fromJson"),
             body: any(named: "body"),
           ),
-        ).thenAnswer((_) async => ApiResponse.success(true));
+        ).thenAnswer((_) async => ApiResponse.success(created));
 
         final result = await sessionService.createSession(projectId: "/tmp/project");
 
         expect(result, isA<SuccessResponse<Session>>());
-        expect((result as SuccessResponse<Session>).data.id, isNotEmpty);
+        expect((result as SuccessResponse<Session>).data.id, equals("server-session-id"));
         verify(
-          () => mockClient.post<bool>(
+          () => mockClient.post<Session>(
             "/session",
             fromJson: any(named: "fromJson"),
             body: any(named: "body"),
@@ -198,7 +199,7 @@ void main() {
       test("error: propagates API error from POST /session", () async {
         final error = ApiError.generic();
         when(
-          () => mockClient.post<bool>(
+          () => mockClient.post<Session>(
             "/session",
             fromJson: any(named: "fromJson"),
             body: any(named: "body"),
@@ -210,12 +211,35 @@ void main() {
         expect(result, isA<ErrorResponse<Session>>());
         expect((result as ErrorResponse<Session>).error, equals(error));
         verify(
-          () => mockClient.post<bool>(
+          () => mockClient.post<Session>(
             "/session",
             fromJson: any(named: "fromJson"),
             body: any(named: "body"),
           ),
         ).called(1);
+      });
+
+      test("sends projectId and null parentSessionId in create session body", () async {
+        when(
+          () => mockClient.post<Session>(
+            any(),
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s1")));
+
+        await sessionService.createSession(projectId: "/tmp/project");
+
+        final captured =
+            verify(
+                  () => mockClient.post<Session>(
+                    "/session",
+                    fromJson: any(named: "fromJson"),
+                    body: captureAny(named: "body"),
+                  ),
+                ).captured.last
+                as Map<String, dynamic>;
+        expect(captured, equals({"projectId": "/tmp/project", "parentSessionId": null}));
       });
     });
 
