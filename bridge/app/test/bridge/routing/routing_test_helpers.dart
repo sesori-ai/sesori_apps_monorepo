@@ -29,10 +29,13 @@ class FakeBridgePlugin implements BridgePlugin {
   List<PluginSession> sessionsResult = [];
   List<PluginMessageWithParts> messagesResult = [];
   PluginProvidersResult providersResult = const PluginProvidersResult(providers: []);
-
-  int proxyStatus = 200;
-  Map<String, String> proxyHeaders = {};
-  String? proxyBody;
+  PluginSession? createSessionResult;
+  PluginSession? updateSessionResult;
+  List<PluginSession> childSessionsResult = [];
+  Map<String, PluginSessionStatus> sessionStatusesResult = {};
+  List<PluginAgent> agentsResult = [];
+  List<PluginPendingQuestion> pendingQuestionsResult = [];
+  PluginProject? currentProjectResult;
 
   // ── Recorded call arguments ──────────────────────────────────────────────
 
@@ -43,17 +46,30 @@ class FakeBridgePlugin implements BridgePlugin {
   String? lastGetMessagesSessionId;
 
   bool? lastGetProvidersConnectedOnly;
-
-  String? lastProxyMethod;
-  String? lastProxyPath;
-  Map<String, String>? lastProxyHeaders;
-  String? lastProxyBody;
+  String? lastCreateSessionProjectId;
+  String? lastCreateSessionParentId;
+  String? lastUpdateSessionId;
+  bool? lastUpdateSessionArchived;
+  String? lastDeleteSessionId;
+  String? lastGetChildSessionsSessionId;
+  String? lastSendPromptSessionId;
+  List<PluginPromptPart>? lastSendPromptParts;
+  String? lastSendPromptAgent;
+  String? lastSendPromptProviderID;
+  String? lastSendPromptModelID;
+  String? lastAbortSessionId;
+  String? lastReplyQuestionId;
+  List<List<String>>? lastReplyAnswers;
+  String? lastRejectQuestionId;
+  String? lastGetCurrentProjectProjectId;
 
   // ── Error injection ──────────────────────────────────────────────────────
 
   bool throwOnHealthCheck = false;
   bool throwOnGetProjects = false;
+  Object? throwOnGetProjectsError;
   bool throwOnGetSessions = false;
+  Object? throwOnDeleteSessionError;
 
   // ── BridgePlugin implementation ──────────────────────────────────────────
 
@@ -71,6 +87,9 @@ class FakeBridgePlugin implements BridgePlugin {
 
   @override
   Future<List<PluginProject>> getProjects() async {
+    if (throwOnGetProjectsError case final error?) {
+      throw error;
+    }
     if (throwOnGetProjects) throw Exception("getProjects error");
     return projectsResult;
   }
@@ -89,6 +108,58 @@ class FakeBridgePlugin implements BridgePlugin {
   }
 
   @override
+  Future<PluginSession> createSession({required String projectId, String? parentSessionId}) async {
+    lastCreateSessionProjectId = projectId;
+    lastCreateSessionParentId = parentSessionId;
+    return createSessionResult ??
+        const PluginSession(
+          id: "",
+          projectID: "",
+          directory: "",
+          parentID: null,
+          title: null,
+          time: null,
+          summary: null,
+        );
+  }
+
+  @override
+  Future<PluginSession> updateSessionArchiveStatus(
+    String sessionId, {
+    required bool archived,
+  }) async {
+    lastUpdateSessionId = sessionId;
+    lastUpdateSessionArchived = archived;
+    return updateSessionResult ??
+        const PluginSession(
+          id: "",
+          projectID: "",
+          directory: "",
+          parentID: null,
+          title: null,
+          time: null,
+          summary: null,
+        );
+  }
+
+  @override
+  Future<void> deleteSession(String sessionId) async {
+    lastDeleteSessionId = sessionId;
+    if (throwOnDeleteSessionError case final error?) {
+      throw error;
+    }
+  }
+
+  @override
+  Future<List<PluginSession>> getChildSessions(String sessionId) async {
+    lastGetChildSessionsSessionId = sessionId;
+    return childSessionsResult;
+  }
+
+  @override
+  Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => sessionStatusesResult;
+
+  @override
   Future<List<PluginMessageWithParts>> getSessionMessages(
     String sessionId,
   ) async {
@@ -97,22 +168,53 @@ class FakeBridgePlugin implements BridgePlugin {
   }
 
   @override
-  List<PluginProjectActivitySummary> getActiveSessionsSummary() => [];
-
-  @Deprecated("Temporary proxy")
-  @override
-  Future<({int status, Map<String, String> headers, String? body})> proxyRequest({
-    required String method,
-    required String path,
-    required Map<String, String> headers,
-    String? body,
+  Future<void> sendPrompt({
+    required String sessionId,
+    required List<PluginPromptPart> parts,
+    String? agent,
+    String? providerID,
+    String? modelID,
   }) async {
-    lastProxyMethod = method;
-    lastProxyPath = path;
-    lastProxyHeaders = headers;
-    lastProxyBody = body;
-    return (status: proxyStatus, headers: proxyHeaders, body: proxyBody);
+    lastSendPromptSessionId = sessionId;
+    lastSendPromptParts = parts;
+    lastSendPromptAgent = agent;
+    lastSendPromptProviderID = providerID;
+    lastSendPromptModelID = modelID;
   }
+
+  @override
+  Future<void> abortSession(String sessionId) async {
+    lastAbortSessionId = sessionId;
+  }
+
+  @override
+  Future<List<PluginAgent>> getAgents() async => agentsResult;
+
+  @override
+  Future<List<PluginPendingQuestion>> getPendingQuestions() async => pendingQuestionsResult;
+
+  @override
+  Future<void> replyToQuestion(
+    String questionId, {
+    required List<List<String>> answers,
+  }) async {
+    lastReplyQuestionId = questionId;
+    lastReplyAnswers = answers;
+  }
+
+  @override
+  Future<void> rejectQuestion(String questionId) async {
+    lastRejectQuestionId = questionId;
+  }
+
+  @override
+  Future<PluginProject> getProject(String projectId) async {
+    lastGetCurrentProjectProjectId = projectId;
+    return currentProjectResult ?? const PluginProject(id: "");
+  }
+
+  @override
+  List<PluginProjectActivitySummary> getActiveSessionsSummary() => [];
 
   @override
   Future<PluginProvidersResult> getProviders({required bool connectedOnly}) async {

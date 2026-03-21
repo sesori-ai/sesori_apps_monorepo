@@ -27,47 +27,40 @@ void main() {
     });
 
     test("does not handle GET /session/:id/message", () {
-      expect(
-        handler.canHandle(makeRequest("GET", "/session/abc/message")),
-        isFalse,
-      );
+      expect(handler.canHandle(makeRequest("GET", "/session/abc/message")), isFalse);
     });
 
-    test("returns 400 when x-opencode-directory header is missing", () async {
+    test("returns 400 when x-project-id header is missing", () async {
       final response = await handler.handle(
         makeRequest("GET", "/session"),
         pathParams: {},
         queryParams: {},
       );
       expect(response.status, equals(400));
-      expect(response.body, contains("x-opencode-directory"));
+      expect(response.body, contains("x-project-id"));
     });
 
-    test("returns 400 when x-opencode-directory header is empty", () async {
+    test("returns 400 when x-project-id header is empty", () async {
       final response = await handler.handle(
-        makeRequest("GET", "/session", headers: {"x-opencode-directory": ""}),
+        makeRequest("GET", "/session", headers: {"x-project-id": ""}),
         pathParams: {},
         queryParams: {},
       );
       expect(response.status, equals(400));
     });
 
-    test("header lookup is case-insensitive", () async {
+    test("accepts x-project-id header", () async {
       final response = await handler.handle(
-        makeRequest("GET", "/session", headers: {"X-OpenCode-Directory": "/tmp"}),
+        makeRequest("GET", "/session", headers: {"x-project-id": "/tmp"}),
         pathParams: {},
         queryParams: {},
       );
       expect(response.status, equals(200));
     });
 
-    test("forwards worktree to plugin.getSessions", () async {
+    test("forwards x-project-id header to plugin.getSessions", () async {
       await handler.handle(
-        makeRequest(
-          "GET",
-          "/session",
-          headers: {"x-opencode-directory": "/home/user/proj"},
-        ),
+        makeRequest("GET", "/session", headers: {"x-project-id": "/home/user/proj"}),
         pathParams: {},
         queryParams: {},
       );
@@ -76,7 +69,7 @@ void main() {
 
     test("forwards start and limit from queryParams as ints", () async {
       await handler.handle(
-        makeRequest("GET", "/session", headers: {"x-opencode-directory": "/tmp"}),
+        makeRequest("GET", "/session", headers: {"x-project-id": "/tmp"}),
         pathParams: {},
         queryParams: {"start": "5", "limit": "20"},
       );
@@ -86,7 +79,7 @@ void main() {
 
     test("start and limit are null when absent from queryParams", () async {
       await handler.handle(
-        makeRequest("GET", "/session", headers: {"x-opencode-directory": "/tmp"}),
+        makeRequest("GET", "/session", headers: {"x-project-id": "/tmp"}),
         pathParams: {},
         queryParams: {},
       );
@@ -96,7 +89,7 @@ void main() {
 
     test("returns 200 with application/json content-type", () async {
       final response = await handler.handle(
-        makeRequest("GET", "/session", headers: {"x-opencode-directory": "/tmp"}),
+        makeRequest("GET", "/session", headers: {"x-project-id": "/tmp"}),
         pathParams: {},
         queryParams: {},
       );
@@ -118,7 +111,7 @@ void main() {
       ];
 
       final response = await handler.handle(
-        makeRequest("GET", "/session", headers: {"x-opencode-directory": "/tmp"}),
+        makeRequest("GET", "/session", headers: {"x-project-id": "/tmp"}),
         pathParams: {},
         queryParams: {},
       );
@@ -145,7 +138,7 @@ void main() {
       ];
 
       final response = await handler.handle(
-        makeRequest("GET", "/session", headers: {"x-opencode-directory": "/tmp"}),
+        makeRequest("GET", "/session", headers: {"x-project-id": "/tmp"}),
         pathParams: {},
         queryParams: {},
       );
@@ -171,7 +164,7 @@ void main() {
       ];
 
       final response = await handler.handle(
-        makeRequest("GET", "/session", headers: {"x-opencode-directory": "/tmp"}),
+        makeRequest("GET", "/session", headers: {"x-project-id": "/tmp"}),
         pathParams: {},
         queryParams: {},
       );
@@ -197,7 +190,7 @@ void main() {
       ];
 
       final response = await handler.handle(
-        makeRequest("GET", "/session", headers: {"x-opencode-directory": "/tmp"}),
+        makeRequest("GET", "/session", headers: {"x-project-id": "/tmp"}),
         pathParams: {},
         queryParams: {},
       );

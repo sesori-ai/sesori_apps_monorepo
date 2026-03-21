@@ -12,13 +12,11 @@ import "../../l10n/app_localizations.dart";
 
 class SessionListScreen extends StatelessWidget {
   final String projectId;
-  final String worktree;
   final String? projectName;
 
   const SessionListScreen({
     super.key,
     required this.projectId,
-    required this.worktree,
     this.projectName,
   });
 
@@ -27,11 +25,9 @@ class SessionListScreen extends StatelessWidget {
     return BlocProvider(
       create: (_) => SessionListCubit(
         getIt<SessionService>(),
-        getIt<ProjectService>(),
         getIt<ConnectionService>(),
         getIt<SseEventRepository>(),
         projectId: projectId,
-        worktree: worktree,
       ),
       child: _SessionListBody(projectName: projectName),
     );

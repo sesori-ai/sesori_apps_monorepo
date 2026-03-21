@@ -2,7 +2,9 @@ import "dart:convert";
 
 import "package:http/http.dart" as http;
 
+import "models/agent_info.dart";
 import "models/message_with_parts.dart";
+import "models/pending_question.dart";
 import "models/project.dart";
 import "models/provider_info.dart";
 import "models/session.dart";
@@ -43,12 +45,89 @@ class OpenCodeApi {
   }
 
   Future<List<Session>> listSessions({String? directory}) async {
-    final query = <String, String>{};
-    if (directory != null) query["directory"] = directory;
+    final headers = <String, String>{..._authHeaders};
+    if (directory != null) headers["x-opencode-directory"] = directory;
 
-    final uri = Uri.parse("$serverURL/session").replace(queryParameters: query);
-    final response = await http.get(uri, headers: _authHeaders);
+    final response = await http.get(
+      Uri.parse("$serverURL/session"),
+      headers: headers,
+    );
     _ensureSuccess(response, "GET /session");
+
+    final decoded = jsonDecode(response.body) as List;
+    return decoded.cast<Map<String, dynamic>>().map(Session.fromJson).toList();
+  }
+
+  Future<Session> createSession({
+    required String workspacePath,
+    String? parentSessionId,
+  }) async {
+    final client = http.Client();
+    try {
+      // Supported body:
+      //  {
+      //   "parentID": "<sessionID>",   // optional - set this to make it a child
+      //   "title": "string",           // optional - title gets auto-generated after first message
+      //   "permission": "...",         // optional
+      //   "workspaceID": "string"      // optional
+      // }
+      final body = <String, dynamic>{};
+      if (parentSessionId case final id?) {
+        body["parentID"] = id;
+      }
+      final response = await client.post(
+        Uri.parse("$serverURL/session"),
+        headers: {
+          ..._authHeaders,
+          "content-type": "application/json",
+          "x-opencode-directory": workspacePath,
+        },
+        body: jsonEncode(body),
+      );
+      _ensureSuccess(response, "POST /session");
+      return Session.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    } finally {
+      client.close();
+    }
+  }
+
+  Future<Session> updateSession(String sessionId, Map<String, dynamic> body) async {
+    final client = http.Client();
+    try {
+      final response = await client.patch(
+        Uri.parse("$serverURL/session/$sessionId"),
+        headers: {
+          ..._authHeaders,
+          "content-type": "application/json",
+        },
+        body: jsonEncode(body),
+      );
+      _ensureSuccess(response, "PATCH /session/$sessionId");
+      return Session.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    } finally {
+      client.close();
+    }
+  }
+
+  Future<void> deleteSession(String sessionId) async {
+    final client = http.Client();
+    try {
+      final response = await client.delete(
+        Uri.parse("$serverURL/session/$sessionId"),
+        headers: _authHeaders,
+      );
+      _ensureSuccess(response, "DELETE /session/$sessionId");
+    } finally {
+      client.close();
+    }
+  }
+
+  Future<List<Session>> getChildren(String sessionId) async {
+    final response = await http.get(
+      Uri.parse("$serverURL/session/$sessionId/children"),
+      headers: _authHeaders,
+    );
+    _ensureSuccess(response, "GET /session/$sessionId/children");
 
     final decoded = jsonDecode(response.body) as List;
     return decoded.cast<Map<String, dynamic>>().map(Session.fromJson).toList();
@@ -63,6 +142,96 @@ class OpenCodeApi {
 
     final decoded = jsonDecode(response.body) as List<dynamic>;
     return decoded.cast<Map<String, dynamic>>().map(MessageWithParts.fromJson).toList();
+  }
+
+  Future<void> sendPrompt(String sessionId, {required Map<String, dynamic> body}) async {
+    final client = http.Client();
+    try {
+      final response = await client.post(
+        Uri.parse("$serverURL/session/$sessionId/prompt_async"),
+        headers: {
+          ..._authHeaders,
+          "content-type": "application/json",
+        },
+        body: jsonEncode(body),
+      );
+      _ensureSuccess(response, "POST /session/$sessionId/prompt_async");
+    } finally {
+      client.close();
+    }
+  }
+
+  Future<void> abortSession(String sessionId) async {
+    final client = http.Client();
+    try {
+      final response = await client.post(
+        Uri.parse("$serverURL/session/$sessionId/abort"),
+        headers: _authHeaders,
+        body: "",
+      );
+      _ensureSuccess(response, "POST /session/$sessionId/abort");
+    } finally {
+      client.close();
+    }
+  }
+
+  Future<List<AgentInfo>> listAgents() async {
+    final response = await http.get(Uri.parse("$serverURL/agent"), headers: _authHeaders);
+    _ensureSuccess(response, "GET /agent");
+
+    final decoded = jsonDecode(response.body) as List;
+    return decoded.cast<Map<String, dynamic>>().map(AgentInfo.fromJson).toList();
+  }
+
+  Future<List<PendingQuestion>> getPendingQuestions() async {
+    final response = await http.get(Uri.parse("$serverURL/question"), headers: _authHeaders);
+    _ensureSuccess(response, "GET /question");
+
+    final decoded = jsonDecode(response.body) as List;
+    return decoded.cast<Map<String, dynamic>>().map(PendingQuestion.fromJson).toList();
+  }
+
+  Future<void> replyToQuestion(String questionId, {required Map<String, dynamic> body}) async {
+    final client = http.Client();
+    try {
+      final response = await client.post(
+        Uri.parse("$serverURL/question/$questionId/reply"),
+        headers: {
+          ..._authHeaders,
+          "content-type": "application/json",
+        },
+        body: jsonEncode(body),
+      );
+      _ensureSuccess(response, "POST /question/$questionId/reply");
+    } finally {
+      client.close();
+    }
+  }
+
+  Future<void> rejectQuestion(String questionId) async {
+    final client = http.Client();
+    try {
+      final response = await client.post(
+        Uri.parse("$serverURL/question/$questionId/reject"),
+        headers: _authHeaders,
+        body: "",
+      );
+      _ensureSuccess(response, "POST /question/$questionId/reject");
+    } finally {
+      client.close();
+    }
+  }
+
+  Future<Project> getProject(String directory) async {
+    final response = await http.get(
+      Uri.parse("$serverURL/project/current"),
+      headers: {
+        ..._authHeaders,
+        "x-opencode-directory": directory,
+      },
+    );
+    _ensureSuccess(response, "GET /project/current");
+    return Project.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }
 
   Future<List<GlobalSession>> listGlobalSessions({

@@ -1,4 +1,5 @@
 import "package:freezed_annotation/freezed_annotation.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 part "session.freezed.dart";
 
@@ -75,4 +76,30 @@ sealed class SessionProject with _$SessionProject {
   }) = _SessionProject;
 
   factory SessionProject.fromJson(Map<String, dynamic> json) => _$SessionProjectFromJson(json);
+}
+
+extension SessionToPluginExtension on Session {
+  PluginSession toPlugin() => PluginSession(
+    id: id,
+    projectID: projectID,
+    directory: directory,
+    parentID: parentID,
+    title: title,
+    summary: switch (summary) {
+      SessionSummary(:final additions, :final deletions, :final files) => PluginSessionSummary(
+        additions: additions,
+        deletions: deletions,
+        files: files,
+      ),
+      null => null,
+    },
+    time: switch (time) {
+      SessionTime(:final created, :final updated, :final archived) => PluginSessionTime(
+        created: created,
+        updated: updated,
+        archived: archived,
+      ),
+      null => null,
+    },
+  );
 }

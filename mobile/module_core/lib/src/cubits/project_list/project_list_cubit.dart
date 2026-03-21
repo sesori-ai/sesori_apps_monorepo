@@ -32,7 +32,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   }
 
   void setActiveProject(Project project) {
-    _connectionService.setActiveDirectory(project.worktree);
+    _connectionService.setActiveDirectory(project.id);
   }
 
   void _onActivityUpdated(Map<String, int> activityById) {

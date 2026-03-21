@@ -143,7 +143,17 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             streamingText: const {},
             sessionStatus: allStatuses[_sessionId] ?? const SessionStatus.idle(),
             pendingQuestions: switch (questionsResponse) {
-              SuccessResponse(:final data) => data.where((q) => q.sessionID == _sessionId).toList(),
+              SuccessResponse(:final data) =>
+                data
+                    .where((q) => q.sessionID == _sessionId)
+                    .map(
+                      (q) => SesoriQuestionAsked(
+                        id: q.id,
+                        sessionID: q.sessionID,
+                        questions: q.questions,
+                      ),
+                    )
+                    .toList(),
               ErrorResponse() => const [],
             },
             agent: latestAssistant?.agent,
@@ -550,7 +560,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
   Future<void> replyToQuestion(
     String requestId,
-    List<List<String>> answers,
+    List<ReplyAnswer> answers,
   ) async {
     // Optimistically remove before the API call so the screen sees the
     // updated state synchronously (prevents auto-chain re-opening the

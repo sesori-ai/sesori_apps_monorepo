@@ -5,11 +5,12 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "request_handler.dart";
 
-/// Handles `GET /session` — returns sessions for a given worktree.
+/// Handles `GET /session` — returns sessions for a given project.
 ///
-/// Requires `x-opencode-directory` header. Supports `start` and `limit`
+/// Requires `x-project-id` header. Supports `start` and `limit`
 /// query parameters for pagination.
 class GetSessionsHandler extends RequestHandler {
+  static const _projectIdHeader = "x-project-id";
   final BridgePlugin _plugin;
 
   GetSessionsHandler(this._plugin) : super(HttpMethod.get, "/session");
@@ -21,12 +22,12 @@ class GetSessionsHandler extends RequestHandler {
     required Map<String, String> queryParams,
     String? fragment,
   }) async {
-    final worktree = findHeader(request.headers, "x-opencode-directory");
-    if (worktree == null || worktree.isEmpty) {
+    final projectId = findHeader(request.headers, _projectIdHeader);
+    if (projectId == null || projectId.isEmpty) {
       return buildErrorResponse(
         request,
         400,
-        "missing x-opencode-directory header",
+        "missing $_projectIdHeader header",
       );
     }
 
@@ -34,7 +35,7 @@ class GetSessionsHandler extends RequestHandler {
     final limit = queryParams["limit"] != null ? int.tryParse(queryParams["limit"]!) : null;
 
     final pluginSessions = await _plugin.getSessions(
-      worktree,
+      projectId,
       start: start,
       limit: limit,
     );

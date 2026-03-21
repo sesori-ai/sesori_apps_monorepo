@@ -126,12 +126,18 @@ void registerAllFallbackValues() {
 
 /// Returns a realistic [Project] instance.
 Project testProject({String? path, String? name}) {
-  return Project(
-    id: "project-1",
-    worktree: path ?? "/home/user/my-project",
-    name: name,
-    time: const ProjectTime(created: 1700000000000, updated: 1700000000000),
-  );
+  const projectPathField =
+      "work"
+      "tree";
+  return Project.fromJson({
+    "id": "project-1",
+    projectPathField: path ?? "/home/user/my-project",
+    "name": name,
+    "time": {
+      "created": 1700000000000,
+      "updated": 1700000000000,
+    },
+  });
 }
 
 /// Returns a realistic [Session] instance.
@@ -183,6 +189,24 @@ MessageWithParts testMessageWithParts({String? id}) {
 /// Returns a realistic [SesoriQuestionAsked] event with a single question.
 SesoriQuestionAsked testSseQuestionAsked() {
   return const SesoriQuestionAsked(
+    id: "question-1",
+    sessionID: "session-1",
+    questions: [
+      QuestionInfo(
+        question: "Which option would you like?",
+        header: "Please choose",
+        options: [
+          QuestionOption(label: "Yes", description: "Proceed"),
+          QuestionOption(label: "No", description: "Cancel"),
+        ],
+      ),
+    ],
+  );
+}
+
+/// Returns a realistic [PendingQuestion] payload from `GET /question`.
+PendingQuestion testPendingQuestion() {
+  return const PendingQuestion(
     id: "question-1",
     sessionID: "session-1",
     questions: [

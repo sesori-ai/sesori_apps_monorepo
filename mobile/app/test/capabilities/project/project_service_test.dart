@@ -96,7 +96,7 @@ void main() {
       });
     });
 
-    group("getCurrentProject", () {
+    group("getProject", () {
       test("success: returns Project from GET /project/current", () async {
         // Arrange
         final testProj = testProject(path: "/home/user/current-project");
@@ -106,11 +106,12 @@ void main() {
           () => mockClient.get<Project>(
             "/project/current",
             fromJson: any(named: "fromJson"),
+            headers: any(named: "headers"),
           ),
         ).thenAnswer((_) async => successResponse);
 
         // Act
-        final result = await projectService.getCurrentProject();
+        final result = await projectService.getProject(projectId: "/home/user/current-project");
 
         // Assert
         expect(result, isA<SuccessResponse<Project>>());
@@ -119,6 +120,7 @@ void main() {
           () => mockClient.get<Project>(
             "/project/current",
             fromJson: any(named: "fromJson"),
+            headers: {"x-project-id": "/home/user/current-project"},
           ),
         ).called(1);
       });
@@ -132,11 +134,12 @@ void main() {
           () => mockClient.get<Project>(
             "/project/current",
             fromJson: any(named: "fromJson"),
+            headers: any(named: "headers"),
           ),
         ).thenAnswer((_) async => errorResponse);
 
         // Act
-        final result = await projectService.getCurrentProject();
+        final result = await projectService.getProject(projectId: "/home/user/current-project");
 
         // Assert
         expect(result, isA<ErrorResponse<Project>>());
@@ -145,6 +148,7 @@ void main() {
           () => mockClient.get<Project>(
             "/project/current",
             fromJson: any(named: "fromJson"),
+            headers: {"x-project-id": "/home/user/current-project"},
           ),
         ).called(1);
       });
@@ -155,17 +159,19 @@ void main() {
           () => mockClient.get<Project>(
             any(),
             fromJson: any(named: "fromJson"),
+            headers: any(named: "headers"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(testProject()));
 
         // Act
-        await projectService.getCurrentProject();
+        await projectService.getProject(projectId: "/home/user/current-project");
 
         // Assert
         verify(
           () => mockClient.get<Project>(
             "/project/current",
             fromJson: any(named: "fromJson"),
+            headers: {"x-project-id": "/home/user/current-project"},
           ),
         ).called(1);
       });

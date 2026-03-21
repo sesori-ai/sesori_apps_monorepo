@@ -8,7 +8,7 @@ enum HttpMethod {
   patch,
   delete,
 
-  /// Matches any HTTP method. Used by catch-all handlers like [ProxyHandler].
+  /// Matches any HTTP method.
   any
   ;
 

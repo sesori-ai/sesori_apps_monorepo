@@ -62,7 +62,7 @@ class _ProjectListBody extends StatelessWidget {
                     final project = projects[index];
                     return _ProjectTile(
                       project: project,
-                      activeSessions: activityById[project.worktree] ?? 0,
+                      activeSessions: activityById[project.id] ?? 0,
                     );
                   },
                 ),
@@ -86,7 +86,7 @@ class _ProjectTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final loc = context.loc;
-    final lastSegment = project.worktree.split("/").last;
+    final lastSegment = project.id.split("/").last;
     final displayName = project.name ?? (lastSegment.isNotEmpty ? lastSegment : loc.projectListDefaultName);
     final updatedAt = project.time?.updated;
     final isActive = activeSessions > 0;
@@ -104,7 +104,7 @@ class _ProjectTile extends StatelessWidget {
         crossAxisAlignment: .start,
         children: [
           Text(
-            project.worktree,
+            project.id,
             style: theme.textTheme.bodySmall,
             maxLines: 1,
             overflow: .ellipsis,
@@ -139,7 +139,7 @@ class _ProjectTile extends StatelessWidget {
         context.pushRoute(
           AppRoute.sessions,
           pathParams: {"projectId": project.id},
-          queryParams: {"worktree": project.worktree, "name": displayName},
+          queryParams: {"name": displayName},
         );
       },
     );

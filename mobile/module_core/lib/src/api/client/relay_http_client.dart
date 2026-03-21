@@ -21,6 +21,7 @@ class RelayHttpApiClient {
     String path, {
     required T Function(dynamic json) fromJson,
     Map<String, String>? queryParameters,
+    Map<String, String>? headers,
   }) async {
     final relayClient = _connectionService.relayClient;
     if (relayClient != null && relayClient.isConnected) {
@@ -31,6 +32,7 @@ class RelayHttpApiClient {
           path,
           fromJson,
           queryParameters: queryParameters,
+          extraHeaders: headers,
         ),
       );
     }
@@ -42,6 +44,7 @@ class RelayHttpApiClient {
     required T Function(dynamic json) fromJson,
     required Object? body,
     Map<String, String>? queryParameters,
+    Map<String, String>? headers,
   }) async {
     final relayClient = _connectionService.relayClient;
     if (relayClient != null && relayClient.isConnected) {
@@ -53,6 +56,7 @@ class RelayHttpApiClient {
           fromJson,
           queryParameters: queryParameters,
           body: body,
+          extraHeaders: headers,
         ),
       );
     }
@@ -64,6 +68,7 @@ class RelayHttpApiClient {
     required T Function(dynamic json) fromJson,
     required Object? body,
     Map<String, String>? queryParameters,
+    Map<String, String>? headers,
   }) async {
     final relayClient = _connectionService.relayClient;
     if (relayClient != null && relayClient.isConnected) {
@@ -75,6 +80,7 @@ class RelayHttpApiClient {
           fromJson,
           queryParameters: queryParameters,
           body: body,
+          extraHeaders: headers,
         ),
       );
     }
@@ -85,6 +91,7 @@ class RelayHttpApiClient {
     String path, {
     required T Function(dynamic json) fromJson,
     Map<String, String>? queryParameters,
+    Map<String, String>? headers,
   }) async {
     final relayClient = _connectionService.relayClient;
     if (relayClient != null && relayClient.isConnected) {
@@ -95,6 +102,7 @@ class RelayHttpApiClient {
           path,
           fromJson,
           queryParameters: queryParameters,
+          extraHeaders: headers,
         ),
       );
     }
@@ -115,6 +123,7 @@ class RelayHttpApiClient {
     T Function(dynamic json) fromJson, {
     Map<String, String>? queryParameters,
     Object? body,
+    Map<String, String>? extraHeaders,
   }) async {
     final requestId = _nextRelayRequestId();
     final fullPath = Uri(path: path, queryParameters: queryParameters).toString();
@@ -125,7 +134,7 @@ class RelayHttpApiClient {
         : jsonEncode(body);
 
     final headers = {
-      if (_connectionService.activeDirectory != null) "x-opencode-directory": _connectionService.activeDirectory!,
+      ...?extraHeaders,
       if (body != null) "content-type": "application/json",
     };
 

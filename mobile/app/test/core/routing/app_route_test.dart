@@ -49,10 +49,9 @@ void main() {
     test("combines path and query params", () {
       final result = AppRoute.sessions.buildPath(
         pathParams: {"projectId": "proj-123"},
-        queryParams: {"worktree": "/home/user/project", "name": "My Project"},
+        queryParams: {"name": "My Project"},
       );
       expect(result, contains("/projects/proj-123/sessions?"));
-      expect(result, contains("worktree"));
       expect(result, contains("name=My+Project"));
     });
 
@@ -120,13 +119,12 @@ void main() {
         _FakeBuildContext(),
         _FakeGoRouterState(
           pathParameters: {"projectId": "proj-42"},
-          queryParameters: {"worktree": "/home/user/project", "name": "My App"},
+          queryParameters: {"name": "My App"},
         ),
       );
       expect(widget, isA<SessionListScreen>());
       final screen = widget as SessionListScreen;
       expect(screen.projectId, "proj-42");
-      expect(screen.worktree, "/home/user/project");
       expect(screen.projectName, "My App");
     });
 
@@ -138,7 +136,6 @@ void main() {
       );
       final screen = widget as SessionListScreen;
       expect(screen.projectId, "");
-      expect(screen.worktree, "");
       expect(screen.projectName, isNull);
     });
 

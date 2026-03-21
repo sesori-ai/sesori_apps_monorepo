@@ -23,7 +23,6 @@ class GetProjectsHandler extends RequestHandler {
         .map(
           (p) => Project(
             id: p.id,
-            worktree: p.worktree,
             name: p.name,
             time: switch (p.time) {
               PluginProjectTime(:final created, :final updated) => ProjectTime(

@@ -31,12 +31,12 @@ void main() {
 
       expect(projects, hasLength(2));
 
-      final real = projects.firstWhere((p) => p.id == "p1");
-      expect(real.worktree, equals("/repo"));
+      final real = projects.firstWhere((p) => p.id == "/repo");
+      expect(real.id, equals("/repo"));
       expect(real.name, equals("Main Repo"));
 
-      final virtual = projects.firstWhere((p) => p.id == "global");
-      expect(virtual.worktree, equals("/virtual"));
+      final virtual = projects.firstWhere((p) => p.name == null);
+      expect(virtual.id, isNotEmpty);
     });
 
     test("getSessions maps internal sessions to plugin sessions", () async {

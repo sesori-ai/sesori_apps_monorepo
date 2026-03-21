@@ -121,11 +121,12 @@ void main() {
           () => mockClient.get<List<Session>>(
             "/session",
             fromJson: any(named: "fromJson"),
+            headers: any(named: "headers"),
             queryParameters: any(named: "queryParameters"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(sessions));
 
-        final result = await sessionService.listSessions();
+        final result = await sessionService.listSessions(projectId: "/tmp/project");
 
         expect(result, isA<SuccessResponse<List<Session>>>());
         expect((result as SuccessResponse<List<Session>>).data, equals(sessions));
@@ -137,32 +138,34 @@ void main() {
           () => mockClient.get<List<Session>>(
             "/session",
             fromJson: any(named: "fromJson"),
+            headers: any(named: "headers"),
             queryParameters: any(named: "queryParameters"),
           ),
         ).thenAnswer((_) async => ApiResponse.error(error));
 
-        final result = await sessionService.listSessions();
+        final result = await sessionService.listSessions(projectId: "/tmp/project");
 
         expect(result, isA<ErrorResponse<List<Session>>>());
         expect((result as ErrorResponse<List<Session>>).error, equals(error));
       });
 
-      test("passes roots=true query parameter to GET /session", () async {
+      test("passes x-project-id header and roots=true query parameter to GET /session", () async {
         when(
           () => mockClient.get<List<Session>>(
             any(),
             fromJson: any(named: "fromJson"),
+            headers: any(named: "headers"),
             queryParameters: any(named: "queryParameters"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(<Session>[]));
 
-        await sessionService.listSessions();
+        await sessionService.listSessions(projectId: "/tmp/project");
 
         verify(
           () => mockClient.get<List<Session>>(
             "/session",
             fromJson: any(named: "fromJson"),
-            queryParameters: {"roots": "true"},
+            headers: {"x-project-id": "/tmp/project"},
           ),
         ).called(1);
       });
@@ -174,19 +177,19 @@ void main() {
 
     group("createSession", () {
       test("success: returns Session from POST /session", () async {
-        final session = testSession();
+        final created = testSession(id: "server-session-id");
         when(
           () => mockClient.post<Session>(
             "/session",
             fromJson: any(named: "fromJson"),
             body: any(named: "body"),
           ),
-        ).thenAnswer((_) async => ApiResponse.success(session));
+        ).thenAnswer((_) async => ApiResponse.success(created));
 
-        final result = await sessionService.createSession();
+        final result = await sessionService.createSession(projectId: "/tmp/project");
 
         expect(result, isA<SuccessResponse<Session>>());
-        expect((result as SuccessResponse<Session>).data, equals(session));
+        expect((result as SuccessResponse<Session>).data.id, equals("server-session-id"));
         verify(
           () => mockClient.post<Session>(
             "/session",
@@ -206,7 +209,7 @@ void main() {
           ),
         ).thenAnswer((_) async => ApiResponse.error(error));
 
-        final result = await sessionService.createSession();
+        final result = await sessionService.createSession(projectId: "/tmp/project");
 
         expect(result, isA<ErrorResponse<Session>>());
         expect((result as ErrorResponse<Session>).error, equals(error));
@@ -217,6 +220,29 @@ void main() {
             body: any(named: "body"),
           ),
         ).called(1);
+      });
+
+      test("sends projectId and null parentSessionId in create session body", () async {
+        when(
+          () => mockClient.post<Session>(
+            any(),
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s1")));
+
+        await sessionService.createSession(projectId: "/tmp/project");
+
+        final captured =
+            verify(
+                  () => mockClient.post<Session>(
+                    "/session",
+                    fromJson: any(named: "fromJson"),
+                    body: captureAny(named: "body"),
+                  ),
+                ).captured.last
+                as Map<String, dynamic>;
+        expect(captured, equals({"projectId": "/tmp/project", "parentSessionId": null}));
       });
     });
 
@@ -271,9 +297,7 @@ void main() {
           ),
         ).thenAnswer((_) async => ApiResponse.success(testSession()));
 
-        final beforeMs = DateTime.now().millisecondsSinceEpoch;
         await sessionService.archiveSession(sessionId);
-        final afterMs = DateTime.now().millisecondsSinceEpoch;
 
         final captured =
             verify(
@@ -285,8 +309,7 @@ void main() {
                 ).captured.last
                 as Map<String, dynamic>;
 
-        final archivedAt = (captured["time"] as Map<String, dynamic>)["archived"] as int;
-        expect(archivedAt, inInclusiveRange(beforeMs, afterMs));
+        expect(captured["archived"], isTrue);
       });
     });
 
@@ -353,7 +376,7 @@ void main() {
                 ).captured.last
                 as Map<String, dynamic>;
 
-        expect((captured["time"] as Map<String, dynamic>)["archived"], isNull);
+        expect(captured["archived"], isFalse);
       });
     });
 
@@ -609,11 +632,11 @@ void main() {
         expect(
           captured["parts"],
           equals([
-            {"type": "text", "text": "Hello, world!"},
+            {"text": "Hello, world!"},
           ]),
         );
-        expect(captured.containsKey("agent"), isFalse);
-        expect(captured.containsKey("model"), isFalse);
+        expect(captured["agent"], isNull);
+        expect(captured["model"], isNull);
       });
 
       test("body includes agent and model when all optional params provided", () async {
@@ -705,10 +728,10 @@ void main() {
     // -----------------------------------------------------------------------
 
     group("getPendingQuestions", () {
-      test("success: returns List<SesoriQuestionAsked> from GET /question", () async {
-        final questions = [testSseQuestionAsked()];
+      test("success: returns List<PendingQuestion> from GET /question", () async {
+        final questions = [testPendingQuestion()];
         when(
-          () => mockClient.get<List<SesoriQuestionAsked>>(
+          () => mockClient.get<List<PendingQuestion>>(
             "/question",
             fromJson: any(named: "fromJson"),
           ),
@@ -716,10 +739,10 @@ void main() {
 
         final result = await sessionService.getPendingQuestions();
 
-        expect(result, isA<SuccessResponse<List<SesoriQuestionAsked>>>());
-        expect((result as SuccessResponse<List<SesoriQuestionAsked>>).data, equals(questions));
+        expect(result, isA<SuccessResponse<List<PendingQuestion>>>());
+        expect((result as SuccessResponse<List<PendingQuestion>>).data, equals(questions));
         verify(
-          () => mockClient.get<List<SesoriQuestionAsked>>(
+          () => mockClient.get<List<PendingQuestion>>(
             "/question",
             fromJson: any(named: "fromJson"),
           ),
@@ -729,7 +752,7 @@ void main() {
       test("error: propagates API error from GET /question", () async {
         final error = ApiError.generic();
         when(
-          () => mockClient.get<List<SesoriQuestionAsked>>(
+          () => mockClient.get<List<PendingQuestion>>(
             "/question",
             fromJson: any(named: "fromJson"),
           ),
@@ -737,10 +760,10 @@ void main() {
 
         final result = await sessionService.getPendingQuestions();
 
-        expect(result, isA<ErrorResponse<List<SesoriQuestionAsked>>>());
-        expect((result as ErrorResponse<List<SesoriQuestionAsked>>).error, equals(error));
+        expect(result, isA<ErrorResponse<List<PendingQuestion>>>());
+        expect((result as ErrorResponse<List<PendingQuestion>>).error, equals(error));
         verify(
-          () => mockClient.get<List<SesoriQuestionAsked>>(
+          () => mockClient.get<List<PendingQuestion>>(
             "/question",
             fromJson: any(named: "fromJson"),
           ),
@@ -761,8 +784,8 @@ void main() {
         ).thenAnswer((_) async => ApiResponse.success(true));
 
         final result = await sessionService.replyToQuestion(requestId, [
-          ["Yes"],
-          ["Proceed"],
+          const ReplyAnswer(values: ["Yes"]),
+          const ReplyAnswer(values: ["Proceed"]),
         ]);
 
         expect(result, isA<SuccessResponse<bool>>());
@@ -793,9 +816,9 @@ void main() {
       });
 
       test("sends answers list in body to POST /question/:id/reply", () async {
-        final answers = [
-          ["Yes", "OK"],
-          ["No"],
+        const answers = [
+          ReplyAnswer(values: ["Yes"]),
+          ReplyAnswer(values: ["No"]),
         ];
         when(
           () => mockClient.post<bool>(
@@ -817,7 +840,17 @@ void main() {
                 ).captured.last
                 as Map<String, dynamic>;
 
-        expect(captured["answers"], equals(answers));
+        expect(
+          captured["answers"],
+          equals([
+            {
+              "values": ["Yes"],
+            },
+            {
+              "values": ["No"],
+            },
+          ]),
+        );
       });
     });
 

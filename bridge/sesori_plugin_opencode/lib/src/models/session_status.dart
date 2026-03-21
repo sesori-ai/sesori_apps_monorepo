@@ -1,4 +1,5 @@
 import "package:freezed_annotation/freezed_annotation.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 part "session_status.freezed.dart";
 
@@ -20,4 +21,18 @@ sealed class SessionStatus with _$SessionStatus {
   }) = SessionStatusRetry;
 
   factory SessionStatus.fromJson(Map<String, dynamic> json) => _$SessionStatusFromJson(json);
+}
+
+extension SessionStatusToPluginExtension on SessionStatus {
+  PluginSessionStatus toPlugin() {
+    return switch (this) {
+      SessionStatusIdle() => const PluginSessionStatus.idle(),
+      SessionStatusBusy() => const PluginSessionStatus.busy(),
+      SessionStatusRetry(:final attempt, :final message, :final next) => PluginSessionStatus.retry(
+        attempt: attempt,
+        message: message,
+        next: next,
+      ),
+    };
+  }
 }

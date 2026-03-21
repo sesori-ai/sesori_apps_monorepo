@@ -13,7 +13,7 @@ import "../../../core/widgets/markdown_styles.dart";
 /// collected locally and only submitted once every question has been answered.
 class QuestionModal extends StatefulWidget {
   final SesoriQuestionAsked question;
-  final void Function(String requestId, List<List<String>> answers) onReply;
+  final void Function(String requestId, List<ReplyAnswer> answers) onReply;
   final void Function(String requestId) onReject;
 
   const QuestionModal({
@@ -28,7 +28,7 @@ class QuestionModal extends StatefulWidget {
   static Future<void> show(
     BuildContext context, {
     required SesoriQuestionAsked question,
-    required void Function(String requestId, List<List<String>> answers) onReply,
+    required void Function(String requestId, List<ReplyAnswer> answers) onReply,
     required void Function(String requestId) onReject,
   }) {
     return showAppModalBottomSheet<void>(
@@ -55,7 +55,7 @@ class _QuestionModalState extends State<QuestionModal> {
   int _currentIndex = 0;
 
   /// Answers collected so far — one entry per completed question.
-  final List<List<String>> _collectedAnswers = [];
+  final List<ReplyAnswer> _collectedAnswers = [];
 
   /// Selection state for the *current* question.
   final Set<String> _selectedLabels = {};
@@ -149,7 +149,7 @@ class _QuestionModalState extends State<QuestionModal> {
       answer = _selectedLabels.toList();
     }
 
-    _collectedAnswers.add(answer);
+    _collectedAnswers.add(ReplyAnswer(values: answer));
 
     if (_isLastQuestion) {
       // All questions answered — submit.
