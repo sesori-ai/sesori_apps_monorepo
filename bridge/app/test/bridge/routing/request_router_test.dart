@@ -37,12 +37,12 @@ void main() {
 
     test("routes GET /session to GetSessionsHandler", () async {
       final response = await router.route(
-        makeRequest("GET", "/session?projectId=/tmp"),
+        makeRequest("GET", "/session", headers: {"x-project-id": "/tmp"}),
       );
       expect(response.status, equals(200));
     });
 
-    test("GET /session without projectId returns 400", () async {
+    test("GET /session without x-project-id header returns 400", () async {
       final response = await router.route(makeRequest("GET", "/session"));
       expect(response.status, equals(400));
     });
@@ -61,7 +61,8 @@ void main() {
       await router.route(
         makeRequest(
           "GET",
-          "/session?projectId=/tmp&start=3&limit=7",
+          "/session?start=3&limit=7",
+          headers: {"x-project-id": "/tmp"},
         ),
       );
       expect(plugin.lastGetSessionsStart, equals(3));

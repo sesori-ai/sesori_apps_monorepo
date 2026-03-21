@@ -7,6 +7,7 @@ import "request_handler.dart";
 
 /// Handles `GET /project/current` — returns project for a given project id.
 class GetCurrentProjectHandler extends RequestHandler {
+  static const _projectIdHeader = "x-project-id";
   final BridgePlugin _plugin;
 
   GetCurrentProjectHandler(this._plugin) : super(HttpMethod.get, "/project/current");
@@ -18,9 +19,9 @@ class GetCurrentProjectHandler extends RequestHandler {
     required Map<String, String> queryParams,
     String? fragment,
   }) async {
-    final projectId = queryParams["projectId"];
+    final projectId = findHeader(request.headers, _projectIdHeader);
     if (projectId == null || projectId.isEmpty) {
-      return buildErrorResponse(request, 400, "missing projectId query parameter");
+      return buildErrorResponse(request, 400, "missing $_projectIdHeader header");
     }
 
     final pluginProject = await _plugin.getCurrentProject(projectId);

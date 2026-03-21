@@ -7,9 +7,10 @@ import "request_handler.dart";
 
 /// Handles `GET /session` — returns sessions for a given project.
 ///
-/// Requires `projectId` query parameter. Supports `start` and `limit`
+/// Requires `x-project-id` header. Supports `start` and `limit`
 /// query parameters for pagination.
 class GetSessionsHandler extends RequestHandler {
+  static const _projectIdHeader = "x-project-id";
   final BridgePlugin _plugin;
 
   GetSessionsHandler(this._plugin) : super(HttpMethod.get, "/session");
@@ -21,12 +22,12 @@ class GetSessionsHandler extends RequestHandler {
     required Map<String, String> queryParams,
     String? fragment,
   }) async {
-    final projectId = queryParams["projectId"];
+    final projectId = findHeader(request.headers, _projectIdHeader);
     if (projectId == null || projectId.isEmpty) {
       return buildErrorResponse(
         request,
         400,
-        "missing projectId query parameter",
+        "missing $_projectIdHeader header",
       );
     }
 

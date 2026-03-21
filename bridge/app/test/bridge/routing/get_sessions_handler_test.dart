@@ -30,48 +30,48 @@ void main() {
       expect(handler.canHandle(makeRequest("GET", "/session/abc/message")), isFalse);
     });
 
-    test("returns 400 when projectId query parameter is missing", () async {
+    test("returns 400 when x-project-id header is missing", () async {
       final response = await handler.handle(
         makeRequest("GET", "/session"),
         pathParams: {},
         queryParams: {},
       );
       expect(response.status, equals(400));
-      expect(response.body, contains("projectId"));
+      expect(response.body, contains("x-project-id"));
     });
 
-    test("returns 400 when projectId query parameter is empty", () async {
+    test("returns 400 when x-project-id header is empty", () async {
       final response = await handler.handle(
-        makeRequest("GET", "/session"),
+        makeRequest("GET", "/session", headers: {"x-project-id": ""}),
         pathParams: {},
-        queryParams: {"projectId": ""},
+        queryParams: {},
       );
       expect(response.status, equals(400));
     });
 
-    test("accepts projectId query parameter", () async {
+    test("accepts x-project-id header", () async {
       final response = await handler.handle(
-        makeRequest("GET", "/session"),
+        makeRequest("GET", "/session", headers: {"x-project-id": "/tmp"}),
         pathParams: {},
-        queryParams: {"projectId": "/tmp"},
+        queryParams: {},
       );
       expect(response.status, equals(200));
     });
 
-    test("forwards projectId to plugin.getSessions", () async {
+    test("forwards x-project-id header to plugin.getSessions", () async {
       await handler.handle(
-        makeRequest("GET", "/session"),
+        makeRequest("GET", "/session", headers: {"x-project-id": "/home/user/proj"}),
         pathParams: {},
-        queryParams: {"projectId": "/home/user/proj"},
+        queryParams: {},
       );
       expect(plugin.lastGetSessionsWorktree, equals("/home/user/proj"));
     });
 
     test("forwards start and limit from queryParams as ints", () async {
       await handler.handle(
-        makeRequest("GET", "/session"),
+        makeRequest("GET", "/session", headers: {"x-project-id": "/tmp"}),
         pathParams: {},
-        queryParams: {"projectId": "/tmp", "start": "5", "limit": "20"},
+        queryParams: {"start": "5", "limit": "20"},
       );
       expect(plugin.lastGetSessionsStart, equals(5));
       expect(plugin.lastGetSessionsLimit, equals(20));
@@ -79,9 +79,9 @@ void main() {
 
     test("start and limit are null when absent from queryParams", () async {
       await handler.handle(
-        makeRequest("GET", "/session"),
+        makeRequest("GET", "/session", headers: {"x-project-id": "/tmp"}),
         pathParams: {},
-        queryParams: {"projectId": "/tmp"},
+        queryParams: {},
       );
       expect(plugin.lastGetSessionsStart, isNull);
       expect(plugin.lastGetSessionsLimit, isNull);
@@ -89,9 +89,9 @@ void main() {
 
     test("returns 200 with application/json content-type", () async {
       final response = await handler.handle(
-        makeRequest("GET", "/session"),
+        makeRequest("GET", "/session", headers: {"x-project-id": "/tmp"}),
         pathParams: {},
-        queryParams: {"projectId": "/tmp"},
+        queryParams: {},
       );
       expect(response.status, equals(200));
       expect(response.headers["content-type"], equals("application/json"));
@@ -111,9 +111,9 @@ void main() {
       ];
 
       final response = await handler.handle(
-        makeRequest("GET", "/session"),
+        makeRequest("GET", "/session", headers: {"x-project-id": "/tmp"}),
         pathParams: {},
-        queryParams: {"projectId": "/tmp"},
+        queryParams: {},
       );
 
       final body = jsonDecode(response.body!) as List<dynamic>;
@@ -138,9 +138,9 @@ void main() {
       ];
 
       final response = await handler.handle(
-        makeRequest("GET", "/session"),
+        makeRequest("GET", "/session", headers: {"x-project-id": "/tmp"}),
         pathParams: {},
-        queryParams: {"projectId": "/tmp"},
+        queryParams: {},
       );
 
       final body = jsonDecode(response.body!) as List<dynamic>;
@@ -164,9 +164,9 @@ void main() {
       ];
 
       final response = await handler.handle(
-        makeRequest("GET", "/session"),
+        makeRequest("GET", "/session", headers: {"x-project-id": "/tmp"}),
         pathParams: {},
-        queryParams: {"projectId": "/tmp"},
+        queryParams: {},
       );
 
       final body = jsonDecode(response.body!) as List<dynamic>;
@@ -190,9 +190,9 @@ void main() {
       ];
 
       final response = await handler.handle(
-        makeRequest("GET", "/session"),
+        makeRequest("GET", "/session", headers: {"x-project-id": "/tmp"}),
         pathParams: {},
-        queryParams: {"projectId": "/tmp"},
+        queryParams: {},
       );
 
       final body = jsonDecode(response.body!) as List<dynamic>;

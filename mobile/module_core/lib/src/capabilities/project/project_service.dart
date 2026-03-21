@@ -13,13 +13,18 @@ class ProjectService {
   Future<ApiResponse<List<Project>>> listProjects() {
     return _client.get(
       "/project",
-      // ignore: no_slop_linter/avoid_dynamic_type, json parsing
-      fromJson: (json) => (json as List)
-          .map(
-            // ignore: no_slop_linter/avoid_dynamic_type, json parsing
-            (e) => Project.fromJson(e as Map<String, dynamic>),
-          )
-          .toList(),
+      fromJson: (json) => switch (json) {
+        final List<dynamic> list =>
+          list
+              .map(
+                (e) => switch (e) {
+                  final Map<String, dynamic> map => Project.fromJson(map),
+                  _ => throw FormatException("expected map, got ${e.runtimeType}"),
+                },
+              )
+              .toList(),
+        _ => throw FormatException("expected list, got ${json.runtimeType}"),
+      },
     );
   }
 
@@ -27,8 +32,11 @@ class ProjectService {
   Future<ApiResponse<Project>> getCurrentProject({required String projectId}) {
     return _client.get(
       "/project/current",
-      fromJson: (json) => Project.fromJson(json as Map<String, dynamic>),
-      queryParameters: {"projectId": projectId},
+      fromJson: (json) => switch (json) {
+        final Map<String, dynamic> map => Project.fromJson(map),
+        _ => throw FormatException("expected map, got ${json.runtimeType}"),
+      },
+      headers: {"x-project-id": projectId},
     );
   }
 }

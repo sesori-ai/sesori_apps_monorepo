@@ -172,6 +172,46 @@ void main() {
         expect(uri.queryParameters["q"], equals("flutter"));
         expect(uri.queryParameters["limit"], equals("10"));
       });
+
+      test("merges custom headers with request headers", () async {
+        // Arrange
+        when(() => mockRelayClient.sendRequest(any())).thenAnswer(
+          (_) async => const RelayResponse(id: "req-4", status: 200, headers: {}, body: "null"),
+        );
+
+        // Act
+        await client.get<String>(
+          "/session",
+          fromJson: (json) => json?.toString() ?? "",
+          headers: {"x-project-id": "/home/user/project"},
+        );
+
+        // Assert
+        final captured = verify(() => mockRelayClient.sendRequest(captureAny())).captured;
+        final request = captured.first as RelayRequest;
+        expect(request.headers["x-project-id"], equals("/home/user/project"));
+      });
+
+      test("merges custom headers with content-type header for POST", () async {
+        // Arrange
+        when(() => mockRelayClient.sendRequest(any())).thenAnswer(
+          (_) async => const RelayResponse(id: "req-5", status: 200, headers: {}, body: "null"),
+        );
+
+        // Act
+        await client.post<String>(
+          "/session",
+          fromJson: (json) => json?.toString() ?? "",
+          body: {"key": "value"},
+          headers: {"x-project-id": "/home/user/project"},
+        );
+
+        // Assert
+        final captured = verify(() => mockRelayClient.sendRequest(captureAny())).captured;
+        final request = captured.first as RelayRequest;
+        expect(request.headers["x-project-id"], equals("/home/user/project"));
+        expect(request.headers["content-type"], equals("application/json"));
+      });
     });
 
     // ---------------------------------------------------------------------------

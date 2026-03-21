@@ -121,6 +121,7 @@ void main() {
           () => mockClient.get<List<Session>>(
             "/session",
             fromJson: any(named: "fromJson"),
+            headers: any(named: "headers"),
             queryParameters: any(named: "queryParameters"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(sessions));
@@ -137,6 +138,7 @@ void main() {
           () => mockClient.get<List<Session>>(
             "/session",
             fromJson: any(named: "fromJson"),
+            headers: any(named: "headers"),
             queryParameters: any(named: "queryParameters"),
           ),
         ).thenAnswer((_) async => ApiResponse.error(error));
@@ -147,11 +149,12 @@ void main() {
         expect((result as ErrorResponse<List<Session>>).error, equals(error));
       });
 
-      test("passes roots=true query parameter to GET /session", () async {
+      test("passes x-project-id header and roots=true query parameter to GET /session", () async {
         when(
           () => mockClient.get<List<Session>>(
             any(),
             fromJson: any(named: "fromJson"),
+            headers: any(named: "headers"),
             queryParameters: any(named: "queryParameters"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(<Session>[]));
@@ -162,7 +165,8 @@ void main() {
           () => mockClient.get<List<Session>>(
             "/session",
             fromJson: any(named: "fromJson"),
-            queryParameters: {"roots": "true", "projectId": "/tmp/project"},
+            headers: {"x-project-id": "/tmp/project"},
+            queryParameters: {"roots": "true"},
           ),
         ).called(1);
       });

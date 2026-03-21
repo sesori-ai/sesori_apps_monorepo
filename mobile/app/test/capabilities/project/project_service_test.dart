@@ -106,7 +106,7 @@ void main() {
           () => mockClient.get<Project>(
             "/project/current",
             fromJson: any(named: "fromJson"),
-            queryParameters: any(named: "queryParameters"),
+            headers: any(named: "headers"),
           ),
         ).thenAnswer((_) async => successResponse);
 
@@ -120,7 +120,7 @@ void main() {
           () => mockClient.get<Project>(
             "/project/current",
             fromJson: any(named: "fromJson"),
-            queryParameters: {"projectId": "/home/user/current-project"},
+            headers: {"x-project-id": "/home/user/current-project"},
           ),
         ).called(1);
       });
@@ -134,7 +134,7 @@ void main() {
           () => mockClient.get<Project>(
             "/project/current",
             fromJson: any(named: "fromJson"),
-            queryParameters: any(named: "queryParameters"),
+            headers: any(named: "headers"),
           ),
         ).thenAnswer((_) async => errorResponse);
 
@@ -148,7 +148,7 @@ void main() {
           () => mockClient.get<Project>(
             "/project/current",
             fromJson: any(named: "fromJson"),
-            queryParameters: {"projectId": "/home/user/current-project"},
+            headers: {"x-project-id": "/home/user/current-project"},
           ),
         ).called(1);
       });
@@ -159,7 +159,7 @@ void main() {
           () => mockClient.get<Project>(
             any(),
             fromJson: any(named: "fromJson"),
-            queryParameters: any(named: "queryParameters"),
+            headers: any(named: "headers"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(testProject()));
 
@@ -171,7 +171,7 @@ void main() {
           () => mockClient.get<Project>(
             "/project/current",
             fromJson: any(named: "fromJson"),
-            queryParameters: {"projectId": "/home/user/current-project"},
+            headers: {"x-project-id": "/home/user/current-project"},
           ),
         ).called(1);
       });
