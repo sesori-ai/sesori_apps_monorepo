@@ -415,6 +415,28 @@ void main() {
       expect(summary, isEmpty);
     });
 
+    test("coldStart resolves busy child sessions not in root list", () async {
+      // Regression: coldStart used to call listRootSessions() which omitted
+      // child sessions.  A busy child would have no directory / parentId and
+      // be treated as an orphan root, logging "no worktree for session".
+      // After switching to listSessions(), child metadata is available.
+      final tracker = await _coldStartedTracker(
+        projects: [const Project(id: "p1", worktree: "/repo")],
+        sessions: [
+          const Session(id: "s1", projectID: "p1", directory: "/repo"),
+          const Session(id: "c1", projectID: "p1", directory: "/repo", parentID: "s1"),
+        ],
+        statuses: {"c1": const SessionStatus.busy()},
+      );
+
+      final summary = tracker.buildSummary();
+
+      expect(summary, hasLength(1));
+      expect(summary.first.activeSessions.first.id, equals("s1"));
+      expect(summary.first.activeSessions.first.mainAgentRunning, isFalse);
+      expect(summary.first.activeSessions.first.childSessionIds, equals(["c1"]));
+    });
+
     test("deeply nested children are ignored", () async {
       final tracker = await _coldStartedTracker(
         projects: [const Project(id: "p1", worktree: "/repo")],
