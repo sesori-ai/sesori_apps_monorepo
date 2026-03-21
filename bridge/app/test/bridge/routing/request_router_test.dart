@@ -2,6 +2,7 @@ import "dart:convert";
 
 import "package:sesori_bridge/src/bridge/routing/request_router.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "routing_test_helpers.dart";
@@ -87,11 +88,17 @@ void main() {
       );
 
       final response = await router.route(
-        makeRequest("POST", "/session", headers: {"x-opencode-directory": "/tmp"}),
+        makeRequest(
+          "POST",
+          "/session",
+          headers: {"x-opencode-directory": "/tmp"},
+          body: jsonEncode(const CreateSessionRequest(id: "session-1").toJson()),
+        ),
       );
 
       expect(response.status, equals(200));
-      expect(plugin.lastCreateSessionWorktree, equals("/tmp"));
+      expect(plugin.lastCreateSessionProjectId, equals("/tmp"));
+      expect(plugin.lastCreateSessionId, equals("session-1"));
     });
 
     test("routes DELETE /session/:id to DeleteSessionHandler", () async {

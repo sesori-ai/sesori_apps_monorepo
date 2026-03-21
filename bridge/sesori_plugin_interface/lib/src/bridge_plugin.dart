@@ -22,9 +22,9 @@ abstract class BridgePlugin {
   /// Get sessions for a worktree directory.
   Future<List<PluginSession>> getSessions(String worktree, {int? start, int? limit});
 
-  Future<PluginSession> createSession(String worktree);
+  Future<PluginSession> createSession({required String projectId, required String sessionId});
 
-  Future<PluginSession> updateSessionArchiveStatus(String sessionId, {required int? archivedAt});
+  Future<PluginSession> updateSessionArchiveStatus(String sessionId, {required bool archived});
 
   Future<void> deleteSession(String sessionId);
 
@@ -49,11 +49,11 @@ abstract class BridgePlugin {
 
   Future<List<PluginPendingQuestion>> getPendingQuestions();
 
-  Future<void> replyToQuestion(String questionId, {required List<List<String>> answers});
+  Future<void> replyToQuestion(String questionId, {required List<String> answers});
 
   Future<void> rejectQuestion(String questionId);
 
-  Future<PluginProject> getCurrentProject(String worktree);
+  Future<PluginProject> getCurrentProject(String projectId);
 
   /// Health check — returns the backend's health status as a JSON string.
   Future<String> healthCheck();

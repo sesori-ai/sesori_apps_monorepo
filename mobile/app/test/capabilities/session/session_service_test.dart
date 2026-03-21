@@ -174,21 +174,20 @@ void main() {
 
     group("createSession", () {
       test("success: returns Session from POST /session", () async {
-        final session = testSession();
         when(
-          () => mockClient.post<Session>(
+          () => mockClient.post<bool>(
             "/session",
             fromJson: any(named: "fromJson"),
             body: any(named: "body"),
           ),
-        ).thenAnswer((_) async => ApiResponse.success(session));
+        ).thenAnswer((_) async => ApiResponse.success(true));
 
         final result = await sessionService.createSession();
 
         expect(result, isA<SuccessResponse<Session>>());
-        expect((result as SuccessResponse<Session>).data, equals(session));
+        expect((result as SuccessResponse<Session>).data.id, isNotEmpty);
         verify(
-          () => mockClient.post<Session>(
+          () => mockClient.post<bool>(
             "/session",
             fromJson: any(named: "fromJson"),
             body: any(named: "body"),
@@ -199,7 +198,7 @@ void main() {
       test("error: propagates API error from POST /session", () async {
         final error = ApiError.generic();
         when(
-          () => mockClient.post<Session>(
+          () => mockClient.post<bool>(
             "/session",
             fromJson: any(named: "fromJson"),
             body: any(named: "body"),
@@ -211,7 +210,7 @@ void main() {
         expect(result, isA<ErrorResponse<Session>>());
         expect((result as ErrorResponse<Session>).error, equals(error));
         verify(
-          () => mockClient.post<Session>(
+          () => mockClient.post<bool>(
             "/session",
             fromJson: any(named: "fromJson"),
             body: any(named: "body"),
@@ -271,9 +270,7 @@ void main() {
           ),
         ).thenAnswer((_) async => ApiResponse.success(testSession()));
 
-        final beforeMs = DateTime.now().millisecondsSinceEpoch;
         await sessionService.archiveSession(sessionId);
-        final afterMs = DateTime.now().millisecondsSinceEpoch;
 
         final captured =
             verify(
@@ -285,8 +282,7 @@ void main() {
                 ).captured.last
                 as Map<String, dynamic>;
 
-        final archivedAt = (captured["time"] as Map<String, dynamic>)["archived"] as int;
-        expect(archivedAt, inInclusiveRange(beforeMs, afterMs));
+        expect(captured["archived"], isTrue);
       });
     });
 
@@ -353,7 +349,7 @@ void main() {
                 ).captured.last
                 as Map<String, dynamic>;
 
-        expect((captured["time"] as Map<String, dynamic>)["archived"], isNull);
+        expect(captured["archived"], isFalse);
       });
     });
 
@@ -761,8 +757,8 @@ void main() {
         ).thenAnswer((_) async => ApiResponse.success(true));
 
         final result = await sessionService.replyToQuestion(requestId, [
-          ["Yes"],
-          ["Proceed"],
+          "Yes",
+          "Proceed",
         ]);
 
         expect(result, isA<SuccessResponse<bool>>());
@@ -793,10 +789,7 @@ void main() {
       });
 
       test("sends answers list in body to POST /question/:id/reply", () async {
-        final answers = [
-          ["Yes", "OK"],
-          ["No"],
-        ];
+        const answers = ["Yes", "No"];
         when(
           () => mockClient.post<bool>(
             any(),

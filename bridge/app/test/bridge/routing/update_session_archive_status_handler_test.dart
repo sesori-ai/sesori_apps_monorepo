@@ -43,9 +43,7 @@ void main() {
           "PATCH",
           "/session/s1",
           body: jsonEncode(
-            const UpdateSessionArchiveRequest(
-              time: UpdateSessionArchiveTime(archived: 123),
-            ).toJson(),
+            const UpdateSessionArchiveRequest(archived: true).toJson(),
           ),
         ),
         pathParams: {"id": "s1"},
@@ -55,7 +53,7 @@ void main() {
       expect(plugin.lastUpdateSessionId, equals("s1"));
     });
 
-    test("parses archived int from body", () async {
+    test("parses archived=true from body", () async {
       plugin.updateSessionResult = const PluginSession(
         id: "s1",
         projectID: "p1",
@@ -71,19 +69,17 @@ void main() {
           "PATCH",
           "/session/s1",
           body: jsonEncode(
-            const UpdateSessionArchiveRequest(
-              time: UpdateSessionArchiveTime(archived: 123),
-            ).toJson(),
+            const UpdateSessionArchiveRequest(archived: true).toJson(),
           ),
         ),
         pathParams: {"id": "s1"},
         queryParams: {},
       );
 
-      expect(plugin.lastUpdateSessionArchivedAt, equals(123));
+      expect(plugin.lastUpdateSessionArchived, isTrue);
     });
 
-    test("parses archived null from body", () async {
+    test("parses archived=false from body", () async {
       plugin.updateSessionResult = const PluginSession(
         id: "s1",
         projectID: "p1",
@@ -99,19 +95,17 @@ void main() {
           "PATCH",
           "/session/s1",
           body: jsonEncode(
-            const UpdateSessionArchiveRequest(
-              time: UpdateSessionArchiveTime(archived: null),
-            ).toJson(),
+            const UpdateSessionArchiveRequest(archived: false).toJson(),
           ),
         ),
         pathParams: {"id": "s1"},
         queryParams: {},
       );
 
-      expect(plugin.lastUpdateSessionArchivedAt, isNull);
+      expect(plugin.lastUpdateSessionArchived, isFalse);
     });
 
-    test("returns 400 when body has no time key", () async {
+    test("returns 400 when body has no archived key", () async {
       final response = await handler.handle(
         makeRequest("PATCH", "/session/s1", body: "{}"),
         pathParams: {"id": "s1"},
@@ -122,15 +116,15 @@ void main() {
       expect(response.body, contains("invalid JSON body"));
     });
 
-    test("returns 400 when time has no archived key", () async {
+    test("returns 400 when path param id is missing", () async {
       final response = await handler.handle(
-        makeRequest("PATCH", "/session/s1", body: '{"time":{}}'),
-        pathParams: {"id": "s1"},
+        makeRequest("PATCH", "/session/s1", body: '{"archived":true}'),
+        pathParams: {},
         queryParams: {},
       );
 
       expect(response.status, equals(400));
-      expect(response.body, contains("invalid JSON body"));
+      expect(response.body, contains("missing session id"));
     });
 
     test("returns 200 with mapped Session JSON", () async {
@@ -149,9 +143,7 @@ void main() {
           "PATCH",
           "/session/s1",
           body: jsonEncode(
-            const UpdateSessionArchiveRequest(
-              time: UpdateSessionArchiveTime(archived: 30),
-            ).toJson(),
+            const UpdateSessionArchiveRequest(archived: true).toJson(),
           ),
         ),
         pathParams: {"id": "s1"},

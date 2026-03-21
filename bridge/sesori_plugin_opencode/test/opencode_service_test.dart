@@ -361,7 +361,7 @@ class FakeOpenCodeApi implements OpenCodeApi {
   }
 
   @override
-  Future<Session> createSession(String directory) async => throw UnimplementedError();
+  Future<Session> createSession(String directory, {required String sessionId}) async => throw UnimplementedError();
 
   @override
   Future<Session> updateSession(String sessionId, Map<String, dynamic> body) async => throw UnimplementedError();

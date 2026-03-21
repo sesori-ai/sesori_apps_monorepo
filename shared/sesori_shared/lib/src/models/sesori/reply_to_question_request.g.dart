@@ -9,7 +9,7 @@ part of 'reply_to_question_request.dart';
 _ReplyToQuestionRequest _$ReplyToQuestionRequestFromJson(Map json) =>
     _ReplyToQuestionRequest(
       answers: (json['answers'] as List<dynamic>)
-          .map((e) => (e as List<dynamic>).map((e) => e as String).toList())
+          .map((e) => e as String)
           .toList(),
     );
 

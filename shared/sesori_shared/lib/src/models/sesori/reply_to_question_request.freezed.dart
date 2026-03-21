@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$ReplyToQuestionRequest {
 
- List<List<String>> get answers;
+ List<String> get answers;
 /// Create a copy of ReplyToQuestionRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -48,7 +48,7 @@ abstract mixin class $ReplyToQuestionRequestCopyWith<$Res>  {
   factory $ReplyToQuestionRequestCopyWith(ReplyToQuestionRequest value, $Res Function(ReplyToQuestionRequest) _then) = _$ReplyToQuestionRequestCopyWithImpl;
 @useResult
 $Res call({
- List<List<String>> answers
+ List<String> answers
 });
 
 
@@ -68,7 +68,7 @@ class _$ReplyToQuestionRequestCopyWithImpl<$Res>
 @pragma('vm:prefer-inline') @override $Res call({Object? answers = null,}) {
   return _then(_self.copyWith(
 answers: null == answers ? _self.answers : answers // ignore: cast_nullable_to_non_nullable
-as List<List<String>>,
+as List<String>,
   ));
 }
 
@@ -80,11 +80,11 @@ as List<List<String>>,
 @JsonSerializable()
 
 class _ReplyToQuestionRequest implements ReplyToQuestionRequest {
-  const _ReplyToQuestionRequest({required final  List<List<String>> answers}): _answers = answers;
+  const _ReplyToQuestionRequest({required final  List<String> answers}): _answers = answers;
   factory _ReplyToQuestionRequest.fromJson(Map<String, dynamic> json) => _$ReplyToQuestionRequestFromJson(json);
 
- final  List<List<String>> _answers;
-@override List<List<String>> get answers {
+ final  List<String> _answers;
+@override List<String> get answers {
   if (_answers is EqualUnmodifiableListView) return _answers;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_answers);
@@ -124,7 +124,7 @@ abstract mixin class _$ReplyToQuestionRequestCopyWith<$Res> implements $ReplyToQ
   factory _$ReplyToQuestionRequestCopyWith(_ReplyToQuestionRequest value, $Res Function(_ReplyToQuestionRequest) _then) = __$ReplyToQuestionRequestCopyWithImpl;
 @override @useResult
 $Res call({
- List<List<String>> answers
+ List<String> answers
 });
 
 
@@ -144,7 +144,7 @@ class __$ReplyToQuestionRequestCopyWithImpl<$Res>
 @override @pragma('vm:prefer-inline') $Res call({Object? answers = null,}) {
   return _then(_ReplyToQuestionRequest(
 answers: null == answers ? _self._answers : answers // ignore: cast_nullable_to_non_nullable
-as List<List<String>>,
+as List<String>,
   ));
 }
 

@@ -20,7 +20,11 @@ class GetChildSessionsHandler extends RequestHandler {
     required Map<String, String> queryParams,
     String? fragment,
   }) async {
-    final sessionId = pathParams[_idParam]!;
+    final sessionId = pathParams[_idParam];
+    if (sessionId == null || sessionId.isEmpty) {
+      return buildErrorResponse(request, 400, "missing session id");
+    }
+
     final pluginSessions = await _plugin.getChildSessions(sessionId);
 
     final sessions = pluginSessions

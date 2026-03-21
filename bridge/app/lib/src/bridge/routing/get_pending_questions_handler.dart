@@ -6,6 +6,9 @@ import "package:sesori_shared/sesori_shared.dart";
 import "request_handler.dart";
 
 /// Handles `GET /question` — returns all pending question prompts.
+///
+/// Returns ALL pending questions globally — not session-scoped.
+/// Each question includes its sessionID.
 class GetPendingQuestionsHandler extends RequestHandler {
   final BridgePlugin _plugin;
 

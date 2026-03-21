@@ -53,12 +53,22 @@ class SessionService {
   }
 
   Future<ApiResponse<Session>> createSession() {
-    return _client.post(
-      "/session",
-      // ignore: no_slop_linter/avoid_dynamic_type, json parsing
-      fromJson: (json) => Session.fromJson(json as Map<String, dynamic>),
-      body: <String, dynamic>{},
-    );
+    final sessionId = DateTime.now().millisecondsSinceEpoch.toRadixString(36);
+    return _client
+        .post<bool>(
+          "/session",
+          // ignore: no_slop_linter/avoid_dynamic_type, json parsing
+          fromJson: (_) => true,
+          body: CreateSessionRequest(id: sessionId).toJson(),
+        )
+        .then(
+          (response) => switch (response) {
+            SuccessResponse() => ApiResponse.success(
+              Session(id: sessionId, projectID: "", directory: ""),
+            ),
+            ErrorResponse(:final error) => ApiResponse.error(error),
+          },
+        );
   }
 
   Future<ApiResponse<Session>> archiveSession(String sessionId) {
@@ -66,9 +76,7 @@ class SessionService {
       "/session/$sessionId",
       // ignore: no_slop_linter/avoid_dynamic_type, json parsing
       fromJson: (json) => Session.fromJson(json as Map<String, dynamic>),
-      body: UpdateSessionArchiveRequest(
-        time: UpdateSessionArchiveTime(archived: DateTime.now().millisecondsSinceEpoch),
-      ).toJson(),
+      body: const UpdateSessionArchiveRequest(archived: true).toJson(),
     );
   }
 
@@ -77,9 +85,7 @@ class SessionService {
       "/session/$sessionId",
       // ignore: no_slop_linter/avoid_dynamic_type, json parsing
       fromJson: (json) => Session.fromJson(json as Map<String, dynamic>),
-      body: const UpdateSessionArchiveRequest(
-        time: UpdateSessionArchiveTime(archived: null),
-      ).toJson(),
+      body: const UpdateSessionArchiveRequest(archived: false).toJson(),
     );
   }
 
@@ -142,10 +148,13 @@ class SessionService {
       fromJson: (_) => true,
       body: () {
         final payload = SendPromptRequest(
-          parts: [PromptPart(type: "text", text: text)],
+          parts: [PromptPart.text(text: text)],
           agent: agent,
           model: providerID != null && modelID != null ? PromptModel(providerID: providerID, modelID: modelID) : null,
         ).toJson();
+        payload["parts"] = (payload["parts"] as List<dynamic>)
+            .map((part) => <String, dynamic>{...(part as Map<String, dynamic>), "type": "text"})
+            .toList();
         payload.removeWhere((_, value) => value == null);
         return payload;
       }(),
@@ -176,7 +185,7 @@ class SessionService {
 
   Future<ApiResponse<bool>> replyToQuestion(
     String requestId,
-    List<List<String>> answers,
+    List<String> answers,
   ) {
     return _client.post(
       "/question/$requestId/reply",

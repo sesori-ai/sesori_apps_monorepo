@@ -215,7 +215,7 @@ void main() {
       act: (cubit) async {
         await _awaitLoaded(cubit);
         await cubit.replyToQuestion("question-1", const [
-          ["Yes"],
+          "Yes",
         ]);
       },
       expect: () => [
@@ -225,7 +225,7 @@ void main() {
       verify: (_) {
         verify(
           () => mockSessionService.replyToQuestion("question-1", const [
-            ["Yes"],
+            "Yes",
           ]),
         ).called(1);
       },

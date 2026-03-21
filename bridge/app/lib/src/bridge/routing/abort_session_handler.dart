@@ -18,7 +18,11 @@ class AbortSessionHandler extends RequestHandler {
     required Map<String, String> queryParams,
     String? fragment,
   }) async {
-    final sessionId = pathParams[_idParam]!;
+    final sessionId = pathParams[_idParam];
+    if (sessionId == null || sessionId.isEmpty) {
+      return buildErrorResponse(request, 400, "missing session id");
+    }
+
     await _plugin.abortSession(sessionId);
     return RelayMessage.response(
           id: request.id,

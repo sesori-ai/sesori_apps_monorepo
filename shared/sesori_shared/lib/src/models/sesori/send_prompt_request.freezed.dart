@@ -181,11 +181,18 @@ $PromptModelCopyWith<$Res>? get model {
 }
 }
 
+PromptPart _$PromptPartFromJson(
+  Map<String, dynamic> json
+) {
+    return PromptPartText.fromJson(
+      json
+    );
+}
 
 /// @nodoc
 mixin _$PromptPart {
 
- String get type; String? get text;
+ String get text;
 /// Create a copy of PromptPart
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -198,16 +205,16 @@ $PromptPartCopyWith<PromptPart> get copyWith => _$PromptPartCopyWithImpl<PromptP
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PromptPart&&(identical(other.type, type) || other.type == type)&&(identical(other.text, text) || other.text == text));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PromptPart&&(identical(other.text, text) || other.text == text));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,type,text);
+int get hashCode => Object.hash(runtimeType,text);
 
 @override
 String toString() {
-  return 'PromptPart(type: $type, text: $text)';
+  return 'PromptPart(text: $text)';
 }
 
 
@@ -218,7 +225,7 @@ abstract mixin class $PromptPartCopyWith<$Res>  {
   factory $PromptPartCopyWith(PromptPart value, $Res Function(PromptPart) _then) = _$PromptPartCopyWithImpl;
 @useResult
 $Res call({
- String type, String? text
+ String text
 });
 
 
@@ -235,11 +242,10 @@ class _$PromptPartCopyWithImpl<$Res>
 
 /// Create a copy of PromptPart
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? type = null,Object? text = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? text = null,}) {
   return _then(_self.copyWith(
-type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
-as String,text: freezed == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
-as String?,
+text: null == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 
@@ -250,47 +256,46 @@ as String?,
 /// @nodoc
 @JsonSerializable()
 
-class _PromptPart implements PromptPart {
-  const _PromptPart({required this.type, this.text});
-  factory _PromptPart.fromJson(Map<String, dynamic> json) => _$PromptPartFromJson(json);
+class PromptPartText implements PromptPart {
+  const PromptPartText({required this.text});
+  factory PromptPartText.fromJson(Map<String, dynamic> json) => _$PromptPartTextFromJson(json);
 
-@override final  String type;
-@override final  String? text;
+@override final  String text;
 
 /// Create a copy of PromptPart
 /// with the given fields replaced by the non-null parameter values.
 @override @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-_$PromptPartCopyWith<_PromptPart> get copyWith => __$PromptPartCopyWithImpl<_PromptPart>(this, _$identity);
+$PromptPartTextCopyWith<PromptPartText> get copyWith => _$PromptPartTextCopyWithImpl<PromptPartText>(this, _$identity);
 
 @override
 Map<String, dynamic> toJson() {
-  return _$PromptPartToJson(this, );
+  return _$PromptPartTextToJson(this, );
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PromptPart&&(identical(other.type, type) || other.type == type)&&(identical(other.text, text) || other.text == text));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PromptPartText&&(identical(other.text, text) || other.text == text));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,type,text);
+int get hashCode => Object.hash(runtimeType,text);
 
 @override
 String toString() {
-  return 'PromptPart(type: $type, text: $text)';
+  return 'PromptPart.text(text: $text)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class _$PromptPartCopyWith<$Res> implements $PromptPartCopyWith<$Res> {
-  factory _$PromptPartCopyWith(_PromptPart value, $Res Function(_PromptPart) _then) = __$PromptPartCopyWithImpl;
+abstract mixin class $PromptPartTextCopyWith<$Res> implements $PromptPartCopyWith<$Res> {
+  factory $PromptPartTextCopyWith(PromptPartText value, $Res Function(PromptPartText) _then) = _$PromptPartTextCopyWithImpl;
 @override @useResult
 $Res call({
- String type, String? text
+ String text
 });
 
 
@@ -298,20 +303,19 @@ $Res call({
 
 }
 /// @nodoc
-class __$PromptPartCopyWithImpl<$Res>
-    implements _$PromptPartCopyWith<$Res> {
-  __$PromptPartCopyWithImpl(this._self, this._then);
+class _$PromptPartTextCopyWithImpl<$Res>
+    implements $PromptPartTextCopyWith<$Res> {
+  _$PromptPartTextCopyWithImpl(this._self, this._then);
 
-  final _PromptPart _self;
-  final $Res Function(_PromptPart) _then;
+  final PromptPartText _self;
+  final $Res Function(PromptPartText) _then;
 
 /// Create a copy of PromptPart
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? type = null,Object? text = freezed,}) {
-  return _then(_PromptPart(
-type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
-as String,text: freezed == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
-as String?,
+@override @pragma('vm:prefer-inline') $Res call({Object? text = null,}) {
+  return _then(PromptPartText(
+text: null == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 

@@ -20,7 +20,10 @@ class SendPromptHandler extends RequestHandler {
     required Map<String, String> queryParams,
     String? fragment,
   }) async {
-    final sessionId = pathParams[_idParam]!;
+    final sessionId = pathParams[_idParam];
+    if (sessionId == null || sessionId.isEmpty) {
+      return buildErrorResponse(request, 400, "missing session id");
+    }
 
     final SendPromptRequest promptRequest;
     try {
@@ -35,10 +38,9 @@ class SendPromptHandler extends RequestHandler {
 
     final parts = promptRequest.parts
         .map(
-          (p) => PluginPromptPart(
-            type: p.type,
-            text: p.text,
-          ),
+          (p) => switch (p) {
+            PromptPartText(:final text) => PluginPromptPart.text(text: text),
+          },
         )
         .toList();
 

@@ -13,6 +13,7 @@ export "src/models/auth/auth_user.dart";
 export "src/models/auth/logout_response.dart";
 export "src/models/sesori/agent_info.dart";
 export "src/models/sesori/agent_mode.dart";
+export "src/models/sesori/create_session_request.dart";
 export "src/models/sesori/file_diff.dart";
 export "src/models/sesori/health_response.dart";
 export "src/models/sesori/message.dart";

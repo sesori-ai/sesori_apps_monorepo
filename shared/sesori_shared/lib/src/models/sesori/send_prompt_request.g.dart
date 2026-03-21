@@ -23,11 +23,11 @@ Map<String, dynamic> _$SendPromptRequestToJson(_SendPromptRequest instance) =>
       'model': instance.model?.toJson(),
     };
 
-_PromptPart _$PromptPartFromJson(Map json) =>
-    _PromptPart(type: json['type'] as String, text: json['text'] as String?);
+PromptPartText _$PromptPartTextFromJson(Map json) =>
+    PromptPartText(text: json['text'] as String);
 
-Map<String, dynamic> _$PromptPartToJson(_PromptPart instance) =>
-    <String, dynamic>{'type': instance.type, 'text': instance.text};
+Map<String, dynamic> _$PromptPartTextToJson(PromptPartText instance) =>
+    <String, dynamic>{'text': instance.text};
 
 _PromptModel _$PromptModelFromJson(Map json) => _PromptModel(
   providerID: json['providerID'] as String,

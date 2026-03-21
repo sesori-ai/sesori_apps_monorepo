@@ -1,6 +1,7 @@
 import "dart:convert";
 
 import "package:sesori_bridge/src/bridge/routing/send_prompt_handler.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -39,7 +40,7 @@ void main() {
           "/session/s1/prompt_async",
           body: jsonEncode(
             const SendPromptRequest(
-              parts: [PromptPart(type: "text", text: "Hello")],
+              parts: [PromptPart.text(text: "Hello")],
             ).toJson(),
           ),
         ),
@@ -58,8 +59,8 @@ void main() {
           body: jsonEncode(
             const SendPromptRequest(
               parts: [
-                PromptPart(type: "text", text: "Hello"),
-                PromptPart(type: "text", text: "World"),
+                PromptPart.text(text: "Hello"),
+                PromptPart.text(text: "World"),
               ],
             ).toJson(),
           ),
@@ -70,9 +71,8 @@ void main() {
 
       expect(plugin.lastSendPromptParts, isNotNull);
       expect(plugin.lastSendPromptParts, hasLength(2));
-      expect(plugin.lastSendPromptParts![0].type, equals("text"));
-      expect(plugin.lastSendPromptParts![0].text, equals("Hello"));
-      expect(plugin.lastSendPromptParts![1].text, equals("World"));
+      expect(plugin.lastSendPromptParts![0], equals(const PluginPromptPart.text(text: "Hello")));
+      expect(plugin.lastSendPromptParts![1], equals(const PluginPromptPart.text(text: "World")));
     });
 
     test("parses agent + model", () async {
@@ -82,7 +82,7 @@ void main() {
           "/session/s1/prompt_async",
           body: jsonEncode(
             const SendPromptRequest(
-              parts: [PromptPart(type: "text", text: "Hello")],
+              parts: [PromptPart.text(text: "Hello")],
               agent: "planner",
               model: PromptModel(providerID: "openai", modelID: "gpt-4o"),
             ).toJson(),
@@ -104,7 +104,7 @@ void main() {
           "/session/s42/prompt_async",
           body: jsonEncode(
             const SendPromptRequest(
-              parts: [PromptPart(type: "text", text: "Ship it")],
+              parts: [PromptPart.text(text: "Ship it")],
               agent: "coder",
               model: PromptModel(
                 providerID: "anthropic",
@@ -119,7 +119,7 @@ void main() {
 
       expect(plugin.lastSendPromptSessionId, equals("s42"));
       expect(plugin.lastSendPromptParts, hasLength(1));
-      expect(plugin.lastSendPromptParts![0].text, equals("Ship it"));
+      expect(plugin.lastSendPromptParts![0], equals(const PluginPromptPart.text(text: "Ship it")));
       expect(plugin.lastSendPromptAgent, equals("coder"));
       expect(plugin.lastSendPromptProviderID, equals("anthropic"));
       expect(plugin.lastSendPromptModelID, equals("claude-3-5-sonnet"));
@@ -132,7 +132,7 @@ void main() {
           "/session/s1/prompt_async",
           body: jsonEncode(
             const SendPromptRequest(
-              parts: [PromptPart(type: "text", text: "Hello")],
+              parts: [PromptPart.text(text: "Hello")],
             ).toJson(),
           ),
         ),

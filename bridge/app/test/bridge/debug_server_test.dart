@@ -239,20 +239,21 @@ class _FakeBridgePlugin implements BridgePlugin {
   }) async => sessionsResult;
 
   @override
-  Future<PluginSession> createSession(String worktree) async => const PluginSession(
-    id: "",
-    projectID: "",
-    directory: "",
-    parentID: null,
-    title: null,
-    time: null,
-    summary: null,
-  );
+  Future<PluginSession> createSession({required String projectId, required String sessionId}) async =>
+      const PluginSession(
+        id: "",
+        projectID: "",
+        directory: "",
+        parentID: null,
+        title: null,
+        time: null,
+        summary: null,
+      );
 
   @override
   Future<PluginSession> updateSessionArchiveStatus(
     String sessionId, {
-    required int? archivedAt,
+    required bool archived,
   }) async => const PluginSession(
     id: "",
     projectID: "",
@@ -298,14 +299,14 @@ class _FakeBridgePlugin implements BridgePlugin {
   @override
   Future<void> replyToQuestion(
     String questionId, {
-    required List<List<String>> answers,
+    required List<String> answers,
   }) async {}
 
   @override
   Future<void> rejectQuestion(String questionId) async {}
 
   @override
-  Future<PluginProject> getCurrentProject(String worktree) async => const PluginProject(id: "", worktree: "");
+  Future<PluginProject> getCurrentProject(String projectId) async => const PluginProject(id: "", worktree: "");
 
   @override
   Future<String> healthCheck() async => '{"healthy":true}';
@@ -360,20 +361,21 @@ class _TrackingBridgePlugin implements BridgePlugin {
   }) async => [];
 
   @override
-  Future<PluginSession> createSession(String worktree) async => const PluginSession(
-    id: "",
-    projectID: "",
-    directory: "",
-    parentID: null,
-    title: null,
-    time: null,
-    summary: null,
-  );
+  Future<PluginSession> createSession({required String projectId, required String sessionId}) async =>
+      const PluginSession(
+        id: "",
+        projectID: "",
+        directory: "",
+        parentID: null,
+        title: null,
+        time: null,
+        summary: null,
+      );
 
   @override
   Future<PluginSession> updateSessionArchiveStatus(
     String sessionId, {
-    required int? archivedAt,
+    required bool archived,
   }) async => const PluginSession(
     id: "",
     projectID: "",
@@ -419,14 +421,14 @@ class _TrackingBridgePlugin implements BridgePlugin {
   @override
   Future<void> replyToQuestion(
     String questionId, {
-    required List<List<String>> answers,
+    required List<String> answers,
   }) async {}
 
   @override
   Future<void> rejectQuestion(String questionId) async {}
 
   @override
-  Future<PluginProject> getCurrentProject(String worktree) async => const PluginProject(id: "", worktree: "");
+  Future<PluginProject> getCurrentProject(String projectId) async => const PluginProject(id: "", worktree: "");
 
   @override
   Future<String> healthCheck() async => '{"healthy":true}';

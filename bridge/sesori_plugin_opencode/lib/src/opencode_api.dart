@@ -56,7 +56,7 @@ class OpenCodeApi {
     return decoded.cast<Map<String, dynamic>>().map(Session.fromJson).toList();
   }
 
-  Future<Session> createSession(String directory) async {
+  Future<Session> createSession(String directory, {required String sessionId}) async {
     final client = http.Client();
     try {
       final response = await client.post(
@@ -66,7 +66,7 @@ class OpenCodeApi {
           "content-type": "application/json",
           "x-opencode-directory": directory,
         },
-        body: "{}",
+        body: jsonEncode({"id": sessionId}),
       );
       _ensureSuccess(response, "POST /session");
       return Session.fromJson(jsonDecode(response.body) as Map<String, dynamic>);

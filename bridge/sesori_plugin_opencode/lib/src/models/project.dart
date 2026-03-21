@@ -1,4 +1,5 @@
 import "package:freezed_annotation/freezed_annotation.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 part "project.freezed.dart";
 
@@ -25,4 +26,19 @@ sealed class ProjectTime with _$ProjectTime {
   }) = _ProjectTime;
 
   factory ProjectTime.fromJson(Map<String, dynamic> json) => _$ProjectTimeFromJson(json);
+}
+
+extension ProjectToPluginExtension on Project {
+  PluginProject toPlugin() => PluginProject(
+    id: id,
+    worktree: worktree,
+    name: name,
+    time: switch (time) {
+      ProjectTime(:final created, :final updated) => PluginProjectTime(
+        created: created,
+        updated: updated,
+      ),
+      null => null,
+    },
+  );
 }

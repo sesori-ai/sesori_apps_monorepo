@@ -6,5 +6,6 @@ part of 'plugin_prompt_part.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-Map<String, dynamic> _$PluginPromptPartToJson(_PluginPromptPart instance) =>
-    <String, dynamic>{'type': instance.type, 'text': instance.text};
+Map<String, dynamic> _$PluginPromptPartTextToJson(
+  PluginPromptPartText instance,
+) => <String, dynamic>{'text': instance.text};

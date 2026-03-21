@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PluginPromptPart {
 
- String get type; String? get text;
+ String get text;
 /// Create a copy of PluginPromptPart
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -27,16 +27,16 @@ $PluginPromptPartCopyWith<PluginPromptPart> get copyWith => _$PluginPromptPartCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginPromptPart&&(identical(other.type, type) || other.type == type)&&(identical(other.text, text) || other.text == text));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginPromptPart&&(identical(other.text, text) || other.text == text));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,type,text);
+int get hashCode => Object.hash(runtimeType,text);
 
 @override
 String toString() {
-  return 'PluginPromptPart(type: $type, text: $text)';
+  return 'PluginPromptPart(text: $text)';
 }
 
 
@@ -47,7 +47,7 @@ abstract mixin class $PluginPromptPartCopyWith<$Res>  {
   factory $PluginPromptPartCopyWith(PluginPromptPart value, $Res Function(PluginPromptPart) _then) = _$PluginPromptPartCopyWithImpl;
 @useResult
 $Res call({
- String type, String? text
+ String text
 });
 
 
@@ -64,11 +64,10 @@ class _$PluginPromptPartCopyWithImpl<$Res>
 
 /// Create a copy of PluginPromptPart
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? type = null,Object? text = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? text = null,}) {
   return _then(_self.copyWith(
-type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
-as String,text: freezed == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
-as String?,
+text: null == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 
@@ -79,47 +78,46 @@ as String?,
 /// @nodoc
 @JsonSerializable(createFactory: false)
 
-class _PluginPromptPart implements PluginPromptPart {
-  const _PluginPromptPart({required this.type, this.text});
+class PluginPromptPartText implements PluginPromptPart {
+  const PluginPromptPartText({required this.text});
   
 
-@override final  String type;
-@override final  String? text;
+@override final  String text;
 
 /// Create a copy of PluginPromptPart
 /// with the given fields replaced by the non-null parameter values.
 @override @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-_$PluginPromptPartCopyWith<_PluginPromptPart> get copyWith => __$PluginPromptPartCopyWithImpl<_PluginPromptPart>(this, _$identity);
+$PluginPromptPartTextCopyWith<PluginPromptPartText> get copyWith => _$PluginPromptPartTextCopyWithImpl<PluginPromptPartText>(this, _$identity);
 
 @override
 Map<String, dynamic> toJson() {
-  return _$PluginPromptPartToJson(this, );
+  return _$PluginPromptPartTextToJson(this, );
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginPromptPart&&(identical(other.type, type) || other.type == type)&&(identical(other.text, text) || other.text == text));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginPromptPartText&&(identical(other.text, text) || other.text == text));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,type,text);
+int get hashCode => Object.hash(runtimeType,text);
 
 @override
 String toString() {
-  return 'PluginPromptPart(type: $type, text: $text)';
+  return 'PluginPromptPart.text(text: $text)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class _$PluginPromptPartCopyWith<$Res> implements $PluginPromptPartCopyWith<$Res> {
-  factory _$PluginPromptPartCopyWith(_PluginPromptPart value, $Res Function(_PluginPromptPart) _then) = __$PluginPromptPartCopyWithImpl;
+abstract mixin class $PluginPromptPartTextCopyWith<$Res> implements $PluginPromptPartCopyWith<$Res> {
+  factory $PluginPromptPartTextCopyWith(PluginPromptPartText value, $Res Function(PluginPromptPartText) _then) = _$PluginPromptPartTextCopyWithImpl;
 @override @useResult
 $Res call({
- String type, String? text
+ String text
 });
 
 
@@ -127,20 +125,19 @@ $Res call({
 
 }
 /// @nodoc
-class __$PluginPromptPartCopyWithImpl<$Res>
-    implements _$PluginPromptPartCopyWith<$Res> {
-  __$PluginPromptPartCopyWithImpl(this._self, this._then);
+class _$PluginPromptPartTextCopyWithImpl<$Res>
+    implements $PluginPromptPartTextCopyWith<$Res> {
+  _$PluginPromptPartTextCopyWithImpl(this._self, this._then);
 
-  final _PluginPromptPart _self;
-  final $Res Function(_PluginPromptPart) _then;
+  final PluginPromptPartText _self;
+  final $Res Function(PluginPromptPartText) _then;
 
 /// Create a copy of PluginPromptPart
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? type = null,Object? text = freezed,}) {
-  return _then(_PluginPromptPart(
-type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
-as String,text: freezed == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
-as String?,
+@override @pragma('vm:prefer-inline') $Res call({Object? text = null,}) {
+  return _then(PluginPromptPartText(
+text: null == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 

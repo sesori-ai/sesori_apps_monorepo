@@ -194,7 +194,7 @@ class OpenCodePlugin implements BridgePlugin {
 
   @override
   Future<List<PluginProject>> getProjects() async {
-    return (await _call(_service.getProjects)).map(_mapProject).toList();
+    return (await _call(_service.getProjects)).map((project) => project.toPlugin()).toList();
   }
 
   @override
@@ -210,23 +210,25 @@ class OpenCodePlugin implements BridgePlugin {
         limit: limit,
       ),
     );
-    return sessions.map(_mapSession).toList();
+    return sessions.map((session) => session.toPlugin()).toList();
   }
 
   @override
-  Future<PluginSession> createSession(String worktree) async {
-    final session = await _call(() => _service.repository.api.createSession(worktree));
-    return _mapSession(session);
+  Future<PluginSession> createSession({required String projectId, required String sessionId}) async {
+    final session = await _call(() => _service.repository.api.createSession(projectId, sessionId: sessionId));
+    return session.toPlugin();
   }
 
   @override
-  Future<PluginSession> updateSessionArchiveStatus(String sessionId, {required int? archivedAt}) async {
+  Future<PluginSession> updateSessionArchiveStatus(String sessionId, {required bool archived}) async {
     final session = await _call(
       () => _service.repository.api.updateSession(sessionId, {
-        "time": {"archived": archivedAt},
+        "time": {
+          "archived": archived ? DateTime.now().millisecondsSinceEpoch : null,
+        },
       }),
     );
-    return _mapSession(session);
+    return session.toPlugin();
   }
 
   @override
@@ -237,13 +239,13 @@ class OpenCodePlugin implements BridgePlugin {
   @override
   Future<List<PluginSession>> getChildSessions(String sessionId) async {
     final sessions = await _call(() => _service.repository.api.getChildren(sessionId));
-    return sessions.map(_mapSession).toList();
+    return sessions.map((session) => session.toPlugin()).toList();
   }
 
   @override
   Future<Map<String, PluginSessionStatus>> getSessionStatuses() async {
     final statuses = await _call(_service.repository.api.getSessionStatuses);
-    return statuses.map((key, value) => MapEntry(key, _mapSessionStatus(value)));
+    return statuses.map((key, value) => MapEntry(key, value.toPlugin()));
   }
 
   @override
@@ -262,11 +264,12 @@ class OpenCodePlugin implements BridgePlugin {
   }) {
     final body = <String, dynamic>{
       "parts": parts.map((part) {
-        final partBody = <String, dynamic>{"type": part.type};
-        if (part.text case final text?) {
-          partBody["text"] = text;
-        }
-        return partBody;
+        return switch (part) {
+          PluginPromptPartText(:final text) => <String, dynamic>{
+            "type": "text",
+            "text": text,
+          },
+        };
       }).toList(),
     };
 
@@ -299,19 +302,24 @@ class OpenCodePlugin implements BridgePlugin {
   @override
   Future<List<PluginAgent>> getAgents() async {
     final agents = await _call(_service.repository.api.listAgents);
-    return agents.map(_mapAgent).toList();
+    return agents.map((agent) => agent.toPlugin()).toList();
   }
 
   @override
   Future<List<PluginPendingQuestion>> getPendingQuestions() async {
     final pending = await _call(_service.repository.api.getPendingQuestions);
-    return pending.map(_mapPendingQuestion).toList();
+    return pending.map((question) => question.toPlugin()).toList();
   }
 
   @override
-  Future<void> replyToQuestion(String questionId, {required List<List<String>> answers}) {
+  Future<void> replyToQuestion(String questionId, {required List<String> answers}) {
     return _call(
-      () => _service.repository.api.replyToQuestion(questionId, body: {"answers": answers}),
+      () => _service.repository.api.replyToQuestion(
+        questionId,
+        body: {
+          "answers": answers.map((answer) => [answer]).toList(),
+        },
+      ),
     );
   }
 
@@ -321,9 +329,9 @@ class OpenCodePlugin implements BridgePlugin {
   }
 
   @override
-  Future<PluginProject> getCurrentProject(String worktree) async {
-    final project = await _call(() => _service.repository.api.getCurrentProject(worktree));
-    return _mapProject(project);
+  Future<PluginProject> getCurrentProject(String projectId) async {
+    final project = await _call(() => _service.repository.api.getCurrentProject(projectId));
+    return project.toPlugin();
   }
 
   void _handleRawSseEvent(String rawData) {
@@ -348,97 +356,6 @@ class OpenCodePlugin implements BridgePlugin {
 
   void _emitProjectsSummary() {
     _eventBuffer.add(const BridgeSseProjectUpdated());
-  }
-
-  PluginProject _mapProject(Project p) => PluginProject(
-    id: p.id,
-    worktree: p.worktree,
-    name: p.name,
-    time: switch (p.time) {
-      ProjectTime(:final created, :final updated) => PluginProjectTime(
-        created: created,
-        updated: updated,
-      ),
-      null => null,
-    },
-  );
-
-  PluginSession _mapSession(Session s) => PluginSession(
-    id: s.id,
-    projectID: s.projectID,
-    directory: s.directory,
-    parentID: s.parentID,
-    title: s.title,
-    summary: switch (s.summary) {
-      SessionSummary(:final additions, :final deletions, :final files) => PluginSessionSummary(
-        additions: additions,
-        deletions: deletions,
-        files: files,
-      ),
-      null => null,
-    },
-    time: switch (s.time) {
-      SessionTime(:final created, :final updated, :final archived) => PluginSessionTime(
-        created: created,
-        updated: updated,
-        archived: archived,
-      ),
-      null => null,
-    },
-  );
-
-  PluginSessionStatus _mapSessionStatus(SessionStatus s) {
-    return switch (s) {
-      SessionStatusIdle() => const PluginSessionStatus.idle(),
-      SessionStatusBusy() => const PluginSessionStatus.busy(),
-      SessionStatusRetry(:final attempt, :final message, :final next) => PluginSessionStatus.retry(
-        attempt: attempt,
-        message: message,
-        next: next,
-      ),
-    };
-  }
-
-  PluginAgent _mapAgent(AgentInfo a) {
-    return PluginAgent(
-      name: a.name,
-      description: a.description,
-      model: switch (a.model) {
-        AgentModel(:final modelID, :final providerID) => PluginAgentModel(
-          modelID: modelID,
-          providerID: providerID,
-        ),
-        null => null,
-      },
-      variant: a.variant,
-      mode: switch (a.mode) {
-        AgentMode.all => PluginAgentMode.all,
-        AgentMode.primary => PluginAgentMode.primary,
-        AgentMode.subagent => PluginAgentMode.subagent,
-        AgentMode.unknown => PluginAgentMode.unknown,
-      },
-      hidden: a.hidden,
-    );
-  }
-
-  PluginPendingQuestion _mapPendingQuestion(PendingQuestion q) {
-    return PluginPendingQuestion(
-      id: q.id,
-      sessionID: q.sessionID,
-      questions: q.questions
-          .map(
-            (question) => PluginQuestionInfo(
-              question: question.question,
-              header: question.header,
-              options: question.options
-                  .map((option) => PluginQuestionOption(label: option.label, description: option.description))
-                  .toList(),
-              multiple: question.multiple,
-              custom: question.custom,
-            ),
-          )
-          .toList(),
-    );
   }
 
   PluginMessageWithParts _mapMessage(MessageWithParts raw) {

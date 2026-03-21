@@ -18,12 +18,12 @@ class GetCurrentProjectHandler extends RequestHandler {
     required Map<String, String> queryParams,
     String? fragment,
   }) async {
-    final worktree = findHeader(request.headers, "x-opencode-directory");
-    if (worktree == null || worktree.isEmpty) {
+    final projectId = findHeader(request.headers, "x-opencode-directory");
+    if (projectId == null || projectId.isEmpty) {
       return buildErrorResponse(request, 400, "missing x-opencode-directory header");
     }
 
-    final pluginProject = await _plugin.getCurrentProject(worktree);
+    final pluginProject = await _plugin.getCurrentProject(projectId);
     final project = Project(
       id: pluginProject.id,
       worktree: pluginProject.worktree,

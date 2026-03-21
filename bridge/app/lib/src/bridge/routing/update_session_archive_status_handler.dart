@@ -20,7 +20,10 @@ class UpdateSessionArchiveStatusHandler extends RequestHandler {
     required Map<String, String> queryParams,
     String? fragment,
   }) async {
-    final sessionId = pathParams[_idParam]!;
+    final sessionId = pathParams[_idParam];
+    if (sessionId == null || sessionId.isEmpty) {
+      return buildErrorResponse(request, 400, "missing session id");
+    }
 
     final UpdateSessionArchiveRequest archiveRequest;
     try {
@@ -33,11 +36,9 @@ class UpdateSessionArchiveStatusHandler extends RequestHandler {
       return buildErrorResponse(request, 400, "invalid JSON body");
     }
 
-    final archived = archiveRequest.time.archived;
-
     final updated = await _plugin.updateSessionArchiveStatus(
       sessionId,
-      archivedAt: archived,
+      archived: archiveRequest.archived,
     );
 
     final session = Session(

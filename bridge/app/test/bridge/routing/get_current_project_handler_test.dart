@@ -71,7 +71,7 @@ void main() {
         queryParams: {},
       );
 
-      expect(plugin.lastGetCurrentProjectWorktree, equals("/tmp/project"));
+      expect(plugin.lastGetCurrentProjectProjectId, equals("/tmp/project"));
 
       final project = jsonDecode(response.body!) as Map<String, dynamic>;
       expect(project["id"], equals("p1"));

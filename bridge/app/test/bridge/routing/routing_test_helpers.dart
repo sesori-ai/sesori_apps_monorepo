@@ -46,9 +46,10 @@ class FakeBridgePlugin implements BridgePlugin {
   String? lastGetMessagesSessionId;
 
   bool? lastGetProvidersConnectedOnly;
-  String? lastCreateSessionWorktree;
+  String? lastCreateSessionProjectId;
+  String? lastCreateSessionId;
   String? lastUpdateSessionId;
-  int? lastUpdateSessionArchivedAt;
+  bool? lastUpdateSessionArchived;
   String? lastDeleteSessionId;
   String? lastGetChildSessionsSessionId;
   String? lastSendPromptSessionId;
@@ -58,9 +59,9 @@ class FakeBridgePlugin implements BridgePlugin {
   String? lastSendPromptModelID;
   String? lastAbortSessionId;
   String? lastReplyQuestionId;
-  List<List<String>>? lastReplyAnswers;
+  List<String>? lastReplyAnswers;
   String? lastRejectQuestionId;
-  String? lastGetCurrentProjectWorktree;
+  String? lastGetCurrentProjectProjectId;
 
   // ── Error injection ──────────────────────────────────────────────────────
 
@@ -68,6 +69,7 @@ class FakeBridgePlugin implements BridgePlugin {
   bool throwOnGetProjects = false;
   Object? throwOnGetProjectsError;
   bool throwOnGetSessions = false;
+  Object? throwOnDeleteSessionError;
 
   // ── BridgePlugin implementation ──────────────────────────────────────────
 
@@ -106,8 +108,9 @@ class FakeBridgePlugin implements BridgePlugin {
   }
 
   @override
-  Future<PluginSession> createSession(String worktree) async {
-    lastCreateSessionWorktree = worktree;
+  Future<PluginSession> createSession({required String projectId, required String sessionId}) async {
+    lastCreateSessionProjectId = projectId;
+    lastCreateSessionId = sessionId;
     return createSessionResult ??
         const PluginSession(
           id: "",
@@ -123,10 +126,10 @@ class FakeBridgePlugin implements BridgePlugin {
   @override
   Future<PluginSession> updateSessionArchiveStatus(
     String sessionId, {
-    required int? archivedAt,
+    required bool archived,
   }) async {
     lastUpdateSessionId = sessionId;
-    lastUpdateSessionArchivedAt = archivedAt;
+    lastUpdateSessionArchived = archived;
     return updateSessionResult ??
         const PluginSession(
           id: "",
@@ -142,6 +145,9 @@ class FakeBridgePlugin implements BridgePlugin {
   @override
   Future<void> deleteSession(String sessionId) async {
     lastDeleteSessionId = sessionId;
+    if (throwOnDeleteSessionError case final error?) {
+      throw error;
+    }
   }
 
   @override
@@ -190,7 +196,7 @@ class FakeBridgePlugin implements BridgePlugin {
   @override
   Future<void> replyToQuestion(
     String questionId, {
-    required List<List<String>> answers,
+    required List<String> answers,
   }) async {
     lastReplyQuestionId = questionId;
     lastReplyAnswers = answers;
@@ -202,8 +208,8 @@ class FakeBridgePlugin implements BridgePlugin {
   }
 
   @override
-  Future<PluginProject> getCurrentProject(String worktree) async {
-    lastGetCurrentProjectWorktree = worktree;
+  Future<PluginProject> getCurrentProject(String projectId) async {
+    lastGetCurrentProjectProjectId = projectId;
     return currentProjectResult ?? const PluginProject(id: "", worktree: "");
   }
 

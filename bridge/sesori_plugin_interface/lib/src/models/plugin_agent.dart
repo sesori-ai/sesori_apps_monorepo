@@ -11,6 +11,8 @@ enum PluginAgentMode {
   unknown,
 }
 
+enum PluginAgentVariant { none, minimal, low, medium, high, xhigh }
+
 @freezed
 sealed class PluginAgentModel with _$PluginAgentModel {
   const factory PluginAgentModel({
@@ -25,7 +27,7 @@ sealed class PluginAgent with _$PluginAgent {
     required String name,
     required String? description,
     required PluginAgentModel? model,
-    required String? variant,
+    required PluginAgentVariant? variant,
     required PluginAgentMode mode,
     required bool hidden,
   }) = _PluginAgent;

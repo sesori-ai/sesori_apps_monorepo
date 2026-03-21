@@ -30,8 +30,8 @@ void main() {
           body: jsonEncode(
             const ReplyToQuestionRequest(
               answers: [
-                ["yes"],
-                ["tool-a", "tool-b"],
+                "yes",
+                "tool-a",
               ],
             ).toJson(),
           ),
@@ -44,8 +44,8 @@ void main() {
       expect(
         plugin.lastReplyAnswers,
         equals(const [
-          ["yes"],
-          ["tool-a", "tool-b"],
+          "yes",
+          "tool-a",
         ]),
       );
     });
@@ -58,7 +58,7 @@ void main() {
           body: jsonEncode(
             const ReplyToQuestionRequest(
               answers: [
-                ["ok"],
+                "ok",
               ],
             ).toJson(),
           ),
@@ -79,6 +79,21 @@ void main() {
       );
 
       expect(response.status, equals(400));
+    });
+
+    test("returns 400 when path param id is missing", () async {
+      final response = await handler.handle(
+        makeRequest(
+          "POST",
+          "/question/q1/reply",
+          body: jsonEncode(const ReplyToQuestionRequest(answers: ["ok"]).toJson()),
+        ),
+        pathParams: {},
+        queryParams: {},
+      );
+
+      expect(response.status, equals(400));
+      expect(response.body, contains("missing question id"));
     });
   });
 }

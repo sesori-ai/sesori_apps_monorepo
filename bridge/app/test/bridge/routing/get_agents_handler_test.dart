@@ -40,7 +40,7 @@ void main() {
           name: "planner",
           description: "Plans tasks",
           model: PluginAgentModel(modelID: "gpt-4o", providerID: "openai"),
-          variant: "fast",
+          variant: PluginAgentVariant.high,
           mode: PluginAgentMode.primary,
           hidden: true,
         ),
@@ -56,7 +56,7 @@ void main() {
       final agent = body[0] as Map<String, dynamic>;
       expect(agent["name"], equals("planner"));
       expect(agent["description"], equals("Plans tasks"));
-      expect(agent["variant"], equals("fast"));
+      expect(agent["variant"], equals("high"));
       expect(agent["mode"], equals("primary"));
       expect(agent["hidden"], isTrue);
 

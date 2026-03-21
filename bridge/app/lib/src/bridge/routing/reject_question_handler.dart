@@ -6,6 +6,8 @@ import "request_handler.dart";
 const _idParam = "id";
 
 /// Handles `POST /question/:id/reject` — rejects a pending question.
+///
+/// Question IDs are globally unique. No session context needed.
 class RejectQuestionHandler extends RequestHandler {
   final BridgePlugin _plugin;
 
@@ -18,7 +20,11 @@ class RejectQuestionHandler extends RequestHandler {
     required Map<String, String> queryParams,
     String? fragment,
   }) async {
-    final questionId = pathParams[_idParam]!;
+    final questionId = pathParams[_idParam];
+    if (questionId == null || questionId.isEmpty) {
+      return buildErrorResponse(request, 400, "missing question id");
+    }
+
     await _plugin.rejectQuestion(questionId);
     return RelayMessage.response(
           id: request.id,

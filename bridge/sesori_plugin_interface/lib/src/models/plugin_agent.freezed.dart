@@ -150,7 +150,7 @@ as String,
 /// @nodoc
 mixin _$PluginAgent {
 
- String get name; String? get description; PluginAgentModel? get model; String? get variant; PluginAgentMode get mode; bool get hidden;
+ String get name; String? get description; PluginAgentModel? get model; PluginAgentVariant? get variant; PluginAgentMode get mode; bool get hidden;
 /// Create a copy of PluginAgent
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -183,7 +183,7 @@ abstract mixin class $PluginAgentCopyWith<$Res>  {
   factory $PluginAgentCopyWith(PluginAgent value, $Res Function(PluginAgent) _then) = _$PluginAgentCopyWithImpl;
 @useResult
 $Res call({
- String name, String? description, PluginAgentModel? model, String? variant, PluginAgentMode mode, bool hidden
+ String name, String? description, PluginAgentModel? model, PluginAgentVariant? variant, PluginAgentMode mode, bool hidden
 });
 
 
@@ -206,7 +206,7 @@ name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
 as PluginAgentModel?,variant: freezed == variant ? _self.variant : variant // ignore: cast_nullable_to_non_nullable
-as String?,mode: null == mode ? _self.mode : mode // ignore: cast_nullable_to_non_nullable
+as PluginAgentVariant?,mode: null == mode ? _self.mode : mode // ignore: cast_nullable_to_non_nullable
 as PluginAgentMode,hidden: null == hidden ? _self.hidden : hidden // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
@@ -238,7 +238,7 @@ class _PluginAgent implements PluginAgent {
 @override final  String name;
 @override final  String? description;
 @override final  PluginAgentModel? model;
-@override final  String? variant;
+@override final  PluginAgentVariant? variant;
 @override final  PluginAgentMode mode;
 @override final  bool hidden;
 
@@ -275,7 +275,7 @@ abstract mixin class _$PluginAgentCopyWith<$Res> implements $PluginAgentCopyWith
   factory _$PluginAgentCopyWith(_PluginAgent value, $Res Function(_PluginAgent) _then) = __$PluginAgentCopyWithImpl;
 @override @useResult
 $Res call({
- String name, String? description, PluginAgentModel? model, String? variant, PluginAgentMode mode, bool hidden
+ String name, String? description, PluginAgentModel? model, PluginAgentVariant? variant, PluginAgentMode mode, bool hidden
 });
 
 
@@ -298,7 +298,7 @@ name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
 as PluginAgentModel?,variant: freezed == variant ? _self.variant : variant // ignore: cast_nullable_to_non_nullable
-as String?,mode: null == mode ? _self.mode : mode // ignore: cast_nullable_to_non_nullable
+as PluginAgentVariant?,mode: null == mode ? _self.mode : mode // ignore: cast_nullable_to_non_nullable
 as PluginAgentMode,hidden: null == hidden ? _self.hidden : hidden // ignore: cast_nullable_to_non_nullable
 as bool,
   ));

@@ -36,6 +36,17 @@ void main() {
       expect(plugin.lastGetChildSessionsSessionId, equals("s1"));
     });
 
+    test("returns 400 when path param id is missing", () async {
+      final response = await handler.handle(
+        makeRequest("GET", "/session/s1/children"),
+        pathParams: {},
+        queryParams: {},
+      );
+
+      expect(response.status, equals(400));
+      expect(response.body, contains("missing session id"));
+    });
+
     test("returns JSON list", () async {
       plugin.childSessionsResult = const [
         PluginSession(

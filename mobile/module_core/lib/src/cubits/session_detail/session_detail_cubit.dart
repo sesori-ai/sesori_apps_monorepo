@@ -560,7 +560,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
   Future<void> replyToQuestion(
     String requestId,
-    List<List<String>> answers,
+    List<String> answers,
   ) async {
     // Optimistically remove before the API call so the screen sees the
     // updated state synchronously (prevents auto-chain re-opening the

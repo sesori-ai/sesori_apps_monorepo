@@ -15,12 +15,10 @@ sealed class SendPromptRequest with _$SendPromptRequest {
   factory SendPromptRequest.fromJson(Map<String, dynamic> json) => _$SendPromptRequestFromJson(json);
 }
 
-@Freezed(fromJson: true, toJson: true)
+@Freezed(unionKey: "type", fromJson: true, toJson: true)
 sealed class PromptPart with _$PromptPart {
-  const factory PromptPart({
-    required String type,
-    String? text,
-  }) = _PromptPart;
+  @FreezedUnionValue("text")
+  const factory PromptPart.text({required String text}) = PromptPartText;
 
   factory PromptPart.fromJson(Map<String, dynamic> json) => _$PromptPartFromJson(json);
 }

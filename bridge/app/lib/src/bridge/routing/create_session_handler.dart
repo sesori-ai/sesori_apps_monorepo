@@ -5,7 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "request_handler.dart";
 
-/// Handles `POST /session` — creates a session for a given worktree.
+/// Handles `POST /session` — creates a session for a given project.
 class CreateSessionHandler extends RequestHandler {
   final BridgePlugin _plugin;
 
@@ -18,36 +18,33 @@ class CreateSessionHandler extends RequestHandler {
     required Map<String, String> queryParams,
     String? fragment,
   }) async {
-    final worktree = findHeader(request.headers, "x-opencode-directory");
-    if (worktree == null || worktree.isEmpty) {
+    final projectId = findHeader(request.headers, "x-opencode-directory");
+    if (projectId == null || projectId.isEmpty) {
       return buildErrorResponse(request, 400, "missing x-opencode-directory header");
     }
 
-    final created = await _plugin.createSession(worktree);
-    final session = Session(
-      id: created.id,
-      projectID: created.projectID,
-      directory: created.directory,
-      parentID: created.parentID,
-      title: created.title,
-      time: switch (created.time) {
-        PluginSessionTime(:final created, :final updated, :final archived) => SessionTime(
-          created: created,
-          updated: updated,
-          archived: archived,
-        ),
-        null => null,
-      },
-      summary: switch (created.summary) {
-        PluginSessionSummary(:final additions, :final deletions, :final files) => SessionSummary(
-          additions: additions,
-          deletions: deletions,
-          files: files,
-        ),
-        null => null,
-      },
+    final CreateSessionRequest createRequest;
+    try {
+      createRequest = CreateSessionRequest.fromJson(
+        jsonDecode(request.body ?? "{}") as Map<String, dynamic>,
+      );
+    } on FormatException {
+      return buildErrorResponse(request, 400, "invalid JSON body");
+    } on Object {
+      return buildErrorResponse(request, 400, "invalid JSON body");
+    }
+
+    await _plugin.createSession(
+      projectId: projectId,
+      sessionId: createRequest.id,
     );
 
-    return buildOkJsonResponse(request, jsonEncode(session.toJson()));
+    return RelayMessage.response(
+          id: request.id,
+          status: 200,
+          headers: {},
+          body: null,
+        )
+        as RelayResponse;
   }
 }
