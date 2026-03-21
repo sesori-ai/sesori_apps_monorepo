@@ -371,7 +371,7 @@ class _SessionTile extends StatelessWidget {
               ),
           ],
         ),
-        isThreeLine: updatedAt != null && (filesChanged > 0 || isActive || backgroundTaskCount > 0),
+        isThreeLine: updatedAt != null && (filesChanged > 0 || isActive),
         trailing: const Icon(Icons.chevron_right),
         onTap: () {
           context.pushRoute(

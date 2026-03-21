@@ -54,13 +54,25 @@ class ActiveSessionTracker {
   }
 
   bool handleEvent(SseEventData event, String? directory) {
+    var forceReemit = false;
+
     switch (event) {
       case SseSessionCreated():
         _updateSessionWorktree(event.info.id, event.info.directory);
+        final prevParentId = _sessionParentIds[event.info.id];
         _sessionParentIds[event.info.id] = event.info.parentID;
+        // Parent metadata changed for an active session — grouping may differ
+        // even though per-worktree counts haven't changed.
+        if (_sessionStatuses.containsKey(event.info.id) && prevParentId != event.info.parentID) {
+          forceReemit = true;
+        }
       case SseSessionUpdated():
         _updateSessionWorktree(event.info.id, event.info.directory);
+        final prevParentId = _sessionParentIds[event.info.id];
         _sessionParentIds[event.info.id] = event.info.parentID;
+        if (_sessionStatuses.containsKey(event.info.id) && prevParentId != event.info.parentID) {
+          forceReemit = true;
+        }
       case SseSessionDeleted():
         _sessionWorktrees.remove(event.info.id);
         _sessionStatuses.remove(event.info.id);
@@ -83,7 +95,7 @@ class ActiveSessionTracker {
     }
 
     final next = _activeSessionCounts;
-    if (_mapsEqual(_lastEmittedActiveSessions, next)) return false;
+    if (!forceReemit && _mapsEqual(_lastEmittedActiveSessions, next)) return false;
     _lastEmittedActiveSessions = next;
     return true;
   }
@@ -108,13 +120,13 @@ class ActiveSessionTracker {
         activeRoots.add(sessionId);
       } else {
         // Child session — only include if parent is a known root (direct descendant).
-        // A "known root" is a session whose own parentId is null.
-        final grandparentId = _sessionParentIds[parentId];
-        if (grandparentId == null) {
+        // A "known root" is a session we've observed whose own parentId is null.
+        // Use containsKey to distinguish "known root" from "never observed".
+        if (_sessionParentIds.containsKey(parentId) && _sessionParentIds[parentId] == null) {
           activeChildrenByParent.putIfAbsent(parentId, () => []).add(sessionId);
         }
-        // grandparentId != null → deeper nesting → ignore per spec.
-        // parentId not in _sessionParentIds → unknown lineage → ignore per spec.
+        // Parent not in _sessionParentIds → never observed → orphan → ignore.
+        // Parent's parentId != null → deeper nesting → ignore.
       }
     }
 
@@ -125,7 +137,19 @@ class ActiveSessionTracker {
     // Build ActiveSession per root, grouped by worktree.
     final byWorktree = <String, List<ActiveSession>>{};
     for (final rootId in allActiveRoots) {
-      final worktree = _sessionWorktrees[rootId];
+      var worktree = _sessionWorktrees[rootId];
+      // Parent may not have a worktree if we only observed its children
+      // (e.g. bridge reconnected after the root session was created).
+      // Fall back to any child's worktree — children share the same project.
+      if (worktree == null) {
+        final children = activeChildrenByParent[rootId];
+        if (children != null) {
+          for (final childId in children) {
+            worktree = _sessionWorktrees[childId];
+            if (worktree != null) break;
+          }
+        }
+      }
       if (worktree == null) {
         Log.w("buildSummary: no worktree for session $rootId");
         continue;
