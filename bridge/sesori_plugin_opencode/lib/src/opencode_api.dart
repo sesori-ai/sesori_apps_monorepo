@@ -80,7 +80,7 @@ class OpenCodeApi {
         headers: {
           ..._authHeaders,
           "content-type": "application/json",
-          "x-opencode-directory": workspace,
+          "x-opencode-directory": workspacePath,
         },
         body: jsonEncode(body),
       );
