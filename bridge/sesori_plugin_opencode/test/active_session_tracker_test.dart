@@ -242,19 +242,54 @@ void main() {
     });
 
     test("coldStart populates state from API", () async {
-      final tracker = ActiveSessionTracker(
-        _fakeRepository(
-          projects: [
-            const Project(id: "p1", worktree: "/foo"),
-            const Project(id: "p2", worktree: "/bar"),
-          ],
-          statuses: {"s1": const SessionStatus.busy(), "s2": const SessionStatus.idle()},
-        ),
+      final tracker = await _coldStartedTracker(
+        projects: [
+          const Project(id: "p1", worktree: "/foo"),
+          const Project(id: "p2", worktree: "/bar"),
+        ],
+        sessions: [
+          const Session(id: "s1", projectID: "p1", directory: "/foo"),
+          const Session(id: "s2", projectID: "p2", directory: "/bar"),
+        ],
+        statuses: {"s1": const SessionStatus.busy(), "s2": const SessionStatus.idle()},
       );
 
-      await tracker.coldStart();
+      expect(tracker.activeSessions, equals({"/foo": 1}));
+    });
 
-      expect(tracker.activeSessions, isEmpty);
+    test("coldStart buildSummary reflects busy sessions", () async {
+      final tracker = await _coldStartedTracker(
+        projects: [const Project(id: "p1", worktree: "/repo")],
+        sessions: [
+          const Session(id: "s1", projectID: "p1", directory: "/repo"),
+        ],
+        statuses: {"s1": const SessionStatus.busy()},
+      );
+
+      final summary = tracker.buildSummary();
+
+      expect(summary, hasLength(1));
+      expect(summary.first.id, equals("/repo"));
+      expect(summary.first.activeSessions.first.id, equals("s1"));
+      expect(summary.first.activeSessions.first.mainAgentRunning, isTrue);
+    });
+
+    test("coldStart groups child sessions under parents", () async {
+      final tracker = await _coldStartedTracker(
+        projects: [const Project(id: "p1", worktree: "/repo")],
+        sessions: [
+          const Session(id: "s1", projectID: "p1", directory: "/repo"),
+          const Session(id: "c1", projectID: "p1", directory: "/repo", parentID: "s1"),
+        ],
+        statuses: {"c1": const SessionStatus.busy()},
+      );
+
+      final summary = tracker.buildSummary();
+
+      expect(summary, hasLength(1));
+      expect(summary.first.activeSessions.first.id, equals("s1"));
+      expect(summary.first.activeSessions.first.mainAgentRunning, isFalse);
+      expect(summary.first.activeSessions.first.childSessionIds, equals(["c1"]));
     });
 
     test("buildSummary includes activeSessions for busy sessions", () async {

@@ -1,5 +1,5 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
-import "package:sesori_shared/sesori_shared.dart" show ActiveSession, ProjectActivitySummary, wait2;
+import "package:sesori_shared/sesori_shared.dart" show ActiveSession, ProjectActivitySummary, wait3;
 
 import "models/session_status.dart";
 import "models/sse_event_data.dart";
@@ -21,9 +21,10 @@ class ActiveSessionTracker {
   ActiveSessionTracker(this._repository);
 
   Future<void> coldStart() async {
-    final (projects, statuses) = await wait2(
+    final (projects, statuses, sessions) = await wait3(
       _repository.getProjects(),
       _repository.api.getSessionStatuses(),
+      _repository.api.listRootSessions(),
     );
 
     _projectWorktrees
@@ -32,6 +33,13 @@ class ActiveSessionTracker {
 
     _sessionWorktrees.clear();
     _sessionParentIds.clear();
+
+    // Build directory lookup and parent ID mapping from fetched sessions.
+    final sessionDirectories = <String, String>{};
+    for (final session in sessions) {
+      sessionDirectories[session.id] = session.directory;
+      _sessionParentIds[session.id] = session.parentID;
+    }
 
     _sessionStatuses
       ..clear()
@@ -43,10 +51,12 @@ class ActiveSessionTracker {
         ),
       );
 
-    for (final entry in _sessionStatuses.keys.toList()) {
-      final worktree = _resolveWorktree(entry);
+    for (final sessionId in _sessionStatuses.keys.toList()) {
+      final directory = sessionDirectories[sessionId];
+      if (directory == null) continue;
+      final worktree = _resolveWorktree(directory);
       if (worktree != null) {
-        _sessionWorktrees[entry] = worktree;
+        _sessionWorktrees[sessionId] = worktree;
       }
     }
 
