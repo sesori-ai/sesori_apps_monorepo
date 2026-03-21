@@ -34,6 +34,10 @@ void main() {
       // Must be stubbed before any cubit is built — constructor subscribes immediately.
       when(() => mockConnectionService.events).thenAnswer((_) => eventController.stream);
       when(() => mockConnectionService.activeDirectory).thenReturn(worktree);
+      // Default stub for project service — tests can override if needed.
+      when(() => mockProjectService.getCurrentProject(projectId: any(named: "projectId"))).thenAnswer(
+        (_) async => ApiResponse.success(testProject()),
+      );
     });
 
     tearDown(() async {
@@ -47,7 +51,6 @@ void main() {
       mockConnectionService,
       mockSseEventRepository,
       projectId: projectId,
-      worktree: worktree,
     );
 
     // -------------------------------------------------------------------------
@@ -60,6 +63,9 @@ void main() {
         when(
           () => mockSessionService.listSessions(projectId: projectId),
         ).thenAnswer((_) async => ApiResponse.success([testSession()]));
+        when(
+          () => mockProjectService.getCurrentProject(projectId: projectId),
+        ).thenAnswer((_) async => ApiResponse.success(testProject()));
         return buildCubit();
       },
       // No act — we only verify what the constructor-triggered load emits.
@@ -725,7 +731,6 @@ void main() {
           mockConnectionService,
           mockSseEventRepository,
           projectId: "global",
-          worktree: "/",
         );
       },
       expect: () => [

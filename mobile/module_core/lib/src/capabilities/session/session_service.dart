@@ -38,11 +38,9 @@ class SessionService {
     );
   }
 
-  /// Lists root sessions for the current project.
+  /// Lists sessions for the current project.
   ///
-  /// Project scoping is passed via the `x-project-id` header. We keep
-  /// `roots=true` so the server returns root sessions across all
-  /// subdirectories of the selected project.
+  /// Project scoping is passed via the `x-project-id` header.
   Future<ApiResponse<List<Session>>> listSessions({required String projectId}) {
     return _client.get(
       "/session",
@@ -59,7 +57,6 @@ class SessionService {
         _ => throw FormatException("expected list, got ${json.runtimeType}"),
       },
       headers: {"x-project-id": projectId},
-      queryParameters: {"roots": "true"},
     );
   }
 

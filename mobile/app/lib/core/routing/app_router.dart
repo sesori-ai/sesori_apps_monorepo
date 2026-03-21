@@ -21,7 +21,6 @@ extension AppRouteToGoRoute on AppRoute {
         AppRoute.projects => const ProjectListScreen(),
         AppRoute.sessions => SessionListScreen(
           projectId: state.pathParameters["projectId"] ?? "",
-          worktree: state.uri.queryParameters["worktree"] ?? "",
           projectName: state.uri.queryParameters["name"],
         ),
         AppRoute.sessionDetail => SessionDetailScreen(

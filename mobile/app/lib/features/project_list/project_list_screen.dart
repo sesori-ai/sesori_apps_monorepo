@@ -139,7 +139,7 @@ class _ProjectTile extends StatelessWidget {
         context.pushRoute(
           AppRoute.sessions,
           pathParams: {"projectId": project.id},
-          queryParams: {"worktree": project.worktree, "name": displayName},
+          queryParams: {"name": displayName},
         );
       },
     );

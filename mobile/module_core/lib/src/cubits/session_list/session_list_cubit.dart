@@ -20,7 +20,7 @@ class SessionListCubit extends Cubit<SessionListState> {
   final ProjectService _projectService;
   final SseEventRepository _sseEventRepository;
   final String _projectId;
-  final String _worktree;
+  String? _resolvedWorktree;
 
   /// Tracks the session state before the last archive/unarchive action
   /// so the screen can offer an undo toast.
@@ -32,28 +32,16 @@ class SessionListCubit extends Cubit<SessionListState> {
     ConnectionService connectionService,
     SseEventRepository sseEventRepository, {
     required String projectId,
-    required String worktree,
   }) : _service = service,
        _projectService = projectService,
        _sseEventRepository = sseEventRepository,
        _projectId = projectId,
-       _worktree = worktree,
        super(const SessionListState.loading()) {
     loadSessions();
     _subscriptions.add(connectionService.events.listen(_handleEvent));
     _subscriptions.add(
       _sseEventRepository.sessionActivity.listen(_onSessionActivityUpdated),
     );
-  }
-
-  /// Returns `true` when [session] belongs to this project's worktree.
-  ///
-  /// Filters by directory path: includes sessions from the worktree root
-  /// and any subdirectories. Project ID checking is handled server-side
-  /// by the bridge's session merging mapper.
-  bool _belongsHere(Session session) {
-    if (_worktree == "/") return true;
-    return session.directory == _worktree || session.directory.startsWith("$_worktree/");
   }
 
   void _handleEvent(SseEvent event) {
@@ -72,7 +60,7 @@ class SessionListCubit extends Cubit<SessionListState> {
   void _onSessionActivityUpdated(Map<String, Set<String>> activityById) {
     if (isClosed) return;
     if (state is! SessionListLoaded) return;
-    final activeIds = activityById[_worktree] ?? {};
+    final activeIds = _resolvedWorktree != null ? (activityById[_resolvedWorktree] ?? <String>{}) : <String>{};
     emit(
       SessionListState.loaded(
         sessions: (state as SessionListLoaded).sessions,
@@ -83,9 +71,8 @@ class SessionListCubit extends Cubit<SessionListState> {
   }
 
   void _onSessionCreated(Session session) {
-    // Only add root sessions belonging to this project's worktree.
+    // Only add root sessions (server already filters by project via x-project-id header).
     if (session.parentID != null) return;
-    if (!_belongsHere(session)) return;
 
     if (state is! SessionListLoaded) return;
 
@@ -295,18 +282,21 @@ class SessionListCubit extends Cubit<SessionListState> {
   }
 
   void _emitFiltered() {
-    var visible = _allSessions.where(_belongsHere);
+    var visible = _allSessions;
     if (!_showArchived) {
-      visible = visible.where((s) => s.time?.archived == null);
+      visible = visible.where((s) => s.time?.archived == null).toList();
     }
     final sorted = visible.toList()..sort((a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0));
 
     if (isClosed) return;
+    final activeIds = _resolvedWorktree != null
+        ? (_sseEventRepository.currentSessionActivity[_resolvedWorktree] ?? {})
+        : <String>{};
     emit(
       SessionListState.loaded(
         sessions: sorted,
         showArchived: _showArchived,
-        activeSessionIds: _sseEventRepository.currentSessionActivity[_worktree] ?? {},
+        activeSessionIds: activeIds,
       ),
     );
   }
@@ -330,19 +320,24 @@ class SessionListCubit extends Cubit<SessionListState> {
       case SuccessResponse(:final data):
         _allSessions = data;
 
-        // If no sessions belong to this project at all, check whether the
-        // stored worktree is stale (directory renamed/deleted). We check
-        // AFTER loading to avoid false-positives: non-git directories also
-        // resolve to "global" but their sessions are still valid.
-        if (!_allSessions.any(_belongsHere)) {
-          final projectResponse = await _projectService.getCurrentProject(projectId: _projectId);
-          if (isClosed) return false;
+        // Resolve worktree from project service for activity tracking.
+        final projectResponse = await _projectService.getCurrentProject(projectId: _projectId);
+        if (isClosed) return false;
 
-          if (projectResponse case SuccessResponse(data: final current) when current.id != _projectId) {
-            logw("Stale project: expected $_projectId, server resolved ${current.id}");
-            emit(SessionListState.staleProject(resolvedProjectId: current.id));
-            return true;
-          }
+        switch (projectResponse) {
+          case SuccessResponse(data: final project):
+            // Check if project ID matches (stale project detection).
+            if (project.id != _projectId) {
+              logw("Stale project: expected $_projectId, server resolved ${project.id}");
+              emit(SessionListState.staleProject(resolvedProjectId: project.id));
+              return true;
+            }
+            // Cache the resolved worktree for activity lookups.
+            _resolvedWorktree = project.worktree;
+          case ErrorResponse(:final error):
+            // Graceful degradation: log but continue without worktree.
+            logw("Failed to resolve project worktree: $error");
+            _resolvedWorktree = null;
         }
 
         _emitFiltered();

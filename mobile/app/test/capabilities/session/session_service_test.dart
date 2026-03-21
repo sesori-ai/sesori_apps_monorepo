@@ -166,7 +166,6 @@ void main() {
             "/session",
             fromJson: any(named: "fromJson"),
             headers: {"x-project-id": "/tmp/project"},
-            queryParameters: {"roots": "true"},
           ),
         ).called(1);
       });
