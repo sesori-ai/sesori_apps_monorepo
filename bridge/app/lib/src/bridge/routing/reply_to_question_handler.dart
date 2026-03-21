@@ -34,8 +34,12 @@ class ReplyToQuestionHandler extends RequestHandler {
 
     final ReplyToQuestionRequest replyRequest;
     try {
+      final decoded = jsonDecode(bodyRaw);
       replyRequest = ReplyToQuestionRequest.fromJson(
-        jsonDecode(bodyRaw) as Map<String, dynamic>,
+        switch (decoded) {
+          final Map<String, dynamic> map => map,
+          _ => throw const FormatException("invalid JSON body"),
+        },
       );
     } on FormatException {
       return buildErrorResponse(request, 400, "invalid JSON body");
@@ -43,7 +47,10 @@ class ReplyToQuestionHandler extends RequestHandler {
       return buildErrorResponse(request, 400, "invalid JSON body");
     }
 
-    await _plugin.replyToQuestion(questionId, answers: replyRequest.answers);
+    await _plugin.replyToQuestion(
+      questionId,
+      answers: replyRequest.answers.map((answer) => answer.values).toList(),
+    );
     return RelayMessage.response(
           id: request.id,
           status: 200,

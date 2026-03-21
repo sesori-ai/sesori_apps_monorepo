@@ -299,7 +299,7 @@ class _FakeBridgePlugin implements BridgePlugin {
   @override
   Future<void> replyToQuestion(
     String questionId, {
-    required List<String> answers,
+    required List<List<String>> answers,
   }) async {}
 
   @override
@@ -421,7 +421,7 @@ class _TrackingBridgePlugin implements BridgePlugin {
   @override
   Future<void> replyToQuestion(
     String questionId, {
-    required List<String> answers,
+    required List<List<String>> answers,
   }) async {}
 
   @override

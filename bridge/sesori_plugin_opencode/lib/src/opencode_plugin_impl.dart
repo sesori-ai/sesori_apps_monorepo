@@ -312,12 +312,12 @@ class OpenCodePlugin implements BridgePlugin {
   }
 
   @override
-  Future<void> replyToQuestion(String questionId, {required List<String> answers}) {
+  Future<void> replyToQuestion(String questionId, {required List<List<String>> answers}) {
     return _call(
       () => _service.repository.api.replyToQuestion(
         questionId,
         body: {
-          "answers": answers.map((answer) => [answer]).toList(),
+          "answers": answers,
         },
       ),
     );

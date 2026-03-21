@@ -605,11 +605,11 @@ void main() {
         expect(
           captured["parts"],
           equals([
-            {"type": "text", "text": "Hello, world!"},
+            {"text": "Hello, world!"},
           ]),
         );
-        expect(captured.containsKey("agent"), isFalse);
-        expect(captured.containsKey("model"), isFalse);
+        expect(captured["agent"], isNull);
+        expect(captured["model"], isNull);
       });
 
       test("body includes agent and model when all optional params provided", () async {
@@ -757,8 +757,8 @@ void main() {
         ).thenAnswer((_) async => ApiResponse.success(true));
 
         final result = await sessionService.replyToQuestion(requestId, [
-          "Yes",
-          "Proceed",
+          const ReplyAnswer(values: ["Yes"]),
+          const ReplyAnswer(values: ["Proceed"]),
         ]);
 
         expect(result, isA<SuccessResponse<bool>>());
@@ -789,7 +789,10 @@ void main() {
       });
 
       test("sends answers list in body to POST /question/:id/reply", () async {
-        const answers = ["Yes", "No"];
+        const answers = [
+          ReplyAnswer(values: ["Yes"]),
+          ReplyAnswer(values: ["No"]),
+        ];
         when(
           () => mockClient.post<bool>(
             any(),
@@ -810,7 +813,17 @@ void main() {
                 ).captured.last
                 as Map<String, dynamic>;
 
-        expect(captured["answers"], equals(answers));
+        expect(
+          captured["answers"],
+          equals([
+            {
+              "values": ["Yes"],
+            },
+            {
+              "values": ["No"],
+            },
+          ]),
+        );
       });
     });
 

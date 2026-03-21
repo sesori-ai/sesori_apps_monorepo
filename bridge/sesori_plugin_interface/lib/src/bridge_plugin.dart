@@ -49,7 +49,7 @@ abstract class BridgePlugin {
 
   Future<List<PluginPendingQuestion>> getPendingQuestions();
 
-  Future<void> replyToQuestion(String questionId, {required List<String> answers});
+  Future<void> replyToQuestion(String questionId, {required List<List<String>> answers});
 
   Future<void> rejectQuestion(String questionId);
 

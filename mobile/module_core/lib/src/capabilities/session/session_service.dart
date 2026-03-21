@@ -13,21 +13,28 @@ class SessionService {
   Future<ApiResponse<List<AgentInfo>>> listAgents() {
     return _client.get(
       "/agent",
-      // ignore: no_slop_linter/avoid_dynamic_type, json parsing
-      fromJson: (json) => (json as List)
-          .map(
-            // ignore: no_slop_linter/avoid_dynamic_type, json parsing
-            (e) => AgentInfo.fromJson(e as Map<String, dynamic>),
-          )
-          .toList(),
+      fromJson: (json) => switch (json) {
+        final List<dynamic> list =>
+          list
+              .map(
+                (e) => switch (e) {
+                  final Map<String, dynamic> map => AgentInfo.fromJson(map),
+                  _ => throw FormatException("expected map, got ${e.runtimeType}"),
+                },
+              )
+              .toList(),
+        _ => throw FormatException("expected list, got ${json.runtimeType}"),
+      },
     );
   }
 
   Future<ApiResponse<ProviderListResponse>> listProviders() {
     return _client.get(
       "/provider",
-      // ignore: no_slop_linter/avoid_dynamic_type, json parsing
-      fromJson: (json) => ProviderListResponse.fromJson(json as Map<String, dynamic>),
+      fromJson: (json) => switch (json) {
+        final Map<String, dynamic> map => ProviderListResponse.fromJson(map),
+        _ => throw FormatException("expected map, got ${json.runtimeType}"),
+      },
     );
   }
 
@@ -41,13 +48,18 @@ class SessionService {
   Future<ApiResponse<List<Session>>> listSessions() {
     return _client.get(
       "/session",
-      // ignore: no_slop_linter/avoid_dynamic_type, json parsing
-      fromJson: (json) => (json as List)
-          .map(
-            // ignore: no_slop_linter/avoid_dynamic_type, json parsing
-            (e) => Session.fromJson(e as Map<String, dynamic>),
-          )
-          .toList(),
+      fromJson: (json) => switch (json) {
+        final List<dynamic> list =>
+          list
+              .map(
+                (e) => switch (e) {
+                  final Map<String, dynamic> map => Session.fromJson(map),
+                  _ => throw FormatException("expected map, got ${e.runtimeType}"),
+                },
+              )
+              .toList(),
+        _ => throw FormatException("expected list, got ${json.runtimeType}"),
+      },
       queryParameters: {"roots": "true"},
     );
   }
@@ -57,7 +69,6 @@ class SessionService {
     return _client
         .post<bool>(
           "/session",
-          // ignore: no_slop_linter/avoid_dynamic_type, json parsing
           fromJson: (_) => true,
           body: CreateSessionRequest(id: sessionId).toJson(),
         )
@@ -74,8 +85,10 @@ class SessionService {
   Future<ApiResponse<Session>> archiveSession(String sessionId) {
     return _client.patch(
       "/session/$sessionId",
-      // ignore: no_slop_linter/avoid_dynamic_type, json parsing
-      fromJson: (json) => Session.fromJson(json as Map<String, dynamic>),
+      fromJson: (json) => switch (json) {
+        final Map<String, dynamic> map => Session.fromJson(map),
+        _ => throw FormatException("expected map, got ${json.runtimeType}"),
+      },
       body: const UpdateSessionArchiveRequest(archived: true).toJson(),
     );
   }
@@ -83,8 +96,10 @@ class SessionService {
   Future<ApiResponse<Session>> unarchiveSession(String sessionId) {
     return _client.patch(
       "/session/$sessionId",
-      // ignore: no_slop_linter/avoid_dynamic_type, json parsing
-      fromJson: (json) => Session.fromJson(json as Map<String, dynamic>),
+      fromJson: (json) => switch (json) {
+        final Map<String, dynamic> map => Session.fromJson(map),
+        _ => throw FormatException("expected map, got ${json.runtimeType}"),
+      },
       body: const UpdateSessionArchiveRequest(archived: false).toJson(),
     );
   }
@@ -92,7 +107,6 @@ class SessionService {
   Future<ApiResponse<bool>> deleteSession(String sessionId) {
     return _client.delete(
       "/session/$sessionId",
-      // ignore: no_slop_linter/avoid_dynamic_type, json parsing
       fromJson: (_) => true,
     );
   }
@@ -100,23 +114,36 @@ class SessionService {
   Future<ApiResponse<List<Session>>> getChildren(String sessionId) {
     return _client.get(
       "/session/$sessionId/children",
-      // ignore: no_slop_linter/avoid_dynamic_type, json parsing
-      fromJson: (json) => (json as List)
-          .map(
-            // ignore: no_slop_linter/avoid_dynamic_type, json parsing
-            (e) => Session.fromJson(e as Map<String, dynamic>),
-          )
-          .toList(),
+      fromJson: (json) => switch (json) {
+        final List<dynamic> list =>
+          list
+              .map(
+                (e) => switch (e) {
+                  final Map<String, dynamic> map => Session.fromJson(map),
+                  _ => throw FormatException("expected map, got ${e.runtimeType}"),
+                },
+              )
+              .toList(),
+        _ => throw FormatException("expected list, got ${json.runtimeType}"),
+      },
     );
   }
 
   Future<ApiResponse<Map<String, SessionStatus>>> getSessionStatuses() {
     return _client.get(
       "/session/status",
-      // ignore: no_slop_linter/avoid_dynamic_type, json parsing
-      fromJson: (json) => (json as Map<String, dynamic>).map(
-        (key, value) => MapEntry(key, SessionStatus.fromJson(value as Map<String, dynamic>)),
-      ),
+      fromJson: (json) => switch (json) {
+        final Map<String, dynamic> map => map.map(
+          (key, value) => MapEntry(
+            key,
+            switch (value) {
+              final Map<String, dynamic> valueMap => SessionStatus.fromJson(valueMap),
+              _ => throw FormatException("expected map value, got ${value.runtimeType}"),
+            },
+          ),
+        ),
+        _ => throw FormatException("expected map, got ${json.runtimeType}"),
+      },
     );
   }
 
@@ -125,13 +152,18 @@ class SessionService {
   ) {
     return _client.get(
       "/session/$sessionId/message",
-      // ignore: no_slop_linter/avoid_dynamic_type, json parsing
-      fromJson: (json) => (json as List)
-          .map(
-            // ignore: no_slop_linter/avoid_dynamic_type, json parsing
-            (e) => MessageWithParts.fromJson(e as Map<String, dynamic>),
-          )
-          .toList(),
+      fromJson: (json) => switch (json) {
+        final List<dynamic> list =>
+          list
+              .map(
+                (e) => switch (e) {
+                  final Map<String, dynamic> map => MessageWithParts.fromJson(map),
+                  _ => throw FormatException("expected map, got ${e.runtimeType}"),
+                },
+              )
+              .toList(),
+        _ => throw FormatException("expected list, got ${json.runtimeType}"),
+      },
     );
   }
 
@@ -144,27 +176,18 @@ class SessionService {
   }) {
     return _client.post(
       "/session/$sessionId/prompt_async",
-      // ignore: no_slop_linter/avoid_dynamic_type, json parsing
       fromJson: (_) => true,
-      body: () {
-        final payload = SendPromptRequest(
-          parts: [PromptPart.text(text: text)],
-          agent: agent,
-          model: providerID != null && modelID != null ? PromptModel(providerID: providerID, modelID: modelID) : null,
-        ).toJson();
-        payload["parts"] = (payload["parts"] as List<dynamic>)
-            .map((part) => <String, dynamic>{...(part as Map<String, dynamic>), "type": "text"})
-            .toList();
-        payload.removeWhere((_, value) => value == null);
-        return payload;
-      }(),
+      body: SendPromptRequest(
+        parts: [PromptPart.text(text: text)],
+        agent: agent,
+        model: providerID != null && modelID != null ? PromptModel(providerID: providerID, modelID: modelID) : null,
+      ).toJson(),
     );
   }
 
   Future<ApiResponse<bool>> abortSession(String sessionId) {
     return _client.post(
       "/session/$sessionId/abort",
-      // ignore: no_slop_linter/avoid_dynamic_type, json parsing
       fromJson: (_) => true,
       body: null,
     );
@@ -173,23 +196,27 @@ class SessionService {
   Future<ApiResponse<List<PendingQuestion>>> getPendingQuestions() {
     return _client.get(
       "/question",
-      // ignore: no_slop_linter/avoid_dynamic_type, json parsing
-      fromJson: (json) => (json as List)
-          .map(
-            // ignore: no_slop_linter/avoid_dynamic_type, json parsing
-            (e) => PendingQuestion.fromJson(e as Map<String, dynamic>),
-          )
-          .toList(),
+      fromJson: (json) => switch (json) {
+        final List<dynamic> list =>
+          list
+              .map(
+                (e) => switch (e) {
+                  final Map<String, dynamic> map => PendingQuestion.fromJson(map),
+                  _ => throw FormatException("expected map, got ${e.runtimeType}"),
+                },
+              )
+              .toList(),
+        _ => throw FormatException("expected list, got ${json.runtimeType}"),
+      },
     );
   }
 
   Future<ApiResponse<bool>> replyToQuestion(
     String requestId,
-    List<String> answers,
+    List<ReplyAnswer> answers,
   ) {
     return _client.post(
       "/question/$requestId/reply",
-      // ignore: no_slop_linter/avoid_dynamic_type, json parsing
       fromJson: (_) => true,
       body: ReplyToQuestionRequest(answers: answers).toJson(),
     );
@@ -198,7 +225,6 @@ class SessionService {
   Future<ApiResponse<bool>> rejectQuestion(String requestId) {
     return _client.post(
       "/question/$requestId/reject",
-      // ignore: no_slop_linter/avoid_dynamic_type, json parsing
       fromJson: (_) => true,
       body: null,
     );

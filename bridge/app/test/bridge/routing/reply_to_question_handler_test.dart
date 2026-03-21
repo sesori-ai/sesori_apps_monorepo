@@ -30,8 +30,8 @@ void main() {
           body: jsonEncode(
             const ReplyToQuestionRequest(
               answers: [
-                "yes",
-                "tool-a",
+                ReplyAnswer(values: ["yes"]),
+                ReplyAnswer(values: ["tool-a"]),
               ],
             ).toJson(),
           ),
@@ -44,8 +44,8 @@ void main() {
       expect(
         plugin.lastReplyAnswers,
         equals(const [
-          "yes",
-          "tool-a",
+          ["yes"],
+          ["tool-a"],
         ]),
       );
     });
@@ -58,7 +58,7 @@ void main() {
           body: jsonEncode(
             const ReplyToQuestionRequest(
               answers: [
-                "ok",
+                ReplyAnswer(values: ["ok"]),
               ],
             ).toJson(),
           ),
@@ -86,7 +86,13 @@ void main() {
         makeRequest(
           "POST",
           "/question/q1/reply",
-          body: jsonEncode(const ReplyToQuestionRequest(answers: ["ok"]).toJson()),
+          body: jsonEncode(
+            const ReplyToQuestionRequest(
+              answers: [
+                ReplyAnswer(values: ["ok"]),
+              ],
+            ).toJson(),
+          ),
         ),
         pathParams: {},
         queryParams: {},
