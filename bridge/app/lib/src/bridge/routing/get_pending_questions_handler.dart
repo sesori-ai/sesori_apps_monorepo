@@ -22,31 +22,31 @@ class GetPendingQuestionsHandler extends RequestHandler {
 
     final questions = pluginQuestions
         .map(
-          (q) => <String, dynamic>{
-            "id": q.id,
-            "sessionID": q.sessionID,
-            "questions": q.questions
+          (q) => PendingQuestion(
+            id: q.id,
+            sessionID: q.sessionID,
+            questions: q.questions
                 .map(
-                  (qi) => <String, dynamic>{
-                    "question": qi.question,
-                    "header": qi.header,
-                    "options": qi.options
+                  (qi) => QuestionInfo(
+                    question: qi.question,
+                    header: qi.header,
+                    options: qi.options
                         .map(
-                          (o) => <String, dynamic>{
-                            "label": o.label,
-                            "description": o.description,
-                          },
+                          (o) => QuestionOption(
+                            label: o.label,
+                            description: o.description,
+                          ),
                         )
                         .toList(),
-                    "multiple": qi.multiple,
-                    "custom": qi.custom,
-                  },
+                    multiple: qi.multiple,
+                    custom: qi.custom,
+                  ),
                 )
                 .toList(),
-          },
+          ),
         )
         .toList();
 
-    return buildOkJsonResponse(request, jsonEncode(questions));
+    return buildOkJsonResponse(request, jsonEncode(questions.map((q) => q.toJson()).toList()));
   }
 }

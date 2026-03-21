@@ -2,6 +2,7 @@ import "dart:convert";
 
 import "package:sesori_bridge/src/bridge/routing/update_session_archive_status_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "routing_test_helpers.dart";
@@ -38,7 +39,15 @@ void main() {
       );
 
       await handler.handle(
-        makeRequest("PATCH", "/session/s1", body: '{"time":{"archived":123}}'),
+        makeRequest(
+          "PATCH",
+          "/session/s1",
+          body: jsonEncode(
+            const UpdateSessionArchiveRequest(
+              time: UpdateSessionArchiveTime(archived: 123),
+            ).toJson(),
+          ),
+        ),
         pathParams: {"id": "s1"},
         queryParams: {},
       );
@@ -58,7 +67,15 @@ void main() {
       );
 
       await handler.handle(
-        makeRequest("PATCH", "/session/s1", body: '{"time":{"archived":123}}'),
+        makeRequest(
+          "PATCH",
+          "/session/s1",
+          body: jsonEncode(
+            const UpdateSessionArchiveRequest(
+              time: UpdateSessionArchiveTime(archived: 123),
+            ).toJson(),
+          ),
+        ),
         pathParams: {"id": "s1"},
         queryParams: {},
       );
@@ -78,7 +95,15 @@ void main() {
       );
 
       await handler.handle(
-        makeRequest("PATCH", "/session/s1", body: '{"time":{"archived":null}}'),
+        makeRequest(
+          "PATCH",
+          "/session/s1",
+          body: jsonEncode(
+            const UpdateSessionArchiveRequest(
+              time: UpdateSessionArchiveTime(archived: null),
+            ).toJson(),
+          ),
+        ),
         pathParams: {"id": "s1"},
         queryParams: {},
       );
@@ -94,7 +119,7 @@ void main() {
       );
 
       expect(response.status, equals(400));
-      expect(response.body, contains("missing time.archived in body"));
+      expect(response.body, contains("invalid JSON body"));
     });
 
     test("returns 400 when time has no archived key", () async {
@@ -105,7 +130,7 @@ void main() {
       );
 
       expect(response.status, equals(400));
-      expect(response.body, contains("missing time.archived in body"));
+      expect(response.body, contains("invalid JSON body"));
     });
 
     test("returns 200 with mapped Session JSON", () async {
@@ -120,7 +145,15 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("PATCH", "/session/s1", body: '{"time":{"archived":30}}'),
+        makeRequest(
+          "PATCH",
+          "/session/s1",
+          body: jsonEncode(
+            const UpdateSessionArchiveRequest(
+              time: UpdateSessionArchiveTime(archived: 30),
+            ).toJson(),
+          ),
+        ),
         pathParams: {"id": "s1"},
         queryParams: {},
       );

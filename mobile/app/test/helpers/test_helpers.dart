@@ -198,6 +198,24 @@ SesoriQuestionAsked testSseQuestionAsked() {
   );
 }
 
+/// Returns a realistic [PendingQuestion] payload from `GET /question`.
+PendingQuestion testPendingQuestion() {
+  return const PendingQuestion(
+    id: "question-1",
+    sessionID: "session-1",
+    questions: [
+      QuestionInfo(
+        question: "Which option would you like?",
+        header: "Please choose",
+        options: [
+          QuestionOption(label: "Yes", description: "Proceed"),
+          QuestionOption(label: "No", description: "Cancel"),
+        ],
+      ),
+    ],
+  );
+}
+
 /// Returns a realistic [SesoriQuestionAsked] event with multiple questions,
 /// useful for testing the multi-question stepping flow.
 SesoriQuestionAsked testMultiSseQuestionAsked({

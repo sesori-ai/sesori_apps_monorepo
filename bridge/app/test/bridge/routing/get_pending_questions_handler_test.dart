@@ -2,6 +2,7 @@ import "dart:convert";
 
 import "package:sesori_bridge/src/bridge/routing/get_pending_questions_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "routing_test_helpers.dart";
@@ -61,24 +62,24 @@ void main() {
       );
 
       final body = jsonDecode(response.body!) as List<dynamic>;
-      final item = body[0] as Map<String, dynamic>;
-      expect(item["id"], equals("q-1"));
-      expect(item["sessionID"], equals("s-1"));
+      final questions = body.map((q) => PendingQuestion.fromJson(q as Map<String, dynamic>)).toList();
 
-      final questions = item["questions"] as List<dynamic>;
-      final question = questions[0] as Map<String, dynamic>;
-      expect(question["question"], equals("Pick a tool"));
-      expect(question["header"], equals("Tools"));
-      expect(question["multiple"], isTrue);
-      expect(question["custom"], isFalse);
+      final item = questions.first;
+      expect(item.id, equals("q-1"));
+      expect(item.sessionID, equals("s-1"));
 
-      final options = question["options"] as List<dynamic>;
-      final first = options[0] as Map<String, dynamic>;
-      expect(first["label"], equals("A"));
-      expect(first["description"], equals("Option A"));
-      final second = options[1] as Map<String, dynamic>;
-      expect(second["label"], equals("B"));
-      expect(second["description"], equals("Option B"));
+      final question = item.questions.first;
+      expect(question.question, equals("Pick a tool"));
+      expect(question.header, equals("Tools"));
+      expect(question.multiple, isTrue);
+      expect(question.custom, isFalse);
+
+      final first = question.options[0];
+      expect(first.label, equals("A"));
+      expect(first.description, equals("Option A"));
+      final second = question.options[1];
+      expect(second.label, equals("B"));
+      expect(second.description, equals("Option B"));
     });
   });
 }

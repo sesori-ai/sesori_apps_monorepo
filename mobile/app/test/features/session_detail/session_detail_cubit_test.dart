@@ -203,7 +203,7 @@ void main() {
       "replyToQuestion optimistically removes pending question and calls API",
       build: () {
         when(() => mockSessionService.getPendingQuestions()).thenAnswer(
-          (_) async => ApiResponse.success([testSseQuestionAsked()]),
+          (_) async => ApiResponse.success([testPendingQuestion()]),
         );
 
         return SessionDetailCubit(
@@ -235,7 +235,7 @@ void main() {
       "rejectQuestion optimistically removes pending question and calls API",
       build: () {
         when(() => mockSessionService.getPendingQuestions()).thenAnswer(
-          (_) async => ApiResponse.success([testSseQuestionAsked()]),
+          (_) async => ApiResponse.success([testPendingQuestion()]),
         );
 
         return SessionDetailCubit(
@@ -337,7 +337,7 @@ void main() {
       "SSE question.resolved removes pending question",
       build: () {
         when(() => mockSessionService.getPendingQuestions()).thenAnswer(
-          (_) async => ApiResponse.success([testSseQuestionAsked()]),
+          (_) async => ApiResponse.success([testPendingQuestion()]),
         );
 
         return SessionDetailCubit(
@@ -930,7 +930,7 @@ void _stubAllDefaults(
   ).thenAnswer((_) async => ApiResponse.success([testMessageWithParts()]));
   when(
     () => service.getPendingQuestions(),
-  ).thenAnswer((_) async => ApiResponse.success(<SesoriQuestionAsked>[]));
+  ).thenAnswer((_) async => ApiResponse.success(<PendingQuestion>[]));
   when(
     () => service.getChildren(sessionId),
   ).thenAnswer((_) async => ApiResponse.success(<Session>[]));

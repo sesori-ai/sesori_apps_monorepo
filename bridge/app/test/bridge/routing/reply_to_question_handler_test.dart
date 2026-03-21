@@ -1,4 +1,7 @@
+import "dart:convert";
+
 import "package:sesori_bridge/src/bridge/routing/reply_to_question_handler.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "routing_test_helpers.dart";
@@ -24,7 +27,14 @@ void main() {
         makeRequest(
           "POST",
           "/question/q1/reply",
-          body: '{"answers":[["yes"],["tool-a","tool-b"]]}',
+          body: jsonEncode(
+            const ReplyToQuestionRequest(
+              answers: [
+                ["yes"],
+                ["tool-a", "tool-b"],
+              ],
+            ).toJson(),
+          ),
         ),
         pathParams: {"id": "q1"},
         queryParams: {},
@@ -45,7 +55,13 @@ void main() {
         makeRequest(
           "POST",
           "/question/q1/reply",
-          body: '{"answers":[["ok"]]}',
+          body: jsonEncode(
+            const ReplyToQuestionRequest(
+              answers: [
+                ["ok"],
+              ],
+            ).toJson(),
+          ),
         ),
         pathParams: {"id": "q1"},
         queryParams: {},

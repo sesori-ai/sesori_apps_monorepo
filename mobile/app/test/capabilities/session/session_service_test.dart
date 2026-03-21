@@ -705,10 +705,10 @@ void main() {
     // -----------------------------------------------------------------------
 
     group("getPendingQuestions", () {
-      test("success: returns List<SesoriQuestionAsked> from GET /question", () async {
-        final questions = [testSseQuestionAsked()];
+      test("success: returns List<PendingQuestion> from GET /question", () async {
+        final questions = [testPendingQuestion()];
         when(
-          () => mockClient.get<List<SesoriQuestionAsked>>(
+          () => mockClient.get<List<PendingQuestion>>(
             "/question",
             fromJson: any(named: "fromJson"),
           ),
@@ -716,10 +716,10 @@ void main() {
 
         final result = await sessionService.getPendingQuestions();
 
-        expect(result, isA<SuccessResponse<List<SesoriQuestionAsked>>>());
-        expect((result as SuccessResponse<List<SesoriQuestionAsked>>).data, equals(questions));
+        expect(result, isA<SuccessResponse<List<PendingQuestion>>>());
+        expect((result as SuccessResponse<List<PendingQuestion>>).data, equals(questions));
         verify(
-          () => mockClient.get<List<SesoriQuestionAsked>>(
+          () => mockClient.get<List<PendingQuestion>>(
             "/question",
             fromJson: any(named: "fromJson"),
           ),
@@ -729,7 +729,7 @@ void main() {
       test("error: propagates API error from GET /question", () async {
         final error = ApiError.generic();
         when(
-          () => mockClient.get<List<SesoriQuestionAsked>>(
+          () => mockClient.get<List<PendingQuestion>>(
             "/question",
             fromJson: any(named: "fromJson"),
           ),
@@ -737,10 +737,10 @@ void main() {
 
         final result = await sessionService.getPendingQuestions();
 
-        expect(result, isA<ErrorResponse<List<SesoriQuestionAsked>>>());
-        expect((result as ErrorResponse<List<SesoriQuestionAsked>>).error, equals(error));
+        expect(result, isA<ErrorResponse<List<PendingQuestion>>>());
+        expect((result as ErrorResponse<List<PendingQuestion>>).error, equals(error));
         verify(
-          () => mockClient.get<List<SesoriQuestionAsked>>(
+          () => mockClient.get<List<PendingQuestion>>(
             "/question",
             fromJson: any(named: "fromJson"),
           ),

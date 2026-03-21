@@ -66,9 +66,9 @@ class SessionService {
       "/session/$sessionId",
       // ignore: no_slop_linter/avoid_dynamic_type, json parsing
       fromJson: (json) => Session.fromJson(json as Map<String, dynamic>),
-      body: {
-        "time": {"archived": DateTime.now().millisecondsSinceEpoch},
-      },
+      body: UpdateSessionArchiveRequest(
+        time: UpdateSessionArchiveTime(archived: DateTime.now().millisecondsSinceEpoch),
+      ).toJson(),
     );
   }
 
@@ -77,9 +77,9 @@ class SessionService {
       "/session/$sessionId",
       // ignore: no_slop_linter/avoid_dynamic_type, json parsing
       fromJson: (json) => Session.fromJson(json as Map<String, dynamic>),
-      body: {
-        "time": {"archived": null},
-      },
+      body: const UpdateSessionArchiveRequest(
+        time: UpdateSessionArchiveTime(archived: null),
+      ).toJson(),
     );
   }
 
@@ -140,13 +140,15 @@ class SessionService {
       "/session/$sessionId/prompt_async",
       // ignore: no_slop_linter/avoid_dynamic_type, json parsing
       fromJson: (_) => true,
-      body: {
-        "parts": [
-          {"type": "text", "text": text},
-        ],
-        "agent": ?agent,
-        if (providerID != null && modelID != null) "model": {"providerID": providerID, "modelID": modelID},
-      },
+      body: () {
+        final payload = SendPromptRequest(
+          parts: [PromptPart(type: "text", text: text)],
+          agent: agent,
+          model: providerID != null && modelID != null ? PromptModel(providerID: providerID, modelID: modelID) : null,
+        ).toJson();
+        payload.removeWhere((_, value) => value == null);
+        return payload;
+      }(),
     );
   }
 
@@ -159,14 +161,14 @@ class SessionService {
     );
   }
 
-  Future<ApiResponse<List<SesoriQuestionAsked>>> getPendingQuestions() {
+  Future<ApiResponse<List<PendingQuestion>>> getPendingQuestions() {
     return _client.get(
       "/question",
       // ignore: no_slop_linter/avoid_dynamic_type, json parsing
       fromJson: (json) => (json as List)
           .map(
             // ignore: no_slop_linter/avoid_dynamic_type, json parsing
-            (e) => SesoriQuestionAsked.fromJson(e as Map<String, dynamic>),
+            (e) => PendingQuestion.fromJson(e as Map<String, dynamic>),
           )
           .toList(),
     );
@@ -180,7 +182,7 @@ class SessionService {
       "/question/$requestId/reply",
       // ignore: no_slop_linter/avoid_dynamic_type, json parsing
       fromJson: (_) => true,
-      body: {"answers": answers},
+      body: ReplyToQuestionRequest(answers: answers).toJson(),
     );
   }
 

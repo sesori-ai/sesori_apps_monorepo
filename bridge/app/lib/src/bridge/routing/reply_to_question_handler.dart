@@ -27,26 +27,18 @@ class ReplyToQuestionHandler extends RequestHandler {
       return buildErrorResponse(request, 400, "missing answers in JSON body");
     }
 
-    final List<List<String>> answers;
+    final ReplyToQuestionRequest replyRequest;
     try {
-      final body = jsonDecode(bodyRaw) as Map<String, dynamic>;
-      final answersRaw = body["answers"];
-      if (answersRaw is! List<dynamic>) {
-        return buildErrorResponse(request, 400, "missing answers in JSON body");
-      }
-
-      answers = answersRaw
-          .map(
-            (entry) => (entry as List<dynamic>).map((value) => value as String).toList(),
-          )
-          .toList();
+      replyRequest = ReplyToQuestionRequest.fromJson(
+        jsonDecode(bodyRaw) as Map<String, dynamic>,
+      );
     } on FormatException {
       return buildErrorResponse(request, 400, "invalid JSON body");
     } on Object {
       return buildErrorResponse(request, 400, "invalid JSON body");
     }
 
-    await _plugin.replyToQuestion(questionId, answers: answers);
+    await _plugin.replyToQuestion(questionId, answers: replyRequest.answers);
     return RelayMessage.response(
           id: request.id,
           status: 200,

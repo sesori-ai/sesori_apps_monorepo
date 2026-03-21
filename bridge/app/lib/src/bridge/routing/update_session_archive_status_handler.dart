@@ -22,20 +22,18 @@ class UpdateSessionArchiveStatusHandler extends RequestHandler {
   }) async {
     final sessionId = pathParams[_idParam]!;
 
-    int? archived;
+    final UpdateSessionArchiveRequest archiveRequest;
     try {
-      final body = jsonDecode(request.body ?? "{}") as Map<String, dynamic>;
-      final time = body["time"] as Map<String, dynamic>?;
-      if (time == null || !time.containsKey("archived")) {
-        return buildErrorResponse(request, 400, "missing time.archived in body");
-      }
-
-      archived = time["archived"] as int?;
+      archiveRequest = UpdateSessionArchiveRequest.fromJson(
+        jsonDecode(request.body ?? "{}") as Map<String, dynamic>,
+      );
     } on FormatException {
       return buildErrorResponse(request, 400, "invalid JSON body");
-    } on Exception {
+    } on Object {
       return buildErrorResponse(request, 400, "invalid JSON body");
     }
+
+    final archived = archiveRequest.time.archived;
 
     final updated = await _plugin.updateSessionArchiveStatus(
       sessionId,

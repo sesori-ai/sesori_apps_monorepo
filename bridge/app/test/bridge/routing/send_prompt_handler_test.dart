@@ -1,4 +1,7 @@
+import "dart:convert";
+
 import "package:sesori_bridge/src/bridge/routing/send_prompt_handler.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "routing_test_helpers.dart";
@@ -34,7 +37,11 @@ void main() {
         makeRequest(
           "POST",
           "/session/s1/prompt_async",
-          body: '{"parts":[{"type":"text","text":"Hello"}]}',
+          body: jsonEncode(
+            const SendPromptRequest(
+              parts: [PromptPart(type: "text", text: "Hello")],
+            ).toJson(),
+          ),
         ),
         pathParams: {"id": "s1"},
         queryParams: {},
@@ -48,7 +55,14 @@ void main() {
         makeRequest(
           "POST",
           "/session/s1/prompt_async",
-          body: '{"parts":[{"type":"text","text":"Hello"},{"type":"text","text":"World"}]}',
+          body: jsonEncode(
+            const SendPromptRequest(
+              parts: [
+                PromptPart(type: "text", text: "Hello"),
+                PromptPart(type: "text", text: "World"),
+              ],
+            ).toJson(),
+          ),
         ),
         pathParams: {"id": "s1"},
         queryParams: {},
@@ -66,8 +80,13 @@ void main() {
         makeRequest(
           "POST",
           "/session/s1/prompt_async",
-          body:
-              '{"parts":[{"type":"text","text":"Hello"}],"agent":"planner","model":{"providerID":"openai","modelID":"gpt-4o"}}',
+          body: jsonEncode(
+            const SendPromptRequest(
+              parts: [PromptPart(type: "text", text: "Hello")],
+              agent: "planner",
+              model: PromptModel(providerID: "openai", modelID: "gpt-4o"),
+            ).toJson(),
+          ),
         ),
         pathParams: {"id": "s1"},
         queryParams: {},
@@ -83,8 +102,16 @@ void main() {
         makeRequest(
           "POST",
           "/session/s42/prompt_async",
-          body:
-              '{"parts":[{"type":"text","text":"Ship it"}],"agent":"coder","model":{"providerID":"anthropic","modelID":"claude-3-5-sonnet"}}',
+          body: jsonEncode(
+            const SendPromptRequest(
+              parts: [PromptPart(type: "text", text: "Ship it")],
+              agent: "coder",
+              model: PromptModel(
+                providerID: "anthropic",
+                modelID: "claude-3-5-sonnet",
+              ),
+            ).toJson(),
+          ),
         ),
         pathParams: {"id": "s42"},
         queryParams: {},
@@ -103,7 +130,11 @@ void main() {
         makeRequest(
           "POST",
           "/session/s1/prompt_async",
-          body: '{"parts":[{"type":"text","text":"Hello"}]}',
+          body: jsonEncode(
+            const SendPromptRequest(
+              parts: [PromptPart(type: "text", text: "Hello")],
+            ).toJson(),
+          ),
         ),
         pathParams: {"id": "s1"},
         queryParams: {},

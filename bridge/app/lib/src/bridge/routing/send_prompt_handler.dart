@@ -22,33 +22,34 @@ class SendPromptHandler extends RequestHandler {
   }) async {
     final sessionId = pathParams[_idParam]!;
 
-    final Map<String, dynamic> body;
+    final SendPromptRequest promptRequest;
     try {
-      body = jsonDecode(request.body ?? "{}") as Map<String, dynamic>;
+      promptRequest = SendPromptRequest.fromJson(
+        jsonDecode(request.body ?? "{}") as Map<String, dynamic>,
+      );
     } on FormatException {
       return buildErrorResponse(request, 400, "invalid JSON body");
-    } on Exception {
+    } on Object {
       return buildErrorResponse(request, 400, "invalid JSON body");
     }
 
-    final partsJson = (body["parts"] as List<dynamic>? ?? const <dynamic>[]).cast<Map<String, dynamic>>();
-    final parts = partsJson
+    final parts = promptRequest.parts
         .map(
           (p) => PluginPromptPart(
-            type: p["type"] as String,
-            text: p["text"] as String?,
+            type: p.type,
+            text: p.text,
           ),
         )
         .toList();
 
-    final model = body["model"] as Map<String, dynamic>?;
+    final model = promptRequest.model;
 
     await _plugin.sendPrompt(
       sessionId: sessionId,
       parts: parts,
-      agent: body["agent"] as String?,
-      providerID: model?["providerID"] as String?,
-      modelID: model?["modelID"] as String?,
+      agent: promptRequest.agent,
+      providerID: model?.providerID,
+      modelID: model?.modelID,
     );
 
     return RelayMessage.response(

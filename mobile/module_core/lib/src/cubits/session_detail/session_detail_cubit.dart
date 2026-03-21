@@ -143,7 +143,17 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             streamingText: const {},
             sessionStatus: allStatuses[_sessionId] ?? const SessionStatus.idle(),
             pendingQuestions: switch (questionsResponse) {
-              SuccessResponse(:final data) => data.where((q) => q.sessionID == _sessionId).toList(),
+              SuccessResponse(:final data) =>
+                data
+                    .where((q) => q.sessionID == _sessionId)
+                    .map(
+                      (q) => SesoriQuestionAsked(
+                        id: q.id,
+                        sessionID: q.sessionID,
+                        questions: q.questions,
+                      ),
+                    )
+                    .toList(),
               ErrorResponse() => const [],
             },
             agent: latestAssistant?.agent,
