@@ -691,6 +691,12 @@ abstract class AppLocalizations {
   /// **'Running'**
   String get sessionListRunning;
 
+  /// Label showing the number of active background tasks for a session
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 background task} other{{count} background tasks}}'**
+  String sessionListBackgroundTasks(int count);
+
   /// No description provided for @sessionListStaleProjectTitle.
   ///
   /// In en, this message translates to:

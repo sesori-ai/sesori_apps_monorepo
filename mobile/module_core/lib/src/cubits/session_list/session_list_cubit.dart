@@ -8,6 +8,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/sse_event.dart";
 import "../../capabilities/session/session_service.dart";
+import "../../capabilities/sse/session_activity_info.dart";
 import "../../capabilities/sse/sse_event_repository.dart";
 import "../../logging/logging.dart";
 import "session_list_state.dart";
@@ -52,15 +53,16 @@ class SessionListCubit extends Cubit<SessionListState> {
     }
   }
 
-  void _onSessionActivityUpdated(Map<String, Set<String>> activityByProjectId) {
+  void _onSessionActivityUpdated(Map<String, Map<String, SessionActivityInfo>> activityByProjectId) {
     if (isClosed) return;
     if (state is! SessionListLoaded) return;
-    final activeIds = activityByProjectId[_projectId] ?? <String>{};
+    final loaded = state as SessionListLoaded;
+    final projectActivity = activityByProjectId[_projectId] ?? <String, SessionActivityInfo>{};
     emit(
       SessionListState.loaded(
-        sessions: (state as SessionListLoaded).sessions,
-        showArchived: (state as SessionListLoaded).showArchived,
-        activeSessionIds: activeIds,
+        sessions: loaded.sessions,
+        showArchived: loaded.showArchived,
+        activeSessionIds: projectActivity,
       ),
     );
   }
@@ -284,12 +286,12 @@ class SessionListCubit extends Cubit<SessionListState> {
     final sorted = visible.toList()..sort((a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0));
 
     if (isClosed) return;
-    final activeIds = _sseEventRepository.currentSessionActivity[_projectId] ?? <String>{};
+    final projectActivity = _sseEventRepository.currentSessionActivity[_projectId] ?? <String, SessionActivityInfo>{};
     emit(
       SessionListState.loaded(
         sessions: sorted,
         showArchived: _showArchived,
-        activeSessionIds: activeIds,
+        activeSessionIds: projectActivity,
       ),
     );
   }

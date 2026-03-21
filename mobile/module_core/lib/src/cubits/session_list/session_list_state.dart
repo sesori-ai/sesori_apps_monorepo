@@ -2,6 +2,8 @@ import "package:freezed_annotation/freezed_annotation.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../capabilities/sse/session_activity_info.dart";
+
 part "session_list_state.freezed.dart";
 
 @Freezed()
@@ -11,7 +13,12 @@ sealed class SessionListState with _$SessionListState {
   const factory SessionListState.loaded({
     required List<Session> sessions,
     @Default(false) bool showArchived,
-    @Default({}) Set<String> activeSessionIds,
+
+    /// Map of active session ID -> activity info.
+    ///
+    /// A session is "active" when either its main agent or any of its direct
+    /// child tasks are running.
+    @Default({}) Map<String, SessionActivityInfo> activeSessionIds,
   }) = SessionListLoaded;
 
   /// The requested project ID no longer resolves to the expected project on

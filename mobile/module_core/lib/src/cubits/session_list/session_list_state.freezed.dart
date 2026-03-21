@@ -78,7 +78,7 @@ String toString() {
 
 
 class SessionListLoaded implements SessionListState {
-  const SessionListLoaded({required final  List<Session> sessions, this.showArchived = false, final  Set<String> activeSessionIds = const {}}): _sessions = sessions,_activeSessionIds = activeSessionIds;
+  const SessionListLoaded({required final  List<Session> sessions, this.showArchived = false, final  Map<String, SessionActivityInfo> activeSessionIds = const {}}): _sessions = sessions,_activeSessionIds = activeSessionIds;
   
 
  final  List<Session> _sessions;
@@ -89,11 +89,19 @@ class SessionListLoaded implements SessionListState {
 }
 
 @JsonKey() final  bool showArchived;
- final  Set<String> _activeSessionIds;
-@JsonKey() Set<String> get activeSessionIds {
-  if (_activeSessionIds is EqualUnmodifiableSetView) return _activeSessionIds;
+/// Map of active session ID -> activity info.
+///
+/// A session is "active" when either its main agent or any of its direct
+/// child tasks are running.
+ final  Map<String, SessionActivityInfo> _activeSessionIds;
+/// Map of active session ID -> activity info.
+///
+/// A session is "active" when either its main agent or any of its direct
+/// child tasks are running.
+@JsonKey() Map<String, SessionActivityInfo> get activeSessionIds {
+  if (_activeSessionIds is EqualUnmodifiableMapView) return _activeSessionIds;
   // ignore: implicit_dynamic_type
-  return EqualUnmodifiableSetView(_activeSessionIds);
+  return EqualUnmodifiableMapView(_activeSessionIds);
 }
 
 
@@ -127,7 +135,7 @@ abstract mixin class $SessionListLoadedCopyWith<$Res> implements $SessionListSta
   factory $SessionListLoadedCopyWith(SessionListLoaded value, $Res Function(SessionListLoaded) _then) = _$SessionListLoadedCopyWithImpl;
 @useResult
 $Res call({
- List<Session> sessions, bool showArchived, Set<String> activeSessionIds
+ List<Session> sessions, bool showArchived, Map<String, SessionActivityInfo> activeSessionIds
 });
 
 
@@ -149,7 +157,7 @@ class _$SessionListLoadedCopyWithImpl<$Res>
 sessions: null == sessions ? _self._sessions : sessions // ignore: cast_nullable_to_non_nullable
 as List<Session>,showArchived: null == showArchived ? _self.showArchived : showArchived // ignore: cast_nullable_to_non_nullable
 as bool,activeSessionIds: null == activeSessionIds ? _self._activeSessionIds : activeSessionIds // ignore: cast_nullable_to_non_nullable
-as Set<String>,
+as Map<String, SessionActivityInfo>,
   ));
 }
 
@@ -163,7 +171,7 @@ class SessionListStaleProject implements SessionListState {
   const SessionListStaleProject({required this.resolvedProjectId});
   
 
-/// The project ID the server actually resolved for this directory.
+/// The project ID the server actually resolved.
  final  String resolvedProjectId;
 
 /// Create a copy of SessionListState

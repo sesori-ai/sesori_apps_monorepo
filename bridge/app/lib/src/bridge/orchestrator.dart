@@ -649,7 +649,15 @@ class OrchestratorSession {
           .map(
             (e) => ProjectActivitySummary(
               id: e.id,
-              activeSessionIds: e.activeSessionIds,
+              activeSessions: e.activeSessions
+                  .map(
+                    (a) => ActiveSession(
+                      id: a.id,
+                      mainAgentRunning: a.mainAgentRunning,
+                      childSessionIds: a.childSessionIds,
+                    ),
+                  )
+                  .toList(),
             ),
           )
           .toList(),
