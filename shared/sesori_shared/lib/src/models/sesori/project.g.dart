@@ -8,7 +8,6 @@ part of 'project.dart';
 
 _Project _$ProjectFromJson(Map json) => _Project(
   id: json['id'] as String,
-  worktree: json['worktree'] as String,
   name: json['name'] as String?,
   time: json['time'] == null
       ? null
@@ -17,7 +16,6 @@ _Project _$ProjectFromJson(Map json) => _Project(
 
 Map<String, dynamic> _$ProjectToJson(_Project instance) => <String, dynamic>{
   'id': instance.id,
-  'worktree': instance.worktree,
   'name': instance.name,
   'time': instance.time?.toJson(),
 };

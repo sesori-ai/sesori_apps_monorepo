@@ -216,7 +216,12 @@ class OpenCodePlugin implements BridgePlugin {
   @override
   Future<PluginSession> createSession({required String projectId, String? parentSessionId}) async {
     final session = await _call(
-      () => _service.repository.api.createSession(projectId, parentSessionId: parentSessionId),
+      () => _service.repository.api.createSession(
+        // this sesori plugin uses workspace path as project id
+        // because it's the most reliable UID with opencode
+        workspacePath: projectId, 
+        parentSessionId: parentSessionId,
+      ),
     );
     return session.toPlugin();
   }

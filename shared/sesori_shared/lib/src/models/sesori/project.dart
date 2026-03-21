@@ -8,7 +8,6 @@ part "project.g.dart";
 sealed class Project with _$Project {
   const factory Project({
     required String id,
-    required String worktree,
     String? name,
     ProjectTime? time,
   }) = _Project;

@@ -58,19 +58,29 @@ class OpenCodeApi {
     return decoded.cast<Map<String, dynamic>>().map(Session.fromJson).toList();
   }
 
-  Future<Session> createSession(String directory, {String? parentSessionId}) async {
+  Future<Session> createSession({
+    required String workspacePath,
+    String? parentSessionId,
+  }) async {
     final client = http.Client();
     try {
+      // Supported body:
+      //  {
+      //   "parentID": "<sessionID>",   // optional - set this to make it a child
+      //   "title": "string",           // optional - title gets auto-generated after first message
+      //   "permission": "...",         // optional
+      //   "workspaceID": "string"      // optional
+      // }
       final body = <String, dynamic>{};
       if (parentSessionId case final id?) {
-        body["parentSessionId"] = id;
+        body["parentID"] = id;
       }
       final response = await client.post(
         Uri.parse("$serverURL/session"),
         headers: {
           ..._authHeaders,
           "content-type": "application/json",
-          "x-opencode-directory": directory,
+          "x-opencode-directory": workspace,
         },
         body: jsonEncode(body),
       );

@@ -27,7 +27,6 @@ class GetCurrentProjectHandler extends RequestHandler {
     final pluginProject = await _plugin.getProject(projectId);
     final project = Project(
       id: pluginProject.id,
-      worktree: pluginProject.worktree,
       name: pluginProject.name,
       time: switch (pluginProject.time) {
         PluginProjectTime(:final created, :final updated) => ProjectTime(

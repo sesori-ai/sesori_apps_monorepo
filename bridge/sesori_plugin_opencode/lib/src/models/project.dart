@@ -30,8 +30,7 @@ sealed class ProjectTime with _$ProjectTime {
 
 extension ProjectToPluginExtension on Project {
   PluginProject toPlugin() => PluginProject(
-    id: id,
-    worktree: worktree,
+    id: worktree, // worktree is the most reliable UID with opencode
     name: name,
     time: switch (time) {
       ProjectTime(:final created, :final updated) => PluginProjectTime(

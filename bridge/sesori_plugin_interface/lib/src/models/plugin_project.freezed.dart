@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PluginProject {
 
- String get id; String get worktree; String? get name; PluginProjectTime? get time;
+ String get id; String? get name; PluginProjectTime? get time;
 /// Create a copy of PluginProject
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -27,16 +27,16 @@ $PluginProjectCopyWith<PluginProject> get copyWith => _$PluginProjectCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginProject&&(identical(other.id, id) || other.id == id)&&(identical(other.worktree, worktree) || other.worktree == worktree)&&(identical(other.name, name) || other.name == name)&&(identical(other.time, time) || other.time == time));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginProject&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.time, time) || other.time == time));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,worktree,name,time);
+int get hashCode => Object.hash(runtimeType,id,name,time);
 
 @override
 String toString() {
-  return 'PluginProject(id: $id, worktree: $worktree, name: $name, time: $time)';
+  return 'PluginProject(id: $id, name: $name, time: $time)';
 }
 
 
@@ -47,7 +47,7 @@ abstract mixin class $PluginProjectCopyWith<$Res>  {
   factory $PluginProjectCopyWith(PluginProject value, $Res Function(PluginProject) _then) = _$PluginProjectCopyWithImpl;
 @useResult
 $Res call({
- String id, String worktree, String? name, PluginProjectTime? time
+ String id, String? name, PluginProjectTime? time
 });
 
 
@@ -64,10 +64,9 @@ class _$PluginProjectCopyWithImpl<$Res>
 
 /// Create a copy of PluginProject
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? worktree = null,Object? name = freezed,Object? time = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = freezed,Object? time = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
-as String,worktree: null == worktree ? _self.worktree : worktree // ignore: cast_nullable_to_non_nullable
 as String,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String?,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
 as PluginProjectTime?,
@@ -94,11 +93,10 @@ $PluginProjectTimeCopyWith<$Res>? get time {
 @JsonSerializable(createFactory: false)
 
 class _PluginProject implements PluginProject {
-  const _PluginProject({required this.id, required this.worktree, this.name, this.time});
+  const _PluginProject({required this.id, this.name, this.time});
   
 
 @override final  String id;
-@override final  String worktree;
 @override final  String? name;
 @override final  PluginProjectTime? time;
 
@@ -115,16 +113,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginProject&&(identical(other.id, id) || other.id == id)&&(identical(other.worktree, worktree) || other.worktree == worktree)&&(identical(other.name, name) || other.name == name)&&(identical(other.time, time) || other.time == time));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginProject&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.time, time) || other.time == time));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,worktree,name,time);
+int get hashCode => Object.hash(runtimeType,id,name,time);
 
 @override
 String toString() {
-  return 'PluginProject(id: $id, worktree: $worktree, name: $name, time: $time)';
+  return 'PluginProject(id: $id, name: $name, time: $time)';
 }
 
 
@@ -135,7 +133,7 @@ abstract mixin class _$PluginProjectCopyWith<$Res> implements $PluginProjectCopy
   factory _$PluginProjectCopyWith(_PluginProject value, $Res Function(_PluginProject) _then) = __$PluginProjectCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String worktree, String? name, PluginProjectTime? time
+ String id, String? name, PluginProjectTime? time
 });
 
 
@@ -152,10 +150,9 @@ class __$PluginProjectCopyWithImpl<$Res>
 
 /// Create a copy of PluginProject
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? worktree = null,Object? name = freezed,Object? time = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = freezed,Object? time = freezed,}) {
   return _then(_PluginProject(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
-as String,worktree: null == worktree ? _self.worktree : worktree // ignore: cast_nullable_to_non_nullable
 as String,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String?,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
 as PluginProjectTime?,
