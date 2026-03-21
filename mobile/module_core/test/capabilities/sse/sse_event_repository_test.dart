@@ -71,10 +71,10 @@ void main() {
     });
 
     // -------------------------------------------------------------------------
-    // 3. sessionActivity excludes worktrees with no active sessions
+    // 3. sessionActivity excludes projects with no active sessions
     // -------------------------------------------------------------------------
 
-    test("sessionActivity excludes worktrees with no active sessions", () async {
+    test("sessionActivity excludes projects with no active sessions", () async {
       final repo = SseEventRepository(mockConnectionService);
 
       final completer = Completer<Map<String, Set<String>>>();
@@ -101,10 +101,10 @@ void main() {
     });
 
     // -------------------------------------------------------------------------
-    // 4. sessionActivity handles multiple worktrees
+    // 4. sessionActivity handles multiple projects
     // -------------------------------------------------------------------------
 
-    test("sessionActivity handles multiple worktrees", () async {
+    test("sessionActivity handles multiple projects", () async {
       final repo = SseEventRepository(mockConnectionService);
 
       final completer = Completer<Map<String, Set<String>>>();
@@ -114,7 +114,7 @@ void main() {
         }
       });
 
-      // Emit a projectsSummary event with active sessions for multiple worktrees
+      // Emit a projectsSummary event with active sessions for multiple projects.
       final event = SseEvent(
         data: const SesoriProjectsSummary(
           projects: [
@@ -246,10 +246,10 @@ void main() {
     });
 
     // -------------------------------------------------------------------------
-    // 8. projectActivity excludes worktrees with no active sessions
+    // 8. projectActivity excludes projects with no active sessions
     // -------------------------------------------------------------------------
 
-    test("projectActivity excludes worktrees with no active sessions", () async {
+    test("projectActivity excludes projects with no active sessions", () async {
       final repo = SseEventRepository(mockConnectionService);
 
       final completer = Completer<Map<String, int>>();

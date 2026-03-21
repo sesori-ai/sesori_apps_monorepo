@@ -8,7 +8,7 @@ part "create_session_request.g.dart";
 sealed class CreateSessionRequest with _$CreateSessionRequest {
   const factory CreateSessionRequest({
     required String projectId,
-    String? parentSessionId,
+    required String? parentSessionId,
   }) = _CreateSessionRequest;
 
   factory CreateSessionRequest.fromJson(Map<String, dynamic> json) => _$CreateSessionRequestFromJson(json);

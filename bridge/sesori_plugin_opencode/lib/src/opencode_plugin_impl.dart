@@ -331,8 +331,8 @@ class OpenCodePlugin implements BridgePlugin {
   }
 
   @override
-  Future<PluginProject> getCurrentProject(String projectId) async {
-    final project = await _call(() => _service.repository.api.getCurrentProject(projectId));
+  Future<PluginProject> getProject(String projectId) async {
+    final project = await _call(() => _service.repository.api.getProject(projectId));
     return project.toPlugin();
   }
 

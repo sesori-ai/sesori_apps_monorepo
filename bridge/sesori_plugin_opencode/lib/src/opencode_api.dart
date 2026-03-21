@@ -212,7 +212,7 @@ class OpenCodeApi {
     }
   }
 
-  Future<Project> getCurrentProject(String directory) async {
+  Future<Project> getProject(String directory) async {
     final response = await http.get(
       Uri.parse("$serverURL/project/current"),
       headers: {

@@ -64,7 +64,8 @@ abstract class BridgePlugin {
 
   Future<void> rejectQuestion(String questionId);
 
-  Future<PluginProject> getCurrentProject(String projectId);
+  /// Get a project by its ID.
+  Future<PluginProject> getProject(String projectId);
 
   /// Health check — returns the backend's health status as a JSON string.
   Future<String> healthCheck();

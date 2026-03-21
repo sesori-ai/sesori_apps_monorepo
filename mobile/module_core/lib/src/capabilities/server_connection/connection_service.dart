@@ -120,7 +120,7 @@ class ConnectionService {
     ConnectionDisconnected() => null,
   };
 
-  /// The current project directory (worktree). Set when the user enters a
+  /// The current project directory. Set when the user enters a
   /// project context and used by feature cubits/services as request context.
   String? _activeDirectory;
   String? get activeDirectory => _activeDirectory;

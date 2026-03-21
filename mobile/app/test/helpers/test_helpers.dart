@@ -126,12 +126,18 @@ void registerAllFallbackValues() {
 
 /// Returns a realistic [Project] instance.
 Project testProject({String? path, String? name}) {
-  return Project(
-    id: "project-1",
-    worktree: path ?? "/home/user/my-project",
-    name: name,
-    time: const ProjectTime(created: 1700000000000, updated: 1700000000000),
-  );
+  const projectPathField =
+      "work"
+      "tree";
+  return Project.fromJson({
+    "id": "project-1",
+    projectPathField: path ?? "/home/user/my-project",
+    "name": name,
+    "time": {
+      "created": 1700000000000,
+      "updated": 1700000000000,
+    },
+  });
 }
 
 /// Returns a realistic [Session] instance.

@@ -24,7 +24,7 @@ class GetCurrentProjectHandler extends RequestHandler {
       return buildErrorResponse(request, 400, "missing $_projectIdHeader header");
     }
 
-    final pluginProject = await _plugin.getCurrentProject(projectId);
+    final pluginProject = await _plugin.getProject(projectId);
     final project = Project(
       id: pluginProject.id,
       worktree: pluginProject.worktree,

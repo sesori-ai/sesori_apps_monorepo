@@ -81,7 +81,7 @@ as String?,
 @JsonSerializable()
 
 class _CreateSessionRequest implements CreateSessionRequest {
-  const _CreateSessionRequest({required this.projectId, this.parentSessionId});
+  const _CreateSessionRequest({required this.projectId, required this.parentSessionId});
   factory _CreateSessionRequest.fromJson(Map<String, dynamic> json) => _$CreateSessionRequestFromJson(json);
 
 @override final  String projectId;

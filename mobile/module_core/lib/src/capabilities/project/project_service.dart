@@ -29,7 +29,7 @@ class ProjectService {
   }
 
   /// Returns the project matching the requested project ID.
-  Future<ApiResponse<Project>> getCurrentProject({required String projectId}) {
+  Future<ApiResponse<Project>> getProject({required String projectId}) {
     return _client.get(
       "/project/current",
       fromJson: (json) => switch (json) {

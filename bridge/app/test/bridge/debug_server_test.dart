@@ -306,7 +306,7 @@ class _FakeBridgePlugin implements BridgePlugin {
   Future<void> rejectQuestion(String questionId) async {}
 
   @override
-  Future<PluginProject> getCurrentProject(String projectId) async => const PluginProject(id: "", worktree: "");
+  Future<PluginProject> getProject(String projectId) async => const PluginProject(id: "", worktree: "");
 
   @override
   Future<String> healthCheck() async => '{"healthy":true}';
@@ -428,7 +428,7 @@ class _TrackingBridgePlugin implements BridgePlugin {
   Future<void> rejectQuestion(String questionId) async {}
 
   @override
-  Future<PluginProject> getCurrentProject(String projectId) async => const PluginProject(id: "", worktree: "");
+  Future<PluginProject> getProject(String projectId) async => const PluginProject(id: "", worktree: "");
 
   @override
   Future<String> healthCheck() async => '{"healthy":true}';

@@ -20,7 +20,7 @@ class SseEventRepository with Disposable {
     _subscription = _connectionService.events.listen(_handleEvent);
   }
 
-  /// Map of worktree path -> active session count.
+  /// Map of project ID -> active session count.
   ///
   /// Only includes projects with active sessions.
   /// Late subscribers immediately receive the latest cached value.
@@ -29,9 +29,9 @@ class SseEventRepository with Disposable {
   /// The latest project activity map, synchronously available.
   Map<String, int> get currentProjectActivity => _projectActivity.value;
 
-  /// Map of worktree path -> set of active session IDs.
+  /// Map of project ID -> set of active session IDs.
   ///
-  /// Only includes worktrees with active sessions.
+  /// Only includes projects with active sessions.
   /// Late subscribers immediately receive the latest cached value.
   ValueStream<Map<String, Set<String>>> get sessionActivity => _sessionActivity.stream;
 

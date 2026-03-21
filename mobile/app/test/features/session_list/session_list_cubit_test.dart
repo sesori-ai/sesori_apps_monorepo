@@ -16,28 +16,20 @@ void main() {
 
   group("SessionListCubit", () {
     late MockSessionService mockSessionService;
-    late MockProjectService mockProjectService;
     late MockConnectionService mockConnectionService;
     late MockSseEventRepository mockSseEventRepository;
     late StreamController<SseEvent> eventController;
 
     const projectId = "project-1";
-    const worktree = "/home/user/my-project";
 
     setUp(() {
       mockSessionService = MockSessionService();
-      mockProjectService = MockProjectService();
       mockConnectionService = MockConnectionService();
       mockSseEventRepository = MockSseEventRepository();
       eventController = StreamController<SseEvent>.broadcast();
 
       // Must be stubbed before any cubit is built — constructor subscribes immediately.
       when(() => mockConnectionService.events).thenAnswer((_) => eventController.stream);
-      when(() => mockConnectionService.activeDirectory).thenReturn(worktree);
-      // Default stub for project service — tests can override if needed.
-      when(() => mockProjectService.getCurrentProject(projectId: any(named: "projectId"))).thenAnswer(
-        (_) async => ApiResponse.success(testProject()),
-      );
     });
 
     tearDown(() async {
@@ -47,7 +39,6 @@ void main() {
     /// Convenience factory — stubs must be set up before calling this.
     SessionListCubit buildCubit() => SessionListCubit(
       mockSessionService,
-      mockProjectService,
       mockConnectionService,
       mockSseEventRepository,
       projectId: projectId,
@@ -63,9 +54,6 @@ void main() {
         when(
           () => mockSessionService.listSessions(projectId: projectId),
         ).thenAnswer((_) async => ApiResponse.success([testSession()]));
-        when(
-          () => mockProjectService.getCurrentProject(projectId: projectId),
-        ).thenAnswer((_) async => ApiResponse.success(testProject()));
         return buildCubit();
       },
       // No act — we only verify what the constructor-triggered load emits.
@@ -104,7 +92,7 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 3. Load empty — no sessions, same project → loaded with empty list
+    // 3. Load empty — loaded with empty list
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
@@ -113,11 +101,6 @@ void main() {
         when(
           () => mockSessionService.listSessions(projectId: projectId),
         ).thenAnswer((_) async => ApiResponse.success(<Session>[]));
-        // Empty list triggers stale-project check; return same project so we
-        // fall through to _emitFiltered() with an empty visible set.
-        when(
-          () => mockProjectService.getCurrentProject(projectId: projectId),
-        ).thenAnswer((_) async => ApiResponse.success(testProject()));
         return buildCubit();
       },
       expect: () => [
@@ -297,42 +280,7 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 10. Stale project detection — server resolves a different project
-    // -------------------------------------------------------------------------
-
-    blocTest<SessionListCubit, SessionListState>(
-      "loadSessions: emits SessionListStaleProject when server resolves a different project",
-      build: () {
-        // Empty list → no sessions belong here → triggers stale-project check.
-        when(
-          () => mockSessionService.listSessions(projectId: projectId),
-        ).thenAnswer((_) async => ApiResponse.success(<Session>[]));
-        // Server resolves to a different project than the stored one.
-        when(() => mockProjectService.getCurrentProject(projectId: projectId)).thenAnswer(
-          (_) async => ApiResponse.success(
-            const Project(
-              id: "other-project",
-              worktree: "/home/user/other-project",
-              time: ProjectTime(
-                created: 1700000000000,
-                updated: 1700000000000,
-              ),
-            ),
-          ),
-        );
-        return buildCubit();
-      },
-      expect: () => [
-        isA<SessionListStaleProject>().having(
-          (s) => s.resolvedProjectId,
-          "resolvedProjectId",
-          "other-project",
-        ),
-      ],
-    );
-
-    // -------------------------------------------------------------------------
-    // 11. refreshSessions success — no loading state, emits loaded, returns true
+    // 10. refreshSessions success — no loading state, emits loaded, returns true
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
@@ -364,7 +312,7 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 12. refreshSessions failure — keeps current state, returns false
+    // 11. refreshSessions failure — keeps current state, returns false
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
@@ -390,7 +338,7 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 13. refreshSessions preserves showArchived toggle across refresh
+    // 12. refreshSessions preserves showArchived toggle across refresh
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
@@ -438,7 +386,7 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 14. unarchiveSession success — optimistically shows session, API succeeds
+    // 13. unarchiveSession success — optimistically shows session, API succeeds
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
@@ -479,7 +427,7 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 15. unarchiveSession failure — rollback restores archived state
+    // 14. unarchiveSession failure — rollback restores archived state
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
@@ -519,7 +467,7 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 16. undoLastArchiveAction — reverses archive (undo = unarchive)
+    // 15. undoLastArchiveAction — reverses archive (undo = unarchive)
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
@@ -554,7 +502,7 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 17. undoLastArchiveAction — reverses unarchive (undo = re-archive)
+    // 16. undoLastArchiveAction — reverses unarchive (undo = re-archive)
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
@@ -601,7 +549,7 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 18. Rapid archive s1 → archive s2 → undo reverts s2 correctly
+    // 17. Rapid archive s1 → archive s2 → undo reverts s2 correctly
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
@@ -650,7 +598,7 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 19. Stale clearLastActionUndo after rapid archives wipes undo state
+    // 18. Stale clearLastActionUndo after rapid archives wipes undo state
     //     (documents the race condition that the screen must avoid)
     // -------------------------------------------------------------------------
 
@@ -696,11 +644,11 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // Root "/" worktree — sessions in subdirectories should still belong here
+    // Root "global" project — sessions in subdirectories still belong here
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
-      "root worktree '/' includes sessions in any subdirectory",
+      "global project includes sessions in any subdirectory",
       build: () {
         const sessions = [
           Session(
@@ -721,13 +669,8 @@ void main() {
         when(() => mockSessionService.listSessions(projectId: "global")).thenAnswer(
           (_) async => ApiResponse.success(sessions),
         );
-        when(() => mockConnectionService.activeDirectory).thenReturn("/");
-        when(() => mockProjectService.getCurrentProject(projectId: "global")).thenAnswer(
-          (_) async => ApiResponse.success(const Project(id: "global", worktree: "/")),
-        );
         return SessionListCubit(
           mockSessionService,
-          mockProjectService,
           mockConnectionService,
           mockSseEventRepository,
           projectId: "global",
@@ -743,7 +686,7 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 20. activeSessionIds from SseEventRepository
+    // 19. activeSessionIds from SseEventRepository
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
@@ -755,9 +698,9 @@ void main() {
             testSession(id: "s2", title: "Session 2"),
           ]),
         );
-        // Mock the repository to emit activity for this worktree
+        // Mock the repository to emit activity for this project.
         mockSseEventRepository.emitSessionActivity({
-          worktree: {"s1", "s2"},
+          projectId: {"s1", "s2"},
         });
         return buildCubit();
       },
@@ -771,7 +714,7 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 21. activeSessionIds updates when activity changes
+    // 20. activeSessionIds updates when activity changes
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
@@ -790,13 +733,13 @@ void main() {
         await Future<void>.delayed(Duration.zero);
         // Emit initial activity
         mockSseEventRepository.emitSessionActivity({
-          worktree: {"s1"},
+          projectId: {"s1"},
         });
         // Wait for the activity update to be processed
         await Future<void>.delayed(const Duration(milliseconds: 10));
         // Emit updated activity
         mockSseEventRepository.emitSessionActivity({
-          worktree: {"s1", "s2"},
+          projectId: {"s1", "s2"},
         });
       },
       skip: 1, // skip initial load
@@ -817,48 +760,48 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 22. activeSessionIds excludes sessions from other worktrees
+    // 21. activeSessionIds excludes sessions from other projects
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
-      "activeSessionIds excludes sessions from other worktrees",
+      "activeSessionIds excludes sessions from other projects",
       build: () {
         when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success([
             testSession(id: "s1", title: "Session 1"),
           ]),
         );
-        // Emit activity for this worktree and another
+        // Emit activity for this project and another.
         mockSseEventRepository.emitSessionActivity({
-          worktree: {"s1"},
-          "/other/worktree": {"s2", "s3"},
+          projectId: {"s1"},
+          "project-2": {"s2", "s3"},
         });
         return buildCubit();
       },
       expect: () => [
         isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions count", 1).having(
           (s) => s.activeSessionIds,
-          "activeSessionIds for this worktree only",
+          "activeSessionIds for this project only",
           {"s1"},
         ),
       ],
     );
 
     // -------------------------------------------------------------------------
-    // 23. activeSessionIds is empty when no activity for this worktree
+    // 22. activeSessionIds is empty when no activity for this project
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
-      "activeSessionIds is empty when no activity for this worktree",
+      "activeSessionIds is empty when no activity for this project",
       build: () {
         when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success([
             testSession(id: "s1", title: "Session 1"),
           ]),
         );
-        // Emit activity for a different worktree
+        // Emit activity for a different project.
         mockSseEventRepository.emitSessionActivity({
-          "/other/worktree": {"s2"},
+          "project-2": {"s2"},
         });
         return buildCubit();
       },

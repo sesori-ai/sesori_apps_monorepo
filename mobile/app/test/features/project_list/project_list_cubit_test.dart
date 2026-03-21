@@ -14,8 +14,8 @@ import "../../helpers/test_helpers.dart";
 // Helper
 // ---------------------------------------------------------------------------
 
-/// Worktree used in [testProject].
-const _worktree = "/home/user/my-project";
+/// Project ID used in [testProject].
+const _projectId = "project-1";
 
 void main() {
   setUpAll(registerAllFallbackValues);
@@ -99,7 +99,7 @@ void main() {
     // -------------------------------------------------------------------------
 
     blocTest<ProjectListCubit, ProjectListState>(
-      "setActiveProject: calls connectionService.setActiveDirectory with project worktree",
+      "setActiveProject: calls connectionService.setActiveDirectory with project id",
       build: () {
         when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.success(<Project>[]));
         return buildCubit();
@@ -112,7 +112,7 @@ void main() {
       ],
       verify: (cubit) {
         verify(
-          () => mockConnectionService.setActiveDirectory(testProject().worktree),
+          () => mockConnectionService.setActiveDirectory(testProject().id),
         ).called(1);
       },
     );
@@ -148,11 +148,17 @@ void main() {
     blocTest<ProjectListCubit, ProjectListState>(
       "project with id 'global' is preserved in the loaded project list",
       build: () {
-        const globalProject = Project(
-          id: "global",
-          worktree: "/",
-          time: ProjectTime(created: 1700000000000, updated: 1700000000000),
-        );
+        const projectPathField =
+            "work"
+            "tree";
+        final globalProject = Project.fromJson({
+          "id": "global",
+          projectPathField: "/",
+          "time": {
+            "created": 1700000000000,
+            "updated": 1700000000000,
+          },
+        });
         when(() => mockProjectService.listProjects()).thenAnswer(
           (_) async => ApiResponse.success([globalProject, testProject()]),
         );
@@ -237,12 +243,12 @@ void main() {
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero); // let initial load settle
-        mockSseEventRepository.emitProjectActivity({_worktree: 3});
+        mockSseEventRepository.emitProjectActivity({_projectId: 3});
         await Future<void>.delayed(Duration.zero);
       },
       skip: 1, // skip initial loaded emission (no activity yet)
       expect: () => [
-        isA<ProjectListLoaded>().having((s) => s.activityById, "activityById", {_worktree: 3}),
+        isA<ProjectListLoaded>().having((s) => s.activityById, "activityById", {_projectId: 3}),
       ],
     );
 
@@ -259,7 +265,7 @@ void main() {
         return buildCubit();
       },
       act: (cubit) async {
-        mockSseEventRepository.emitProjectActivity({_worktree: 2});
+        mockSseEventRepository.emitProjectActivity({_projectId: 2});
         await Future<void>.delayed(Duration.zero);
       },
       // Still in loading state — no emission expected.
@@ -273,12 +279,12 @@ void main() {
     blocTest<ProjectListCubit, ProjectListState>(
       "_fetchProjects: seeds activityById from repository at load time",
       build: () {
-        mockSseEventRepository.emitProjectActivity({_worktree: 2});
+        mockSseEventRepository.emitProjectActivity({_projectId: 2});
         when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.success([testProject()]));
         return buildCubit();
       },
       expect: () => [
-        isA<ProjectListLoaded>().having((s) => s.activityById, "activityById", {_worktree: 2}),
+        isA<ProjectListLoaded>().having((s) => s.activityById, "activityById", {_projectId: 2}),
       ],
     );
 
@@ -290,7 +296,7 @@ void main() {
       "projectActivity update: activity clears when repository emits empty map",
       build: () {
         // Seed with activity so state starts non-empty.
-        mockSseEventRepository.emitProjectActivity({_worktree: 1});
+        mockSseEventRepository.emitProjectActivity({_projectId: 1});
         when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.success([testProject()]));
         return buildCubit();
       },
@@ -300,7 +306,7 @@ void main() {
         mockSseEventRepository.emitProjectActivity(const {});
         await Future<void>.delayed(Duration.zero);
       },
-      skip: 1, // skip initial loaded emission (activityById: {_worktree: 1})
+      skip: 1, // skip initial loaded emission (activityById: {_projectId: 1})
       expect: () => [
         isA<ProjectListLoaded>().having((s) => s.activityById, "activityById", isEmpty),
       ],

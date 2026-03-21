@@ -96,7 +96,7 @@ void main() {
       });
     });
 
-    group("getCurrentProject", () {
+    group("getProject", () {
       test("success: returns Project from GET /project/current", () async {
         // Arrange
         final testProj = testProject(path: "/home/user/current-project");
@@ -111,7 +111,7 @@ void main() {
         ).thenAnswer((_) async => successResponse);
 
         // Act
-        final result = await projectService.getCurrentProject(projectId: "/home/user/current-project");
+        final result = await projectService.getProject(projectId: "/home/user/current-project");
 
         // Assert
         expect(result, isA<SuccessResponse<Project>>());
@@ -139,7 +139,7 @@ void main() {
         ).thenAnswer((_) async => errorResponse);
 
         // Act
-        final result = await projectService.getCurrentProject(projectId: "/home/user/current-project");
+        final result = await projectService.getProject(projectId: "/home/user/current-project");
 
         // Assert
         expect(result, isA<ErrorResponse<Project>>());
@@ -164,7 +164,7 @@ void main() {
         ).thenAnswer((_) async => ApiResponse.success(testProject()));
 
         // Act
-        await projectService.getCurrentProject(projectId: "/home/user/current-project");
+        await projectService.getProject(projectId: "/home/user/current-project");
 
         // Assert
         verify(

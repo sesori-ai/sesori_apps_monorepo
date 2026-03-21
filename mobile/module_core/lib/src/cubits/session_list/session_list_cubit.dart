@@ -5,7 +5,6 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../../capabilities/project/project_service.dart";
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/sse_event.dart";
 import "../../capabilities/session/session_service.dart";
@@ -17,10 +16,8 @@ class SessionListCubit extends Cubit<SessionListState> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
   final SessionService _service;
-  final ProjectService _projectService;
   final SseEventRepository _sseEventRepository;
   final String _projectId;
-  String? _resolvedWorktree;
 
   /// Tracks the session state before the last archive/unarchive action
   /// so the screen can offer an undo toast.
@@ -28,12 +25,10 @@ class SessionListCubit extends Cubit<SessionListState> {
 
   SessionListCubit(
     SessionService service,
-    ProjectService projectService,
     ConnectionService connectionService,
     SseEventRepository sseEventRepository, {
     required String projectId,
   }) : _service = service,
-       _projectService = projectService,
        _sseEventRepository = sseEventRepository,
        _projectId = projectId,
        super(const SessionListState.loading()) {
@@ -57,10 +52,10 @@ class SessionListCubit extends Cubit<SessionListState> {
     }
   }
 
-  void _onSessionActivityUpdated(Map<String, Set<String>> activityById) {
+  void _onSessionActivityUpdated(Map<String, Set<String>> activityByProjectId) {
     if (isClosed) return;
     if (state is! SessionListLoaded) return;
-    final activeIds = _resolvedWorktree != null ? (activityById[_resolvedWorktree] ?? <String>{}) : <String>{};
+    final activeIds = activityByProjectId[_projectId] ?? <String>{};
     emit(
       SessionListState.loaded(
         sessions: (state as SessionListLoaded).sessions,
@@ -289,9 +284,7 @@ class SessionListCubit extends Cubit<SessionListState> {
     final sorted = visible.toList()..sort((a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0));
 
     if (isClosed) return;
-    final activeIds = _resolvedWorktree != null
-        ? (_sseEventRepository.currentSessionActivity[_resolvedWorktree] ?? {})
-        : <String>{};
+    final activeIds = _sseEventRepository.currentSessionActivity[_projectId] ?? <String>{};
     emit(
       SessionListState.loaded(
         sessions: sorted,
@@ -319,27 +312,6 @@ class SessionListCubit extends Cubit<SessionListState> {
     switch (response) {
       case SuccessResponse(:final data):
         _allSessions = data;
-
-        // Resolve worktree from project service for activity tracking.
-        final projectResponse = await _projectService.getCurrentProject(projectId: _projectId);
-        if (isClosed) return false;
-
-        switch (projectResponse) {
-          case SuccessResponse(data: final project):
-            // Check if project ID matches (stale project detection).
-            if (project.id != _projectId) {
-              logw("Stale project: expected $_projectId, server resolved ${project.id}");
-              emit(SessionListState.staleProject(resolvedProjectId: project.id));
-              return true;
-            }
-            // Cache the resolved worktree for activity lookups.
-            _resolvedWorktree = project.worktree;
-          case ErrorResponse(:final error):
-            // Graceful degradation: log but continue without worktree.
-            logw("Failed to resolve project worktree: $error");
-            _resolvedWorktree = null;
-        }
-
         _emitFiltered();
         return true;
 

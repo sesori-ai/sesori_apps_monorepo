@@ -14,10 +14,10 @@ sealed class SessionListState with _$SessionListState {
     @Default({}) Set<String> activeSessionIds,
   }) = SessionListLoaded;
 
-  /// The stored worktree no longer resolves to the expected project on the
-  /// server (e.g. the directory was renamed or deleted).
+  /// The requested project ID no longer resolves to the expected project on
+  /// the server.
   const factory SessionListState.staleProject({
-    /// The project ID the server actually resolved for this directory.
+    /// The project ID the server actually resolved.
     required String resolvedProjectId,
   }) = SessionListStaleProject;
 

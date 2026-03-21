@@ -67,7 +67,7 @@ class SessionService {
         final Map<String, dynamic> map => Session.fromJson(map),
         _ => throw FormatException("expected map, got ${json.runtimeType}"),
       },
-      body: CreateSessionRequest(projectId: projectId).toJson(),
+      body: CreateSessionRequest(projectId: projectId, parentSessionId: null).toJson(),
     );
   }
 

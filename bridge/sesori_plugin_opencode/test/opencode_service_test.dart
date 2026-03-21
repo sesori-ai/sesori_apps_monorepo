@@ -394,7 +394,7 @@ class FakeOpenCodeApi implements OpenCodeApi {
   Future<void> rejectQuestion(String questionId) async {}
 
   @override
-  Future<Project> getCurrentProject(String directory) async => throw UnimplementedError();
+  Future<Project> getProject(String directory) async => throw UnimplementedError();
 
   @override
   Future<List<GlobalSession>> listGlobalSessions({

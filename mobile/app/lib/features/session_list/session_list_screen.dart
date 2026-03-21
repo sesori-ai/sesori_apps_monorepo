@@ -25,7 +25,6 @@ class SessionListScreen extends StatelessWidget {
     return BlocProvider(
       create: (_) => SessionListCubit(
         getIt<SessionService>(),
-        getIt<ProjectService>(),
         getIt<ConnectionService>(),
         getIt<SseEventRepository>(),
         projectId: projectId,
