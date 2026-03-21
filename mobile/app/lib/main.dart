@@ -17,28 +17,32 @@ void main() async {
   if (_shouldInitializeFirebase) {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-    // Explicitly disable any data collection except for the very basic analytics
-    // Note: Those are also disabled by default in Info.plist and AndroidManifest.xml
-    FirebaseAnalytics.instance
-        .setConsent(
-          adPersonalizationSignalsConsentGranted: false,
-          adStorageConsentGranted: false,
-          adUserDataConsentGranted: false,
-          personalizationStorageConsentGranted: false,
-          securityStorageConsentGranted: false,
-          analyticsStorageConsentGranted: true,
-          functionalityStorageConsentGranted: true,
-        )
-        .ignore();
+    if (_supportsFirebaseAnalytics) {
+      // Explicitly disable any data collection except for the very basic analytics
+      // Note: Those are also disabled by default in Info.plist and AndroidManifest.xml
+      FirebaseAnalytics.instance
+          .setConsent(
+            adPersonalizationSignalsConsentGranted: false,
+            adStorageConsentGranted: false,
+            adUserDataConsentGranted: false,
+            personalizationStorageConsentGranted: false,
+            securityStorageConsentGranted: false,
+            analyticsStorageConsentGranted: true,
+            functionalityStorageConsentGranted: true,
+          )
+          .ignore();
+    }
 
-    FlutterError.onError = (errorDetails) {
-      FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
-    };
-    // Pass all uncaught asynchronous errors that aren't handled by the Flutter framework to Crashlytics
-    PlatformDispatcher.instance.onError = (error, stack) {
-      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-      return true;
-    };
+    if (_supportsFirebaseCrashlytics) {
+      FlutterError.onError = (errorDetails) {
+        FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
+      };
+      // Pass all uncaught asynchronous errors that aren't handled by the Flutter framework to Crashlytics
+      PlatformDispatcher.instance.onError = (error, stack) {
+        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+        return true;
+      };
+    }
   }
   configureDependencies();
   getIt<DeepLinkService>().init();
@@ -46,11 +50,39 @@ void main() async {
 }
 
 bool get _shouldInitializeFirebase {
-  if (defaultTargetPlatform != TargetPlatform.android) {
-    return true;
+  if (kIsWeb) {
+    return false;
   }
 
-  return kReleaseMode;
+  return switch (defaultTargetPlatform) {
+    TargetPlatform.android => kReleaseMode,
+    TargetPlatform.iOS || TargetPlatform.macOS => true,
+    TargetPlatform.fuchsia || TargetPlatform.linux || TargetPlatform.windows => false,
+  };
+}
+
+bool get _supportsFirebaseAnalytics {
+  if (kIsWeb) {
+    return false;
+  }
+
+  return switch (defaultTargetPlatform) {
+    TargetPlatform.android => kReleaseMode,
+    TargetPlatform.iOS || TargetPlatform.macOS => true,
+    TargetPlatform.fuchsia || TargetPlatform.linux || TargetPlatform.windows => false,
+  };
+}
+
+bool get _supportsFirebaseCrashlytics {
+  if (kIsWeb) {
+    return false;
+  }
+
+  return switch (defaultTargetPlatform) {
+    TargetPlatform.android => kReleaseMode,
+    TargetPlatform.iOS || TargetPlatform.macOS => true,
+    TargetPlatform.fuchsia || TargetPlatform.linux || TargetPlatform.windows => false,
+  };
 }
 
 class SesoriApp extends StatelessWidget {

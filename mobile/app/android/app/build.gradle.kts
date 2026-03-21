@@ -8,6 +8,7 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
     // START: FlutterFire Configuration (disabled for debug and profile builds -- end of file)
     id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
     // END: FlutterFire Configuration
 }
 
@@ -131,9 +132,11 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.13.0")
 }
 
-// Added to disable Google Services plugin for debug and profile builds
+// Only release builds are wired to Firebase on Android.
 tasks.matching { task ->
-    task.name == "processDebugGoogleServices" || task.name == "processProfileGoogleServices"
+    task.name == "processDebugGoogleServices" ||
+        task.name == "processProfileGoogleServices" ||
+        (task.name.contains("Crashlytics") && !task.name.contains("Release"))
 }.configureEach {
     enabled = false
 }
