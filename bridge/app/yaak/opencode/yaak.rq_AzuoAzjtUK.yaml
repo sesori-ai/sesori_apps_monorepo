@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_AzuoAzjtUK
 createdAt: 2026-03-13T12:44:03.283053
-updatedAt: 2026-03-13T12:56:35.307806
+updatedAt: 2026-03-21T08:13:35.068152
 workspaceId: wk_CKpMKQdH7W
 folderId: fl_yk5jRTWYoF
 authentication: {}
@@ -35,9 +35,9 @@ url: ${[ base_url ]}/session/:sessionID
 urlParameters:
 - enabled: true
   name: :sessionID
-  value: ses_318d2c9e3ffeZ6s6SJu83vXQv3
+  value: ses_2f08dbf52ffezTT6Rtn4R9FbzX
   id: kz6efcSPKb
 - enabled: true
   name: ''
   value: ''
-  id: E7Q3MKJyIZ
+  id: wBnV5Uw9FE
