@@ -199,13 +199,13 @@ class OpenCodePlugin implements BridgePlugin {
 
   @override
   Future<List<PluginSession>> getSessions(
-    String worktree, {
+    String projectId, {
     int? start,
     int? limit,
   }) async {
     final sessions = await _call(
       () => _service.getSessions(
-        worktree: worktree,
+        worktree: projectId,
         start: start,
         limit: limit,
       ),

@@ -45,11 +45,13 @@ class OpenCodeApi {
   }
 
   Future<List<Session>> listSessions({String? directory}) async {
-    final query = <String, String>{};
-    if (directory != null) query["directory"] = directory;
+    final headers = <String, String>{..._authHeaders};
+    if (directory != null) headers["x-opencode-directory"] = directory;
 
-    final uri = Uri.parse("$serverURL/session").replace(queryParameters: query);
-    final response = await http.get(uri, headers: _authHeaders);
+    final response = await http.get(
+      Uri.parse("$serverURL/session"),
+      headers: headers,
+    );
     _ensureSuccess(response, "GET /session");
 
     final decoded = jsonDecode(response.body) as List;

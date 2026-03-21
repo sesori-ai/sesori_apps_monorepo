@@ -19,8 +19,8 @@ abstract class BridgePlugin {
   /// Get the list of projects from the backend.
   Future<List<PluginProject>> getProjects();
 
-  /// Get sessions for a worktree directory.
-  Future<List<PluginSession>> getSessions(String worktree, {int? start, int? limit});
+  /// Get sessions for a project directory.
+  Future<List<PluginSession>> getSessions(String projectId, {int? start, int? limit});
 
   /// Create a new session in the given project.
   ///
