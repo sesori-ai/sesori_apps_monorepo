@@ -117,6 +117,15 @@ void main() {
       expect(response.body, contains("request failed"));
     });
 
+    test("returns upstream status when handler throws PluginApiException", () async {
+      plugin.throwOnGetProjectsError = PluginApiException("/project", 404);
+
+      final response = await router.route(makeRequest("GET", "/project"));
+
+      expect(response.status, equals(404));
+      expect(response.body, contains("PluginApiException"));
+    });
+
     test("502 body contains the original error message", () async {
       plugin.throwOnHealthCheck = true;
       final response = await router.route(makeRequest("GET", "/global/health"));

@@ -72,6 +72,15 @@ class RequestRouter {
             body: "no handler found for ${request.method} ${request.path}",
           )
           as RelayResponse;
+    } on PluginApiException catch (e) {
+      Log.w("upstream error: $e");
+      return RelayMessage.response(
+            id: request.id,
+            status: e.statusCode,
+            headers: {},
+            body: e.toString(),
+          )
+          as RelayResponse;
     } catch (e) {
       return RelayMessage.response(
             id: request.id,

@@ -86,6 +86,28 @@ void main() {
       expect(plugin.lastUpdateSessionArchivedAt, isNull);
     });
 
+    test("returns 400 when body has no time key", () async {
+      final response = await handler.handle(
+        makeRequest("PATCH", "/session/s1", body: "{}"),
+        pathParams: {"id": "s1"},
+        queryParams: {},
+      );
+
+      expect(response.status, equals(400));
+      expect(response.body, contains("missing time.archived in body"));
+    });
+
+    test("returns 400 when time has no archived key", () async {
+      final response = await handler.handle(
+        makeRequest("PATCH", "/session/s1", body: '{"time":{}}'),
+        pathParams: {"id": "s1"},
+        queryParams: {},
+      );
+
+      expect(response.status, equals(400));
+      expect(response.body, contains("missing time.archived in body"));
+    });
+
     test("returns 200 with mapped Session JSON", () async {
       plugin.updateSessionResult = const PluginSession(
         id: "s1",

@@ -93,6 +93,8 @@ sealed class SseEventData with _$SseEventData {
   }) = SseSessionStatus;
 
   /// Deprecated — server emits this alongside [sessionStatus] when idle.
+  // ignore: remove_deprecations_in_breaking_versions, keep idle event for backward compatibility
+  @Deprecated("Use sessionStatus instead. Emitted for backward compatibility.")
   @FreezedUnionValue("session.idle")
   @Implements<SseSessionEventData>()
   const factory SseEventData.sessionIdle({

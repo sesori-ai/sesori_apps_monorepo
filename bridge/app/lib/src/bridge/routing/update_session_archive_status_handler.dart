@@ -26,7 +26,11 @@ class UpdateSessionArchiveStatusHandler extends RequestHandler {
     try {
       final body = jsonDecode(request.body ?? "{}") as Map<String, dynamic>;
       final time = body["time"] as Map<String, dynamic>?;
-      archived = time?["archived"] as int?;
+      if (time == null || !time.containsKey("archived")) {
+        return buildErrorResponse(request, 400, "missing time.archived in body");
+      }
+
+      archived = time["archived"] as int?;
     } on FormatException {
       return buildErrorResponse(request, 400, "invalid JSON body");
     } on Exception {

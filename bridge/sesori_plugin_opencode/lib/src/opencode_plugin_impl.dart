@@ -53,6 +53,14 @@ class OpenCodePlugin implements BridgePlugin {
     _sseConnection.start();
   }
 
+  Future<T> _call<T>(Future<T> Function() fn) async {
+    try {
+      return await fn();
+    } on OpenCodeApiException catch (e) {
+      throw PluginApiException(e.endpoint, e.statusCode);
+    }
+  }
+
   @override
   String get id => "opencode";
 
@@ -79,7 +87,7 @@ class OpenCodePlugin implements BridgePlugin {
 
   @override
   Future<PluginProvidersResult> getProviders({required bool connectedOnly}) async {
-    final response = await _service.repository.api.listProviders();
+    final response = await _call(_service.repository.api.listProviders);
     final connectedIds = response.connected.toSet();
     final source = connectedOnly ? response.all.where((p) => connectedIds.contains(p.id)).toList() : response.all;
     final providers = source.map((providerInfo) {
@@ -186,7 +194,7 @@ class OpenCodePlugin implements BridgePlugin {
 
   @override
   Future<List<PluginProject>> getProjects() async {
-    return (await _service.getProjects()).map(_mapProject).toList();
+    return (await _call(_service.getProjects)).map(_mapProject).toList();
   }
 
   @override
@@ -195,48 +203,52 @@ class OpenCodePlugin implements BridgePlugin {
     int? start,
     int? limit,
   }) async {
-    final sessions = await _service.getSessions(
-      worktree: worktree,
-      start: start,
-      limit: limit,
+    final sessions = await _call(
+      () => _service.getSessions(
+        worktree: worktree,
+        start: start,
+        limit: limit,
+      ),
     );
     return sessions.map(_mapSession).toList();
   }
 
   @override
   Future<PluginSession> createSession(String worktree) async {
-    final session = await _service.repository.api.createSession(worktree);
+    final session = await _call(() => _service.repository.api.createSession(worktree));
     return _mapSession(session);
   }
 
   @override
   Future<PluginSession> updateSessionArchiveStatus(String sessionId, {required int? archivedAt}) async {
-    final session = await _service.repository.api.updateSession(sessionId, {
-      "time": {"archived": archivedAt},
-    });
+    final session = await _call(
+      () => _service.repository.api.updateSession(sessionId, {
+        "time": {"archived": archivedAt},
+      }),
+    );
     return _mapSession(session);
   }
 
   @override
   Future<void> deleteSession(String sessionId) {
-    return _service.repository.api.deleteSession(sessionId);
+    return _call(() => _service.repository.api.deleteSession(sessionId));
   }
 
   @override
   Future<List<PluginSession>> getChildSessions(String sessionId) async {
-    final sessions = await _service.repository.api.getChildren(sessionId);
+    final sessions = await _call(() => _service.repository.api.getChildren(sessionId));
     return sessions.map(_mapSession).toList();
   }
 
   @override
   Future<Map<String, PluginSessionStatus>> getSessionStatuses() async {
-    final statuses = await _service.repository.api.getSessionStatuses();
+    final statuses = await _call(_service.repository.api.getSessionStatuses);
     return statuses.map((key, value) => MapEntry(key, _mapSessionStatus(value)));
   }
 
   @override
   Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async {
-    final messages = await _service.getLastExchange(sessionId);
+    final messages = await _call(() => _service.getLastExchange(sessionId));
     return messages.map(_mapMessage).toList();
   }
 
@@ -271,42 +283,46 @@ class OpenCodePlugin implements BridgePlugin {
       }
     }
 
-    return _service.repository.api.sendPrompt(
-      sessionId,
-      body: body,
+    return _call(
+      () => _service.repository.api.sendPrompt(
+        sessionId,
+        body: body,
+      ),
     );
   }
 
   @override
   Future<void> abortSession(String sessionId) {
-    return _service.repository.api.abortSession(sessionId);
+    return _call(() => _service.repository.api.abortSession(sessionId));
   }
 
   @override
   Future<List<PluginAgent>> getAgents() async {
-    final agents = await _service.repository.api.listAgents();
+    final agents = await _call(_service.repository.api.listAgents);
     return agents.map(_mapAgent).toList();
   }
 
   @override
   Future<List<PluginPendingQuestion>> getPendingQuestions() async {
-    final pending = await _service.repository.api.getPendingQuestions();
+    final pending = await _call(_service.repository.api.getPendingQuestions);
     return pending.map(_mapPendingQuestion).toList();
   }
 
   @override
   Future<void> replyToQuestion(String questionId, {required List<List<String>> answers}) {
-    return _service.repository.api.replyToQuestion(questionId, body: {"answers": answers});
+    return _call(
+      () => _service.repository.api.replyToQuestion(questionId, body: {"answers": answers}),
+    );
   }
 
   @override
   Future<void> rejectQuestion(String questionId) {
-    return _service.repository.api.rejectQuestion(questionId);
+    return _call(() => _service.repository.api.rejectQuestion(questionId));
   }
 
   @override
   Future<PluginProject> getCurrentProject(String worktree) async {
-    final project = await _service.repository.api.getCurrentProject(worktree);
+    final project = await _call(() => _service.repository.api.getCurrentProject(worktree));
     return _mapProject(project);
   }
 
@@ -507,6 +523,7 @@ class OpenCodePlugin implements BridgePlugin {
         sessionID: sessionID,
         status: status.toJson(),
       ),
+      // ignore: deprecated_member_use, forwards legacy idle event for backward compatibility
       SseSessionIdle(:final sessionID) => BridgeSseSessionIdle(sessionID: sessionID),
       SseMessageUpdated(:final info) => BridgeSseMessageUpdated(info: info.toJson()),
       SseMessageRemoved(:final sessionID, :final messageID) => BridgeSseMessageRemoved(
