@@ -5,8 +5,10 @@ import java.util.Properties
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+    // START: FlutterFire Configuration (disabled for debug and profile builds -- end of file)
+    id("com.google.gms.google-services")
+    // END: FlutterFire Configuration
 }
 
 fun loadPropertiesOrThrow(path: String): Properties {
@@ -127,4 +129,11 @@ dependencies {
 //    implementation("androidx.core:core-splashscreen:1.2.0")
 //    implementation("androidx.constraintlayout:constraintlayout:2.2.1")
     implementation("androidx.activity:activity-ktx:1.13.0")
+}
+
+// Added to disable Google Services plugin for debug and profile builds
+tasks.matching { task ->
+    task.name == "processDebugGoogleServices" || task.name == "processProfileGoogleServices"
+}.configureEach {
+    enabled = false
 }

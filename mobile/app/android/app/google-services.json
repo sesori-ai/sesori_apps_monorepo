@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1068630921159",
+    "project_id": "sesori-ai",
+    "storage_bucket": "sesori-ai.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1068630921159:android:741baef698c95d6f9713e2",
+        "android_client_info": {
+          "package_name": "com.sesori.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD74UArBB7wMT586r2LC1tYuh9F0SigovM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
