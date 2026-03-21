@@ -213,7 +213,7 @@ void main() {
       tracker.handleEvent(_sessionBusy("s1"), null);
 
       final summary = tracker.buildSummary();
-      final pairs = summary.map((item) => (item.id, item.activeSessionIds.length)).toSet();
+      final pairs = summary.map((item) => (item.id, item.activeSessions.length)).toSet();
 
       expect(pairs, equals({("/repo-a", 1)}));
     });
@@ -257,7 +257,7 @@ void main() {
       expect(tracker.activeSessions, isEmpty);
     });
 
-    test("buildSummary includes activeSessionIds for busy sessions", () async {
+    test("buildSummary includes activeSessions for busy sessions", () async {
       final tracker = await _coldStartedTracker(
         projects: [const Project(id: "p1", worktree: "/projects/foo")],
       );
@@ -270,11 +270,11 @@ void main() {
       final summary = tracker.buildSummary();
 
       expect(summary, hasLength(1));
-      expect(summary.first.activeSessionIds, unorderedEquals(["s1", "s2"]));
-      expect(summary.first.activeSessionIds.length, equals(2));
+      expect(summary.first.activeSessions.map((s) => s.id), unorderedEquals(["s1", "s2"]));
+      expect(summary.first.activeSessions.length, equals(2));
     });
 
-    test("buildSummary excludes idle sessions from activeSessionIds", () async {
+    test("buildSummary excludes idle sessions from activeSessions", () async {
       final tracker = await _coldStartedTracker(
         projects: [const Project(id: "p1", worktree: "/projects/foo")],
       );
@@ -287,8 +287,8 @@ void main() {
 
       final summary = tracker.buildSummary();
 
-      expect(summary.first.activeSessionIds, equals(["s2"]));
-      expect(summary.first.activeSessionIds.length, equals(1));
+      expect(summary.first.activeSessions.map((s) => s.id), equals(["s2"]));
+      expect(summary.first.activeSessions.length, equals(1));
     });
 
     test("buildSummary groups session IDs by worktree correctly", () async {
@@ -311,8 +311,103 @@ void main() {
       final fooEntry = summary.firstWhere((e) => e.id == "/projects/foo");
       final barEntry = summary.firstWhere((e) => e.id == "/projects/bar");
 
-      expect(fooEntry.activeSessionIds, equals(["s1"]));
-      expect(barEntry.activeSessionIds, equals(["s2"]));
+      expect(fooEntry.activeSessions.map((s) => s.id), equals(["s1"]));
+      expect(barEntry.activeSessions.map((s) => s.id), equals(["s2"]));
+    });
+
+    test("child sessions are grouped under their parent", () async {
+      final tracker = await _coldStartedTracker(
+        projects: [const Project(id: "p1", worktree: "/repo")],
+      );
+
+      tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
+      tracker.handleEvent(_sessionBusy("s1"), null);
+      tracker.handleEvent(
+        const SseEventData.sessionCreated(
+          info: Session(id: "c1", projectID: "project", directory: "/repo", parentID: "s1"),
+        ),
+        null,
+      );
+      tracker.handleEvent(_sessionBusy("c1"), null);
+
+      final summary = tracker.buildSummary();
+
+      expect(summary, hasLength(1));
+      expect(summary.first.activeSessions.length, equals(1));
+      expect(summary.first.activeSessions.first.id, equals("s1"));
+      expect(summary.first.activeSessions.first.mainAgentRunning, isTrue);
+      expect(summary.first.activeSessions.first.childSessionIds, equals(["c1"]));
+    });
+
+    test("idle root with busy children appears in summary", () async {
+      final tracker = await _coldStartedTracker(
+        projects: [const Project(id: "p1", worktree: "/repo")],
+      );
+
+      tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
+      tracker.handleEvent(
+        const SseEventData.sessionCreated(
+          info: Session(id: "c1", projectID: "project", directory: "/repo", parentID: "s1"),
+        ),
+        null,
+      );
+      tracker.handleEvent(_sessionBusy("c1"), null);
+
+      final summary = tracker.buildSummary();
+
+      expect(summary, hasLength(1));
+      expect(summary.first.activeSessions.length, equals(1));
+      expect(summary.first.activeSessions.first.id, equals("s1"));
+      expect(summary.first.activeSessions.first.mainAgentRunning, isFalse);
+      expect(summary.first.activeSessions.first.childSessionIds, equals(["c1"]));
+    });
+
+    test("orphan child sessions are ignored", () async {
+      final tracker = await _coldStartedTracker(
+        projects: [const Project(id: "p1", worktree: "/repo")],
+      );
+
+      tracker.handleEvent(
+        const SseEventData.sessionCreated(
+          info: Session(id: "c1", projectID: "project", directory: "/repo", parentID: "unknown"),
+        ),
+        null,
+      );
+      tracker.handleEvent(_sessionBusy("c1"), null);
+
+      final summary = tracker.buildSummary();
+
+      expect(summary, isEmpty);
+    });
+
+    test("deeply nested children are ignored", () async {
+      final tracker = await _coldStartedTracker(
+        projects: [const Project(id: "p1", worktree: "/repo")],
+      );
+
+      tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
+      tracker.handleEvent(_sessionBusy("s1"), null);
+      tracker.handleEvent(
+        const SseEventData.sessionCreated(
+          info: Session(id: "c1", projectID: "project", directory: "/repo", parentID: "s1"),
+        ),
+        null,
+      );
+      tracker.handleEvent(_sessionBusy("c1"), null);
+      tracker.handleEvent(
+        const SseEventData.sessionCreated(
+          info: Session(id: "g1", projectID: "project", directory: "/repo", parentID: "c1"),
+        ),
+        null,
+      );
+      tracker.handleEvent(_sessionBusy("g1"), null);
+
+      final summary = tracker.buildSummary();
+
+      expect(summary, hasLength(1));
+      expect(summary.first.activeSessions.length, equals(1));
+      expect(summary.first.activeSessions.first.id, equals("s1"));
+      expect(summary.first.activeSessions.first.childSessionIds, equals(["c1"]));
     });
   });
 }

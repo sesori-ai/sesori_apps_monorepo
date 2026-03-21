@@ -248,7 +248,10 @@ void main() {
 SesoriSseEvent _event(String worktree) {
   return SesoriSseEvent.projectsSummary(
     projects: [
-      ProjectActivitySummary(id: worktree, activeSessionIds: const ["s1"]),
+      ProjectActivitySummary(
+        id: worktree,
+        activeSessions: [const ActiveSession(id: "s1", mainAgentRunning: false, childSessionIds: [])],
+      ),
     ],
   );
 }

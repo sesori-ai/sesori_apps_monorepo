@@ -244,10 +244,12 @@ class _SessionListBody extends StatelessWidget {
                     final session = sessions[index];
                     final cubit = context.read<SessionListCubit>();
                     final isArchived = session.time?.archived != null;
+                    final activityInfo = state.activeSessionIds[session.id];
                     return _SessionTile(
                       session: session,
                       isArchived: isArchived,
-                      isActive: state.activeSessionIds.contains(session.id),
+                      isActive: activityInfo != null,
+                      backgroundTaskCount: activityInfo?.backgroundTaskCount ?? 0,
                       onLongPress: () => _showSessionActions(context, session),
                       onSwipe: () => isArchived
                           ? _unarchiveSession(context, cubit, session.id)
@@ -272,6 +274,7 @@ class _SessionTile extends StatelessWidget {
   final Session session;
   final bool isArchived;
   final bool isActive;
+  final int backgroundTaskCount;
   final VoidCallback onLongPress;
   final VoidCallback onSwipe;
 
@@ -279,6 +282,7 @@ class _SessionTile extends StatelessWidget {
     required this.session,
     required this.isArchived,
     required this.isActive,
+    this.backgroundTaskCount = 0,
     required this.onLongPress,
     required this.onSwipe,
   });
@@ -348,6 +352,21 @@ class _SessionTile extends StatelessWidget {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
+                  if (backgroundTaskCount > 0) ...[
+                    Text(
+                      " \u00b7 ",
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                    Text(
+                      loc.sessionListBackgroundTasks(backgroundTaskCount),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ],
               ),
           ],

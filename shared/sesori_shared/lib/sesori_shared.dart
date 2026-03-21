@@ -11,6 +11,7 @@ export "src/models/auth/auth_response.dart";
 export "src/models/auth/auth_url_response.dart";
 export "src/models/auth/auth_user.dart";
 export "src/models/auth/logout_response.dart";
+export "src/models/sesori/active_session.dart";
 export "src/models/sesori/agent_info.dart";
 export "src/models/sesori/agent_mode.dart";
 export "src/models/sesori/create_session_request.dart";

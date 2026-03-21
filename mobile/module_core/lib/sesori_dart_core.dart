@@ -20,6 +20,7 @@ export "src/capabilities/server_connection/models/sse_event.dart";
 export "src/capabilities/server_connection/server_connection_config.dart";
 export "src/capabilities/session/session_service.dart";
 // Capabilities
+export "src/capabilities/sse/session_activity_info.dart";
 export "src/capabilities/sse/sse_event_repository.dart";
 export "src/capabilities/voice/voice_api.dart";
 // Cubits

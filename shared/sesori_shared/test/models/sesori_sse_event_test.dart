@@ -197,8 +197,14 @@ void main() {
     test('serializes correctly', () {
       const event = SesoriSseEvent.projectsSummary(
         projects: [
-          ProjectActivitySummary(id: '/foo', activeSessionIds: ['s1', 's2']),
-          ProjectActivitySummary(id: '/bar', activeSessionIds: []),
+          ProjectActivitySummary(
+            id: '/foo',
+            activeSessions: [
+              ActiveSession(id: 's1'),
+              ActiveSession(id: 's2'),
+            ],
+          ),
+          ProjectActivitySummary(id: '/bar', activeSessions: []),
         ],
       );
       final json = event.toJson();
@@ -207,19 +213,26 @@ void main() {
       expect(json['projects'], hasLength(2));
       final first = (json['projects'] as List)[0] as Map<String, dynamic>;
       expect(first['id'], '/foo');
-      expect(first['activeSessionIds'], ['s1', 's2']);
+      expect(first['activeSessions'], <Map<String, dynamic>>[
+        {'id': 's1', 'mainAgentRunning': false, 'childSessionIds': <String>[]},
+        {'id': 's2', 'mainAgentRunning': false, 'childSessionIds': <String>[]},
+      ]);
       final second = (json['projects'] as List)[1] as Map<String, dynamic>;
       expect(second['id'], '/bar');
-      expect(second['activeSessionIds'], <String>[]);
+      expect(second['activeSessions'], <Map<String, dynamic>>[]);
     });
 
     test('deserializes correctly', () {
-      final json = {
+      final json = <String, dynamic>{
         'type': 'projects.summary',
-        'projects': [
-          {
+        'projects': <Map<String, dynamic>>[
+          <String, dynamic>{
             'id': '/foo',
-            'activeSessionIds': ['s1', 's2', 's3'],
+            'activeSessions': <Map<String, dynamic>>[
+              {'id': 's1', 'mainAgentRunning': false, 'childSessionIds': <String>[]},
+              {'id': 's2', 'mainAgentRunning': false, 'childSessionIds': <String>[]},
+              {'id': 's3', 'mainAgentRunning': false, 'childSessionIds': <String>[]},
+            ],
           },
         ],
       };
@@ -229,15 +242,30 @@ void main() {
       final cast = event as SesoriProjectsSummary;
       expect(cast.projects, hasLength(1));
       expect(cast.projects.first.id, '/foo');
-      expect(cast.projects.first.activeSessionIds, ['s1', 's2', 's3']);
+      expect(cast.projects.first.activeSessions.length, 3);
+      expect(cast.projects.first.activeSessions[0].id, 's1');
+      expect(cast.projects.first.activeSessions[1].id, 's2');
+      expect(cast.projects.first.activeSessions[2].id, 's3');
     });
 
     test('round-trips correctly', () {
       const original = SesoriSseEvent.projectsSummary(
         projects: [
-          ProjectActivitySummary(id: '/alpha', activeSessionIds: ['s1', 's2', 's3', 's4', 's5']),
-          ProjectActivitySummary(id: '/beta', activeSessionIds: ['s1']),
-          ProjectActivitySummary(id: '/gamma', activeSessionIds: []),
+          ProjectActivitySummary(
+            id: '/alpha',
+            activeSessions: [
+              ActiveSession(id: 's1'),
+              ActiveSession(id: 's2'),
+              ActiveSession(id: 's3'),
+              ActiveSession(id: 's4'),
+              ActiveSession(id: 's5'),
+            ],
+          ),
+          ProjectActivitySummary(
+            id: '/beta',
+            activeSessions: [ActiveSession(id: 's1')],
+          ),
+          ProjectActivitySummary(id: '/gamma', activeSessions: []),
         ],
       );
       final json = original.toJson();
@@ -247,11 +275,11 @@ void main() {
       final cast = parsed as SesoriProjectsSummary;
       expect(cast.projects, hasLength(3));
       expect(cast.projects[0].id, '/alpha');
-      expect(cast.projects[0].activeSessionIds.length, 5);
+      expect(cast.projects[0].activeSessions.length, 5);
       expect(cast.projects[1].id, '/beta');
-      expect(cast.projects[1].activeSessionIds.length, 1);
+      expect(cast.projects[1].activeSessions.length, 1);
       expect(cast.projects[2].id, '/gamma');
-      expect(cast.projects[2].activeSessionIds.length, 0);
+      expect(cast.projects[2].activeSessions.length, 0);
     });
 
     test('empty projects list round-trips correctly', () {
@@ -330,36 +358,70 @@ void main() {
   // ---------------------------------------------------------------------------
 
   group('ProjectActivitySummary', () {
-    test('requires id and activeSessionIds', () {
-      const summary = ProjectActivitySummary(id: '/test', activeSessionIds: []);
+    test('requires id and activeSessions', () {
+      const summary = ProjectActivitySummary(id: '/test', activeSessions: []);
       expect(summary.id, '/test');
-      expect(summary.activeSessionIds, <String>[]);
+      expect(summary.activeSessions, <ActiveSession>[]);
     });
 
-    test('accepts explicit activeSessionIds list', () {
-      const summary = ProjectActivitySummary(id: '/test', activeSessionIds: ['s1', 's2', 's3', 's4', 's5', 's6', 's7']);
+    test('accepts explicit activeSessions list', () {
+      const summary = ProjectActivitySummary(
+        id: '/test',
+        activeSessions: [
+          ActiveSession(id: 's1'),
+          ActiveSession(id: 's2'),
+          ActiveSession(id: 's3'),
+          ActiveSession(id: 's4'),
+          ActiveSession(id: 's5'),
+          ActiveSession(id: 's6'),
+          ActiveSession(id: 's7'),
+        ],
+      );
       expect(summary.id, '/test');
-      expect(summary.activeSessionIds.length, 7);
+      expect(summary.activeSessions.length, 7);
     });
 
-    test('serializes id and activeSessionIds to JSON', () {
-      const summary = ProjectActivitySummary(id: '/my/path', activeSessionIds: ['s1', 's2', 's3', 's4']);
+    test('serializes id and activeSessions to JSON', () {
+      const summary = ProjectActivitySummary(
+        id: '/my/path',
+        activeSessions: [
+          ActiveSession(id: 's1'),
+          ActiveSession(id: 's2'),
+          ActiveSession(id: 's3'),
+          ActiveSession(id: 's4'),
+        ],
+      );
       final json = summary.toJson();
       expect(json['id'], '/my/path');
-      expect(json['activeSessionIds'], ['s1', 's2', 's3', 's4']);
+      expect(json['activeSessions'], <Map<String, dynamic>>[
+        {'id': 's1', 'mainAgentRunning': false, 'childSessionIds': <String>[]},
+        {'id': 's2', 'mainAgentRunning': false, 'childSessionIds': <String>[]},
+        {'id': 's3', 'mainAgentRunning': false, 'childSessionIds': <String>[]},
+        {'id': 's4', 'mainAgentRunning': false, 'childSessionIds': <String>[]},
+      ]);
     });
 
     test('deserializes from JSON correctly', () {
-      final json = {
+      final json = <String, dynamic>{
         'id': '/from/json',
-        'activeSessionIds': ['s1', 's2', 's3', 's4', 's5', 's6', 's7', 's8', 's9'],
+        'activeSessions': <Map<String, dynamic>>[
+          {'id': 's1', 'mainAgentRunning': false, 'childSessionIds': <String>[]},
+          {'id': 's2', 'mainAgentRunning': false, 'childSessionIds': <String>[]},
+          {'id': 's3', 'mainAgentRunning': false, 'childSessionIds': <String>[]},
+          {'id': 's4', 'mainAgentRunning': false, 'childSessionIds': <String>[]},
+          {'id': 's5', 'mainAgentRunning': false, 'childSessionIds': <String>[]},
+          {'id': 's6', 'mainAgentRunning': false, 'childSessionIds': <String>[]},
+          {'id': 's7', 'mainAgentRunning': false, 'childSessionIds': <String>[]},
+          {'id': 's8', 'mainAgentRunning': false, 'childSessionIds': <String>[]},
+          {'id': 's9', 'mainAgentRunning': false, 'childSessionIds': <String>[]},
+        ],
       };
       final summary = ProjectActivitySummary.fromJson(json);
       expect(summary.id, '/from/json');
-      expect(summary.activeSessionIds.length, 9);
+      expect(summary.activeSessions.length, 9);
     });
 
-    test('fromJson requires activeSessionIds', () {
+    test('fromJson requires activeSessions', () {
       final json = {'id': '/no/sessions'};
       expect(
         () => ProjectActivitySummary.fromJson(json),

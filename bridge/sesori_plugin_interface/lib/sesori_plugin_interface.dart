@@ -2,6 +2,7 @@ export "src/bridge_plugin.dart";
 export "src/bridge_sse_event.dart";
 export "src/buffered_stream.dart";
 export "src/log.dart";
+export "src/models/plugin_active_session.dart";
 export "src/models/plugin_agent.dart";
 export "src/models/plugin_message.dart";
 export "src/models/plugin_pending_question.dart";

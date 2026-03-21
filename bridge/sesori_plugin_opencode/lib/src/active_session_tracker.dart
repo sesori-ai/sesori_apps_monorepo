@@ -1,5 +1,5 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
-import "package:sesori_shared/sesori_shared.dart" show ProjectActivitySummary, wait2;
+import "package:sesori_shared/sesori_shared.dart" show ActiveSession, ProjectActivitySummary, wait2;
 
 import "models/session_status.dart";
 import "models/sse_event_data.dart";
@@ -11,6 +11,11 @@ class ActiveSessionTracker {
   final Set<String> _projectWorktrees = {};
   final Map<String, String> _sessionWorktrees = {};
   final Map<String, SessionStatus> _sessionStatuses = {};
+
+  /// Tracks parent IDs for all known sessions.
+  /// `null` value = root session, non-null value = parent session ID.
+  final Map<String, String?> _sessionParentIds = {};
+
   Map<String, int> _lastEmittedActiveSessions = {};
 
   ActiveSessionTracker(this._repository);
@@ -26,6 +31,7 @@ class ActiveSessionTracker {
       ..addAll(projects.map((p) => p.worktree));
 
     _sessionWorktrees.clear();
+    _sessionParentIds.clear();
 
     _sessionStatuses
       ..clear()
@@ -44,18 +50,33 @@ class ActiveSessionTracker {
       }
     }
 
-    _lastEmittedActiveSessions = activeSessions;
+    _lastEmittedActiveSessions = _activeSessionCounts;
   }
 
   bool handleEvent(SseEventData event, String? directory) {
+    var forceReemit = false;
+
     switch (event) {
       case SseSessionCreated():
         _updateSessionWorktree(event.info.id, event.info.directory);
+        final prevParentId = _sessionParentIds[event.info.id];
+        _sessionParentIds[event.info.id] = event.info.parentID;
+        // Parent metadata changed for an active session — grouping may differ
+        // even though per-worktree counts haven't changed.
+        if (_sessionStatuses.containsKey(event.info.id) && prevParentId != event.info.parentID) {
+          forceReemit = true;
+        }
       case SseSessionUpdated():
         _updateSessionWorktree(event.info.id, event.info.directory);
+        final prevParentId = _sessionParentIds[event.info.id];
+        _sessionParentIds[event.info.id] = event.info.parentID;
+        if (_sessionStatuses.containsKey(event.info.id) && prevParentId != event.info.parentID) {
+          forceReemit = true;
+        }
       case SseSessionDeleted():
         _sessionWorktrees.remove(event.info.id);
         _sessionStatuses.remove(event.info.id);
+        _sessionParentIds.remove(event.info.id);
       case SseSessionStatus():
         if (!_sessionWorktrees.containsKey(event.sessionID) && directory != null) {
           _updateSessionWorktree(event.sessionID, directory);
@@ -73,8 +94,8 @@ class ActiveSessionTracker {
         return false;
     }
 
-    final next = activeSessions;
-    if (_mapsEqual(_lastEmittedActiveSessions, next)) return false;
+    final next = _activeSessionCounts;
+    if (!forceReemit && _mapsEqual(_lastEmittedActiveSessions, next)) return false;
     _lastEmittedActiveSessions = next;
     return true;
   }
@@ -83,32 +104,82 @@ class ActiveSessionTracker {
     _projectWorktrees.clear();
     _sessionWorktrees.clear();
     _sessionStatuses.clear();
+    _sessionParentIds.clear();
     _lastEmittedActiveSessions = {};
   }
 
   List<ProjectActivitySummary> buildSummary() {
-    // Collect session IDs per worktree
-    final sessionIdsByWorktree = <String, List<String>>{};
-    for (final entry in _sessionStatuses.entries) {
-      final worktree = _sessionWorktrees[entry.key];
-      if (worktree == null) {
-        Log.w("buildSummary: no worktree for session ${entry.key}");
-        continue;
+    // Partition active (busy/retry) sessions into root vs child.
+    final activeRoots = <String>{};
+    final activeChildrenByParent = <String, List<String>>{};
+
+    for (final sessionId in _sessionStatuses.keys) {
+      final parentId = _sessionParentIds[sessionId];
+      if (parentId == null) {
+        // Root session (or unknown parent — treated as root).
+        activeRoots.add(sessionId);
+      } else {
+        // Child session — only include if parent is a known root (direct descendant).
+        // A "known root" is a session we've observed whose own parentId is null.
+        // Use containsKey to distinguish "known root" from "never observed".
+        if (_sessionParentIds.containsKey(parentId) && _sessionParentIds[parentId] == null) {
+          activeChildrenByParent.putIfAbsent(parentId, () => []).add(sessionId);
+        }
+        // Parent not in _sessionParentIds → never observed → orphan → ignore.
+        // Parent's parentId != null → deeper nesting → ignore.
       }
-      sessionIdsByWorktree.putIfAbsent(worktree, () => []).add(entry.key);
     }
 
-    return activeSessions.entries
+    // Merge: roots that are directly active + idle roots with active children.
+    final allActiveRoots = <String>{...activeRoots};
+    activeChildrenByParent.keys.forEach(allActiveRoots.add);
+
+    // Build ActiveSession per root, grouped by worktree.
+    final byWorktree = <String, List<ActiveSession>>{};
+    for (final rootId in allActiveRoots) {
+      var worktree = _sessionWorktrees[rootId];
+      // Parent may not have a worktree if we only observed its children
+      // (e.g. bridge reconnected after the root session was created).
+      // Fall back to any child's worktree — children share the same project.
+      if (worktree == null) {
+        final children = activeChildrenByParent[rootId];
+        if (children != null) {
+          for (final childId in children) {
+            worktree = _sessionWorktrees[childId];
+            if (worktree != null) break;
+          }
+        }
+      }
+      if (worktree == null) {
+        Log.w("buildSummary: no worktree for session $rootId");
+        continue;
+      }
+      byWorktree
+          .putIfAbsent(worktree, () => [])
+          .add(
+            ActiveSession(
+              id: rootId,
+              mainAgentRunning: activeRoots.contains(rootId),
+              childSessionIds: activeChildrenByParent[rootId] ?? [],
+            ),
+          );
+    }
+
+    return byWorktree.entries
         .map(
           (e) => ProjectActivitySummary(
             id: e.key,
-            activeSessionIds: sessionIdsByWorktree[e.key] ?? [],
+            activeSessions: e.value,
           ),
         )
         .toList();
   }
 
-  Map<String, int> get activeSessions {
+  /// Raw count of all busy/retry sessions per worktree.
+  ///
+  /// Used for change detection only — counts both root and child sessions so
+  /// that any status change triggers a summary rebuild.
+  Map<String, int> get _activeSessionCounts {
     final counts = <String, int>{};
     for (final entry in _sessionStatuses.entries) {
       final worktree = _sessionWorktrees[entry.key];
@@ -117,6 +188,9 @@ class ActiveSessionTracker {
     }
     return counts;
   }
+
+  /// Exposed for testing: raw count of all busy/retry sessions per worktree.
+  Map<String, int> get activeSessions => _activeSessionCounts;
 
   String? _resolveWorktree(String directory) {
     final normalizedDirectory = _normalizePath(directory);

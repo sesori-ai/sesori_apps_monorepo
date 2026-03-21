@@ -352,6 +352,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListRunning => 'Running';
 
   @override
+  String sessionListBackgroundTasks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count background tasks',
+      one: '1 background task',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get sessionListStaleProjectTitle => 'Project directory not found';
 
   @override

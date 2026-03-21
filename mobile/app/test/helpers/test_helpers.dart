@@ -11,6 +11,7 @@ import "package:sesori_dart_core/src/capabilities/relay/room_key_storage.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/capabilities/session/session_service.dart";
+import "package:sesori_dart_core/src/capabilities/sse/session_activity_info.dart";
 import "package:sesori_dart_core/src/capabilities/sse/sse_event_repository.dart";
 import "package:sesori_dart_core/src/capabilities/voice/voice_api.dart";
 import "package:sesori_dart_core/src/platform/deep_link_source.dart";
@@ -78,7 +79,9 @@ class MockLifecycleSource extends Mock implements LifecycleSource {
 
 class MockSseEventRepository extends Mock implements SseEventRepository {
   final BehaviorSubject<Map<String, int>> _projectActivity = BehaviorSubject.seeded(const {});
-  final BehaviorSubject<Map<String, Set<String>>> _sessionActivity = BehaviorSubject.seeded(const {});
+  final BehaviorSubject<Map<String, Map<String, SessionActivityInfo>>> _sessionActivity = BehaviorSubject.seeded(
+    const {},
+  );
 
   @override
   ValueStream<Map<String, int>> get projectActivity => _projectActivity.stream;
@@ -87,14 +90,14 @@ class MockSseEventRepository extends Mock implements SseEventRepository {
   Map<String, int> get currentProjectActivity => _projectActivity.value;
 
   @override
-  ValueStream<Map<String, Set<String>>> get sessionActivity => _sessionActivity.stream;
+  ValueStream<Map<String, Map<String, SessionActivityInfo>>> get sessionActivity => _sessionActivity.stream;
 
   @override
-  Map<String, Set<String>> get currentSessionActivity => _sessionActivity.value;
+  Map<String, Map<String, SessionActivityInfo>> get currentSessionActivity => _sessionActivity.value;
 
   void emitProjectActivity(Map<String, int> activity) => _projectActivity.add(activity);
 
-  void emitSessionActivity(Map<String, Set<String>> activity) => _sessionActivity.add(activity);
+  void emitSessionActivity(Map<String, Map<String, SessionActivityInfo>> activity) => _sessionActivity.add(activity);
 }
 
 // ---------------------------------------------------------------------------

@@ -189,10 +189,19 @@
    "loginCallbackMissingParams": "Invalid authorization callback. Please try again.",
    "loginStateMismatch": "Authorization state mismatch. Please try again.",
    "loginPkceStateMissing": "Login session expired. Please start again.",
-   "sessionListRunning": "Running",
-   "@sessionListRunning": {
-     "description": "Label shown next to the green dot for sessions that are currently active"
-   },
+    "sessionListRunning": "Running",
+    "@sessionListRunning": {
+      "description": "Label shown next to the green dot for sessions that are currently active"
+    },
+    "sessionListBackgroundTasks": "{count, plural, =1{1 background task} other{{count} background tasks}}",
+    "@sessionListBackgroundTasks": {
+      "description": "Label showing the number of active background tasks for a session",
+      "placeholders": {
+        "count": {
+          "type": "int"
+        }
+      }
+    },
    "sessionListStaleProjectTitle": "Project directory not found",
    "sessionListStaleProjectMessage": "The directory for this project no longer exists or has been renamed. Sessions cannot be loaded because the server can no longer resolve this project.",
    "sessionListStaleProjectBack": "Go back",

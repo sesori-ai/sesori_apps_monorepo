@@ -5,6 +5,7 @@ import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
+import "package:sesori_dart_core/src/capabilities/sse/session_activity_info.dart";
 import "package:sesori_dart_core/src/cubits/session_list/session_list_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_list/session_list_state.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -700,7 +701,10 @@ void main() {
         );
         // Mock the repository to emit activity for this project.
         mockSseEventRepository.emitSessionActivity({
-          projectId: {"s1", "s2"},
+          projectId: {
+            "s1": const SessionActivityInfo(mainAgentRunning: true),
+            "s2": const SessionActivityInfo(mainAgentRunning: true),
+          },
         });
         return buildCubit();
       },
@@ -708,7 +712,10 @@ void main() {
         isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions count", 2).having(
           (s) => s.activeSessionIds,
           "activeSessionIds",
-          {"s1", "s2"},
+          {
+            "s1": const SessionActivityInfo(mainAgentRunning: true),
+            "s2": const SessionActivityInfo(mainAgentRunning: true),
+          },
         ),
       ],
     );
@@ -733,13 +740,18 @@ void main() {
         await Future<void>.delayed(Duration.zero);
         // Emit initial activity
         mockSseEventRepository.emitSessionActivity({
-          projectId: {"s1"},
+          projectId: {
+            "s1": const SessionActivityInfo(mainAgentRunning: true),
+          },
         });
         // Wait for the activity update to be processed
         await Future<void>.delayed(const Duration(milliseconds: 10));
         // Emit updated activity
         mockSseEventRepository.emitSessionActivity({
-          projectId: {"s1", "s2"},
+          projectId: {
+            "s1": const SessionActivityInfo(mainAgentRunning: true),
+            "s2": const SessionActivityInfo(mainAgentRunning: true),
+          },
         });
       },
       skip: 1, // skip initial load
@@ -748,13 +760,18 @@ void main() {
         isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions count", 2).having(
           (s) => s.activeSessionIds,
           "activeSessionIds after first update",
-          {"s1"},
+          {
+            "s1": const SessionActivityInfo(mainAgentRunning: true),
+          },
         ),
         // Second activity update: both s1 and s2 are active
         isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions count", 2).having(
           (s) => s.activeSessionIds,
           "activeSessionIds after second update",
-          {"s1", "s2"},
+          {
+            "s1": const SessionActivityInfo(mainAgentRunning: true),
+            "s2": const SessionActivityInfo(mainAgentRunning: true),
+          },
         ),
       ],
     );
@@ -773,8 +790,13 @@ void main() {
         );
         // Emit activity for this project and another.
         mockSseEventRepository.emitSessionActivity({
-          projectId: {"s1"},
-          "project-2": {"s2", "s3"},
+          projectId: {
+            "s1": const SessionActivityInfo(mainAgentRunning: true),
+          },
+          "project-2": {
+            "s2": const SessionActivityInfo(mainAgentRunning: true),
+            "s3": const SessionActivityInfo(mainAgentRunning: true),
+          },
         });
         return buildCubit();
       },
@@ -782,7 +804,9 @@ void main() {
         isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions count", 1).having(
           (s) => s.activeSessionIds,
           "activeSessionIds for this project only",
-          {"s1"},
+          {
+            "s1": const SessionActivityInfo(mainAgentRunning: true),
+          },
         ),
       ],
     );
@@ -801,7 +825,9 @@ void main() {
         );
         // Emit activity for a different project.
         mockSseEventRepository.emitSessionActivity({
-          "project-2": {"s2"},
+          "project-2": {
+            "s2": const SessionActivityInfo(mainAgentRunning: true),
+          },
         });
         return buildCubit();
       },

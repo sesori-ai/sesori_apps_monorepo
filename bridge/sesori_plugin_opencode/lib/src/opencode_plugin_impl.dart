@@ -219,7 +219,7 @@ class OpenCodePlugin implements BridgePlugin {
       () => _service.repository.api.createSession(
         // this sesori plugin uses workspace path as project id
         // because it's the most reliable UID with opencode
-        workspacePath: projectId, 
+        workspacePath: projectId,
         parentSessionId: parentSessionId,
       ),
     );
@@ -536,7 +536,15 @@ class OpenCodePlugin implements BridgePlugin {
         .map(
           (s) => PluginProjectActivitySummary(
             id: s.id,
-            activeSessionIds: s.activeSessionIds,
+            activeSessions: s.activeSessions
+                .map(
+                  (a) => PluginActiveSession(
+                    id: a.id,
+                    mainAgentRunning: a.mainAgentRunning,
+                    childSessionIds: a.childSessionIds,
+                  ),
+                )
+                .toList(),
           ),
         )
         .toList();

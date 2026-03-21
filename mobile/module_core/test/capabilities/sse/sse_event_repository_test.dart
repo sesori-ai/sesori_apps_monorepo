@@ -1,9 +1,7 @@
 import "dart:async";
 
 import "package:mocktail/mocktail.dart";
-import "package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart";
-import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
-import "package:sesori_dart_core/src/capabilities/sse/sse_event_repository.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -35,13 +33,13 @@ void main() {
     });
 
     // -------------------------------------------------------------------------
-    // 2. sessionActivity emits active session IDs from projectsSummary event
+    // 2. sessionActivity emits active session info from projectsSummary event
     // -------------------------------------------------------------------------
 
-    test("sessionActivity emits active session IDs from projectsSummary event", () async {
+    test("sessionActivity emits active session info from projectsSummary event", () async {
       final repo = SseEventRepository(mockConnectionService);
 
-      final completer = Completer<Map<String, Set<String>>>();
+      final completer = Completer<Map<String, Map<String, SessionActivityInfo>>>();
       final subscription = repo.sessionActivity.listen((activity) {
         if (activity.isNotEmpty) {
           completer.complete(activity);
@@ -54,7 +52,10 @@ void main() {
           projects: [
             ProjectActivitySummary(
               id: "/foo",
-              activeSessionIds: ["s1", "s2"],
+              activeSessions: [
+                ActiveSession(id: "s1", mainAgentRunning: true, childSessionIds: []),
+                ActiveSession(id: "s2", mainAgentRunning: false, childSessionIds: []),
+              ],
             ),
           ],
         ),
@@ -62,9 +63,10 @@ void main() {
       eventController.add(event);
 
       final activity = await completer.future;
-      expect(activity, {
-        "/foo": {"s1", "s2"},
-      });
+      expect(activity.keys, equals({"/foo"}));
+      expect(activity["/foo"]!.keys, unorderedEquals({"s1", "s2"}));
+      expect(activity["/foo"]!["s1"]!.mainAgentRunning, isTrue);
+      expect(activity["/foo"]!["s2"]!.mainAgentRunning, isFalse);
 
       await subscription.cancel();
       repo.onDispose();
@@ -77,8 +79,12 @@ void main() {
     test("sessionActivity excludes projects with no active sessions", () async {
       final repo = SseEventRepository(mockConnectionService);
 
-      final completer = Completer<Map<String, Set<String>>>();
-      final subscription = repo.sessionActivity.listen(completer.complete);
+      final completer = Completer<Map<String, Map<String, SessionActivityInfo>>>();
+      final subscription = repo.sessionActivity.listen((activity) {
+        if (activity.isEmpty) {
+          completer.complete(activity);
+        }
+      });
 
       // Emit a projectsSummary event with no active sessions for "/bar"
       final event = SseEvent(
@@ -86,7 +92,7 @@ void main() {
           projects: [
             ProjectActivitySummary(
               id: "/bar",
-              activeSessionIds: [],
+              activeSessions: [],
             ),
           ],
         ),
@@ -107,7 +113,7 @@ void main() {
     test("sessionActivity handles multiple projects", () async {
       final repo = SseEventRepository(mockConnectionService);
 
-      final completer = Completer<Map<String, Set<String>>>();
+      final completer = Completer<Map<String, Map<String, SessionActivityInfo>>>();
       final subscription = repo.sessionActivity.listen((activity) {
         if (activity.length == 2) {
           completer.complete(activity);
@@ -120,11 +126,16 @@ void main() {
           projects: [
             ProjectActivitySummary(
               id: "/foo",
-              activeSessionIds: ["s1"],
+              activeSessions: [
+                ActiveSession(id: "s1", mainAgentRunning: false, childSessionIds: []),
+              ],
             ),
             ProjectActivitySummary(
               id: "/bar",
-              activeSessionIds: ["s2", "s3"],
+              activeSessions: [
+                ActiveSession(id: "s2", mainAgentRunning: true, childSessionIds: []),
+                ActiveSession(id: "s3", mainAgentRunning: false, childSessionIds: []),
+              ],
             ),
           ],
         ),
@@ -132,10 +143,9 @@ void main() {
       eventController.add(event);
 
       final activity = await completer.future;
-      expect(activity, {
-        "/foo": {"s1"},
-        "/bar": {"s2", "s3"},
-      });
+      expect(activity.keys, unorderedEquals({"/foo", "/bar"}));
+      expect(activity["/foo"]!.keys, equals({"s1"}));
+      expect(activity["/bar"]!.keys, unorderedEquals({"s2", "s3"}));
 
       await subscription.cancel();
       repo.onDispose();
@@ -148,7 +158,7 @@ void main() {
     test("sessionActivity updates when new event arrives", () async {
       final repo = SseEventRepository(mockConnectionService);
 
-      final activities = <Map<String, Set<String>>>[];
+      final activities = <Map<String, Map<String, SessionActivityInfo>>>[];
       final subscription = repo.sessionActivity.listen((activity) {
         if (activity.isNotEmpty) {
           activities.add(activity);
@@ -162,7 +172,9 @@ void main() {
             projects: [
               ProjectActivitySummary(
                 id: "/foo",
-                activeSessionIds: ["s1"],
+                activeSessions: [
+                  ActiveSession(id: "s1", mainAgentRunning: false, childSessionIds: []),
+                ],
               ),
             ],
           ),
@@ -179,7 +191,10 @@ void main() {
             projects: [
               ProjectActivitySummary(
                 id: "/foo",
-                activeSessionIds: ["s1", "s2"],
+                activeSessions: [
+                  ActiveSession(id: "s1", mainAgentRunning: false, childSessionIds: []),
+                  ActiveSession(id: "s2", mainAgentRunning: true, childSessionIds: []),
+                ],
               ),
             ],
           ),
@@ -190,12 +205,10 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 10));
 
       expect(activities.length, 2);
-      expect(activities[0], {
-        "/foo": {"s1"},
-      });
-      expect(activities[1], {
-        "/foo": {"s1", "s2"},
-      });
+      expect(activities[0].keys, equals({"/foo"}));
+      expect(activities[0]["/foo"]!.keys, equals({"s1"}));
+      expect(activities[1].keys, equals({"/foo"}));
+      expect(activities[1]["/foo"]!.keys, unorderedEquals({"s1", "s2"}));
 
       await subscription.cancel();
       repo.onDispose();
@@ -231,7 +244,11 @@ void main() {
           projects: [
             ProjectActivitySummary(
               id: "/foo",
-              activeSessionIds: ["s1", "s2", "s3"],
+              activeSessions: [
+                ActiveSession(id: "s1", mainAgentRunning: false, childSessionIds: []),
+                ActiveSession(id: "s2", mainAgentRunning: true, childSessionIds: []),
+                ActiveSession(id: "s3", mainAgentRunning: false, childSessionIds: []),
+              ],
             ),
           ],
         ),
@@ -253,7 +270,11 @@ void main() {
       final repo = SseEventRepository(mockConnectionService);
 
       final completer = Completer<Map<String, int>>();
-      final subscription = repo.projectActivity.listen(completer.complete);
+      final subscription = repo.projectActivity.listen((activity) {
+        if (activity.isEmpty) {
+          completer.complete(activity);
+        }
+      });
 
       // Emit a projectsSummary event with no active sessions for "/bar"
       final event = SseEvent(
@@ -261,7 +282,7 @@ void main() {
           projects: [
             ProjectActivitySummary(
               id: "/bar",
-              activeSessionIds: [],
+              activeSessions: [],
             ),
           ],
         ),

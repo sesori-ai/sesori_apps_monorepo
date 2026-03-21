@@ -1,5 +1,5 @@
 import "package:opencode_plugin/opencode_plugin.dart";
-import "package:sesori_shared/sesori_shared.dart" show ProjectActivitySummary;
+import "package:sesori_shared/sesori_shared.dart" show ActiveSession, ProjectActivitySummary;
 import "package:test/test.dart";
 
 void main() {
@@ -318,8 +318,15 @@ void main() {
 
     test("buildSummary delegates to tracker", () {
       final tracker = FakeActiveSessionTracker(
-        summary: [
-          const ProjectActivitySummary(id: "/repo", activeSessionIds: ["s1", "s2", "s3"]),
+        summary: const [
+          ProjectActivitySummary(
+            id: "/repo",
+            activeSessions: [
+              ActiveSession(id: "s1"),
+              ActiveSession(id: "s2"),
+              ActiveSession(id: "s3"),
+            ],
+          ),
         ],
       );
       final service = OpenCodeService(FakeOpenCodeRepository(), tracker);
