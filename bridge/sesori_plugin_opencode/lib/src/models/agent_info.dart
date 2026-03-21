@@ -46,7 +46,7 @@ extension AgentInfoToPluginExtension on AgentInfo {
         ),
         null => null,
       },
-      variant: _parsePluginAgentVariant(variant),
+      variant: PluginAgentVariant.tryParse(variant),
       mode: switch (mode) {
         AgentMode.all => PluginAgentMode.all,
         AgentMode.primary => PluginAgentMode.primary,
@@ -56,16 +56,4 @@ extension AgentInfoToPluginExtension on AgentInfo {
       hidden: hidden,
     );
   }
-}
-
-PluginAgentVariant? _parsePluginAgentVariant(String? value) {
-  return switch (value) {
-    "none" => PluginAgentVariant.none,
-    "minimal" => PluginAgentVariant.minimal,
-    "low" => PluginAgentVariant.low,
-    "medium" => PluginAgentVariant.medium,
-    "high" => PluginAgentVariant.high,
-    "xhigh" => PluginAgentVariant.xhigh,
-    _ => null,
-  };
 }

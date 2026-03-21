@@ -22,6 +22,18 @@ enum PluginAgentVariant {
 
   const PluginAgentVariant(this.safeName);
   final String safeName;
+
+  /// Parses a raw string into a [PluginAgentVariant], or returns `null`
+  /// if the value doesn't match any known variant.
+  static PluginAgentVariant? tryParse(String? value) => switch (value) {
+    "none" => none,
+    "minimal" => minimal,
+    "low" => low,
+    "medium" => medium,
+    "high" => high,
+    "xhigh" => xhigh,
+    _ => null,
+  };
 }
 
 @freezed
