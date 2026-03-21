@@ -27,14 +27,14 @@ void main() {
       expect(handler.canHandle(makeRequest("GET", "/session")), isFalse);
     });
 
-    test("returns 400 when x-opencode-directory header is missing", () async {
+    test("returns 400 when request body is empty", () async {
       final response = await handler.handle(
         makeRequest("POST", "/session"),
         pathParams: {},
         queryParams: {},
       );
       expect(response.status, equals(400));
-      expect(response.body, contains("x-opencode-directory"));
+      expect(response.body, contains("invalid JSON body"));
     });
 
     test("returns 200 with null body", () async {
@@ -52,8 +52,9 @@ void main() {
         makeRequest(
           "POST",
           "/session",
-          headers: {"x-opencode-directory": "/tmp"},
-          body: jsonEncode(const CreateSessionRequest(id: "new-session").toJson()),
+          body: jsonEncode(
+            const CreateSessionRequest(id: "new-session", projectId: "/tmp").toJson(),
+          ),
         ),
         pathParams: {},
         queryParams: {},
@@ -70,7 +71,6 @@ void main() {
         makeRequest(
           "POST",
           "/session",
-          headers: {"x-opencode-directory": "/tmp/project"},
           body: "not-json",
         ),
         pathParams: {},

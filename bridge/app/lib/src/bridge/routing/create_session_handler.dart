@@ -18,11 +18,6 @@ class CreateSessionHandler extends RequestHandler {
     required Map<String, String> queryParams,
     String? fragment,
   }) async {
-    final projectId = findHeader(request.headers, "x-opencode-directory");
-    if (projectId == null || projectId.isEmpty) {
-      return buildErrorResponse(request, 400, "missing x-opencode-directory header");
-    }
-
     final CreateSessionRequest createRequest;
     try {
       createRequest = CreateSessionRequest.fromJson(
@@ -35,7 +30,7 @@ class CreateSessionHandler extends RequestHandler {
     }
 
     await _plugin.createSession(
-      projectId: projectId,
+      projectId: createRequest.projectId,
       sessionId: createRequest.id,
     );
 

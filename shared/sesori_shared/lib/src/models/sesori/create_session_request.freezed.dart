@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$CreateSessionRequest {
 
- String get id;
+ String get id; String get projectId;
 /// Create a copy of CreateSessionRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $CreateSessionRequestCopyWith<CreateSessionRequest> get copyWith => _$CreateSess
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CreateSessionRequest&&(identical(other.id, id) || other.id == id));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CreateSessionRequest&&(identical(other.id, id) || other.id == id)&&(identical(other.projectId, projectId) || other.projectId == projectId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id);
+int get hashCode => Object.hash(runtimeType,id,projectId);
 
 @override
 String toString() {
-  return 'CreateSessionRequest(id: $id)';
+  return 'CreateSessionRequest(id: $id, projectId: $projectId)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $CreateSessionRequestCopyWith<$Res>  {
   factory $CreateSessionRequestCopyWith(CreateSessionRequest value, $Res Function(CreateSessionRequest) _then) = _$CreateSessionRequestCopyWithImpl;
 @useResult
 $Res call({
- String id
+ String id, String projectId
 });
 
 
@@ -65,9 +65,10 @@ class _$CreateSessionRequestCopyWithImpl<$Res>
 
 /// Create a copy of CreateSessionRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? projectId = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }
@@ -80,10 +81,11 @@ as String,
 @JsonSerializable()
 
 class _CreateSessionRequest implements CreateSessionRequest {
-  const _CreateSessionRequest({required this.id});
+  const _CreateSessionRequest({required this.id, required this.projectId});
   factory _CreateSessionRequest.fromJson(Map<String, dynamic> json) => _$CreateSessionRequestFromJson(json);
 
 @override final  String id;
+@override final  String projectId;
 
 /// Create a copy of CreateSessionRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -98,16 +100,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CreateSessionRequest&&(identical(other.id, id) || other.id == id));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CreateSessionRequest&&(identical(other.id, id) || other.id == id)&&(identical(other.projectId, projectId) || other.projectId == projectId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id);
+int get hashCode => Object.hash(runtimeType,id,projectId);
 
 @override
 String toString() {
-  return 'CreateSessionRequest(id: $id)';
+  return 'CreateSessionRequest(id: $id, projectId: $projectId)';
 }
 
 
@@ -118,7 +120,7 @@ abstract mixin class _$CreateSessionRequestCopyWith<$Res> implements $CreateSess
   factory _$CreateSessionRequestCopyWith(_CreateSessionRequest value, $Res Function(_CreateSessionRequest) _then) = __$CreateSessionRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String id
+ String id, String projectId
 });
 
 
@@ -135,9 +137,10 @@ class __$CreateSessionRequestCopyWithImpl<$Res>
 
 /// Create a copy of CreateSessionRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? projectId = null,}) {
   return _then(_CreateSessionRequest(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }

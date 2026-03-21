@@ -40,12 +40,10 @@ class SessionService {
 
   /// Lists root sessions for the current project.
   ///
-  /// Project scoping relies on the `x-opencode-directory` header that
-  /// [RelayHttpApiClient] injects from [ConnectionService.activeDirectory].
-  /// We intentionally omit a `directory` query param so the server returns
-  /// sessions from *all* subdirectories of the project — not just those
-  /// whose stored directory exactly matches the worktree root.
-  Future<ApiResponse<List<Session>>> listSessions() {
+  /// Project scoping is passed via the `projectId` query parameter. We keep
+  /// `roots=true` so the server returns root sessions across all
+  /// subdirectories of the selected project.
+  Future<ApiResponse<List<Session>>> listSessions({required String projectId}) {
     return _client.get(
       "/session",
       fromJson: (json) => switch (json) {
@@ -60,17 +58,17 @@ class SessionService {
               .toList(),
         _ => throw FormatException("expected list, got ${json.runtimeType}"),
       },
-      queryParameters: {"roots": "true"},
+      queryParameters: {"roots": "true", "projectId": projectId},
     );
   }
 
-  Future<ApiResponse<Session>> createSession() {
+  Future<ApiResponse<Session>> createSession({required String projectId}) {
     final sessionId = DateTime.now().millisecondsSinceEpoch.toRadixString(36);
     return _client
         .post<bool>(
           "/session",
           fromJson: (_) => true,
-          body: CreateSessionRequest(id: sessionId).toJson(),
+          body: CreateSessionRequest(id: sessionId, projectId: projectId).toJson(),
         )
         .then(
           (response) => switch (response) {

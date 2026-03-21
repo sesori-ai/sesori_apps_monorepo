@@ -106,11 +106,12 @@ void main() {
           () => mockClient.get<Project>(
             "/project/current",
             fromJson: any(named: "fromJson"),
+            queryParameters: any(named: "queryParameters"),
           ),
         ).thenAnswer((_) async => successResponse);
 
         // Act
-        final result = await projectService.getCurrentProject();
+        final result = await projectService.getCurrentProject(projectId: "/home/user/current-project");
 
         // Assert
         expect(result, isA<SuccessResponse<Project>>());
@@ -119,6 +120,7 @@ void main() {
           () => mockClient.get<Project>(
             "/project/current",
             fromJson: any(named: "fromJson"),
+            queryParameters: {"projectId": "/home/user/current-project"},
           ),
         ).called(1);
       });
@@ -132,11 +134,12 @@ void main() {
           () => mockClient.get<Project>(
             "/project/current",
             fromJson: any(named: "fromJson"),
+            queryParameters: any(named: "queryParameters"),
           ),
         ).thenAnswer((_) async => errorResponse);
 
         // Act
-        final result = await projectService.getCurrentProject();
+        final result = await projectService.getCurrentProject(projectId: "/home/user/current-project");
 
         // Assert
         expect(result, isA<ErrorResponse<Project>>());
@@ -145,6 +148,7 @@ void main() {
           () => mockClient.get<Project>(
             "/project/current",
             fromJson: any(named: "fromJson"),
+            queryParameters: {"projectId": "/home/user/current-project"},
           ),
         ).called(1);
       });
@@ -155,17 +159,19 @@ void main() {
           () => mockClient.get<Project>(
             any(),
             fromJson: any(named: "fromJson"),
+            queryParameters: any(named: "queryParameters"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(testProject()));
 
         // Act
-        await projectService.getCurrentProject();
+        await projectService.getCurrentProject(projectId: "/home/user/current-project");
 
         // Assert
         verify(
           () => mockClient.get<Project>(
             "/project/current",
             fromJson: any(named: "fromJson"),
+            queryParameters: {"projectId": "/home/user/current-project"},
           ),
         ).called(1);
       });

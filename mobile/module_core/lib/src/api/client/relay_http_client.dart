@@ -125,7 +125,6 @@ class RelayHttpApiClient {
         : jsonEncode(body);
 
     final headers = {
-      if (_connectionService.activeDirectory != null) "x-opencode-directory": _connectionService.activeDirectory!,
       if (body != null) "content-type": "application/json",
     };
 

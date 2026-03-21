@@ -121,8 +121,7 @@ class ConnectionService {
   };
 
   /// The current project directory (worktree). Set when the user enters a
-  /// project context. Sent as `x-opencode-directory` header so the server
-  /// resolves the correct Instance for every request.
+  /// project context and used by feature cubits/services as request context.
   String? _activeDirectory;
   String? get activeDirectory => _activeDirectory;
   RelayClient? get relayClient => _relayClient;

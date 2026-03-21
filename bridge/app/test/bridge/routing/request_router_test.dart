@@ -37,12 +37,12 @@ void main() {
 
     test("routes GET /session to GetSessionsHandler", () async {
       final response = await router.route(
-        makeRequest("GET", "/session", headers: {"x-opencode-directory": "/tmp"}),
+        makeRequest("GET", "/session?projectId=/tmp"),
       );
       expect(response.status, equals(200));
     });
 
-    test("GET /session without header returns 400", () async {
+    test("GET /session without projectId returns 400", () async {
       final response = await router.route(makeRequest("GET", "/session"));
       expect(response.status, equals(400));
     });
@@ -61,8 +61,7 @@ void main() {
       await router.route(
         makeRequest(
           "GET",
-          "/session?start=3&limit=7",
-          headers: {"x-opencode-directory": "/tmp"},
+          "/session?projectId=/tmp&start=3&limit=7",
         ),
       );
       expect(plugin.lastGetSessionsStart, equals(3));
@@ -91,8 +90,9 @@ void main() {
         makeRequest(
           "POST",
           "/session",
-          headers: {"x-opencode-directory": "/tmp"},
-          body: jsonEncode(const CreateSessionRequest(id: "session-1").toJson()),
+          body: jsonEncode(
+            const CreateSessionRequest(id: "session-1", projectId: "/tmp").toJson(),
+          ),
         ),
       );
 

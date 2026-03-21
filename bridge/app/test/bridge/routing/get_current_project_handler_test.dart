@@ -26,7 +26,7 @@ void main() {
       expect(handler.canHandle(makeRequest("GET", "/project")), isFalse);
     });
 
-    test("returns 400 without x-opencode-directory header", () async {
+    test("returns 400 without projectId query parameter", () async {
       final response = await handler.handle(
         makeRequest("GET", "/project/current"),
         pathParams: {},
@@ -34,7 +34,7 @@ void main() {
       );
 
       expect(response.status, equals(400));
-      expect(response.body, contains("x-opencode-directory"));
+      expect(response.body, contains("projectId"));
     });
 
     test("returns JSON", () async {
@@ -42,10 +42,9 @@ void main() {
         makeRequest(
           "GET",
           "/project/current",
-          headers: {"x-opencode-directory": "/tmp/project"},
         ),
         pathParams: {},
-        queryParams: {},
+        queryParams: {"projectId": "/tmp/project"},
       );
 
       expect(response.status, equals(200));
@@ -65,10 +64,9 @@ void main() {
         makeRequest(
           "GET",
           "/project/current",
-          headers: {"x-opencode-directory": "/tmp/project"},
         ),
         pathParams: {},
-        queryParams: {},
+        queryParams: {"projectId": "/tmp/project"},
       );
 
       expect(plugin.lastGetCurrentProjectProjectId, equals("/tmp/project"));

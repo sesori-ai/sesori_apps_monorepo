@@ -27,58 +27,51 @@ void main() {
     });
 
     test("does not handle GET /session/:id/message", () {
-      expect(
-        handler.canHandle(makeRequest("GET", "/session/abc/message")),
-        isFalse,
-      );
+      expect(handler.canHandle(makeRequest("GET", "/session/abc/message")), isFalse);
     });
 
-    test("returns 400 when x-opencode-directory header is missing", () async {
+    test("returns 400 when projectId query parameter is missing", () async {
       final response = await handler.handle(
         makeRequest("GET", "/session"),
         pathParams: {},
         queryParams: {},
       );
       expect(response.status, equals(400));
-      expect(response.body, contains("x-opencode-directory"));
+      expect(response.body, contains("projectId"));
     });
 
-    test("returns 400 when x-opencode-directory header is empty", () async {
+    test("returns 400 when projectId query parameter is empty", () async {
       final response = await handler.handle(
-        makeRequest("GET", "/session", headers: {"x-opencode-directory": ""}),
+        makeRequest("GET", "/session"),
         pathParams: {},
-        queryParams: {},
+        queryParams: {"projectId": ""},
       );
       expect(response.status, equals(400));
     });
 
-    test("header lookup is case-insensitive", () async {
+    test("accepts projectId query parameter", () async {
       final response = await handler.handle(
-        makeRequest("GET", "/session", headers: {"X-OpenCode-Directory": "/tmp"}),
+        makeRequest("GET", "/session"),
         pathParams: {},
-        queryParams: {},
+        queryParams: {"projectId": "/tmp"},
       );
       expect(response.status, equals(200));
     });
 
-    test("forwards worktree to plugin.getSessions", () async {
+    test("forwards projectId to plugin.getSessions", () async {
       await handler.handle(
-        makeRequest(
-          "GET",
-          "/session",
-          headers: {"x-opencode-directory": "/home/user/proj"},
-        ),
+        makeRequest("GET", "/session"),
         pathParams: {},
-        queryParams: {},
+        queryParams: {"projectId": "/home/user/proj"},
       );
       expect(plugin.lastGetSessionsWorktree, equals("/home/user/proj"));
     });
 
     test("forwards start and limit from queryParams as ints", () async {
       await handler.handle(
-        makeRequest("GET", "/session", headers: {"x-opencode-directory": "/tmp"}),
+        makeRequest("GET", "/session"),
         pathParams: {},
-        queryParams: {"start": "5", "limit": "20"},
+        queryParams: {"projectId": "/tmp", "start": "5", "limit": "20"},
       );
       expect(plugin.lastGetSessionsStart, equals(5));
       expect(plugin.lastGetSessionsLimit, equals(20));
@@ -86,9 +79,9 @@ void main() {
 
     test("start and limit are null when absent from queryParams", () async {
       await handler.handle(
-        makeRequest("GET", "/session", headers: {"x-opencode-directory": "/tmp"}),
+        makeRequest("GET", "/session"),
         pathParams: {},
-        queryParams: {},
+        queryParams: {"projectId": "/tmp"},
       );
       expect(plugin.lastGetSessionsStart, isNull);
       expect(plugin.lastGetSessionsLimit, isNull);
@@ -96,9 +89,9 @@ void main() {
 
     test("returns 200 with application/json content-type", () async {
       final response = await handler.handle(
-        makeRequest("GET", "/session", headers: {"x-opencode-directory": "/tmp"}),
+        makeRequest("GET", "/session"),
         pathParams: {},
-        queryParams: {},
+        queryParams: {"projectId": "/tmp"},
       );
       expect(response.status, equals(200));
       expect(response.headers["content-type"], equals("application/json"));
@@ -118,9 +111,9 @@ void main() {
       ];
 
       final response = await handler.handle(
-        makeRequest("GET", "/session", headers: {"x-opencode-directory": "/tmp"}),
+        makeRequest("GET", "/session"),
         pathParams: {},
-        queryParams: {},
+        queryParams: {"projectId": "/tmp"},
       );
 
       final body = jsonDecode(response.body!) as List<dynamic>;
@@ -145,9 +138,9 @@ void main() {
       ];
 
       final response = await handler.handle(
-        makeRequest("GET", "/session", headers: {"x-opencode-directory": "/tmp"}),
+        makeRequest("GET", "/session"),
         pathParams: {},
-        queryParams: {},
+        queryParams: {"projectId": "/tmp"},
       );
 
       final body = jsonDecode(response.body!) as List<dynamic>;
@@ -171,9 +164,9 @@ void main() {
       ];
 
       final response = await handler.handle(
-        makeRequest("GET", "/session", headers: {"x-opencode-directory": "/tmp"}),
+        makeRequest("GET", "/session"),
         pathParams: {},
-        queryParams: {},
+        queryParams: {"projectId": "/tmp"},
       );
 
       final body = jsonDecode(response.body!) as List<dynamic>;
@@ -197,9 +190,9 @@ void main() {
       ];
 
       final response = await handler.handle(
-        makeRequest("GET", "/session", headers: {"x-opencode-directory": "/tmp"}),
+        makeRequest("GET", "/session"),
         pathParams: {},
-        queryParams: {},
+        queryParams: {"projectId": "/tmp"},
       );
 
       final body = jsonDecode(response.body!) as List<dynamic>;

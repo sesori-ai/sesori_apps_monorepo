@@ -5,7 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "request_handler.dart";
 
-/// Handles `GET /project/current` — returns project for a given worktree.
+/// Handles `GET /project/current` — returns project for a given project id.
 class GetCurrentProjectHandler extends RequestHandler {
   final BridgePlugin _plugin;
 
@@ -18,9 +18,9 @@ class GetCurrentProjectHandler extends RequestHandler {
     required Map<String, String> queryParams,
     String? fragment,
   }) async {
-    final projectId = findHeader(request.headers, "x-opencode-directory");
+    final projectId = queryParams["projectId"];
     if (projectId == null || projectId.isEmpty) {
-      return buildErrorResponse(request, 400, "missing x-opencode-directory header");
+      return buildErrorResponse(request, 400, "missing projectId query parameter");
     }
 
     final pluginProject = await _plugin.getCurrentProject(projectId);

@@ -274,7 +274,7 @@ class SessionListCubit extends Cubit<SessionListState> {
 
   /// Creates a new session via POST /session and returns it, or null on failure.
   Future<Session?> createSession() async {
-    final response = await _service.createSession();
+    final response = await _service.createSession(projectId: _projectId);
 
     if (isClosed) return null;
 
@@ -323,7 +323,7 @@ class SessionListCubit extends Cubit<SessionListState> {
   }
 
   Future<bool> _fetchSessions({bool silent = false}) async {
-    final response = await _service.listSessions();
+    final response = await _service.listSessions(projectId: _projectId);
     if (isClosed) return false;
 
     switch (response) {
@@ -335,7 +335,7 @@ class SessionListCubit extends Cubit<SessionListState> {
         // AFTER loading to avoid false-positives: non-git directories also
         // resolve to "global" but their sessions are still valid.
         if (!_allSessions.any(_belongsHere)) {
-          final projectResponse = await _projectService.getCurrentProject();
+          final projectResponse = await _projectService.getCurrentProject(projectId: _projectId);
           if (isClosed) return false;
 
           if (projectResponse case SuccessResponse(data: final current) when current.id != _projectId) {

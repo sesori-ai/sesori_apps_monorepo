@@ -23,11 +23,12 @@ class ProjectService {
     );
   }
 
-  /// Returns the project the server resolved for the current request directory.
-  Future<ApiResponse<Project>> getCurrentProject() {
+  /// Returns the project matching the requested project ID.
+  Future<ApiResponse<Project>> getCurrentProject({required String projectId}) {
     return _client.get(
       "/project/current",
       fromJson: (json) => Project.fromJson(json as Map<String, dynamic>),
+      queryParameters: {"projectId": projectId},
     );
   }
 }

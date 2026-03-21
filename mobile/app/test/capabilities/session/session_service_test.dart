@@ -125,7 +125,7 @@ void main() {
           ),
         ).thenAnswer((_) async => ApiResponse.success(sessions));
 
-        final result = await sessionService.listSessions();
+        final result = await sessionService.listSessions(projectId: "/tmp/project");
 
         expect(result, isA<SuccessResponse<List<Session>>>());
         expect((result as SuccessResponse<List<Session>>).data, equals(sessions));
@@ -141,7 +141,7 @@ void main() {
           ),
         ).thenAnswer((_) async => ApiResponse.error(error));
 
-        final result = await sessionService.listSessions();
+        final result = await sessionService.listSessions(projectId: "/tmp/project");
 
         expect(result, isA<ErrorResponse<List<Session>>>());
         expect((result as ErrorResponse<List<Session>>).error, equals(error));
@@ -156,13 +156,13 @@ void main() {
           ),
         ).thenAnswer((_) async => ApiResponse.success(<Session>[]));
 
-        await sessionService.listSessions();
+        await sessionService.listSessions(projectId: "/tmp/project");
 
         verify(
           () => mockClient.get<List<Session>>(
             "/session",
             fromJson: any(named: "fromJson"),
-            queryParameters: {"roots": "true"},
+            queryParameters: {"roots": "true", "projectId": "/tmp/project"},
           ),
         ).called(1);
       });
@@ -182,7 +182,7 @@ void main() {
           ),
         ).thenAnswer((_) async => ApiResponse.success(true));
 
-        final result = await sessionService.createSession();
+        final result = await sessionService.createSession(projectId: "/tmp/project");
 
         expect(result, isA<SuccessResponse<Session>>());
         expect((result as SuccessResponse<Session>).data.id, isNotEmpty);
@@ -205,7 +205,7 @@ void main() {
           ),
         ).thenAnswer((_) async => ApiResponse.error(error));
 
-        final result = await sessionService.createSession();
+        final result = await sessionService.createSession(projectId: "/tmp/project");
 
         expect(result, isA<ErrorResponse<Session>>());
         expect((result as ErrorResponse<Session>).error, equals(error));
