@@ -210,7 +210,7 @@ class FakeBridgePlugin implements BridgePlugin {
   @override
   Future<PluginProject> getProject(String projectId) async {
     lastGetCurrentProjectProjectId = projectId;
-    return currentProjectResult ?? const PluginProject(id: "", worktree: "");
+    return currentProjectResult ?? const PluginProject(id: "");
   }
 
   @override

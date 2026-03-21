@@ -27,7 +27,7 @@ void main() {
 
     test("routes GET /project to GetProjectsHandler", () async {
       plugin.projectsResult = [
-        const PluginProject(id: "p1", worktree: "/tmp", name: "P"),
+        const PluginProject(id: "p1", name: "P"),
       ];
       final response = await router.route(makeRequest("GET", "/project"));
       expect(response.status, equals(200));

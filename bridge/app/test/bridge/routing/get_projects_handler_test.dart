@@ -50,11 +50,10 @@ void main() {
       expect(body, isEmpty);
     });
 
-    test("maps PluginProject id, worktree, and name fields", () async {
+    test("maps PluginProject id and name fields", () async {
       plugin.projectsResult = [
         const PluginProject(
           id: "p1",
-          worktree: "/home/user/proj",
           name: "My Project",
         ),
       ];
@@ -68,7 +67,6 @@ void main() {
       final body = jsonDecode(response.body!) as List<dynamic>;
       final project = body[0] as Map<String, dynamic>;
       expect(project["id"], equals("p1"));
-      expect(project["worktree"], equals("/home/user/proj"));
       expect(project["name"], equals("My Project"));
     });
 
@@ -76,7 +74,6 @@ void main() {
       plugin.projectsResult = [
         const PluginProject(
           id: "p1",
-          worktree: "/tmp",
           time: PluginProjectTime(created: 1000, updated: 2000),
         ),
       ];
@@ -95,7 +92,7 @@ void main() {
 
     test("time is null when PluginProjectTime is absent", () async {
       plugin.projectsResult = [
-        const PluginProject(id: "p1", worktree: "/tmp"),
+        const PluginProject(id: "p1"),
       ];
 
       final response = await handler.handle(
@@ -110,9 +107,9 @@ void main() {
 
     test("returns all projects when plugin returns multiple", () async {
       plugin.projectsResult = [
-        const PluginProject(id: "p1", worktree: "/a"),
-        const PluginProject(id: "p2", worktree: "/b"),
-        const PluginProject(id: "p3", worktree: "/c"),
+        const PluginProject(id: "p1"),
+        const PluginProject(id: "p2"),
+        const PluginProject(id: "p3"),
       ];
 
       final response = await handler.handle(

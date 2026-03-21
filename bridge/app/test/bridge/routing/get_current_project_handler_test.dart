@@ -56,7 +56,6 @@ void main() {
     test("maps fields", () async {
       plugin.currentProjectResult = const PluginProject(
         id: "p1",
-        worktree: "/tmp/project",
         name: "My Project",
         time: PluginProjectTime(created: 11, updated: 22),
       );
@@ -75,7 +74,6 @@ void main() {
 
       final project = jsonDecode(response.body!) as Map<String, dynamic>;
       expect(project["id"], equals("p1"));
-      expect(project["worktree"], equals("/tmp/project"));
       expect(project["name"], equals("My Project"));
 
       final time = project["time"] as Map<String, dynamic>;

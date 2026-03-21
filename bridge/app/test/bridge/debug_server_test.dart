@@ -93,7 +93,7 @@ void main() {
 
     test("GET /project returns project list as JSON", () async {
       plugin.projectsResult = [
-        const PluginProject(id: "p1", worktree: "/tmp/test", name: "My Project"),
+        const PluginProject(id: "p1", name: "My Project"),
       ];
 
       final client = HttpClient();
@@ -306,7 +306,7 @@ class _FakeBridgePlugin implements BridgePlugin {
   Future<void> rejectQuestion(String questionId) async {}
 
   @override
-  Future<PluginProject> getProject(String projectId) async => const PluginProject(id: "", worktree: "");
+  Future<PluginProject> getProject(String projectId) async => const PluginProject(id: "");
 
   @override
   Future<String> healthCheck() async => '{"healthy":true}';
@@ -428,7 +428,7 @@ class _TrackingBridgePlugin implements BridgePlugin {
   Future<void> rejectQuestion(String questionId) async {}
 
   @override
-  Future<PluginProject> getProject(String projectId) async => const PluginProject(id: "", worktree: "");
+  Future<PluginProject> getProject(String projectId) async => const PluginProject(id: "");
 
   @override
   Future<String> healthCheck() async => '{"healthy":true}';

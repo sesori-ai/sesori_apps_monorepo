@@ -32,11 +32,11 @@ void main() {
       expect(projects, hasLength(2));
 
       final real = projects.firstWhere((p) => p.id == "p1");
-      expect(real.worktree, equals("/repo"));
+      expect(real.id, equals("p1"));
       expect(real.name, equals("Main Repo"));
 
       final virtual = projects.firstWhere((p) => p.id == "global");
-      expect(virtual.worktree, equals("/virtual"));
+      expect(virtual.id, equals("global"));
     });
 
     test("getSessions maps internal sessions to plugin sessions", () async {
