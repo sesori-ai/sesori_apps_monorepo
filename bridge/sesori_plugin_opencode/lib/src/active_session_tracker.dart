@@ -24,7 +24,7 @@ class ActiveSessionTracker {
     final (projects, statuses, sessions) = await wait3(
       _repository.getProjects(),
       _repository.api.getSessionStatuses(),
-      _repository.api.listRootSessions(),
+      _repository.api.listSessions(),
     );
 
     _projectWorktrees
