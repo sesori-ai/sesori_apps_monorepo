@@ -130,8 +130,8 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 
     // https://developer.android.com/jetpack/androidx/versions/all-channel
-//    implementation("androidx.core:core-splashscreen:1.2.0")
-//    implementation("androidx.constraintlayout:constraintlayout:2.2.1")
+    implementation("androidx.core:core-splashscreen:1.2.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.2.1")
     implementation("androidx.activity:activity-ktx:1.13.0")
 }
 

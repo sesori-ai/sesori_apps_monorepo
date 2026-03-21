@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--  Used for Android >= 31  -->
+    <style name="LaunchTheme" parent="BaseLaunchTheme">
+        <item name="android:windowSplashScreenBackground">@color/splash_screen_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/monogram_108</item>
+    </style>
+</resources>
