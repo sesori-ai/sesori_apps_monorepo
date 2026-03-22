@@ -4,9 +4,9 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../../features/login/login_screen.dart";
 import "../../features/project_list/project_list_screen.dart";
-import "../../features/settings/notification_settings_screen.dart";
 import "../../features/session_detail/session_detail_screen.dart";
 import "../../features/session_list/session_list_screen.dart";
+import "../../features/settings/notification_settings_screen.dart";
 import "../di/injection.dart";
 
 extension AppRouteToGoRoute on AppRoute {
