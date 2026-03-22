@@ -1,4 +1,5 @@
 import "package:bloc/bloc.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "../../capabilities/notifications/notification_preferences_service.dart";
 import "notification_preferences_state.dart";
@@ -19,7 +20,7 @@ class NotificationPreferencesCubit extends Cubit<NotificationPreferencesState> {
   }
 
   Future<void> toggle(
-    NotificationCategoryPreference category, {
+    NotificationCategory category, {
     required bool enabled,
   }) async {
     await _service.setEnabled(category, enabled: enabled);

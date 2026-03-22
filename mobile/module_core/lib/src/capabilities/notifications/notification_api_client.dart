@@ -1,20 +1,19 @@
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 
+import "register_token_request.dart";
+
 @lazySingleton
 class NotificationApiClient {
   final AuthenticatedHttpApiClient _client;
 
   NotificationApiClient(AuthenticatedHttpApiClient client) : _client = client;
 
-  Future<void> registerToken({required String token, required String platform}) async {
+  Future<void> registerToken(RegisterTokenRequest request) async {
     final response = await _client.post(
       Uri.parse("$authBaseUrl/notifications/register-token"),
       fromJson: (_) => true,
-      body: {
-        "token": token,
-        "platform": platform,
-      },
+      body: request.toJson(),
     );
 
     _throwIfError(response);

@@ -78,11 +78,11 @@ String toString() {
 
 
 class NotificationPreferencesLoaded implements NotificationPreferencesState {
-  const NotificationPreferencesLoaded({required final  Map<NotificationCategoryPreference, bool> preferences}): _preferences = preferences;
+  const NotificationPreferencesLoaded({required final  Map<NotificationCategory, bool> preferences}): _preferences = preferences;
   
 
- final  Map<NotificationCategoryPreference, bool> _preferences;
- Map<NotificationCategoryPreference, bool> get preferences {
+ final  Map<NotificationCategory, bool> _preferences;
+ Map<NotificationCategory, bool> get preferences {
   if (_preferences is EqualUnmodifiableMapView) return _preferences;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableMapView(_preferences);
@@ -119,7 +119,7 @@ abstract mixin class $NotificationPreferencesLoadedCopyWith<$Res> implements $No
   factory $NotificationPreferencesLoadedCopyWith(NotificationPreferencesLoaded value, $Res Function(NotificationPreferencesLoaded) _then) = _$NotificationPreferencesLoadedCopyWithImpl;
 @useResult
 $Res call({
- Map<NotificationCategoryPreference, bool> preferences
+ Map<NotificationCategory, bool> preferences
 });
 
 
@@ -139,7 +139,7 @@ class _$NotificationPreferencesLoadedCopyWithImpl<$Res>
 @pragma('vm:prefer-inline') $Res call({Object? preferences = null,}) {
   return _then(NotificationPreferencesLoaded(
 preferences: null == preferences ? _self._preferences : preferences // ignore: cast_nullable_to_non_nullable
-as Map<NotificationCategoryPreference, bool>,
+as Map<NotificationCategory, bool>,
   ));
 }
 

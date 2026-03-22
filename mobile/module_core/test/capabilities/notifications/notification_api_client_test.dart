@@ -1,6 +1,7 @@
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 class MockAuthenticatedHttpApiClient extends Mock implements AuthenticatedHttpApiClient {}
@@ -32,7 +33,9 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse.success(true));
 
-      await apiClient.registerToken(token: "device-token", platform: "ios");
+      await apiClient.registerToken(
+        const RegisterTokenRequest(token: "device-token", platform: DevicePlatform.ios),
+      );
 
       verify(
         () => mockClient.post<bool>(
@@ -88,7 +91,12 @@ void main() {
       ).thenAnswer((_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 500, rawErrorString: "error")));
 
       await expectLater(
-        apiClient.registerToken(token: "device-token", platform: "android"),
+        apiClient.registerToken(
+          const RegisterTokenRequest(
+            token: "device-token",
+            platform: DevicePlatform.android,
+          ),
+        ),
         throwsA(isA<NonSuccessCodeError>()),
       );
     });
