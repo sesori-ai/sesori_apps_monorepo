@@ -28,6 +28,8 @@ class FakeBridgePlugin implements BridgePlugin {
   List<PluginProject> projectsResult = [];
   List<PluginSession> sessionsResult = [];
   List<PluginMessageWithParts> messagesResult = [];
+  List<PluginFileDiff> sessionDiffsResult = [];
+  List<PluginFileDiff> messageDiffsResult = [];
   PluginProvidersResult providersResult = const PluginProvidersResult(providers: []);
   PluginSession? createSessionResult;
   PluginSession? updateSessionResult;
@@ -44,6 +46,10 @@ class FakeBridgePlugin implements BridgePlugin {
   int? lastGetSessionsLimit;
 
   String? lastGetMessagesSessionId;
+
+  String? lastGetSessionDiffsSessionId;
+  String? lastGetMessageDiffsSessionId;
+  String? lastGetMessageDiffsMessageId;
 
   bool? lastGetProvidersConnectedOnly;
   String? lastCreateSessionProjectId;
@@ -70,6 +76,8 @@ class FakeBridgePlugin implements BridgePlugin {
   Object? throwOnGetProjectsError;
   Object? throwOnGetProjectError;
   bool throwOnGetSessions = false;
+  bool throwOnGetSessionDiffs = false;
+  bool throwOnGetMessageDiffs = false;
   Object? throwOnDeleteSessionError;
 
   // ── BridgePlugin implementation ──────────────────────────────────────────
@@ -227,6 +235,21 @@ class FakeBridgePlugin implements BridgePlugin {
   Future<PluginProvidersResult> getProviders({required bool connectedOnly}) async {
     lastGetProvidersConnectedOnly = connectedOnly;
     return providersResult;
+  }
+
+  @override
+  Future<List<PluginFileDiff>> getSessionDiffs(String sessionId) async {
+    if (throwOnGetSessionDiffs) throw Exception("getSessionDiffs error");
+    lastGetSessionDiffsSessionId = sessionId;
+    return sessionDiffsResult;
+  }
+
+  @override
+  Future<List<PluginFileDiff>> getMessageDiffs(String sessionId, String messageId) async {
+    if (throwOnGetMessageDiffs) throw Exception("getMessageDiffs error");
+    lastGetMessageDiffsSessionId = sessionId;
+    lastGetMessageDiffsMessageId = messageId;
+    return messageDiffsResult;
   }
 
   @override

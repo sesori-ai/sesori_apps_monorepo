@@ -10,9 +10,11 @@ import "filesystem_suggestions_handler.dart";
 import "get_agents_handler.dart";
 import "get_child_sessions_handler.dart";
 import "get_current_project_handler.dart";
+import "get_message_diffs_handler.dart";
 import "get_project_questions_handler.dart";
 import "get_projects_handler.dart";
 import "get_providers_handler.dart";
+import "get_session_diffs_handler.dart";
 import "get_session_messages_handler.dart";
 import "get_session_questions_handler.dart";
 import "get_session_statuses_handler.dart";
@@ -50,6 +52,8 @@ class RequestRouter {
       GetProjectsHandler(plugin, hiddenStore),
       GetSessionStatusesHandler(plugin),
       GetChildSessionsHandler(plugin),
+      GetMessageDiffsHandler(plugin),
+      GetSessionDiffsHandler(plugin),
       GetSessionMessagesHandler(plugin),
       GetSessionsHandler(plugin),
       CreateSessionHandler(plugin),
