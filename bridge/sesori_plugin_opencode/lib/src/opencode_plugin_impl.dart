@@ -308,6 +308,42 @@ class OpenCodePlugin implements BridgePlugin {
   }
 
   @override
+  Future<List<PluginFileDiff>> getSessionDiffs(String sessionId) async {
+    final directory = _service.tracker.getSessionDirectory(sessionId: sessionId);
+    final diffs = await _call(
+      () => _service.repository.api.getSessionDiffs(
+        sessionId: sessionId,
+        directory: directory,
+      ),
+    );
+    return diffs.map(_mapFileDiff).toList();
+  }
+
+  @override
+  Future<List<PluginFileDiff>> getMessageDiffs(String sessionId, String messageId) async {
+    final directory = _service.tracker.getSessionDirectory(sessionId: sessionId);
+    final diffs = await _call(
+      () => _service.repository.api.getMessageDiffs(
+        sessionId: sessionId,
+        messageId: messageId,
+        directory: directory,
+      ),
+    );
+    return diffs.map(_mapFileDiff).toList();
+  }
+
+  PluginFileDiff _mapFileDiff(FileDiff raw) {
+    return PluginFileDiff(
+      file: raw.file,
+      before: raw.before,
+      after: raw.after,
+      additions: raw.additions,
+      deletions: raw.deletions,
+      status: raw.status?.name,
+    );
+  }
+
+  @override
   Future<void> sendPrompt({
     required String sessionId,
     required List<PluginPromptPart> parts,

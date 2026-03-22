@@ -444,6 +444,12 @@ class FakeOpenCodeApi implements OpenCodeApi {
   Future<List<Session>> listSessions({String? directory}) async => [];
 
   @override
+  Future<List<FileDiff>> getSessionDiffs(String sessionId) async => [];
+
+  @override
+  Future<List<FileDiff>> getMessageDiffs(String sessionId, String messageId) async => [];
+
+  @override
   Future<ProviderListResponse> listProviders() async =>
       const ProviderListResponse(all: [], defaults: {}, connected: []);
 }
