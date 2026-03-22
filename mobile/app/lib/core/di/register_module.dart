@@ -19,7 +19,6 @@ abstract class RegisterModule {
   FlutterSecureStorage get secureStorage => const FlutterSecureStorage(
     mOptions: MacOsOptions(
       accountName: "Sesori",
-      useDataProtectionKeyChain: false,
     ),
   );
 }

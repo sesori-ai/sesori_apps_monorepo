@@ -14,6 +14,7 @@ import 'package:get_it/get_it.dart' as _i174;
 import 'package:http/http.dart' as _i519;
 import 'package:injectable/injectable.dart' as _i526;
 import 'package:record/record.dart' as _i1039;
+import 'package:sesori_auth/sesori_auth.dart' as _i442;
 import 'package:sesori_dart_core/sesori_dart_core.dart' as _i948;
 import 'package:sesori_mobile/capabilities/voice/audio_format_config.dart'
     as _i430;
@@ -29,6 +30,9 @@ import 'package:sesori_mobile/core/platform/app_lifecycle_observer.dart'
 import 'package:sesori_mobile/core/platform/flutter_secure_storage_adapter.dart'
     as _i816;
 import 'package:sesori_mobile/core/platform/flutter_url_launcher.dart' as _i10;
+import 'package:sesori_mobile/core/platform/local_notification_manager.dart'
+    as _i492;
+import 'package:sesori_mobile/core/platform/notification_service.dart' as _i737;
 import 'package:sesori_mobile/core/routing/deep_link_service.dart' as _i901;
 import 'package:sesori_mobile/core/routing/deep_link_source.dart' as _i919;
 import 'package:sesori_shared/sesori_shared.dart' as _i553;
@@ -50,6 +54,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i1039.AudioRecorder>(() => registerModule.audioRecorder);
     gh.lazySingleton<_i558.FlutterSecureStorage>(
       () => registerModule.secureStorage,
+    );
+    gh.lazySingleton<_i492.LocalNotificationManager>(
+      () => _i492.LocalNotificationManager(),
     );
     gh.singleton<_i948.LifecycleSource>(() => _i875.AppLifecycleObserver());
     gh.lazySingleton<_i948.DeepLinkSource>(
@@ -76,6 +83,15 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i62.RecordingFileProvider>(),
         gh<_i511.WakeLockService>(),
         gh<_i430.AudioFormatConfig>(),
+      ),
+      dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i737.NotificationService>(
+      () => _i737.NotificationService(
+        gh<_i948.NotificationApiClient>(),
+        gh<_i948.NotificationPreferencesService>(),
+        gh<_i492.LocalNotificationManager>(),
+        gh<_i442.AuthSession>(),
       ),
       dispose: (i) => i.dispose(),
     );

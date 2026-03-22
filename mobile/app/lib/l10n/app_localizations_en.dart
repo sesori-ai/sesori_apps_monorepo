@@ -94,6 +94,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get bridgeOfflineMessage => 'Start sesori-bridge on your laptop';
 
   @override
+  String get notificationSettingsTitle => 'Notification Settings';
+
+  @override
+  String get notificationCategoryAiInteraction => 'AI Interactions';
+
+  @override
+  String get notificationCategoryAiInteractionDescription =>
+      'Questions and permission requests from active AI sessions';
+
+  @override
+  String get notificationCategorySessionMessage => 'Session Messages';
+
+  @override
+  String get notificationCategorySessionMessageDescription => 'New assistant messages from running sessions';
+
+  @override
+  String get notificationCategoryConnectionStatus => 'Connection Status';
+
+  @override
+  String get notificationCategoryConnectionStatusDescription => 'Bridge online and offline status changes';
+
+  @override
+  String get notificationCategorySystemUpdate => 'System Updates';
+
+  @override
+  String get notificationCategorySystemUpdateDescription => 'App and bridge updates or maintenance notices';
+
+  @override
   String get sessionListTitle => 'Sessions';
 
   @override

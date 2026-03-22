@@ -7,8 +7,10 @@ import "package:cryptography/cryptography.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../auth/access_token_provider.dart";
 import "../auth/token.dart";
 import "../auth/validate.dart";
+import "../push/push_notification_service.dart";
 import "key_exchange.dart";
 import "models/bridge_config.dart";
 import "relay_client.dart";
@@ -21,13 +23,19 @@ class Orchestrator {
   final BridgeConfig config;
   final RelayClient _client;
   final BridgePlugin _plugin;
+  final PushNotificationService _pushNotificationService;
+  final AccessTokenUpdater _accessTokenUpdater;
 
   Orchestrator({
     required this.config,
     required RelayClient client,
     required BridgePlugin plugin,
+    required PushNotificationService pushNotificationService,
+    required AccessTokenUpdater accessTokenUpdater,
   }) : _client = client,
-       _plugin = plugin;
+       _plugin = plugin,
+       _pushNotificationService = pushNotificationService,
+       _accessTokenUpdater = accessTokenUpdater;
 
   /// Creates a new session with a fresh room key and SSE manager.
   OrchestratorSession create() {
@@ -39,6 +47,8 @@ class Orchestrator {
       config: config,
       client: _client,
       plugin: _plugin,
+      pushNotificationService: _pushNotificationService,
+      accessTokenUpdater: _accessTokenUpdater,
       roomKey: roomKey,
       sseManager: sseManager,
     );
@@ -67,6 +77,8 @@ class OrchestratorSession {
   final List<int> _roomKey;
   final SSEManager _sseManager;
   final RequestRouter _router;
+  final PushNotificationService _pushNotificationService;
+  final AccessTokenUpdater _accessTokenUpdater;
   StreamSubscription<BridgeSseEvent>? _eventSubscription;
 
   bool _cancelled = false;
@@ -75,10 +87,14 @@ class OrchestratorSession {
     required this.config,
     required RelayClient client,
     required BridgePlugin plugin,
+    required PushNotificationService pushNotificationService,
+    required AccessTokenUpdater accessTokenUpdater,
     required List<int> roomKey,
     required SSEManager sseManager,
   }) : _client = client,
        _plugin = plugin,
+       _pushNotificationService = pushNotificationService,
+       _accessTokenUpdater = accessTokenUpdater,
        _roomKey = roomKey,
        _sseManager = sseManager,
        _router = RequestRouter(plugin);
@@ -96,6 +112,7 @@ class OrchestratorSession {
           Log.v(
             "[sse] mapped to: ${sesoriEvent.runtimeType} — enqueuing (subscribers: ${_sseManager.subscriberCount})",
           );
+          _pushNotificationService.maybeSendForEvent(sesoriEvent);
           _sseManager.enqueueEvent(sesoriEvent);
         } else {
           Log.v("[sse] mapping returned null — event dropped");
@@ -214,7 +231,7 @@ class OrchestratorSession {
       return;
     }
 
-    _client.setAccessToken(newTokens.accessToken);
+    _accessTokenUpdater.accessToken = newTokens.accessToken;
 
     final persistedTokens = TokenData(
       accessToken: newTokens.accessToken,

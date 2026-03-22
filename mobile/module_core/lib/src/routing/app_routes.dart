@@ -4,6 +4,7 @@ const redirectUri = "$bundleId://auth/callback";
 enum AppRoute {
   login("/login"),
   projects("/projects"),
+  notificationSettings("/settings/notifications"),
   sessions("/projects/:projectId/sessions"),
   sessionDetail("/sessions/:sessionId")
   ;

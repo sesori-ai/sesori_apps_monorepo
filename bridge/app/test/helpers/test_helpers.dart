@@ -3,7 +3,21 @@ import "dart:collection";
 import "dart:io";
 import "dart:math";
 
+import "package:rxdart/rxdart.dart";
+import "package:sesori_bridge/src/auth/access_token_provider.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
+
+class FakeAccessTokenProvider implements AccessTokenProvider {
+  final BehaviorSubject<String> _subject;
+
+  FakeAccessTokenProvider([String token = "test-token"]) : _subject = BehaviorSubject.seeded(token);
+
+  @override
+  String get accessToken => _subject.value;
+
+  @override
+  ValueStream<String> get tokenStream => _subject.stream;
+}
 
 List<int> makeRoomKey() {
   final random = Random.secure();
@@ -33,7 +47,10 @@ Future<(HttpServer, Stream<List<int>>)> startTestRelayServer() async {
 }
 
 Future<RelayClient> connectTestRelayClient(HttpServer server) async {
-  final client = RelayClient("ws://127.0.0.1:${server.port}", "");
+  final client = RelayClient(
+    relayURL: "ws://127.0.0.1:${server.port}",
+    accessTokenProvider: FakeAccessTokenProvider(),
+  );
   await client.connect();
   return client;
 }

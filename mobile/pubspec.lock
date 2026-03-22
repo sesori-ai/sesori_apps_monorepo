@@ -369,6 +369,30 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.8.18"
+  firebase_messaging:
+    dependency: transitive
+    description:
+      name: firebase_messaging
+      sha256: bd17823b70e629877904d384841cda72ed2cc197517404c0c90da5c0ba786a8c
+      url: "https://pub.dev"
+    source: hosted
+    version: "16.1.2"
+  firebase_messaging_platform_interface:
+    dependency: transitive
+    description:
+      name: firebase_messaging_platform_interface
+      sha256: "550435235cc7d53683f32bf0762c28ef8cfc20a8d36318a033676ae09526d7fb"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.7.7"
+  firebase_messaging_web:
+    dependency: transitive
+    description:
+      name: firebase_messaging_web
+      sha256: "6b1b93ed90309fbce91c219e3cd32aa831e8eccaf4a61f3afaea1625479275d2"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.1.3"
   fixnum:
     dependency: transitive
     description:
@@ -398,6 +422,38 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.0.0"
+  flutter_local_notifications:
+    dependency: transitive
+    description:
+      name: flutter_local_notifications
+      sha256: "0d9035862236fe38250fe1644d7ed3b8254e34a21b2c837c9f539fbb3bba5ef1"
+      url: "https://pub.dev"
+    source: hosted
+    version: "21.0.0"
+  flutter_local_notifications_linux:
+    dependency: transitive
+    description:
+      name: flutter_local_notifications_linux
+      sha256: e0f25e243c6c44c825bbbc6b2b2e76f7d9222362adcfe9fd780bf01923c840bd
+      url: "https://pub.dev"
+    source: hosted
+    version: "8.0.0"
+  flutter_local_notifications_platform_interface:
+    dependency: transitive
+    description:
+      name: flutter_local_notifications_platform_interface
+      sha256: e7db3d5b49c2b7ecc68deba4aaaa67a348f92ee0fef34c8e4b4459dbef0d7307
+      url: "https://pub.dev"
+    source: hosted
+    version: "11.0.0"
+  flutter_local_notifications_windows:
+    dependency: transitive
+    description:
+      name: flutter_local_notifications_windows
+      sha256: "3a2654ba104fbb52c618ebed9def24ef270228470718c43b3a6afcd5c81bef0c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.0.0"
   flutter_localizations:
     dependency: transitive
     description: flutter
@@ -415,50 +471,50 @@ packages:
     dependency: transitive
     description:
       name: flutter_secure_storage
-      sha256: "9cad52d75ebc511adfae3d447d5d13da15a55a92c9410e50f67335b6d21d16ea"
+      sha256: da922f2aab2d733db7e011a6bcc4a825b844892d4edd6df83ff156b09a9b2e40
       url: "https://pub.dev"
     source: hosted
-    version: "9.2.4"
+    version: "10.0.0"
+  flutter_secure_storage_darwin:
+    dependency: transitive
+    description:
+      name: flutter_secure_storage_darwin
+      sha256: "8878c25136a79def1668c75985e8e193d9d7d095453ec28730da0315dc69aee3"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.0"
   flutter_secure_storage_linux:
     dependency: transitive
     description:
       name: flutter_secure_storage_linux
-      sha256: be76c1d24a97d0b98f8b54bce6b481a380a6590df992d0098f868ad54dc8f688
+      sha256: "2b5c76dce569ab752d55a1cee6a2242bcc11fdba927078fb88c503f150767cda"
       url: "https://pub.dev"
     source: hosted
-    version: "1.2.3"
-  flutter_secure_storage_macos:
-    dependency: transitive
-    description:
-      name: flutter_secure_storage_macos
-      sha256: "6c0a2795a2d1de26ae202a0d78527d163f4acbb11cde4c75c670f3a0fc064247"
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.1.3"
+    version: "3.0.0"
   flutter_secure_storage_platform_interface:
     dependency: transitive
     description:
       name: flutter_secure_storage_platform_interface
-      sha256: cf91ad32ce5adef6fba4d736a542baca9daf3beac4db2d04be350b87f69ac4a8
+      sha256: "8ceea1223bee3c6ac1a22dabd8feefc550e4729b3675de4b5900f55afcb435d6"
       url: "https://pub.dev"
     source: hosted
-    version: "1.1.2"
+    version: "2.0.1"
   flutter_secure_storage_web:
     dependency: transitive
     description:
       name: flutter_secure_storage_web
-      sha256: f4ebff989b4f07b2656fb16b47852c0aab9fed9b4ec1c70103368337bc1886a9
+      sha256: "6a1137df62b84b54261dca582c1c09ea72f4f9a4b2fcee21b025964132d5d0c3"
       url: "https://pub.dev"
     source: hosted
-    version: "1.2.1"
+    version: "2.1.0"
   flutter_secure_storage_windows:
     dependency: transitive
     description:
       name: flutter_secure_storage_windows
-      sha256: b20b07cb5ed4ed74fc567b78a72936203f587eba460af1df11281c9326cd3709
+      sha256: "3b7c8e068875dfd46719ff57c90d8c459c87f2302ed6b00ff006b3c9fcad1613"
       url: "https://pub.dev"
     source: hosted
-    version: "3.1.2"
+    version: "4.1.0"
   flutter_test:
     dependency: transitive
     description: flutter
@@ -513,10 +569,10 @@ packages:
     dependency: transitive
     description:
       name: go_router
-      sha256: f02fd7d2a4dc512fec615529824fdd217fecb3a3d3de68360293a551f21634b3
+      sha256: "7974313e217a7771557add6ff2238acb63f635317c35fa590d348fb238f00896"
       url: "https://pub.dev"
     source: hosted
-    version: "14.8.1"
+    version: "17.1.0"
   graphs:
     dependency: transitive
     description:
@@ -605,14 +661,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.5"
-  js:
-    dependency: transitive
-    description:
-      name: js
-      sha256: f2c445dce49627136094980615a031419f7f3eb393237e4ecd97ac15dea343f3
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.6.7"
   json_annotation:
     dependency: transitive
     description:
@@ -625,10 +673,10 @@ packages:
     dependency: transitive
     description:
       name: json_serializable
-      sha256: "44729f5c45748e6748f6b9a57ab8f7e4336edc8ae41fc295070e3814e616a6c0"
+      sha256: fbcf404b03520e6e795f6b9b39badb2b788407dfc0a50cf39158a6ae1ca78925
       url: "https://pub.dev"
     source: hosted
-    version: "6.13.0"
+    version: "6.13.1"
   leak_tracker:
     dependency: transitive
     description:
@@ -1029,10 +1077,10 @@ packages:
     dependency: transitive
     description:
       name: source_helper
-      sha256: "4a85e90b50694e652075cbe4575665539d253e6ec10e46e76b45368ab5e3caae"
+      sha256: "1d3b229b2934034fb2e691fbb3d53e0f75a4af7b1407f88425ed8f209bcb1b8f"
       url: "https://pub.dev"
     source: hosted
-    version: "1.3.10"
+    version: "1.3.11"
   source_map_stack_trace:
     dependency: transitive
     description:
@@ -1121,6 +1169,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.6.16"
+  timezone:
+    dependency: transitive
+    description:
+      name: timezone
+      sha256: "784a5e34d2eb62e1326f24d6f600aaaee452eb8ca8ef2f384a59244e292d158b"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.11.0"
   typed_data:
     dependency: transitive
     description:

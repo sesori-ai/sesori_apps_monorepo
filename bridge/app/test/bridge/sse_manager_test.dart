@@ -14,7 +14,10 @@ void main() {
   group("SSEManager", () {
     test("subscribe registers subscribers", () {
       final manager = SSEManager(replayWindow: const Duration(seconds: 30));
-      final relayClient = RelayClient("ws://127.0.0.1:1", "");
+      final relayClient = RelayClient(
+        relayURL: "ws://127.0.0.1:1",
+        accessTokenProvider: FakeAccessTokenProvider(""),
+      );
 
       manager.subscribePath(1, "/global/event", relayClient);
       manager.subscribePath(2, "/global/event", relayClient);
@@ -87,7 +90,10 @@ void main() {
 
     test("non-last unsubscribe creates orphan queue", () {
       final manager = SSEManager(replayWindow: const Duration(seconds: 30));
-      final relayClient = RelayClient("ws://127.0.0.1:1", "");
+      final relayClient = RelayClient(
+        relayURL: "ws://127.0.0.1:1",
+        accessTokenProvider: FakeAccessTokenProvider(""),
+      );
       addTearDown(manager.stop);
 
       manager.subscribePath(1, "/global/event", relayClient);
@@ -153,7 +159,10 @@ void main() {
 
     test("stop clears subscribers and orphan queues", () {
       final manager = SSEManager(replayWindow: const Duration(seconds: 30));
-      final relayClient = RelayClient("ws://127.0.0.1:1", "");
+      final relayClient = RelayClient(
+        relayURL: "ws://127.0.0.1:1",
+        accessTokenProvider: FakeAccessTokenProvider(""),
+      );
 
       manager.subscribePath(1, "/global/event", relayClient);
       manager.subscribePath(2, "/global/event", relayClient);
@@ -205,7 +214,11 @@ class _RecordingRelayClient extends RelayClient {
   final List<int> sentConnIDs = <int>[];
   final List<List<int>> sentPayloads = <List<int>>[];
 
-  _RecordingRelayClient() : super("ws://127.0.0.1:1", "");
+  _RecordingRelayClient()
+    : super(
+        relayURL: "ws://127.0.0.1:1",
+        accessTokenProvider: FakeAccessTokenProvider(""),
+      );
 
   @override
   void send(int connID, List<int> payload) {
