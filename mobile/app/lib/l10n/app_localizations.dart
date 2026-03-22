@@ -229,6 +229,60 @@ abstract class AppLocalizations {
   /// **'Start sesori-bridge on your laptop'**
   String get bridgeOfflineMessage;
 
+  /// No description provided for @notificationSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification Settings'**
+  String get notificationSettingsTitle;
+
+  /// No description provided for @notificationCategoryAiInteraction.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Interactions'**
+  String get notificationCategoryAiInteraction;
+
+  /// No description provided for @notificationCategoryAiInteractionDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Questions and permission requests from active AI sessions'**
+  String get notificationCategoryAiInteractionDescription;
+
+  /// No description provided for @notificationCategorySessionMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Session Messages'**
+  String get notificationCategorySessionMessage;
+
+  /// No description provided for @notificationCategorySessionMessageDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'New assistant messages from running sessions'**
+  String get notificationCategorySessionMessageDescription;
+
+  /// No description provided for @notificationCategoryConnectionStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection Status'**
+  String get notificationCategoryConnectionStatus;
+
+  /// No description provided for @notificationCategoryConnectionStatusDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Bridge online and offline status changes'**
+  String get notificationCategoryConnectionStatusDescription;
+
+  /// No description provided for @notificationCategorySystemUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'System Updates'**
+  String get notificationCategorySystemUpdate;
+
+  /// No description provided for @notificationCategorySystemUpdateDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'App and bridge updates or maintenance notices'**
+  String get notificationCategorySystemUpdateDescription;
+
   /// No description provided for @sessionListTitle.
   ///
   /// In en, this message translates to:

@@ -32,7 +32,16 @@ class _ProjectListBody extends StatelessWidget {
     final state = context.watch<ProjectListCubit>().state;
 
     return Scaffold(
-      appBar: AppBar(title: Text(loc.projectListTitle)),
+      appBar: AppBar(
+        title: Text(loc.projectListTitle),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined),
+            tooltip: loc.notificationSettingsTitle,
+            onPressed: () => context.pushRoute(AppRoute.notificationSettings),
+          ),
+        ],
+      ),
       body: switch (state) {
         ProjectListLoading() => const Center(
           child: CircularProgressIndicator(),
