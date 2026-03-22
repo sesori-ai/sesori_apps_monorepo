@@ -10,6 +10,8 @@ export "package:sesori_auth/sesori_auth.dart" show HttpMethod, SafeApiClient;
 export "package:sesori_auth/sesori_auth.dart" show HttpApiClient;
 // API
 export "src/api/client/relay_http_client.dart";
+export "src/capabilities/notifications/notification_api_client.dart";
+export "src/capabilities/notifications/notification_preferences_service.dart";
 export "src/capabilities/project/project_service.dart";
 export "src/capabilities/relay/relay_client.dart";
 export "src/capabilities/relay/relay_config.dart";
@@ -27,6 +29,8 @@ export "src/capabilities/voice/voice_api.dart";
 export "src/cubits/connection_overlay/connection_overlay_cubit.dart";
 export "src/cubits/login/login_cubit.dart";
 export "src/cubits/login/login_state.dart";
+export "src/cubits/notification_preferences/notification_preferences_cubit.dart";
+export "src/cubits/notification_preferences/notification_preferences_state.dart";
 export "src/cubits/project_list/project_list_cubit.dart";
 export "src/cubits/project_list/project_list_state.dart";
 export "src/cubits/session_detail/session_detail_cubit.dart";
