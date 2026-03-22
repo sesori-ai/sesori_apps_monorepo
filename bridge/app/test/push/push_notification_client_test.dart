@@ -2,16 +2,22 @@ import "dart:async";
 import "dart:convert";
 import "dart:io";
 
+import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge/src/auth/access_token_provider.dart";
 import "package:sesori_bridge/src/push/push_notification_client.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 class _FakeAccessTokenProvider implements AccessTokenProvider {
-  @override
-  final String accessToken;
+  final BehaviorSubject<String> _subject;
 
-  const _FakeAccessTokenProvider(this.accessToken);
+  _FakeAccessTokenProvider(String token) : _subject = BehaviorSubject.seeded(token);
+
+  @override
+  String get accessToken => _subject.value;
+
+  @override
+  ValueStream<String> get tokenStream => _subject.stream;
 }
 
 void main() {
@@ -37,7 +43,7 @@ void main() {
 
       final client = PushNotificationClient(
         authBackendURL: "http://127.0.0.1:${server.port}",
-        accessTokenProvider: const _FakeAccessTokenProvider("token-123"),
+        accessTokenProvider: _FakeAccessTokenProvider("token-123"),
       );
 
       await client.sendNotification(
@@ -46,7 +52,11 @@ void main() {
           title: "Action required",
           body: "Approve this command",
           collapseKey: "ai_interaction-session-a",
-          data: {"sessionId": "session-a"},
+          data: NotificationData(
+            category: NotificationCategory.aiInteraction,
+            eventType: NotificationEventType.questionAsked,
+            sessionId: "session-a",
+          ),
         ),
       );
 
@@ -58,14 +68,18 @@ void main() {
         "title": "Action required",
         "body": "Approve this command",
         "collapseKey": "ai_interaction-session-a",
-        "data": {"sessionId": "session-a"},
+        "data": {
+          "category": "ai_interaction",
+          "eventType": "question_asked",
+          "sessionId": "session-a",
+        },
       });
     });
 
     test("swallows transport errors", () async {
       final client = PushNotificationClient(
         authBackendURL: "http://127.0.0.1:1",
-        accessTokenProvider: const _FakeAccessTokenProvider("token-123"),
+        accessTokenProvider: _FakeAccessTokenProvider("token-123"),
       );
 
       await expectLater(
@@ -74,6 +88,12 @@ void main() {
             category: NotificationCategory.aiInteraction,
             title: "Action required",
             body: "Approve this command",
+            collapseKey: "ai_interaction-global",
+            data: NotificationData(
+              category: NotificationCategory.aiInteraction,
+              eventType: NotificationEventType.questionAsked,
+              sessionId: null,
+            ),
           ),
         ),
         completes,

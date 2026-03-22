@@ -11,6 +11,7 @@ void main() {
 
   setUp(() {
     mockStorage = MockSecureStorage();
+    when(() => mockStorage.read(key: any(named: "key"))).thenAnswer((_) async => null);
     service = NotificationPreferencesService(mockStorage);
   });
 

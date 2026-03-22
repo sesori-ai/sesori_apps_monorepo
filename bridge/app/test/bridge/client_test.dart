@@ -44,7 +44,10 @@ void main() {
     });
 
     test("send throws when websocket is not connected", () {
-      final client = RelayClient("ws://localhost:9999", "");
+      final client = RelayClient(
+        relayURL: "ws://localhost:9999",
+        accessTokenProvider: FakeAccessTokenProvider(""),
+      );
 
       expect(
         () => client.send(0, "hello".codeUnits),
@@ -58,7 +61,10 @@ void main() {
       final server = await TestRelayServer.start();
       addTearDown(server.close);
 
-      final client = RelayClient("ws://127.0.0.1:${server.port}", "");
+      final client = RelayClient(
+        relayURL: "ws://127.0.0.1:${server.port}",
+        accessTokenProvider: FakeAccessTokenProvider(""),
+      );
       await client.connect();
       addTearDown(client.close);
 
@@ -94,7 +100,10 @@ void main() {
       final server = await TestRelayServer.start();
       addTearDown(server.close);
 
-      final client = RelayClient("ws://127.0.0.1:${server.port}", "");
+      final client = RelayClient(
+        relayURL: "ws://127.0.0.1:${server.port}",
+        accessTokenProvider: FakeAccessTokenProvider(""),
+      );
       await client.connect();
       addTearDown(client.close);
 
@@ -134,7 +143,10 @@ void main() {
       final server = await TestRelayServer.start();
       addTearDown(server.close);
 
-      final client = RelayClient("ws://127.0.0.1:${server.port}", "");
+      final client = RelayClient(
+        relayURL: "ws://127.0.0.1:${server.port}",
+        accessTokenProvider: FakeAccessTokenProvider(""),
+      );
       await client.connect();
       addTearDown(client.close);
 
@@ -172,7 +184,10 @@ void main() {
       final server = await TestRelayServer.start();
       addTearDown(server.close);
 
-      final client = RelayClient("ws://127.0.0.1:${server.port}", "");
+      final client = RelayClient(
+        relayURL: "ws://127.0.0.1:${server.port}",
+        accessTokenProvider: FakeAccessTokenProvider(""),
+      );
       await client.connect();
       addTearDown(client.close);
 
@@ -224,8 +239,8 @@ void main() {
       addTearDown(rawServer.close);
 
       final client = RelayClient(
-        "ws://127.0.0.1:${rawServer.port}",
-        "",
+        relayURL: "ws://127.0.0.1:${rawServer.port}",
+        accessTokenProvider: FakeAccessTokenProvider(""),
         connectTimeout: const Duration(milliseconds: 500),
       );
 

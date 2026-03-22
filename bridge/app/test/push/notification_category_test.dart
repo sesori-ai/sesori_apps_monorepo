@@ -1,9 +1,9 @@
-import "package:sesori_bridge/src/push/notification_category.dart";
+import "package:sesori_bridge/src/push/push_notification_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
-  group("categorizeEvent", () {
+  group("extractNotificationData", () {
     test("maps question.asked and permission.asked to ai_interaction", () {
       const questionEvent = SesoriSseEvent.questionAsked(
         id: "q-1",
@@ -17,8 +17,8 @@ void main() {
         description: "Run command",
       );
 
-      expect(categorizeEvent(questionEvent), NotificationCategory.aiInteraction);
-      expect(categorizeEvent(permissionEvent), NotificationCategory.aiInteraction);
+      expect(extractNotificationData(questionEvent)?.category, NotificationCategory.aiInteraction);
+      expect(extractNotificationData(permissionEvent)?.category, NotificationCategory.aiInteraction);
     });
 
     test("maps message.updated to session_message", () {
@@ -26,17 +26,17 @@ void main() {
         info: Message(role: "assistant", id: "m-1", sessionID: "session-a"),
       );
 
-      expect(categorizeEvent(event), NotificationCategory.sessionMessage);
+      expect(extractNotificationData(event)?.category, NotificationCategory.sessionMessage);
     });
 
     test("maps installation.update-available to system_update", () {
       const event = SesoriSseEvent.installationUpdateAvailable(version: "1.2.3");
 
-      expect(categorizeEvent(event), NotificationCategory.systemUpdate);
+      expect(extractNotificationData(event)?.category, NotificationCategory.systemUpdate);
     });
 
     test("returns null for unsupported events", () {
-      expect(categorizeEvent(const SesoriSseEvent.serverHeartbeat()), isNull);
+      expect(extractNotificationData(const SesoriSseEvent.serverHeartbeat()), isNull);
     });
   });
 
@@ -48,36 +48,46 @@ void main() {
         questions: [QuestionInfo(question: "Ship it?", header: "Prompt")],
       );
 
-      final payload = buildNotificationPayload(event, NotificationCategory.aiInteraction);
+      final data = extractNotificationData(event)!;
+      final sessionId = extractSessionId(event);
+      final payload = buildNotificationPayload(
+        category: data.category,
+        eventType: data.eventType,
+        title: data.title,
+        body: data.body,
+        collapseKey: "${data.category.id}-${sessionId ?? "global"}",
+        sessionId: sessionId,
+      );
 
-      expect(payload, isNotNull);
-      expect(payload!.title, equals("Question requires input"));
+      expect(payload.title, equals("Question requires input"));
       expect(payload.body, equals("Ship it?"));
       expect(payload.collapseKey, equals("ai_interaction-session-a"));
-      expect(payload.data?["sessionId"], equals("session-a"));
-      expect(payload.data?["category"], equals("ai_interaction"));
-      expect(payload.data?["eventType"], equals("questionAsked"));
+      expect(payload.data?.sessionId, equals("session-a"));
+      expect(payload.data?.category, equals(NotificationCategory.aiInteraction));
+      expect(payload.data?.eventType, equals(NotificationEventType.questionAsked));
     });
 
     test("omits session data for non-session events", () {
       const event = SesoriSseEvent.installationUpdateAvailable(version: "2.0.0");
 
-      final payload = buildNotificationPayload(event, NotificationCategory.systemUpdate);
-
-      expect(payload, isNotNull);
-      expect(payload!.collapseKey, isNull);
-      expect(payload.data?["category"], equals("system_update"));
-      expect(payload.data?["eventType"], equals("installationUpdateAvailable"));
-    });
-
-    test("returns null when category does not match event", () {
-      const event = SesoriSseEvent.messageUpdated(
-        info: Message(role: "assistant", id: "m-1", sessionID: "session-a"),
+      final data = extractNotificationData(event)!;
+      final sessionId = extractSessionId(event);
+      final payload = buildNotificationPayload(
+        category: data.category,
+        eventType: data.eventType,
+        title: data.title,
+        body: data.body,
+        collapseKey: "${data.category.id}-${sessionId ?? "global"}",
+        sessionId: sessionId,
       );
 
-      final payload = buildNotificationPayload(event, NotificationCategory.aiInteraction);
-
-      expect(payload, isNull);
+      expect(payload.collapseKey, equals("system_update-global"));
+      expect(payload.data?.sessionId, isNull);
+      expect(payload.data?.category, equals(NotificationCategory.systemUpdate));
+      expect(
+        payload.data?.eventType,
+        equals(NotificationEventType.installationUpdateAvailable),
+      );
     });
   });
 }

@@ -10,8 +10,9 @@ void main() {
 
       expect(
         limiter.shouldSend(
-          NotificationCategory.aiInteraction,
+          category: NotificationCategory.aiInteraction,
           sessionId: "session-a",
+          collapseKey: "ai_interaction-session-a",
         ),
         isTrue,
       );
@@ -19,8 +20,9 @@ void main() {
       now = now.add(const Duration(seconds: 1));
       expect(
         limiter.shouldSend(
-          NotificationCategory.aiInteraction,
+          category: NotificationCategory.aiInteraction,
           sessionId: "session-a",
+          collapseKey: "ai_interaction-session-a",
         ),
         isFalse,
       );
@@ -31,15 +33,17 @@ void main() {
 
       expect(
         limiter.shouldSend(
-          NotificationCategory.sessionMessage,
+          category: NotificationCategory.sessionMessage,
           sessionId: "session-a",
+          collapseKey: "session_message-session-a",
         ),
         isTrue,
       );
       expect(
         limiter.shouldSend(
-          NotificationCategory.sessionMessage,
+          category: NotificationCategory.sessionMessage,
           sessionId: "session-b",
+          collapseKey: "session_message-session-b",
         ),
         isTrue,
       );
@@ -49,11 +53,19 @@ void main() {
       final limiter = PushRateLimiter(now: () => DateTime(2026, 1, 1, 10, 0, 0));
 
       expect(
-        limiter.shouldSend(NotificationCategory.systemUpdate),
+        limiter.shouldSend(
+          category: NotificationCategory.systemUpdate,
+          sessionId: null,
+          collapseKey: "system_update-global",
+        ),
         isTrue,
       );
       expect(
-        limiter.shouldSend(NotificationCategory.systemUpdate),
+        limiter.shouldSend(
+          category: NotificationCategory.systemUpdate,
+          sessionId: null,
+          collapseKey: "system_update-global",
+        ),
         isTrue,
       );
     });
