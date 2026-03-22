@@ -1,5 +1,6 @@
 import "bridge_sse_event.dart";
 import "models/plugin_agent.dart";
+import "models/plugin_file_diff.dart";
 import "models/plugin_message.dart";
 import "models/plugin_pending_question.dart";
 import "models/plugin_project.dart";
@@ -38,6 +39,12 @@ abstract class BridgePlugin {
 
   /// Get messages for a session (last exchange).
   Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId);
+
+  /// Get all file diffs for a session (cumulative / session-level).
+  Future<List<PluginFileDiff>> getSessionDiffs(String sessionId);
+
+  /// Get file diffs for a specific message in a session.
+  Future<List<PluginFileDiff>> getMessageDiffs(String sessionId, String messageId);
 
   Future<void> sendPrompt({
     required String sessionId,

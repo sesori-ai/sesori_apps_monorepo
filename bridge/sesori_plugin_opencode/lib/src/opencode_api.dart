@@ -4,6 +4,7 @@ import "package:http/http.dart" as http;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "models/agent_info.dart";
+import "models/file_diff.dart";
 import "models/message_with_parts.dart";
 import "models/pending_question.dart";
 import "models/project.dart";
@@ -172,6 +173,44 @@ class OpenCodeApi {
 
     final decoded = jsonDecode(response.body) as List<dynamic>;
     return decoded.cast<Map<String, dynamic>>().map(MessageWithParts.fromJson).toList();
+  }
+
+  Future<List<FileDiff>> _fetchDiffs(Uri uri, String description, {required String? directory}) async {
+    final headers = <String, String>{
+      ..._authHeaders,
+      "x-opencode-directory": ?directory,
+    };
+    final response = await http.get(uri, headers: headers);
+    _ensureSuccess(response, description);
+
+    final decoded = jsonDecode(response.body) as List<dynamic>;
+    return decoded.cast<Map<String, dynamic>>().map(FileDiff.fromJson).toList();
+  }
+
+  Future<List<FileDiff>> getSessionDiffs({
+    required String sessionId,
+    required String? directory,
+  }) async {
+    return _fetchDiffs(
+      Uri.parse("$serverURL/session/$sessionId/diff"),
+      "GET /session/$sessionId/diff",
+      directory: directory,
+    );
+  }
+
+  Future<List<FileDiff>> getMessageDiffs({
+    required String sessionId,
+    required String messageId,
+    required String? directory,
+  }) async {
+    final uri = Uri.parse("$serverURL/session/$sessionId/diff").replace(
+      queryParameters: {"messageID": messageId},
+    );
+    return _fetchDiffs(
+      uri,
+      "GET /session/$sessionId/diff?messageID=$messageId",
+      directory: directory,
+    );
   }
 
   Future<void> sendPrompt({
