@@ -46,10 +46,24 @@ class NotificationService {
     _foregroundSubscription = FirebaseMessaging.onMessage.listen(_onForegroundMessage);
     _authSubscription = _authSession.authStateStream.listen(_onAuthStateChanged);
 
+    // Handle notification taps when app is in background (not terminated).
+    FirebaseMessaging.onMessageOpenedApp.listen(_onNotificationTapped);
+
+    // Handle notification tap that launched the app from terminated state.
+    final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+    if (initialMessage != null) {
+      _onNotificationTapped(initialMessage);
+    }
+
     final currentState = _authSession.currentState;
     if (currentState is AuthAuthenticated) {
       await registerCurrentToken();
     }
+  }
+
+  void _onNotificationTapped(RemoteMessage message) {
+    // TODO: handle event — navigate to the relevant screen based on message.data
+    // e.g. if message.data['sessionId'] is present, navigate to session detail
   }
 
   Future<void> registerCurrentToken() async {
