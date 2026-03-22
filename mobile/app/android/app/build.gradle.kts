@@ -76,6 +76,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
+        // Required by flutter_local_notifications for java.time APIs on Android API < 26
         isCoreLibraryDesugaringEnabled = true
     }
 
@@ -124,6 +125,7 @@ flutter {
 }
 
 dependencies {
+    // Required by flutter_local_notifications for java.time APIs on Android API < 26
     // https://mvnrepository.com/artifact/com.android.tools/desugar_jdk_libs
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 

@@ -1,10 +1,11 @@
-import "dart:async";
 import "dart:io";
 
 import "package:firebase_messaging/firebase_messaging.dart";
 import "package:injectable/injectable.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "local_notification_manager.dart";
 
@@ -14,11 +15,10 @@ class NotificationService {
   final NotificationPreferencesService _preferencesService;
   final LocalNotificationManager _localNotificationManager;
   final AuthSession _authSession;
-  StreamSubscription<AuthState>? _authSubscription;
-  StreamSubscription<String>? _tokenRefreshSubscription;
-  StreamSubscription<RemoteMessage>? _foregroundSubscription;
+  final CompositeSubscription _subscriptions = CompositeSubscription();
   String? _currentToken;
   bool _initialized = false;
+  bool _disposed = false;
 
   NotificationService(
     NotificationApiClient apiClient,
@@ -31,6 +31,10 @@ class NotificationService {
       _authSession = authSession;
 
   Future<void> initialize() async {
+    if (_disposed) {
+      logw("NotificationService.initialize() called after dispose");
+      return;
+    }
     if (_initialized) return;
     _initialized = true;
 
@@ -42,12 +46,12 @@ class NotificationService {
 
     await _localNotificationManager.initialize();
 
-    _tokenRefreshSubscription = FirebaseMessaging.instance.onTokenRefresh.listen(_onTokenRefresh);
-    _foregroundSubscription = FirebaseMessaging.onMessage.listen(_onForegroundMessage);
-    _authSubscription = _authSession.authStateStream.listen(_onAuthStateChanged);
+    _subscriptions.add(FirebaseMessaging.instance.onTokenRefresh.listen(_onTokenRefresh));
+    _subscriptions.add(FirebaseMessaging.onMessage.listen(_onForegroundMessage));
+    _subscriptions.add(_authSession.authStateStream.listen(_onAuthStateChanged));
 
     // Handle notification taps when app is in background (not terminated).
-    FirebaseMessaging.onMessageOpenedApp.listen(_onNotificationTapped);
+    _subscriptions.add(FirebaseMessaging.onMessageOpenedApp.listen(_onNotificationTapped));
 
     // Handle notification tap that launched the app from terminated state.
     final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
@@ -78,8 +82,11 @@ class NotificationService {
     final token = await FirebaseMessaging.instance.getToken();
     if (token == null || token.isEmpty || token == _currentToken) return;
 
-    final platform = Platform.isIOS ? "ios" : "android";
-    await _apiClient.registerToken(token: token, platform: platform);
+    final request = RegisterTokenRequest(
+      token: token,
+      platform: Platform.isIOS ? DevicePlatform.ios : DevicePlatform.android,
+    );
+    await _apiClient.registerToken(request);
     _currentToken = token;
   }
 
@@ -121,17 +128,24 @@ class NotificationService {
 
     if (_authSession.currentState is! AuthAuthenticated) return;
 
-    final platform = Platform.isIOS ? "ios" : "android";
-    await _apiClient.registerToken(token: newToken, platform: platform);
+    final request = RegisterTokenRequest(
+      token: newToken,
+      platform: Platform.isIOS ? DevicePlatform.ios : DevicePlatform.android,
+    );
+    await _apiClient.registerToken(request);
     _currentToken = newToken;
   }
 
   Future<void> _onForegroundMessage(RemoteMessage message) async {
-    final categoryKey = message.data["category"];
-    if (categoryKey is! String) return;
+    NotificationData notificationData;
+    try {
+      notificationData = NotificationData.fromJson(Map<String, dynamic>.from(message.data));
+    } catch (error, stackTrace) {
+      logw("Failed to parse notification data", error, stackTrace);
+      return;
+    }
 
-    final category = _parseCategory(categoryKey);
-    if (category == null) return;
+    final category = notificationData.category;
 
     final isEnabled = await _preferencesService.isEnabled(category);
     if (!isEnabled) return;
@@ -144,24 +158,18 @@ class NotificationService {
     await _localNotificationManager.show(
       title: title,
       body: body,
-      channelId: categoryKey,
+      channelId: switch (category) {
+        NotificationCategory.aiInteraction => SesoriNotificationChannel.aiInteraction.id,
+        NotificationCategory.sessionMessage => SesoriNotificationChannel.sessionMessage.id,
+        NotificationCategory.connectionStatus => SesoriNotificationChannel.connectionStatus.id,
+        NotificationCategory.systemUpdate => SesoriNotificationChannel.systemUpdate.id,
+      },
     );
-  }
-
-  NotificationCategoryPreference? _parseCategory(String value) {
-    return switch (value) {
-      "ai_interaction" => NotificationCategoryPreference.aiInteraction,
-      "session_message" => NotificationCategoryPreference.sessionMessage,
-      "connection_status" => NotificationCategoryPreference.connectionStatus,
-      "system_update" => NotificationCategoryPreference.systemUpdate,
-      _ => null,
-    };
   }
 
   @disposeMethod
   Future<void> dispose() async {
-    await _authSubscription?.cancel();
-    await _tokenRefreshSubscription?.cancel();
-    await _foregroundSubscription?.cancel();
+    _disposed = true;
+    await _subscriptions.dispose();
   }
 }

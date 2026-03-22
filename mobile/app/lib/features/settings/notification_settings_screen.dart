@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
@@ -36,10 +37,10 @@ class _NotificationSettingsBody extends StatelessWidget {
             SwitchListTile(
               title: Text(loc.notificationCategoryAiInteraction),
               subtitle: Text(loc.notificationCategoryAiInteractionDescription),
-              value: preferences[NotificationCategoryPreference.aiInteraction] ?? true,
+              value: preferences[NotificationCategory.aiInteraction] ?? true,
               onChanged: (enabled) {
                 context.read<NotificationPreferencesCubit>().toggle(
-                  NotificationCategoryPreference.aiInteraction,
+                  NotificationCategory.aiInteraction,
                   enabled: enabled,
                 );
               },
@@ -47,10 +48,10 @@ class _NotificationSettingsBody extends StatelessWidget {
             SwitchListTile(
               title: Text(loc.notificationCategorySessionMessage),
               subtitle: Text(loc.notificationCategorySessionMessageDescription),
-              value: preferences[NotificationCategoryPreference.sessionMessage] ?? true,
+              value: preferences[NotificationCategory.sessionMessage] ?? true,
               onChanged: (enabled) {
                 context.read<NotificationPreferencesCubit>().toggle(
-                  NotificationCategoryPreference.sessionMessage,
+                  NotificationCategory.sessionMessage,
                   enabled: enabled,
                 );
               },
@@ -58,10 +59,10 @@ class _NotificationSettingsBody extends StatelessWidget {
             SwitchListTile(
               title: Text(loc.notificationCategoryConnectionStatus),
               subtitle: Text(loc.notificationCategoryConnectionStatusDescription),
-              value: preferences[NotificationCategoryPreference.connectionStatus] ?? true,
+              value: preferences[NotificationCategory.connectionStatus] ?? true,
               onChanged: (enabled) {
                 context.read<NotificationPreferencesCubit>().toggle(
-                  NotificationCategoryPreference.connectionStatus,
+                  NotificationCategory.connectionStatus,
                   enabled: enabled,
                 );
               },
@@ -69,10 +70,10 @@ class _NotificationSettingsBody extends StatelessWidget {
             SwitchListTile(
               title: Text(loc.notificationCategorySystemUpdate),
               subtitle: Text(loc.notificationCategorySystemUpdateDescription),
-              value: preferences[NotificationCategoryPreference.systemUpdate] ?? true,
+              value: preferences[NotificationCategory.systemUpdate] ?? true,
               onChanged: (enabled) {
                 context.read<NotificationPreferencesCubit>().toggle(
-                  NotificationCategoryPreference.systemUpdate,
+                  NotificationCategory.systemUpdate,
                   enabled: enabled,
                 );
               },
