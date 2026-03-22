@@ -5,7 +5,9 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   flutter_secure_storage_linux
   gtk
+  irondash_engine_context
   record_linux
+  super_native_extensions
   url_launcher_linux
 )
 
