@@ -161,9 +161,12 @@ Future<void> main(List<String> args) async {
     client: pushClient,
     rateLimiter: pushRateLimiter,
   );
+
+  final relayClient = RelayClient(relayURL: relayURL, accessTokenProvider: accessTokenService);
+
   final orchestrator = Orchestrator(
     config: bridgeConfig,
-    client: RelayClient(relayURL, accessTokenService.accessToken),
+    client: relayClient,
     plugin: plugin,
     pushNotificationService: pushNotificationService,
     accessTokenUpdater: accessTokenService,

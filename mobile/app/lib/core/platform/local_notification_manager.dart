@@ -2,45 +2,20 @@ import "dart:io";
 
 import "package:flutter_local_notifications/flutter_local_notifications.dart";
 import "package:injectable/injectable.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
-enum SesoriNotificationChannel {
-  aiInteraction(
-    id: "ai_interaction",
-    displayName: "AI Interactions",
-    description: "Questions and permissions from AI",
-    importance: Importance.high,
-  ),
-  sessionMessage(
-    id: "session_message",
-    displayName: "Session Messages",
-    description: "New messages from AI sessions",
-    importance: Importance.defaultImportance,
-  ),
-  connectionStatus(
-    id: "connection_status",
-    displayName: "Connection Status",
-    description: "Bridge connection status changes",
-    importance: Importance.high,
-  ),
-  systemUpdate(
-    id: "system_update",
-    displayName: "System Updates",
-    description: "App and bridge updates",
-    importance: Importance.low,
-  )
-  ;
-
-  const SesoriNotificationChannel({
-    required this.id,
-    required this.displayName,
-    required this.description,
-    required this.importance,
-  });
-
-  final String id;
-  final String displayName;
-  final String description;
-  final Importance importance;
+extension on NotificationImportance {
+  Importance toLocalNotificationImportance() {
+    return switch (this) {
+      .high => .high,
+      .max => .max,
+      .defaultImportance => .defaultImportance,
+      .low => .low,
+      .min => .min,
+      .none => .none,
+      .unspecified => .unspecified,
+    };
+  }
 }
 
 @lazySingleton
@@ -50,13 +25,13 @@ class LocalNotificationManager {
   Future<void> initialize() async {
     if (Platform.isAndroid) {
       final androidPlugin = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-      for (final channel in SesoriNotificationChannel.values) {
+      for (final channel in NotificationCategory.values.where((e) => e != .unknown)) {
         await androidPlugin?.createNotificationChannel(
           AndroidNotificationChannel(
             channel.id,
             channel.displayName,
             description: channel.description,
-            importance: channel.importance,
+            importance: channel.importance.toLocalNotificationImportance(),
           ),
         );
       }
@@ -73,14 +48,16 @@ class LocalNotificationManager {
   Future<void> show({
     required String title,
     required String body,
-    required String channelId,
+    required NotificationCategory category,
   }) async {
+    final channelId = category.id;
+
     await _plugin.show(
       id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
       title: title,
       body: body,
       notificationDetails: NotificationDetails(
-        android: AndroidNotificationDetails(channelId, channelId),
+        android: AndroidNotificationDetails(channelId, category.displayName),
         iOS: const DarwinNotificationDetails(),
       ),
     );

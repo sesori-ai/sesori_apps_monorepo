@@ -139,7 +139,7 @@ class NotificationService {
   Future<void> _onForegroundMessage(RemoteMessage message) async {
     NotificationData notificationData;
     try {
-      notificationData = NotificationData.fromJson(Map<String, dynamic>.from(message.data));
+      notificationData = NotificationData.fromJson(message.data);
     } catch (error, stackTrace) {
       logw("Failed to parse notification data", error, stackTrace);
       return;
@@ -158,12 +158,7 @@ class NotificationService {
     await _localNotificationManager.show(
       title: title,
       body: body,
-      channelId: switch (category) {
-        NotificationCategory.aiInteraction => SesoriNotificationChannel.aiInteraction.id,
-        NotificationCategory.sessionMessage => SesoriNotificationChannel.sessionMessage.id,
-        NotificationCategory.connectionStatus => SesoriNotificationChannel.connectionStatus.id,
-        NotificationCategory.systemUpdate => SesoriNotificationChannel.systemUpdate.id,
-      },
+      category: category,
     );
   }
 

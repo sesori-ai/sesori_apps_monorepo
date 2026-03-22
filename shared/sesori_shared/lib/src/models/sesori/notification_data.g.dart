@@ -7,16 +7,24 @@ part of 'notification_data.dart';
 // **************************************************************************
 
 _NotificationData _$NotificationDataFromJson(Map json) => _NotificationData(
-  category: $enumDecode(_$NotificationCategoryEnumMap, json['category']),
+  category: $enumDecode(
+    _$NotificationCategoryEnumMap,
+    json['category'],
+    unknownValue: NotificationCategory.unknown,
+  ),
+  eventType: $enumDecodeNullable(
+    _$NotificationEventTypeEnumMap,
+    json['eventType'],
+    unknownValue: NotificationEventType.unknown,
+  ),
   sessionId: json['sessionId'] as String?,
-  eventType: json['eventType'] as String?,
 );
 
 Map<String, dynamic> _$NotificationDataToJson(_NotificationData instance) =>
     <String, dynamic>{
       'category': _$NotificationCategoryEnumMap[instance.category]!,
+      'eventType': _$NotificationEventTypeEnumMap[instance.eventType],
       'sessionId': instance.sessionId,
-      'eventType': instance.eventType,
     };
 
 const _$NotificationCategoryEnumMap = {
@@ -24,4 +32,14 @@ const _$NotificationCategoryEnumMap = {
   NotificationCategory.sessionMessage: 'session_message',
   NotificationCategory.connectionStatus: 'connection_status',
   NotificationCategory.systemUpdate: 'system_update',
+  NotificationCategory.unknown: 'unknown',
+};
+
+const _$NotificationEventTypeEnumMap = {
+  NotificationEventType.questionAsked: 'question_asked',
+  NotificationEventType.permissionAsked: 'permission_asked',
+  NotificationEventType.messageUpdated: 'message_updated',
+  NotificationEventType.installationUpdateAvailable:
+      'installation_update_available',
+  NotificationEventType.unknown: 'unknown',
 };

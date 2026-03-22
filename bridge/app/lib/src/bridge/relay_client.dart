@@ -6,6 +6,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:web_socket_channel/io.dart";
 
+import "../auth/access_token_provider.dart";
+
 const String _bridgeRole = "bridge";
 
 class RelayClientMessage {
@@ -17,18 +19,18 @@ class RelayClientMessage {
 
 class RelayClient {
   final String _relayURL;
-  String _accessToken;
+  final AccessTokenProvider _accessTokenProvider;
   final Duration _pingInterval;
   final Duration _connectTimeout;
   IOWebSocketChannel? _channel;
 
-  RelayClient(
-    String relayURL,
-    String accessToken, {
+  RelayClient({
+    required String relayURL,
+    required AccessTokenProvider accessTokenProvider,
     Duration pingInterval = const Duration(seconds: 15),
     Duration connectTimeout = const Duration(seconds: 15),
   }) : _relayURL = relayURL,
-       _accessToken = accessToken,
+       _accessTokenProvider = accessTokenProvider,
        _pingInterval = pingInterval,
        _connectTimeout = connectTimeout;
 
@@ -54,9 +56,9 @@ class RelayClient {
 
     _channel = channel;
 
-    if (_accessToken.isNotEmpty) {
+    if (_accessTokenProvider.accessToken case final String token when token.isNotEmpty) {
       final authMessage = RelayMessage.auth(
-        token: _accessToken,
+        token: token,
         role: _bridgeRole,
       );
       channel.sink.add(jsonEncode(authMessage.toJson()));
@@ -121,10 +123,6 @@ class RelayClient {
     framed.setRange(2, framed.length, payload);
 
     channel.sink.add(framed);
-  }
-
-  void setAccessToken(String token) {
-    _accessToken = token;
   }
 
   Future<void> close() async {

@@ -1,6 +1,6 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
-import "notification_category.dart";
+import "../../../sesori_shared.dart";
 
 part "send_notification_payload.freezed.dart";
 
@@ -12,8 +12,8 @@ sealed class SendNotificationPayload with _$SendNotificationPayload {
     required NotificationCategory category,
     required String title,
     required String body,
-    String? collapseKey,
-    Map<String, String>? data,
+    required String? collapseKey,
+    required NotificationData? data,
   }) = _SendNotificationPayload;
 
   factory SendNotificationPayload.fromJson(Map<String, dynamic> json) => _$SendNotificationPayloadFromJson(json);

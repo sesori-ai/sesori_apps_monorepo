@@ -12,9 +12,11 @@ _SendNotificationPayload _$SendNotificationPayloadFromJson(Map json) =>
       title: json['title'] as String,
       body: json['body'] as String,
       collapseKey: json['collapseKey'] as String?,
-      data: (json['data'] as Map?)?.map(
-        (k, e) => MapEntry(k as String, e as String),
-      ),
+      data: json['data'] == null
+          ? null
+          : NotificationData.fromJson(
+              Map<String, dynamic>.from(json['data'] as Map),
+            ),
     );
 
 Map<String, dynamic> _$SendNotificationPayloadToJson(
@@ -24,7 +26,7 @@ Map<String, dynamic> _$SendNotificationPayloadToJson(
   'title': instance.title,
   'body': instance.body,
   'collapseKey': instance.collapseKey,
-  'data': instance.data,
+  'data': instance.data?.toJson(),
 };
 
 const _$NotificationCategoryEnumMap = {
@@ -32,4 +34,5 @@ const _$NotificationCategoryEnumMap = {
   NotificationCategory.sessionMessage: 'session_message',
   NotificationCategory.connectionStatus: 'connection_status',
   NotificationCategory.systemUpdate: 'system_update',
+  NotificationCategory.unknown: 'unknown',
 };

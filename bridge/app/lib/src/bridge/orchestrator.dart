@@ -231,7 +231,6 @@ class OrchestratorSession {
       return;
     }
 
-    _client.setAccessToken(newTokens.accessToken);
     _accessTokenUpdater.accessToken = newTokens.accessToken;
 
     final persistedTokens = TokenData(

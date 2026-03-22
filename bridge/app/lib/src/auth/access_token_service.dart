@@ -14,7 +14,8 @@ class AccessTokenService implements AccessTokenProvider, AccessTokenUpdater {
   set accessToken(String token) => _tokenSubject.add(token);
 
   /// Stream of token updates. Useful for components that need to react to token changes.
-  Stream<String> get tokenStream => _tokenSubject.stream;
+  @override
+  ValueStream<String> get tokenStream => _tokenSubject.stream;
 
   void dispose() => _tokenSubject.close();
 }

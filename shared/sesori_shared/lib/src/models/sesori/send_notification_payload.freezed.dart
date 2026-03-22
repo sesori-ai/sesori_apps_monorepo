@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$SendNotificationPayload {
 
- NotificationCategory get category; String get title; String get body; String? get collapseKey; Map<String, String>? get data;
+ NotificationCategory get category; String get title; String get body; String? get collapseKey; NotificationData? get data;
 /// Create a copy of SendNotificationPayload
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,12 +28,12 @@ $SendNotificationPayloadCopyWith<SendNotificationPayload> get copyWith => _$Send
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SendNotificationPayload&&(identical(other.category, category) || other.category == category)&&(identical(other.title, title) || other.title == title)&&(identical(other.body, body) || other.body == body)&&(identical(other.collapseKey, collapseKey) || other.collapseKey == collapseKey)&&const DeepCollectionEquality().equals(other.data, data));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SendNotificationPayload&&(identical(other.category, category) || other.category == category)&&(identical(other.title, title) || other.title == title)&&(identical(other.body, body) || other.body == body)&&(identical(other.collapseKey, collapseKey) || other.collapseKey == collapseKey)&&(identical(other.data, data) || other.data == data));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,category,title,body,collapseKey,const DeepCollectionEquality().hash(data));
+int get hashCode => Object.hash(runtimeType,category,title,body,collapseKey,data);
 
 @override
 String toString() {
@@ -48,11 +48,11 @@ abstract mixin class $SendNotificationPayloadCopyWith<$Res>  {
   factory $SendNotificationPayloadCopyWith(SendNotificationPayload value, $Res Function(SendNotificationPayload) _then) = _$SendNotificationPayloadCopyWithImpl;
 @useResult
 $Res call({
- NotificationCategory category, String title, String body, String? collapseKey, Map<String, String>? data
+ NotificationCategory category, String title, String body, String? collapseKey, NotificationData? data
 });
 
 
-
+$NotificationDataCopyWith<$Res>? get data;
 
 }
 /// @nodoc
@@ -72,10 +72,22 @@ as NotificationCategory,title: null == title ? _self.title : title // ignore: ca
 as String,body: null == body ? _self.body : body // ignore: cast_nullable_to_non_nullable
 as String,collapseKey: freezed == collapseKey ? _self.collapseKey : collapseKey // ignore: cast_nullable_to_non_nullable
 as String?,data: freezed == data ? _self.data : data // ignore: cast_nullable_to_non_nullable
-as Map<String, String>?,
+as NotificationData?,
   ));
 }
+/// Create a copy of SendNotificationPayload
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$NotificationDataCopyWith<$Res>? get data {
+    if (_self.data == null) {
+    return null;
+  }
 
+  return $NotificationDataCopyWith<$Res>(_self.data!, (value) {
+    return _then(_self.copyWith(data: value));
+  });
+}
 }
 
 
@@ -84,22 +96,14 @@ as Map<String, String>?,
 @JsonSerializable()
 
 class _SendNotificationPayload implements SendNotificationPayload {
-  const _SendNotificationPayload({required this.category, required this.title, required this.body, this.collapseKey, final  Map<String, String>? data}): _data = data;
+  const _SendNotificationPayload({required this.category, required this.title, required this.body, required this.collapseKey, required this.data});
   factory _SendNotificationPayload.fromJson(Map<String, dynamic> json) => _$SendNotificationPayloadFromJson(json);
 
 @override final  NotificationCategory category;
 @override final  String title;
 @override final  String body;
 @override final  String? collapseKey;
- final  Map<String, String>? _data;
-@override Map<String, String>? get data {
-  final value = _data;
-  if (value == null) return null;
-  if (_data is EqualUnmodifiableMapView) return _data;
-  // ignore: implicit_dynamic_type
-  return EqualUnmodifiableMapView(value);
-}
-
+@override final  NotificationData? data;
 
 /// Create a copy of SendNotificationPayload
 /// with the given fields replaced by the non-null parameter values.
@@ -114,12 +118,12 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SendNotificationPayload&&(identical(other.category, category) || other.category == category)&&(identical(other.title, title) || other.title == title)&&(identical(other.body, body) || other.body == body)&&(identical(other.collapseKey, collapseKey) || other.collapseKey == collapseKey)&&const DeepCollectionEquality().equals(other._data, _data));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SendNotificationPayload&&(identical(other.category, category) || other.category == category)&&(identical(other.title, title) || other.title == title)&&(identical(other.body, body) || other.body == body)&&(identical(other.collapseKey, collapseKey) || other.collapseKey == collapseKey)&&(identical(other.data, data) || other.data == data));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,category,title,body,collapseKey,const DeepCollectionEquality().hash(_data));
+int get hashCode => Object.hash(runtimeType,category,title,body,collapseKey,data);
 
 @override
 String toString() {
@@ -134,11 +138,11 @@ abstract mixin class _$SendNotificationPayloadCopyWith<$Res> implements $SendNot
   factory _$SendNotificationPayloadCopyWith(_SendNotificationPayload value, $Res Function(_SendNotificationPayload) _then) = __$SendNotificationPayloadCopyWithImpl;
 @override @useResult
 $Res call({
- NotificationCategory category, String title, String body, String? collapseKey, Map<String, String>? data
+ NotificationCategory category, String title, String body, String? collapseKey, NotificationData? data
 });
 
 
-
+@override $NotificationDataCopyWith<$Res>? get data;
 
 }
 /// @nodoc
@@ -157,12 +161,24 @@ category: null == category ? _self.category : category // ignore: cast_nullable_
 as NotificationCategory,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String,body: null == body ? _self.body : body // ignore: cast_nullable_to_non_nullable
 as String,collapseKey: freezed == collapseKey ? _self.collapseKey : collapseKey // ignore: cast_nullable_to_non_nullable
-as String?,data: freezed == data ? _self._data : data // ignore: cast_nullable_to_non_nullable
-as Map<String, String>?,
+as String?,data: freezed == data ? _self.data : data // ignore: cast_nullable_to_non_nullable
+as NotificationData?,
   ));
 }
 
+/// Create a copy of SendNotificationPayload
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$NotificationDataCopyWith<$Res>? get data {
+    if (_self.data == null) {
+    return null;
+  }
 
+  return $NotificationDataCopyWith<$Res>(_self.data!, (value) {
+    return _then(_self.copyWith(data: value));
+  });
+}
 }
 
 // dart format on

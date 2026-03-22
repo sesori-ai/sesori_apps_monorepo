@@ -12,20 +12,23 @@ class PushRateLimiter {
     NotificationCategory.systemUpdate: Duration.zero,
   };
 
-  bool shouldSend(NotificationCategory category, {String? sessionId}) {
-    final key = "${category.name}-${sessionId ?? "global"}";
+  bool shouldSend({
+    required NotificationCategory category,
+    required String? sessionId,
+    required String collapseKey,
+  }) {
     final cooldown = _cooldowns[category] ?? const Duration(seconds: 30);
     if (cooldown == Duration.zero) {
       return true;
     }
 
     final now = _now();
-    final last = _lastSent[key];
+    final last = _lastSent[collapseKey];
     if (last != null && now.difference(last) < cooldown) {
       return false;
     }
 
-    _lastSent[key] = now;
+    _lastSent[collapseKey] = now;
     return true;
   }
 }

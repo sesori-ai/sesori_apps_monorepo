@@ -21,7 +21,6 @@ export "src/models/sesori/health_response.dart";
 export "src/models/sesori/message.dart";
 export "src/models/sesori/message_part.dart";
 export "src/models/sesori/message_with_parts.dart";
-export "src/models/sesori/notification_category.dart";
 export "src/models/sesori/notification_data.dart";
 export "src/models/sesori/pending_question.dart";
 export "src/models/sesori/project.dart";
