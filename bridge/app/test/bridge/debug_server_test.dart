@@ -319,6 +319,12 @@ class _FakeBridgePlugin implements BridgePlugin {
       const PluginProvidersResult(providers: []);
 
   @override
+  Future<List<PluginFileDiff>> getSessionDiffs(String sessionId) async => [];
+
+  @override
+  Future<List<PluginFileDiff>> getMessageDiffs(String sessionId, String messageId) async => [];
+
+  @override
   Future<void> dispose() async {}
 
   void add(BridgeSseEvent event) => _controller.add(event);
@@ -439,6 +445,12 @@ class _TrackingBridgePlugin implements BridgePlugin {
   @override
   Future<PluginProvidersResult> getProviders({required bool connectedOnly}) async =>
       const PluginProvidersResult(providers: []);
+
+  @override
+  Future<List<PluginFileDiff>> getSessionDiffs(String sessionId) async => [];
+
+  @override
+  Future<List<PluginFileDiff>> getMessageDiffs(String sessionId, String messageId) async => [];
 
   @override
   Future<void> dispose() async {}
