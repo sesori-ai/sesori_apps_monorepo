@@ -1,5 +1,5 @@
-import "package:sesori_bridge/src/push/notification_category.dart";
 import "package:sesori_bridge/src/push/push_rate_limiter.dart";
+import "package:sesori_shared/sesori_shared.dart" show NotificationCategory;
 import "package:test/test.dart";
 
 void main() {

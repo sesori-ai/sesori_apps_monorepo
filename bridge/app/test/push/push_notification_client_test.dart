@@ -2,8 +2,17 @@ import "dart:async";
 import "dart:convert";
 import "dart:io";
 
+import "package:sesori_bridge/src/auth/access_token_provider.dart";
 import "package:sesori_bridge/src/push/push_notification_client.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
+
+class _FakeAccessTokenProvider implements AccessTokenProvider {
+  @override
+  final String accessToken;
+
+  const _FakeAccessTokenProvider(this.accessToken);
+}
 
 void main() {
   group("PushNotificationClient", () {
@@ -28,15 +37,17 @@ void main() {
 
       final client = PushNotificationClient(
         authBackendURL: "http://127.0.0.1:${server.port}",
-        accessTokenProvider: () => "token-123",
+        accessTokenProvider: const _FakeAccessTokenProvider("token-123"),
       );
 
       await client.sendNotification(
-        category: "ai_interaction",
-        title: "Action required",
-        body: "Approve this command",
-        collapseKey: "ai_interaction-session-a",
-        data: const {"sessionId": "session-a"},
+        const SendNotificationPayload(
+          category: NotificationCategory.aiInteraction,
+          title: "Action required",
+          body: "Approve this command",
+          collapseKey: "ai_interaction-session-a",
+          data: {"sessionId": "session-a"},
+        ),
       );
 
       final request = await received.future.timeout(const Duration(seconds: 2));
@@ -54,14 +65,16 @@ void main() {
     test("swallows transport errors", () async {
       final client = PushNotificationClient(
         authBackendURL: "http://127.0.0.1:1",
-        accessTokenProvider: () => "token-123",
+        accessTokenProvider: const _FakeAccessTokenProvider("token-123"),
       );
 
       await expectLater(
         client.sendNotification(
-          category: "ai_interaction",
-          title: "Action required",
-          body: "Approve this command",
+          const SendNotificationPayload(
+            category: NotificationCategory.aiInteraction,
+            title: "Action required",
+            body: "Approve this command",
+          ),
         ),
         completes,
       );

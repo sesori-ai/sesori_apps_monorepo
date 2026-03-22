@@ -7,11 +7,10 @@ import "package:cryptography/cryptography.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../auth/access_token_provider.dart";
 import "../auth/token.dart";
 import "../auth/validate.dart";
-import "../push/notification_category.dart";
-import "../push/push_notification_client.dart";
-import "../push/push_rate_limiter.dart";
+import "../push/push_notification_service.dart";
 import "key_exchange.dart";
 import "models/bridge_config.dart";
 import "relay_client.dart";
@@ -24,19 +23,19 @@ class Orchestrator {
   final BridgeConfig config;
   final RelayClient _client;
   final BridgePlugin _plugin;
-  final PushNotificationClient? _pushClient;
-  final void Function(String token)? _onAccessTokenRefreshed;
+  final PushNotificationService _pushNotificationService;
+  final AccessTokenUpdater _accessTokenUpdater;
 
   Orchestrator({
     required this.config,
     required RelayClient client,
     required BridgePlugin plugin,
-    PushNotificationClient? pushClient,
-    void Function(String token)? onAccessTokenRefreshed,
+    required PushNotificationService pushNotificationService,
+    required AccessTokenUpdater accessTokenUpdater,
   }) : _client = client,
        _plugin = plugin,
-       _pushClient = pushClient,
-       _onAccessTokenRefreshed = onAccessTokenRefreshed;
+       _pushNotificationService = pushNotificationService,
+       _accessTokenUpdater = accessTokenUpdater;
 
   /// Creates a new session with a fresh room key and SSE manager.
   OrchestratorSession create() {
@@ -48,8 +47,8 @@ class Orchestrator {
       config: config,
       client: _client,
       plugin: _plugin,
-      pushClient: _pushClient,
-      onAccessTokenRefreshed: _onAccessTokenRefreshed,
+      pushNotificationService: _pushNotificationService,
+      accessTokenUpdater: _accessTokenUpdater,
       roomKey: roomKey,
       sseManager: sseManager,
     );
@@ -78,9 +77,8 @@ class OrchestratorSession {
   final List<int> _roomKey;
   final SSEManager _sseManager;
   final RequestRouter _router;
-  final PushNotificationClient? _pushClient;
-  final PushRateLimiter _rateLimiter;
-  final void Function(String token)? _onAccessTokenRefreshed;
+  final PushNotificationService _pushNotificationService;
+  final AccessTokenUpdater _accessTokenUpdater;
   StreamSubscription<BridgeSseEvent>? _eventSubscription;
 
   bool _cancelled = false;
@@ -89,19 +87,17 @@ class OrchestratorSession {
     required this.config,
     required RelayClient client,
     required BridgePlugin plugin,
-    required PushNotificationClient? pushClient,
-    void Function(String token)? onAccessTokenRefreshed,
+    required PushNotificationService pushNotificationService,
+    required AccessTokenUpdater accessTokenUpdater,
     required List<int> roomKey,
     required SSEManager sseManager,
-    PushRateLimiter? rateLimiter,
   }) : _client = client,
        _plugin = plugin,
-       _pushClient = pushClient,
-       _onAccessTokenRefreshed = onAccessTokenRefreshed,
+       _pushNotificationService = pushNotificationService,
+       _accessTokenUpdater = accessTokenUpdater,
        _roomKey = roomKey,
        _sseManager = sseManager,
-       _router = RequestRouter(plugin),
-       _rateLimiter = rateLimiter ?? PushRateLimiter();
+       _router = RequestRouter(plugin);
 
   Future<void> run() async {
     final kxManager = KeyExchangeManager(_roomKey);
@@ -116,7 +112,7 @@ class OrchestratorSession {
           Log.v(
             "[sse] mapped to: ${sesoriEvent.runtimeType} — enqueuing (subscribers: ${_sseManager.subscriberCount})",
           );
-          _maybeSendPushNotification(sesoriEvent);
+          _pushNotificationService.maybeSendForEvent(sesoriEvent);
           _sseManager.enqueueEvent(sesoriEvent);
         } else {
           Log.v("[sse] mapping returned null — event dropped");
@@ -236,7 +232,7 @@ class OrchestratorSession {
     }
 
     _client.setAccessToken(newTokens.accessToken);
-    _onAccessTokenRefreshed?.call(newTokens.accessToken);
+    _accessTokenUpdater.accessToken = newTokens.accessToken;
 
     final persistedTokens = TokenData(
       accessToken: newTokens.accessToken,
@@ -641,40 +637,6 @@ class OrchestratorSession {
     } catch (_) {
       return null;
     }
-  }
-
-  void _maybeSendPushNotification(SesoriSseEvent event) {
-    final pushClient = _pushClient;
-    if (pushClient == null) {
-      return;
-    }
-
-    final category = categorizeEvent(event);
-    if (category == null) {
-      return;
-    }
-
-    final sessionId = extractSessionId(event);
-    if (!_rateLimiter.shouldSend(category, sessionId: sessionId)) {
-      return;
-    }
-
-    final payload = buildNotificationPayload(event, category);
-    if (payload == null) {
-      return;
-    }
-
-    unawaited(
-      pushClient
-          .sendNotification(
-            category: category.id,
-            title: payload.title,
-            body: payload.body,
-            collapseKey: payload.collapseKey,
-            data: payload.data,
-          )
-          .catchError((Object e) => Log.w("[push] send error: $e")),
-    );
   }
 
   Duration _nextBackoff(Duration backoff) {

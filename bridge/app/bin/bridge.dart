@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:opencode_plugin/opencode_plugin.dart';
+import 'package:sesori_bridge/src/auth/access_token_service.dart';
 import 'package:sesori_bridge/src/auth/login.dart';
 import 'package:sesori_bridge/src/auth/profile.dart';
 import 'package:sesori_bridge/src/auth/token.dart';
@@ -12,6 +13,8 @@ import 'package:sesori_bridge/src/bridge/models/bridge_config.dart';
 import 'package:sesori_bridge/src/bridge/orchestrator.dart';
 import 'package:sesori_bridge/src/bridge/relay_client.dart';
 import 'package:sesori_bridge/src/push/push_notification_client.dart';
+import 'package:sesori_bridge/src/push/push_notification_service.dart';
+import 'package:sesori_bridge/src/push/push_rate_limiter.dart';
 import 'package:sesori_bridge/src/server/process.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log, LogLevel;
 
@@ -148,17 +151,22 @@ Future<void> main(List<String> args) async {
     serverUrl: serverURL,
     password: serverPasswordPtr,
   );
-  var currentAccessToken = authTokens.accessToken;
+  final accessTokenService = AccessTokenService(authTokens.accessToken);
   final pushClient = PushNotificationClient(
     authBackendURL: authBackendURL,
-    accessTokenProvider: () => currentAccessToken,
+    accessTokenProvider: accessTokenService,
+  );
+  final pushRateLimiter = PushRateLimiter();
+  final pushNotificationService = PushNotificationService(
+    client: pushClient,
+    rateLimiter: pushRateLimiter,
   );
   final orchestrator = Orchestrator(
     config: bridgeConfig,
-    client: RelayClient(relayURL, currentAccessToken),
+    client: RelayClient(relayURL, accessTokenService.accessToken),
     plugin: plugin,
-    pushClient: pushClient,
-    onAccessTokenRefreshed: (token) => currentAccessToken = token,
+    pushNotificationService: pushNotificationService,
+    accessTokenUpdater: accessTokenService,
   );
   final session = orchestrator.create();
 

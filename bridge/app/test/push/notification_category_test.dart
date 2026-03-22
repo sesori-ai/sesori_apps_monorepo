@@ -54,7 +54,9 @@ void main() {
       expect(payload!.title, equals("Question requires input"));
       expect(payload.body, equals("Ship it?"));
       expect(payload.collapseKey, equals("ai_interaction-session-a"));
-      expect(payload.data, equals({"sessionId": "session-a"}));
+      expect(payload.data?["sessionId"], equals("session-a"));
+      expect(payload.data?["category"], equals("ai_interaction"));
+      expect(payload.data?["eventType"], equals("questionAsked"));
     });
 
     test("omits session data for non-session events", () {
@@ -64,7 +66,8 @@ void main() {
 
       expect(payload, isNotNull);
       expect(payload!.collapseKey, isNull);
-      expect(payload.data, isNull);
+      expect(payload.data?["category"], equals("system_update"));
+      expect(payload.data?["eventType"], equals("installationUpdateAvailable"));
     });
 
     test("returns null when category does not match event", () {

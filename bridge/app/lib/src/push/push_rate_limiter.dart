@@ -1,4 +1,4 @@
-import "notification_category.dart";
+import "package:sesori_shared/sesori_shared.dart" show NotificationCategory;
 
 class PushRateLimiter {
   final DateTime Function() _now;
@@ -13,7 +13,7 @@ class PushRateLimiter {
   };
 
   bool shouldSend(NotificationCategory category, {String? sessionId}) {
-    final key = "${category.id}-${sessionId ?? "global"}";
+    final key = "${category.name}-${sessionId ?? "global"}";
     final cooldown = _cooldowns[category] ?? const Duration(seconds: 30);
     if (cooldown == Duration.zero) {
       return true;
