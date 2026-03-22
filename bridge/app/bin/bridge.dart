@@ -11,6 +11,7 @@ import 'package:sesori_bridge/src/bridge/debug_server.dart';
 import 'package:sesori_bridge/src/bridge/models/bridge_config.dart';
 import 'package:sesori_bridge/src/bridge/orchestrator.dart';
 import 'package:sesori_bridge/src/bridge/relay_client.dart';
+import 'package:sesori_bridge/src/push/push_notification_client.dart';
 import 'package:sesori_bridge/src/server/process.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log, LogLevel;
 
@@ -147,10 +148,17 @@ Future<void> main(List<String> args) async {
     serverUrl: serverURL,
     password: serverPasswordPtr,
   );
+  var currentAccessToken = authTokens.accessToken;
+  final pushClient = PushNotificationClient(
+    authBackendURL: authBackendURL,
+    accessTokenProvider: () => currentAccessToken,
+  );
   final orchestrator = Orchestrator(
     config: bridgeConfig,
-    client: RelayClient(relayURL, authTokens.accessToken),
+    client: RelayClient(relayURL, currentAccessToken),
     plugin: plugin,
+    pushClient: pushClient,
+    onAccessTokenRefreshed: (token) => currentAccessToken = token,
   );
   final session = orchestrator.create();
 
