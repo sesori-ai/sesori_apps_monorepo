@@ -6,6 +6,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 class PushNotificationClient {
   final String authBackendURL;
   final String Function() accessTokenProvider;
+  final http.Client _client = http.Client();
 
   PushNotificationClient({
     required this.authBackendURL,
@@ -19,9 +20,8 @@ class PushNotificationClient {
     String? collapseKey,
     Map<String, String>? data,
   }) async {
-    final client = http.Client();
     try {
-      final response = await client.post(
+      final response = await _client.post(
         Uri.parse("$authBackendURL/notifications/send"),
         headers: {
           "Content-Type": "application/json",
@@ -42,8 +42,6 @@ class PushNotificationClient {
       }
     } catch (e) {
       Log.w("[push] notification error: $e");
-    } finally {
-      client.close();
     }
   }
 }
