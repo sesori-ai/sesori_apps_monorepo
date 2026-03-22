@@ -64,9 +64,9 @@ class NotificationService {
     final token = await FirebaseMessaging.instance.getToken();
     if (token == null || token.isEmpty || token == _currentToken) return;
 
-    _currentToken = token;
     final platform = Platform.isIOS ? "ios" : "android";
     await _apiClient.registerToken(token: token, platform: platform);
+    _currentToken = token;
   }
 
   Future<void> unregisterCurrentToken() async {
@@ -96,7 +96,6 @@ class NotificationService {
 
   Future<void> _onTokenRefresh(String newToken) async {
     final oldToken = _currentToken;
-    _currentToken = newToken;
 
     if (oldToken != null && oldToken != newToken) {
       try {
@@ -110,6 +109,7 @@ class NotificationService {
 
     final platform = Platform.isIOS ? "ios" : "android";
     await _apiClient.registerToken(token: newToken, platform: platform);
+    _currentToken = newToken;
   }
 
   Future<void> _onForegroundMessage(RemoteMessage message) async {
