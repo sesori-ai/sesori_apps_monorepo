@@ -117,7 +117,7 @@ void main() {
       );
       final service = OpenCodeService(repository, FakeActiveSessionTracker());
 
-      final result = await service.getLastExchange("ses-1");
+      final result = await service.getLastExchange(sessionId: "ses-1", directory: null);
 
       expect(result.map(_messageId).toList(), equals(["m2", "m3"]));
       expect(repository.api.lastRequestedSessionId, equals("ses-1"));
@@ -127,7 +127,7 @@ void main() {
       final repository = FakeOpenCodeRepository(messages: [_msg("user", "m1")]);
       final service = OpenCodeService(repository, FakeActiveSessionTracker());
 
-      await service.getLastExchange("ses-1", directory: "/repo");
+      await service.getLastExchange(sessionId: "ses-1", directory: "/repo");
 
       expect(repository.api.lastRequestedSessionId, equals("ses-1"));
       expect(repository.api.lastRequestedDirectory, equals("/repo"));
@@ -144,7 +144,7 @@ void main() {
       );
       final service = OpenCodeService(repository, FakeActiveSessionTracker());
 
-      final result = await service.getLastExchange("ses-1");
+      final result = await service.getLastExchange(sessionId: "ses-1", directory: null);
 
       expect(result.map(_messageId).toList(), equals(["m3", "m4"]));
     });
@@ -155,7 +155,7 @@ void main() {
       );
       final service = OpenCodeService(repository, FakeActiveSessionTracker());
 
-      final result = await service.getLastExchange("ses-1");
+      final result = await service.getLastExchange(sessionId: "ses-1", directory: null);
 
       expect(result, isEmpty);
     });
@@ -164,7 +164,7 @@ void main() {
       final repository = FakeOpenCodeRepository(messages: const []);
       final service = OpenCodeService(repository, FakeActiveSessionTracker());
 
-      final result = await service.getLastExchange("ses-1");
+      final result = await service.getLastExchange(sessionId: "ses-1", directory: null);
 
       expect(result, isEmpty);
     });
@@ -173,7 +173,7 @@ void main() {
       final repository = FakeOpenCodeRepository(messages: [_msg("user", "m1")]);
       final service = OpenCodeService(repository, FakeActiveSessionTracker());
 
-      final result = await service.getLastExchange("ses-1");
+      final result = await service.getLastExchange(sessionId: "ses-1", directory: null);
 
       expect(result.map(_messageId).toList(), equals(["m1"]));
     });
@@ -188,7 +188,7 @@ void main() {
       );
       final service = OpenCodeService(repository, FakeActiveSessionTracker());
 
-      final result = await service.getLastExchange("ses-1");
+      final result = await service.getLastExchange(sessionId: "ses-1", directory: null);
 
       expect(result, hasLength(2));
       expect(_messageId(result.first), equals("m1"));
@@ -200,7 +200,7 @@ void main() {
       );
       final service = OpenCodeService(repository, FakeActiveSessionTracker());
 
-      final result = await service.getLastExchange("ses-1");
+      final result = await service.getLastExchange(sessionId: "ses-1", directory: null);
 
       expect(result, isEmpty);
     });
@@ -372,7 +372,7 @@ class FakeOpenCodeApi implements OpenCodeApi {
   FakeOpenCodeApi({this.messages = const [], this.messagesError});
 
   @override
-  Future<List<MessageWithParts>> getMessages(String sessionId, {String? directory}) async {
+  Future<List<MessageWithParts>> getMessages({required String sessionId, required String? directory}) async {
     lastRequestedSessionId = sessionId;
     lastRequestedDirectory = directory;
     if (messagesError != null) throw messagesError!;
@@ -380,27 +380,34 @@ class FakeOpenCodeApi implements OpenCodeApi {
   }
 
   @override
-  Future<Session> createSession({required String workspacePath, String? parentSessionId}) async =>
+  Future<Session> createSession({required String directory, String? parentSessionId}) async =>
       throw UnimplementedError();
 
   @override
-  Future<Session> updateSession(String sessionId, Map<String, dynamic> body, {String? directory}) async =>
-      throw UnimplementedError();
+  Future<Session> updateSession({
+    required String sessionId,
+    required Map<String, dynamic> body,
+    required String? directory,
+  }) async => throw UnimplementedError();
 
   @override
-  Future<void> deleteSession(String sessionId, {String? directory}) async {}
+  Future<void> deleteSession({required String sessionId, required String? directory}) async {}
 
   @override
-  Future<List<Session>> getChildren(String sessionId, {String? directory}) async => [];
+  Future<List<Session>> getChildren({required String sessionId, required String? directory}) async => [];
 
   @override
   Future<Map<String, SessionStatus>> getSessionStatuses() async => <String, SessionStatus>{};
 
   @override
-  Future<void> sendPrompt(String sessionId, {required Map<String, dynamic> body, String? directory}) async {}
+  Future<void> sendPrompt({
+    required String sessionId,
+    required Map<String, dynamic> body,
+    required String? directory,
+  }) async {}
 
   @override
-  Future<void> abortSession(String sessionId, {String? directory}) async {}
+  Future<void> abortSession({required String sessionId, required String? directory}) async {}
 
   @override
   Future<List<AgentInfo>> listAgents() async => [];
@@ -409,18 +416,18 @@ class FakeOpenCodeApi implements OpenCodeApi {
   Future<List<PendingQuestion>> getPendingQuestions() async => [];
 
   @override
-  Future<void> replyToQuestion(String questionId, {required Map<String, dynamic> body}) async {}
+  Future<void> replyToQuestion({required String questionId, required Map<String, dynamic> body}) async {}
 
   @override
-  Future<void> rejectQuestion(String questionId) async {}
+  Future<void> rejectQuestion({required String questionId}) async {}
 
   @override
-  Future<Project> getProject(String directory) async => throw UnimplementedError();
+  Future<Project> getProject({required String directory}) async => throw UnimplementedError();
 
   @override
   Future<List<GlobalSession>> listGlobalSessions({
-    String? directory,
-    bool roots = false,
+    required String? directory,
+    required bool roots,
   }) async => [];
 
   @override

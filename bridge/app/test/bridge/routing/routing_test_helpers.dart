@@ -55,8 +55,7 @@ class FakeBridgePlugin implements BridgePlugin {
   String? lastSendPromptSessionId;
   List<PluginPromptPart>? lastSendPromptParts;
   String? lastSendPromptAgent;
-  String? lastSendPromptProviderID;
-  String? lastSendPromptModelID;
+  ({String providerID, String modelID})? lastSendPromptModel;
   String? lastAbortSessionId;
   String? lastReplyQuestionId;
   List<List<String>>? lastReplyAnswers;
@@ -171,15 +170,13 @@ class FakeBridgePlugin implements BridgePlugin {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PluginPromptPart> parts,
-    String? agent,
-    String? providerID,
-    String? modelID,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
   }) async {
     lastSendPromptSessionId = sessionId;
     lastSendPromptParts = parts;
     lastSendPromptAgent = agent;
-    lastSendPromptProviderID = providerID;
-    lastSendPromptModelID = modelID;
+    lastSendPromptModel = model;
   }
 
   @override

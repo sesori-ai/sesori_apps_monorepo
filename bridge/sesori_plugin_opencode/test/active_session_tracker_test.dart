@@ -17,24 +17,24 @@ void main() {
       test("registerSession stores directory for lookup", () {
         final tracker = ActiveSessionTracker(_fakeRepository());
 
-        tracker.registerSession("s1", "/projects/foo");
+        tracker.registerSession(sessionId: "s1", directory: "/projects/foo");
 
-        expect(tracker.getSessionDirectory("s1"), equals("/projects/foo"));
+        expect(tracker.getSessionDirectory(sessionId: "s1"), equals("/projects/foo"));
       });
 
       test("getSessionDirectory returns null for unknown session", () {
         final tracker = ActiveSessionTracker(_fakeRepository());
 
-        expect(tracker.getSessionDirectory("missing"), isNull);
+        expect(tracker.getSessionDirectory(sessionId: "missing"), isNull);
       });
 
       test("registerSession preserves raw directory without worktree normalization", () {
         final tracker = ActiveSessionTracker(_fakeRepository());
 
-        tracker.registerSession("s1", "/projects/foo/packages/bar");
+        tracker.registerSession(sessionId: "s1", directory: "/projects/foo/packages/bar");
 
         expect(
-          tracker.getSessionDirectory("s1"),
+          tracker.getSessionDirectory(sessionId: "s1"),
           equals("/projects/foo/packages/bar"),
         );
       });
@@ -50,7 +50,7 @@ void main() {
         );
 
         expect(
-          tracker.getSessionDirectory("s1"),
+          tracker.getSessionDirectory(sessionId: "s1"),
           equals("/projects/foo/packages/bar"),
         );
       });
@@ -70,7 +70,7 @@ void main() {
         );
 
         expect(
-          tracker.getSessionDirectory("s1"),
+          tracker.getSessionDirectory(sessionId: "s1"),
           equals("/projects/foo/packages/bar"),
         );
       });
@@ -81,11 +81,11 @@ void main() {
         );
 
         tracker.handleEvent(_sessionCreated("s1", "/projects/foo"), null);
-        expect(tracker.getSessionDirectory("s1"), equals("/projects/foo"));
+        expect(tracker.getSessionDirectory(sessionId: "s1"), equals("/projects/foo"));
 
         tracker.handleEvent(_sessionDeleted("s1"), null);
 
-        expect(tracker.getSessionDirectory("s1"), isNull);
+        expect(tracker.getSessionDirectory(sessionId: "s1"), isNull);
       });
 
       test("coldStart populates getSessionDirectory for all fetched sessions", () async {
@@ -97,19 +97,19 @@ void main() {
           ],
         );
 
-        expect(tracker.getSessionDirectory("s1"), equals("/projects/foo"));
-        expect(tracker.getSessionDirectory("s2"), equals("/projects/foo/lib"));
+        expect(tracker.getSessionDirectory(sessionId: "s1"), equals("/projects/foo"));
+        expect(tracker.getSessionDirectory(sessionId: "s2"), equals("/projects/foo/lib"));
       });
 
       test("reset clears session directories", () {
         final tracker = ActiveSessionTracker(_fakeRepository());
 
-        tracker.registerSession("s1", "/projects/foo");
-        expect(tracker.getSessionDirectory("s1"), isNotNull);
+        tracker.registerSession(sessionId: "s1", directory: "/projects/foo");
+        expect(tracker.getSessionDirectory(sessionId: "s1"), isNotNull);
 
         tracker.reset();
 
-        expect(tracker.getSessionDirectory("s1"), isNull);
+        expect(tracker.getSessionDirectory(sessionId: "s1"), isNull);
       });
     });
 
@@ -653,33 +653,40 @@ class _FakeApi implements OpenCodeApi {
   Future<List<Session>> listSessions({String? directory}) async => _sessions;
 
   @override
-  Future<Session> createSession({required String workspacePath, String? parentSessionId}) async =>
+  Future<Session> createSession({required String directory, String? parentSessionId}) async =>
       throw UnimplementedError();
 
   @override
-  Future<Session> updateSession(String sessionId, Map<String, dynamic> body, {String? directory}) async =>
-      throw UnimplementedError();
+  Future<Session> updateSession({
+    required String sessionId,
+    required Map<String, dynamic> body,
+    required String? directory,
+  }) async => throw UnimplementedError();
 
   @override
-  Future<void> deleteSession(String sessionId, {String? directory}) async {}
+  Future<void> deleteSession({required String sessionId, required String? directory}) async {}
 
   @override
-  Future<List<Session>> getChildren(String sessionId, {String? directory}) async => [];
+  Future<List<Session>> getChildren({required String sessionId, required String? directory}) async => [];
 
   @override
   Future<List<GlobalSession>> listGlobalSessions({
-    String? directory,
-    bool roots = false,
+    required String? directory,
+    required bool roots,
   }) async => [];
 
   @override
-  Future<List<MessageWithParts>> getMessages(String sessionId, {String? directory}) async => [];
+  Future<List<MessageWithParts>> getMessages({required String sessionId, required String? directory}) async => [];
 
   @override
-  Future<void> sendPrompt(String sessionId, {required Map<String, dynamic> body, String? directory}) async {}
+  Future<void> sendPrompt({
+    required String sessionId,
+    required Map<String, dynamic> body,
+    required String? directory,
+  }) async {}
 
   @override
-  Future<void> abortSession(String sessionId, {String? directory}) async {}
+  Future<void> abortSession({required String sessionId, required String? directory}) async {}
 
   @override
   Future<List<AgentInfo>> listAgents() async => [];
@@ -688,13 +695,13 @@ class _FakeApi implements OpenCodeApi {
   Future<List<PendingQuestion>> getPendingQuestions() async => [];
 
   @override
-  Future<void> replyToQuestion(String questionId, {required Map<String, dynamic> body}) async {}
+  Future<void> replyToQuestion({required String questionId, required Map<String, dynamic> body}) async {}
 
   @override
-  Future<void> rejectQuestion(String questionId) async {}
+  Future<void> rejectQuestion({required String questionId}) async {}
 
   @override
-  Future<Project> getProject(String directory) async => throw UnimplementedError();
+  Future<Project> getProject({required String directory}) async => throw UnimplementedError();
 
   @override
   Future<Map<String, SessionStatus>> getSessionStatuses() async => _statuses;
