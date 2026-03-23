@@ -202,6 +202,23 @@ void main() {
       expect(result.first.isBinary, isTrue);
     });
 
+    test('binary files skip diff computation and have no hunks', () async {
+      const diff = FileDiff(
+        file: 'image.png',
+        before: 'old-binary-bytes',
+        after: 'new-binary-bytes',
+        additions: 1,
+        deletions: 1,
+      );
+
+      final result = await DiffViewModelBuilder.build([diff]);
+
+      expect(result.first.isBinary, isTrue);
+      expect(result.first.hunks, isEmpty);
+      expect(result.first.additions, equals(0));
+      expect(result.first.deletions, equals(0));
+    });
+
     test('isBinary is false for text files', () async {
       const diff = FileDiff(
         file: 'main.dart',

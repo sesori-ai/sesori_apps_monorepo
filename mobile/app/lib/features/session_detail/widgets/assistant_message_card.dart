@@ -76,7 +76,7 @@ class AssistantMessageCard extends StatelessWidget {
   Widget _buildFooter(BuildContext context) {
     final theme = Theme.of(context);
     final sessionId = message.info.sessionID;
-    final messageId = message.info.id;
+    final messageId = message.info.parentID ?? message.info.id;
 
     return Padding(
       padding: const EdgeInsets.only(top: 8),

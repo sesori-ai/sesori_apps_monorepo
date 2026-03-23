@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
 import 'package:sesori_dart_core/src/utils/diff/diff_engine.dart';
 import 'package:sesori_dart_core/src/utils/diff/language_detector.dart';
 import 'package:sesori_shared/sesori_shared.dart';
@@ -16,15 +17,33 @@ class DiffViewModelBuilder {
   static Future<List<DiffFileViewModel>> build(List<FileDiff> diffs) async {
     final results = <DiffFileViewModel>[];
     for (final diff in diffs) {
-      final fileResult = await compute(_computeFileDiff, (diff.before, diff.after));
-      final language = detectLanguage(diff.file);
-      final fileName = diff.file.split('/').last;
+      final fileName = p.posix.basename(diff.file);
 
       // Detect binary files
       final isBinary = isBinaryFile(
         diff.file,
         diff.before.isNotEmpty ? diff.before : diff.after,
       );
+
+      if (isBinary) {
+        final derivedStatus = diff.status ?? _deriveStatus(diff.before, diff.after);
+        results.add(
+          DiffFileViewModel(
+            fileDiff: diff,
+            fileName: fileName,
+            language: null,
+            hunks: const [],
+            additions: 0,
+            deletions: 0,
+            status: derivedStatus,
+            isBinary: true,
+          ),
+        );
+        continue;
+      }
+
+      final fileResult = await compute(_computeFileDiff, (diff.before, diff.after));
+      final language = detectLanguage(diff.file);
 
       // Derive status if null
       final derivedStatus = diff.status ?? _deriveStatus(diff.before, diff.after);

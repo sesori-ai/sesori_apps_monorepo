@@ -3,6 +3,7 @@ import "dart:convert";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "file_diff_mapper.dart";
 import "request_handler.dart";
 
 const _idParam = "id";
@@ -32,27 +33,8 @@ class GetMessageDiffsHandler extends RequestHandler {
     }
 
     final pluginDiffs = await _plugin.getMessageDiffs(sessionId, messageId);
-    final diffs = pluginDiffs.map(_toFileDiff).toList();
+    final diffs = pluginDiffs.map(toFileDiff).toList();
     final body = jsonEncode(diffs.map((d) => d.toJson()).toList());
     return buildOkJsonResponse(request, body);
-  }
-
-  FileDiff _toFileDiff(PluginFileDiff d) => FileDiff(
-    file: d.file,
-    before: d.before,
-    after: d.after,
-    additions: d.additions,
-    deletions: d.deletions,
-    status: _mapStatus(d.status),
-  );
-
-  FileDiffStatus? _mapStatus(String? status) {
-    if (status == null) return null;
-    return switch (status) {
-      'added' => FileDiffStatus.added,
-      'deleted' => FileDiffStatus.deleted,
-      'modified' => FileDiffStatus.modified,
-      _ => null,
-    };
   }
 }
