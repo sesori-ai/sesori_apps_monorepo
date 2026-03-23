@@ -8,8 +8,8 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 class _FakeTokenRefreshManager implements TokenRefresher {
-  String _token;
-  String? _forceRefreshToken;
+  final String _token;
+  final String? _forceRefreshToken;
   bool forceRefreshCalled = false;
 
   _FakeTokenRefreshManager(this._token, {String? forceRefreshToken}) : _forceRefreshToken = forceRefreshToken;
@@ -18,7 +18,7 @@ class _FakeTokenRefreshManager implements TokenRefresher {
   Future<String> getFreshAccessToken({bool forceRefresh = false}) async {
     if (forceRefresh) {
       forceRefreshCalled = true;
-      if (_forceRefreshToken != null) return _forceRefreshToken!;
+      if (_forceRefreshToken != null) return _forceRefreshToken;
       throw Exception("Force refresh failed");
     }
     return _token;

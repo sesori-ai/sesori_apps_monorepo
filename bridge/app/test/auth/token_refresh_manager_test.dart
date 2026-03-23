@@ -13,7 +13,7 @@ void main() {
   group("TokenRefreshManager", () {
     test("Token TTL > 90s returns current token and does not call refresh", () async {
       final server = await _RefreshTestServer.start();
-      addTearDown(() => server.close());
+      addTearDown(server.close);
 
       final currentToken = _makeJwtFromNow(120);
       final manager = TokenRefreshManager(
@@ -41,7 +41,7 @@ void main() {
           }
         },
       );
-      addTearDown(() => server.close());
+      addTearDown(server.close);
 
       final currentToken = _makeJwtFromNow(60);
       final manager = TokenRefreshManager(
@@ -73,7 +73,7 @@ void main() {
 
     test("Token TTL < 30s blocks and returns refreshed token", () async {
       final server = await _RefreshTestServer.start();
-      addTearDown(() => server.close());
+      addTearDown(server.close);
 
       final manager = TokenRefreshManager(
         tokenProvider: _FakeAccessTokenProvider(_makeJwtFromNow(10)),
@@ -91,7 +91,7 @@ void main() {
 
     test("forceRefresh true always calls refresh endpoint", () async {
       final server = await _RefreshTestServer.start();
-      addTearDown(() => server.close());
+      addTearDown(server.close);
 
       final manager = TokenRefreshManager(
         tokenProvider: _FakeAccessTokenProvider(_makeJwtFromNow(300)),
@@ -109,7 +109,7 @@ void main() {
 
     test("3 concurrent force refresh requests perform exactly one HTTP call", () async {
       final server = await _RefreshTestServer.start(responseDelay: const Duration(milliseconds: 80));
-      addTearDown(() => server.close());
+      addTearDown(server.close);
 
       final manager = TokenRefreshManager(
         tokenProvider: _FakeAccessTokenProvider(_makeJwtFromNow(300)),
@@ -131,7 +131,7 @@ void main() {
 
     test("successful refresh persists new tokens while preserving bridgeToken", () async {
       final server = await _RefreshTestServer.start();
-      addTearDown(() => server.close());
+      addTearDown(server.close);
 
       TokenData? savedTokens;
       final manager = TokenRefreshManager(
@@ -158,7 +158,7 @@ void main() {
 
     test("successful refresh updates AccessTokenUpdater", () async {
       final server = await _RefreshTestServer.start();
-      addTearDown(() => server.close());
+      addTearDown(server.close);
 
       final updater = _FakeAccessTokenUpdater();
       final manager = TokenRefreshManager(
@@ -176,7 +176,7 @@ void main() {
 
     test("non-200 refresh response throws", () async {
       final server = await _RefreshTestServer.start(statusCode: 401);
-      addTearDown(() => server.close());
+      addTearDown(server.close);
 
       final manager = TokenRefreshManager(
         tokenProvider: _FakeAccessTokenProvider(_makeJwtFromNow(10)),
@@ -204,7 +204,7 @@ void main() {
 
     test("missing tokens from loader throws", () async {
       final server = await _RefreshTestServer.start();
-      addTearDown(() => server.close());
+      addTearDown(server.close);
 
       final manager = TokenRefreshManager(
         tokenProvider: _FakeAccessTokenProvider(_makeJwtFromNow(10)),
@@ -219,7 +219,7 @@ void main() {
 
     test("empty refresh token throws", () async {
       final server = await _RefreshTestServer.start();
-      addTearDown(() => server.close());
+      addTearDown(server.close);
 
       final manager = TokenRefreshManager(
         tokenProvider: _FakeAccessTokenProvider(_makeJwtFromNow(10)),
@@ -234,7 +234,7 @@ void main() {
 
     test("malformed JWT returns current token without proactive refresh", () async {
       final server = await _RefreshTestServer.start();
-      addTearDown(() => server.close());
+      addTearDown(server.close);
 
       const malformedJwt = "not-a-jwt";
       final manager = TokenRefreshManager(
@@ -255,7 +255,7 @@ void main() {
 }
 
 class _FakeAccessTokenProvider implements AccessTokenProvider {
-  String _token;
+  final String _token;
   final BehaviorSubject<String> _subject;
 
   _FakeAccessTokenProvider(this._token) : _subject = BehaviorSubject.seeded(_token);
