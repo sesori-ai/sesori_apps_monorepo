@@ -101,28 +101,24 @@ abstract class RequestHandler {
   }
 
   /// Builds a 200 JSON response.
-  RelayResponse buildOkJsonResponse(RelayRequest request, String body) =>
-      RelayMessage.response(
-            id: request.id,
-            status: 200,
-            headers: {"content-type": "application/json"},
-            body: body,
-          )
-          as RelayResponse;
+  RelayResponse buildOkJsonResponse(RelayRequest request, String body) => RelayResponse(
+    id: request.id,
+    status: 200,
+    headers: {"content-type": "application/json"},
+    body: body,
+  );
 
   /// Builds an error response with the given [status] and plain-text [message].
   RelayResponse buildErrorResponse(
     RelayRequest request,
     int status,
     String message,
-  ) =>
-      RelayMessage.response(
-            id: request.id,
-            status: status,
-            headers: {},
-            body: message,
-          )
-          as RelayResponse;
+  ) => RelayResponse(
+    id: request.id,
+    status: status,
+    headers: {},
+    body: message,
+  );
 
   // ── Path matching internals ─────────────────────────────────────────────────
 

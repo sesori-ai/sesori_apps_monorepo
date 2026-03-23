@@ -26,12 +26,11 @@ class RejectQuestionHandler extends RequestHandler {
     }
 
     await _plugin.rejectQuestion(questionId);
-    return RelayMessage.response(
-          id: request.id,
-          status: 200,
-          headers: {},
-          body: null,
-        )
-        as RelayResponse;
+    return RelayResponse(
+      id: request.id,
+      status: 200,
+      headers: {},
+      body: null,
+    );
   }
 }

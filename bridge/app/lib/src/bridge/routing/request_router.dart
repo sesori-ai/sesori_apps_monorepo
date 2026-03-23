@@ -65,30 +65,27 @@ class RequestRouter {
           );
         }
       }
-      return RelayMessage.response(
-            id: request.id,
-            status: 404,
-            headers: {},
-            body: "no handler found for ${request.method} ${request.path}",
-          )
-          as RelayResponse;
+      return RelayResponse(
+        id: request.id,
+        status: 404,
+        headers: {},
+        body: "no handler found for ${request.method} ${request.path}",
+      );
     } on PluginApiException catch (e) {
       Log.w("upstream error: $e");
-      return RelayMessage.response(
-            id: request.id,
-            status: e.statusCode,
-            headers: {},
-            body: e.toString(),
-          )
-          as RelayResponse;
+      return RelayResponse(
+        id: request.id,
+        status: e.statusCode,
+        headers: {},
+        body: e.toString(),
+      );
     } catch (e) {
-      return RelayMessage.response(
-            id: request.id,
-            status: 502,
-            headers: {},
-            body: "request failed: $e",
-          )
-          as RelayResponse;
+      return RelayResponse(
+        id: request.id,
+        status: 502,
+        headers: {},
+        body: "request failed: $e",
+      );
     }
   }
 }

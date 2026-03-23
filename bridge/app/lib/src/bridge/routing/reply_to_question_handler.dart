@@ -51,12 +51,11 @@ class ReplyToQuestionHandler extends RequestHandler {
       questionId,
       answers: replyRequest.answers.map((answer) => answer.values).toList(),
     );
-    return RelayMessage.response(
-          id: request.id,
-          status: 200,
-          headers: {},
-          body: null,
-        )
-        as RelayResponse;
+    return RelayResponse(
+      id: request.id,
+      status: 200,
+      headers: {},
+      body: null,
+    );
   }
 }

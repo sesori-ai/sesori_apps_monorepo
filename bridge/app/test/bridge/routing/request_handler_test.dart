@@ -14,14 +14,12 @@ class _StubHandler extends RequestHandler {
     required Map<String, String> pathParams,
     required Map<String, String> queryParams,
     String? fragment,
-  }) async =>
-      RelayMessage.response(
-            id: request.id,
-            status: 200,
-            headers: {},
-            body: null,
-          )
-          as RelayResponse;
+  }) async => RelayResponse(
+    id: request.id,
+    status: 200,
+    headers: {},
+    body: null,
+  );
 }
 
 void main() {

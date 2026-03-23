@@ -282,9 +282,8 @@ class _FakeBridgePlugin implements BridgePlugin {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PluginPromptPart> parts,
-    String? agent,
-    String? providerID,
-    String? modelID,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
   }) async {}
 
   @override
@@ -404,9 +403,8 @@ class _TrackingBridgePlugin implements BridgePlugin {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PluginPromptPart> parts,
-    String? agent,
-    String? providerID,
-    String? modelID,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
   }) async {}
 
   @override

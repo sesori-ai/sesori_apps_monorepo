@@ -10,7 +10,7 @@ class ActiveSessionTracker {
 
   final Set<String> _projectWorktrees = {};
   final Map<String, String> _sessionWorktrees = {};
-  final Map<String, String> _sessionDirectories = {};
+  final Map<String, String> _sessionDirectories = {}; // directory where the session is located
   final Map<String, SessionStatus> _sessionStatuses = {};
 
   /// Tracks parent IDs for all known sessions.
@@ -129,12 +129,12 @@ class ActiveSessionTracker {
   }
 
   /// Register a known session -> directory mapping (e.g., after session creation).
-  void registerSession(String sessionId, String directory) {
+  void registerSession({required String sessionId, required String directory}) {
     _sessionDirectories[sessionId] = directory;
   }
 
   /// Look up the directory for a session. Returns null if unknown.
-  String? getSessionDirectory(String sessionId) {
+  String? getSessionDirectory({required String sessionId}) {
     return _sessionDirectories[sessionId];
   }
 

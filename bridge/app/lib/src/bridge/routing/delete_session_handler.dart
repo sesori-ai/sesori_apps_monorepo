@@ -31,12 +31,11 @@ class DeleteSessionHandler extends RequestHandler {
       }
     }
 
-    return RelayMessage.response(
-          id: request.id,
-          status: 200,
-          headers: {},
-          body: null,
-        )
-        as RelayResponse;
+    return RelayResponse(
+      id: request.id,
+      status: 200,
+      headers: {},
+      body: null,
+    );
   }
 }
