@@ -68,7 +68,7 @@ bool get _shouldInitializeFirebase {
   }
 
   return switch (defaultTargetPlatform) {
-    TargetPlatform.android => kReleaseMode,
+    TargetPlatform.android => !kProfileMode,
     TargetPlatform.iOS || TargetPlatform.macOS => true,
     TargetPlatform.fuchsia || TargetPlatform.linux || TargetPlatform.windows => false,
   };
@@ -80,7 +80,7 @@ bool get _supportsFirebaseAnalytics {
   }
 
   return switch (defaultTargetPlatform) {
-    TargetPlatform.android => kReleaseMode,
+    TargetPlatform.android => !kProfileMode,
     TargetPlatform.iOS || TargetPlatform.macOS => true,
     TargetPlatform.fuchsia || TargetPlatform.linux || TargetPlatform.windows => false,
   };
@@ -92,7 +92,7 @@ bool get _supportsFirebaseCrashlytics {
   }
 
   return switch (defaultTargetPlatform) {
-    TargetPlatform.android => kReleaseMode,
+    TargetPlatform.android => !kProfileMode,
     TargetPlatform.iOS || TargetPlatform.macOS => true,
     TargetPlatform.fuchsia || TargetPlatform.linux || TargetPlatform.windows => false,
   };
