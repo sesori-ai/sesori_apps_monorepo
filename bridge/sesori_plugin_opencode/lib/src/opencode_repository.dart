@@ -77,11 +77,14 @@ class OpenCodeRepository {
     );
 
     final mergedRealProjects = realProjects.map((project) {
-      final groupedSessions = allSessionsByDirectory[project.worktree];
-      if (groupedSessions == null) return project;
+      final sessions = _sessionsUnderWorktree(
+        allSessionsByDirectory,
+        project.worktree,
+      );
+      if (sessions.isEmpty) return project;
       return _mergeProjectTimeWithSessions(
         project: project,
-        sessions: groupedSessions,
+        sessions: sessions,
       );
     }).toList();
 
@@ -137,6 +140,26 @@ class OpenCodeRepository {
     });
 
     return filtered;
+  }
+
+  /// Collects all sessions whose directory is equal to or under [worktree],
+  /// using the same prefix-based matching as [_isDirectoryUnderWorktree].
+  ///
+  /// This is necessary because users can start sessions from subdirectories
+  /// (e.g., `/repo/packages/foo`) while the project worktree is the git root
+  /// (`/repo`). A simple exact-key lookup would miss those subdirectory
+  /// sessions.
+  List<GlobalSession> _sessionsUnderWorktree(
+    Map<String, List<GlobalSession>> sessionsByDirectory,
+    String worktree,
+  ) {
+    final result = <GlobalSession>[];
+    for (final entry in sessionsByDirectory.entries) {
+      if (_isDirectoryUnderWorktree(entry.key, worktree)) {
+        result.addAll(entry.value);
+      }
+    }
+    return result;
   }
 
   /// Groups [sessions] by their [GlobalSession.directory] field.

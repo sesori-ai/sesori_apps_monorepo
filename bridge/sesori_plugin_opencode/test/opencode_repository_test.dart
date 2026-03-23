@@ -300,6 +300,38 @@ void main() {
       expect(projects, isEmpty);
     });
 
+    test("merges timestamps from sessions in subdirectories of the worktree", () async {
+      // A session started from a subdirectory of the project (e.g. the user
+      // ran OpenCode from /repo/packages/foo). The project worktree is /repo.
+      // The session's timestamp should still contribute to the project's
+      // merged "last updated".
+      final api = _FakeApi(
+        projects: [
+          const Project(
+            id: "my-project",
+            worktree: "/repo",
+            time: ProjectTime(created: 1000, updated: 1000),
+          ),
+        ],
+        globalSessions: [
+          const GlobalSession(
+            id: "sub-session",
+            projectID: "my-project",
+            directory: "/repo/packages/foo",
+            time: SessionTime(created: 2000, updated: 9000),
+          ),
+        ],
+      );
+      final repository = OpenCodeRepository(api);
+
+      final projects = await repository.getProjects();
+
+      expect(projects, hasLength(1));
+      // The subdirectory session's updated (9000) should be picked up.
+      expect(projects.first.time?.updated, equals(9000));
+      expect(projects.first.time?.created, equals(1000));
+    });
+
     test("excludes global meta-project from results", () async {
       final api = _FakeApi(
         projects: [
