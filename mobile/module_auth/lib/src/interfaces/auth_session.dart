@@ -1,3 +1,4 @@
+import "package:rxdart/streams.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "../models/auth_state.dart";
 
@@ -10,7 +11,7 @@ import "../models/auth_state.dart";
 abstract interface class AuthSession {
   /// Push-based stream of auth state changes. Late subscribers
   /// immediately receive the current value.
-  Stream<AuthState> get authStateStream;
+  ValueStream<AuthState> get authStateStream;
 
   /// Synchronous access to the current auth state.
   AuthState get currentState;

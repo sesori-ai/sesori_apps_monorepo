@@ -48,6 +48,8 @@ class NotificationService {
 
     _subscriptions.add(FirebaseMessaging.instance.onTokenRefresh.listen(_onTokenRefresh));
     _subscriptions.add(FirebaseMessaging.onMessage.listen(_onForegroundMessage));
+    
+    // value stream that emits the current auth state too
     _subscriptions.add(_authSession.authStateStream.listen(_onAuthStateChanged));
 
     // Handle notification taps when app is in background (not terminated).
@@ -57,11 +59,6 @@ class NotificationService {
     final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
     if (initialMessage != null) {
       _onNotificationTapped(initialMessage);
-    }
-
-    final currentState = _authSession.currentState;
-    if (currentState is AuthAuthenticated) {
-      await registerCurrentToken();
     }
   }
 
@@ -86,6 +83,7 @@ class NotificationService {
       token: token,
       platform: Platform.isIOS ? DevicePlatform.ios : DevicePlatform.android,
     );
+    logd("[FCM]Registering push token: $token");
     await _apiClient.registerToken(request);
     _currentToken = token;
   }
@@ -99,6 +97,7 @@ class NotificationService {
   }
 
   Future<void> _onAuthStateChanged(AuthState state) async {
+    logd("[FCM] Auth state changed: $state");
     switch (state) {
       case AuthAuthenticated():
         try {
