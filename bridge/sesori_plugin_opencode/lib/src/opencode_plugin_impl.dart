@@ -210,6 +210,12 @@ class OpenCodePlugin implements BridgePlugin {
         limit: limit,
       ),
     );
+    for (final session in sessions) {
+      _service.tracker.registerSession(
+        sessionId: session.id,
+        directory: session.directory,
+      );
+    }
     return sessions.map((session) => session.toPlugin()).toList();
   }
 
@@ -217,35 +223,56 @@ class OpenCodePlugin implements BridgePlugin {
   Future<PluginSession> createSession({required String projectId, String? parentSessionId}) async {
     final session = await _call(
       () => _service.repository.api.createSession(
-        // this sesori plugin uses workspace path as project id
+        // this sesori plugin uses workspace path (directory) as project id
         // because it's the most reliable UID with opencode
-        workspacePath: projectId,
+        directory: projectId,
         parentSessionId: parentSessionId,
       ),
+    );
+    _service.tracker.registerSession(
+      sessionId: session.id,
+      directory: session.directory,
     );
     return session.toPlugin();
   }
 
   @override
   Future<PluginSession> updateSessionArchiveStatus(String sessionId, {required bool archived}) async {
+    final directory = _service.tracker.getSessionDirectory(sessionId: sessionId);
     final session = await _call(
-      () => _service.repository.api.updateSession(sessionId, {
-        "time": {
-          "archived": archived ? DateTime.now().millisecondsSinceEpoch : null,
+      () => _service.repository.api.updateSession(
+        sessionId: sessionId,
+        directory: directory,
+        body: {
+          "time": {
+            "archived": archived ? DateTime.now().millisecondsSinceEpoch : null,
+          },
         },
-      }),
+      ),
     );
     return session.toPlugin();
   }
 
   @override
   Future<void> deleteSession(String sessionId) {
-    return _call(() => _service.repository.api.deleteSession(sessionId));
+    final directory = _service.tracker.getSessionDirectory(sessionId: sessionId);
+    return _call(
+      () => _service.repository.api.deleteSession(
+        sessionId: sessionId,
+        directory: directory,
+      ),
+    );
   }
 
   @override
   Future<List<PluginSession>> getChildSessions(String sessionId) async {
-    final sessions = await _call(() => _service.repository.api.getChildren(sessionId));
+    final directory = _service.tracker.getSessionDirectory(sessionId: sessionId);
+    final sessions = await _call(
+      () => _service.repository.api.getChildren(
+        sessionId: sessionId,
+        directory: directory,
+      ),
+    );
     return sessions.map((session) => session.toPlugin()).toList();
   }
 
@@ -257,7 +284,13 @@ class OpenCodePlugin implements BridgePlugin {
 
   @override
   Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async {
-    final messages = await _call(() => _service.getLastExchange(sessionId));
+    final directory = _service.tracker.getSessionDirectory(sessionId: sessionId);
+    final messages = await _call(
+      () => _service.getLastExchange(
+        sessionId: sessionId,
+        directory: directory,
+      ),
+    );
     return messages.map(_mapMessage).toList();
   }
 
@@ -265,10 +298,15 @@ class OpenCodePlugin implements BridgePlugin {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PluginPromptPart> parts,
-    String? agent,
-    String? providerID,
-    String? modelID,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
   }) {
+    final directory = _service.tracker.getSessionDirectory(sessionId: sessionId);
+
+    if (directory == null) {
+      Log.w("directory missing for session $sessionId. Defaulting to bridge CWD as directory.");
+    }
+
     final body = <String, dynamic>{
       "parts": parts.map((part) {
         return switch (part) {
@@ -278,24 +316,18 @@ class OpenCodePlugin implements BridgePlugin {
           },
         };
       }).toList(),
+      "agent": ?agent,
+      if (model != null)
+        "model": {
+          "providerID": model.providerID,
+          "modelID": model.modelID,
+        },
     };
-
-    if (agent case final agentName?) {
-      body["agent"] = agentName;
-    }
-
-    if (providerID case final provider?) {
-      if (modelID case final model?) {
-        body["model"] = {
-          "providerID": provider,
-          "modelID": model,
-        };
-      }
-    }
 
     return _call(
       () => _service.repository.api.sendPrompt(
-        sessionId,
+        sessionId: sessionId,
+        directory: directory,
         body: body,
       ),
     );
@@ -303,7 +335,13 @@ class OpenCodePlugin implements BridgePlugin {
 
   @override
   Future<void> abortSession(String sessionId) {
-    return _call(() => _service.repository.api.abortSession(sessionId));
+    final directory = _service.tracker.getSessionDirectory(sessionId: sessionId);
+    return _call(
+      () => _service.repository.api.abortSession(
+        sessionId: sessionId,
+        directory: directory,
+      ),
+    );
   }
 
   @override
@@ -322,7 +360,7 @@ class OpenCodePlugin implements BridgePlugin {
   Future<void> replyToQuestion(String questionId, {required List<List<String>> answers}) {
     return _call(
       () => _service.repository.api.replyToQuestion(
-        questionId,
+        questionId: questionId,
         body: {
           "answers": answers,
         },
@@ -332,12 +370,20 @@ class OpenCodePlugin implements BridgePlugin {
 
   @override
   Future<void> rejectQuestion(String questionId) {
-    return _call(() => _service.repository.api.rejectQuestion(questionId));
+    return _call(
+      () => _service.repository.api.rejectQuestion(
+        questionId: questionId,
+      ),
+    );
   }
 
   @override
   Future<PluginProject> getProject(String projectId) async {
-    final project = await _call(() => _service.repository.api.getProject(projectId));
+    final project = await _call(
+      () => _service.repository.api.getProject(
+        directory: projectId,
+      ),
+    );
     return project.toPlugin();
   }
 

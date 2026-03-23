@@ -93,8 +93,8 @@ void main() {
       );
 
       expect(plugin.lastSendPromptAgent, equals("planner"));
-      expect(plugin.lastSendPromptProviderID, equals("openai"));
-      expect(plugin.lastSendPromptModelID, equals("gpt-4o"));
+      expect(plugin.lastSendPromptModel?.providerID, equals("openai"));
+      expect(plugin.lastSendPromptModel?.modelID, equals("gpt-4o"));
     });
 
     test("records correct args", () async {
@@ -121,8 +121,8 @@ void main() {
       expect(plugin.lastSendPromptParts, hasLength(1));
       expect(plugin.lastSendPromptParts![0], equals(const PluginPromptPart.text(text: "Ship it")));
       expect(plugin.lastSendPromptAgent, equals("coder"));
-      expect(plugin.lastSendPromptProviderID, equals("anthropic"));
-      expect(plugin.lastSendPromptModelID, equals("claude-3-5-sonnet"));
+      expect(plugin.lastSendPromptModel?.providerID, equals("anthropic"));
+      expect(plugin.lastSendPromptModel?.modelID, equals("claude-3-5-sonnet"));
     });
 
     test("returns 200", () async {

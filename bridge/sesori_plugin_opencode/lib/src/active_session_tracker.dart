@@ -10,6 +10,7 @@ class ActiveSessionTracker {
 
   final Set<String> _projectWorktrees = {};
   final Map<String, String> _sessionWorktrees = {};
+  final Map<String, String> _sessionDirectories = {}; // directory where the session is located
   final Map<String, SessionStatus> _sessionStatuses = {};
 
   /// Tracks parent IDs for all known sessions.
@@ -32,6 +33,7 @@ class ActiveSessionTracker {
       ..addAll(projects.map((p) => p.worktree));
 
     _sessionWorktrees.clear();
+    _sessionDirectories.clear();
     _sessionParentIds.clear();
 
     // Build directory lookup and parent ID mapping from fetched sessions.
@@ -40,6 +42,10 @@ class ActiveSessionTracker {
       sessionDirectories[session.id] = session.directory;
       _sessionParentIds[session.id] = session.parentID;
     }
+
+    _sessionDirectories
+      ..clear()
+      ..addAll(sessionDirectories);
 
     _sessionStatuses
       ..clear()
@@ -68,6 +74,7 @@ class ActiveSessionTracker {
 
     switch (event) {
       case SseSessionCreated():
+        _sessionDirectories[event.info.id] = event.info.directory;
         _updateSessionWorktree(event.info.id, event.info.directory);
         final prevParentId = _sessionParentIds[event.info.id];
         _sessionParentIds[event.info.id] = event.info.parentID;
@@ -77,6 +84,7 @@ class ActiveSessionTracker {
           forceReemit = true;
         }
       case SseSessionUpdated():
+        _sessionDirectories[event.info.id] = event.info.directory;
         _updateSessionWorktree(event.info.id, event.info.directory);
         final prevParentId = _sessionParentIds[event.info.id];
         _sessionParentIds[event.info.id] = event.info.parentID;
@@ -84,6 +92,7 @@ class ActiveSessionTracker {
           forceReemit = true;
         }
       case SseSessionDeleted():
+        _sessionDirectories.remove(event.info.id);
         _sessionWorktrees.remove(event.info.id);
         _sessionStatuses.remove(event.info.id);
         _sessionParentIds.remove(event.info.id);
@@ -113,9 +122,20 @@ class ActiveSessionTracker {
   void reset() {
     _projectWorktrees.clear();
     _sessionWorktrees.clear();
+    _sessionDirectories.clear();
     _sessionStatuses.clear();
     _sessionParentIds.clear();
     _lastEmittedActiveSessions = {};
+  }
+
+  /// Register a known session -> directory mapping (e.g., after session creation).
+  void registerSession({required String sessionId, required String directory}) {
+    _sessionDirectories[sessionId] = directory;
+  }
+
+  /// Look up the directory for a session. Returns null if unknown.
+  String? getSessionDirectory({required String sessionId}) {
+    return _sessionDirectories[sessionId];
   }
 
   List<ProjectActivitySummary> buildSummary() {

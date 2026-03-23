@@ -16,7 +16,7 @@ class OpenCodeRepository {
   Future<List<Project>> getProjects() async {
     final (rawProjects, globalSessions) = await wait2(
       _api.listProjects(),
-      _api.listGlobalSessions(roots: true),
+      _api.listGlobalSessions(directory: null, roots: true),
     );
 
     final realProjects = <Project>[];

@@ -42,9 +42,8 @@ abstract class BridgePlugin {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PluginPromptPart> parts,
-    String? agent,
-    String? providerID,
-    String? modelID,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
   });
 
   Future<void> abortSession(String sessionId);

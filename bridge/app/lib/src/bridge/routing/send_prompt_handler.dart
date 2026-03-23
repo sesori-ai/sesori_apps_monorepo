@@ -44,22 +44,23 @@ class SendPromptHandler extends RequestHandler {
         )
         .toList();
 
-    final model = promptRequest.model;
+    final model = switch (promptRequest.model) {
+      PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
+      null => null,
+    };
 
     await _plugin.sendPrompt(
       sessionId: sessionId,
       parts: parts,
       agent: promptRequest.agent,
-      providerID: model?.providerID,
-      modelID: model?.modelID,
+      model: model,
     );
 
-    return RelayMessage.response(
-          id: request.id,
-          status: 200,
-          headers: {},
-          body: null,
-        )
-        as RelayResponse;
+    return RelayResponse(
+      id: request.id,
+      status: 200,
+      headers: {},
+      body: null,
+    );
   }
 }

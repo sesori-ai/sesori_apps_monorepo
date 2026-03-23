@@ -103,13 +103,12 @@ class DebugServer {
     if (request.method == "GET" && path == "/project") {
       final projects = await _plugin.getProjects();
       final body = jsonEncode(projects.map((p) => p.toJson()).toList());
-      return RelayMessage.response(
-            id: request.id,
-            status: 200,
-            headers: {"content-type": "application/json"},
-            body: body,
-          )
-          as RelayResponse;
+      return RelayResponse(
+        id: request.id,
+        status: 200,
+        headers: {"content-type": "application/json"},
+        body: body,
+      );
     }
 
     if (request.method == "GET" && path == "/session") {
@@ -121,26 +120,24 @@ class DebugServer {
         }
       }
       if (worktree == null || worktree.isEmpty) {
-        return RelayMessage.response(
-              id: request.id,
-              status: 400,
-              headers: {},
-              body: "missing x-opencode-directory header",
-            )
-            as RelayResponse;
+        return RelayResponse(
+          id: request.id,
+          status: 400,
+          headers: {},
+          body: "missing x-opencode-directory header",
+        );
       }
       final uri = Uri.parse(request.path);
       final start = uri.queryParameters["start"] != null ? int.tryParse(uri.queryParameters["start"]!) : null;
       final limit = uri.queryParameters["limit"] != null ? int.tryParse(uri.queryParameters["limit"]!) : null;
       final sessions = await _plugin.getSessions(worktree, start: start, limit: limit);
       final body = jsonEncode(sessions.map((s) => s.toJson()).toList());
-      return RelayMessage.response(
-            id: request.id,
-            status: 200,
-            headers: {"content-type": "application/json"},
-            body: body,
-          )
-          as RelayResponse;
+      return RelayResponse(
+        id: request.id,
+        status: 200,
+        headers: {"content-type": "application/json"},
+        body: body,
+      );
     }
 
     final sessionMsgPattern = RegExp(r"^/session/[^/]+/message$");
@@ -150,23 +147,21 @@ class DebugServer {
       final sessionId = segments[2];
       final messages = await _plugin.getSessionMessages(sessionId);
       final body = jsonEncode(messages.map((m) => m.toJson()).toList());
-      return RelayMessage.response(
-            id: request.id,
-            status: 200,
-            headers: {"content-type": "application/json"},
-            body: body,
-          )
-          as RelayResponse;
+      return RelayResponse(
+        id: request.id,
+        status: 200,
+        headers: {"content-type": "application/json"},
+        body: body,
+      );
     }
 
     // Fallback: explicit handlers not implemented for this route yet.
-    return RelayMessage.response(
-          id: request.id,
-          status: 404,
-          headers: {},
-          body: "route not handled",
-        )
-        as RelayResponse;
+    return RelayResponse(
+      id: request.id,
+      status: 404,
+      headers: {},
+      body: "route not handled",
+    );
   }
 
   Future<void> _handleSSE(HttpRequest request) async {
