@@ -135,10 +135,9 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.13.0")
 }
 
-// Only release builds are wired to Firebase on Android.
+// Only profile builds are excluded from Firebase on Android.
 tasks.matching { task ->
-    task.name == "processDebugGoogleServices" ||
-        task.name == "processProfileGoogleServices" ||
+    task.name == "processProfileGoogleServices" ||
         (task.name.contains("Crashlytics") && !task.name.contains("Release"))
 }.configureEach {
     enabled = false

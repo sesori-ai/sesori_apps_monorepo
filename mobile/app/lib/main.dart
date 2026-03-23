@@ -6,6 +6,7 @@ import "package:firebase_crashlytics/firebase_crashlytics.dart";
 import "package:firebase_messaging/firebase_messaging.dart";
 import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "core/di/injection.dart";
 import "core/extensions/build_context_x.dart";
@@ -57,7 +58,12 @@ void main() async {
   configureDependencies();
   getIt<DeepLinkService>().init();
   if (_shouldInitializeFirebase) {
-    unawaited(getIt<NotificationService>().initialize());
+    unawaited(
+      // ignore: inference_failure_on_untyped_parameter
+      getIt<NotificationService>().initialize().catchError((error) {
+        loge("Error initializing notification service: $error", error);
+      }),
+    );
   }
   runApp(const SesoriApp());
 }
