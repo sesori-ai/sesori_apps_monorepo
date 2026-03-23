@@ -30,6 +30,8 @@ import 'package:sesori_mobile/core/platform/app_lifecycle_observer.dart'
 import 'package:sesori_mobile/core/platform/flutter_secure_storage_adapter.dart'
     as _i816;
 import 'package:sesori_mobile/core/platform/flutter_url_launcher.dart' as _i10;
+import 'package:sesori_mobile/core/platform/go_router_route_source.dart'
+    as _i597;
 import 'package:sesori_mobile/core/platform/local_notification_manager.dart'
     as _i492;
 import 'package:sesori_mobile/core/platform/notification_service.dart' as _i737;
@@ -59,6 +61,7 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i492.LocalNotificationManager(),
     );
     gh.singleton<_i948.LifecycleSource>(() => _i875.AppLifecycleObserver());
+    gh.singleton<_i948.RouteSource>(() => _i597.GoRouterRouteSource());
     gh.lazySingleton<_i948.DeepLinkSource>(
       () => _i919.AppLinksDeepLinkSource(),
     );
