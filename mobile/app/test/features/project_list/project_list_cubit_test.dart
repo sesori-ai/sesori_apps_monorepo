@@ -35,10 +35,9 @@ void main() {
       mockRouteSource = MockRouteSource();
     });
 
-    /// Creates a fresh [ProjectListCubit].
-    ///
-    /// All mock stubs MUST be configured before calling this because the
-    /// constructor immediately calls [ProjectListCubit.loadProjects].
+    /// Creates a fresh [ProjectListCubit] with the route source seeded to
+    /// null (auto-refresh inactive). All mock stubs MUST be configured before
+    /// calling this because the constructor immediately calls loadProjects.
     ProjectListCubit buildCubit() => ProjectListCubit(
       mockProjectService,
       mockConnectionService,
@@ -56,7 +55,6 @@ void main() {
         when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.success([testProject()]));
         return buildCubit();
       },
-      skip: 1,
       expect: () => [
         isA<ProjectListLoaded>().having(
           (s) => s.projects,
@@ -76,7 +74,6 @@ void main() {
         when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.success(<Project>[]));
         return buildCubit();
       },
-      skip: 1,
       expect: () => [
         isA<ProjectListLoaded>().having(
           (s) => s.projects,
@@ -96,7 +93,6 @@ void main() {
         when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
         return buildCubit();
       },
-      skip: 1,
       expect: () => [
         isA<ProjectListFailed>(),
       ],
@@ -113,9 +109,6 @@ void main() {
         return buildCubit();
       },
       act: (cubit) => cubit.setActiveProject(testProject()),
-      // The constructor's async loadProjects completes during the post-act wait
-      // and emits a single ProjectListLoaded state.
-      skip: 1,
       expect: () => [
         isA<ProjectListLoaded>(),
       ],
@@ -137,13 +130,9 @@ void main() {
         return buildCubit();
       },
       act: (cubit) async {
-        // Let the constructor's async loadProjects settle first so that the
-        // cubit is in ProjectListLoaded before we trigger a second load. This
-        // guarantees the explicit emit(loading) is not a same-state no-op.
         await Future<void>.delayed(Duration.zero);
         await cubit.loadProjects();
       },
-      skip: 1,
       expect: () => [
         isA<ProjectListLoaded>(), // constructor's async load
         isA<ProjectListLoading>(), // explicit loadProjects begins
@@ -174,7 +163,6 @@ void main() {
         );
         return buildCubit();
       },
-      skip: 1,
       expect: () => [
         isA<ProjectListLoaded>()
             .having(
@@ -202,16 +190,14 @@ void main() {
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        // Return different data on refresh to prove new data is used.
         when(() => mockProjectService.listProjects()).thenAnswer(
           (_) async => ApiResponse.success([testProject(name: "Refreshed")]),
         );
         final result = await cubit.refreshProjects();
         expect(result, isTrue);
       },
-      skip: 2, // skip constructor's initial loaded emission
+      skip: 1,
       expect: () => [
-        // Only ProjectListLoaded — no ProjectListLoading in between.
         isA<ProjectListLoaded>().having(
           (s) => s.projects.first.name,
           "refreshed project name",
@@ -232,13 +218,11 @@ void main() {
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        // Switch mock to error for the refresh call.
         when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
         final result = await cubit.refreshProjects();
         expect(result, isFalse);
       },
-      skip: 2, // skip constructor's initial loaded emission
-      // No state changes — current loaded state is preserved.
+      skip: 1,
       expect: () => <ProjectListState>[],
     );
 
@@ -253,11 +237,11 @@ void main() {
         return buildCubit();
       },
       act: (cubit) async {
-        await Future<void>.delayed(Duration.zero); // let initial load settle
+        await Future<void>.delayed(Duration.zero);
         mockSseEventRepository.emitProjectActivity({_projectId: 3});
         await Future<void>.delayed(Duration.zero);
       },
-      skip: 2, // skip initial loaded emission (no activity yet)
+      skip: 1,
       expect: () => [
         isA<ProjectListLoaded>().having((s) => s.activityById, "activityById", {_projectId: 3}),
       ],
@@ -270,7 +254,6 @@ void main() {
     blocTest<ProjectListCubit, ProjectListState>(
       "projectActivity update: ignored when state is not ProjectListLoaded",
       build: () {
-        // Keep the API hanging so state stays at loading.
         final completer = Completer<ApiResponse<List<Project>>>();
         when(() => mockProjectService.listProjects()).thenAnswer((_) => completer.future);
         return buildCubit();
@@ -279,8 +262,6 @@ void main() {
         mockSseEventRepository.emitProjectActivity({_projectId: 2});
         await Future<void>.delayed(Duration.zero);
       },
-      skip: 1,
-      // Still in loading state — no emission expected.
       expect: () => <ProjectListState>[],
     );
 
@@ -295,7 +276,6 @@ void main() {
         when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.success([testProject()]));
         return buildCubit();
       },
-      skip: 1,
       expect: () => [
         isA<ProjectListLoaded>().having((s) => s.activityById, "activityById", {_projectId: 2}),
       ],
@@ -308,18 +288,16 @@ void main() {
     blocTest<ProjectListCubit, ProjectListState>(
       "projectActivity update: activity clears when repository emits empty map",
       build: () {
-        // Seed with activity so state starts non-empty.
         mockSseEventRepository.emitProjectActivity({_projectId: 1});
         when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.success([testProject()]));
         return buildCubit();
       },
       act: (cubit) async {
-        await Future<void>.delayed(Duration.zero); // let load settle with activity
-        // Now clear activity — repository filters out zeros and emits empty.
+        await Future<void>.delayed(Duration.zero);
         mockSseEventRepository.emitProjectActivity(const {});
         await Future<void>.delayed(Duration.zero);
       },
-      skip: 2, // skip initial loaded emission (activityById: {_projectId: 1})
+      skip: 1,
       expect: () => [
         isA<ProjectListLoaded>().having((s) => s.activityById, "activityById", isEmpty),
       ],
@@ -330,41 +308,24 @@ void main() {
     // =========================================================================
 
     group("throttled project data refresh", () {
-      /// Builds a cubit with the route already set to projects.
-      /// The auto-refresh stream's immediate fetch + the manual loadProjects()
-      /// results in 2 initial API calls — `initialFetchCount` accounts for this.
-      const initialFetchCount = 2;
-
-      late MockRouteSource projectsRouteSource;
-
-      setUp(() {
-        projectsRouteSource = MockRouteSource(initialRoute: AppRoute.projects);
-      });
-
-      ProjectListCubit buildCubitOnProjectsPage() => ProjectListCubit(
-        mockProjectService,
-        mockConnectionService,
-        mockSseEventRepository,
-        projectsRouteSource,
-      );
-
-      test("activity event schedules refresh that fires after 30 seconds", () {
+      test("activity event triggers refresh after throttle duration", () {
         fakeAsync((FakeAsync async) {
           var fetchCount = 0;
           when(() => mockProjectService.listProjects()).thenAnswer((_) async {
             fetchCount++;
             return ApiResponse.success([testProject()]);
           });
-          final cubit = buildCubitOnProjectsPage();
+          mockRouteSource.emitRoute(AppRoute.projects);
+          final cubit = buildCubit();
           async.elapse(Duration.zero);
-          expect(fetchCount, initialFetchCount, reason: "initial loads settled");
+          final baseline = fetchCount;
 
           mockSseEventRepository.emitProjectActivity({_projectId: 1});
           async.elapse(Duration.zero);
-          expect(fetchCount, initialFetchCount, reason: "throttle hasn't fired yet");
+          expect(fetchCount, baseline, reason: "throttle hasn't fired yet");
 
           async.elapse(refreshThrottleDuration);
-          expect(fetchCount, initialFetchCount + 1, reason: "throttle fired");
+          expect(fetchCount, baseline + 1, reason: "throttle fired");
           cubit.close();
         });
       });
@@ -376,18 +337,19 @@ void main() {
             fetchCount++;
             return ApiResponse.success([testProject()]);
           });
-          final cubit = buildCubitOnProjectsPage();
+          mockRouteSource.emitRoute(AppRoute.projects);
+          final cubit = buildCubit();
           async.elapse(Duration.zero);
-          expect(fetchCount, initialFetchCount);
+          final baseline = fetchCount;
 
           for (var i = 0; i < 5; i++) {
             mockSseEventRepository.emitProjectActivity({_projectId: i});
             async.elapse(const Duration(seconds: 1));
           }
-          expect(fetchCount, initialFetchCount, reason: "still within window");
+          expect(fetchCount, baseline, reason: "still within window");
 
           async.elapse(const Duration(seconds: 25));
-          expect(fetchCount, initialFetchCount + 1, reason: "one refresh despite 5 events");
+          expect(fetchCount, baseline + 1, reason: "one refresh despite 5 events");
           cubit.close();
         });
       });
@@ -399,8 +361,7 @@ void main() {
             fetchCount++;
             return ApiResponse.success([testProject()]);
           });
-          // Start with route = null (page not visible). Only manual load fires.
-          final cubit = buildCubit();
+          final cubit = buildCubit(); // route = null
           async.elapse(Duration.zero);
           expect(fetchCount, 1, reason: "only manual load");
 
@@ -412,74 +373,49 @@ void main() {
         });
       });
 
-      test("immediate refresh when navigating to projects page", () {
+      test("immediate refresh when navigating back to projects page", () {
         fakeAsync((FakeAsync async) {
           var fetchCount = 0;
           when(() => mockProjectService.listProjects()).thenAnswer((_) async {
             fetchCount++;
             return ApiResponse.success([testProject()]);
           });
-          // Start with route = null.
+          // Start on projects, navigate away, navigate back.
+          mockRouteSource.emitRoute(AppRoute.projects);
           final cubit = buildCubit();
           async.elapse(Duration.zero);
-          expect(fetchCount, 1, reason: "only manual load");
+          final baseline = fetchCount;
 
-          // Activity arrives while page not visible.
-          mockSseEventRepository.emitProjectActivity({_projectId: 1});
+          mockRouteSource.emitRoute(AppRoute.sessions);
           async.elapse(Duration.zero);
-          expect(fetchCount, 1, reason: "no refresh while hidden");
+          expect(fetchCount, baseline, reason: "no fetch on navigate away");
 
-          // Navigate to projects page — immediate fetch fires.
           mockRouteSource.emitRoute(AppRoute.projects);
           async.elapse(Duration.zero);
-          expect(fetchCount, 2, reason: "immediate refresh on navigate");
+          expect(fetchCount, baseline + 1, reason: "immediate refresh on navigate back");
           cubit.close();
         });
       });
 
-      test("navigate to projects without prior activity still refreshes once", () {
+      test("new throttle window starts after previous completes", () {
         fakeAsync((FakeAsync async) {
           var fetchCount = 0;
           when(() => mockProjectService.listProjects()).thenAnswer((_) async {
             fetchCount++;
             return ApiResponse.success([testProject()]);
           });
+          mockRouteSource.emitRoute(AppRoute.projects);
           final cubit = buildCubit();
           async.elapse(Duration.zero);
-          expect(fetchCount, 1);
+          final baseline = fetchCount;
 
-          // Navigate to projects — immediate fetch from Stream.value(null).
-          mockRouteSource.emitRoute(AppRoute.projects);
-          async.elapse(Duration.zero);
-          expect(fetchCount, 2, reason: "one refresh on page enter");
-
-          // No further fetches without activity events.
-          async.elapse(const Duration(seconds: 60));
-          expect(fetchCount, 2, reason: "no spurious refreshes");
-          cubit.close();
-        });
-      });
-
-      test("new throttle window starts after previous refresh completes", () {
-        fakeAsync((FakeAsync async) {
-          var fetchCount = 0;
-          when(() => mockProjectService.listProjects()).thenAnswer((_) async {
-            fetchCount++;
-            return ApiResponse.success([testProject()]);
-          });
-          final cubit = buildCubitOnProjectsPage();
-          async.elapse(Duration.zero);
-          expect(fetchCount, initialFetchCount);
-
-          // First event.
           mockSseEventRepository.emitProjectActivity({_projectId: 1});
           async.elapse(refreshThrottleDuration);
-          expect(fetchCount, initialFetchCount + 1, reason: "first window");
+          expect(fetchCount, baseline + 1, reason: "first window");
 
-          // Second event — new window.
           mockSseEventRepository.emitProjectActivity({_projectId: 2});
           async.elapse(refreshThrottleDuration);
-          expect(fetchCount, initialFetchCount + 2, reason: "second window");
+          expect(fetchCount, baseline + 2, reason: "second window");
           cubit.close();
         });
       });

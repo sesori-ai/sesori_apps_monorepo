@@ -14,9 +14,8 @@ import "../../platform/route_source.dart";
 import "../../routing/app_routes.dart";
 import "project_list_state.dart";
 
-/// How long to wait after the first activity event before refreshing project
-/// data. Additional events during this window are coalesced into a single
-/// refresh, avoiding excessive API calls during active sessions.
+/// How long to wait after an activity event before auto-refreshing project
+/// data. Events during this window are coalesced into a single refresh.
 @visibleForTesting
 const refreshThrottleDuration = Duration(seconds: 30);
 
@@ -25,10 +24,6 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   final ConnectionService _connectionService;
   final SseEventRepository _sseEventRepository;
   final CompositeSubscription _subscriptions = CompositeSubscription();
-
-  /// Manual load/refresh requests feed into this subject so that all state
-  /// emission flows through the single merged stream pipeline.
-  final PublishSubject<_RefreshRequest> _refreshRequests = PublishSubject();
 
   ProjectListCubit(
     ProjectService projectService,
@@ -39,140 +34,104 @@ class ProjectListCubit extends Cubit<ProjectListState> {
       _connectionService = connectionService,
       _sseEventRepository = sseEventRepository,
       super(const ProjectListState.loading()) {
+    loadProjects();
+
+    // 1. Immediate activity badge updates (no API call).
     _subscriptions.add(
-      Rx.merge<ProjectListState?>([
-        // Immediate activity badge updates (no API call).
-        _sseEventRepository.projectActivity.map(_applyActivityBadge),
-
-        // Auto-refresh: route-gated, throttled project data refresh.
-        // When the projects page is visible, activity events trigger a
-        // throttled fetch. On navigate-back, an immediate fetch fires.
-        routeSource.currentRouteStream.switchMap((route) {
-          if (route != AppRoute.projects) {
-            return const Stream<ProjectListState?>.empty();
-          }
-          return Rx.merge<void>([
-            // Immediate refresh when entering the page. switchMap cancels
-            // this chain when the route leaves projects and re-enters it,
-            // so we get one instant fetch per navigation.
-            Stream<void>.value(null),
-            // Throttled refresh from activity events while on the page.
-            // skip(1) drops the BehaviorSubject replay (the immediate
-            // fetch above already covers it).
-            _sseEventRepository.projectActivity
-                .skip(1)
-                .throttleTime(refreshThrottleDuration, trailing: true, leading: false),
-          ]).asyncMap((_) => _fetchProjectsQuietly());
-        }),
-
-        // Manual load/refresh requests (initial load, pull-to-refresh, retry).
-        _refreshRequests.switchMap(_handleRefreshRequest),
-      ]).whereType<ProjectListState>().listen((state) {
-        if (isClosed) return;
-        emit(state);
-      }),
+      _sseEventRepository.projectActivity.listen(_onActivityUpdated),
     );
 
-    // Trigger initial load through the stream pipeline.
-    loadProjects();
+    // 2. Auto-refresh: throttled project data fetch, active only while the
+    //    projects page is visible. switchMap cancels the inner subscription
+    //    when the route leaves projects and restarts it when coming back.
+    _subscriptions.add(
+      routeSource.currentRouteStream
+          .switchMap((route) {
+            if (route != AppRoute.projects) return const Stream<void>.empty();
+            return _sseEventRepository.projectActivity.throttleTime(
+              refreshThrottleDuration,
+              trailing: true,
+              leading: false,
+            );
+          })
+          .listen((_) {
+            if (isClosed) return;
+            unawaited(refreshProjects());
+          }),
+    );
+
+    // 3. Navigate-back refresh: one immediate fetch when the user returns to
+    //    the projects page. pairwise() ensures this doesn't fire on the
+    //    initial route emission (needs two values before it emits).
+    _subscriptions.add(
+      routeSource.currentRouteStream
+          .distinct()
+          .pairwise()
+          .where((pair) => pair.first != AppRoute.projects && pair.last == AppRoute.projects)
+          .listen((_) {
+            if (isClosed) return;
+            unawaited(refreshProjects());
+          }),
+    );
   }
 
   void setActiveProject(Project project) {
     _connectionService.setActiveDirectory(project.id);
   }
 
-  /// Triggers a full load (shows loading indicator, emits error on failure).
+  void _onActivityUpdated(Map<String, int> activityById) {
+    if (state is! ProjectListLoaded) return;
+    if (isClosed) return;
+    emit(
+      ProjectListState.loaded(
+        projects: (state as ProjectListLoaded).projects,
+        activityById: activityById,
+      ),
+    );
+  }
+
   Future<void> loadProjects() async {
-    final completer = Completer<bool>();
-    _refreshRequests.add(_RefreshRequest(silent: false, completer: completer));
-    await completer.future;
+    emit(const ProjectListState.loading());
+    await _fetchProjects();
   }
 
   /// Re-fetches projects without showing the full-screen loading indicator.
   /// Returns `false` when the refresh fails so the UI can show feedback.
   Future<bool> refreshProjects() async {
-    final completer = Completer<bool>();
-    _refreshRequests.add(_RefreshRequest(silent: true, completer: completer));
-    return completer.future;
+    return _fetchProjects(silent: true);
   }
 
-  // ---------------------------------------------------------------------------
-  // Stream pipeline helpers
-  // ---------------------------------------------------------------------------
+  Future<bool> _fetchProjects({bool silent = false}) async {
+    final projectResponse = await _projectService.listProjects();
+    if (isClosed) return false;
 
-  /// Maps an activity event to an updated loaded state, or null if the cubit
-  /// is not yet loaded (the null is filtered by [whereType] in the merge).
-  ProjectListState? _applyActivityBadge(Map<String, int> activityById) {
-    final s = state;
-    if (s is! ProjectListLoaded) return null;
-    return ProjectListState.loaded(
-      projects: s.projects,
-      activityById: activityById,
-    );
-  }
-
-  /// Fetches projects silently (no loading indicator, no error state).
-  /// Returns null on failure so the merge pipeline can filter it out.
-  Future<ProjectListState?> _fetchProjectsQuietly() async {
-    final response = await _projectService.listProjects();
-    if (isClosed) return null;
-    if (response case SuccessResponse(:final data)) {
-      final projects = data.toList();
-      projects.sort(
-        (a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0),
-      );
-      return ProjectListState.loaded(
-        projects: projects,
-        activityById: _sseEventRepository.currentProjectActivity,
-      );
-    }
-    logw("Failed to auto-refresh projects: $response");
-    return null;
-  }
-
-  /// Processes a manual load/refresh request as a stream of state updates.
-  Stream<ProjectListState?> _handleRefreshRequest(_RefreshRequest request) async* {
-    if (!request.silent) {
-      yield const ProjectListState.loading();
-    }
-
-    final response = await _projectService.listProjects();
-    if (isClosed) {
-      request.completer?.complete(false);
-      return;
-    }
-
-    switch (response) {
+    switch (projectResponse) {
       case SuccessResponse(:final data):
         final projects = data.toList();
         projects.sort(
           (a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0),
         );
-        request.completer?.complete(true);
-        yield ProjectListState.loaded(
-          projects: projects,
-          activityById: _sseEventRepository.currentProjectActivity,
+        emit(
+          ProjectListState.loaded(
+            projects: projects,
+            activityById: _sseEventRepository.currentProjectActivity,
+          ),
         );
+        return true;
+
       case ErrorResponse(:final error):
-        request.completer?.complete(false);
-        if (request.silent) {
+        if (silent) {
           logw("Failed to refresh projects: $error");
         } else {
-          yield ProjectListState.failed(error: error);
+          emit(ProjectListState.failed(error: error));
         }
+        return false;
     }
   }
 
   @override
   Future<void> close() {
-    _refreshRequests.close();
     _subscriptions.dispose();
     return super.close();
   }
-}
-
-class _RefreshRequest {
-  final bool silent;
-  final Completer<bool>? completer;
-  const _RefreshRequest({required this.silent, this.completer});
 }
