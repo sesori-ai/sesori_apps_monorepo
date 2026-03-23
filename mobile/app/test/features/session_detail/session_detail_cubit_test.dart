@@ -214,9 +214,13 @@ void main() {
       },
       act: (cubit) async {
         await _awaitLoaded(cubit);
-        await cubit.replyToQuestion("question-1", const [
-          ReplyAnswer(values: ["Yes"]),
-        ]);
+        await cubit.replyToQuestion(
+          requestId: "question-1",
+          sessionId: sessionId,
+          answers: const [
+            ReplyAnswer(values: ["Yes"]),
+          ],
+        );
       },
       expect: () => [
         isA<SessionDetailLoaded>().having((state) => state.pendingQuestions.length, "pendingCount", 1),
@@ -224,9 +228,13 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.replyToQuestion("question-1", const [
-            ReplyAnswer(values: ["Yes"]),
-          ]),
+          () => mockSessionService.replyToQuestion(
+            requestId: "question-1",
+            sessionId: sessionId,
+            answers: const [
+              ReplyAnswer(values: ["Yes"]),
+            ],
+          ),
         ).called(1);
       },
     );
@@ -975,7 +983,11 @@ void _stubAllDefaults(
     () => service.abortSession(any()),
   ).thenAnswer((_) async => ApiResponse.success(true));
   when(
-    () => service.replyToQuestion(any(), any()),
+    () => service.replyToQuestion(
+      requestId: any(named: "requestId"),
+      sessionId: any(named: "sessionId"),
+      answers: any(named: "answers"),
+    ),
   ).thenAnswer((_) async => ApiResponse.success(true));
   when(
     () => service.rejectQuestion(any()),

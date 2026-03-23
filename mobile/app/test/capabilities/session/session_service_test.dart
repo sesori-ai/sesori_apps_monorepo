@@ -783,10 +783,14 @@ void main() {
           ),
         ).thenAnswer((_) async => ApiResponse.success(true));
 
-        final result = await sessionService.replyToQuestion(requestId, [
-          const ReplyAnswer(values: ["Yes"]),
-          const ReplyAnswer(values: ["Proceed"]),
-        ]);
+        final result = await sessionService.replyToQuestion(
+          requestId: requestId,
+          sessionId: "test-session",
+          answers: [
+            const ReplyAnswer(values: ["Yes"]),
+            const ReplyAnswer(values: ["Proceed"]),
+          ],
+        );
 
         expect(result, isA<SuccessResponse<bool>>());
         expect((result as SuccessResponse<bool>).data, isTrue);
@@ -809,7 +813,11 @@ void main() {
           ),
         ).thenAnswer((_) async => ApiResponse.error(error));
 
-        final result = await sessionService.replyToQuestion(requestId, []);
+        final result = await sessionService.replyToQuestion(
+          requestId: requestId,
+          sessionId: "test-session",
+          answers: [],
+        );
 
         expect(result, isA<ErrorResponse<bool>>());
         expect((result as ErrorResponse<bool>).error, equals(error));
@@ -828,7 +836,7 @@ void main() {
           ),
         ).thenAnswer((_) async => ApiResponse.success(true));
 
-        await sessionService.replyToQuestion(requestId, answers);
+        await sessionService.replyToQuestion(requestId: requestId, sessionId: "test-session", answers: answers);
 
         final captured =
             verify(
