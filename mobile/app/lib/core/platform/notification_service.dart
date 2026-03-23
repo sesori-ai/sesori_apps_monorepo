@@ -105,12 +105,14 @@ class NotificationService {
         } catch (error, stackTrace) {
           logw("Failed to register push token after auth", error, stackTrace);
         }
-      case AuthInitial() || AuthUnauthenticated() || AuthAuthenticating() || AuthFailed():
+      case AuthUnauthenticated() || AuthFailed():
         try {
           await unregisterCurrentToken();
         } catch (error, stackTrace) {
           logw("Failed to unregister push token on auth change", error, stackTrace);
         }
+      case AuthInitial() || AuthAuthenticating():
+        break;
     }
   }
 
