@@ -1,9 +1,11 @@
 import "dart:async";
 
 import "package:bloc_test/bloc_test.dart";
+import "package:fake_async/fake_async.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart" show AppRoute;
 import "package:sesori_dart_core/src/cubits/project_list/project_list_cubit.dart";
 import "package:sesori_dart_core/src/cubits/project_list/project_list_state.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -24,11 +26,13 @@ void main() {
     late MockProjectService mockProjectService;
     late MockConnectionService mockConnectionService;
     late MockSseEventRepository mockSseEventRepository;
+    late MockRouteSource mockRouteSource;
 
     setUp(() {
       mockProjectService = MockProjectService();
       mockConnectionService = MockConnectionService();
       mockSseEventRepository = MockSseEventRepository();
+      mockRouteSource = MockRouteSource();
     });
 
     /// Creates a fresh [ProjectListCubit].
@@ -39,6 +43,7 @@ void main() {
       mockProjectService,
       mockConnectionService,
       mockSseEventRepository,
+      mockRouteSource,
     );
 
     // -------------------------------------------------------------------------
@@ -311,5 +316,148 @@ void main() {
         isA<ProjectListLoaded>().having((s) => s.activityById, "activityById", isEmpty),
       ],
     );
+
+    // =========================================================================
+    // Throttled project data refresh
+    // =========================================================================
+
+    group("throttled project data refresh", () {
+      test("activity event schedules refresh that fires after 30 seconds", () {
+        fakeAsync((FakeAsync async) {
+          var fetchCount = 0;
+          when(() => mockProjectService.listProjects()).thenAnswer((_) async {
+            fetchCount++;
+            return ApiResponse.success([testProject()]);
+          });
+          final cubit = buildCubit();
+          async.elapse(Duration.zero);
+          expect(fetchCount, 1, reason: "initial load");
+
+          mockSseEventRepository.emitProjectActivity({_projectId: 1});
+          async.elapse(Duration.zero);
+          expect(fetchCount, 1, reason: "throttle hasn't fired yet");
+
+          async.elapse(const Duration(seconds: 30));
+          expect(fetchCount, 2, reason: "throttle fired after 30s");
+          cubit.close();
+        });
+      });
+
+      test("multiple rapid events result in single refresh", () {
+        fakeAsync((FakeAsync async) {
+          var fetchCount = 0;
+          when(() => mockProjectService.listProjects()).thenAnswer((_) async {
+            fetchCount++;
+            return ApiResponse.success([testProject()]);
+          });
+          final cubit = buildCubit();
+          async.elapse(Duration.zero);
+          expect(fetchCount, 1);
+
+          for (var i = 0; i < 5; i++) {
+            mockSseEventRepository.emitProjectActivity({_projectId: i});
+            async.elapse(const Duration(seconds: 1));
+          }
+          expect(fetchCount, 1, reason: "still within first 30s window");
+
+          async.elapse(const Duration(seconds: 25));
+          expect(fetchCount, 2, reason: "exactly one refresh despite 5 events");
+          cubit.close();
+        });
+      });
+
+      test("no refresh scheduled when page is not visible", () {
+        fakeAsync((FakeAsync async) {
+          var fetchCount = 0;
+          when(() => mockProjectService.listProjects()).thenAnswer((_) async {
+            fetchCount++;
+            return ApiResponse.success([testProject()]);
+          });
+          final cubit = buildCubit();
+          async.elapse(Duration.zero);
+          expect(fetchCount, 1, reason: "after initial load");
+
+          mockRouteSource.emitRoute(AppRoute.sessions);
+          expect(fetchCount, 1, reason: "after emitRoute(sessions)");
+          async.elapse(Duration.zero);
+          expect(fetchCount, 1, reason: "after elapse after sessions");
+
+          mockSseEventRepository.emitProjectActivity({_projectId: 1});
+          expect(fetchCount, 1, reason: "after emitProjectActivity");
+          async.elapse(const Duration(seconds: 1));
+          expect(fetchCount, 1, reason: "after 1s");
+          async.elapse(const Duration(seconds: 59));
+          expect(fetchCount, 1, reason: "after 60s total");
+          cubit.close();
+        });
+      });
+
+      test("pending refresh fires immediately when navigating back to page", () {
+        fakeAsync((FakeAsync async) {
+          var fetchCount = 0;
+          when(() => mockProjectService.listProjects()).thenAnswer((_) async {
+            fetchCount++;
+            return ApiResponse.success([testProject()]);
+          });
+          final cubit = buildCubit();
+          async.elapse(Duration.zero);
+          expect(fetchCount, 1);
+
+          mockRouteSource.emitRoute(AppRoute.sessions);
+          async.elapse(Duration.zero);
+          mockSseEventRepository.emitProjectActivity({_projectId: 1});
+          async.elapse(Duration.zero);
+          expect(fetchCount, 1, reason: "no refresh while page hidden");
+
+          mockRouteSource.emitRoute(AppRoute.projects);
+          async.elapse(Duration.zero);
+          expect(fetchCount, 2, reason: "immediate refresh when page visible");
+          cubit.close();
+        });
+      });
+
+      test("no refresh when navigating back without pending events", () {
+        fakeAsync((FakeAsync async) {
+          var fetchCount = 0;
+          when(() => mockProjectService.listProjects()).thenAnswer((_) async {
+            fetchCount++;
+            return ApiResponse.success([testProject()]);
+          });
+          final cubit = buildCubit();
+          async.elapse(Duration.zero);
+          expect(fetchCount, 1);
+
+          mockRouteSource.emitRoute(AppRoute.sessions);
+          async.elapse(Duration.zero);
+          mockRouteSource.emitRoute(AppRoute.projects);
+          async.elapse(Duration.zero);
+
+          expect(fetchCount, 1, reason: "no refresh when no pending events");
+          cubit.close();
+        });
+      });
+
+      test("new throttle window starts after previous refresh completes", () {
+        fakeAsync((FakeAsync async) {
+          var fetchCount = 0;
+          when(() => mockProjectService.listProjects()).thenAnswer((_) async {
+            fetchCount++;
+            return ApiResponse.success([testProject()]);
+          });
+          final cubit = buildCubit();
+          async.elapse(Duration.zero);
+          expect(fetchCount, 1);
+
+          mockSseEventRepository.emitProjectActivity({_projectId: 1});
+          async.elapse(const Duration(seconds: 30));
+          expect(fetchCount, 2, reason: "first throttle window");
+
+          mockSseEventRepository.emitProjectActivity({_projectId: 2});
+          async.elapse(const Duration(seconds: 30));
+          expect(fetchCount, 3, reason: "second throttle window");
+          cubit.close();
+        });
+      });
+    });
   });
 }
