@@ -48,7 +48,7 @@ class NotificationService {
 
     _subscriptions.add(FirebaseMessaging.instance.onTokenRefresh.listen(_onTokenRefresh));
     _subscriptions.add(FirebaseMessaging.onMessage.listen(_onForegroundMessage));
-    
+
     // value stream that emits the current auth state too
     _subscriptions.add(_authSession.authStateStream.listen(_onAuthStateChanged));
 
@@ -105,7 +105,7 @@ class NotificationService {
         } catch (error, stackTrace) {
           logw("Failed to register push token after auth", error, stackTrace);
         }
-      case AuthUnauthenticated() || AuthAuthenticating() || AuthFailed():
+      case AuthInitial() || AuthUnauthenticated() || AuthAuthenticating() || AuthFailed():
         try {
           await unregisterCurrentToken();
         } catch (error, stackTrace) {

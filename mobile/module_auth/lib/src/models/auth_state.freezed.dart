@@ -45,6 +45,38 @@ $AuthStateCopyWith(AuthState _, $Res Function(AuthState) __);
 /// @nodoc
 
 
+class AuthInitial implements AuthState {
+  const AuthInitial();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthInitial);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'AuthState.initial()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+
+
 class AuthUnauthenticated implements AuthState {
   const AuthUnauthenticated();
   

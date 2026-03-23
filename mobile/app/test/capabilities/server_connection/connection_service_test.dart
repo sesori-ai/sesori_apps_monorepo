@@ -29,7 +29,7 @@ void main() {
     authTokenProvider = MockAuthTokenProvider();
     authSession = MockAuthSession();
     lifecycleSource = MockLifecycleSource();
-    authStateController = BehaviorSubject<AuthState>.seeded(const AuthState.unauthenticated());
+    authStateController = BehaviorSubject<AuthState>.seeded(const AuthState.initial());
 
     when(() => authSession.authStateStream).thenAnswer((_) => authStateController.stream);
     when(() => authTokenProvider.getFreshAccessToken(minTtl: any(named: "minTtl"))).thenAnswer((_) async => null);
@@ -148,11 +148,6 @@ void main() {
     });
 
     test("AuthUnauthenticated triggers disconnect and room key clear", () async {
-      // The BehaviorSubject seed (unauthenticated) already triggered the
-      // listener once during construction. Reset so we only count the
-      // explicit emit below.
-      clearInteractions(roomKeyStorage);
-
       final statuses = <ConnectionStatus>[];
       final subscription = service.status.listen(statuses.add);
 

@@ -31,7 +31,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
   ) : _client = client,
       _tokenStorage = tokenStorage,
       _oAuthStorage = oAuthStorage,
-      _authState = BehaviorSubject.seeded(const AuthState.unauthenticated());
+      _authState = BehaviorSubject.seeded(const AuthState.initial());
 
   @override
   ValueStream<AuthState> get authStateStream => _authState.stream;
