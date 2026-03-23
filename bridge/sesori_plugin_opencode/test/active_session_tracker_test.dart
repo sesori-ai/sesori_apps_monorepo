@@ -670,7 +670,7 @@ class _FakeApi implements OpenCodeApi {
   Future<List<Session>> getChildren({required String sessionId, required String? directory}) async => [];
 
   @override
-  Future<List<GlobalSession>> listGlobalSessions({
+  Future<List<GlobalSession>> listAllSessions({
     required String? directory,
     required bool roots,
   }) async => [];

@@ -47,7 +47,7 @@ class OpenCodeRepository {
   Future<List<Project>> getProjects() async {
     final (rawProjects, allSessions) = await wait2(
       _api.listProjects(),
-      _api.listGlobalSessions(directory: null, roots: true),
+      _api.listAllSessions(directory: null, roots: true),
     );
 
     final realProjects = <Project>[];
@@ -86,7 +86,7 @@ class OpenCodeRepository {
     }).toList();
 
     final virtualProjects = _buildVirtualProjects(
-      globalByDirectory: globalOnlyByDirectory,
+      globalOnlyByDirectory: globalOnlyByDirectory,
       projectByWorktree: projectByWorktree,
       realProjects: realProjects,
       globalWorktree: globalWorktree,
@@ -98,7 +98,7 @@ class OpenCodeRepository {
   Future<List<Session>> getSessions({required String worktree}) async {
     final (standardSessions, globalSessions) = await wait2(
       _api.listSessions(directory: worktree),
-      _api.listGlobalSessions(directory: worktree, roots: true),
+      _api.listAllSessions(directory: worktree, roots: true),
     );
 
     final merged = <Session>[];
@@ -167,14 +167,14 @@ class OpenCodeRepository {
   /// Directories already covered by a real project (exact match or
   /// parent/child) are skipped to avoid duplicates.
   List<Project> _buildVirtualProjects({
-    required Map<String, List<GlobalSession>> globalByDirectory,
+    required Map<String, List<GlobalSession>> globalOnlyByDirectory,
     required Map<String, Project> projectByWorktree,
     required List<Project> realProjects,
     required String? globalWorktree,
   }) {
     final virtual = <Project>[];
 
-    for (final entry in globalByDirectory.entries) {
+    for (final entry in globalOnlyByDirectory.entries) {
       final directory = entry.key;
       final groupedSessions = entry.value;
 
