@@ -4,6 +4,7 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_auth/src/storage/oauth_storage_service.dart";
 import "package:sesori_auth/src/storage/token_storage_service.dart";
+import "package:sesori_shared/sesori_shared.dart" show parseJwtExpiry;
 import "package:test/test.dart";
 
 class MockSecureStorage extends Mock implements SecureStorage {}
@@ -167,7 +168,7 @@ void main() {
         final exp = DateTime.utc(2040, 1, 1, 12, 30, 45);
         final token = buildJwt(exp: exp.millisecondsSinceEpoch ~/ 1000);
 
-        final result = TokenStorageService.parseJwtExpiry(token);
+        final result = parseJwtExpiry(token);
 
         expect(result, exp);
       });
@@ -176,7 +177,7 @@ void main() {
         final payload = base64Url.encode(utf8.encode('{"sub":"user-1"}'));
         final token = "eyJhbGciOiJIUzI1NiJ9.$payload.fake_sig";
 
-        final result = TokenStorageService.parseJwtExpiry(token);
+        final result = parseJwtExpiry(token);
 
         expect(result, isNull);
       });
@@ -185,13 +186,13 @@ void main() {
         final payload = base64Url.encode(utf8.encode('{"exp":"1700000000"}'));
         final token = "eyJhbGciOiJIUzI1NiJ9.$payload.fake_sig";
 
-        final result = TokenStorageService.parseJwtExpiry(token);
+        final result = parseJwtExpiry(token);
 
         expect(result, isNull);
       });
 
       test("token with fewer than 3 parts returns null", () {
-        final result = TokenStorageService.parseJwtExpiry("not.a.jwt");
+        final result = parseJwtExpiry("not.a.jwt");
 
         expect(result, isNull);
       });
@@ -199,7 +200,7 @@ void main() {
       test("invalid base64 payload returns null", () {
         const token = "eyJhbGciOiJIUzI1NiJ9.invalid%%%payload.fake_sig";
 
-        final result = TokenStorageService.parseJwtExpiry(token);
+        final result = parseJwtExpiry(token);
 
         expect(result, isNull);
       });
@@ -208,7 +209,7 @@ void main() {
         final payload = base64Url.encode(utf8.encode("this is not json"));
         final token = "eyJhbGciOiJIUzI1NiJ9.$payload.fake_sig";
 
-        final result = TokenStorageService.parseJwtExpiry(token);
+        final result = parseJwtExpiry(token);
 
         expect(result, isNull);
       });

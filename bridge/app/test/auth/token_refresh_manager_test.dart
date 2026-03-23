@@ -3,28 +3,25 @@ import "dart:convert";
 import "dart:io";
 
 import "package:http/http.dart" as http;
-import "package:rxdart/rxdart.dart";
-import "package:sesori_bridge/src/auth/access_token_provider.dart";
 import "package:sesori_bridge/src/auth/token.dart";
 import "package:sesori_bridge/src/auth/token_refresh_manager.dart";
 import "package:test/test.dart";
 
 void main() {
-  group("TokenRefreshManager", () {
+  group("TokenManager", () {
     test("Token TTL > 90s returns current token and does not call refresh", () async {
       final server = await _RefreshTestServer.start();
       addTearDown(server.close);
 
       final currentToken = _makeJwtFromNow(120);
-      final manager = TokenRefreshManager(
-        tokenProvider: _FakeAccessTokenProvider(currentToken),
-        tokenUpdater: _FakeAccessTokenUpdater(),
+      final manager = TokenManager(
+        initialToken: currentToken,
         authBackendUrl: server.baseUrl,
         loadTokens: () async => TokenData(accessToken: "a", refreshToken: "r"),
         saveTokens: (_) async {},
       );
 
-      final token = await manager.getFreshAccessToken();
+      final token = await manager.getAccessToken();
 
       expect(token, currentToken);
       await Future<void>.delayed(const Duration(milliseconds: 50));
@@ -44,9 +41,8 @@ void main() {
       addTearDown(server.close);
 
       final currentToken = _makeJwtFromNow(60);
-      final manager = TokenRefreshManager(
-        tokenProvider: _FakeAccessTokenProvider(currentToken),
-        tokenUpdater: _FakeAccessTokenUpdater(),
+      final manager = TokenManager(
+        initialToken: currentToken,
         authBackendUrl: server.baseUrl,
         loadTokens: () async {
           await Future<void>.delayed(const Duration(milliseconds: 120));
@@ -60,7 +56,7 @@ void main() {
       );
 
       final start = DateTime.now();
-      final token = await manager.getFreshAccessToken();
+      final token = await manager.getAccessToken();
       final elapsed = DateTime.now().difference(start);
 
       expect(token, currentToken);
@@ -75,15 +71,14 @@ void main() {
       final server = await _RefreshTestServer.start();
       addTearDown(server.close);
 
-      final manager = TokenRefreshManager(
-        tokenProvider: _FakeAccessTokenProvider(_makeJwtFromNow(10)),
-        tokenUpdater: _FakeAccessTokenUpdater(),
+      final manager = TokenManager(
+        initialToken: _makeJwtFromNow(10),
         authBackendUrl: server.baseUrl,
         loadTokens: () async => TokenData(accessToken: "old-access", refreshToken: "refresh-token"),
         saveTokens: (_) async {},
       );
 
-      final token = await manager.getFreshAccessToken();
+      final token = await manager.getAccessToken();
 
       expect(token, "new-access-token");
       expect(server.requestCount, 1);
@@ -93,15 +88,14 @@ void main() {
       final server = await _RefreshTestServer.start();
       addTearDown(server.close);
 
-      final manager = TokenRefreshManager(
-        tokenProvider: _FakeAccessTokenProvider(_makeJwtFromNow(300)),
-        tokenUpdater: _FakeAccessTokenUpdater(),
+      final manager = TokenManager(
+        initialToken: _makeJwtFromNow(300),
         authBackendUrl: server.baseUrl,
         loadTokens: () async => TokenData(accessToken: "old-access", refreshToken: "refresh-token"),
         saveTokens: (_) async {},
       );
 
-      final token = await manager.getFreshAccessToken(forceRefresh: true);
+      final token = await manager.getAccessToken(forceRefresh: true);
 
       expect(token, "new-access-token");
       expect(server.requestCount, 1);
@@ -111,18 +105,17 @@ void main() {
       final server = await _RefreshTestServer.start(responseDelay: const Duration(milliseconds: 80));
       addTearDown(server.close);
 
-      final manager = TokenRefreshManager(
-        tokenProvider: _FakeAccessTokenProvider(_makeJwtFromNow(300)),
-        tokenUpdater: _FakeAccessTokenUpdater(),
+      final manager = TokenManager(
+        initialToken: _makeJwtFromNow(300),
         authBackendUrl: server.baseUrl,
         loadTokens: () async => TokenData(accessToken: "old-access", refreshToken: "refresh-token"),
         saveTokens: (_) async {},
       );
 
       final results = await Future.wait([
-        manager.getFreshAccessToken(forceRefresh: true),
-        manager.getFreshAccessToken(forceRefresh: true),
-        manager.getFreshAccessToken(forceRefresh: true),
+        manager.getAccessToken(forceRefresh: true),
+        manager.getAccessToken(forceRefresh: true),
+        manager.getAccessToken(forceRefresh: true),
       ]);
 
       expect(results, everyElement("new-access-token"));
@@ -134,9 +127,8 @@ void main() {
       addTearDown(server.close);
 
       TokenData? savedTokens;
-      final manager = TokenRefreshManager(
-        tokenProvider: _FakeAccessTokenProvider(_makeJwtFromNow(10)),
-        tokenUpdater: _FakeAccessTokenUpdater(),
+      final manager = TokenManager(
+        initialToken: _makeJwtFromNow(10),
         authBackendUrl: server.baseUrl,
         loadTokens: () async => TokenData(
           accessToken: "old-access",
@@ -148,7 +140,7 @@ void main() {
         },
       );
 
-      await manager.getFreshAccessToken();
+      await manager.getAccessToken();
 
       expect(savedTokens, isNotNull);
       expect(savedTokens!.accessToken, "new-access-token");
@@ -156,80 +148,74 @@ void main() {
       expect(savedTokens!.bridgeToken, "bridge-token-value");
     });
 
-    test("successful refresh updates AccessTokenUpdater", () async {
+    test("successful refresh updates current access token", () async {
       final server = await _RefreshTestServer.start();
       addTearDown(server.close);
 
-      final updater = _FakeAccessTokenUpdater();
-      final manager = TokenRefreshManager(
-        tokenProvider: _FakeAccessTokenProvider(_makeJwtFromNow(10)),
-        tokenUpdater: updater,
+      final manager = TokenManager(
+        initialToken: _makeJwtFromNow(10),
         authBackendUrl: server.baseUrl,
         loadTokens: () async => TokenData(accessToken: "old-access", refreshToken: "refresh-token"),
         saveTokens: (_) async {},
       );
 
-      await manager.getFreshAccessToken();
+      await manager.getAccessToken();
 
-      expect(updater.accessToken, "new-access-token");
+      expect(manager.accessToken, "new-access-token");
     });
 
     test("non-200 refresh response throws", () async {
       final server = await _RefreshTestServer.start(statusCode: 401);
       addTearDown(server.close);
 
-      final manager = TokenRefreshManager(
-        tokenProvider: _FakeAccessTokenProvider(_makeJwtFromNow(10)),
-        tokenUpdater: _FakeAccessTokenUpdater(),
+      final manager = TokenManager(
+        initialToken: _makeJwtFromNow(10),
         authBackendUrl: server.baseUrl,
         loadTokens: () async => TokenData(accessToken: "old-access", refreshToken: "refresh-token"),
         saveTokens: (_) async {},
       );
 
-      expect(manager.getFreshAccessToken(), throwsA(isA<Exception>()));
+      expect(manager.getAccessToken(), throwsA(isA<Exception>()));
     });
 
     test("network error during refresh throws", () async {
-      final manager = TokenRefreshManager(
-        tokenProvider: _FakeAccessTokenProvider(_makeJwtFromNow(10)),
-        tokenUpdater: _FakeAccessTokenUpdater(),
+      final manager = TokenManager(
+        initialToken: _makeJwtFromNow(10),
         authBackendUrl: "http://127.0.0.1:1",
         loadTokens: () async => TokenData(accessToken: "old-access", refreshToken: "refresh-token"),
         saveTokens: (_) async {},
         client: _ThrowingClient(),
       );
 
-      expect(manager.getFreshAccessToken(), throwsA(isA<Exception>()));
+      expect(manager.getAccessToken(), throwsA(isA<Exception>()));
     });
 
     test("missing tokens from loader throws", () async {
       final server = await _RefreshTestServer.start();
       addTearDown(server.close);
 
-      final manager = TokenRefreshManager(
-        tokenProvider: _FakeAccessTokenProvider(_makeJwtFromNow(10)),
-        tokenUpdater: _FakeAccessTokenUpdater(),
+      final manager = TokenManager(
+        initialToken: _makeJwtFromNow(10),
         authBackendUrl: server.baseUrl,
         loadTokens: () async => null,
         saveTokens: (_) async {},
       );
 
-      expect(manager.getFreshAccessToken(), throwsA(isA<Exception>()));
+      expect(manager.getAccessToken(), throwsA(isA<Exception>()));
     });
 
     test("empty refresh token throws", () async {
       final server = await _RefreshTestServer.start();
       addTearDown(server.close);
 
-      final manager = TokenRefreshManager(
-        tokenProvider: _FakeAccessTokenProvider(_makeJwtFromNow(10)),
-        tokenUpdater: _FakeAccessTokenUpdater(),
+      final manager = TokenManager(
+        initialToken: _makeJwtFromNow(10),
         authBackendUrl: server.baseUrl,
         loadTokens: () async => TokenData(accessToken: "old-access", refreshToken: ""),
         saveTokens: (_) async {},
       );
 
-      expect(manager.getFreshAccessToken(), throwsA(isA<Exception>()));
+      expect(manager.getAccessToken(), throwsA(isA<Exception>()));
     });
 
     test("malformed JWT returns current token without proactive refresh", () async {
@@ -237,44 +223,20 @@ void main() {
       addTearDown(server.close);
 
       const malformedJwt = "not-a-jwt";
-      final manager = TokenRefreshManager(
-        tokenProvider: _FakeAccessTokenProvider(malformedJwt),
-        tokenUpdater: _FakeAccessTokenUpdater(),
+      final manager = TokenManager(
+        initialToken: malformedJwt,
         authBackendUrl: server.baseUrl,
         loadTokens: () async => TokenData(accessToken: "old-access", refreshToken: "refresh-token"),
         saveTokens: (_) async {},
       );
 
-      final token = await manager.getFreshAccessToken();
+      final token = await manager.getAccessToken();
 
       expect(token, malformedJwt);
       await Future<void>.delayed(const Duration(milliseconds: 50));
       expect(server.requestCount, 0);
     });
   });
-}
-
-class _FakeAccessTokenProvider implements AccessTokenProvider {
-  final String _token;
-  final BehaviorSubject<String> _subject;
-
-  _FakeAccessTokenProvider(this._token) : _subject = BehaviorSubject.seeded(_token);
-
-  @override
-  String get accessToken => _token;
-
-  @override
-  ValueStream<String> get tokenStream => _subject;
-}
-
-class _FakeAccessTokenUpdater implements AccessTokenUpdater {
-  String _token = "";
-
-  @override
-  String get accessToken => _token;
-
-  @override
-  set accessToken(String token) => _token = token;
 }
 
 class _ThrowingClient extends http.BaseClient {

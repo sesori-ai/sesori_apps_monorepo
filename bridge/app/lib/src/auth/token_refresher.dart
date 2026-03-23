@@ -1,3 +1,3 @@
 abstract interface class TokenRefresher {
-  Future<String> getFreshAccessToken({bool forceRefresh = false});
+  Future<String> getAccessToken({bool forceRefresh = false});
 }

@@ -1,8 +1,7 @@
-import "dart:convert";
 import "dart:developer" as developer;
 
 import "package:injectable/injectable.dart";
-import "package:meta/meta.dart";
+import "package:sesori_shared/sesori_shared.dart" show parseJwtExpiry;
 
 import "../platform/secure_storage.dart";
 
@@ -85,40 +84,6 @@ class TokenStorageService {
         name: "sesori_auth",
       );
       rethrow;
-    }
-  }
-
-  /// Parses the `exp` claim from a JWT [token] and returns the expiry as a
-  /// UTC [DateTime]. Returns `null` if the token is malformed or has no `exp`.
-  @visibleForTesting
-  static DateTime? parseJwtExpiry(String token) {
-    try {
-      final parts = token.split(".");
-      if (parts.length != 3) return null;
-
-      // Base64url payload — add padding to make length a multiple of 4.
-      String payload = parts[1];
-      switch (payload.length % 4) {
-        case 2:
-          payload = "$payload==";
-        case 3:
-          payload = "$payload=";
-      }
-
-      final decoded = utf8.decode(base64Url.decode(payload));
-      final json = jsonDecode(decoded) as Map<String, dynamic>;
-      final exp = json["exp"];
-      if (exp is! int) return null;
-
-      return DateTime.fromMillisecondsSinceEpoch(exp * 1000, isUtc: true);
-    } catch (error, stackTrace) {
-      developer.log(
-        "Failed to parse JWT expiry",
-        error: error,
-        stackTrace: stackTrace,
-        name: "sesori_auth",
-      );
-      return null;
     }
   }
 }

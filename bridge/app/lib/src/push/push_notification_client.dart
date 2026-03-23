@@ -16,28 +16,13 @@ class PushNotificationClient {
   }) : _tokenRefreshManager = tokenRefreshManager;
 
   Future<void> sendNotification(SendNotificationPayload payload) async {
-    final token = await _tokenRefreshManager.getFreshAccessToken();
-
-    final response = await _client.post(
-      Uri.parse("$authBackendURL/notifications/send"),
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer $token",
-      },
-      body: jsonEncode(payload.toJson()),
-    );
+    final token = await _tokenRefreshManager.getAccessToken();
+    final response = await _sendPost(payload, token);
 
     // 401: force refresh and retry once
     if (response.statusCode == 401) {
-      final refreshedToken = await _tokenRefreshManager.getFreshAccessToken(forceRefresh: true);
-      final retryResponse = await _client.post(
-        Uri.parse("$authBackendURL/notifications/send"),
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $refreshedToken",
-        },
-        body: jsonEncode(payload.toJson()),
-      );
+      final refreshedToken = await _tokenRefreshManager.getAccessToken(forceRefresh: true);
+      final retryResponse = await _sendPost(payload, refreshedToken);
       if (retryResponse.statusCode < 200 || retryResponse.statusCode >= 300) {
         throw Exception("[push] notification failed after retry: ${retryResponse.statusCode}");
       }
@@ -47,5 +32,16 @@ class PushNotificationClient {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception("[push] notification failed: ${response.statusCode}");
     }
+  }
+
+  Future<http.Response> _sendPost(SendNotificationPayload payload, String token) {
+    return _client.post(
+      Uri.parse("$authBackendURL/notifications/send"),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token",
+      },
+      body: jsonEncode(payload.toJson()),
+    );
   }
 }

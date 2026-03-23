@@ -15,7 +15,7 @@ class _FakeTokenRefreshManager implements TokenRefresher {
   _FakeTokenRefreshManager(this._token, {String? forceRefreshToken}) : _forceRefreshToken = forceRefreshToken;
 
   @override
-  Future<String> getFreshAccessToken({bool forceRefresh = false}) async {
+  Future<String> getAccessToken({bool forceRefresh = false}) async {
     if (forceRefresh) {
       forceRefreshCalled = true;
       if (_forceRefreshToken != null) return _forceRefreshToken;

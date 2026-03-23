@@ -1,6 +1,6 @@
 import "dart:convert";
 
-import "package:sesori_bridge/src/auth/jwt_expiry.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
