@@ -1,7 +1,7 @@
 import "dart:collection";
 import "dart:math";
 
-import "../../../../extensions/iterable_x.dart" show IterableExtensions;
+import "package:sesori_shared/sesori_shared.dart" show IterableExtensions;
 
 import "../isolate.dart";
 import "multi_task_isolate.dart";

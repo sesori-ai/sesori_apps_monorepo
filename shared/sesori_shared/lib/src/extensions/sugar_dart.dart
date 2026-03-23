@@ -203,7 +203,7 @@ extension StringExtensions on String {
 
   String take(int i) => length > i ? substring(0, i) : this;
 
-  String takeLast(int i) => length > i ? substring(i) : this;
+  String takeLast(int i) => length > i ? substring(length - i) : this;
 
   String ellipsizeStart(int maxLen) => length > maxLen ? "...${substring(length - maxLen)}" : this;
 

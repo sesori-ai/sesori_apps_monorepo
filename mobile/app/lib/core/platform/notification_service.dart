@@ -83,7 +83,7 @@ class NotificationService {
       token: token,
       platform: Platform.isIOS ? DevicePlatform.ios : DevicePlatform.android,
     );
-    logd("[FCM]Registering push token: $token");
+    logd("[FCM] Registering push token: ...${token.takeLast(6)}");
     await _apiClient.registerToken(request);
     _currentToken = token;
   }

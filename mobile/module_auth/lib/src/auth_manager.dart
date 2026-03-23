@@ -178,6 +178,15 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
   }
 
   @override
+  Future<bool> restoreSession() async {
+    final user = await getCurrentUser();
+    if (user == null) return false;
+
+    _authState.add(AuthState.authenticated(user: user));
+    return true;
+  }
+
+  @override
   Future<void> invalidateAllSessions() async {
     final accessToken = await getFreshAccessToken();
     if (accessToken != null) {

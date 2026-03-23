@@ -26,6 +26,13 @@ abstract interface class AuthSession {
   /// sessions remain valid).
   Future<void> invalidateAllSessions();
 
+  /// Checks for stored tokens and tries to restore a previous session.
+  ///
+  /// If valid tokens exist and the auth server confirms the user,
+  /// emits [AuthState.authenticated] and returns `true`.
+  /// Otherwise the state remains unchanged and returns `false`.
+  Future<bool> restoreSession();
+
   /// Clears local tokens and emits unauthenticated.
   /// Does NOT call the auth server — other devices remain authenticated.
   /// Use for simple sign-out on this device.
