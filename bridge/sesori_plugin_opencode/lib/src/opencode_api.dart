@@ -237,6 +237,7 @@ class OpenCodeApi {
 
   Future<void> replyToQuestion({
     required String questionId,
+    required String? directory,
     required Map<String, dynamic> body,
   }) async {
     final client = http.Client();
@@ -247,6 +248,7 @@ class OpenCodeApi {
         Uri.parse("$serverURL/question/$questionId/reply"),
         headers: {
           ..._authHeaders,
+          "x-opencode-directory": ?directory, // doesn't work well with the directory header
           "content-type": "application/json",
         },
         body: encodedBody,

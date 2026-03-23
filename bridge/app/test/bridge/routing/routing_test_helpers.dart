@@ -58,6 +58,7 @@ class FakeBridgePlugin implements BridgePlugin {
   ({String providerID, String modelID})? lastSendPromptModel;
   String? lastAbortSessionId;
   String? lastReplyQuestionId;
+  String? lastReplySessionId;
   List<List<String>>? lastReplyAnswers;
   String? lastRejectQuestionId;
   String? lastGetCurrentProjectProjectId;
@@ -191,11 +192,13 @@ class FakeBridgePlugin implements BridgePlugin {
   Future<List<PluginPendingQuestion>> getPendingQuestions() async => pendingQuestionsResult;
 
   @override
-  Future<void> replyToQuestion(
-    String questionId, {
+  Future<void> replyToQuestion({
+    required String questionId,
+    required String sessionId,
     required List<List<String>> answers,
   }) async {
     lastReplyQuestionId = questionId;
+    lastReplySessionId = sessionId;
     lastReplyAnswers = answers;
   }
 

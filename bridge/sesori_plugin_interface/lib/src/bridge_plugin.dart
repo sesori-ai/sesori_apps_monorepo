@@ -59,7 +59,11 @@ abstract class BridgePlugin {
   ///   (a single prompt can ask multiple questions at once).
   /// - Each inner list contains the selected answers for that question
   ///   (supports multi-select — one or more values can be chosen).
-  Future<void> replyToQuestion(String questionId, {required List<List<String>> answers});
+  Future<void> replyToQuestion({
+    required String questionId,
+    required String sessionId,
+    required List<List<String>> answers,
+  });
 
   Future<void> rejectQuestion(String questionId);
 

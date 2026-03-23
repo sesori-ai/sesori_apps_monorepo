@@ -200,14 +200,15 @@ class SessionService {
     );
   }
 
-  Future<ApiResponse<bool>> replyToQuestion(
-    String requestId,
-    List<ReplyAnswer> answers,
-  ) {
+  Future<ApiResponse<bool>> replyToQuestion({
+    required String requestId,
+    required String sessionId,
+    required List<ReplyAnswer> answers,
+  }) {
     return _client.post(
       "/question/$requestId/reply",
       fromJson: (_) => true,
-      body: ReplyToQuestionRequest(answers: answers).toJson(),
+      body: ReplyToQuestionRequest(sessionId: sessionId, answers: answers).toJson(),
     );
   }
 

@@ -108,7 +108,11 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
       context,
       question: question,
       onReply: (requestId, answers) {
-        context.read<SessionDetailCubit>().replyToQuestion(requestId, answers);
+        context.read<SessionDetailCubit>().replyToQuestion(
+          requestId: requestId,
+          sessionId: question.sessionID,
+          answers: answers,
+        );
 
         // Auto-open the next pending question, if any.
         if (!mounted) return;

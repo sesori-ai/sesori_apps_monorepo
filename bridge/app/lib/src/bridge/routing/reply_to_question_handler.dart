@@ -59,7 +59,7 @@ class ReplyToQuestionHandler extends RequestHandler {
     Log.v("[question-reply] parsed ${answers.length} answer(s) for questionId=$questionId: $answers");
 
     try {
-      await _plugin.replyToQuestion(questionId, answers: answers);
+      await _plugin.replyToQuestion(questionId: questionId, sessionId: replyRequest.sessionId, answers: answers);
       Log.v("[question-reply] plugin.replyToQuestion completed OK for questionId=$questionId");
     } catch (e) {
       Log.e("[question-reply] plugin.replyToQuestion FAILED for questionId=$questionId: $e");

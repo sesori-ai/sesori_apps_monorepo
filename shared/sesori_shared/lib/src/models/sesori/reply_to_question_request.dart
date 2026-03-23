@@ -7,6 +7,7 @@ part "reply_to_question_request.g.dart";
 @Freezed(fromJson: true, toJson: true)
 sealed class ReplyToQuestionRequest with _$ReplyToQuestionRequest {
   const factory ReplyToQuestionRequest({
+    required String sessionId,
     required List<ReplyAnswer> answers,
   }) = _ReplyToQuestionRequest;
 

@@ -558,15 +558,16 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     emit(current.copyWith(pendingQuestions: pending));
   }
 
-  Future<void> replyToQuestion(
-    String requestId,
-    List<ReplyAnswer> answers,
-  ) async {
+  Future<void> replyToQuestion({
+    required String requestId,
+    required String sessionId,
+    required List<ReplyAnswer> answers,
+  }) async {
     // Optimistically remove before the API call so the screen sees the
     // updated state synchronously (prevents auto-chain re-opening the
     // same question).
     _onQuestionResolved(requestId);
-    await _service.replyToQuestion(requestId, answers);
+    await _service.replyToQuestion(requestId: requestId, sessionId: sessionId, answers: answers);
   }
 
   Future<void> rejectQuestion(String requestId) async {

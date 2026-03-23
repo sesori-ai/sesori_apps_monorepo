@@ -296,8 +296,9 @@ class _FakeBridgePlugin implements BridgePlugin {
   Future<List<PluginPendingQuestion>> getPendingQuestions() async => [];
 
   @override
-  Future<void> replyToQuestion(
-    String questionId, {
+  Future<void> replyToQuestion({
+    required String questionId,
+    required String sessionId,
     required List<List<String>> answers,
   }) async {}
 
@@ -417,8 +418,9 @@ class _TrackingBridgePlugin implements BridgePlugin {
   Future<List<PluginPendingQuestion>> getPendingQuestions() async => [];
 
   @override
-  Future<void> replyToQuestion(
-    String questionId, {
+  Future<void> replyToQuestion({
+    required String questionId,
+    required String sessionId,
     required List<List<String>> answers,
   }) async {}
 
