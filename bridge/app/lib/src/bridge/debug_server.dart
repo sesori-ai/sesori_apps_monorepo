@@ -5,8 +5,13 @@ import "dart:io";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "routing/request_router.dart";
+import "sse/bridge_event_mapper.dart";
+
 class DebugServer {
   final BridgePlugin _plugin;
+  final RequestRouter _router;
+  final BridgeEventMapper _mapper;
   final int port;
   HttpServer? _server;
   final List<HttpResponse> _sseClients = [];
@@ -14,7 +19,10 @@ class DebugServer {
 
   int _nextRequestId = 1;
 
-  DebugServer(BridgePlugin plugin, {required this.port}) : _plugin = plugin;
+  DebugServer(BridgePlugin plugin, {required this.port})
+    : _plugin = plugin,
+      _router = RequestRouter(plugin),
+      _mapper = BridgeEventMapper(plugin);
 
   int? get boundPort => _server?.port;
 
@@ -74,7 +82,7 @@ class DebugServer {
               )
               as RelayRequest;
 
-      final message = await _routeRequest(relayRequest);
+      final message = await _router.route(relayRequest);
       request.response.statusCode = message.status;
       // Skip hop-by-hop and length headers — dart:io sets them
       // automatically based on the actual response body written.
@@ -97,73 +105,6 @@ class DebugServer {
     }
   }
 
-  Future<RelayResponse> _routeRequest(RelayRequest request) async {
-    final path = request.path.split("?").first;
-
-    if (request.method == "GET" && path == "/project") {
-      final projects = await _plugin.getProjects();
-      final body = jsonEncode(projects.map((p) => p.toJson()).toList());
-      return RelayResponse(
-        id: request.id,
-        status: 200,
-        headers: {"content-type": "application/json"},
-        body: body,
-      );
-    }
-
-    if (request.method == "GET" && path == "/session") {
-      String? worktree;
-      for (final entry in request.headers.entries) {
-        if (entry.key.toLowerCase() == "x-opencode-directory") {
-          worktree = entry.value;
-          break;
-        }
-      }
-      if (worktree == null || worktree.isEmpty) {
-        return RelayResponse(
-          id: request.id,
-          status: 400,
-          headers: {},
-          body: "missing x-opencode-directory header",
-        );
-      }
-      final uri = Uri.parse(request.path);
-      final start = uri.queryParameters["start"] != null ? int.tryParse(uri.queryParameters["start"]!) : null;
-      final limit = uri.queryParameters["limit"] != null ? int.tryParse(uri.queryParameters["limit"]!) : null;
-      final sessions = await _plugin.getSessions(worktree, start: start, limit: limit);
-      final body = jsonEncode(sessions.map((s) => s.toJson()).toList());
-      return RelayResponse(
-        id: request.id,
-        status: 200,
-        headers: {"content-type": "application/json"},
-        body: body,
-      );
-    }
-
-    final sessionMsgPattern = RegExp(r"^/session/[^/]+/message$");
-    if (request.method == "GET" && sessionMsgPattern.hasMatch(path)) {
-      Log.v("[dbg] getting messages for session $path");
-      final segments = path.split("/");
-      final sessionId = segments[2];
-      final messages = await _plugin.getSessionMessages(sessionId);
-      final body = jsonEncode(messages.map((m) => m.toJson()).toList());
-      return RelayResponse(
-        id: request.id,
-        status: 200,
-        headers: {"content-type": "application/json"},
-        body: body,
-      );
-    }
-
-    // Fallback: explicit handlers not implemented for this route yet.
-    return RelayResponse(
-      id: request.id,
-      status: 404,
-      headers: {},
-      body: "route not handled",
-    );
-  }
-
   Future<void> _handleSSE(HttpRequest request) async {
     final response = request.response;
 
@@ -179,7 +120,10 @@ class DebugServer {
       _sseClients.add(response);
 
       _pluginEventsSub ??= _plugin.events.listen((event) {
-        unawaited(_fanOutEvent(jsonEncode({"type": event.runtimeType.toString()})));
+        final mapped = _mapper.map(event);
+        if (mapped != null) {
+          unawaited(_fanOutEvent(jsonEncode(mapped.toJson())));
+        }
       });
 
       final disconnected = Completer<void>();

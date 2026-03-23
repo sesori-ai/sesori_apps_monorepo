@@ -15,6 +15,7 @@ import "key_exchange.dart";
 import "models/bridge_config.dart";
 import "relay_client.dart";
 import "routing/request_router.dart";
+import "sse/bridge_event_mapper.dart";
 import "sse/sse_manager.dart";
 
 /// Factory that creates [OrchestratorSession] instances with all runtime
@@ -77,6 +78,7 @@ class OrchestratorSession {
   final List<int> _roomKey;
   final SSEManager _sseManager;
   final RequestRouter _router;
+  final BridgeEventMapper _mapper;
   final PushNotificationService _pushNotificationService;
   final AccessTokenUpdater _accessTokenUpdater;
   StreamSubscription<BridgeSseEvent>? _eventSubscription;
@@ -97,7 +99,8 @@ class OrchestratorSession {
        _accessTokenUpdater = accessTokenUpdater,
        _roomKey = roomKey,
        _sseManager = sseManager,
-       _router = RequestRouter(plugin);
+       _router = RequestRouter(plugin),
+       _mapper = BridgeEventMapper(plugin);
 
   Future<void> run() async {
     final kxManager = KeyExchangeManager(_roomKey);
@@ -107,7 +110,7 @@ class OrchestratorSession {
     _eventSubscription = _plugin.events.listen(
       (BridgeSseEvent event) {
         Log.v("[sse] plugin event arrived: ${event.runtimeType}");
-        final sesoriEvent = _mapBridgeToSesoriEvent(event);
+        final sesoriEvent = _mapper.map(event);
         if (sesoriEvent != null) {
           Log.v(
             "[sse] mapped to: ${sesoriEvent.runtimeType} — enqueuing (subscribers: ${_sseManager.subscriberCount})",
@@ -461,7 +464,7 @@ class OrchestratorSession {
         Log.v("[dbg] SseSubscribe: path=${subscribe.path}");
         try {
           _sseManager.subscribePath(connID, subscribe.path, _client);
-          _sseManager.enqueueEvent(_buildProjectsSummaryEvent());
+          _sseManager.enqueueEvent(_mapper.buildProjectsSummaryEvent());
           Log.v("[dbg] initial projectsSummary enqueued");
         } catch (e) {
           Log.e("sse subscribe failed for connId $connID: $e");
@@ -471,170 +474,6 @@ class OrchestratorSession {
         _sseManager.unsubscribe(connID);
       default:
         Log.v("[dbg] unhandled msg type: ${msg.runtimeType}");
-    }
-  }
-
-  SesoriSseEvent? _mapBridgeToSesoriEvent(BridgeSseEvent event) {
-    switch (event) {
-      case BridgeSseServerConnected():
-        return const SesoriSseEvent.serverConnected();
-      case BridgeSseServerHeartbeat():
-        return const SesoriSseEvent.serverHeartbeat();
-      case BridgeSseServerInstanceDisposed(:final directory):
-        return SesoriSseEvent.serverInstanceDisposed(directory: directory);
-      case BridgeSseGlobalDisposed():
-        return const SesoriSseEvent.globalDisposed();
-      case BridgeSseSessionCreated(:final info):
-        return _tryParseSseEvent({"type": "session.created", "info": info});
-      case BridgeSseSessionUpdated(:final info):
-        return _tryParseSseEvent({"type": "session.updated", "info": info});
-      case BridgeSseSessionDeleted(:final info):
-        return _tryParseSseEvent({"type": "session.deleted", "info": info});
-      case BridgeSseSessionDiff(:final sessionID, :final diff):
-        return _tryParseSseEvent({
-          "type": "session.diff",
-          "sessionID": sessionID,
-          "diff": diff,
-        });
-      case BridgeSseSessionError(:final sessionID):
-        return SesoriSseEvent.sessionError(sessionID: sessionID);
-      case BridgeSseSessionCompacted(:final sessionID):
-        return SesoriSseEvent.sessionCompacted(sessionID: sessionID);
-      case BridgeSseSessionStatus(:final sessionID, :final status):
-        return _tryParseSseEvent({
-          "type": "session.status",
-          "sessionID": sessionID,
-          "status": status,
-        });
-      case BridgeSseSessionIdle(:final sessionID):
-        return SesoriSseEvent.sessionStatus(
-          sessionID: sessionID,
-          status: const SessionStatus.idle(),
-        );
-      case BridgeSseMessageUpdated(:final info):
-        return _tryParseSseEvent({"type": "message.updated", "info": info});
-      case BridgeSseMessageRemoved(:final sessionID, :final messageID):
-        return SesoriSseEvent.messageRemoved(
-          sessionID: sessionID,
-          messageID: messageID,
-        );
-      case BridgeSseMessagePartUpdated(:final part):
-        return _tryParseSseEvent({"type": "message.part.updated", "part": part});
-      case BridgeSseMessagePartDelta(
-        :final sessionID,
-        :final messageID,
-        :final partID,
-        :final field,
-        :final delta,
-      ):
-        return SesoriSseEvent.messagePartDelta(
-          sessionID: sessionID,
-          messageID: messageID,
-          partID: partID,
-          field: field,
-          delta: delta,
-        );
-      case BridgeSseMessagePartRemoved(
-        :final sessionID,
-        :final messageID,
-        :final partID,
-      ):
-        return SesoriSseEvent.messagePartRemoved(
-          sessionID: sessionID,
-          messageID: messageID,
-          partID: partID,
-        );
-      case BridgeSsePtyCreated():
-        return const SesoriSseEvent.ptyCreated();
-      case BridgeSsePtyUpdated():
-        return const SesoriSseEvent.ptyUpdated();
-      case BridgeSsePtyExited(:final id, :final exitCode):
-        return SesoriSseEvent.ptyExited(id: id, exitCode: exitCode);
-      case BridgeSsePtyDeleted(:final id):
-        return SesoriSseEvent.ptyDeleted(id: id);
-      case BridgeSsePermissionAsked(
-        :final requestID,
-        :final sessionID,
-        :final tool,
-        :final description,
-      ):
-        return SesoriSseEvent.permissionAsked(
-          requestID: requestID,
-          sessionID: sessionID,
-          tool: tool,
-          description: description,
-        );
-      case BridgeSsePermissionReplied(:final requestID, :final reply):
-        return SesoriSseEvent.permissionReplied(
-          requestID: requestID,
-          reply: reply,
-        );
-      case BridgeSsePermissionUpdated():
-        return const SesoriSseEvent.permissionUpdated();
-      case BridgeSseQuestionAsked(:final id, :final sessionID, :final questions):
-        return _tryParseSseEvent({
-          "type": "question.asked",
-          "id": id,
-          "sessionID": sessionID,
-          "questions": questions,
-        });
-      case BridgeSseQuestionReplied(:final requestID, :final sessionID):
-        return SesoriSseEvent.questionReplied(
-          requestID: requestID,
-          sessionID: sessionID,
-        );
-      case BridgeSseQuestionRejected(:final requestID, :final sessionID):
-        return SesoriSseEvent.questionRejected(
-          requestID: requestID,
-          sessionID: sessionID,
-        );
-      case BridgeSseTodoUpdated(:final sessionID):
-        return SesoriSseEvent.todoUpdated(sessionID: sessionID);
-      // BridgeSseProjectUpdated is emitted on both activity changes and project
-      // metadata changes. We always send the full projectsSummary so the mobile
-      // client receives updated activity data in real time.
-      case BridgeSseProjectUpdated():
-        return _buildProjectsSummaryEvent();
-      case BridgeSseVcsBranchUpdated():
-        return const SesoriSseEvent.vcsBranchUpdated();
-      case BridgeSseFileEdited(:final file):
-        return SesoriSseEvent.fileEdited(file: file);
-      case BridgeSseFileWatcherUpdated(:final file, :final event):
-        return SesoriSseEvent.fileWatcherUpdated(file: file, event: event);
-      case BridgeSseLspUpdated():
-        return const SesoriSseEvent.lspUpdated();
-      case BridgeSseLspClientDiagnostics(:final serverID, :final path):
-        return SesoriSseEvent.lspClientDiagnostics(serverID: serverID, path: path);
-      case BridgeSseMcpToolsChanged():
-        return const SesoriSseEvent.mcpToolsChanged();
-      case BridgeSseMcpBrowserOpenFailed():
-        return const SesoriSseEvent.mcpBrowserOpenFailed();
-      case BridgeSseInstallationUpdated(:final version):
-        return SesoriSseEvent.installationUpdated(version: version);
-      case BridgeSseInstallationUpdateAvailable(:final version):
-        return SesoriSseEvent.installationUpdateAvailable(version: version);
-      case BridgeSseWorkspaceReady(:final name):
-        return SesoriSseEvent.workspaceReady(name: name);
-      case BridgeSseWorkspaceFailed(:final message):
-        return SesoriSseEvent.workspaceFailed(message: message);
-      case BridgeSseTuiToastShow(:final title, :final message, :final variant):
-        return SesoriSseEvent.tuiToastShow(
-          title: title,
-          message: message,
-          variant: variant,
-        );
-      case BridgeSseWorktreeReady():
-        return const SesoriSseEvent.worktreeReady();
-      case BridgeSseWorktreeFailed():
-        return const SesoriSseEvent.worktreeFailed();
-    }
-  }
-
-  SesoriSseEvent? _tryParseSseEvent(Map<String, dynamic> payload) {
-    try {
-      return SesoriSseEvent.fromJson(payload);
-    } catch (_) {
-      return null;
     }
   }
 
@@ -657,27 +496,5 @@ class OrchestratorSession {
     final encryptor = cryptoService.createSessionEncryptor(encryptionKey);
     final framed = await frame(utf8.encode(respJson), encryptor);
     _client.send(connID, framed);
-  }
-
-  SesoriSseEvent _buildProjectsSummaryEvent() {
-    final summary = _plugin.getActiveSessionsSummary();
-    return SesoriSseEvent.projectsSummary(
-      projects: summary
-          .map(
-            (e) => ProjectActivitySummary(
-              id: e.id,
-              activeSessions: e.activeSessions
-                  .map(
-                    (a) => ActiveSession(
-                      id: a.id,
-                      mainAgentRunning: a.mainAgentRunning,
-                      childSessionIds: a.childSessionIds,
-                    ),
-                  )
-                  .toList(),
-            ),
-          )
-          .toList(),
-    );
   }
 }

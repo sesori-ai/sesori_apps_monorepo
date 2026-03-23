@@ -34,8 +34,8 @@ void main() {
       final firstEvent = await first.nextEvent();
       final secondEvent = await second.nextEvent();
 
-      expect(firstEvent, contains("BridgeSseServerConnected"));
-      expect(secondEvent, contains("BridgeSseServerConnected"));
+      expect(firstEvent, contains("server.connected"));
+      expect(secondEvent, contains("server.connected"));
     });
 
     test(
@@ -50,7 +50,7 @@ void main() {
 
         plugin.add(const BridgeSseServerConnected());
         final firstEvent = await first.nextEvent();
-        expect(firstEvent, contains("BridgeSseServerConnected"));
+        expect(firstEvent, contains("server.connected"));
       },
     );
 
@@ -143,7 +143,7 @@ void main() {
       final request = await client.getUrl(
         Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/session"),
       );
-      request.headers.set("x-opencode-directory", "/tmp/test");
+      request.headers.set("x-project-id", "/tmp/test");
       final response = await request.close();
       final body = await utf8.decoder.bind(response).join();
 
@@ -202,7 +202,7 @@ void main() {
       final body = await utf8.decoder.bind(response).join();
 
       expect(response.statusCode, equals(HttpStatus.badGateway));
-      expect(body, contains("Debug server proxy error"));
+      expect(body, contains("request failed"));
     });
   });
 }
