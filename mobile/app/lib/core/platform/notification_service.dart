@@ -1,6 +1,7 @@
 import "dart:io";
 
 import "package:firebase_messaging/firebase_messaging.dart";
+import "package:flutter/foundation.dart";
 import "package:injectable/injectable.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
@@ -17,6 +18,13 @@ class NotificationService {
   final AuthSession _authSession;
   final CompositeSubscription _subscriptions = CompositeSubscription();
   String? _currentToken;
+
+  @visibleForTesting
+  String? get currentTokenForTesting => _currentToken;
+
+  @visibleForTesting
+  set currentTokenForTesting(String? token) => _currentToken = token;
+
   bool _initialized = false;
   bool _disposed = false;
 
@@ -48,7 +56,9 @@ class NotificationService {
 
     _subscriptions.add(FirebaseMessaging.instance.onTokenRefresh.listen(_onTokenRefresh));
     _subscriptions.add(FirebaseMessaging.onMessage.listen(_onForegroundMessage));
-    _subscriptions.add(_authSession.authStateStream.listen(_onAuthStateChanged));
+
+    // value stream that emits the current auth state too
+    _subscriptions.add(_authSession.authStateStream.listen(onAuthStateChanged));
 
     // Handle notification taps when app is in background (not terminated).
     _subscriptions.add(FirebaseMessaging.onMessageOpenedApp.listen(_onNotificationTapped));
@@ -57,11 +67,6 @@ class NotificationService {
     final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
     if (initialMessage != null) {
       _onNotificationTapped(initialMessage);
-    }
-
-    final currentState = _authSession.currentState;
-    if (currentState is AuthAuthenticated) {
-      await registerCurrentToken();
     }
   }
 
@@ -86,6 +91,7 @@ class NotificationService {
       token: token,
       platform: Platform.isIOS ? DevicePlatform.ios : DevicePlatform.android,
     );
+    logd("[FCM] Registering push token: ...${token.takeLast(6)}");
     await _apiClient.registerToken(request);
     _currentToken = token;
   }
@@ -98,7 +104,9 @@ class NotificationService {
     _currentToken = null;
   }
 
-  Future<void> _onAuthStateChanged(AuthState state) async {
+  @visibleForTesting
+  Future<void> onAuthStateChanged(AuthState state) async {
+    logd("[FCM] Auth state changed: $state");
     switch (state) {
       case AuthAuthenticated():
         try {
@@ -106,12 +114,14 @@ class NotificationService {
         } catch (error, stackTrace) {
           logw("Failed to register push token after auth", error, stackTrace);
         }
-      case AuthUnauthenticated() || AuthAuthenticating() || AuthFailed():
+      case AuthUnauthenticated() || AuthFailed():
         try {
           await unregisterCurrentToken();
         } catch (error, stackTrace) {
           logw("Failed to unregister push token on auth change", error, stackTrace);
         }
+      case AuthInitial() || AuthAuthenticating():
+        break;
     }
   }
 

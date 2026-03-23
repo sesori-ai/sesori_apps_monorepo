@@ -40,9 +40,6 @@ export "src/cubits/session_list/session_list_cubit.dart";
 export "src/cubits/session_list/session_list_state.dart";
 // DI
 export "src/di/injection.dart";
-// Extensions
-export "src/extensions/iterable_x.dart" hide IterableExtensions;
-export "src/extensions/sugar_dart.dart";
 // Logging
 export "src/logging/logging.dart";
 // Platform interfaces

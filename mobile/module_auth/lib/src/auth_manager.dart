@@ -31,10 +31,10 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
   ) : _client = client,
       _tokenStorage = tokenStorage,
       _oAuthStorage = oAuthStorage,
-      _authState = BehaviorSubject.seeded(const AuthState.unauthenticated());
+      _authState = BehaviorSubject.seeded(const AuthState.initial());
 
   @override
-  Stream<AuthState> get authStateStream => _authState.stream;
+  ValueStream<AuthState> get authStateStream => _authState.stream;
 
   @override
   AuthState get currentState => _authState.value;
@@ -175,6 +175,15 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
       );
       return null;
     }
+  }
+
+  @override
+  Future<bool> restoreSession() async {
+    final user = await getCurrentUser();
+    if (user == null) return false;
+
+    _authState.add(AuthState.authenticated(user: user));
+    return true;
   }
 
   @override

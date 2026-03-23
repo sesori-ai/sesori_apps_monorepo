@@ -1,3 +1,4 @@
+import "package:rxdart/streams.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "../models/auth_state.dart";
 
@@ -10,7 +11,7 @@ import "../models/auth_state.dart";
 abstract interface class AuthSession {
   /// Push-based stream of auth state changes. Late subscribers
   /// immediately receive the current value.
-  Stream<AuthState> get authStateStream;
+  ValueStream<AuthState> get authStateStream;
 
   /// Synchronous access to the current auth state.
   AuthState get currentState;
@@ -24,6 +25,13 @@ abstract interface class AuthSession {
   /// On failure, throws — local tokens are NOT cleared (the server-side
   /// sessions remain valid).
   Future<void> invalidateAllSessions();
+
+  /// Checks for stored tokens and tries to restore a previous session.
+  ///
+  /// If valid tokens exist and the auth server confirms the user,
+  /// emits [AuthState.authenticated] and returns `true`.
+  /// Otherwise the state remains unchanged and returns `false`.
+  Future<bool> restoreSession();
 
   /// Clears local tokens and emits unauthenticated.
   /// Does NOT call the auth server — other devices remain authenticated.

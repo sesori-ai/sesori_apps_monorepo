@@ -56,9 +56,9 @@ class AuthRedirectService {
   /// Checks for stored tokens and tries to restore a previous session,
   /// returning [AppRoute.projects] to skip login if successful.
   Future<AppRoute?> tryRestoreSession() async {
-    final user = await _authSession.getCurrentUser();
-    if (user != null) {
-      logd("Session restored for ${user.providerUsername ?? user.id} — auto-connecting to relay");
+    final restored = await _authSession.restoreSession();
+    if (restored) {
+      logd("Session restored — auto-connecting to relay");
       await _autoConnectToRelay();
       return AppRoute.projects;
     }

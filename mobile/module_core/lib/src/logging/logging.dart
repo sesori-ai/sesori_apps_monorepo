@@ -1,4 +1,4 @@
-import "../extensions/sugar_dart.dart";
+import "package:sesori_shared/sesori_shared.dart" show StringExtensions;
 
 /// Controls which log messages are emitted.
 ///

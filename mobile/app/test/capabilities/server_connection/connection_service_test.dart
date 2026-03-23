@@ -1,7 +1,6 @@
-import "dart:async";
-
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
+import "package:rxdart/subjects.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
@@ -21,7 +20,7 @@ void main() {
   late MockAuthTokenProvider authTokenProvider;
   late MockAuthSession authSession;
   late MockLifecycleSource lifecycleSource;
-  late StreamController<AuthState> authStateController;
+  late BehaviorSubject<AuthState> authStateController;
   late ConnectionService service;
 
   setUp(() {
@@ -30,7 +29,7 @@ void main() {
     authTokenProvider = MockAuthTokenProvider();
     authSession = MockAuthSession();
     lifecycleSource = MockLifecycleSource();
-    authStateController = StreamController<AuthState>.broadcast();
+    authStateController = BehaviorSubject<AuthState>.seeded(const AuthState.initial());
 
     when(() => authSession.authStateStream).thenAnswer((_) => authStateController.stream);
     when(() => authTokenProvider.getFreshAccessToken(minTtl: any(named: "minTtl"))).thenAnswer((_) async => null);

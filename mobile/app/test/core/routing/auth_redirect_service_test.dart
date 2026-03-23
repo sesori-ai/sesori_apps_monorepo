@@ -186,9 +186,9 @@ void main() {
       );
     });
 
-    test("returns null when getCurrentUser returns null", () async {
+    test("returns null when restoreSession returns false", () async {
       // given
-      when(mockAuthSession.getCurrentUser).thenAnswer((_) async => null);
+      when(mockAuthSession.restoreSession).thenAnswer((_) async => false);
 
       // when
       final result = await service.tryRestoreSession();
@@ -198,11 +198,10 @@ void main() {
       verifyNever(() => mockConnectionService.connect(any()));
     });
 
-    test("returns /projects and auto-connects when getCurrentUser succeeds", () async {
+    test("returns /projects and auto-connects when restoreSession succeeds", () async {
       // given
       const accessToken = "restored-access-token";
-      final user = testAuthUser();
-      when(mockAuthSession.getCurrentUser).thenAnswer((_) async => user);
+      when(mockAuthSession.restoreSession).thenAnswer((_) async => true);
       when(
         () => mockAuthTokenProvider.getFreshAccessToken(minTtl: any(named: "minTtl")),
       ).thenAnswer((_) async => accessToken);
@@ -222,10 +221,9 @@ void main() {
       expect(config.authToken, equals(accessToken));
     });
 
-    test("returns /projects when auto-connect fails after successful user restore", () async {
+    test("returns /projects when auto-connect fails after successful restore", () async {
       // given
-      final user = testAuthUser();
-      when(mockAuthSession.getCurrentUser).thenAnswer((_) async => user);
+      when(mockAuthSession.restoreSession).thenAnswer((_) async => true);
       when(
         () => mockAuthTokenProvider.getFreshAccessToken(minTtl: any(named: "minTtl")),
       ).thenThrow(Exception("relay down"));
