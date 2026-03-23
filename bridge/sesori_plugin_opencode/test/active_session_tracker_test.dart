@@ -13,6 +13,22 @@ void main() {
       expect(tracker.buildSummary(), isEmpty);
     });
 
+    group("session directory registration", () {
+      test("registerSession stores directory for lookup", () {
+        final tracker = ActiveSessionTracker(_fakeRepository());
+
+        tracker.registerSession("s1", "/projects/foo");
+
+        expect(tracker.getSessionDirectory("s1"), equals("/projects/foo"));
+      });
+
+      test("getSessionDirectory returns null for unknown session", () {
+        final tracker = ActiveSessionTracker(_fakeRepository());
+
+        expect(tracker.getSessionDirectory("missing"), isNull);
+      });
+    });
+
     test("session directory exactly matches worktree", () async {
       final tracker = await _coldStartedTracker(
         projects: [const Project(id: "p1", worktree: "/projects/foo")],
@@ -547,13 +563,14 @@ class _FakeApi implements OpenCodeApi {
       throw UnimplementedError();
 
   @override
-  Future<Session> updateSession(String sessionId, Map<String, dynamic> body) async => throw UnimplementedError();
+  Future<Session> updateSession(String sessionId, Map<String, dynamic> body, {String? directory}) async =>
+      throw UnimplementedError();
 
   @override
-  Future<void> deleteSession(String sessionId) async {}
+  Future<void> deleteSession(String sessionId, {String? directory}) async {}
 
   @override
-  Future<List<Session>> getChildren(String sessionId) async => [];
+  Future<List<Session>> getChildren(String sessionId, {String? directory}) async => [];
 
   @override
   Future<List<GlobalSession>> listGlobalSessions({
@@ -562,13 +579,13 @@ class _FakeApi implements OpenCodeApi {
   }) async => [];
 
   @override
-  Future<List<MessageWithParts>> getMessages(String sessionId) async => [];
+  Future<List<MessageWithParts>> getMessages(String sessionId, {String? directory}) async => [];
 
   @override
-  Future<void> sendPrompt(String sessionId, {required Map<String, dynamic> body}) async {}
+  Future<void> sendPrompt(String sessionId, {required Map<String, dynamic> body, String? directory}) async {}
 
   @override
-  Future<void> abortSession(String sessionId) async {}
+  Future<void> abortSession(String sessionId, {String? directory}) async {}
 
   @override
   Future<List<AgentInfo>> listAgents() async => [];

@@ -123,6 +123,16 @@ void main() {
       expect(repository.api.lastRequestedSessionId, equals("ses-1"));
     });
 
+    test("passes directory to api when provided", () async {
+      final repository = FakeOpenCodeRepository(messages: [_msg("user", "m1")]);
+      final service = OpenCodeService(repository, FakeActiveSessionTracker());
+
+      await service.getLastExchange("ses-1", directory: "/repo");
+
+      expect(repository.api.lastRequestedSessionId, equals("ses-1"));
+      expect(repository.api.lastRequestedDirectory, equals("/repo"));
+    });
+
     test("multiple user messages returns from last user", () async {
       final repository = FakeOpenCodeRepository(
         messages: [
@@ -357,12 +367,14 @@ class FakeOpenCodeApi implements OpenCodeApi {
   List<MessageWithParts> messages;
   Object? messagesError;
   String? lastRequestedSessionId;
+  String? lastRequestedDirectory;
 
   FakeOpenCodeApi({this.messages = const [], this.messagesError});
 
   @override
-  Future<List<MessageWithParts>> getMessages(String sessionId) async {
+  Future<List<MessageWithParts>> getMessages(String sessionId, {String? directory}) async {
     lastRequestedSessionId = sessionId;
+    lastRequestedDirectory = directory;
     if (messagesError != null) throw messagesError!;
     return messages;
   }
@@ -372,22 +384,23 @@ class FakeOpenCodeApi implements OpenCodeApi {
       throw UnimplementedError();
 
   @override
-  Future<Session> updateSession(String sessionId, Map<String, dynamic> body) async => throw UnimplementedError();
+  Future<Session> updateSession(String sessionId, Map<String, dynamic> body, {String? directory}) async =>
+      throw UnimplementedError();
 
   @override
-  Future<void> deleteSession(String sessionId) async {}
+  Future<void> deleteSession(String sessionId, {String? directory}) async {}
 
   @override
-  Future<List<Session>> getChildren(String sessionId) async => [];
+  Future<List<Session>> getChildren(String sessionId, {String? directory}) async => [];
 
   @override
   Future<Map<String, SessionStatus>> getSessionStatuses() async => <String, SessionStatus>{};
 
   @override
-  Future<void> sendPrompt(String sessionId, {required Map<String, dynamic> body}) async {}
+  Future<void> sendPrompt(String sessionId, {required Map<String, dynamic> body, String? directory}) async {}
 
   @override
-  Future<void> abortSession(String sessionId) async {}
+  Future<void> abortSession(String sessionId, {String? directory}) async {}
 
   @override
   Future<List<AgentInfo>> listAgents() async => [];

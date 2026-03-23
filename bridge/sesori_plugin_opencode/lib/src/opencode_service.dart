@@ -28,9 +28,9 @@ class OpenCodeService {
     return _applyLimit(afterStart, limit);
   }
 
-  Future<List<MessageWithParts>> getLastExchange(String sessionId) async {
+  Future<List<MessageWithParts>> getLastExchange(String sessionId, {String? directory}) async {
     try {
-      final messages = await repository.api.getMessages(sessionId);
+      final messages = await repository.api.getMessages(sessionId, directory: directory);
       Log.d("[dbg] got ${messages.length} messages for session $sessionId");
       if (messages.isNotEmpty) {
         Log.v("[dbg] first message: ${messages[0].toJson()}");

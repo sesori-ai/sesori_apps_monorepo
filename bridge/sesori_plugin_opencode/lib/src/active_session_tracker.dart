@@ -118,6 +118,16 @@ class ActiveSessionTracker {
     _lastEmittedActiveSessions = {};
   }
 
+  /// Register a known session -> directory mapping (e.g., after session creation).
+  void registerSession(String sessionId, String directory) {
+    _sessionWorktrees[sessionId] = directory;
+  }
+
+  /// Look up the directory for a session. Returns null if unknown.
+  String? getSessionDirectory(String sessionId) {
+    return _sessionWorktrees[sessionId];
+  }
+
   List<ProjectActivitySummary> buildSummary() {
     // Partition active (busy/retry) sessions into root vs child.
     final activeRoots = <String>{};
