@@ -79,7 +79,9 @@ class MockLifecycleSource extends Mock implements LifecycleSource {
 }
 
 class MockRouteSource extends Mock implements RouteSource {
-  final BehaviorSubject<AppRoute?> _currentRoute = BehaviorSubject.seeded(AppRoute.projects);
+  final BehaviorSubject<AppRoute?> _currentRoute;
+
+  MockRouteSource({AppRoute? initialRoute}) : _currentRoute = BehaviorSubject.seeded(initialRoute);
 
   @override
   ValueStream<AppRoute?> get currentRouteStream => _currentRoute.stream;
