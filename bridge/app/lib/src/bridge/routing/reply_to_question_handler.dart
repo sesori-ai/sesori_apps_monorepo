@@ -24,13 +24,19 @@ class ReplyToQuestionHandler extends RequestHandler {
   }) async {
     final questionId = pathParams[_idParam];
     if (questionId == null || questionId.isEmpty) {
+      Log.e("[question-reply] missing question id in path params");
       return buildErrorResponse(request, 400, "missing question id");
     }
 
+    Log.d("[question-reply] received reply for questionId=$questionId");
+
     final bodyRaw = request.body;
     if (bodyRaw == null) {
+      Log.e("[question-reply] missing body for questionId=$questionId");
       return buildErrorResponse(request, 400, "missing answers in JSON body");
     }
+
+    Log.v("[question-reply] raw body: $bodyRaw");
 
     final ReplyToQuestionRequest replyRequest;
     try {
@@ -41,16 +47,25 @@ class ReplyToQuestionHandler extends RequestHandler {
           _ => throw const FormatException("invalid JSON body"),
         },
       );
-    } on FormatException {
+    } on FormatException catch (e) {
+      Log.e("[question-reply] body parse failed (FormatException): $e");
       return buildErrorResponse(request, 400, "invalid JSON body");
-    } on Object {
+    } on Object catch (e) {
+      Log.e("[question-reply] body parse failed: $e");
       return buildErrorResponse(request, 400, "invalid JSON body");
     }
 
-    await _plugin.replyToQuestion(
-      questionId,
-      answers: replyRequest.answers.map((answer) => answer.values).toList(),
-    );
+    final answers = replyRequest.answers.map((answer) => answer.values).toList();
+    Log.v("[question-reply] parsed ${answers.length} answer(s) for questionId=$questionId: $answers");
+
+    try {
+      await _plugin.replyToQuestion(questionId, answers: answers);
+      Log.v("[question-reply] plugin.replyToQuestion completed OK for questionId=$questionId");
+    } catch (e) {
+      Log.e("[question-reply] plugin.replyToQuestion FAILED for questionId=$questionId: $e");
+      rethrow;
+    }
+
     return RelayResponse(
       id: request.id,
       status: 200,

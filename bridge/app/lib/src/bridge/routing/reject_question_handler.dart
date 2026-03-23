@@ -22,10 +22,20 @@ class RejectQuestionHandler extends RequestHandler {
   }) async {
     final questionId = pathParams[_idParam];
     if (questionId == null || questionId.isEmpty) {
+      Log.e("[question-reject] missing question id in path params");
       return buildErrorResponse(request, 400, "missing question id");
     }
 
-    await _plugin.rejectQuestion(questionId);
+    Log.d("[question-reject] received reject for questionId=$questionId");
+
+    try {
+      await _plugin.rejectQuestion(questionId);
+      Log.v("[question-reject] plugin.rejectQuestion completed OK for questionId=$questionId");
+    } catch (e) {
+      Log.e("[question-reject] plugin.rejectQuestion FAILED for questionId=$questionId: $e");
+      rethrow;
+    }
+
     return RelayResponse(
       id: request.id,
       status: 200,

@@ -1,6 +1,7 @@
 import "dart:convert";
 
 import "package:http/http.dart" as http;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "models/agent_info.dart";
 import "models/message_with_parts.dart";
@@ -240,14 +241,17 @@ class OpenCodeApi {
   }) async {
     final client = http.Client();
     try {
+      final encodedBody = jsonEncode(body);
+      Log.d("[question-api] POST /question/$questionId/reply body=$encodedBody");
       final response = await client.post(
         Uri.parse("$serverURL/question/$questionId/reply"),
         headers: {
           ..._authHeaders,
           "content-type": "application/json",
         },
-        body: jsonEncode(body),
+        body: encodedBody,
       );
+      Log.d("[question-api] POST /question/$questionId/reply => ${response.statusCode} body=${response.body}");
       _ensureSuccess(response, "POST /question/$questionId/reply");
     } finally {
       client.close();
@@ -259,11 +263,13 @@ class OpenCodeApi {
   }) async {
     final client = http.Client();
     try {
+      Log.d("[question-api] POST /question/$questionId/reject");
       final response = await client.post(
         Uri.parse("$serverURL/question/$questionId/reject"),
         headers: _authHeaders,
         body: "",
       );
+      Log.d("[question-api] POST /question/$questionId/reject => ${response.statusCode} body=${response.body}");
       _ensureSuccess(response, "POST /question/$questionId/reject");
     } finally {
       client.close();
