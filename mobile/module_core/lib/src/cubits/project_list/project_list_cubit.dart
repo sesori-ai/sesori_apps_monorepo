@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:bloc/bloc.dart";
+import "package:meta/meta.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -9,7 +10,14 @@ import "../../capabilities/project/project_service.dart";
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/sse/sse_event_repository.dart";
 import "../../logging/logging.dart";
+import "../../platform/route_source.dart";
+import "../../routing/app_routes.dart";
 import "project_list_state.dart";
+
+/// How long to wait after an activity event before auto-refreshing project
+/// data. Events during this window are coalesced into a single refresh.
+@visibleForTesting
+const refreshThrottleDuration = Duration(seconds: 30);
 
 class ProjectListCubit extends Cubit<ProjectListState> {
   final ProjectService _projectService;
@@ -21,13 +29,49 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     ProjectService projectService,
     ConnectionService connectionService,
     SseEventRepository sseEventRepository,
+    RouteSource routeSource,
   ) : _projectService = projectService,
       _connectionService = connectionService,
       _sseEventRepository = sseEventRepository,
       super(const ProjectListState.loading()) {
     loadProjects();
+
+    // 1. Immediate activity badge updates (no API call).
     _subscriptions.add(
       _sseEventRepository.projectActivity.listen(_onActivityUpdated),
+    );
+
+    // 2. Auto-refresh: throttled project data fetch, active only while the
+    //    projects page is visible. switchMap cancels the inner subscription
+    //    when the route leaves projects and restarts it when coming back.
+    _subscriptions.add(
+      routeSource.currentRouteStream
+          .switchMap((route) {
+            if (route != AppRoute.projects) return const Stream<void>.empty();
+            return _sseEventRepository.projectActivity.throttleTime(
+              refreshThrottleDuration,
+              trailing: true,
+              leading: false,
+            );
+          })
+          .listen((_) {
+            if (isClosed) return;
+            unawaited(refreshProjects());
+          }),
+    );
+
+    // 3. Navigate-back refresh: one immediate fetch when the user returns to
+    //    the projects page. pairwise() ensures this doesn't fire on the
+    //    initial route emission (needs two values before it emits).
+    _subscriptions.add(
+      routeSource.currentRouteStream
+          .distinct()
+          .pairwise()
+          .where((pair) => pair.first != AppRoute.projects && pair.last == AppRoute.projects)
+          .listen((_) {
+            if (isClosed) return;
+            unawaited(refreshProjects());
+          }),
     );
   }
 

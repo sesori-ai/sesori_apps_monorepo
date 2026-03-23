@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -17,14 +19,37 @@ class ProjectListScreen extends StatelessWidget {
         getIt<ProjectService>(),
         getIt<ConnectionService>(),
         getIt<SseEventRepository>(),
+        getIt<RouteSource>(),
       ),
       child: const _ProjectListBody(),
     );
   }
 }
 
-class _ProjectListBody extends StatelessWidget {
+class _ProjectListBody extends StatefulWidget {
   const _ProjectListBody();
+
+  @override
+  State<_ProjectListBody> createState() => _ProjectListBodyState();
+}
+
+class _ProjectListBodyState extends State<_ProjectListBody> {
+  late final Timer _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (!mounted) return;
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _ticker.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
