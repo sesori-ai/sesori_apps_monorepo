@@ -22,13 +22,14 @@ void main() {
       expect(handler.canHandle(makeRequest("POST", "/question/q1/reply")), isTrue);
     });
 
-    test("extracts id and parses answers", () async {
+    test("extracts id, sessionId, and parses answers", () async {
       await handler.handle(
         makeRequest(
           "POST",
           "/question/q1/reply",
           body: jsonEncode(
             const ReplyToQuestionRequest(
+              sessionId: "ses-1",
               answers: [
                 ReplyAnswer(values: ["yes"]),
                 ReplyAnswer(values: ["tool-a", "tool-b"]),
@@ -41,6 +42,7 @@ void main() {
       );
 
       expect(plugin.lastReplyQuestionId, equals("q1"));
+      expect(plugin.lastReplySessionId, equals("ses-1"));
       expect(
         plugin.lastReplyAnswers,
         equals(const [
@@ -57,6 +59,7 @@ void main() {
           "/question/q1/reply",
           body: jsonEncode(
             const ReplyToQuestionRequest(
+              sessionId: "ses-1",
               answers: [
                 ReplyAnswer(values: ["ok"]),
               ],
@@ -88,6 +91,7 @@ void main() {
           "/question/q1/reply",
           body: jsonEncode(
             const ReplyToQuestionRequest(
+              sessionId: "ses-1",
               answers: [
                 ReplyAnswer(values: ["ok"]),
               ],
