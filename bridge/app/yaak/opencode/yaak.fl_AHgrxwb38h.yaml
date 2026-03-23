@@ -1,0 +1,13 @@
+type: folder
+model: folder
+id: fl_AHgrxwb38h
+createdAt: 2026-03-23T14:35:45.278292
+updatedAt: 2026-03-23T14:35:49.430230
+workspaceId: wk_CKpMKQdH7W
+folderId: null
+authentication: {}
+authenticationType: null
+description: ''
+headers: []
+name: question
+sortPriority: 5333.333333333333

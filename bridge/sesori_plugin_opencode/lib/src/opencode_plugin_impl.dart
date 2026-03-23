@@ -357,10 +357,16 @@ class OpenCodePlugin implements BridgePlugin {
   }
 
   @override
-  Future<void> replyToQuestion(String questionId, {required List<List<String>> answers}) {
+  Future<void> replyToQuestion({
+    required String questionId,
+    required String sessionId,
+    required List<List<String>> answers,
+  }) {
+    final directory = _service.tracker.getSessionDirectory(sessionId: sessionId);
     return _call(
       () => _service.repository.api.replyToQuestion(
         questionId: questionId,
+        directory: directory,
         body: {
           "answers": answers,
         },
