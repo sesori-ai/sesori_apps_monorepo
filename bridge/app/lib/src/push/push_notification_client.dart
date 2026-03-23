@@ -4,6 +4,7 @@ import "package:http/http.dart" as http;
 import "package:sesori_shared/sesori_shared.dart" show SendNotificationPayload;
 
 import "../auth/token_refresher.dart";
+import "push_send_exception.dart";
 
 class PushNotificationClient {
   final String authBackendURL;
@@ -24,19 +25,20 @@ class PushNotificationClient {
       final refreshedToken = await _tokenRefreshManager.getAccessToken(forceRefresh: true);
       final retryResponse = await _sendPost(payload, refreshedToken);
       if (retryResponse.statusCode < 200 || retryResponse.statusCode >= 300) {
-        throw Exception("[push] notification failed after retry: ${retryResponse.statusCode}");
+        throw PushSendException(statusCode: retryResponse.statusCode, isRetry: true);
       }
       return;
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception("[push] notification failed: ${response.statusCode}");
+      throw PushSendException(statusCode: response.statusCode);
     }
   }
 
   Future<http.Response> _sendPost(SendNotificationPayload payload, String token) {
+    final base = authBackendURL.endsWith("/") ? authBackendURL.substring(0, authBackendURL.length - 1) : authBackendURL;
     return _client.post(
-      Uri.parse("$authBackendURL/notifications/send"),
+      Uri.parse("$base/notifications/send"),
       headers: {
         "Content-Type": "application/json",
         "Authorization": "Bearer $token",

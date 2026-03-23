@@ -4,7 +4,8 @@ import "dart:io";
 
 import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/auth/token.dart";
-import "package:sesori_bridge/src/auth/token_refresh_manager.dart";
+import "package:sesori_bridge/src/auth/token_manager.dart";
+import "package:sesori_bridge/src/auth/token_refresh_exception.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -175,7 +176,7 @@ void main() {
         saveTokens: (_) async {},
       );
 
-      expect(manager.getAccessToken(), throwsA(isA<Exception>()));
+      expect(manager.getAccessToken(), throwsA(isA<TokenRefreshException>()));
     });
 
     test("network error during refresh throws", () async {
@@ -201,7 +202,7 @@ void main() {
         saveTokens: (_) async {},
       );
 
-      expect(manager.getAccessToken(), throwsA(isA<Exception>()));
+      expect(manager.getAccessToken(), throwsA(isA<TokenRefreshException>()));
     });
 
     test("empty refresh token throws", () async {
@@ -215,7 +216,7 @@ void main() {
         saveTokens: (_) async {},
       );
 
-      expect(manager.getAccessToken(), throwsA(isA<Exception>()));
+      expect(manager.getAccessToken(), throwsA(isA<TokenRefreshException>()));
     });
 
     test("malformed JWT returns current token without proactive refresh", () async {

@@ -6,7 +6,7 @@ import 'package:opencode_plugin/opencode_plugin.dart';
 import 'package:sesori_bridge/src/auth/login.dart';
 import 'package:sesori_bridge/src/auth/profile.dart';
 import 'package:sesori_bridge/src/auth/token.dart';
-import 'package:sesori_bridge/src/auth/token_refresh_manager.dart';
+import 'package:sesori_bridge/src/auth/token_manager.dart';
 import 'package:sesori_bridge/src/auth/validate.dart';
 import 'package:sesori_bridge/src/bridge/debug_server.dart';
 import 'package:sesori_bridge/src/bridge/models/bridge_config.dart';
@@ -174,7 +174,7 @@ Future<void> main(List<String> args) async {
     client: relayClient,
     plugin: plugin,
     pushNotificationService: pushNotificationService,
-    accessTokenUpdater: tokenManager,
+    tokenRefresher: tokenManager,
   );
   final session = orchestrator.create();
 

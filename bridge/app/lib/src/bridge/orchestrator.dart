@@ -7,9 +7,7 @@ import "package:cryptography/cryptography.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../auth/access_token_provider.dart";
-import "../auth/token.dart";
-import "../auth/validate.dart";
+import "../auth/token_refresher.dart";
 import "../push/push_notification_service.dart";
 import "key_exchange.dart";
 import "models/bridge_config.dart";
@@ -24,18 +22,18 @@ class Orchestrator {
   final RelayClient _client;
   final BridgePlugin _plugin;
   final PushNotificationService _pushNotificationService;
-  final AccessTokenUpdater _accessTokenUpdater;
+  final TokenRefresher _tokenRefresher;
 
   Orchestrator({
     required this.config,
     required RelayClient client,
     required BridgePlugin plugin,
     required PushNotificationService pushNotificationService,
-    required AccessTokenUpdater accessTokenUpdater,
+    required TokenRefresher tokenRefresher,
   }) : _client = client,
        _plugin = plugin,
        _pushNotificationService = pushNotificationService,
-       _accessTokenUpdater = accessTokenUpdater;
+       _tokenRefresher = tokenRefresher;
 
   /// Creates a new session with a fresh room key and SSE manager.
   OrchestratorSession create() {
@@ -48,7 +46,7 @@ class Orchestrator {
       client: _client,
       plugin: _plugin,
       pushNotificationService: _pushNotificationService,
-      accessTokenUpdater: _accessTokenUpdater,
+      tokenRefresher: _tokenRefresher,
       roomKey: roomKey,
       sseManager: sseManager,
     );
@@ -78,7 +76,7 @@ class OrchestratorSession {
   final SSEManager _sseManager;
   final RequestRouter _router;
   final PushNotificationService _pushNotificationService;
-  final AccessTokenUpdater _accessTokenUpdater;
+  final TokenRefresher _tokenRefresher;
   StreamSubscription<BridgeSseEvent>? _eventSubscription;
 
   bool _cancelled = false;
@@ -88,13 +86,13 @@ class OrchestratorSession {
     required RelayClient client,
     required BridgePlugin plugin,
     required PushNotificationService pushNotificationService,
-    required AccessTokenUpdater accessTokenUpdater,
+    required TokenRefresher tokenRefresher,
     required List<int> roomKey,
     required SSEManager sseManager,
   }) : _client = client,
        _plugin = plugin,
        _pushNotificationService = pushNotificationService,
-       _accessTokenUpdater = accessTokenUpdater,
+       _tokenRefresher = tokenRefresher,
        _roomKey = roomKey,
        _sseManager = sseManager,
        _router = RequestRouter(plugin);
@@ -204,48 +202,11 @@ class OrchestratorSession {
   }
 
   Future<void> _refreshAccessToken() async {
-    TokenData tokens;
     try {
-      tokens = await loadTokens();
-    } catch (e) {
-      Log.w("Failed to load tokens for refresh: $e");
-      return;
-    }
-
-    late (TokenData, bool) refreshed;
-    try {
-      refreshed = await validateToken(
-        config.authBackendURL,
-        tokens.accessToken,
-        tokens.refreshToken,
-      );
+      await _tokenRefresher.getAccessToken(forceRefresh: true);
+      Log.i("Access token refreshed successfully");
     } catch (e) {
       Log.w("Token refresh failed: $e");
-      return;
-    }
-
-    final newTokens = refreshed.$1;
-    final ok = refreshed.$2;
-    if (!ok) {
-      Log.w("Token refresh returned not-ok (credentials may be revoked)");
-      return;
-    }
-
-    _accessTokenUpdater.accessToken = newTokens.accessToken;
-
-    final persistedTokens = TokenData(
-      accessToken: newTokens.accessToken,
-      refreshToken: newTokens.refreshToken,
-      bridgeToken: tokens.bridgeToken,
-    );
-
-    try {
-      await saveTokens(persistedTokens);
-      Log.i("Access token refreshed and persisted successfully");
-    } catch (e) {
-      Log.w(
-        "Access token refreshed for current session, but failed to persist: $e",
-      );
     }
   }
 

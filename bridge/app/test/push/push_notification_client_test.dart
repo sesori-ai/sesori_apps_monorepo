@@ -2,8 +2,10 @@ import "dart:async";
 import "dart:convert";
 import "dart:io";
 
+import "package:sesori_bridge/src/auth/token_refresh_exception.dart";
 import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/push/push_notification_client.dart";
+import "package:sesori_bridge/src/push/push_send_exception.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -19,7 +21,7 @@ class _FakeTokenRefreshManager implements TokenRefresher {
     if (forceRefresh) {
       forceRefreshCalled = true;
       if (_forceRefreshToken != null) return _forceRefreshToken;
-      throw Exception("Force refresh failed");
+      throw const TokenRefreshException("Force refresh failed");
     }
     return _token;
   }
@@ -229,7 +231,7 @@ void main() {
             ),
           ),
         ),
-        throwsA(isA<Exception>()),
+        throwsA(isA<PushSendException>()),
       );
 
       expect(requestCount, equals(2));
@@ -268,7 +270,7 @@ void main() {
             ),
           ),
         ),
-        throwsA(isA<Exception>()),
+        throwsA(isA<TokenRefreshException>()),
       );
 
       expect(fakeManager.forceRefreshCalled, isTrue);
@@ -308,7 +310,7 @@ void main() {
             ),
           ),
         ),
-        throwsA(isA<Exception>()),
+        throwsA(isA<PushSendException>()),
       );
 
       expect(requestCount, equals(1));

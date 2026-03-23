@@ -4,8 +4,10 @@ import "package:freezed_annotation/freezed_annotation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../auth/token_refresh_exception.dart";
 import "push_notification_client.dart";
 import "push_rate_limiter.dart";
+import "push_send_exception.dart";
 
 class PushNotificationService {
   final PushNotificationClient _client;
@@ -44,10 +46,7 @@ class PushNotificationService {
 
     unawaited(
       _client.sendNotification(payload).catchError((Object e) {
-        final message = e.toString();
-        if (message.contains("401") ||
-            message.contains("Token refresh failed") ||
-            message.contains("No tokens available")) {
+        if (e is TokenRefreshException || (e is PushSendException && e.statusCode == 401)) {
           Log.e("[push] auth failure, credentials may need re-authentication: $e");
         } else {
           Log.w("[push] send error: $e");

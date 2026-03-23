@@ -3,10 +3,12 @@ import "dart:convert";
 
 import "package:http/http.dart" as http;
 import "package:rxdart/rxdart.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "access_token_provider.dart";
 import "token.dart";
+import "token_refresh_exception.dart";
 import "token_refresher.dart";
 
 class TokenManager implements AccessTokenProvider, AccessTokenUpdater, TokenRefresher {
@@ -37,7 +39,10 @@ class TokenManager implements AccessTokenProvider, AccessTokenUpdater, TokenRefr
   @override
   set accessToken(String token) => _tokenSubject.add(token);
 
-  void dispose() => _tokenSubject.close();
+  void dispose() {
+    _tokenSubject.close();
+    _client.close();
+  }
 
   @override
   Future<String> getAccessToken({bool forceRefresh = false}) async {
@@ -59,7 +64,12 @@ class TokenManager implements AccessTokenProvider, AccessTokenUpdater, TokenRefr
     }
 
     if (ttl > const Duration(seconds: 30)) {
-      unawaited(_refreshAndPersist());
+      unawaited(
+        _refreshAndPersist().catchError((Object e) {
+          Log.w("[token] background refresh failed: $e");
+          return currentToken;
+        }),
+      );
       return currentToken;
     }
 
@@ -77,12 +87,12 @@ class TokenManager implements AccessTokenProvider, AccessTokenUpdater, TokenRefr
   Future<String> _doRefresh() async {
     final tokens = await _loadTokens();
     if (tokens == null) {
-      throw Exception("No tokens available for refresh");
+      throw const TokenRefreshException("No tokens available for refresh");
     }
 
     final refreshToken = tokens.refreshToken;
     if (refreshToken.isEmpty) {
-      throw Exception("Refresh token is empty");
+      throw const TokenRefreshException("Refresh token is empty");
     }
 
     final base = _authBackendUrl.endsWith("/")
@@ -97,7 +107,7 @@ class TokenManager implements AccessTokenProvider, AccessTokenUpdater, TokenRefr
     );
 
     if (response.statusCode != 200) {
-      throw Exception("Token refresh failed with status ${response.statusCode}");
+      throw TokenRefreshException("Token refresh failed with status ${response.statusCode}");
     }
 
     final jsonBody = jsonDecode(response.body) as Map<String, dynamic>;
