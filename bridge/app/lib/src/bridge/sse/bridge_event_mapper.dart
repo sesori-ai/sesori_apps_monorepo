@@ -193,7 +193,8 @@ class BridgeEventMapper {
   SesoriSseEvent? _tryParseSseEvent(Map<String, dynamic> payload) {
     try {
       return SesoriSseEvent.fromJson(payload);
-    } catch (_) {
+    } catch (e) {
+      Log.w("failed to parse SSE event from payload: $payload, error: $e");
       return null;
     }
   }
