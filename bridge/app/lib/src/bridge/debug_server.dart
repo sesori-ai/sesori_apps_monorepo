@@ -6,10 +6,12 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "routing/request_router.dart";
+import "sse/bridge_event_mapper.dart";
 
 class DebugServer {
   final BridgePlugin _plugin;
   final RequestRouter _router;
+  final BridgeEventMapper _mapper;
   final int port;
   HttpServer? _server;
   final List<HttpResponse> _sseClients = [];
@@ -17,7 +19,10 @@ class DebugServer {
 
   int _nextRequestId = 1;
 
-  DebugServer(BridgePlugin plugin, {required this.port}) : _plugin = plugin, _router = RequestRouter(plugin);
+  DebugServer(BridgePlugin plugin, {required this.port})
+    : _plugin = plugin,
+      _router = RequestRouter(plugin),
+      _mapper = BridgeEventMapper(plugin);
 
   int? get boundPort => _server?.port;
 
@@ -115,7 +120,10 @@ class DebugServer {
       _sseClients.add(response);
 
       _pluginEventsSub ??= _plugin.events.listen((event) {
-        unawaited(_fanOutEvent(jsonEncode({"type": event.runtimeType.toString()})));
+        final mapped = _mapper.map(event);
+        if (mapped != null) {
+          unawaited(_fanOutEvent(jsonEncode(mapped.toJson())));
+        }
       });
 
       final disconnected = Completer<void>();

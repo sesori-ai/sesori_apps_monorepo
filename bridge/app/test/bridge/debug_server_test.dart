@@ -34,8 +34,8 @@ void main() {
       final firstEvent = await first.nextEvent();
       final secondEvent = await second.nextEvent();
 
-      expect(firstEvent, contains("BridgeSseServerConnected"));
-      expect(secondEvent, contains("BridgeSseServerConnected"));
+      expect(firstEvent, contains("server.connected"));
+      expect(secondEvent, contains("server.connected"));
     });
 
     test(
@@ -50,7 +50,7 @@ void main() {
 
         plugin.add(const BridgeSseServerConnected());
         final firstEvent = await first.nextEvent();
-        expect(firstEvent, contains("BridgeSseServerConnected"));
+        expect(firstEvent, contains("server.connected"));
       },
     );
 
