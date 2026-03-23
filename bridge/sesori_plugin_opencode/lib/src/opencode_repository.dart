@@ -6,6 +6,37 @@ import "opencode_api.dart";
 
 const String _globalProjectId = "global";
 
+/// Merges OpenCode's standard and global session APIs into a unified view of
+/// projects and sessions.
+///
+/// ## Why "global" sessions exist
+///
+/// OpenCode assigns a special project ID (`"global"`) to sessions created in
+/// directories that don't yet have a git repository. Once a directory is
+/// `git init`-ed and OpenCode restarts, it creates a real project entry and
+/// migrates future sessions to that project ID. However, any sessions created
+/// **before** the git init retain `projectID = "global"` in the database.
+///
+/// This means a single directory can have sessions split across two project
+/// IDs:
+///
+/// - **Real project ID** — sessions created after the project was recognized.
+/// - **`"global"`** — orphaned sessions created before git init.
+///
+/// ## How this class handles it
+///
+/// [getProjects] fetches both the project list (`/project`) and all root
+/// sessions across every project (`/experimental/session?roots=true`). It then:
+///
+/// 1. **Merges timestamps**: For every real project, we look at ALL sessions
+///    under its worktree (regardless of their project ID) and merge their
+///    timestamps so the project's "last updated" reflects the most recent
+///    session activity.
+///
+/// 2. **Synthesizes virtual projects**: For directories that have `"global"`
+///    sessions but no real project entry (e.g., a non-git directory that was
+///    used once), we create a virtual project so the mobile app can still
+///    display those sessions.
 class OpenCodeRepository {
   final OpenCodeApi _api;
 
@@ -14,7 +45,7 @@ class OpenCodeRepository {
   OpenCodeApi get api => _api;
 
   Future<List<Project>> getProjects() async {
-    final (rawProjects, globalSessions) = await wait2(
+    final (rawProjects, allSessions) = await wait2(
       _api.listProjects(),
       _api.listGlobalSessions(directory: null, roots: true),
     );
@@ -32,10 +63,21 @@ class OpenCodeRepository {
       projectByWorktree[project.worktree] = project;
     }
 
-    final globalByDirectory = _groupGlobalSessionsByDirectory(globalSessions);
+    // All sessions grouped by directory — used to merge timestamps into real
+    // projects so that "last updated" reflects the most recent session activity,
+    // not just the project's own metadata timestamp.
+    final allSessionsByDirectory = _groupSessionsByDirectory(allSessions);
+
+    // Only "global" project sessions grouped by directory — used to detect
+    // directories that have orphaned sessions but no real project entry, so we
+    // can create virtual projects for them.
+    final globalOnlyByDirectory = _groupSessionsByDirectory(
+      allSessions,
+      projectID: _globalProjectId,
+    );
 
     final mergedRealProjects = realProjects.map((project) {
-      final groupedSessions = globalByDirectory[project.worktree];
+      final groupedSessions = allSessionsByDirectory[project.worktree];
       if (groupedSessions == null) return project;
       return _mergeProjectTimeWithSessions(
         project: project,
@@ -44,7 +86,7 @@ class OpenCodeRepository {
     }).toList();
 
     final virtualProjects = _buildVirtualProjects(
-      globalByDirectory: globalByDirectory,
+      globalByDirectory: globalOnlyByDirectory,
       projectByWorktree: projectByWorktree,
       realProjects: realProjects,
       globalWorktree: globalWorktree,
@@ -97,18 +139,33 @@ class OpenCodeRepository {
     return filtered;
   }
 
-  Map<String, List<GlobalSession>> _groupGlobalSessionsByDirectory(
-    List<GlobalSession> sessions,
-  ) {
+  /// Groups [sessions] by their [GlobalSession.directory] field.
+  ///
+  /// When [projectID] is provided, only sessions whose
+  /// [GlobalSession.projectID] matches are included. When null, all sessions
+  /// are included regardless of their project ID.
+  Map<String, List<GlobalSession>> _groupSessionsByDirectory(
+    List<GlobalSession> sessions, {
+    String? projectID,
+  }) {
     final grouped = <String, List<GlobalSession>>{};
     for (final session in sessions) {
-      if (session.projectID != _globalProjectId) continue;
+      if (projectID != null && session.projectID != projectID) continue;
       if (session.directory.isEmpty) continue;
       grouped.putIfAbsent(session.directory, () => []).add(session);
     }
     return grouped;
   }
 
+  /// Builds virtual [Project] entries for directories that have `"global"`
+  /// sessions but no corresponding real project entry.
+  ///
+  /// This covers directories where a user ran OpenCode before `git init`. Those
+  /// sessions are assigned to the `"global"` project and wouldn't appear in the
+  /// project list without a synthetic entry.
+  ///
+  /// Directories already covered by a real project (exact match or
+  /// parent/child) are skipped to avoid duplicates.
   List<Project> _buildVirtualProjects({
     required Map<String, List<GlobalSession>> globalByDirectory,
     required Map<String, Project> projectByWorktree,
@@ -141,6 +198,9 @@ class OpenCodeRepository {
     return virtual;
   }
 
+  /// Merges a project's own timestamps with the timestamps derived from its
+  /// sessions, producing a [ProjectTime] where `created` is the earliest and
+  /// `updated` is the most recent across both sources.
   Project _mergeProjectTimeWithSessions({
     required Project project,
     required List<GlobalSession> sessions,
@@ -171,6 +231,9 @@ class OpenCodeRepository {
     return project.copyWith(time: mergedTime);
   }
 
+  /// Returns a [ProjectTime] representing the earliest `created` and latest
+  /// `updated` across the given [sessions]. Returns null if no session carries
+  /// time information.
   ProjectTime? _deriveTimeFromSessions(List<GlobalSession> sessions) {
     final created = <int>[];
     final updated = <int>[];

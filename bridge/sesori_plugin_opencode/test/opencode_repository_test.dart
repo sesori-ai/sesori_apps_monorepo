@@ -126,21 +126,223 @@ void main() {
       expect(ids.where((id) => id == "dup").length, equals(1));
     });
   });
+
+  group("OpenCodeRepository.getProjects", () {
+    test("merges timestamps from real-project sessions into project", () async {
+      // A real project whose own timestamp is old (set at OpenCode startup).
+      // A session belonging to that project has a much more recent timestamp
+      // (updated when user sent a message via Session.touch()).
+      final api = _FakeApi(
+        projects: [
+          const Project(
+            id: "my-project",
+            worktree: "/repo",
+            time: ProjectTime(created: 1000, updated: 1000),
+          ),
+        ],
+        globalSessions: [
+          const GlobalSession(
+            id: "s1",
+            projectID: "my-project",
+            directory: "/repo",
+            time: SessionTime(created: 1500, updated: 9000),
+          ),
+        ],
+      );
+      final repository = OpenCodeRepository(api);
+
+      final projects = await repository.getProjects();
+
+      expect(projects, hasLength(1));
+      expect(projects.first.time?.updated, equals(9000));
+      // created should be the earliest across project and sessions.
+      expect(projects.first.time?.created, equals(1000));
+    });
+
+    test("merges timestamps from global sessions into matching real project", () async {
+      // Orphaned global sessions under a directory that also has a real project.
+      final api = _FakeApi(
+        projects: [
+          const Project(
+            id: "my-project",
+            worktree: "/repo",
+            time: ProjectTime(created: 1000, updated: 2000),
+          ),
+        ],
+        globalSessions: [
+          const GlobalSession(
+            id: "orphan",
+            projectID: "global",
+            directory: "/repo",
+            time: SessionTime(created: 500, updated: 3000),
+          ),
+        ],
+      );
+      final repository = OpenCodeRepository(api);
+
+      final projects = await repository.getProjects();
+
+      expect(projects, hasLength(1));
+      // updated = max(2000, 3000)
+      expect(projects.first.time?.updated, equals(3000));
+      // created = min(1000, 500)
+      expect(projects.first.time?.created, equals(500));
+    });
+
+    test("uses project's own timestamp when no sessions exist", () async {
+      final api = _FakeApi(
+        projects: [
+          const Project(
+            id: "my-project",
+            worktree: "/repo",
+            time: ProjectTime(created: 1000, updated: 2000),
+          ),
+        ],
+      );
+      final repository = OpenCodeRepository(api);
+
+      final projects = await repository.getProjects();
+
+      expect(projects, hasLength(1));
+      expect(projects.first.time?.updated, equals(2000));
+      expect(projects.first.time?.created, equals(1000));
+    });
+
+    test("merges timestamps from both global and real-project sessions", () async {
+      // Project has sessions from both the real project ID and the global
+      // project ID (pre-git-init orphans). Both should contribute to the
+      // merged timestamp.
+      final api = _FakeApi(
+        projects: [
+          const Project(
+            id: "my-project",
+            worktree: "/repo",
+            time: ProjectTime(created: 1000, updated: 1000),
+          ),
+        ],
+        globalSessions: [
+          const GlobalSession(
+            id: "real-session",
+            projectID: "my-project",
+            directory: "/repo",
+            time: SessionTime(created: 2000, updated: 5000),
+          ),
+          const GlobalSession(
+            id: "orphan-session",
+            projectID: "global",
+            directory: "/repo",
+            time: SessionTime(created: 500, updated: 8000),
+          ),
+        ],
+      );
+      final repository = OpenCodeRepository(api);
+
+      final projects = await repository.getProjects();
+
+      expect(projects, hasLength(1));
+      // updated = max(1000, 5000, 8000)
+      expect(projects.first.time?.updated, equals(8000));
+      // created = min(1000, 2000, 500)
+      expect(projects.first.time?.created, equals(500));
+    });
+
+    test("creates virtual projects only from global sessions", () async {
+      // A directory with only global sessions (no real project entry) should
+      // produce a virtual project.
+      final api = _FakeApi(
+        projects: [
+          const Project(
+            id: "other-project",
+            worktree: "/other-repo",
+            time: ProjectTime(created: 1000, updated: 1000),
+          ),
+        ],
+        globalSessions: [
+          const GlobalSession(
+            id: "orphan",
+            projectID: "global",
+            directory: "/no-git-repo",
+            time: SessionTime(created: 500, updated: 3000),
+          ),
+        ],
+      );
+      final repository = OpenCodeRepository(api);
+
+      final projects = await repository.getProjects();
+
+      // Should have the real project + a virtual one.
+      expect(projects, hasLength(2));
+      final virtual = projects.where((p) => p.worktree == "/no-git-repo");
+      expect(virtual, hasLength(1));
+      expect(virtual.first.time?.updated, equals(3000));
+    });
+
+    test("does not create virtual project for real-project sessions without matching project", () async {
+      // Sessions belonging to a non-global project ID should not produce
+      // virtual projects — they already belong to a real project even if the
+      // project entry wasn't returned by the API (edge case).
+      final api = _FakeApi(
+        projects: [],
+        globalSessions: [
+          const GlobalSession(
+            id: "s1",
+            projectID: "some-real-project",
+            directory: "/repo",
+            time: SessionTime(created: 500, updated: 3000),
+          ),
+        ],
+      );
+      final repository = OpenCodeRepository(api);
+
+      final projects = await repository.getProjects();
+
+      // No virtual project should be created for non-global sessions.
+      expect(projects, isEmpty);
+    });
+
+    test("excludes global meta-project from results", () async {
+      final api = _FakeApi(
+        projects: [
+          const Project(
+            id: "global",
+            worktree: "/home/user",
+            time: ProjectTime(created: 1000, updated: 1000),
+          ),
+          const Project(
+            id: "my-project",
+            worktree: "/repo",
+            time: ProjectTime(created: 2000, updated: 2000),
+          ),
+        ],
+      );
+      final repository = OpenCodeRepository(api);
+
+      final projects = await repository.getProjects();
+
+      expect(projects, hasLength(1));
+      expect(projects.first.worktree, equals("/repo"));
+    });
+  });
 }
 
 class _FakeApi implements OpenCodeApi {
   final List<Session> _sessions;
   final List<GlobalSession> _globalSessions;
+  final List<Project> _projects;
 
-  _FakeApi({List<Session>? sessions, List<GlobalSession>? globalSessions})
-    : _sessions = sessions ?? [],
-      _globalSessions = globalSessions ?? [];
+  _FakeApi({
+    List<Session>? sessions,
+    List<GlobalSession>? globalSessions,
+    List<Project>? projects,
+  }) : _sessions = sessions ?? [],
+       _globalSessions = globalSessions ?? [],
+       _projects = projects ?? [];
 
   @override
   String get serverURL => "http://fake";
 
   @override
-  Future<List<Project>> listProjects() async => [];
+  Future<List<Project>> listProjects() async => _projects;
 
   @override
   Future<List<Session>> listRootSessions() async => _sessions;
