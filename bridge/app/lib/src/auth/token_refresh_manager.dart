@@ -7,8 +7,9 @@ import "package:sesori_shared/sesori_shared.dart";
 import "access_token_provider.dart";
 import "jwt_expiry.dart";
 import "token.dart";
+import "token_refresher.dart";
 
-class TokenRefreshManager {
+class TokenRefreshManager implements TokenRefresher {
   final AccessTokenProvider _tokenProvider;
   final AccessTokenUpdater _tokenUpdater;
   final String _authBackendUrl;
@@ -30,6 +31,7 @@ class TokenRefreshManager {
        _saveTokens = saveTokens,
        _client = client ?? http.Client();
 
+  @override
   Future<String> getFreshAccessToken({bool forceRefresh = false}) async {
     if (forceRefresh) {
       return _refreshAndPersist();

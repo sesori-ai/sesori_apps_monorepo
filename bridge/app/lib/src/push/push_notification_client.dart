@@ -1,36 +1,51 @@
 import "dart:convert";
 
 import "package:http/http.dart" as http;
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart" show SendNotificationPayload;
 
-import "../auth/access_token_provider.dart";
+import "../auth/token_refresher.dart";
 
 class PushNotificationClient {
   final String authBackendURL;
-  final AccessTokenProvider _accessTokenProvider;
+  final TokenRefresher _tokenRefreshManager;
   final http.Client _client = http.Client();
 
   PushNotificationClient({
     required this.authBackendURL,
-    required AccessTokenProvider accessTokenProvider,
-  }) : _accessTokenProvider = accessTokenProvider;
+    required TokenRefresher tokenRefreshManager,
+  }) : _tokenRefreshManager = tokenRefreshManager;
 
   Future<void> sendNotification(SendNotificationPayload payload) async {
-    try {
-      final response = await _client.post(
+    final token = await _tokenRefreshManager.getFreshAccessToken();
+
+    final response = await _client.post(
+      Uri.parse("$authBackendURL/notifications/send"),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token",
+      },
+      body: jsonEncode(payload.toJson()),
+    );
+
+    // 401: force refresh and retry once
+    if (response.statusCode == 401) {
+      final refreshedToken = await _tokenRefreshManager.getFreshAccessToken(forceRefresh: true);
+      final retryResponse = await _client.post(
         Uri.parse("$authBackendURL/notifications/send"),
         headers: {
           "Content-Type": "application/json",
-          "Authorization": "Bearer ${_accessTokenProvider.accessToken}",
+          "Authorization": "Bearer $refreshedToken",
         },
         body: jsonEncode(payload.toJson()),
       );
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        Log.w("[push] notification failed: ${response.statusCode}");
+      if (retryResponse.statusCode < 200 || retryResponse.statusCode >= 300) {
+        throw Exception("[push] notification failed after retry: ${retryResponse.statusCode}");
       }
-    } catch (e) {
-      Log.w("[push] notification error: $e");
+      return;
+    }
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception("[push] notification failed: ${response.statusCode}");
     }
   }
 }

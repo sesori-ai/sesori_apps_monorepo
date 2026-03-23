@@ -7,6 +7,7 @@ import 'package:sesori_bridge/src/auth/access_token_service.dart';
 import 'package:sesori_bridge/src/auth/login.dart';
 import 'package:sesori_bridge/src/auth/profile.dart';
 import 'package:sesori_bridge/src/auth/token.dart';
+import 'package:sesori_bridge/src/auth/token_refresh_manager.dart';
 import 'package:sesori_bridge/src/auth/validate.dart';
 import 'package:sesori_bridge/src/bridge/debug_server.dart';
 import 'package:sesori_bridge/src/bridge/models/bridge_config.dart';
@@ -152,9 +153,16 @@ Future<void> main(List<String> args) async {
     password: serverPasswordPtr,
   );
   final accessTokenService = AccessTokenService(authTokens.accessToken);
+  final tokenRefreshManager = TokenRefreshManager(
+    tokenProvider: accessTokenService,
+    tokenUpdater: accessTokenService,
+    authBackendUrl: authBackendURL,
+    loadTokens: loadTokens,
+    saveTokens: saveTokens,
+  );
   final pushClient = PushNotificationClient(
     authBackendURL: authBackendURL,
-    accessTokenProvider: accessTokenService,
+    tokenRefreshManager: tokenRefreshManager,
   );
   final pushRateLimiter = PushRateLimiter();
   final pushNotificationService = PushNotificationService(
