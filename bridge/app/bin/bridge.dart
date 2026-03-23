@@ -3,10 +3,10 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:opencode_plugin/opencode_plugin.dart';
-import 'package:sesori_bridge/src/auth/access_token_service.dart';
 import 'package:sesori_bridge/src/auth/login.dart';
 import 'package:sesori_bridge/src/auth/profile.dart';
 import 'package:sesori_bridge/src/auth/token.dart';
+import 'package:sesori_bridge/src/auth/token_manager.dart';
 import 'package:sesori_bridge/src/auth/validate.dart';
 import 'package:sesori_bridge/src/bridge/debug_server.dart';
 import 'package:sesori_bridge/src/bridge/models/bridge_config.dart';
@@ -151,10 +151,15 @@ Future<void> main(List<String> args) async {
     serverUrl: serverURL,
     password: serverPasswordPtr,
   );
-  final accessTokenService = AccessTokenService(authTokens.accessToken);
+  final tokenManager = TokenManager(
+    initialToken: authTokens.accessToken,
+    authBackendUrl: authBackendURL,
+    loadTokens: loadTokens,
+    saveTokens: saveTokens,
+  );
   final pushClient = PushNotificationClient(
     authBackendURL: authBackendURL,
-    accessTokenProvider: accessTokenService,
+    tokenRefreshManager: tokenManager,
   );
   final pushRateLimiter = PushRateLimiter();
   final pushNotificationService = PushNotificationService(
@@ -162,14 +167,14 @@ Future<void> main(List<String> args) async {
     rateLimiter: pushRateLimiter,
   );
 
-  final relayClient = RelayClient(relayURL: relayURL, accessTokenProvider: accessTokenService);
+  final relayClient = RelayClient(relayURL: relayURL, accessTokenProvider: tokenManager);
 
   final orchestrator = Orchestrator(
     config: bridgeConfig,
     client: relayClient,
     plugin: plugin,
     pushNotificationService: pushNotificationService,
-    accessTokenUpdater: accessTokenService,
+    tokenRefresher: tokenManager,
   );
   final session = orchestrator.create();
 
