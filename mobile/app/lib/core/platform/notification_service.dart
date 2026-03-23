@@ -1,6 +1,7 @@
 import "dart:io";
 
 import "package:firebase_messaging/firebase_messaging.dart";
+import "package:flutter/foundation.dart";
 import "package:injectable/injectable.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
@@ -17,6 +18,13 @@ class NotificationService {
   final AuthSession _authSession;
   final CompositeSubscription _subscriptions = CompositeSubscription();
   String? _currentToken;
+
+  @visibleForTesting
+  String? get currentTokenForTesting => _currentToken;
+
+  @visibleForTesting
+  set currentTokenForTesting(String? token) => _currentToken = token;
+
   bool _initialized = false;
   bool _disposed = false;
 
@@ -50,7 +58,7 @@ class NotificationService {
     _subscriptions.add(FirebaseMessaging.onMessage.listen(_onForegroundMessage));
 
     // value stream that emits the current auth state too
-    _subscriptions.add(_authSession.authStateStream.listen(_onAuthStateChanged));
+    _subscriptions.add(_authSession.authStateStream.listen(onAuthStateChanged));
 
     // Handle notification taps when app is in background (not terminated).
     _subscriptions.add(FirebaseMessaging.onMessageOpenedApp.listen(_onNotificationTapped));
@@ -96,7 +104,8 @@ class NotificationService {
     _currentToken = null;
   }
 
-  Future<void> _onAuthStateChanged(AuthState state) async {
+  @visibleForTesting
+  Future<void> onAuthStateChanged(AuthState state) async {
     logd("[FCM] Auth state changed: $state");
     switch (state) {
       case AuthAuthenticated():
