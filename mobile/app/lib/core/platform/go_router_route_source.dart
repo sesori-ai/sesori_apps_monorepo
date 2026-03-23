@@ -35,18 +35,24 @@ class GoRouterRouteSource implements RouteSource, Disposable {
     _currentRouteStream.add(matchedRoute);
   }
 
-  static AppRoute? _matchRoute(String path) {
-    final orderedRoutes = AppRoute.values.toList()..sort((a, b) => b.path.length.compareTo(a.path.length));
+  /// Routes sorted longest-path-first so `/projects/:id/sessions` is tried
+  /// before `/projects`. Computed once — the route table is static.
+  static final _orderedRoutes = AppRoute.values.toList()..sort((a, b) => b.path.length.compareTo(a.path.length));
 
-    for (final route in orderedRoutes) {
-      if (_routeRegex(route).hasMatch(path)) {
+  static final _regexByRoute = {
+    for (final route in AppRoute.values) route: _buildRegex(route),
+  };
+
+  static AppRoute? _matchRoute(String path) {
+    for (final route in _orderedRoutes) {
+      if (_regexByRoute[route]!.hasMatch(path)) {
         return route;
       }
     }
     return null;
   }
 
-  static RegExp _routeRegex(AppRoute route) {
+  static RegExp _buildRegex(AppRoute route) {
     final regexPath = route.path
         .split("/")
         .map((segment) {
