@@ -27,6 +27,90 @@ void main() {
 
         expect(tracker.getSessionDirectory("missing"), isNull);
       });
+
+      test("registerSession preserves raw directory without worktree normalization", () {
+        final tracker = ActiveSessionTracker(_fakeRepository());
+
+        tracker.registerSession("s1", "/projects/foo/packages/bar");
+
+        expect(
+          tracker.getSessionDirectory("s1"),
+          equals("/projects/foo/packages/bar"),
+        );
+      });
+
+      test("SSE session.created populates getSessionDirectory", () async {
+        final tracker = await _coldStartedTracker(
+          projects: [const Project(id: "p1", worktree: "/projects/foo")],
+        );
+
+        tracker.handleEvent(
+          _sessionCreated("s1", "/projects/foo/packages/bar"),
+          null,
+        );
+
+        expect(
+          tracker.getSessionDirectory("s1"),
+          equals("/projects/foo/packages/bar"),
+        );
+      });
+
+      test("SSE session.updated preserves raw directory", () async {
+        final tracker = await _coldStartedTracker(
+          projects: [const Project(id: "p1", worktree: "/projects/foo")],
+        );
+
+        tracker.handleEvent(
+          _sessionCreated("s1", "/projects/foo/packages/bar"),
+          null,
+        );
+        tracker.handleEvent(
+          _sessionUpdated("s1", "/projects/foo/packages/bar"),
+          null,
+        );
+
+        expect(
+          tracker.getSessionDirectory("s1"),
+          equals("/projects/foo/packages/bar"),
+        );
+      });
+
+      test("SSE session.deleted removes from getSessionDirectory", () async {
+        final tracker = await _coldStartedTracker(
+          projects: [const Project(id: "p1", worktree: "/projects/foo")],
+        );
+
+        tracker.handleEvent(_sessionCreated("s1", "/projects/foo"), null);
+        expect(tracker.getSessionDirectory("s1"), equals("/projects/foo"));
+
+        tracker.handleEvent(_sessionDeleted("s1"), null);
+
+        expect(tracker.getSessionDirectory("s1"), isNull);
+      });
+
+      test("coldStart populates getSessionDirectory for all fetched sessions", () async {
+        final tracker = await _coldStartedTracker(
+          projects: [const Project(id: "p1", worktree: "/projects/foo")],
+          sessions: [
+            _session("s1", "/projects/foo"),
+            _session("s2", "/projects/foo/lib"),
+          ],
+        );
+
+        expect(tracker.getSessionDirectory("s1"), equals("/projects/foo"));
+        expect(tracker.getSessionDirectory("s2"), equals("/projects/foo/lib"));
+      });
+
+      test("reset clears session directories", () {
+        final tracker = ActiveSessionTracker(_fakeRepository());
+
+        tracker.registerSession("s1", "/projects/foo");
+        expect(tracker.getSessionDirectory("s1"), isNotNull);
+
+        tracker.reset();
+
+        expect(tracker.getSessionDirectory("s1"), isNull);
+      });
     });
 
     test("session directory exactly matches worktree", () async {
@@ -491,10 +575,20 @@ SseEventData _sessionCreated(String id, String directory) {
   );
 }
 
-SseEventData _sessionDeleted(String id, String directory) {
+SseEventData _sessionUpdated(String id, String directory) {
+  return SseEventData.sessionUpdated(
+    info: Session(id: id, projectID: "project", directory: directory),
+  );
+}
+
+SseEventData _sessionDeleted(String id, [String directory = ""]) {
   return SseEventData.sessionDeleted(
     info: Session(id: id, projectID: "project", directory: directory),
   );
+}
+
+Session _session(String id, String directory) {
+  return Session(id: id, projectID: "project", directory: directory);
 }
 
 SseEventData _sessionBusy(String id) {

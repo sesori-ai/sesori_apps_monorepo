@@ -210,6 +210,9 @@ class OpenCodePlugin implements BridgePlugin {
         limit: limit,
       ),
     );
+    for (final session in sessions) {
+      _service.tracker.registerSession(session.id, session.directory);
+    }
     return sessions.map((session) => session.toPlugin()).toList();
   }
 
