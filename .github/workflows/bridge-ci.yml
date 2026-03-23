@@ -19,35 +19,12 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Read Dart version from .tool-versions
-        shell: bash
-        working-directory: bridge
-        run: |
-          DART_VERSION=$(awk '$1 == "dart" { print $2 }' .tool-versions)
-          if [ -z "$DART_VERSION" ]; then
-            echo "Unable to find a Dart version in .tool-versions" >&2
-            exit 1
-          fi
-          echo "DART_VERSION=$DART_VERSION" >> "$GITHUB_ENV"
-
-      - name: Install Dart SDK
-        shell: pwsh
-        run: |
-          $sdkUrl = "https://storage.googleapis.com/dart-archive/channels/stable/release/$env:DART_VERSION/sdk/dartsdk-linux-x64-release.zip"
-          $archivePath = Join-Path $env:RUNNER_TEMP "dartsdk-linux-x64.zip"
-          $installRoot = Join-Path $env:RUNNER_TEMP "dart-sdk-linux-x64"
-          $sdkRoot = Join-Path $installRoot "dart-sdk"
-          $sdkBin = Join-Path $sdkRoot "bin"
-
-          Invoke-WebRequest -Uri $sdkUrl -OutFile $archivePath
-          New-Item -ItemType Directory -Force -Path $installRoot | Out-Null
-          Expand-Archive -Path $archivePath -DestinationPath $installRoot -Force
-          $sdkBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - uses: dart-lang/setup-dart@v1
 
       - uses: actions/cache@v5
         with:
           path: ${{ env.PUB_CACHE }}
-          key: ${{ runner.os }}-${{ runner.arch }}-pub-${{ env.DART_VERSION }}-${{ hashFiles('bridge/pubspec.lock') }}
+          key: ${{ runner.os }}-${{ runner.arch }}-pub-${{ hashFiles('bridge/pubspec.lock') }}
 
       - name: Get dependencies (workspace)
         run: dart pub get
@@ -80,35 +57,12 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Read Dart version from .tool-versions
-        shell: bash
-        working-directory: bridge
-        run: |
-          DART_VERSION=$(awk '$1 == "dart" { print $2 }' .tool-versions)
-          if [ -z "$DART_VERSION" ]; then
-            echo "Unable to find a Dart version in .tool-versions" >&2
-            exit 1
-          fi
-          echo "DART_VERSION=$DART_VERSION" >> "$GITHUB_ENV"
-
-      - name: Install Dart SDK
-        shell: pwsh
-        run: |
-          $sdkUrl = "https://storage.googleapis.com/dart-archive/channels/stable/release/$env:DART_VERSION/sdk/dartsdk-linux-x64-release.zip"
-          $archivePath = Join-Path $env:RUNNER_TEMP "dartsdk-linux-x64.zip"
-          $installRoot = Join-Path $env:RUNNER_TEMP "dart-sdk-linux-x64"
-          $sdkRoot = Join-Path $installRoot "dart-sdk"
-          $sdkBin = Join-Path $sdkRoot "bin"
-
-          Invoke-WebRequest -Uri $sdkUrl -OutFile $archivePath
-          New-Item -ItemType Directory -Force -Path $installRoot | Out-Null
-          Expand-Archive -Path $archivePath -DestinationPath $installRoot -Force
-          $sdkBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - uses: dart-lang/setup-dart@v1
 
       - uses: actions/cache@v5
         with:
           path: ${{ env.PUB_CACHE }}
-          key: ${{ runner.os }}-${{ runner.arch }}-pub-${{ env.DART_VERSION }}-${{ hashFiles('bridge/pubspec.lock') }}
+          key: ${{ runner.os }}-${{ runner.arch }}-pub-${{ hashFiles('bridge/pubspec.lock') }}
 
       - name: Get dependencies (workspace)
         run: dart pub get
