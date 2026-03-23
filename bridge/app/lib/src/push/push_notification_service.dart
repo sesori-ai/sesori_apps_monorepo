@@ -43,7 +43,16 @@ class PushNotificationService {
     );
 
     unawaited(
-      _client.sendNotification(payload).catchError((Object e) => Log.w("[push] send error: $e")),
+      _client.sendNotification(payload).catchError((Object e) {
+        final message = e.toString();
+        if (message.contains("401") ||
+            message.contains("Token refresh failed") ||
+            message.contains("No tokens available")) {
+          Log.e("[push] auth failure, credentials may need re-authentication: $e");
+        } else {
+          Log.w("[push] send error: $e");
+        }
+      }),
     );
   }
 }
