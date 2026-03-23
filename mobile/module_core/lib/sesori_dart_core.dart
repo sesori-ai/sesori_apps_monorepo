@@ -48,6 +48,7 @@ export "src/logging/logging.dart";
 // Platform interfaces
 export "src/platform/deep_link_source.dart";
 export "src/platform/lifecycle_source.dart";
+export "src/platform/route_source.dart";
 export "src/platform/url_launcher.dart";
 // Reporting
 export "src/reporting/reporting.dart";
