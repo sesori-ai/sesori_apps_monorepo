@@ -176,8 +176,8 @@ class OpenCodeApi {
   Future<void> sendPrompt({
     required String sessionId,
     required Map<String, dynamic> body,
-     // 100% required for this endpoint
-     // because otherwise it picks the CWD of where bridge is running
+    // 100% required for this endpoint
+    // because otherwise it picks the CWD of where bridge is running
     required String? directory,
   }) async {
     final client = http.Client();
@@ -284,7 +284,22 @@ class OpenCodeApi {
     return Project.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }
 
-  Future<List<GlobalSession>> listGlobalSessions({
+  /// Lists sessions across **all** projects via `GET /experimental/session`.
+  ///
+  /// Unlike [listSessions] (which is scoped to the current OpenCode instance's
+  /// project), this endpoint returns sessions from every project in the
+  /// database, each enriched with embedded project info ([GlobalSession]).
+  ///
+  /// The name "global" in OpenCode's API refers to the cross-project scope,
+  /// **not** to the special `"global"` project ID that OpenCode assigns to
+  /// sessions created before `git init`.
+  ///
+  /// - [directory]: when non-null, filters to sessions whose directory matches
+  ///   exactly. Pass `null` to fetch sessions from all directories.
+  /// - [roots]: when `true`, excludes child sessions (subtasks/forks) by
+  ///   filtering to sessions with no `parentID`. This is the typical mode for
+  ///   building project lists and session lists in the UI.
+  Future<List<GlobalSession>> listAllSessions({
     required String? directory,
     required bool roots,
   }) async {
