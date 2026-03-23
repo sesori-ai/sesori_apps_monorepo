@@ -212,6 +212,42 @@ void main() {
     await cubit.close();
   });
 
+  blocTest<DiffCubit, DiffState>(
+    "refresh() from failed state re-initializes and loads successfully",
+    setUp: () {
+      var getSessionDiffsCallCount = 0;
+      when(
+        () => mockService.getMessages(testSessionId),
+      ).thenAnswer((_) async => ApiResponse.success(<MessageWithParts>[]));
+      when(() => mockService.getSessionDiffs(testSessionId)).thenAnswer((_) async {
+        getSessionDiffsCallCount += 1;
+        if (getSessionDiffsCallCount == 1) {
+          return ApiResponse.error(ApiError.generic());
+        }
+        return ApiResponse.success([sampleDiff]);
+      });
+    },
+    build: () => DiffCubit(
+      service: mockService,
+      connectionService: mockConnectionService,
+      sessionId: testSessionId,
+    ),
+    act: (cubit) async {
+      await Future<void>.delayed(Duration.zero);
+      await cubit.refresh();
+    },
+    expect: () => [
+      isA<DiffStateFailed>(),
+      const DiffState.loading(),
+      const DiffState.loaded(
+        files: [sampleDiff],
+        messages: [],
+        hasNewChanges: false,
+        selectedMessageId: null,
+      ),
+    ],
+  );
+
   // ---------------------------------------------------------------------------
   // selectMessage()
   // ---------------------------------------------------------------------------

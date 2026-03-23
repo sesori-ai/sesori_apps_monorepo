@@ -107,6 +107,11 @@ class DiffCubit extends Cubit<DiffState> {
   /// none) and clears the [DiffStateLoaded.hasNewChanges] flag.
   Future<void> refresh() async {
     final current = state;
+    if (current is DiffStateFailed) {
+      if (!isClosed) emit(const DiffState.loading());
+      return _init();
+    }
+
     if (current is! DiffStateLoaded) return;
 
     try {

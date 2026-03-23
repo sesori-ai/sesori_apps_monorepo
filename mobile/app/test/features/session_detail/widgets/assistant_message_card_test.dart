@@ -1,8 +1,9 @@
-import "package:flutter/material.dart";
-import "package:flutter_test/flutter_test.dart";
-import "package:sesori_shared/sesori_shared.dart";
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:sesori_shared/sesori_shared.dart';
 
-import "package:sesori_mobile/features/session_detail/widgets/assistant_message_card.dart";
+import 'package:sesori_mobile/features/session_detail/widgets/assistant_message_card.dart';
 
 void main() {
   Widget buildTestWidget(MessageWithParts message) {
@@ -18,103 +19,129 @@ void main() {
     );
   }
 
-  group("AssistantMessageCard", () {
-    testWidgets("renders 'View changes' button", (tester) async {
+  group('AssistantMessageCard', () {
+    testWidgets('renders View changes button', (tester) async {
       final message = MessageWithParts(
-        info: const Message(
-          role: "assistant",
-          id: "msg-1",
-          sessionID: "session-1",
-        ),
+        info: const Message(role: 'assistant', id: 'msg-1', sessionID: 'session-1'),
         parts: [
           const MessagePart(
-            id: "part-1",
-            sessionID: "session-1",
-            messageID: "msg-1",
-            type: "text",
-            text: "Here is the code",
+            id: 'part-1',
+            sessionID: 'session-1',
+            messageID: 'msg-1',
+            type: 'text',
+            text: 'Here is the code',
           ),
         ],
       );
 
       await tester.pumpWidget(buildTestWidget(message));
-
-      expect(find.text("View changes"), findsOneWidget);
+      expect(find.text('View changes'), findsOneWidget);
     });
 
-    testWidgets("'View changes' button has correct icon", (tester) async {
+    testWidgets('View changes button has correct icon', (tester) async {
       final message = MessageWithParts(
-        info: const Message(
-          role: "assistant",
-          id: "msg-1",
-          sessionID: "session-1",
-        ),
+        info: const Message(role: 'assistant', id: 'msg-1', sessionID: 'session-1'),
         parts: [
           const MessagePart(
-            id: "part-1",
-            sessionID: "session-1",
-            messageID: "msg-1",
-            type: "text",
-            text: "Here is the code",
+            id: 'part-1',
+            sessionID: 'session-1',
+            messageID: 'msg-1',
+            type: 'text',
+            text: 'Here is the code',
           ),
         ],
       );
 
       await tester.pumpWidget(buildTestWidget(message));
-
       expect(find.byIcon(Icons.difference_outlined), findsOneWidget);
     });
 
-    testWidgets("'View changes' button is subtle (small font, muted color)", (tester) async {
+    testWidgets('View changes button is subtle (small font, muted color)', (tester) async {
       final message = MessageWithParts(
-        info: const Message(
-          role: "assistant",
-          id: "msg-1",
-          sessionID: "session-1",
-        ),
+        info: const Message(role: 'assistant', id: 'msg-1', sessionID: 'session-1'),
         parts: [
           const MessagePart(
-            id: "part-1",
-            sessionID: "session-1",
-            messageID: "msg-1",
-            type: "text",
-            text: "Here is the code",
+            id: 'part-1',
+            sessionID: 'session-1',
+            messageID: 'msg-1',
+            type: 'text',
+            text: 'Here is the code',
           ),
         ],
       );
 
       await tester.pumpWidget(buildTestWidget(message));
-
-      // Find the Text widget with "View changes"
       final textFinder = find.byWidgetPredicate(
-        (widget) => widget is Text && widget.data == "View changes" && widget.style?.fontSize == 12,
+        (widget) => widget is Text && widget.data == 'View changes' && widget.style?.fontSize == 12,
       );
       expect(textFinder, findsOneWidget);
     });
 
-    testWidgets("button is present and tappable", (tester) async {
+    testWidgets('button is present and tappable', (tester) async {
       final message = MessageWithParts(
-        info: const Message(
-          role: "assistant",
-          id: "msg-1",
-          sessionID: "session-1",
-        ),
+        info: const Message(role: 'assistant', id: 'msg-1', sessionID: 'session-1'),
         parts: [
           const MessagePart(
-            id: "part-1",
-            sessionID: "session-1",
-            messageID: "msg-1",
-            type: "text",
-            text: "Here is the code",
+            id: 'part-1',
+            sessionID: 'session-1',
+            messageID: 'msg-1',
+            type: 'text',
+            text: 'Here is the code',
           ),
         ],
       );
 
       await tester.pumpWidget(buildTestWidget(message));
+      expect(find.byType(TextButton), findsOneWidget);
+    });
 
-      // Verify the button is present
-      final buttonFinder = find.byType(TextButton);
-      expect(buttonFinder, findsOneWidget);
+    testWidgets('View changes navigates with parent user message ID', (tester) async {
+      final message = MessageWithParts(
+        info: const Message(
+          role: 'assistant',
+          id: 'assistant-msg-1',
+          sessionID: 'session-1',
+          parentID: 'user-msg-1',
+        ),
+        parts: [
+          const MessagePart(
+            id: 'part-1',
+            sessionID: 'session-1',
+            messageID: 'assistant-msg-1',
+            type: 'text',
+            text: 'Here is the code',
+          ),
+        ],
+      );
+
+      final router = GoRouter(
+        initialLocation: '/sessions/session-1',
+        routes: [
+          GoRoute(
+            path: '/sessions/:sessionId',
+            builder: (context, state) => Scaffold(
+              body: AssistantMessageCard(
+                message: message,
+                streamingText: const {},
+                children: const [],
+                childStatuses: const {},
+              ),
+            ),
+          ),
+          GoRoute(
+            path: '/sessions/:sessionId/diffs',
+            builder: (context, state) => Scaffold(
+              body: Text('messageId=' + (state.uri.queryParameters["messageId"] ?? '')),
+            ),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.tap(find.text('View changes'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('messageId=user-msg-1'), findsOneWidget);
     });
   });
 }
