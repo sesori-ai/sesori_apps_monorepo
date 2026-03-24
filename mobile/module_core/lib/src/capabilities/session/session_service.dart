@@ -182,9 +182,9 @@ class SessionService {
     );
   }
 
-  Future<ApiResponse<List<PendingQuestion>>> getPendingQuestions() {
+  Future<ApiResponse<List<PendingQuestion>>> getPendingQuestions(String sessionId) {
     return _client.get(
-      "/question",
+      "/session/$sessionId/questions",
       fromJson: (json) => switch (json) {
         final List<dynamic> list =>
           list

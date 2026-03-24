@@ -11,6 +11,8 @@ import "models/provider_info.dart";
 import "models/session.dart";
 import "models/session_status.dart";
 
+const _directoryOpenCodeHeader = "x-opencode-directory";
+
 class OpenCodeApi {
   final String serverURL;
   final String? _password;
@@ -49,8 +51,10 @@ class OpenCodeApi {
   }
 
   Future<List<Session>> listSessions({String? directory}) async {
-    final headers = <String, String>{..._authHeaders};
-    if (directory != null) headers["x-opencode-directory"] = directory;
+    final headers = <String, String>{
+      ..._authHeaders,
+      _directoryOpenCodeHeader: ?directory,
+    };
 
     final response = await http.get(
       Uri.parse("$serverURL/session"),
@@ -84,7 +88,7 @@ class OpenCodeApi {
         headers: {
           ..._authHeaders,
           "content-type": "application/json",
-          "x-opencode-directory": directory,
+          _directoryOpenCodeHeader: directory,
         },
         body: jsonEncode(body),
       );
@@ -107,7 +111,7 @@ class OpenCodeApi {
         headers: {
           ..._authHeaders,
           "content-type": "application/json",
-          "x-opencode-directory": ?directory,
+          _directoryOpenCodeHeader: ?directory,
         },
         body: jsonEncode(body),
       );
@@ -126,7 +130,7 @@ class OpenCodeApi {
     try {
       final headers = <String, String>{
         ..._authHeaders,
-        "x-opencode-directory": ?directory,
+        _directoryOpenCodeHeader: ?directory,
       };
       final response = await client.delete(
         Uri.parse("$serverURL/session/$sessionId"),
@@ -144,7 +148,7 @@ class OpenCodeApi {
   }) async {
     final headers = <String, String>{
       ..._authHeaders,
-      "x-opencode-directory": ?directory, // probably irrelevant for this endpoint
+      _directoryOpenCodeHeader: ?directory, // probably irrelevant for this endpoint
     };
     final response = await http.get(
       Uri.parse("$serverURL/session/$sessionId/children"),
@@ -162,7 +166,7 @@ class OpenCodeApi {
   }) async {
     final headers = <String, String>{
       ..._authHeaders,
-      "x-opencode-directory": ?directory, // probably irrelevant for this endpoint
+      _directoryOpenCodeHeader: ?directory, // probably irrelevant for this endpoint
     };
     final response = await http.get(
       Uri.parse("$serverURL/session/$sessionId/message"),
@@ -188,7 +192,7 @@ class OpenCodeApi {
         headers: {
           ..._authHeaders,
           "content-type": "application/json",
-          "x-opencode-directory": ?directory,
+          _directoryOpenCodeHeader: ?directory,
         },
         body: jsonEncode(body),
       );
@@ -206,7 +210,7 @@ class OpenCodeApi {
     try {
       final headers = <String, String>{
         ..._authHeaders,
-        "x-opencode-directory": ?directory,
+        _directoryOpenCodeHeader: ?directory,
       };
       final response = await client.post(
         Uri.parse("$serverURL/session/$sessionId/abort"),
@@ -227,8 +231,15 @@ class OpenCodeApi {
     return decoded.cast<Map<String, dynamic>>().map(AgentInfo.fromJson).toList();
   }
 
-  Future<List<PendingQuestion>> getPendingQuestions() async {
-    final response = await http.get(Uri.parse("$serverURL/question"), headers: _authHeaders);
+  Future<List<PendingQuestion>> getPendingQuestions({
+    required String? directory,
+  }) async {
+    final headers = <String, String>{
+      ..._authHeaders,
+      _directoryOpenCodeHeader: ?directory,
+    };
+    final response = await http.get(Uri.parse("$serverURL/question"), headers: headers);
+    Log.v("[getPendingQuestions] response: ${response.body}");
     _ensureSuccess(response, "GET /question");
 
     final decoded = jsonDecode(response.body) as List;
@@ -248,7 +259,7 @@ class OpenCodeApi {
         Uri.parse("$serverURL/question/$questionId/reply"),
         headers: {
           ..._authHeaders,
-          "x-opencode-directory": ?directory, // doesn't work well with the directory header
+          _directoryOpenCodeHeader: ?directory, // doesn't work well with the directory header
           "content-type": "application/json",
         },
         body: encodedBody,
@@ -285,7 +296,7 @@ class OpenCodeApi {
       Uri.parse("$serverURL/project/current"),
       headers: {
         ..._authHeaders,
-        "x-opencode-directory": directory,
+        _directoryOpenCodeHeader: directory,
       },
     );
     _ensureSuccess(response, "GET /project/current");
@@ -312,6 +323,7 @@ class OpenCodeApi {
     required bool roots,
   }) async {
     final queryParams = <String, String>{
+      // unlike the other endpoints, this uses a query param for the directory
       "directory": ?directory,
       if (roots) "roots": "true",
     };

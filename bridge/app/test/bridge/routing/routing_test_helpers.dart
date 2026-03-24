@@ -181,7 +181,7 @@ class FakeBridgePlugin implements BridgePlugin {
   }
 
   @override
-  Future<void> abortSession(String sessionId) async {
+  Future<void> abortSession({required String sessionId}) async {
     lastAbortSessionId = sessionId;
   }
 
@@ -189,7 +189,10 @@ class FakeBridgePlugin implements BridgePlugin {
   Future<List<PluginAgent>> getAgents() async => agentsResult;
 
   @override
-  Future<List<PluginPendingQuestion>> getPendingQuestions() async => pendingQuestionsResult;
+  Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) async => pendingQuestionsResult;
+
+  @override
+  Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) async => pendingQuestionsResult;
 
   @override
   Future<void> replyToQuestion({

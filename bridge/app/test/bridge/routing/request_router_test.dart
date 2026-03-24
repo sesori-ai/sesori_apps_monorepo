@@ -113,8 +113,15 @@ void main() {
       expect(response.status, equals(200));
     });
 
-    test("routes GET /question to GetPendingQuestionsHandler", () async {
-      final response = await router.route(makeRequest("GET", "/question"));
+    test("routes GET /session/:id/questions to GetSessionQuestionsHandler", () async {
+      final response = await router.route(makeRequest("GET", "/session/s-1/questions"));
+      expect(response.status, equals(200));
+    });
+
+    test("routes GET /questions to GetProjectQuestionsHandler", () async {
+      final response = await router.route(
+        makeRequest("GET", "/questions", headers: {"x-project-id": "/tmp/project"}),
+      );
       expect(response.status, equals(200));
     });
 

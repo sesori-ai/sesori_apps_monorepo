@@ -728,43 +728,45 @@ void main() {
     // -----------------------------------------------------------------------
 
     group("getPendingQuestions", () {
-      test("success: returns List<PendingQuestion> from GET /question", () async {
+      const sessionId = "session-q";
+
+      test("success: returns List<PendingQuestion> from GET /session/:id/questions", () async {
         final questions = [testPendingQuestion()];
         when(
           () => mockClient.get<List<PendingQuestion>>(
-            "/question",
+            "/session/$sessionId/questions",
             fromJson: any(named: "fromJson"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(questions));
 
-        final result = await sessionService.getPendingQuestions();
+        final result = await sessionService.getPendingQuestions(sessionId);
 
         expect(result, isA<SuccessResponse<List<PendingQuestion>>>());
         expect((result as SuccessResponse<List<PendingQuestion>>).data, equals(questions));
         verify(
           () => mockClient.get<List<PendingQuestion>>(
-            "/question",
+            "/session/$sessionId/questions",
             fromJson: any(named: "fromJson"),
           ),
         ).called(1);
       });
 
-      test("error: propagates API error from GET /question", () async {
+      test("error: propagates API error from GET /session/:id/questions", () async {
         final error = ApiError.generic();
         when(
           () => mockClient.get<List<PendingQuestion>>(
-            "/question",
+            "/session/$sessionId/questions",
             fromJson: any(named: "fromJson"),
           ),
         ).thenAnswer((_) async => ApiResponse.error(error));
 
-        final result = await sessionService.getPendingQuestions();
+        final result = await sessionService.getPendingQuestions(sessionId);
 
         expect(result, isA<ErrorResponse<List<PendingQuestion>>>());
         expect((result as ErrorResponse<List<PendingQuestion>>).error, equals(error));
         verify(
           () => mockClient.get<List<PendingQuestion>>(
-            "/question",
+            "/session/$sessionId/questions",
             fromJson: any(named: "fromJson"),
           ),
         ).called(1);
