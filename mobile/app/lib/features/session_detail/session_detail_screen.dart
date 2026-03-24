@@ -7,6 +7,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
+import "../../core/routing/app_router.dart";
 import "../../l10n/app_localizations.dart";
 import "widgets/agent_picker_sheet.dart";
 import "widgets/assistant_message_card.dart";
@@ -41,6 +42,7 @@ class SessionDetailScreen extends StatelessWidget {
         notificationCanceller: getIt<NotificationCanceller>(),
       ),
       child: _SessionDetailBody(
+        sessionId: sessionId,
         sessionTitle: sessionTitle,
         readOnly: readOnly,
       ),
@@ -49,10 +51,11 @@ class SessionDetailScreen extends StatelessWidget {
 }
 
 class _SessionDetailBody extends StatefulWidget {
+  final String sessionId;
   final String? sessionTitle;
   final bool readOnly;
 
-  const _SessionDetailBody({this.sessionTitle, this.readOnly = false});
+  const _SessionDetailBody({required this.sessionId, this.sessionTitle, this.readOnly = false});
 
   @override
   State<_SessionDetailBody> createState() => _SessionDetailBodyState();
@@ -172,6 +175,14 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.difference_outlined),
+            tooltip: "File changes",
+            onPressed: () => context.pushRoute(
+              AppRoute.sessionDiffs,
+              pathParams: {"sessionId": widget.sessionId},
+            ),
+          ),
           if (state
               case SessionDetailLoaded(
                 :final sessionStatus,
