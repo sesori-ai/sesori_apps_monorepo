@@ -7,7 +7,7 @@ import "delete_session_handler.dart";
 import "get_agents_handler.dart";
 import "get_child_sessions_handler.dart";
 import "get_current_project_handler.dart";
-import "get_pending_questions_handler.dart";
+import "get_session_questions_handler.dart";
 import "get_projects_handler.dart";
 import "get_providers_handler.dart";
 import "get_session_messages_handler.dart";

@@ -23,7 +23,7 @@ class AbortSessionHandler extends RequestHandler {
       return buildErrorResponse(request, 400, "missing session id");
     }
 
-    await _plugin.abortSession(sessionId);
+    await _plugin.abortSession(sessionId: sessionId);
     return RelayResponse(
       id: request.id,
       status: 200,

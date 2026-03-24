@@ -5,14 +5,15 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "request_handler.dart";
 
-/// Handles `GET /question` — returns all pending question prompts.
+const _idParam = "id";
+
+/// Handles `GET /session/:id/questions` — returns all pending question prompts for a session.
 ///
-/// Returns ALL pending questions globally — not session-scoped.
-/// Each question includes its sessionID.
+/// Returns ALL pending questions for a session
 class GetPendingQuestionsHandler extends RequestHandler {
   final BridgePlugin _plugin;
 
-  GetPendingQuestionsHandler(this._plugin) : super(HttpMethod.get, "/question");
+  GetPendingQuestionsHandler(this._plugin) : super(HttpMethod.get, "/session/:$_idParam/questions");
 
   @override
   Future<RelayResponse> handle(
@@ -21,7 +22,14 @@ class GetPendingQuestionsHandler extends RequestHandler {
     required Map<String, String> queryParams,
     String? fragment,
   }) async {
-    final pluginQuestions = await _plugin.getPendingQuestions();
+    final sessionId = pathParams[_idParam];
+    if (sessionId == null || sessionId.isEmpty) {
+      return buildErrorResponse(request, 400, "missing session id");
+    }
+
+    final pluginQuestions = await _plugin.getPendingQuestions(sessionId: sessionId);
+
+    Log.d("pluginQuestions: $pluginQuestions");
 
     final questions = pluginQuestions
         .map(

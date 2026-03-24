@@ -334,7 +334,7 @@ class OpenCodePlugin implements BridgePlugin {
   }
 
   @override
-  Future<void> abortSession(String sessionId) {
+  Future<void> abortSession({required String sessionId}) {
     final directory = _service.tracker.getSessionDirectory(sessionId: sessionId);
     return _call(
       () => _service.repository.api.abortSession(
@@ -351,9 +351,19 @@ class OpenCodePlugin implements BridgePlugin {
   }
 
   @override
-  Future<List<PluginPendingQuestion>> getPendingQuestions() async {
-    final pending = await _call(_service.repository.api.getPendingQuestions);
-    return pending.map((question) => question.toPlugin()).toList();
+  Future<List<PluginPendingQuestion>> getPendingQuestions({
+    required String sessionId,
+  }) async {
+    final directory = _service.tracker.getSessionDirectory(sessionId: sessionId);
+    final pending = await _call(
+      () => _service.repository.api.getPendingQuestions(
+        directory: directory,
+      ),
+    );
+    return pending //
+        .where((e) => e.sessionID == sessionId)
+        .map((question) => question.toPlugin())
+        .toList();
   }
 
   @override

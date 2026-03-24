@@ -46,11 +46,11 @@ abstract class BridgePlugin {
     required ({String providerID, String modelID})? model,
   });
 
-  Future<void> abortSession(String sessionId);
+  Future<void> abortSession({required String sessionId});
 
   Future<List<PluginAgent>> getAgents();
 
-  Future<List<PluginPendingQuestion>> getPendingQuestions();
+  Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId});
 
   /// Reply to a pending question prompt.
   ///

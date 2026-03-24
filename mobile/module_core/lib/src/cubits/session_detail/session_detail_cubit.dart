@@ -54,7 +54,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
     // Fire all requests in parallel.
     final messagesFuture = _service.getMessages(_sessionId);
-    final questionsFuture = _service.getPendingQuestions();
+    final questionsFuture = _service.getPendingQuestions(_sessionId);
     final childrenFuture = _service.getChildren(_sessionId);
     final statusesFuture = _service.getSessionStatuses();
     final agentsFuture = _service.listAgents();
