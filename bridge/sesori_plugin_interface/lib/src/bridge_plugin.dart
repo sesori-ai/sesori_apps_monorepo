@@ -43,9 +43,6 @@ abstract class BridgePlugin {
   /// Get all file diffs for a session (cumulative / session-level).
   Future<List<PluginFileDiff>> getSessionDiffs(String sessionId);
 
-  /// Get file diffs for a specific message in a session.
-  Future<List<PluginFileDiff>> getMessageDiffs(String sessionId, String messageId);
-
   Future<void> sendPrompt({
     required String sessionId,
     required List<PluginPromptPart> parts,

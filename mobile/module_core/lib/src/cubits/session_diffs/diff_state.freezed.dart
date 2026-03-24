@@ -78,7 +78,7 @@ String toString() {
 
 
 class DiffStateLoaded implements DiffState {
-  const DiffStateLoaded({required final  List<FileDiff> files, required final  List<MessageWithParts> messages, required this.hasNewChanges, this.selectedMessageId}): _files = files,_messages = messages;
+  const DiffStateLoaded({required final  List<FileDiff> files, required this.hasNewChanges}): _files = files;
   
 
  final  List<FileDiff> _files;
@@ -88,15 +88,7 @@ class DiffStateLoaded implements DiffState {
   return EqualUnmodifiableListView(_files);
 }
 
- final  List<MessageWithParts> _messages;
- List<MessageWithParts> get messages {
-  if (_messages is EqualUnmodifiableListView) return _messages;
-  // ignore: implicit_dynamic_type
-  return EqualUnmodifiableListView(_messages);
-}
-
  final  bool hasNewChanges;
- final  String? selectedMessageId;
 
 /// Create a copy of DiffState
 /// with the given fields replaced by the non-null parameter values.
@@ -108,16 +100,16 @@ $DiffStateLoadedCopyWith<DiffStateLoaded> get copyWith => _$DiffStateLoadedCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DiffStateLoaded&&const DeepCollectionEquality().equals(other._files, _files)&&const DeepCollectionEquality().equals(other._messages, _messages)&&(identical(other.hasNewChanges, hasNewChanges) || other.hasNewChanges == hasNewChanges)&&(identical(other.selectedMessageId, selectedMessageId) || other.selectedMessageId == selectedMessageId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DiffStateLoaded&&const DeepCollectionEquality().equals(other._files, _files)&&(identical(other.hasNewChanges, hasNewChanges) || other.hasNewChanges == hasNewChanges));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_files),const DeepCollectionEquality().hash(_messages),hasNewChanges,selectedMessageId);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_files),hasNewChanges);
 
 @override
 String toString() {
-  return 'DiffState.loaded(files: $files, messages: $messages, hasNewChanges: $hasNewChanges, selectedMessageId: $selectedMessageId)';
+  return 'DiffState.loaded(files: $files, hasNewChanges: $hasNewChanges)';
 }
 
 
@@ -128,7 +120,7 @@ abstract mixin class $DiffStateLoadedCopyWith<$Res> implements $DiffStateCopyWit
   factory $DiffStateLoadedCopyWith(DiffStateLoaded value, $Res Function(DiffStateLoaded) _then) = _$DiffStateLoadedCopyWithImpl;
 @useResult
 $Res call({
- List<FileDiff> files, List<MessageWithParts> messages, bool hasNewChanges, String? selectedMessageId
+ List<FileDiff> files, bool hasNewChanges
 });
 
 
@@ -145,13 +137,11 @@ class _$DiffStateLoadedCopyWithImpl<$Res>
 
 /// Create a copy of DiffState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? files = null,Object? messages = null,Object? hasNewChanges = null,Object? selectedMessageId = freezed,}) {
+@pragma('vm:prefer-inline') $Res call({Object? files = null,Object? hasNewChanges = null,}) {
   return _then(DiffStateLoaded(
 files: null == files ? _self._files : files // ignore: cast_nullable_to_non_nullable
-as List<FileDiff>,messages: null == messages ? _self._messages : messages // ignore: cast_nullable_to_non_nullable
-as List<MessageWithParts>,hasNewChanges: null == hasNewChanges ? _self.hasNewChanges : hasNewChanges // ignore: cast_nullable_to_non_nullable
-as bool,selectedMessageId: freezed == selectedMessageId ? _self.selectedMessageId : selectedMessageId // ignore: cast_nullable_to_non_nullable
-as String?,
+as List<FileDiff>,hasNewChanges: null == hasNewChanges ? _self.hasNewChanges : hasNewChanges // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

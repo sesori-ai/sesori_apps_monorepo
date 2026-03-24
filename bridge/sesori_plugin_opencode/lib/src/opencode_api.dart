@@ -198,21 +198,6 @@ class OpenCodeApi {
     );
   }
 
-  Future<List<FileDiff>> getMessageDiffs({
-    required String sessionId,
-    required String messageId,
-    required String? directory,
-  }) async {
-    final uri = Uri.parse("$serverURL/session/$sessionId/diff").replace(
-      queryParameters: {"messageID": messageId},
-    );
-    return _fetchDiffs(
-      uri,
-      "GET /session/$sessionId/diff?messageID=$messageId",
-      directory: directory,
-    );
-  }
-
   Future<void> sendPrompt({
     required String sessionId,
     required Map<String, dynamic> body,

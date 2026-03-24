@@ -237,22 +237,4 @@ class SessionService {
       },
     );
   }
-
-  Future<ApiResponse<List<FileDiff>>> getMessageDiffs(String sessionId, String messageId) {
-    return _client.get(
-      "/session/$sessionId/message/$messageId/diff",
-      fromJson: (json) => switch (json) {
-        final List<dynamic> list =>
-          list
-              .map(
-                (e) => switch (e) {
-                  final Map<String, dynamic> map => FileDiff.fromJson(map),
-                  _ => throw FormatException("expected map, got ${e.runtimeType}"),
-                },
-              )
-              .toList(),
-        _ => throw FormatException("expected list, got ${json.runtimeType}"),
-      },
-    );
-  }
 }

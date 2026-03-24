@@ -40,7 +40,6 @@ void main() {
       when(() => cubit.state).thenReturn(
         const DiffState.loaded(
           files: [],
-          messages: [],
           hasNewChanges: false,
         ),
       );
@@ -58,7 +57,6 @@ void main() {
       when(() => cubit.state).thenReturn(
         const DiffState.loaded(
           files: [],
-          messages: [],
           hasNewChanges: true,
         ),
       );
@@ -76,7 +74,6 @@ void main() {
       when(() => cubit.state).thenReturn(
         const DiffState.loaded(
           files: [],
-          messages: [],
           hasNewChanges: true,
         ),
       );
@@ -94,7 +91,6 @@ void main() {
       when(() => cubit.state).thenReturn(
         const DiffState.loaded(
           files: [],
-          messages: [],
           hasNewChanges: true,
         ),
       );
@@ -116,7 +112,6 @@ void main() {
       when(() => cubit.state).thenReturn(
         const DiffState.loaded(
           files: [],
-          messages: [],
           hasNewChanges: true,
         ),
       );
