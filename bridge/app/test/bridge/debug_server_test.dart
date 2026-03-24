@@ -326,9 +326,6 @@ class _FakeBridgePlugin implements BridgePlugin {
   Future<List<PluginFileDiff>> getSessionDiffs(String sessionId) async => [];
 
   @override
-  Future<List<PluginFileDiff>> getMessageDiffs(String sessionId, String messageId) async => [];
-
-  @override
   Future<void> dispose() async {}
 
   void add(BridgeSseEvent event) => _controller.add(event);
@@ -455,9 +452,6 @@ class _TrackingBridgePlugin implements BridgePlugin {
 
   @override
   Future<List<PluginFileDiff>> getSessionDiffs(String sessionId) async => [];
-
-  @override
-  Future<List<PluginFileDiff>> getMessageDiffs(String sessionId, String messageId) async => [];
 
   @override
   Future<void> dispose() async {}

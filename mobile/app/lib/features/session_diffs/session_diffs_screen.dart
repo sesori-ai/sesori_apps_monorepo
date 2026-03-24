@@ -7,17 +7,14 @@ import "../../core/di/injection.dart";
 import "models/diff_file_view_model.dart";
 import "models/diff_view_model_builder.dart";
 import "widgets/diff_file_widget.dart";
-import "widgets/diff_message_selector.dart";
 import "widgets/diff_refresh_banner.dart";
 
 class SessionDiffsScreen extends StatelessWidget {
   final String sessionId;
-  final String? initialMessageId;
 
   const SessionDiffsScreen({
     super.key,
     required this.sessionId,
-    this.initialMessageId,
   });
 
   @override
@@ -27,7 +24,6 @@ class SessionDiffsScreen extends StatelessWidget {
         service: getIt<SessionService>(),
         connectionService: getIt<ConnectionService>(),
         sessionId: sessionId,
-        initialMessageId: initialMessageId,
       ),
       child: const SessionDiffsBody(),
     );
@@ -64,7 +60,6 @@ class SessionDiffsBody extends StatelessWidget {
       body: Column(
         children: [
           const DiffRefreshBanner(),
-          const DiffMessageSelector(),
           Expanded(
             child: BlocBuilder<DiffCubit, DiffState>(
               buildWhen: (prev, curr) =>

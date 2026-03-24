@@ -144,21 +144,6 @@ void main() {
       expect(deleted.status, equals("deleted"));
     });
 
-    test("getMessageDiffs returns per-message diffs", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
-
-      final diffs = await plugin.getMessageDiffs("ses-1", "m-1");
-
-      expect(diffs, hasLength(1));
-      final diff = diffs.single;
-      expect(diff.file, equals("src/foo.dart"));
-      expect(diff.before, equals("old"));
-      expect(diff.after, equals("new"));
-      expect(diff.additions, equals(3));
-      expect(diff.deletions, equals(1));
-      expect(diff.status, equals("modified"));
-    });
-
     test("getSessionDiffs with null status field returns status as null", () async {
       // Verify null status path via PluginFileDiff constructed directly
       // (no server interaction needed for this property check).
@@ -485,40 +470,25 @@ class _FakeOpenCodeServer {
       }
 
       if (request.method == "GET" && path.startsWith("/session/") && path.endsWith("/diff")) {
-        final messageId = request.uri.queryParameters["messageID"];
-        if (messageId != null) {
-          // per-message diffs: return a single diff for message m-1
-          await _sendJson(request.response, [
-            {
-              "file": "src/foo.dart",
-              "before": "old",
-              "after": "new",
-              "additions": 3,
-              "deletions": 1,
-              "status": "modified",
-            },
-          ]);
-        } else {
-          // session-level diffs: return two diffs
-          await _sendJson(request.response, [
-            {
-              "file": "src/a.dart",
-              "before": "",
-              "after": "content",
-              "additions": 5,
-              "deletions": 0,
-              "status": "added",
-            },
-            {
-              "file": "src/b.dart",
-              "before": "old",
-              "after": "",
-              "additions": 0,
-              "deletions": 2,
-              "status": "deleted",
-            },
-          ]);
-        }
+        // session-level diffs: return two diffs
+        await _sendJson(request.response, [
+          {
+            "file": "src/a.dart",
+            "before": "",
+            "after": "content",
+            "additions": 5,
+            "deletions": 0,
+            "status": "added",
+          },
+          {
+            "file": "src/b.dart",
+            "before": "old",
+            "after": "",
+            "additions": 0,
+            "deletions": 2,
+            "status": "deleted",
+          },
+        ]);
         return;
       }
 

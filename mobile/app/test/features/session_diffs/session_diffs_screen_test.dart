@@ -47,7 +47,7 @@ void main() {
 
     testWidgets("shows 'No file changes' when loaded with empty files", (tester) async {
       when(() => cubit.state).thenReturn(
-        const DiffState.loaded(files: [], messages: [], hasNewChanges: false),
+        const DiffState.loaded(files: [], hasNewChanges: false),
       );
       when(() => cubit.stream).thenAnswer((_) => const Stream.empty());
 
@@ -69,7 +69,6 @@ void main() {
               status: FileDiffStatus.modified,
             ),
           ],
-          messages: [],
           hasNewChanges: false,
         ),
       );
@@ -97,7 +96,6 @@ void main() {
               status: FileDiffStatus.modified,
             ),
           ],
-          messages: [],
           hasNewChanges: false,
         ),
       );
@@ -117,7 +115,6 @@ void main() {
             FileDiff(file: "b.dart", before: "x", after: "", additions: 3, deletions: 1),
             FileDiff(file: "c.dart", before: "x", after: "y", additions: 3, deletions: 2),
           ],
-          messages: [],
           hasNewChanges: false,
         ),
       );

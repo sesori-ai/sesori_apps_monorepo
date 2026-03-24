@@ -94,7 +94,7 @@ void main() {
       expect(find.byType(TextButton), findsOneWidget);
     });
 
-    testWidgets('View changes navigates with parent user message ID', (tester) async {
+    testWidgets('View changes navigates to session diffs without messageId', (tester) async {
       const message = MessageWithParts(
         info: Message(
           role: 'assistant',
@@ -130,7 +130,9 @@ void main() {
           GoRoute(
             path: '/sessions/:sessionId/diffs',
             builder: (context, state) => Scaffold(
-              body: Text('messageId=${state.uri.queryParameters["messageId"] ?? ''}'),
+              body: Text(
+                'sessionId=${state.pathParameters["sessionId"] ?? ''}, noMessageId=${state.uri.queryParameters["messageId"] == null}',
+              ),
             ),
           ),
         ],
@@ -140,7 +142,7 @@ void main() {
       await tester.tap(find.text('View changes'));
       await tester.pumpAndSettle();
 
-      expect(find.text('messageId=user-msg-1'), findsOneWidget);
+      expect(find.text('sessionId=session-1, noMessageId=true'), findsOneWidget);
     });
   });
 }

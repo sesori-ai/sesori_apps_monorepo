@@ -34,7 +34,6 @@ extension AppRouteToGoRoute on AppRoute {
         ),
         AppRoute.sessionDiffs => SessionDiffsScreen(
           sessionId: state.pathParameters["sessionId"] ?? "",
-          initialMessageId: state.uri.queryParameters["messageId"],
         ),
       },
     );

@@ -319,19 +319,6 @@ class OpenCodePlugin implements BridgePlugin {
     return diffs.map(_mapFileDiff).toList();
   }
 
-  @override
-  Future<List<PluginFileDiff>> getMessageDiffs(String sessionId, String messageId) async {
-    final directory = _service.tracker.getSessionDirectory(sessionId: sessionId);
-    final diffs = await _call(
-      () => _service.repository.api.getMessageDiffs(
-        sessionId: sessionId,
-        messageId: messageId,
-        directory: directory,
-      ),
-    );
-    return diffs.map(_mapFileDiff).toList();
-  }
-
   PluginFileDiff _mapFileDiff(FileDiff raw) {
     return PluginFileDiff(
       file: raw.file,

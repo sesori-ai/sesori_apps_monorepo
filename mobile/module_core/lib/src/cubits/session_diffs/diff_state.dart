@@ -1,5 +1,5 @@
 import "package:freezed_annotation/freezed_annotation.dart";
-import "package:sesori_shared/sesori_shared.dart";
+import "package:sesori_shared/sesori_shared.dart" show FileDiff;
 
 part "diff_state.freezed.dart";
 
@@ -9,9 +9,7 @@ sealed class DiffState with _$DiffState {
 
   const factory DiffState.loaded({
     required List<FileDiff> files,
-    required List<MessageWithParts> messages,
     required bool hasNewChanges,
-    String? selectedMessageId,
   }) = DiffStateLoaded;
 
   const factory DiffState.failed({required Object error}) = DiffStateFailed;

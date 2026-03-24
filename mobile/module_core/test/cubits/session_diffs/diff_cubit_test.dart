@@ -41,11 +41,8 @@ void main() {
   // ---------------------------------------------------------------------------
 
   blocTest<DiffCubit, DiffState>(
-    "init: emits loaded with session-level diffs when initialMessageId is null",
+    "init: emits loaded with session-level diffs",
     setUp: () {
-      when(
-        () => mockService.getMessages(testSessionId),
-      ).thenAnswer((_) async => ApiResponse.success(<MessageWithParts>[]));
       when(() => mockService.getSessionDiffs(testSessionId)).thenAnswer((_) async => ApiResponse.success([sampleDiff]));
     },
     build: () => DiffCubit(
@@ -56,45 +53,11 @@ void main() {
     expect: () => [
       const DiffState.loaded(
         files: [sampleDiff],
-        messages: [],
         hasNewChanges: false,
-        selectedMessageId: null,
       ),
     ],
     verify: (_) {
-      verify(() => mockService.getMessages(testSessionId)).called(1);
       verify(() => mockService.getSessionDiffs(testSessionId)).called(1);
-      verifyNever(() => mockService.getMessageDiffs(any(), any()));
-    },
-  );
-
-  blocTest<DiffCubit, DiffState>(
-    "init: fetches message-scoped diffs when initialMessageId is provided",
-    setUp: () {
-      when(
-        () => mockService.getMessages(testSessionId),
-      ).thenAnswer((_) async => ApiResponse.success(<MessageWithParts>[]));
-      when(
-        () => mockService.getMessageDiffs(testSessionId, "msg-1"),
-      ).thenAnswer((_) async => ApiResponse.success([sampleDiff]));
-    },
-    build: () => DiffCubit(
-      service: mockService,
-      connectionService: mockConnectionService,
-      sessionId: testSessionId,
-      initialMessageId: "msg-1",
-    ),
-    expect: () => [
-      const DiffState.loaded(
-        files: [sampleDiff],
-        messages: [],
-        hasNewChanges: false,
-        selectedMessageId: "msg-1",
-      ),
-    ],
-    verify: (_) {
-      verify(() => mockService.getMessageDiffs(testSessionId, "msg-1")).called(1);
-      verifyNever(() => mockService.getSessionDiffs(any()));
     },
   );
 
@@ -103,10 +66,11 @@ void main() {
   // ---------------------------------------------------------------------------
 
   blocTest<DiffCubit, DiffState>(
-    "init: emits failed when getMessages returns ErrorResponse",
+    "init: emits failed when getSessionDiffs returns ErrorResponse",
     setUp: () {
-      when(() => mockService.getMessages(testSessionId)).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
-      when(() => mockService.getSessionDiffs(testSessionId)).thenAnswer((_) async => ApiResponse.success(<FileDiff>[]));
+      when(
+        () => mockService.getSessionDiffs(testSessionId),
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
     },
     build: () => DiffCubit(
       service: mockService,
@@ -117,12 +81,10 @@ void main() {
   );
 
   blocTest<DiffCubit, DiffState>(
-    "init: emits failed when getMessages throws",
+    "init: emits failed when getSessionDiffs throws",
     setUp: () {
-      // Use Future.error so the rejection is deferred until the first await in
-      // _init(), ensuring blocTest has subscribed before the state is emitted.
-      when(() => mockService.getMessages(testSessionId)).thenAnswer(
-        (_) => Future<ApiResponse<List<MessageWithParts>>>.error(Exception("Network error")),
+      when(() => mockService.getSessionDiffs(testSessionId)).thenAnswer(
+        (_) => Future<ApiResponse<List<FileDiff>>>.error(Exception("Network error")),
       );
     },
     build: () => DiffCubit(
@@ -138,9 +100,6 @@ void main() {
   // ---------------------------------------------------------------------------
 
   test("SSE sessionDiff event sets hasNewChanges to true", () async {
-    when(
-      () => mockService.getMessages(testSessionId),
-    ).thenAnswer((_) async => ApiResponse.success(<MessageWithParts>[]));
     when(() => mockService.getSessionDiffs(testSessionId)).thenAnswer((_) async => ApiResponse.success([sampleDiff]));
 
     final cubit = DiffCubit(
@@ -180,9 +139,6 @@ void main() {
       deletions: 0,
     );
 
-    when(
-      () => mockService.getMessages(testSessionId),
-    ).thenAnswer((_) async => ApiResponse.success(<MessageWithParts>[]));
     when(() => mockService.getSessionDiffs(testSessionId)).thenAnswer((_) async => ApiResponse.success([sampleDiff]));
 
     final cubit = DiffCubit(
@@ -216,9 +172,6 @@ void main() {
     "refresh() from failed state re-initializes and loads successfully",
     setUp: () {
       var getSessionDiffsCallCount = 0;
-      when(
-        () => mockService.getMessages(testSessionId),
-      ).thenAnswer((_) async => ApiResponse.success(<MessageWithParts>[]));
       when(() => mockService.getSessionDiffs(testSessionId)).thenAnswer((_) async {
         getSessionDiffsCallCount += 1;
         if (getSessionDiffsCallCount == 1) {
@@ -241,80 +194,16 @@ void main() {
       const DiffState.loading(),
       const DiffState.loaded(
         files: [sampleDiff],
-        messages: [],
         hasNewChanges: false,
-        selectedMessageId: null,
       ),
     ],
   );
-
-  // ---------------------------------------------------------------------------
-  // selectMessage()
-  // ---------------------------------------------------------------------------
-
-  test("selectMessage(messageId) fetches message-scoped diffs", () async {
-    when(
-      () => mockService.getMessages(testSessionId),
-    ).thenAnswer((_) async => ApiResponse.success(<MessageWithParts>[]));
-    when(() => mockService.getSessionDiffs(testSessionId)).thenAnswer((_) async => ApiResponse.success([sampleDiff]));
-    when(
-      () => mockService.getMessageDiffs(testSessionId, "msg-1"),
-    ).thenAnswer((_) async => ApiResponse.success([sampleDiff]));
-
-    final cubit = DiffCubit(
-      service: mockService,
-      connectionService: mockConnectionService,
-      sessionId: testSessionId,
-    );
-
-    await Future<void>.delayed(Duration.zero);
-
-    await cubit.selectMessage("msg-1");
-
-    verify(() => mockService.getMessageDiffs(testSessionId, "msg-1")).called(1);
-
-    final loaded = cubit.state as DiffStateLoaded;
-    expect(loaded.selectedMessageId, "msg-1");
-
-    await cubit.close();
-  });
-
-  test("selectMessage(null) fetches session-level diffs", () async {
-    when(
-      () => mockService.getMessages(testSessionId),
-    ).thenAnswer((_) async => ApiResponse.success(<MessageWithParts>[]));
-    when(
-      () => mockService.getMessageDiffs(testSessionId, "msg-1"),
-    ).thenAnswer((_) async => ApiResponse.success([sampleDiff]));
-    when(() => mockService.getSessionDiffs(testSessionId)).thenAnswer((_) async => ApiResponse.success([sampleDiff]));
-
-    final cubit = DiffCubit(
-      service: mockService,
-      connectionService: mockConnectionService,
-      sessionId: testSessionId,
-      initialMessageId: "msg-1",
-    );
-
-    await Future<void>.delayed(Duration.zero);
-
-    await cubit.selectMessage(null);
-
-    verify(() => mockService.getSessionDiffs(testSessionId)).called(1);
-
-    final loaded = cubit.state as DiffStateLoaded;
-    expect(loaded.selectedMessageId, isNull);
-
-    await cubit.close();
-  });
 
   // ---------------------------------------------------------------------------
   // close()
   // ---------------------------------------------------------------------------
 
   test("close() cancels SSE subscription", () async {
-    when(
-      () => mockService.getMessages(testSessionId),
-    ).thenAnswer((_) async => ApiResponse.success(<MessageWithParts>[]));
     when(() => mockService.getSessionDiffs(testSessionId)).thenAnswer((_) async => ApiResponse.success([sampleDiff]));
 
     final cubit = DiffCubit(
