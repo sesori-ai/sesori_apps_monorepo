@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_vqVFwSgfCP
 createdAt: 2026-03-24T12:39:53.285069
-updatedAt: 2026-03-24T12:40:14.117085
+updatedAt: 2026-03-24T16:59:15.837214
 workspaceId: wk_rSi2KDTVqo
 folderId: null
 authentication: {}
@@ -11,16 +11,16 @@ body: {}
 bodyType: null
 description: ''
 headers:
-- enabled: false
+- enabled: true
   name: x-project-id
-  value: /Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo
-  id: jD0MEpp09G
+  value: ${[ project_id ]}
+  id: EIqfjEaXNX
 - enabled: true
   name: ''
   value: ''
-  id: QpwkcqaHaG
+  id: ve7GWShwjG
 method: GET
-name: Sessions Status
-sortPriority: 0.001
+name: All Sessions Status
+sortPriority: 3000.0
 url: ${[ url ]}/session/status
 urlParameters: []

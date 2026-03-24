@@ -2,9 +2,9 @@ type: http_request
 model: http_request
 id: rq_WweEAarGjT
 createdAt: 2026-03-24T12:41:13.132692
-updatedAt: 2026-03-24T12:57:55.289623
+updatedAt: 2026-03-24T16:58:56.631357
 workspaceId: wk_rSi2KDTVqo
-folderId: null
+folderId: fl_KKPLMJLWXX
 authentication: {}
 authenticationType: null
 body: {}
@@ -20,15 +20,15 @@ headers:
   value: ''
   id: Gw82u95vVu
 method: GET
-name: Questions List
-sortPriority: 0.001
+name: Session Questions
+sortPriority: 1000.0
 url: ${[ url ]}/session/:sessionId/questions
 urlParameters:
 - enabled: true
   name: :sessionId
-  value: ses_2e064c306ffeuie3U7eaFMPCr7
+  value: ${[ session_id ]}
   id: c9PRk27rgZ
 - enabled: true
   name: ''
   value: ''
-  id: x0HXKDunQU
+  id: 7nTj5dmytN
