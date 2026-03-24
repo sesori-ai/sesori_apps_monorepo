@@ -19,11 +19,11 @@ void main() {
 
     tearDown(() => plugin.close());
 
-    test("canHandle GET /question", () {
+    test("canHandle GET /questions", () {
       expect(handler.canHandle(makeRequest("GET", "/questions")), isTrue);
     });
 
-    test("does not handle POST /question", () {
+    test("does not handle POST /questions", () {
       expect(handler.canHandle(makeRequest("POST", "/questions")), isFalse);
     });
 
