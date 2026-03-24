@@ -1,6 +1,6 @@
 import "dart:convert";
 
-import "package:sesori_bridge/src/bridge/routing/get_session_questions_handler.dart";
+import "package:sesori_bridge/src/bridge/routing/get_project_questions_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -8,40 +8,51 @@ import "package:test/test.dart";
 import "routing_test_helpers.dart";
 
 void main() {
-  group("GetSessionQuestionsHandler", () {
+  group("GetProjectQuestionsHandler", () {
     late FakeBridgePlugin plugin;
-    late GetSessionQuestionsHandler handler;
+    late GetProjectQuestionsHandler handler;
 
     setUp(() {
       plugin = FakeBridgePlugin();
-      handler = GetSessionQuestionsHandler(plugin);
+      handler = GetProjectQuestionsHandler(plugin);
     });
 
     tearDown(() => plugin.close());
 
-    test("canHandle GET /session/:id/questions", () {
-      expect(handler.canHandle(makeRequest("GET", "/session/s-1/questions")), isTrue);
+    test("canHandle GET /question", () {
+      expect(handler.canHandle(makeRequest("GET", "/questions")), isTrue);
     });
 
-    test("rejects GET /session/questions (missing id segment)", () {
-      expect(handler.canHandle(makeRequest("GET", "/session/questions")), isFalse);
+    test("does not handle POST /question", () {
+      expect(handler.canHandle(makeRequest("POST", "/questions")), isFalse);
     });
 
-    test("returns 400 when session id is missing", () async {
+    test("returns 400 when x-project-id header is missing", () async {
       final response = await handler.handle(
-        makeRequest("GET", "/session//questions"),
-        pathParams: {"id": ""},
+        makeRequest("GET", "/questions"),
+        pathParams: {},
         queryParams: {},
       );
 
       expect(response.status, equals(400));
-      expect(response.body, contains("missing session id"));
+      expect(response.body, contains("missing x-project-id header"));
     });
 
-    test("returns JSON list", () async {
+    test("returns 400 when x-project-id header is empty", () async {
       final response = await handler.handle(
-        makeRequest("GET", "/session/s-1/questions"),
-        pathParams: {"id": "s-1"},
+        makeRequest("GET", "/questions", headers: {"x-project-id": ""}),
+        pathParams: {},
+        queryParams: {},
+      );
+
+      expect(response.status, equals(400));
+      expect(response.body, contains("missing x-project-id header"));
+    });
+
+    test("returns JSON list on success", () async {
+      final response = await handler.handle(
+        makeRequest("GET", "/questions", headers: {"x-project-id": "/tmp/project"}),
+        pathParams: {},
         queryParams: {},
       );
 
@@ -71,8 +82,8 @@ void main() {
       ];
 
       final response = await handler.handle(
-        makeRequest("GET", "/session/s-1/questions"),
-        pathParams: {"id": "s-1"},
+        makeRequest("GET", "/questions", headers: {"x-project-id": "/tmp/project"}),
+        pathParams: {},
         queryParams: {},
       );
 

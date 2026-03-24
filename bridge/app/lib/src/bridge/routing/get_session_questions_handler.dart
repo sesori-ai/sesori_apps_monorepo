@@ -3,17 +3,18 @@ import "dart:convert";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "question_mapper.dart";
 import "request_handler.dart";
 
 const _idParam = "id";
 
 /// Handles `GET /session/:id/questions` — returns all pending question prompts for a session.
 ///
-/// Returns ALL pending questions for a session
-class GetPendingQuestionsHandler extends RequestHandler {
+/// Returns ALL pending questions for a session.
+class GetSessionQuestionsHandler extends RequestHandler {
   final BridgePlugin _plugin;
 
-  GetPendingQuestionsHandler(this._plugin) : super(HttpMethod.get, "/session/:$_idParam/questions");
+  GetSessionQuestionsHandler(this._plugin) : super(HttpMethod.get, "/session/:$_idParam/questions");
 
   @override
   Future<RelayResponse> handle(
@@ -28,35 +29,7 @@ class GetPendingQuestionsHandler extends RequestHandler {
     }
 
     final pluginQuestions = await _plugin.getPendingQuestions(sessionId: sessionId);
-
-    Log.d("pluginQuestions: $pluginQuestions");
-
-    final questions = pluginQuestions
-        .map(
-          (q) => PendingQuestion(
-            id: q.id,
-            sessionID: q.sessionID,
-            questions: q.questions
-                .map(
-                  (qi) => QuestionInfo(
-                    question: qi.question,
-                    header: qi.header,
-                    options: qi.options
-                        .map(
-                          (o) => QuestionOption(
-                            label: o.label,
-                            description: o.description,
-                          ),
-                        )
-                        .toList(),
-                    multiple: qi.multiple,
-                    custom: qi.custom,
-                  ),
-                )
-                .toList(),
-          ),
-        )
-        .toList();
+    final questions = mapPluginQuestions(pluginQuestions);
 
     return buildOkJsonResponse(request, jsonEncode(questions.map((q) => q.toJson()).toList()));
   }

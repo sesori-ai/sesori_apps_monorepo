@@ -52,6 +52,11 @@ abstract class BridgePlugin {
 
   Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId});
 
+  /// Returns all pending questions for every session in the given project.
+  ///
+  /// [projectId] is the project worktree directory.
+  Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId});
+
   /// Reply to a pending question prompt.
   ///
   /// [answers] is a `List<List<String>>` because:

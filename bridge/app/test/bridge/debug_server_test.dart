@@ -287,13 +287,16 @@ class _FakeBridgePlugin implements BridgePlugin {
   }) async {}
 
   @override
-  Future<void> abortSession(String sessionId) async {}
+  Future<void> abortSession({required String sessionId}) async {}
 
   @override
   Future<List<PluginAgent>> getAgents() async => [];
 
   @override
-  Future<List<PluginPendingQuestion>> getPendingQuestions() async => [];
+  Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) async => [];
+
+  @override
+  Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) async => [];
 
   @override
   Future<void> replyToQuestion({
@@ -409,13 +412,16 @@ class _TrackingBridgePlugin implements BridgePlugin {
   }) async {}
 
   @override
-  Future<void> abortSession(String sessionId) async {}
+  Future<void> abortSession({required String sessionId}) async {}
 
   @override
   Future<List<PluginAgent>> getAgents() async => [];
 
   @override
-  Future<List<PluginPendingQuestion>> getPendingQuestions() async => [];
+  Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) async => [];
+
+  @override
+  Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) async => [];
 
   @override
   Future<void> replyToQuestion({

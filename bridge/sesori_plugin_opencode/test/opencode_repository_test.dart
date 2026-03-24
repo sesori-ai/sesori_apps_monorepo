@@ -422,7 +422,7 @@ class _FakeApi implements OpenCodeApi {
   Future<List<AgentInfo>> listAgents() async => [];
 
   @override
-  Future<List<PendingQuestion>> getPendingQuestions() async => [];
+  Future<List<PendingQuestion>> getPendingQuestions({required String? directory}) async => [];
 
   @override
   Future<void> replyToQuestion({

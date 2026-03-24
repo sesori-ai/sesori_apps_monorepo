@@ -59,7 +59,7 @@ void main() {
       ],
       verify: (_) {
         verify(() => mockSessionService.getMessages(sessionId)).called(1);
-        verify(() => mockSessionService.getPendingQuestions()).called(1);
+        verify(() => mockSessionService.getPendingQuestions(sessionId)).called(1);
         verify(() => mockSessionService.getChildren(sessionId)).called(1);
         verify(() => mockSessionService.getSessionStatuses()).called(1);
         verify(() => mockSessionService.listAgents()).called(1);
@@ -105,7 +105,7 @@ void main() {
       ],
       verify: (_) {
         verify(() => mockSessionService.getMessages(sessionId)).called(2);
-        verify(() => mockSessionService.getPendingQuestions()).called(2);
+        verify(() => mockSessionService.getPendingQuestions(sessionId)).called(2);
         verify(() => mockSessionService.getChildren(sessionId)).called(2);
         verify(() => mockSessionService.getSessionStatuses()).called(2);
         verify(() => mockSessionService.listAgents()).called(2);
@@ -202,7 +202,7 @@ void main() {
     blocTest<SessionDetailCubit, SessionDetailState>(
       "replyToQuestion optimistically removes pending question and calls API",
       build: () {
-        when(() => mockSessionService.getPendingQuestions()).thenAnswer(
+        when(() => mockSessionService.getPendingQuestions(any())).thenAnswer(
           (_) async => ApiResponse.success([testPendingQuestion()]),
         );
 
@@ -242,7 +242,7 @@ void main() {
     blocTest<SessionDetailCubit, SessionDetailState>(
       "rejectQuestion optimistically removes pending question and calls API",
       build: () {
-        when(() => mockSessionService.getPendingQuestions()).thenAnswer(
+        when(() => mockSessionService.getPendingQuestions(any())).thenAnswer(
           (_) async => ApiResponse.success([testPendingQuestion()]),
         );
 
@@ -344,7 +344,7 @@ void main() {
     blocTest<SessionDetailCubit, SessionDetailState>(
       "SSE question.resolved removes pending question",
       build: () {
-        when(() => mockSessionService.getPendingQuestions()).thenAnswer(
+        when(() => mockSessionService.getPendingQuestions(any())).thenAnswer(
           (_) async => ApiResponse.success([testPendingQuestion()]),
         );
 
@@ -937,7 +937,7 @@ void _stubAllDefaults(
     () => service.getMessages(sessionId),
   ).thenAnswer((_) async => ApiResponse.success([testMessageWithParts()]));
   when(
-    () => service.getPendingQuestions(),
+    () => service.getPendingQuestions(any()),
   ).thenAnswer((_) async => ApiResponse.success(<PendingQuestion>[]));
   when(
     () => service.getChildren(sessionId),
