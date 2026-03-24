@@ -1,0 +1,34 @@
+type: http_request
+model: http_request
+id: rq_WweEAarGjT
+createdAt: 2026-03-24T12:41:13.132692
+updatedAt: 2026-03-24T16:58:56.631357
+workspaceId: wk_rSi2KDTVqo
+folderId: fl_KKPLMJLWXX
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: ''
+headers:
+- enabled: false
+  name: x-project-id
+  value: ''
+  id: jD0MEpp09G
+- enabled: true
+  name: ''
+  value: ''
+  id: Gw82u95vVu
+method: GET
+name: Session Questions
+sortPriority: 1000.0
+url: ${[ url ]}/session/:sessionId/questions
+urlParameters:
+- enabled: true
+  name: :sessionId
+  value: ${[ session_id ]}
+  id: c9PRk27rgZ
+- enabled: true
+  name: ''
+  value: ''
+  id: 7nTj5dmytN

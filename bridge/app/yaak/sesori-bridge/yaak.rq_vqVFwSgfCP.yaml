@@ -1,0 +1,26 @@
+type: http_request
+model: http_request
+id: rq_vqVFwSgfCP
+createdAt: 2026-03-24T12:39:53.285069
+updatedAt: 2026-03-24T16:59:15.837214
+workspaceId: wk_rSi2KDTVqo
+folderId: null
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: ''
+headers:
+- enabled: true
+  name: x-project-id
+  value: ${[ project_id ]}
+  id: EIqfjEaXNX
+- enabled: true
+  name: ''
+  value: ''
+  id: ve7GWShwjG
+method: GET
+name: All Sessions Status
+sortPriority: 3000.0
+url: ${[ url ]}/session/status
+urlParameters: []

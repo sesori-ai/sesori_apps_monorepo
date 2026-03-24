@@ -1,0 +1,15 @@
+type: workspace
+model: workspace
+id: wk_rSi2KDTVqo
+createdAt: 2026-03-24T12:35:58.650243
+updatedAt: 2026-03-24T12:35:58.650243
+authentication: {}
+authenticationType: null
+description: ''
+headers: []
+name: Sesori Bridge
+encryptionKeyChallenge: null
+settingValidateCertificates: true
+settingFollowRedirects: true
+settingRequestTimeout: 0
+settingDnsOverrides: []

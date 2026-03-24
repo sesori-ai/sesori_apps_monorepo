@@ -645,6 +645,101 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
+    // SSE events from other projects are ignored
+    // -------------------------------------------------------------------------
+
+    blocTest<SessionListCubit, SessionListState>(
+      "SSE session.created for a different project is ignored",
+      build: () {
+        when(
+          () => mockSessionService.listSessions(projectId: projectId),
+        ).thenAnswer((_) async => ApiResponse.success([testSession(id: "s1")]));
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        // Emit a session.created event for a different project.
+        eventController.add(
+          SseEvent(
+            data: SesoriSseEvent.sessionCreated(
+              info: const Session(
+                id: "foreign-session",
+                projectID: "project-other",
+                directory: "/other/project",
+                title: "Foreign Session",
+                time: SessionTime(created: 1, updated: 2),
+              ),
+            ),
+          ),
+        );
+        // Give the event time to be processed.
+        await Future<void>.delayed(Duration.zero);
+      },
+      skip: 1, // skip constructor's initial loaded emission
+      // No state changes — the foreign session must be ignored.
+      expect: () => <SessionListState>[],
+    );
+
+    blocTest<SessionListCubit, SessionListState>(
+      "SSE session.updated for a different project is ignored",
+      build: () {
+        when(
+          () => mockSessionService.listSessions(projectId: projectId),
+        ).thenAnswer((_) async => ApiResponse.success([testSession(id: "s1")]));
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        // Emit a session.updated event for a different project.
+        eventController.add(
+          SseEvent(
+            data: SesoriSseEvent.sessionUpdated(
+              info: const Session(
+                id: "foreign-session",
+                projectID: "project-other",
+                directory: "/other/project",
+                title: "Foreign Session Updated",
+                time: SessionTime(created: 1, updated: 3),
+              ),
+            ),
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+      },
+      skip: 1,
+      expect: () => <SessionListState>[],
+    );
+
+    blocTest<SessionListCubit, SessionListState>(
+      "SSE session.deleted for a different project is ignored",
+      build: () {
+        when(
+          () => mockSessionService.listSessions(projectId: projectId),
+        ).thenAnswer((_) async => ApiResponse.success([testSession(id: "s1")]));
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        // Emit a session.deleted event for a different project.
+        eventController.add(
+          SseEvent(
+            data: SesoriSseEvent.sessionDeleted(
+              info: const Session(
+                id: "foreign-session",
+                projectID: "project-other",
+                directory: "/other/project",
+                time: SessionTime(created: 1, updated: 2),
+              ),
+            ),
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+      },
+      skip: 1,
+      expect: () => <SessionListState>[],
+    );
+
+    // -------------------------------------------------------------------------
     // Root "global" project — sessions in subdirectories still belong here
     // -------------------------------------------------------------------------
 

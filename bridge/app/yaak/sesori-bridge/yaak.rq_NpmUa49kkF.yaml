@@ -1,0 +1,34 @@
+type: http_request
+model: http_request
+id: rq_NpmUa49kkF
+createdAt: 2026-03-24T12:37:52.588724
+updatedAt: 2026-03-24T16:58:56.632747
+workspaceId: wk_rSi2KDTVqo
+folderId: fl_KKPLMJLWXX
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: ''
+headers:
+- enabled: true
+  name: x-project-id
+  value: ${[ project_id ]}
+  id: jD0MEpp09G
+- enabled: true
+  name: ''
+  value: ''
+  id: 5ekI0ZiiD4
+method: GET
+name: Session Messages
+sortPriority: 2000.0
+url: ${[ url ]}/session/:sessionId/message
+urlParameters:
+- enabled: true
+  name: :sessionId
+  value: ses_2e064c306ffeuie3U7eaFMPCr7
+  id: 8uABx5Vc5b
+- enabled: true
+  name: ''
+  value: ''
+  id: 6VfTJNMXSz
