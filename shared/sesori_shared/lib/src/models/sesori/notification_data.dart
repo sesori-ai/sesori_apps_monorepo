@@ -76,6 +76,8 @@ enum NotificationEventType {
   messageUpdated,
   @JsonValue("installation_update_available")
   installationUpdateAvailable,
+  @JsonValue("session_completed")
+  sessionCompleted,
   // fallback for unknown event types (for backwards compatibility)
   @JsonValue("unknown")
   unknown,

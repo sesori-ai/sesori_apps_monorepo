@@ -41,5 +41,6 @@ const _$NotificationEventTypeEnumMap = {
   NotificationEventType.messageUpdated: 'message_updated',
   NotificationEventType.installationUpdateAvailable:
       'installation_update_available',
+  NotificationEventType.sessionCompleted: 'session_completed',
   NotificationEventType.unknown: 'unknown',
 };

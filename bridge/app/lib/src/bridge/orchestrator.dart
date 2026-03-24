@@ -155,6 +155,7 @@ class OrchestratorSession {
 
         Log.w("Connection lost. Reconnecting...");
         _sseManager.stop();
+        _pushNotificationService.reset();
 
         var backoff = const Duration(seconds: 1);
         while (!_cancelled) {
@@ -189,6 +190,9 @@ class OrchestratorSession {
       Log.d("[dbg] stopping sse manager...");
       _sseManager.stop();
       Log.d("[dbg] sse manager stopped");
+      Log.d("[dbg] disposing push notification service...");
+      _pushNotificationService.dispose();
+      Log.d("[dbg] push notification service disposed");
       try {
         Log.d("[dbg] closing relay client...");
         await _client.close();

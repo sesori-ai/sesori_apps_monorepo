@@ -21,12 +21,12 @@ void main() {
       expect(extractNotificationData(permissionEvent)?.category, NotificationCategory.aiInteraction);
     });
 
-    test("maps message.updated to session_message", () {
+    test("returns null for message.updated", () {
       const event = SesoriSseEvent.messageUpdated(
         info: Message(role: "assistant", id: "m-1", sessionID: "session-a"),
       );
 
-      expect(extractNotificationData(event)?.category, NotificationCategory.sessionMessage);
+      expect(extractNotificationData(event), isNull);
     });
 
     test("maps installation.update-available to system_update", () {
