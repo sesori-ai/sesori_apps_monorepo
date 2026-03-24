@@ -68,8 +68,9 @@ class SessionListCubit extends Cubit<SessionListState> {
   }
 
   void _onSessionCreated(Session session) {
-    // Only add root sessions (server already filters by project via x-project-id header).
+    // Only add root sessions that belong to this project.
     if (session.parentID != null) return;
+    if (session.projectID != _projectId) return;
 
     if (state is! SessionListLoaded) return;
 
@@ -81,6 +82,7 @@ class SessionListCubit extends Cubit<SessionListState> {
   }
 
   void _onSessionUpdated(Session session) {
+    if (session.projectID != _projectId) return;
     if (state is! SessionListLoaded) return;
 
     final index = _allSessions.indexWhere((s) => s.id == session.id);
@@ -97,6 +99,7 @@ class SessionListCubit extends Cubit<SessionListState> {
   }
 
   void _onSessionDeleted(Session session) {
+    if (session.projectID != _projectId) return;
     if (state is! SessionListLoaded) return;
 
     final before = _allSessions.length;

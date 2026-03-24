@@ -1,0 +1,26 @@
+type: http_request
+model: http_request
+id: rq_RcZLMX9F99
+createdAt: 2026-03-24T12:36:02.499026
+updatedAt: 2026-03-24T12:37:53.866253
+workspaceId: wk_rSi2KDTVqo
+folderId: null
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: ''
+headers:
+- enabled: true
+  name: x-project-id
+  value: /Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo
+  id: jD0MEpp09G
+- enabled: true
+  name: ''
+  value: ''
+  id: FAWr8SZpk7
+method: GET
+name: Sessions List
+sortPriority: 0.0
+url: ${[ url ]}/session
+urlParameters: []

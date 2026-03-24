@@ -1,0 +1,26 @@
+type: http_request
+model: http_request
+id: rq_h5rVJzSnNW
+createdAt: 2026-03-24T12:37:11.755433
+updatedAt: 2026-03-24T12:37:53.868176
+workspaceId: wk_rSi2KDTVqo
+folderId: null
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: ''
+headers:
+- enabled: false
+  name: x-project-id
+  value: ''
+  id: jD0MEpp09G
+- enabled: true
+  name: ''
+  value: ''
+  id: QT9Yw3QUcw
+method: GET
+name: Projects List
+sortPriority: 2000.0
+url: ${[ url ]}/project
+urlParameters: []
