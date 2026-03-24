@@ -1,7 +1,6 @@
 import "package:flutter/material.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "../../../core/routing/app_router.dart";
+
 import "reasoning_part_widget.dart";
 import "subtask_part_widget.dart";
 import "text_part_widget.dart";
@@ -31,7 +30,6 @@ class AssistantMessageCard extends StatelessWidget {
         crossAxisAlignment: .start,
         children: [
           for (final part in visibleParts) _buildPart(context, part),
-          _buildFooter(context),
         ],
       ),
     );
@@ -71,40 +69,5 @@ class AssistantMessageCard extends StatelessWidget {
       ),
       _ => const SizedBox.shrink(),
     };
-  }
-
-  Widget _buildFooter(BuildContext context) {
-    final theme = Theme.of(context);
-    final sessionId = message.info.sessionID;
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          TextButton.icon(
-            style: TextButton.styleFrom(
-              foregroundColor: theme.colorScheme.onSurfaceVariant,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            onPressed: () => _navigateToDiffs(context, sessionId),
-            icon: const Icon(Icons.difference_outlined, size: 14),
-            label: const Text(
-              'View changes',
-              style: TextStyle(fontSize: 12),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _navigateToDiffs(BuildContext context, String sessionId) {
-    context.pushRoute(
-      AppRoute.sessionDiffs,
-      pathParams: {"sessionId": sessionId},
-    );
   }
 }
