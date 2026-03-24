@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:sesori_dart_core/src/utils/diff/diff_engine.dart';
+import 'package:sesori_dart_core/sesori_dart_core.dart';
 import 'package:sesori_shared/sesori_shared.dart';
 
 /// View-model for a single diff line.

@@ -1,5 +1,5 @@
-import 'package:test/test.dart';
 import 'package:sesori_dart_core/src/utils/diff/language_detector.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('detectLanguage', () {

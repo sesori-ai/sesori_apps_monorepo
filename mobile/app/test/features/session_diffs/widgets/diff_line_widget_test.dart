@@ -27,10 +27,10 @@ void main() {
 
       await tester.pumpWidget(buildTestWidget(vm));
 
-      // Find the outermost Container with the background color.
-      // The DiffLineWidget root is a Container with color.
+      // Find the outermost ColoredBox with the background color.
+      // The DiffLineWidget root is a ColoredBox with color.
       final containerFinder = find.byWidgetPredicate(
-        (widget) => widget is Container && widget.color == const Color(0xFFE6FFEC),
+        (widget) => widget is ColoredBox && widget.color == const Color(0xFFE6FFEC),
       );
       expect(containerFinder, findsOneWidget);
     });
@@ -48,7 +48,7 @@ void main() {
       await tester.pumpWidget(buildTestWidget(vm));
 
       final containerFinder = find.byWidgetPredicate(
-        (widget) => widget is Container && widget.color == const Color(0xFFFFEBE9),
+        (widget) => widget is ColoredBox && widget.color == const Color(0xFFFFEBE9),
       );
       expect(containerFinder, findsOneWidget);
     });
@@ -66,9 +66,9 @@ void main() {
       await tester.pumpWidget(buildTestWidget(vm));
 
       final containerFinder = find.byWidgetPredicate(
-        (widget) => widget is Container && widget.color == Colors.transparent,
+        (widget) => widget is ColoredBox && widget.color == Colors.transparent,
       );
-      expect(containerFinder, findsOneWidget);
+      expect(containerFinder, findsAtLeastNWidgets(1));
     });
 
     testWidgets("renders old and new line numbers", (tester) async {

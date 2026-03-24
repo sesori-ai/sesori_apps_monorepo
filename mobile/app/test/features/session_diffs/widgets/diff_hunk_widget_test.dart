@@ -53,7 +53,7 @@ void main() {
         (widget) =>
             widget is Container &&
             widget.decoration is BoxDecoration &&
-            (widget.decoration as BoxDecoration).color == const Color(0xFFF1F8FF),
+            (widget.decoration! as BoxDecoration).color == const Color(0xFFF1F8FF),
       );
       expect(headerContainer, findsOneWidget);
     });

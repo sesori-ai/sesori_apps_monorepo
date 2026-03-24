@@ -55,3 +55,6 @@ export "src/reporting/reporting.dart";
 // Routing
 export "src/routing/app_routes.dart";
 export "src/routing/auth_redirect_service.dart";
+// Utils
+export "src/utils/diff/diff_engine.dart";
+export "src/utils/diff/language_detector.dart";

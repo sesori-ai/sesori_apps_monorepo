@@ -3,9 +3,8 @@ import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_shared/sesori_shared.dart";
-
 import "package:sesori_mobile/features/session_diffs/widgets/diff_message_selector.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 class MockDiffCubit extends Mock implements DiffCubit {}
 
@@ -40,7 +39,7 @@ void main() {
     testWidgets("is not visible when state is loading", (tester) async {
       final cubit = MockDiffCubit();
       when(() => cubit.state).thenReturn(const DiffState.loading());
-      when(() => cubit.stream).thenAnswer((_) => Stream.empty());
+      when(() => cubit.stream).thenAnswer((_) => const Stream.empty());
 
       await tester.pumpWidget(buildTestWidget(cubit));
 
@@ -57,7 +56,7 @@ void main() {
           hasNewChanges: false,
         ),
       );
-      when(() => cubit.stream).thenAnswer((_) => Stream.empty());
+      when(() => cubit.stream).thenAnswer((_) => const Stream.empty());
 
       await tester.pumpWidget(buildTestWidget(cubit));
 
@@ -73,7 +72,7 @@ void main() {
           hasNewChanges: false,
         ),
       );
-      when(() => cubit.stream).thenAnswer((_) => Stream.empty());
+      when(() => cubit.stream).thenAnswer((_) => const Stream.empty());
 
       await tester.pumpWidget(buildTestWidget(cubit));
 
@@ -93,7 +92,7 @@ void main() {
           // selectedMessageId is null by default
         ),
       );
-      when(() => cubit.stream).thenAnswer((_) => Stream.empty());
+      when(() => cubit.stream).thenAnswer((_) => const Stream.empty());
 
       await tester.pumpWidget(buildTestWidget(cubit));
 
@@ -117,7 +116,7 @@ void main() {
           hasNewChanges: false,
         ),
       );
-      when(() => cubit.stream).thenAnswer((_) => Stream.empty());
+      when(() => cubit.stream).thenAnswer((_) => const Stream.empty());
       when(() => cubit.selectMessage(any())).thenAnswer((_) async {});
 
       await tester.pumpWidget(buildTestWidget(cubit));
@@ -138,7 +137,7 @@ void main() {
           selectedMessageId: "u1",
         ),
       );
-      when(() => cubit.stream).thenAnswer((_) => Stream.empty());
+      when(() => cubit.stream).thenAnswer((_) => const Stream.empty());
       when(() => cubit.selectMessage(any())).thenAnswer((_) async {});
 
       await tester.pumpWidget(buildTestWidget(cubit));
@@ -159,7 +158,7 @@ void main() {
           selectedMessageId: "u2",
         ),
       );
-      when(() => cubit.stream).thenAnswer((_) => Stream.empty());
+      when(() => cubit.stream).thenAnswer((_) => const Stream.empty());
 
       await tester.pumpWidget(buildTestWidget(cubit));
 
