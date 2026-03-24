@@ -6,6 +6,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart" show AppRoute, RouteSource;
 import "package:sesori_dart_core/src/api/client/relay_http_client.dart";
+import "package:sesori_dart_core/src/capabilities/project/closed_projects_storage.dart";
 import "package:sesori_dart_core/src/capabilities/project/project_service.dart";
 import "package:sesori_dart_core/src/capabilities/relay/relay_client.dart";
 import "package:sesori_dart_core/src/capabilities/relay/room_key_storage.dart";
@@ -29,6 +30,8 @@ import "package:sesori_shared/sesori_shared.dart";
 // ---------------------------------------------------------------------------
 
 class MockProjectService extends Mock implements ProjectService {}
+
+class MockClosedProjectsStorage extends Mock implements ClosedProjectsStorage {}
 
 class MockSessionService extends Mock implements SessionService {}
 

@@ -8,6 +8,7 @@ import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/routing/app_router.dart";
 import "../../l10n/app_localizations.dart";
+import "add_project_dialog.dart";
 
 class ProjectListScreen extends StatelessWidget {
   const ProjectListScreen({super.key});
@@ -20,6 +21,7 @@ class ProjectListScreen extends StatelessWidget {
         getIt<ConnectionService>(),
         getIt<SseEventRepository>(),
         getIt<RouteSource>(),
+        getIt<ClosedProjectsStorage>(),
       ),
       child: const _ProjectListBody(),
     );
@@ -67,6 +69,11 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton(
+        tooltip: loc.addProject,
+        onPressed: () => showAddProjectDialog(context, context.read<ProjectListCubit>()),
+        child: const Icon(Icons.add),
+      ),
       body: switch (state) {
         ProjectListLoading() => const Center(
           child: CircularProgressIndicator(),
@@ -84,7 +91,33 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
                   physics: const AlwaysScrollableScrollPhysics(),
                   slivers: [
                     SliverFillRemaining(
-                      child: Center(child: Text(loc.projectListEmpty)),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.folder_off_outlined,
+                              size: 48,
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(loc.noProjects, style: Theme.of(context).textTheme.titleMedium),
+                            const SizedBox(height: 8),
+                            Text(
+                              loc.addProjectPrompt,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Theme.of(context).colorScheme.outline,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            FilledButton.icon(
+                              onPressed: () => showAddProjectDialog(context, context.read<ProjectListCubit>()),
+                              icon: const Icon(Icons.add),
+                              label: Text(loc.addProject),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 )
@@ -94,9 +127,28 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
                   itemCount: projects.length,
                   itemBuilder: (context, index) {
                     final project = projects[index];
-                    return _ProjectTile(
-                      project: project,
-                      activeSessions: activityById[project.id] ?? 0,
+                    return Dismissible(
+                      key: ValueKey(project.id),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.only(right: 24),
+                        color: Theme.of(context).colorScheme.error,
+                        child: Icon(
+                          Icons.visibility_off,
+                          color: Theme.of(context).colorScheme.onError,
+                        ),
+                      ),
+                      onDismissed: (_) {
+                        context.read<ProjectListCubit>().closeProject(project.id);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(loc.projectHidden)),
+                        );
+                      },
+                      child: _ProjectTile(
+                        project: project,
+                        activeSessions: activityById[project.id] ?? 0,
+                      ),
                     );
                   },
                 ),

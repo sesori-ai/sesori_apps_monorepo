@@ -68,6 +68,7 @@ class FakeBridgePlugin implements BridgePlugin {
   bool throwOnHealthCheck = false;
   bool throwOnGetProjects = false;
   Object? throwOnGetProjectsError;
+  Object? throwOnGetProjectError;
   bool throwOnGetSessions = false;
   Object? throwOnDeleteSessionError;
 
@@ -212,6 +213,9 @@ class FakeBridgePlugin implements BridgePlugin {
 
   @override
   Future<PluginProject> getProject(String projectId) async {
+    if (throwOnGetProjectError case final error?) {
+      throw error;
+    }
     lastGetCurrentProjectProjectId = projectId;
     return currentProjectResult ?? const PluginProject(id: "");
   }

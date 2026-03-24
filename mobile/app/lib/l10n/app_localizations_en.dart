@@ -432,4 +432,49 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get voiceRecordingLimitReached => 'Recording limit reached (15 minutes)';
+
+  @override
+  String get addProject => 'Add Project';
+
+  @override
+  String get createNewProject => 'Create New';
+
+  @override
+  String get discoverExistingProject => 'Discover Existing';
+
+  @override
+  String get projectPathHint => 'Enter directory path';
+
+  @override
+  String get createProjectButton => 'Create Project';
+
+  @override
+  String get discoverProjectButton => 'Discover Project';
+
+  @override
+  String get projectHidden => 'Project hidden';
+
+  @override
+  String get noProjects => 'No projects';
+
+  @override
+  String get addProjectPrompt => 'Add a project to get started';
+
+  @override
+  String get creatingProject => 'Creating project...';
+
+  @override
+  String get discoveringProject => 'Discovering project...';
+
+  @override
+  String get projectCreated => 'Project created';
+
+  @override
+  String get projectDiscovered => 'Project discovered';
+
+  @override
+  String get projectCreateFailed => 'Failed to create project';
+
+  @override
+  String get projectDiscoverFailed => 'Failed to discover project';
 }

@@ -27,12 +27,19 @@ void main() {
     late MockConnectionService mockConnectionService;
     late MockSseEventRepository mockSseEventRepository;
     late MockRouteSource mockRouteSource;
+    late MockClosedProjectsStorage mockClosedStorage;
 
     setUp(() {
       mockProjectService = MockProjectService();
       mockConnectionService = MockConnectionService();
       mockSseEventRepository = MockSseEventRepository();
       mockRouteSource = MockRouteSource();
+      mockClosedStorage = MockClosedProjectsStorage();
+
+      // Default stubs for ClosedProjectsStorage — no closed projects.
+      when(() => mockClosedStorage.getClosedProjectIds()).thenAnswer((_) async => <String>{});
+      when(() => mockClosedStorage.closeProject(any())).thenAnswer((_) async {});
+      when(() => mockClosedStorage.openProject(any())).thenAnswer((_) async {});
     });
 
     /// Creates a fresh [ProjectListCubit] with the route source seeded to
@@ -43,6 +50,7 @@ void main() {
       mockConnectionService,
       mockSseEventRepository,
       mockRouteSource,
+      mockClosedStorage,
     );
 
     // -------------------------------------------------------------------------

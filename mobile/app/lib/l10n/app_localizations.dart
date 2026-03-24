@@ -834,6 +834,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Recording limit reached (15 minutes)'**
   String get voiceRecordingLimitReached;
+
+  /// No description provided for @addProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Project'**
+  String get addProject;
+
+  /// No description provided for @createNewProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Create New'**
+  String get createNewProject;
+
+  /// No description provided for @discoverExistingProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Discover Existing'**
+  String get discoverExistingProject;
+
+  /// No description provided for @projectPathHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter directory path'**
+  String get projectPathHint;
+
+  /// No description provided for @createProjectButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Project'**
+  String get createProjectButton;
+
+  /// No description provided for @discoverProjectButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Discover Project'**
+  String get discoverProjectButton;
+
+  /// No description provided for @projectHidden.
+  ///
+  /// In en, this message translates to:
+  /// **'Project hidden'**
+  String get projectHidden;
+
+  /// No description provided for @noProjects.
+  ///
+  /// In en, this message translates to:
+  /// **'No projects'**
+  String get noProjects;
+
+  /// No description provided for @addProjectPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a project to get started'**
+  String get addProjectPrompt;
+
+  /// No description provided for @creatingProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Creating project...'**
+  String get creatingProject;
+
+  /// No description provided for @discoveringProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Discovering project...'**
+  String get discoveringProject;
+
+  /// No description provided for @projectCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Project created'**
+  String get projectCreated;
+
+  /// No description provided for @projectDiscovered.
+  ///
+  /// In en, this message translates to:
+  /// **'Project discovered'**
+  String get projectDiscovered;
+
+  /// No description provided for @projectCreateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to create project'**
+  String get projectCreateFailed;
+
+  /// No description provided for @projectDiscoverFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to discover project'**
+  String get projectDiscoverFailed;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
