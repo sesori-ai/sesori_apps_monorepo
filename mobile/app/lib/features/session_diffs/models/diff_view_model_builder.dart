@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
-import 'package:sesori_dart_core/src/utils/diff/diff_engine.dart';
-import 'package:sesori_dart_core/src/utils/diff/language_detector.dart';
+import 'package:sesori_dart_core/sesori_dart_core.dart';
 import 'package:sesori_shared/sesori_shared.dart';
 
 import '../utils/binary_detector.dart';

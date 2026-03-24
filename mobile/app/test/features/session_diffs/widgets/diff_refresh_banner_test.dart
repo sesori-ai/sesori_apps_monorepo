@@ -26,7 +26,7 @@ void main() {
     testWidgets("is not visible when state is loading", (tester) async {
       final cubit = MockDiffCubit();
       when(() => cubit.state).thenReturn(const DiffState.loading());
-      when(() => cubit.stream).thenAnswer((_) => Stream.empty());
+      when(() => cubit.stream).thenAnswer((_) => const Stream.empty());
 
       await tester.pumpWidget(buildTestWidget(cubit));
 
@@ -44,7 +44,7 @@ void main() {
           hasNewChanges: false,
         ),
       );
-      when(() => cubit.stream).thenAnswer((_) => Stream.empty());
+      when(() => cubit.stream).thenAnswer((_) => const Stream.empty());
 
       await tester.pumpWidget(buildTestWidget(cubit));
 
@@ -62,7 +62,7 @@ void main() {
           hasNewChanges: true,
         ),
       );
-      when(() => cubit.stream).thenAnswer((_) => Stream.empty());
+      when(() => cubit.stream).thenAnswer((_) => const Stream.empty());
 
       await tester.pumpWidget(buildTestWidget(cubit));
 
@@ -80,7 +80,7 @@ void main() {
           hasNewChanges: true,
         ),
       );
-      when(() => cubit.stream).thenAnswer((_) => Stream.empty());
+      when(() => cubit.stream).thenAnswer((_) => const Stream.empty());
 
       await tester.pumpWidget(buildTestWidget(cubit));
 
@@ -98,8 +98,8 @@ void main() {
           hasNewChanges: true,
         ),
       );
-      when(() => cubit.stream).thenAnswer((_) => Stream.empty());
-      when(() => cubit.refresh()).thenAnswer((_) async {});
+      when(() => cubit.stream).thenAnswer((_) => const Stream.empty());
+      when(cubit.refresh).thenAnswer((_) async {});
 
       await tester.pumpWidget(buildTestWidget(cubit));
 
@@ -108,7 +108,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify refresh was called
-      verify(() => cubit.refresh()).called(1);
+      verify(cubit.refresh).called(1);
     });
 
     testWidgets("displays refresh icon when banner is visible", (tester) async {
@@ -120,7 +120,7 @@ void main() {
           hasNewChanges: true,
         ),
       );
-      when(() => cubit.stream).thenAnswer((_) => Stream.empty());
+      when(() => cubit.stream).thenAnswer((_) => const Stream.empty());
 
       await tester.pumpWidget(buildTestWidget(cubit));
 
@@ -137,7 +137,7 @@ void main() {
       when(() => cubit.state).thenReturn(
         const DiffState.failed(error: "Test error"),
       );
-      when(() => cubit.stream).thenAnswer((_) => Stream.empty());
+      when(() => cubit.stream).thenAnswer((_) => const Stream.empty());
 
       await tester.pumpWidget(buildTestWidget(cubit));
 

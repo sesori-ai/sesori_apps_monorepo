@@ -71,11 +71,11 @@ void main() {
     });
 
     test("mixed changes", () {
-      final before = List<String>.generate(16, (i) => "line ${i + 1}").join("\n") + "\n";
+      final before = "${List<String>.generate(16, (i) => "line ${i + 1}").join("\n")}\n";
       final afterLines = List<String>.generate(16, (i) => "line ${i + 1}");
       afterLines[1] = "line 2 updated";
       afterLines[12] = "line 13 updated";
-      final after = afterLines.join("\n") + "\n";
+      final after = "${afterLines.join("\n")}\n";
 
       final result = DiffEngine.computeDiff(before, after);
 
@@ -92,8 +92,8 @@ void main() {
       afterLines[3] = "line 4 changed";
       afterLines[8] = "line 9 changed";
 
-      final before = beforeLines.join("\n") + "\n";
-      final after = afterLines.join("\n") + "\n";
+      final before = "${beforeLines.join("\n")}\n";
+      final after = "${afterLines.join("\n")}\n";
 
       final result = DiffEngine.computeDiff(before, after);
 
@@ -144,8 +144,8 @@ void main() {
       afterLines[59] = "line 60 changed";
       afterLines[119] = "line 120 changed";
 
-      final before = beforeLines.join("\n") + "\n";
-      final after = afterLines.join("\n") + "\n";
+      final before = "${beforeLines.join("\n")}\n";
+      final after = "${afterLines.join("\n")}\n";
 
       final result = DiffEngine.computeDiff(before, after);
 

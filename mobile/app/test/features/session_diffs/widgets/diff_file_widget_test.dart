@@ -1,11 +1,10 @@
 import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:sesori_dart_core/src/utils/diff/diff_engine.dart";
-import "package:sesori_shared/sesori_shared.dart";
-
 import "package:sesori_mobile/features/session_diffs/models/diff_file_view_model.dart";
 import "package:sesori_mobile/features/session_diffs/widgets/diff_file_widget.dart";
 import "package:sesori_mobile/features/session_diffs/widgets/diff_hunk_widget.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 void main() {
   /// Helper to build a minimal [DiffFileViewModel] for testing.

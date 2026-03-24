@@ -1,5 +1,5 @@
 import "package:flutter/material.dart";
-import "package:sesori_dart_core/src/utils/diff/diff_engine.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../models/diff_file_view_model.dart";
 
@@ -47,7 +47,7 @@ class DiffLineWidget extends StatelessWidget {
       DiffLineType.context => " ",
     };
 
-    return Container(
+    return ColoredBox(
       color: bg,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

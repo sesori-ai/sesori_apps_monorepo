@@ -71,6 +71,7 @@ dependencies:
   flutter_local_notifications: ^21.0.0
   re_highlight: ^0.0.3
 
+  path: any
 dev_dependencies:
   flutter_test:
     sdk: flutter
