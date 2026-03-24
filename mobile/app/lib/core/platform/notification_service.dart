@@ -55,7 +55,7 @@ class NotificationService {
     await _localNotificationManager.initialize();
 
     _subscriptions.add(FirebaseMessaging.instance.onTokenRefresh.listen(_onTokenRefresh));
-    _subscriptions.add(FirebaseMessaging.onMessage.listen(_onForegroundMessage));
+    _subscriptions.add(FirebaseMessaging.onMessage.listen(onForegroundMessage));
 
     // value stream that emits the current auth state too
     _subscriptions.add(_authSession.authStateStream.listen(onAuthStateChanged));
@@ -146,7 +146,8 @@ class NotificationService {
     _currentToken = newToken;
   }
 
-  Future<void> _onForegroundMessage(RemoteMessage message) async {
+  @visibleForTesting
+  Future<void> onForegroundMessage(RemoteMessage message) async {
     NotificationData notificationData;
     try {
       notificationData = NotificationData.fromJson(message.data);
@@ -169,6 +170,7 @@ class NotificationService {
       title: title,
       body: body,
       category: category,
+      sessionId: notificationData.sessionId,
     );
   }
 
