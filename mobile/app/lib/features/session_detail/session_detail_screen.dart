@@ -7,6 +7,8 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
+import "../../core/platform/local_notification_manager.dart";
+import "../../core/platform/notification_id_utils.dart";
 import "../../l10n/app_localizations.dart";
 import "widgets/agent_picker_sheet.dart";
 import "widgets/assistant_message_card.dart";
@@ -113,6 +115,9 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
           sessionId: question.sessionID,
           answers: answers,
         );
+        getIt<LocalNotificationManager>().cancel(
+          computeNotificationId(question.sessionID, NotificationCategory.aiInteraction),
+        );
 
         // Auto-open the next pending question, if any.
         if (!mounted) return;
@@ -127,6 +132,9 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
       },
       onReject: (requestId) {
         context.read<SessionDetailCubit>().rejectQuestion(requestId);
+        getIt<LocalNotificationManager>().cancel(
+          computeNotificationId(question.sessionID, NotificationCategory.aiInteraction),
+        );
 
         if (!mounted) return;
         final current = context.read<SessionDetailCubit>().state;
