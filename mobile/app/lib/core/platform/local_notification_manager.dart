@@ -4,6 +4,8 @@ import "package:flutter_local_notifications/flutter_local_notifications.dart";
 import "package:injectable/injectable.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "notification_id_utils.dart";
+
 extension on NotificationImportance {
   Importance toLocalNotificationImportance() {
     return switch (this) {
@@ -20,7 +22,10 @@ extension on NotificationImportance {
 
 @lazySingleton
 class LocalNotificationManager {
-  final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _plugin;
+
+  LocalNotificationManager([FlutterLocalNotificationsPlugin? plugin])
+    : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
 
   Future<void> initialize() async {
     if (Platform.isAndroid) {
@@ -49,11 +54,19 @@ class LocalNotificationManager {
     required String title,
     required String body,
     required NotificationCategory category,
+    String? sessionId,
   }) async {
     final channelId = category.id;
 
+    final int id;
+    if (sessionId != null && category == NotificationCategory.aiInteraction) {
+      id = computeNotificationId(sessionId, category);
+    } else {
+      id = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    }
+
     await _plugin.show(
-      id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      id: id,
       title: title,
       body: body,
       notificationDetails: NotificationDetails(
@@ -61,5 +74,9 @@ class LocalNotificationManager {
         iOS: const DarwinNotificationDetails(),
       ),
     );
+  }
+
+  Future<void> cancel(int notificationId) async {
+    await _plugin.cancel(id: notificationId);
   }
 }
