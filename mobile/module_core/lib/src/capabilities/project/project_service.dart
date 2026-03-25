@@ -64,9 +64,13 @@ class ProjectService {
     );
   }
 
-  /// Closes (hides) the project with the given [projectId] on the bridge.
-  Future<ApiResponse<void>> closeProject({required String projectId}) {
-    return _client.delete("/project/$projectId", fromJson: (_) {});
+  /// Hides the project with the given [projectId] on the bridge.
+  Future<ApiResponse<void>> hideProject({required String projectId}) {
+    return _client.post(
+      "/project/hide",
+      body: {"projectId": projectId},
+      fromJson: (_) {},
+    );
   }
 
   /// Gets filesystem suggestions for the given prefix.

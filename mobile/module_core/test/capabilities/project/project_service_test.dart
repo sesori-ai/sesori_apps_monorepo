@@ -125,39 +125,42 @@ void main() {
     });
 
     // -------------------------------------------------------------------------
-    // 3b. closeProject sends DELETE /project/<id>
+    // 3b. hideProject sends POST /project/hide with projectId in body
     // -------------------------------------------------------------------------
 
-    test("closeProject sends DELETE /project/<id>", () async {
+    test("hideProject sends POST /project/hide with projectId in body", () async {
       when(
-        () => mockClient.delete<void>(
+        () => mockClient.post<void>(
           any(),
           fromJson: any(named: "fromJson"),
+          body: any(named: "body"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(null));
 
-      final result = await service.closeProject(projectId: "proj-1");
+      final result = await service.hideProject(projectId: "proj-1");
 
       expect(result, isA<SuccessResponse<void>>());
 
       verify(
-        () => mockClient.delete<void>(
-          "/project/proj-1",
+        () => mockClient.post<void>(
+          "/project/hide",
           fromJson: any(named: "fromJson"),
+          body: {"projectId": "proj-1"},
         ),
       ).called(1);
     });
 
-    test("closeProject error response maps to ErrorResponse", () async {
+    test("hideProject error response maps to ErrorResponse", () async {
       final error = ApiError.generic();
       when(
-        () => mockClient.delete<void>(
+        () => mockClient.post<void>(
           any(),
           fromJson: any(named: "fromJson"),
+          body: any(named: "body"),
         ),
       ).thenAnswer((_) async => ApiResponse.error(error));
 
-      final result = await service.closeProject(projectId: "proj-1");
+      final result = await service.hideProject(projectId: "proj-1");
 
       expect(result, isA<ErrorResponse<void>>());
       expect((result as ErrorResponse<void>).error, equals(error));

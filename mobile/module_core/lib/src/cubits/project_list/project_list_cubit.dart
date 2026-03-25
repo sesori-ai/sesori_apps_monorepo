@@ -103,8 +103,8 @@ class ProjectListCubit extends Cubit<ProjectListState> {
 
   /// Calls the bridge API to hide the project, then optimistically removes
   /// it from the current state on success.
-  Future<void> closeProject(String projectId) async {
-    final response = await _projectService.closeProject(projectId: projectId);
+  Future<void> hideProject(String projectId) async {
+    final response = await _projectService.hideProject(projectId: projectId);
     if (isClosed) return;
     if (response is! SuccessResponse) return;
     if (state is! ProjectListLoaded) return;

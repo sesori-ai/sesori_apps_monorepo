@@ -103,7 +103,7 @@ Widget _buildProjectListShell({required ProjectListCubit cubit}) {
                                       title: Text(loc.hideProject),
                                       onTap: () {
                                         Navigator.of(sheetContext).pop();
-                                        listCubit.closeProject(project.id);
+                                        listCubit.hideProject(project.id);
                                       },
                                     ),
                                   ],
@@ -210,12 +210,12 @@ void main() {
       expect(find.text("Hide Project"), findsOneWidget);
     });
 
-    testWidgets("tapping Hide Project calls closeProject", (tester) async {
+    testWidgets("tapping Hide Project calls hideProject", (tester) async {
       final project = testProject();
       when(() => mockCubit.state).thenReturn(
         ProjectListState.loaded(projects: [project], activityById: const {}),
       );
-      when(() => mockCubit.closeProject(any())).thenAnswer((_) async {});
+      when(() => mockCubit.hideProject(any())).thenAnswer((_) async {});
 
       await tester.pumpWidget(_buildProjectListShell(cubit: mockCubit));
 
@@ -226,7 +226,7 @@ void main() {
       await tester.tap(find.text("Hide Project"));
       await tester.pumpAndSettle();
 
-      verify(() => mockCubit.closeProject(project.id)).called(1);
+      verify(() => mockCubit.hideProject(project.id)).called(1);
     });
   });
 

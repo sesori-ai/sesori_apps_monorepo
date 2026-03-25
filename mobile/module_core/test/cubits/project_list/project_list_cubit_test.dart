@@ -86,24 +86,24 @@ void main() {
   );
 
   // -------------------------------------------------------------------------
-  // Test 1: closeProject
+  // Test 1: hideProject
   // -------------------------------------------------------------------------
 
   blocTest<ProjectListCubit, ProjectListState>(
-    "closeProject: removes project from state and calls service.closeProject",
+    "hideProject: removes project from state and calls service.hideProject",
     build: () {
       when(() => mockProjectService.listProjects()).thenAnswer(
         (_) async => ApiResponse.success([projectA, projectB, projectC]),
       );
       when(
-        () => mockProjectService.closeProject(projectId: any(named: "projectId")),
+        () => mockProjectService.hideProject(projectId: any(named: "projectId")),
       ).thenAnswer((_) async => ApiResponse.success(null));
       return buildCubit();
     },
     act: (cubit) async {
-      // Let the initial load complete before exercising closeProject.
+      // Let the initial load complete before exercising hideProject.
       await Future<void>.delayed(Duration.zero);
-      await cubit.closeProject("B");
+      await cubit.hideProject("B");
     },
     skip: 1, // skip the initial ProjectListLoaded([A, B, C])
     expect: () => [
@@ -125,7 +125,7 @@ void main() {
           ),
     ],
     verify: (cubit) {
-      verify(() => mockProjectService.closeProject(projectId: "B")).called(1);
+      verify(() => mockProjectService.hideProject(projectId: "B")).called(1);
     },
   );
 
