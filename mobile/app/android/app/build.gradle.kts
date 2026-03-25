@@ -12,20 +12,23 @@ plugins {
     // END: FlutterFire Configuration
 }
 
-fun loadPropertiesOrThrow(path: String): Properties {
-    val props = Properties()
+fun loadPropertiesOrNull(path: String): Properties? {
     val file = rootProject.file(path)
+    if (!file.exists()) return null
 
-    if (!file.exists()) {
-        throw GradleException("Missing $path. This file is required for requested build.")
-    }
-
+    val props = Properties()
     file.inputStream().use { props.load(it) }
     return props
 }
 
 fun SigningConfig.applyFromPropertiesFile(propsPath: String) {
-    val props = loadPropertiesOrThrow(propsPath)
+    val props = loadPropertiesOrNull(propsPath) ?: run {
+        // Properties file missing — skip configuration.
+        // Gradle will fail at build time if this signing config is actually used.
+        logger.warn("Signing properties file '$propsPath' not found — skipping signing config setup.")
+        return
+    }
+
     val storeFilePath = props.getProperty("storeFile")
         ?: throw GradleException("Missing 'storeFile' in signing properties")
 
@@ -115,7 +118,7 @@ android {
 
             proguardFiles.add(getDefaultProguardFile("proguard-android-optimize.txt"))
 //            proguardFiles.add(getDefaultProguardFile("proguard-rules.pro"))
-            isMinifyEnabled = true
+            isMinifyEnabled = false
         }
     }
 }
@@ -133,6 +136,29 @@ dependencies {
     implementation("androidx.core:core-splashscreen:1.2.0")
     implementation("androidx.constraintlayout:constraintlayout:2.2.1")
     implementation("androidx.activity:activity-ktx:1.13.0")
+}
+
+// Fail fast if the signing properties file for the requested build type is missing.
+// Maps build type keywords (in task names) to required properties files.
+val buildTypeToSigningProps = mapOf(
+    "Release" to "release.properties",
+    "Debug" to "debug.properties",
+    "Profile" to "debug.properties",
+)
+
+gradle.taskGraph.whenReady {
+    val requestedProps = buildTypeToSigningProps.filter { (buildType, _) ->
+        allTasks.any { it.name.contains(buildType) }
+    }.values.toSet()
+
+    for (propsPath in requestedProps) {
+        val file = rootProject.file(propsPath)
+        if (!file.exists()) {
+            throw GradleException(
+                "Missing '$propsPath'. This file is required for the requested build."
+            )
+        }
+    }
 }
 
 // Only profile builds are excluded from Firebase on Android.
