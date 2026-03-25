@@ -98,7 +98,7 @@ class NotificationService {
     }
 
     final sessionId = notificationData.sessionId;
-    final projectId = _extractProjectId(notificationData: notificationData, data: message.data);
+    final projectId = notificationData.projectId;
     if (sessionId == null) return;
 
     _navigateToSession(sessionId: sessionId, projectId: projectId);
@@ -250,25 +250,8 @@ class NotificationService {
       body: body,
       category: category,
       sessionId: notificationData.sessionId,
-      projectId: _extractProjectId(notificationData: notificationData, data: message.data),
+      projectId: notificationData.projectId,
     );
-  }
-
-  String? _extractProjectId({required shared.NotificationData notificationData, required Map<String, dynamic> data}) {
-    // Prefer the typed field from the deserialized model.
-    // fromJson handles missing keys for nullable fields by assigning null.
-    if (notificationData.projectId != null) {
-      return notificationData.projectId;
-    }
-
-    // Defensive fallback: read from raw data map in case the model
-    // was deserialized by an older version of sesori_shared.
-    final dynamic rawProjectId = data["projectId"];
-    if (rawProjectId is String) {
-      return rawProjectId;
-    }
-
-    return null;
   }
 
   @disposeMethod

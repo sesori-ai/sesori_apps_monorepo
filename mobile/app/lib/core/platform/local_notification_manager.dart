@@ -9,13 +9,8 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "notification_id_utils.dart";
-
-class NotificationTapEvent {
-  final String? sessionId;
-  final String? projectId;
-
-  const NotificationTapEvent({this.sessionId, this.projectId});
-}
+import "notification_tap_event.dart";
+export "notification_tap_event.dart";
 
 extension on NotificationImportance {
   Importance toLocalNotificationImportance() {
@@ -76,12 +71,7 @@ class LocalNotificationManager implements NotificationCanceller {
 
     try {
       final data = jsonDecode(payload) as Map<String, dynamic>;
-      _tapController.add(
-        NotificationTapEvent(
-          sessionId: data['sessionId'] as String?,
-          projectId: data['projectId'] as String?,
-        ),
-      );
+      _tapController.add(NotificationTapEvent.fromJson(data));
     } catch (_) {
       _tapController.add(const NotificationTapEvent(sessionId: null, projectId: null));
     }
@@ -103,7 +93,9 @@ class LocalNotificationManager implements NotificationCanceller {
       id = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     }
 
-    final payload = jsonEncode({'sessionId': sessionId, 'projectId': projectId});
+    final payload = jsonEncode(
+      NotificationTapEvent(sessionId: sessionId, projectId: projectId).toJson(),
+    );
 
     await _plugin.show(
       id: id,

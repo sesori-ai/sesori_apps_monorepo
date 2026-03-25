@@ -4,6 +4,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:sesori_mobile/core/platform/local_notification_manager.dart';
+import 'package:sesori_mobile/core/platform/notification_tap_event.dart';
 import 'package:sesori_mobile/core/platform/notification_id_utils.dart';
 import 'package:sesori_shared/sesori_shared.dart';
 
@@ -198,6 +199,32 @@ void main() {
       final decoded = jsonDecode(payloadJson!) as Map<String, dynamic>;
       expect(decoded['sessionId'], isNull);
       expect(decoded['projectId'], isNull);
+    });
+  });
+
+  group('NotificationTapEvent serialization', () {
+    test('toJson produces correct map', () {
+      const event = NotificationTapEvent(sessionId: 'ses_1', projectId: 'proj_1');
+      final json = event.toJson();
+      expect(json, equals({'sessionId': 'ses_1', 'projectId': 'proj_1'}));
+    });
+
+    test('fromJson parses correctly', () {
+      final event = NotificationTapEvent.fromJson({'sessionId': 'ses_1', 'projectId': 'proj_1'});
+      expect(event.sessionId, equals('ses_1'));
+      expect(event.projectId, equals('proj_1'));
+    });
+
+    test('fromJson handles missing keys as null', () {
+      final event = NotificationTapEvent.fromJson({});
+      expect(event.sessionId, isNull);
+      expect(event.projectId, isNull);
+    });
+
+    test('roundtrip toJson/fromJson preserves values', () {
+      const original = NotificationTapEvent(sessionId: 'ses_rt', projectId: 'proj_rt');
+      final restored = NotificationTapEvent.fromJson(original.toJson());
+      expect(restored, equals(original));
     });
   });
 
