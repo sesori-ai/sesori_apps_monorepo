@@ -3,7 +3,7 @@
 
     <!-- You can insert your own image assets here -->
     <!--    <item-->
-    <!--        android:drawable="@drawable/ic_monogram_light"-->
+    <!--        android:drawable="@drawable/ic_monogram_white"-->
     <!--        android:gravity="center"-->
     <!--        android:top="-10dp"-->
     <!--        android:bottom="10dp"-->
@@ -13,8 +13,6 @@
     <item
         android:width="192dp"
         android:height="192dp"
-        android:bottom="10dp"
         android:drawable="@drawable/monogram_108"
-        android:gravity="center"
-        android:top="-10dp" />
+        android:gravity="center" />
 </layer-list>

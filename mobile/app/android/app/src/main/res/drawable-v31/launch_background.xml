@@ -4,7 +4,7 @@
 
     <!-- You can insert your own image assets here -->
 <!--    <item-->
-<!--        android:drawable="@drawable/ic_monogram_light"-->
+<!--        android:drawable="@drawable/ic_monogram_white"-->
 <!--        android:gravity="center"-->
 <!--        android:top="-4dp"-->
 <!--        android:bottom="4dp"-->
