@@ -28,7 +28,7 @@ void main() {
 
       when(
         () => mockClient.post<Project>(
-          "/project",
+          "/project/create",
           fromJson: any(named: "fromJson"),
           body: any(named: "body"),
         ),
@@ -41,7 +41,7 @@ void main() {
 
       verify(
         () => mockClient.post<Project>(
-          "/project",
+          "/project/create",
           fromJson: any(named: "fromJson"),
           body: {"path": "/home/user/project"},
         ),
@@ -61,7 +61,7 @@ void main() {
 
       when(
         () => mockClient.post<Project>(
-          "/project/discover",
+          "/project/open",
           fromJson: any(named: "fromJson"),
           body: any(named: "body"),
         ),
@@ -74,7 +74,7 @@ void main() {
 
       verify(
         () => mockClient.post<Project>(
-          "/project/discover",
+          "/project/open",
           fromJson: any(named: "fromJson"),
           body: {"path": "/home/user/discovered"},
         ),
@@ -171,7 +171,7 @@ void main() {
       final error = ApiError.generic();
       when(
         () => mockClient.post<Project>(
-          "/project",
+          "/project/create",
           fromJson: any(named: "fromJson"),
           body: any(named: "body"),
         ),
@@ -191,7 +191,7 @@ void main() {
       final error = ApiError.generic();
       when(
         () => mockClient.post<Project>(
-          "/project/discover",
+          "/project/open",
           fromJson: any(named: "fromJson"),
           body: any(named: "body"),
         ),

@@ -27,8 +27,8 @@ void main() {
       }
     });
 
-    test("canHandle POST /project", () {
-      expect(handler.canHandle(makeRequest("POST", "/project")), isTrue);
+    test("canHandle POST /project/create", () {
+      expect(handler.canHandle(makeRequest("POST", "/project/create")), isTrue);
     });
 
     test("valid new path creates directory, runs git init, calls plugin, returns 201", () async {

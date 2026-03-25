@@ -2,17 +2,17 @@ import "dart:convert";
 import "dart:io";
 
 import "package:sesori_bridge/src/bridge/hidden_projects_store.dart";
-import "package:sesori_bridge/src/bridge/routing/discover_project_handler.dart";
+import "package:sesori_bridge/src/bridge/routing/open_project_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 import "routing_test_helpers.dart";
 
 void main() {
-  group("DiscoverProjectHandler", () {
+  group("OpenProjectHandler", () {
     late FakeBridgePlugin plugin;
     late HiddenProjectsStore hiddenStore;
-    late DiscoverProjectHandler handler;
+    late OpenProjectHandler handler;
     late Directory tempDir;
     late File tempFile;
 
@@ -21,7 +21,7 @@ void main() {
       tempDir = Directory.systemTemp.createTempSync("sesori_discover_test_");
       tempFile = File("${tempDir.path}/test_file.txt")..createSync();
       hiddenStore = HiddenProjectsStore.withFile(file: File("${tempDir.path}/hidden_projects.json"));
-      handler = DiscoverProjectHandler(plugin, hiddenStore);
+      handler = OpenProjectHandler(plugin, hiddenStore);
     });
 
     tearDown(() async {
@@ -31,12 +31,12 @@ void main() {
 
     // ── Route matching ───────────────────────────────────────────────────────
 
-    test("canHandle POST /project/discover", () {
-      expect(handler.canHandle(makeRequest("POST", "/project/discover")), isTrue);
+    test("canHandle POST /project/open", () {
+      expect(handler.canHandle(makeRequest("POST", "/project/open")), isTrue);
     });
 
-    test("does not handle GET /project/discover", () {
-      expect(handler.canHandle(makeRequest("GET", "/project/discover")), isFalse);
+    test("does not handle GET /project/open", () {
+      expect(handler.canHandle(makeRequest("GET", "/project/open")), isFalse);
     });
 
     test("does not handle POST /project", () {
@@ -47,7 +47,7 @@ void main() {
 
     test("returns 400 when path is empty", () async {
       final response = await handler.handle(
-        makeRequest("POST", "/project/discover", body: jsonEncode({"path": ""})),
+        makeRequest("POST", "/project/open", body: jsonEncode({"path": ""})),
         pathParams: {},
         queryParams: {},
       );
@@ -58,7 +58,7 @@ void main() {
 
     test("returns 400 when path is relative", () async {
       final response = await handler.handle(
-        makeRequest("POST", "/project/discover", body: jsonEncode({"path": "relative/path"})),
+        makeRequest("POST", "/project/open", body: jsonEncode({"path": "relative/path"})),
         pathParams: {},
         queryParams: {},
       );
@@ -71,7 +71,7 @@ void main() {
       final response = await handler.handle(
         makeRequest(
           "POST",
-          "/project/discover",
+          "/project/open",
           body: jsonEncode({"path": "/tmp/../etc"}),
         ),
         pathParams: {},
@@ -84,7 +84,7 @@ void main() {
 
     test("returns 400 when body is invalid JSON", () async {
       final response = await handler.handle(
-        makeRequest("POST", "/project/discover", body: "not-json"),
+        makeRequest("POST", "/project/open", body: "not-json"),
         pathParams: {},
         queryParams: {},
       );
@@ -95,7 +95,7 @@ void main() {
 
     test("returns 400 when body is missing", () async {
       final response = await handler.handle(
-        makeRequest("POST", "/project/discover"),
+        makeRequest("POST", "/project/open"),
         pathParams: {},
         queryParams: {},
       );
@@ -111,7 +111,7 @@ void main() {
       final response = await handler.handle(
         makeRequest(
           "POST",
-          "/project/discover",
+          "/project/open",
           body: jsonEncode({"path": nonExistent}),
         ),
         pathParams: {},
@@ -125,7 +125,7 @@ void main() {
       final response = await handler.handle(
         makeRequest(
           "POST",
-          "/project/discover",
+          "/project/open",
           body: jsonEncode({"path": tempFile.path}),
         ),
         pathParams: {},
@@ -144,7 +144,7 @@ void main() {
       await handler.handle(
         makeRequest(
           "POST",
-          "/project/discover",
+          "/project/open",
           body: jsonEncode({"path": tempDir.path}),
         ),
         pathParams: {},
@@ -160,7 +160,7 @@ void main() {
       final response = await handler.handle(
         makeRequest(
           "POST",
-          "/project/discover",
+          "/project/open",
           body: jsonEncode({"path": tempDir.path}),
         ),
         pathParams: {},
@@ -180,7 +180,7 @@ void main() {
       final response = await handler.handle(
         makeRequest(
           "POST",
-          "/project/discover",
+          "/project/open",
           body: jsonEncode({"path": tempDir.path}),
         ),
         pathParams: {},
@@ -204,7 +204,7 @@ void main() {
       final response = await handler.handle(
         makeRequest(
           "POST",
-          "/project/discover",
+          "/project/open",
           body: jsonEncode({"path": tempDir.path}),
         ),
         pathParams: {},
@@ -223,7 +223,7 @@ void main() {
       final response = await handler.handle(
         makeRequest(
           "POST",
-          "/project/discover",
+          "/project/open",
           body: jsonEncode({"path": tempDir.path}),
         ),
         pathParams: {},
@@ -237,13 +237,13 @@ void main() {
     // ── Plugin error propagation ─────────────────────────────────────────────
 
     test("propagates PluginApiException when plugin.getProject() throws", () async {
-      plugin.throwOnGetProjectError = PluginApiException("/project/discover", 404);
+      plugin.throwOnGetProjectError = PluginApiException("/project/open", 404);
 
       await expectLater(
         handler.handle(
           makeRequest(
             "POST",
-            "/project/discover",
+            "/project/open",
             body: jsonEncode({"path": tempDir.path}),
           ),
           pathParams: {},
@@ -264,7 +264,7 @@ void main() {
       final first = await handler.handle(
         makeRequest(
           "POST",
-          "/project/discover",
+          "/project/open",
           body: jsonEncode({"path": tempDir.path}),
         ),
         pathParams: {},
@@ -274,7 +274,7 @@ void main() {
       final second = await handler.handle(
         makeRequest(
           "POST",
-          "/project/discover",
+          "/project/open",
           body: jsonEncode({"path": tempDir.path}),
         ),
         pathParams: {},
@@ -293,7 +293,7 @@ void main() {
       await handler.handle(
         makeRequest(
           "POST",
-          "/project/discover",
+          "/project/open",
           body: jsonEncode({"path": tempDir.path}),
         ),
         pathParams: {},

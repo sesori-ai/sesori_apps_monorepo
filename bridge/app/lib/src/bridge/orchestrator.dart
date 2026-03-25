@@ -9,6 +9,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../auth/token_refresher.dart";
 import "../push/push_notification_service.dart";
+import "hidden_projects_store.dart";
 import "key_exchange.dart";
 import "models/bridge_config.dart";
 import "relay_client.dart";
@@ -97,7 +98,7 @@ class OrchestratorSession {
        _tokenRefresher = tokenRefresher,
        _roomKey = roomKey,
        _sseManager = sseManager,
-       _router = RequestRouter(plugin),
+       _router = RequestRouter(plugin: plugin, hiddenProjectsStore: HiddenProjectsStore()),
        _mapper = BridgeEventMapper(plugin);
 
   Future<void> run() async {

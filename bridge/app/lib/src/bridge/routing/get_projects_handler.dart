@@ -4,6 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../hidden_projects_store.dart";
+import "plugin_project_mapper.dart";
 import "request_handler.dart";
 
 /// Handles `GET /project` — returns all projects from the plugin.
@@ -24,19 +25,7 @@ class GetProjectsHandler extends RequestHandler {
     final hiddenIds = await _hiddenStore.getHiddenProjectIds();
     final projects = pluginProjects
         .where((project) => !hiddenIds.contains(project.id))
-        .map(
-          (p) => Project(
-            id: p.id,
-            name: p.name,
-            time: switch (p.time) {
-              PluginProjectTime(:final created, :final updated) => ProjectTime(
-                created: created,
-                updated: updated,
-              ),
-              null => null,
-            },
-          ),
-        )
+        .map((p) => p.toSharedProject())
         .toList();
     final body = jsonEncode(projects.map((p) => p.toJson()).toList());
     return buildOkJsonResponse(request, body);

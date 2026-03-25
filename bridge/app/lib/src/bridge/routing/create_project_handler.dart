@@ -4,13 +4,14 @@ import "dart:io";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "plugin_project_mapper.dart";
 import "request_handler.dart";
 
-/// Handles `POST /project` — creates a new project directory with git init.
+/// Handles `POST /project/create` — creates a new project directory with git init.
 class CreateProjectHandler extends RequestHandler {
   final BridgePlugin _plugin;
 
-  CreateProjectHandler(this._plugin) : super(HttpMethod.post, "/project");
+  CreateProjectHandler(this._plugin) : super(HttpMethod.post, "/project/create");
 
   @override
   Future<RelayResponse> handle(
@@ -62,26 +63,11 @@ class CreateProjectHandler extends RequestHandler {
 
     final gitResult = await Process.run("git", ["init", path]);
     if (gitResult.exitCode != 0) {
-      try {
-        Directory(path).deleteSync(recursive: true);
-      } on FileSystemException {
-        // Best-effort cleanup.
-      }
       return buildErrorResponse(request, 500, "git init failed: ${gitResult.stderr}");
     }
 
     final pluginProject = await _plugin.getProject(path);
-    final project = Project(
-      id: pluginProject.id,
-      name: pluginProject.name,
-      time: switch (pluginProject.time) {
-        PluginProjectTime(:final created, :final updated) => ProjectTime(
-          created: created,
-          updated: updated,
-        ),
-        null => null,
-      },
-    );
+    final project = pluginProject.toSharedProject();
 
     return RelayResponse(
       id: request.id,

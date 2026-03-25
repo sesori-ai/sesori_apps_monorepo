@@ -5,14 +5,15 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../hidden_projects_store.dart";
+import "plugin_project_mapper.dart";
 import "request_handler.dart";
 
-/// Handles `POST /project/discover` — discovers an existing directory as a project.
-class DiscoverProjectHandler extends RequestHandler {
+/// Handles `POST /project/open` — opens an existing directory as a project.
+class OpenProjectHandler extends RequestHandler {
   final BridgePlugin _plugin;
   final HiddenProjectsStore _hiddenStore;
 
-  DiscoverProjectHandler(this._plugin, this._hiddenStore) : super(HttpMethod.post, "/project/discover");
+  OpenProjectHandler(this._plugin, this._hiddenStore) : super(HttpMethod.post, "/project/open");
 
   @override
   Future<RelayResponse> handle(
@@ -63,18 +64,7 @@ class DiscoverProjectHandler extends RequestHandler {
     final pluginProject = await _plugin.getProject(path);
     await _hiddenStore.unhideProject(projectId: pluginProject.id);
 
-    // Map to shared type
-    final project = Project(
-      id: pluginProject.id,
-      name: pluginProject.name,
-      time: switch (pluginProject.time) {
-        PluginProjectTime(:final created, :final updated) => ProjectTime(
-          created: created,
-          updated: updated,
-        ),
-        null => null,
-      },
-    );
+    final project = pluginProject.toSharedProject();
 
     return buildOkJsonResponse(request, jsonEncode(project.toJson()));
   }

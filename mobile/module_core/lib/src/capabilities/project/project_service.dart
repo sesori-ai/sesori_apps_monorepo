@@ -43,7 +43,7 @@ class ProjectService {
   /// Creates a new project at the specified path.
   Future<ApiResponse<Project>> createProject({required String path}) {
     return _client.post(
-      "/project",
+      "/project/create",
       body: {"path": path},
       fromJson: (json) => switch (json) {
         final Map<String, dynamic> map => Project.fromJson(map),
@@ -52,10 +52,10 @@ class ProjectService {
     );
   }
 
-  /// Discovers an existing project at the specified path.
+  /// Opens an existing directory as a project.
   Future<ApiResponse<Project>> discoverProject({required String path}) {
     return _client.post(
-      "/project/discover",
+      "/project/open",
       body: {"path": path},
       fromJson: (json) => switch (json) {
         final Map<String, dynamic> map => Project.fromJson(map),
