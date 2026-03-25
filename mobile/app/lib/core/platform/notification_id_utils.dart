@@ -8,7 +8,7 @@ import 'package:sesori_shared/sesori_shared.dart';
 /// - Output is within Android PendingIntent safe range [0, 2^27 - 1]
 ///
 /// This is suitable for use as a notification ID in Android/iOS notification systems.
-int computeNotificationId(String sessionId, NotificationCategory category) {
+int computeNotificationId({required String sessionId, required NotificationCategory category}) {
   final input = '$sessionId:${category.id}';
   const fnvOffsetBasis = 0x811c9dc5;
   const fnvPrime = 0x01000193;

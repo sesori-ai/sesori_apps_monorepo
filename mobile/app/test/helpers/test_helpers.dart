@@ -17,6 +17,7 @@ import "package:sesori_dart_core/src/capabilities/sse/sse_event_repository.dart"
 import "package:sesori_dart_core/src/capabilities/voice/voice_api.dart";
 import "package:sesori_dart_core/src/platform/deep_link_source.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
+import "package:sesori_dart_core/src/platform/notification_canceller.dart";
 import "package:sesori_dart_core/src/routing/auth_redirect_service.dart";
 import "package:sesori_mobile/capabilities/voice/audio_format_config.dart";
 import "package:sesori_mobile/capabilities/voice/recording_file_provider.dart";
@@ -77,6 +78,8 @@ class MockLifecycleSource extends Mock implements LifecycleSource {
 
   void emitState(LifecycleState state) => _state.add(state);
 }
+
+class MockNotificationCanceller extends Mock implements NotificationCanceller {}
 
 class MockRouteSource extends Mock implements RouteSource {
   final BehaviorSubject<AppRoute?> _currentRoute;

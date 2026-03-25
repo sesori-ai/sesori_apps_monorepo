@@ -15,11 +15,15 @@ import "../../helpers/test_helpers.dart";
 void main() {
   const sessionId = "session-1";
 
-  setUpAll(registerAllFallbackValues);
+  setUpAll(() {
+    registerAllFallbackValues();
+    registerFallbackValue(NotificationCategory.aiInteraction);
+  });
 
   group("SessionDetailCubit", () {
     late MockSessionService mockSessionService;
     late MockConnectionService mockConnectionService;
+    late MockNotificationCanceller mockNotificationCanceller;
     late BehaviorSubject<SesoriSessionEvent> sessionEvents;
     late BehaviorSubject<SseEvent> globalEvents;
     late BehaviorSubject<ConnectionStatus> connectionStatus;
@@ -27,6 +31,7 @@ void main() {
     setUp(() {
       mockSessionService = MockSessionService();
       mockConnectionService = MockConnectionService();
+      mockNotificationCanceller = MockNotificationCanceller();
       sessionEvents = BehaviorSubject<SesoriSessionEvent>();
       globalEvents = BehaviorSubject<SseEvent>();
       connectionStatus = BehaviorSubject<ConnectionStatus>();
@@ -35,6 +40,7 @@ void main() {
         mockSessionService,
         mockConnectionService,
         sessionId: sessionId,
+        notificationCanceller: mockNotificationCanceller,
         sessionEvents: sessionEvents,
         globalEvents: globalEvents,
         connectionStatus: connectionStatus,
@@ -53,6 +59,7 @@ void main() {
         mockSessionService,
         mockConnectionService,
         sessionId: sessionId,
+        notificationCanceller: mockNotificationCanceller,
       ),
       expect: () => [
         isA<SessionDetailLoaded>(),
@@ -80,6 +87,7 @@ void main() {
           mockSessionService,
           mockConnectionService,
           sessionId: sessionId,
+          notificationCanceller: mockNotificationCanceller,
         );
       },
       expect: () => [
@@ -93,6 +101,7 @@ void main() {
         mockSessionService,
         mockConnectionService,
         sessionId: sessionId,
+        notificationCanceller: mockNotificationCanceller,
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
@@ -119,6 +128,7 @@ void main() {
         mockSessionService,
         mockConnectionService,
         sessionId: sessionId,
+        notificationCanceller: mockNotificationCanceller,
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
@@ -146,6 +156,7 @@ void main() {
         mockSessionService,
         mockConnectionService,
         sessionId: sessionId,
+        notificationCanceller: mockNotificationCanceller,
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
@@ -167,6 +178,7 @@ void main() {
         mockSessionService,
         mockConnectionService,
         sessionId: sessionId,
+        notificationCanceller: mockNotificationCanceller,
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
@@ -186,6 +198,7 @@ void main() {
         mockSessionService,
         mockConnectionService,
         sessionId: sessionId,
+        notificationCanceller: mockNotificationCanceller,
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
@@ -210,6 +223,7 @@ void main() {
           mockSessionService,
           mockConnectionService,
           sessionId: sessionId,
+          notificationCanceller: mockNotificationCanceller,
         );
       },
       act: (cubit) async {
@@ -236,6 +250,12 @@ void main() {
             ],
           ),
         ).called(1);
+        verify(
+          () => mockNotificationCanceller.cancelForSession(
+            sessionId: sessionId,
+            category: NotificationCategory.aiInteraction,
+          ),
+        ).called(1);
       },
     );
 
@@ -250,6 +270,7 @@ void main() {
           mockSessionService,
           mockConnectionService,
           sessionId: sessionId,
+          notificationCanceller: mockNotificationCanceller,
         );
       },
       act: (cubit) async {
@@ -262,6 +283,12 @@ void main() {
       ],
       verify: (_) {
         verify(() => mockSessionService.rejectQuestion("question-1")).called(1);
+        verify(
+          () => mockNotificationCanceller.cancelForSession(
+            sessionId: sessionId,
+            category: NotificationCategory.aiInteraction,
+          ),
+        ).called(1);
       },
     );
 
@@ -276,6 +303,7 @@ void main() {
           mockSessionService,
           mockConnectionService,
           sessionId: sessionId,
+          notificationCanceller: mockNotificationCanceller,
         );
       },
       act: (cubit) async {
@@ -302,6 +330,7 @@ void main() {
         mockSessionService,
         mockConnectionService,
         sessionId: sessionId,
+        notificationCanceller: mockNotificationCanceller,
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
@@ -328,6 +357,7 @@ void main() {
         mockSessionService,
         mockConnectionService,
         sessionId: sessionId,
+        notificationCanceller: mockNotificationCanceller,
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
@@ -352,6 +382,7 @@ void main() {
           mockSessionService,
           mockConnectionService,
           sessionId: sessionId,
+          notificationCanceller: mockNotificationCanceller,
         );
       },
       act: (cubit) async {
@@ -375,6 +406,7 @@ void main() {
         mockSessionService,
         mockConnectionService,
         sessionId: sessionId,
+        notificationCanceller: mockNotificationCanceller,
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
@@ -403,6 +435,7 @@ void main() {
         mockSessionService,
         mockConnectionService,
         sessionId: sessionId,
+        notificationCanceller: mockNotificationCanceller,
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
@@ -430,6 +463,7 @@ void main() {
           mockSessionService,
           mockConnectionService,
           sessionId: sessionId,
+          notificationCanceller: mockNotificationCanceller,
         );
       },
       act: (cubit) async {
@@ -469,6 +503,7 @@ void main() {
           mockSessionService,
           mockConnectionService,
           sessionId: sessionId,
+          notificationCanceller: mockNotificationCanceller,
         );
       },
       act: (cubit) async {
@@ -513,6 +548,7 @@ void main() {
           mockSessionService,
           mockConnectionService,
           sessionId: sessionId,
+          notificationCanceller: mockNotificationCanceller,
         );
       },
       act: (cubit) async {
@@ -547,6 +583,7 @@ void main() {
         mockSessionService,
         mockConnectionService,
         sessionId: sessionId,
+        notificationCanceller: mockNotificationCanceller,
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
@@ -612,6 +649,7 @@ void main() {
         mockSessionService,
         mockConnectionService,
         sessionId: sessionId,
+        notificationCanceller: mockNotificationCanceller,
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
@@ -676,6 +714,7 @@ void main() {
         mockSessionService,
         mockConnectionService,
         sessionId: sessionId,
+        notificationCanceller: mockNotificationCanceller,
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
@@ -745,6 +784,7 @@ void main() {
           mockSessionService,
           mockConnectionService,
           sessionId: sessionId,
+          notificationCanceller: mockNotificationCanceller,
         );
       },
       act: (cubit) async {
@@ -785,6 +825,7 @@ void main() {
         mockSessionService,
         mockConnectionService,
         sessionId: sessionId,
+        notificationCanceller: mockNotificationCanceller,
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
@@ -862,6 +903,7 @@ void main() {
           mockSessionService,
           mockConnectionService,
           sessionId: sessionId,
+          notificationCanceller: mockNotificationCanceller,
         );
       },
       act: (cubit) async {
@@ -929,6 +971,7 @@ void _stubAllDefaults(
   MockSessionService service,
   MockConnectionService connectionService, {
   required String sessionId,
+  required MockNotificationCanceller notificationCanceller,
   required BehaviorSubject<SesoriSessionEvent> sessionEvents,
   required BehaviorSubject<SseEvent> globalEvents,
   required BehaviorSubject<ConnectionStatus> connectionStatus,
@@ -969,6 +1012,13 @@ void _stubAllDefaults(
   when(
     () => connectionService.status,
   ).thenAnswer((_) => connectionStatus.stream);
+
+  when(
+    () => notificationCanceller.cancelForSession(
+      sessionId: any(named: "sessionId"),
+      category: any(named: "category"),
+    ),
+  ).thenReturn(null);
 
   when(
     () => service.sendMessage(

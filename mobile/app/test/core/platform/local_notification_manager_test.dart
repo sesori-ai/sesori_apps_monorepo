@@ -13,7 +13,7 @@ void main() {
 
   setUp(() {
     mockPlugin = MockFlutterLocalNotificationsPlugin();
-    manager = LocalNotificationManager(mockPlugin);
+    manager = LocalNotificationManager(plugin: mockPlugin);
   });
 
   group('cancel', () {
@@ -55,7 +55,7 @@ void main() {
 
       const sessionId = 'ses_abc';
       const category = NotificationCategory.aiInteraction;
-      final expectedId = computeNotificationId(sessionId, category);
+      final expectedId = computeNotificationId(sessionId: sessionId, category: category);
 
       await manager.show(
         title: 'Test Title',
@@ -86,7 +86,7 @@ void main() {
 
       const sessionId = 'ses_abc';
       const category = NotificationCategory.sessionMessage;
-      final deterministicId = computeNotificationId(sessionId, category);
+      final deterministicId = computeNotificationId(sessionId: sessionId, category: category);
 
       await manager.show(
         title: 'Test Title',
@@ -126,6 +126,7 @@ void main() {
         title: 'Test Title',
         body: 'Test Body',
         category: category,
+        sessionId: null,
       );
 
       // Capture the actual ID used

@@ -9,6 +9,7 @@ import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/server_connection/models/sse_event.dart";
 import "../../capabilities/session/session_service.dart";
 import "../../logging/logging.dart";
+import "../../platform/notification_canceller.dart";
 import "prompt_send_queue.dart";
 import "session_detail_state.dart";
 import "streaming_text_buffer.dart";
@@ -17,6 +18,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   final SessionService _service;
   final ConnectionService _connectionService;
   final String _sessionId;
+  final NotificationCanceller _notificationCanceller;
   final PromptSendQueue _promptQueue = PromptSendQueue();
   bool _isSending = false;
 
@@ -34,9 +36,11 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     SessionService service,
     ConnectionService connectionService, {
     required String sessionId,
+    required NotificationCanceller notificationCanceller,
   }) : _service = service,
        _connectionService = connectionService,
        _sessionId = sessionId,
+       _notificationCanceller = notificationCanceller,
        super(const SessionDetailState.loading()) {
     _streamingBuffer = StreamingTextBuffer(onFlush: _emitStreamingSnapshot);
     _eventSubscription = _connectionService.sessionEvents(_sessionId).listen(_handleEvent);
@@ -567,11 +571,19 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     // updated state synchronously (prevents auto-chain re-opening the
     // same question).
     _onQuestionResolved(requestId);
+    _notificationCanceller.cancelForSession(
+      sessionId: sessionId,
+      category: NotificationCategory.aiInteraction,
+    );
     await _service.replyToQuestion(requestId: requestId, sessionId: sessionId, answers: answers);
   }
 
   Future<void> rejectQuestion(String requestId) async {
     _onQuestionResolved(requestId);
+    _notificationCanceller.cancelForSession(
+      sessionId: _sessionId,
+      category: NotificationCategory.aiInteraction,
+    );
     await _service.rejectQuestion(requestId);
   }
 

@@ -5,7 +5,7 @@ import 'package:sesori_shared/sesori_shared.dart';
 void main() {
   group('computeNotificationId', () {
     test('returns an int', () {
-      final result = computeNotificationId('ses_abc', NotificationCategory.aiInteraction);
+      final result = computeNotificationId(sessionId: 'ses_abc', category: NotificationCategory.aiInteraction);
       expect(result, isA<int>());
     });
 
@@ -13,9 +13,9 @@ void main() {
       const sessionId = 'ses_abc';
       const category = NotificationCategory.aiInteraction;
 
-      final result1 = computeNotificationId(sessionId, category);
-      final result2 = computeNotificationId(sessionId, category);
-      final result3 = computeNotificationId(sessionId, category);
+      final result1 = computeNotificationId(sessionId: sessionId, category: category);
+      final result2 = computeNotificationId(sessionId: sessionId, category: category);
+      final result3 = computeNotificationId(sessionId: sessionId, category: category);
 
       expect(result1, equals(result2));
       expect(result2, equals(result3));
@@ -24,8 +24,8 @@ void main() {
     test('different sessionIds produce different outputs', () {
       const category = NotificationCategory.aiInteraction;
 
-      final result1 = computeNotificationId('ses_abc', category);
-      final result2 = computeNotificationId('ses_xyz', category);
+      final result1 = computeNotificationId(sessionId: 'ses_abc', category: category);
+      final result2 = computeNotificationId(sessionId: 'ses_xyz', category: category);
 
       expect(result1, isNot(equals(result2)));
     });
@@ -33,16 +33,19 @@ void main() {
     test('different categories produce different outputs', () {
       const sessionId = 'ses_abc';
 
-      final result1 = computeNotificationId(sessionId, NotificationCategory.aiInteraction);
-      final result2 = computeNotificationId(sessionId, NotificationCategory.sessionMessage);
+      final result1 = computeNotificationId(sessionId: sessionId, category: NotificationCategory.aiInteraction);
+      final result2 = computeNotificationId(sessionId: sessionId, category: NotificationCategory.sessionMessage);
 
       expect(result1, isNot(equals(result2)));
     });
 
     test('output is within safe Android PendingIntent range [0, 2^27 - 1]', () {
-      final result1 = computeNotificationId('ses_abc', NotificationCategory.aiInteraction);
-      final result2 = computeNotificationId('ses_xyz', NotificationCategory.sessionMessage);
-      final result3 = computeNotificationId('ses_long_id_123', NotificationCategory.connectionStatus);
+      final result1 = computeNotificationId(sessionId: 'ses_abc', category: NotificationCategory.aiInteraction);
+      final result2 = computeNotificationId(sessionId: 'ses_xyz', category: NotificationCategory.sessionMessage);
+      final result3 = computeNotificationId(
+        sessionId: 'ses_long_id_123',
+        category: NotificationCategory.connectionStatus,
+      );
 
       const maxSafeId = 134217727; // 2^27 - 1
 
@@ -61,9 +64,9 @@ void main() {
       const specialCharsId = r'ses_!@#$%^&*()_+-=[]{}|;:,.<>?';
       const unicodeId = 'ses_日本語_中文_한글_العربية';
 
-      final result1 = computeNotificationId(longSessionId, NotificationCategory.aiInteraction);
-      final result2 = computeNotificationId(specialCharsId, NotificationCategory.sessionMessage);
-      final result3 = computeNotificationId(unicodeId, NotificationCategory.connectionStatus);
+      final result1 = computeNotificationId(sessionId: longSessionId, category: NotificationCategory.aiInteraction);
+      final result2 = computeNotificationId(sessionId: specialCharsId, category: NotificationCategory.sessionMessage);
+      final result3 = computeNotificationId(sessionId: unicodeId, category: NotificationCategory.connectionStatus);
 
       const maxSafeId = 134217727;
 
