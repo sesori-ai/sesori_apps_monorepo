@@ -1,11 +1,21 @@
+import "dart:async";
+import "dart:convert";
 import "dart:io";
 
+import "package:flutter/foundation.dart";
 import "package:flutter_local_notifications/flutter_local_notifications.dart";
 import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "notification_id_utils.dart";
+
+class NotificationTapEvent {
+  final String? sessionId;
+  final String? projectId;
+
+  const NotificationTapEvent({this.sessionId, this.projectId});
+}
 
 extension on NotificationImportance {
   Importance toLocalNotificationImportance() {
@@ -24,8 +34,11 @@ extension on NotificationImportance {
 @lazySingleton
 class LocalNotificationManager implements NotificationCanceller {
   final FlutterLocalNotificationsPlugin _plugin;
+  final StreamController<NotificationTapEvent> _tapController = StreamController.broadcast();
 
   LocalNotificationManager({required FlutterLocalNotificationsPlugin plugin}) : _plugin = plugin;
+
+  Stream<NotificationTapEvent> get onNotificationTapped => _tapController.stream;
 
   Future<void> initialize() async {
     if (Platform.isAndroid) {
@@ -47,7 +60,31 @@ class LocalNotificationManager implements NotificationCanceller {
         android: AndroidInitializationSettings("@drawable/ic_notification"),
         iOS: DarwinInitializationSettings(),
       ),
+      onDidReceiveNotificationResponse: _onNotificationTapped,
     );
+  }
+
+  @visibleForTesting
+  void handleNotificationResponseForTesting(NotificationResponse response) => _onNotificationTapped(response);
+
+  void _onNotificationTapped(NotificationResponse response) {
+    final payload = response.payload;
+    if (payload == null || payload.isEmpty) {
+      _tapController.add(const NotificationTapEvent(sessionId: null, projectId: null));
+      return;
+    }
+
+    try {
+      final data = jsonDecode(payload) as Map<String, dynamic>;
+      _tapController.add(
+        NotificationTapEvent(
+          sessionId: data['sessionId'] as String?,
+          projectId: data['projectId'] as String?,
+        ),
+      );
+    } catch (_) {
+      _tapController.add(const NotificationTapEvent(sessionId: null, projectId: null));
+    }
   }
 
   Future<void> show({
@@ -55,6 +92,7 @@ class LocalNotificationManager implements NotificationCanceller {
     required String body,
     required NotificationCategory category,
     required String? sessionId,
+    required String? projectId,
   }) async {
     final channelId = category.id;
 
@@ -64,6 +102,8 @@ class LocalNotificationManager implements NotificationCanceller {
     } else {
       id = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     }
+
+    final payload = jsonEncode({'sessionId': sessionId, 'projectId': projectId});
 
     await _plugin.show(
       id: id,
@@ -77,6 +117,7 @@ class LocalNotificationManager implements NotificationCanceller {
         ),
         iOS: const DarwinNotificationDetails(),
       ),
+      payload: payload,
     );
   }
 

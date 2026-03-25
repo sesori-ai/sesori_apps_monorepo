@@ -18,12 +18,14 @@ import "widgets/queued_message_bubble.dart";
 import "widgets/user_message_card.dart";
 
 class SessionDetailScreen extends StatelessWidget {
+  final String? projectId;
   final String sessionId;
   final String? sessionTitle;
   final bool readOnly;
 
   const SessionDetailScreen({
     super.key,
+    this.projectId,
     required this.sessionId,
     this.sessionTitle,
     this.readOnly = false,

@@ -274,7 +274,10 @@ class _TaskRow extends StatelessWidget {
         }
         context.pushRoute(
           AppRoute.sessionDetail,
-          pathParams: {"sessionId": session.id},
+          pathParams: {
+            "projectId": session.projectID,
+            "sessionId": session.id,
+          },
           queryParams: queryParams,
         );
       },

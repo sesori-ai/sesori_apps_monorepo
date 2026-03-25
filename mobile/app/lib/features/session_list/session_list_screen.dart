@@ -44,7 +44,7 @@ class _SessionListBody extends StatelessWidget {
     if (session == null || !context.mounted) return;
     await context.pushRoute(
       AppRoute.sessionDetail,
-      pathParams: {"sessionId": session.id},
+      pathParams: {"projectId": session.projectID, "sessionId": session.id},
       queryParams: {"title": session.title ?? ""},
     );
   }
@@ -376,7 +376,7 @@ class _SessionTile extends StatelessWidget {
         onTap: () {
           context.pushRoute(
             AppRoute.sessionDetail,
-            pathParams: {"sessionId": session.id},
+            pathParams: {"projectId": session.projectID, "sessionId": session.id},
             queryParams: {"title": session.title ?? ""},
           );
         },

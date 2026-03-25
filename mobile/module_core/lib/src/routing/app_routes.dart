@@ -6,7 +6,7 @@ enum AppRoute {
   projects("/projects"),
   notificationSettings("/settings/notifications"),
   sessions("/projects/:projectId/sessions"),
-  sessionDetail("/sessions/:sessionId")
+  sessionDetail("/projects/:projectId/sessions/:sessionId")
   ;
 
   const AppRoute(this.path);
