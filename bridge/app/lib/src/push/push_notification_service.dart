@@ -5,30 +5,92 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../auth/token_refresh_exception.dart";
+import "completion_notifier.dart";
 import "push_notification_client.dart";
 import "push_rate_limiter.dart";
 import "push_send_exception.dart";
+import "push_session_state_tracker.dart";
 
 class PushNotificationService {
   final PushNotificationClient _client;
   final PushRateLimiter _rateLimiter;
+  final PushSessionStateTracker _tracker;
+  final CompletionNotifier _completionNotifier;
+  late final StreamSubscription<String> _completionSubscription;
 
   PushNotificationService({
     required PushNotificationClient client,
     required PushRateLimiter rateLimiter,
+    required PushSessionStateTracker tracker,
+    required CompletionNotifier completionNotifier,
   }) : _client = client,
-       _rateLimiter = rateLimiter;
+       _rateLimiter = rateLimiter,
+       _tracker = tracker,
+       _completionNotifier = completionNotifier {
+    _completionSubscription = _completionNotifier.completions.listen(_sendCompletionNotification);
+  }
 
-  void maybeSendForEvent(SesoriSseEvent event) {
+  void handleSseEvent(SesoriSseEvent event) {
+    _tracker.handleEvent(event);
+    _completionNotifier.handleEvent(event);
+    _sendImmediateNotificationIfApplicable(event);
+  }
+
+  Future<void> dispose() async {
+    await _completionSubscription.cancel();
+    _completionNotifier.dispose();
+  }
+
+  void reset() {
+    _completionNotifier.reset();
+    _tracker.reset();
+  }
+
+  void _sendImmediateNotificationIfApplicable(SesoriSseEvent event) {
     final notificationData = extractNotificationData(event);
     if (notificationData == null) {
       return;
     }
 
-    final sessionId = extractSessionId(event);
-    final collapseKey = "${notificationData.category.id}-${sessionId ?? "global"}";
-    if (!_rateLimiter.shouldSend(
+    _sendNotification(
       category: notificationData.category,
+      eventType: notificationData.eventType,
+      title: notificationData.title,
+      body: notificationData.body,
+      sessionId: extractSessionId(event),
+    );
+  }
+
+  void _sendCompletionNotification(String rootSessionId) {
+    final sessionTitle = _tracker.getSessionTitle(rootSessionId);
+    final latestAssistantText = _tracker.getLatestAssistantText(rootSessionId);
+
+    final title = truncateTitle(
+      (sessionTitle == null || sessionTitle.trim().isEmpty) ? "Session completed" : sessionTitle,
+    );
+    final body = truncateToWords(
+      (latestAssistantText == null || latestAssistantText.trim().isEmpty) ? "Task completed" : latestAssistantText,
+    );
+
+    _sendNotification(
+      category: NotificationCategory.sessionMessage,
+      eventType: NotificationEventType.agentTurnCompleted,
+      title: title,
+      body: body,
+      sessionId: rootSessionId,
+    );
+  }
+
+  void _sendNotification({
+    required NotificationCategory category,
+    required NotificationEventType eventType,
+    required String title,
+    required String body,
+    required String? sessionId,
+  }) {
+    final collapseKey = "${category.id}-${sessionId ?? "global"}";
+    if (!_rateLimiter.shouldSend(
+      category: category,
       collapseKey: collapseKey,
       sessionId: sessionId,
     )) {
@@ -36,10 +98,10 @@ class PushNotificationService {
     }
 
     final payload = buildNotificationPayload(
-      category: notificationData.category,
-      eventType: notificationData.eventType,
-      title: notificationData.title,
-      body: notificationData.body,
+      category: category,
+      eventType: eventType,
+      title: title,
+      body: body,
       sessionId: sessionId,
       collapseKey: collapseKey,
     );
@@ -54,6 +116,28 @@ class PushNotificationService {
       }),
     );
   }
+}
+
+@visibleForTesting
+String truncateTitle(String title, {int maxChars = 50}) {
+  final normalized = title.trim();
+  if (normalized.length <= maxChars) {
+    return normalized;
+  }
+
+  final cutoffIndex = normalized.lastIndexOf(" ", maxChars);
+  final safeCutoff = cutoffIndex > 0 ? cutoffIndex : maxChars;
+  return "${normalized.substring(0, safeCutoff).trimRight()}...";
+}
+
+@visibleForTesting
+String truncateToWords(String text, {int maxWords = 10}) {
+  final words = text.trim().split(RegExp(r"\s+")).where((word) => word.isNotEmpty).toList();
+  if (words.length <= maxWords) {
+    return words.join(" ");
+  }
+
+  return "${words.take(maxWords).join(" ")}...";
 }
 
 @visibleForTesting
@@ -76,12 +160,6 @@ extractNotificationData(SesoriSseEvent event) {
       eventType: NotificationEventType.permissionAsked,
       title: "Permission requested",
       body: description.isNotEmpty ? description : "The assistant requested permission to run $tool.",
-    ),
-    SesoriMessageUpdated(:final info) => (
-      category: NotificationCategory.sessionMessage,
-      eventType: NotificationEventType.messageUpdated,
-      title: "New session message",
-      body: "${info.role} updated message ${info.id}",
     ),
     SesoriInstallationUpdateAvailable(:final version) => (
       category: NotificationCategory.systemUpdate,
