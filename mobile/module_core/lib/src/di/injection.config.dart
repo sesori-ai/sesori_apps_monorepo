@@ -18,6 +18,8 @@ import 'package:sesori_dart_core/src/capabilities/notifications/notification_api
     as _i276;
 import 'package:sesori_dart_core/src/capabilities/notifications/notification_preferences_service.dart'
     as _i786;
+import 'package:sesori_dart_core/src/capabilities/project/closed_projects_storage.dart'
+    as _i474;
 import 'package:sesori_dart_core/src/capabilities/project/project_service.dart'
     as _i680;
 import 'package:sesori_dart_core/src/capabilities/relay/room_key_storage.dart'
@@ -44,6 +46,9 @@ extension GetItInjectableX on _i174.GetIt {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
     gh.lazySingleton<_i786.NotificationPreferencesService>(
       () => _i786.NotificationPreferencesService(gh<_i442.SecureStorage>()),
+    );
+    gh.lazySingleton<_i474.ClosedProjectsStorage>(
+      () => _i474.ClosedProjectsStorage(gh<_i442.SecureStorage>()),
     );
     gh.lazySingleton<_i895.RoomKeyStorage>(
       () => _i895.RoomKeyStorage(gh<_i442.SecureStorage>()),
