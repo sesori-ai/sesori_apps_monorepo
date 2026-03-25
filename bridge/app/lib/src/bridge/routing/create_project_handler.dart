@@ -64,7 +64,7 @@ class CreateProjectHandler extends RequestHandler {
     if (gitResult.exitCode != 0) {
       try {
         Directory(path).deleteSync(recursive: true);
-      } on Object {
+      } on FileSystemException {
         // Best-effort cleanup.
       }
       return buildErrorResponse(request, 500, "git init failed: ${gitResult.stderr}");
