@@ -278,8 +278,21 @@ class OpenCodePlugin implements BridgePlugin {
 
   @override
   Future<Map<String, PluginSessionStatus>> getSessionStatuses() async {
-    final statuses = await _call(_service.repository.api.getSessionStatuses);
-    return statuses.map((key, value) => MapEntry(key, value.toPlugin()));
+    final apiStatuses = await _call(_service.repository.api.getSessionStatuses);
+
+    // Start with the API response as a baseline.
+    final merged = apiStatuses.map((key, value) => MapEntry(key, value.toPlugin()));
+
+    // Overlay the tracker's real-time active statuses. The tracker is
+    // maintained by SSE events and accurately reflects which sessions are
+    // busy/retry. The API response may be scoped by OpenCode's directory
+    // context and miss sessions from other projects.
+    final activeStatuses = _service.tracker.getActiveStatuses();
+    for (final entry in activeStatuses.entries) {
+      merged[entry.key] = entry.value.toPlugin();
+    }
+
+    return merged;
   }
 
   @override

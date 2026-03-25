@@ -137,7 +137,146 @@ void main() {
 
       expect(collected.whereType<BridgeSseProjectUpdated>(), isNotEmpty);
     });
+
+    test("getSessionStatuses merges tracker data with API response", () async {
+      // Use a configurable server: cold start sees the full status map
+      // (including a busy child), but subsequent API calls return only
+      // the root session — simulating OpenCode's directory-scoped response.
+      final dynamicServer = _DynamicStatusServer();
+      await dynamicServer.start();
+      addTearDown(dynamicServer.close);
+
+      // During cold start, the tracker ingests the busy child status.
+      dynamicServer.sessionStatuses = {
+        "s-root": {"type": "idle"},
+        "child-1": {"type": "busy"},
+      };
+
+      final plugin = OpenCodePlugin(serverUrl: dynamicServer.baseUrl);
+      await dynamicServer.waitForSseConnection();
+
+      // Now change the API response to omit the child — as if OpenCode
+      // scoped /session/status by directory on subsequent calls.
+      dynamicServer.sessionStatuses = {
+        "s-root": {"type": "idle"},
+      };
+
+      final statuses = await plugin.getSessionStatuses();
+
+      // API-returned status is preserved.
+      expect(statuses["s-root"], isA<PluginSessionStatusIdle>());
+      // The tracker's SSE-maintained busy status fills in the gap the
+      // scoped API response left — this is the fix for the cold-load bug.
+      expect(statuses["child-1"], isA<PluginSessionStatusBusy>());
+    });
+
+    test("getSessionStatuses tracker overrides stale API idle", () async {
+      final dynamicServer = _DynamicStatusServer();
+      await dynamicServer.start();
+      addTearDown(dynamicServer.close);
+
+      // Cold start: root is busy in the tracker.
+      dynamicServer.sessionStatuses = {
+        "s-root": {"type": "busy"},
+      };
+
+      final plugin = OpenCodePlugin(serverUrl: dynamicServer.baseUrl);
+      await dynamicServer.waitForSseConnection();
+
+      // API now returns idle — stale relative to the tracker.
+      dynamicServer.sessionStatuses = {
+        "s-root": {"type": "idle"},
+      };
+
+      final statuses = await plugin.getSessionStatuses();
+
+      // Tracker's busy overrides the API's stale idle.
+      expect(statuses["s-root"], isA<PluginSessionStatusBusy>());
+    });
   });
+}
+
+/// A lightweight fake OpenCode server whose `/session/status` response can be
+/// changed between calls — used to test the merge of API data with tracker data.
+class _DynamicStatusServer {
+  HttpServer? _server;
+  final Completer<void> _firstSseClient = Completer<void>();
+
+  /// The JSON map returned by `GET /session/status`. Mutable so tests can
+  /// change it between the cold-start call and the explicit plugin call.
+  Map<String, Map<String, dynamic>> sessionStatuses = {};
+
+  String get baseUrl => "http://${_server!.address.address}:${_server!.port}";
+
+  Future<void> start() async {
+    _server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    _server!.listen((request) async {
+      final path = request.uri.path;
+
+      if (request.method == "GET" && path == "/project") {
+        await _json(request.response, [
+          {"id": "p1", "worktree": "/repo", "name": "Repo"},
+        ]);
+        return;
+      }
+
+      if (request.method == "GET" && path == "/session/status") {
+        await _json(request.response, sessionStatuses);
+        return;
+      }
+
+      if (request.method == "GET" && path == "/session") {
+        await _json(request.response, [
+          {
+            "id": "s-root",
+            "projectID": "p1",
+            "directory": "/repo",
+            "time": {"created": 1, "updated": 2},
+          },
+          {
+            "id": "child-1",
+            "projectID": "p1",
+            "directory": "/repo",
+            "parentID": "s-root",
+            "time": {"created": 3, "updated": 4},
+          },
+        ]);
+        return;
+      }
+
+      if (request.method == "GET" && path == "/experimental/session") {
+        await _json(request.response, <Map<String, dynamic>>[]);
+        return;
+      }
+
+      if (request.method == "GET" && path == "/global/event") {
+        request.response.statusCode = HttpStatus.ok;
+        request.response.headers.contentType = ContentType("text", "event-stream");
+        request.response.headers.set("cache-control", "no-cache");
+        request.response.write(": connected\n\n");
+        await request.response.flush();
+        if (!_firstSseClient.isCompleted) _firstSseClient.complete();
+        // Keep the response open (SSE stream).
+        return;
+      }
+
+      request.response.statusCode = HttpStatus.notFound;
+      await request.response.close();
+    });
+  }
+
+  Future<void> waitForSseConnection() => _firstSseClient.future;
+
+  Future<void> close() async {
+    await _server?.close(force: true);
+  }
+
+  Future<void> _json(HttpResponse response, Object body) async {
+    response.statusCode = HttpStatus.ok;
+    response.headers.contentType = ContentType.json;
+    response.write(jsonEncode(body));
+    await response.close();
+  }
 }
 
 class _FakeOpenCodeServer {

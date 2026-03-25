@@ -113,6 +113,85 @@ void main() {
       });
     });
 
+    group("getActiveStatuses", () {
+      test("empty tracker returns empty map", () {
+        final tracker = ActiveSessionTracker(_fakeRepository());
+
+        expect(tracker.getActiveStatuses(), isEmpty);
+      });
+
+      test("coldStart populates active statuses from busy/retry sessions", () async {
+        final tracker = await _coldStartedTracker(
+          projects: [const Project(id: "p1", worktree: "/projects/foo")],
+          sessions: [
+            _session("s1", "/projects/foo"),
+            _session("s2", "/projects/foo"),
+            _session("s3", "/projects/foo"),
+          ],
+          statuses: {
+            "s1": const SessionStatus.busy(),
+            "s2": const SessionStatus.idle(),
+            "s3": const SessionStatus.retry(attempt: 1, message: "fail", next: 123),
+          },
+        );
+
+        final active = tracker.getActiveStatuses();
+
+        expect(active, hasLength(2));
+        expect(active["s1"], isA<SessionStatusBusy>());
+        expect(active["s3"], isA<SessionStatusRetry>());
+        expect(active.containsKey("s2"), isFalse);
+      });
+
+      test("SSE busy event adds to active statuses", () async {
+        final tracker = await _coldStartedTracker(
+          projects: [const Project(id: "p1", worktree: "/projects/foo")],
+        );
+
+        tracker.handleEvent(_sessionCreated("s1", "/projects/foo"), null);
+        tracker.handleEvent(_sessionBusy("s1"), null);
+
+        final active = tracker.getActiveStatuses();
+
+        expect(active, hasLength(1));
+        expect(active["s1"], isA<SessionStatusBusy>());
+      });
+
+      test("SSE idle event removes from active statuses", () async {
+        final tracker = await _coldStartedTracker(
+          projects: [const Project(id: "p1", worktree: "/projects/foo")],
+          sessions: [_session("s1", "/projects/foo")],
+          statuses: {"s1": const SessionStatus.busy()},
+        );
+        expect(tracker.getActiveStatuses(), hasLength(1));
+
+        tracker.handleEvent(_sessionIdle("s1"), null);
+
+        expect(tracker.getActiveStatuses(), isEmpty);
+      });
+
+      test("returns unmodifiable map", () {
+        final tracker = ActiveSessionTracker(_fakeRepository());
+
+        final active = tracker.getActiveStatuses();
+
+        expect(() => active["x"] = const SessionStatus.busy(), throwsA(anything));
+      });
+
+      test("reset clears active statuses", () async {
+        final tracker = await _coldStartedTracker(
+          projects: [const Project(id: "p1", worktree: "/projects/foo")],
+          sessions: [_session("s1", "/projects/foo")],
+          statuses: {"s1": const SessionStatus.busy()},
+        );
+        expect(tracker.getActiveStatuses(), hasLength(1));
+
+        tracker.reset();
+
+        expect(tracker.getActiveStatuses(), isEmpty);
+      });
+    });
+
     test("session directory exactly matches worktree", () async {
       final tracker = await _coldStartedTracker(
         projects: [const Project(id: "p1", worktree: "/projects/foo")],
