@@ -255,11 +255,14 @@ class NotificationService {
   }
 
   String? _extractProjectId({required shared.NotificationData notificationData, required Map<String, dynamic> data}) {
-    final dynamic maybeProjectId = (notificationData as dynamic).projectId;
-    if (maybeProjectId is String) {
-      return maybeProjectId;
+    // Prefer the typed field from the deserialized model.
+    // fromJson handles missing keys for nullable fields by assigning null.
+    if (notificationData.projectId != null) {
+      return notificationData.projectId;
     }
 
+    // Defensive fallback: read from raw data map in case the model
+    // was deserialized by an older version of sesori_shared.
     final dynamic rawProjectId = data["projectId"];
     if (rawProjectId is String) {
       return rawProjectId;

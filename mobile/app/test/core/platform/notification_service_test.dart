@@ -285,6 +285,46 @@ void main() {
   });
 
   group("onForegroundMessage", () {
+    test("extracts projectId from typed NotificationData model without dynamic cast", () async {
+      when(() => preferencesService.isEnabled(any())).thenAnswer((_) async => true);
+      when(
+        () => localNotificationManager.show(
+          title: any(named: "title"),
+          body: any(named: "body"),
+          category: any(named: "category"),
+          sessionId: any(named: "sessionId"),
+          projectId: any(named: "projectId"),
+        ),
+      ).thenAnswer((_) async {});
+
+      // projectId is in the data map and will be parsed by NotificationData.fromJson
+      // The service should use notificationData.projectId (typed access) — not (as dynamic).projectId
+      const message = RemoteMessage(
+        data: {
+          "category": "ai_interaction",
+          "eventType": "question_asked",
+          "sessionId": "ses_typed",
+          "projectId": "proj_typed",
+        },
+        notification: RemoteNotification(
+          title: "Title",
+          body: "Body",
+        ),
+      );
+
+      await service.onForegroundMessage(message);
+
+      verify(
+        () => localNotificationManager.show(
+          title: "Title",
+          body: "Body",
+          category: NotificationCategory.aiInteraction,
+          sessionId: "ses_typed",
+          projectId: "proj_typed",
+        ),
+      ).called(1);
+    });
+
     test("passes sessionId and projectId to show() when message contains them", () async {
       when(() => preferencesService.isEnabled(any())).thenAnswer((_) async => true);
       when(
