@@ -65,12 +65,15 @@ class ProjectService {
   }
 
   /// Gets filesystem suggestions for the given prefix.
+  ///
+  /// When [prefix] is empty the query parameter is omitted, which tells the
+  /// bridge to return the user's home-directory children.
   Future<ApiResponse<List<FilesystemSuggestion>>> getFilesystemSuggestions({
     required String prefix,
   }) {
     return _client.get(
       "/filesystem/suggestions",
-      queryParameters: {"prefix": prefix},
+      queryParameters: prefix.isEmpty ? null : {"prefix": prefix},
       fromJson: (json) => switch (json) {
         final List<dynamic> list =>
           list
