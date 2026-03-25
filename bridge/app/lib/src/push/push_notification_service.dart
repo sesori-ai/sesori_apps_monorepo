@@ -15,33 +15,29 @@ class PushNotificationService {
   final PushNotificationClient _client;
   final PushRateLimiter _rateLimiter;
   final PushSessionStateTracker _tracker;
-  late final CompletionNotifier _completionNotifier;
+  final CompletionNotifier _completionNotifier;
+  late final StreamSubscription<String> _completionSubscription;
 
   PushNotificationService({
     required PushNotificationClient client,
     required PushRateLimiter rateLimiter,
     required PushSessionStateTracker tracker,
-    Duration debounceDuration = const Duration(milliseconds: 500),
-    CompletionNotifier? completionNotifier,
+    required CompletionNotifier completionNotifier,
   }) : _client = client,
        _rateLimiter = rateLimiter,
-       _tracker = tracker {
-    _completionNotifier =
-        completionNotifier ??
-        CompletionNotifier(
-          tracker: _tracker,
-          debounceDuration: debounceDuration,
-          onCompletion: _sendCompletionNotification,
-        );
+       _tracker = tracker,
+       _completionNotifier = completionNotifier {
+    _completionSubscription = _completionNotifier.completions.listen(_sendCompletionNotification);
   }
 
-  void maybeSendForEvent(SesoriSseEvent event) {
+  void handleSseEvent(SesoriSseEvent event) {
     _tracker.handleEvent(event);
     _completionNotifier.handleEvent(event);
     _sendImmediateNotificationIfApplicable(event);
   }
 
-  void dispose() {
+  Future<void> dispose() async {
+    await _completionSubscription.cancel();
     _completionNotifier.dispose();
   }
 
@@ -78,7 +74,7 @@ class PushNotificationService {
 
     _sendNotification(
       category: NotificationCategory.sessionMessage,
-      eventType: NotificationEventType.sessionCompleted,
+      eventType: NotificationEventType.agentTurnCompleted,
       title: title,
       body: body,
       sessionId: rootSessionId,

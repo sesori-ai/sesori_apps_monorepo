@@ -72,12 +72,10 @@ enum NotificationEventType {
   questionAsked,
   @JsonValue("permission_asked")
   permissionAsked,
-  @JsonValue("message_updated")
-  messageUpdated,
   @JsonValue("installation_update_available")
   installationUpdateAvailable,
-  @JsonValue("session_completed")
-  sessionCompleted,
+  @JsonValue("agent_turn_completed")
+  agentTurnCompleted,
   // fallback for unknown event types (for backwards compatibility)
   @JsonValue("unknown")
   unknown,

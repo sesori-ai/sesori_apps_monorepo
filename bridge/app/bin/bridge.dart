@@ -12,6 +12,7 @@ import 'package:sesori_bridge/src/bridge/debug_server.dart';
 import 'package:sesori_bridge/src/bridge/models/bridge_config.dart';
 import 'package:sesori_bridge/src/bridge/orchestrator.dart';
 import 'package:sesori_bridge/src/bridge/relay_client.dart';
+import 'package:sesori_bridge/src/push/completion_notifier.dart';
 import 'package:sesori_bridge/src/push/push_notification_client.dart';
 import 'package:sesori_bridge/src/push/push_notification_service.dart';
 import 'package:sesori_bridge/src/push/push_rate_limiter.dart';
@@ -163,10 +164,16 @@ Future<void> main(List<String> args) async {
     tokenRefreshManager: tokenManager,
   );
   final pushRateLimiter = PushRateLimiter();
+  final pushSessionStateTracker = PushSessionStateTracker();
+  final completionNotifier = CompletionNotifier(
+    tracker: pushSessionStateTracker,
+    debounceDuration: const Duration(milliseconds: 500),
+  );
   final pushNotificationService = PushNotificationService(
     client: pushClient,
     rateLimiter: pushRateLimiter,
-    tracker: PushSessionStateTracker(),
+    tracker: pushSessionStateTracker,
+    completionNotifier: completionNotifier,
   );
 
   final relayClient = RelayClient(relayURL: relayURL, accessTokenProvider: tokenManager);

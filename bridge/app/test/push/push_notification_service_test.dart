@@ -1,5 +1,6 @@
 import "package:fake_async/fake_async.dart";
 import "package:sesori_bridge/src/auth/token_refresher.dart";
+import "package:sesori_bridge/src/push/completion_notifier.dart";
 import "package:sesori_bridge/src/push/push_notification_client.dart";
 import "package:sesori_bridge/src/push/push_notification_service.dart";
 import "package:sesori_bridge/src/push/push_rate_limiter.dart";
@@ -12,7 +13,7 @@ void main() {
     test("AC1a: SesoriMessageUpdated with user role sends no notification", () {
       final harness = _newHarness();
 
-      harness.service.maybeSendForEvent(
+      harness.service.handleSseEvent(
         const SesoriSseEvent.messageUpdated(
           info: Message(id: "msg-1", role: "user", sessionID: "session-a"),
         ),
@@ -24,7 +25,7 @@ void main() {
     test("AC1b: SesoriMessageUpdated with assistant role sends no notification", () {
       final harness = _newHarness();
 
-      harness.service.maybeSendForEvent(
+      harness.service.handleSseEvent(
         const SesoriSseEvent.messageUpdated(
           info: Message(id: "msg-1", role: "assistant", sessionID: "session-a"),
         ),
@@ -33,42 +34,44 @@ void main() {
       expect(harness.client.sentPayloads, isEmpty);
     });
 
-    test("AC2: parent+child idle completion sends one sessionCompleted notification", () {
+    test("AC2: parent+child idle completion sends one agentTurnCompleted notification", () {
       fakeAsync((async) {
         final harness = _newHarness();
 
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           SesoriSseEvent.sessionCreated(
             info: _session(id: "parent", title: "Parent title"),
           ),
         );
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           SesoriSseEvent.sessionCreated(
             info: _session(id: "child", parentID: "parent"),
           ),
         );
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "parent", status: SessionStatus.busy()),
         );
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
         );
 
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
         );
         async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
         expect(harness.client.sentPayloads, isEmpty);
 
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "parent", status: SessionStatus.idle()),
         );
         async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
 
         expect(harness.client.sentPayloads.length, equals(1));
         final payload = harness.client.sentPayloads.single;
         expect(payload.category, equals(NotificationCategory.sessionMessage));
-        expect(payload.data?.eventType, equals(NotificationEventType.sessionCompleted));
+        expect(payload.data?.eventType, equals(NotificationEventType.agentTurnCompleted));
       });
     });
 
@@ -76,15 +79,16 @@ void main() {
       fakeAsync((async) {
         final harness = _newHarness();
 
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
         );
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
         );
 
         async.elapse(const Duration(milliseconds: 200));
-        harness.service.maybeSendForEvent(
+        async.flushMicrotasks();
+        harness.service.handleSseEvent(
           const SesoriSseEvent.questionAsked(
             id: "q-1",
             sessionID: "session-a",
@@ -93,8 +97,9 @@ void main() {
         );
 
         async.elapse(const Duration(milliseconds: 600));
+        async.flushMicrotasks();
         final completionCount = harness.client.sentPayloads
-            .where((payload) => payload.data?.eventType == NotificationEventType.sessionCompleted)
+            .where((payload) => payload.data?.eventType == NotificationEventType.agentTurnCompleted)
             .length;
         expect(completionCount, equals(0));
       });
@@ -104,15 +109,16 @@ void main() {
       fakeAsync((async) {
         final harness = _newHarness();
 
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
         );
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
         );
 
         async.elapse(const Duration(milliseconds: 200));
-        harness.service.maybeSendForEvent(
+        async.flushMicrotasks();
+        harness.service.handleSseEvent(
           const SesoriSseEvent.permissionAsked(
             requestID: "perm-1",
             sessionID: "session-a",
@@ -122,8 +128,9 @@ void main() {
         );
 
         async.elapse(const Duration(milliseconds: 600));
+        async.flushMicrotasks();
         final completionCount = harness.client.sentPayloads
-            .where((payload) => payload.data?.eventType == NotificationEventType.sessionCompleted)
+            .where((payload) => payload.data?.eventType == NotificationEventType.agentTurnCompleted)
             .length;
         expect(completionCount, equals(0));
       });
@@ -134,17 +141,17 @@ void main() {
         final harness = _newHarness();
         const title = "Implement user authentication for the dashboard";
 
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           SesoriSseEvent.sessionCreated(
             info: _session(id: "session-a", title: title),
           ),
         );
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.messageUpdated(
             info: Message(id: "msg-1", role: "assistant", sessionID: "session-a"),
           ),
         );
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.messagePartUpdated(
             part: MessagePart(
               id: "part-1",
@@ -156,17 +163,18 @@ void main() {
           ),
         );
 
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
         );
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
         );
 
         async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
 
         final completion = harness.client.sentPayloads.singleWhere(
-          (payload) => payload.data?.eventType == NotificationEventType.sessionCompleted,
+          (payload) => payload.data?.eventType == NotificationEventType.agentTurnCompleted,
         );
         expect(completion.title, equals(title));
         expect(completion.body, equals("I implemented user auth using JWT, refresh tokens, secure cookies,..."));
@@ -177,17 +185,19 @@ void main() {
       fakeAsync((async) {
         final harness = _newHarness();
 
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
         );
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
         );
 
         async.elapse(const Duration(milliseconds: 400));
+        async.flushMicrotasks();
         expect(harness.client.sentPayloads, isEmpty);
 
         async.elapse(const Duration(milliseconds: 100));
+        async.flushMicrotasks();
         expect(harness.client.sentPayloads.length, equals(1));
       });
     });
@@ -196,34 +206,36 @@ void main() {
       fakeAsync((async) {
         final harness = _newHarness();
 
-        harness.service.maybeSendForEvent(SesoriSseEvent.sessionCreated(info: _session(id: "parent")));
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(SesoriSseEvent.sessionCreated(info: _session(id: "parent")));
+        harness.service.handleSseEvent(
           SesoriSseEvent.sessionCreated(
             info: _session(id: "child", parentID: "parent"),
           ),
         );
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "parent", status: SessionStatus.busy()),
         );
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
         );
 
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "parent", status: SessionStatus.idle()),
         );
         async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
         expect(harness.client.sentPayloads, isEmpty);
 
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
         );
         async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
 
         expect(harness.client.sentPayloads.length, equals(1));
         expect(
           harness.client.sentPayloads.single.data?.eventType,
-          equals(NotificationEventType.sessionCompleted),
+          equals(NotificationEventType.agentTurnCompleted),
         );
       });
     });
@@ -232,57 +244,60 @@ void main() {
       fakeAsync((async) {
         final harness = _newHarness();
 
-        harness.service.maybeSendForEvent(SesoriSseEvent.sessionCreated(info: _session(id: "session-a")));
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(SesoriSseEvent.sessionCreated(info: _session(id: "session-a")));
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
         );
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
         );
         harness.service.reset();
 
         async.elapse(const Duration(seconds: 2));
+        async.flushMicrotasks();
 
         expect(harness.client.sentPayloads, isEmpty);
       });
     });
 
-    test("AC8: question replied unblocks completion when still idle", () {
+    test("AC8: question replied cancels pending completion", () {
       fakeAsync((async) {
         final harness = _newHarness();
 
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
         );
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
         );
         async.elapse(const Duration(milliseconds: 200));
+        async.flushMicrotasks();
 
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.questionAsked(
             id: "q-1",
             sessionID: "session-a",
             questions: [QuestionInfo(header: "Prompt", question: "Proceed?")],
           ),
         );
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "session-a"),
         );
 
         async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
 
         final completionCount = harness.client.sentPayloads
-            .where((payload) => payload.data?.eventType == NotificationEventType.sessionCompleted)
+            .where((payload) => payload.data?.eventType == NotificationEventType.agentTurnCompleted)
             .length;
-        expect(completionCount, equals(1));
+        expect(completionCount, equals(0));
       });
     });
 
     test("AC9a: question asked still sends immediate aiInteraction notification", () {
       final harness = _newHarness();
 
-      harness.service.maybeSendForEvent(
+      harness.service.handleSseEvent(
         const SesoriSseEvent.questionAsked(
           id: "q-1",
           sessionID: "session-a",
@@ -299,7 +314,7 @@ void main() {
     test("AC9b: installation update still sends immediate systemUpdate notification", () {
       final harness = _newHarness();
 
-      harness.service.maybeSendForEvent(
+      harness.service.handleSseEvent(
         const SesoriSseEvent.installationUpdateAvailable(version: "1.2.3"),
       );
 
@@ -316,12 +331,12 @@ void main() {
       fakeAsync((async) {
         final harness = _newHarness();
 
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.messageUpdated(
             info: Message(id: "msg-1", role: "assistant", sessionID: "session-a"),
           ),
         );
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.messagePartUpdated(
             part: MessagePart(
               id: "part-1",
@@ -332,17 +347,18 @@ void main() {
             ),
           ),
         );
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
         );
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
         );
 
         async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
 
         final completion = harness.client.sentPayloads.singleWhere(
-          (payload) => payload.data?.eventType == NotificationEventType.sessionCompleted,
+          (payload) => payload.data?.eventType == NotificationEventType.agentTurnCompleted,
         );
         expect(completion.body, equals("Task completed"));
       });
@@ -352,12 +368,12 @@ void main() {
       fakeAsync((async) {
         final harness = _newHarness();
 
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.messageUpdated(
             info: Message(id: "msg-1", role: "assistant", sessionID: "session-a"),
           ),
         );
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.messagePartUpdated(
             part: MessagePart(
               id: "part-1",
@@ -368,17 +384,18 @@ void main() {
             ),
           ),
         );
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
         );
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
         );
 
         async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
 
         final completion = harness.client.sentPayloads.singleWhere(
-          (payload) => payload.data?.eventType == NotificationEventType.sessionCompleted,
+          (payload) => payload.data?.eventType == NotificationEventType.agentTurnCompleted,
         );
         expect(completion.body, equals("Done with migration, tests, docs, and verification checks."));
       });
@@ -389,18 +406,20 @@ void main() {
         final harness = _newHarness();
 
         final session = _session(id: "session-a");
-        harness.service.maybeSendForEvent(SesoriSseEvent.sessionCreated(info: session));
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(SesoriSseEvent.sessionCreated(info: session));
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
         );
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
         );
 
         async.elapse(const Duration(milliseconds: 200));
-        harness.service.maybeSendForEvent(SesoriSseEvent.sessionDeleted(info: session));
+        async.flushMicrotasks();
+        harness.service.handleSseEvent(SesoriSseEvent.sessionDeleted(info: session));
 
         async.elapse(const Duration(seconds: 1));
+        async.flushMicrotasks();
         expect(harness.client.sentPayloads, isEmpty);
       });
     });
@@ -409,25 +428,27 @@ void main() {
       fakeAsync((async) {
         final harness = _newHarness();
 
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
         );
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
         );
 
         async.elapse(const Duration(milliseconds: 200));
-        harness.service.maybeSendForEvent(
+        async.flushMicrotasks();
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
         );
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
         );
 
         async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
 
         final completionCount = harness.client.sentPayloads
-            .where((payload) => payload.data?.eventType == NotificationEventType.sessionCompleted)
+            .where((payload) => payload.data?.eventType == NotificationEventType.agentTurnCompleted)
             .length;
         expect(completionCount, equals(1));
       });
@@ -437,44 +458,46 @@ void main() {
       fakeAsync((async) {
         final harness = _newHarness();
 
-        harness.service.maybeSendForEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
+        harness.service.handleSseEvent(
           SesoriSseEvent.sessionCreated(
             info: _session(id: "child-1", parentID: "root"),
           ),
         );
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           SesoriSseEvent.sessionCreated(
             info: _session(id: "child-2", parentID: "root"),
           ),
         );
 
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
         );
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "child-1", status: SessionStatus.busy()),
         );
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "child-2", status: SessionStatus.busy()),
         );
 
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "child-1", status: SessionStatus.idle()),
         );
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
         );
         async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
         expect(harness.client.sentPayloads, isEmpty);
 
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "child-2", status: SessionStatus.idle()),
         );
         async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
 
         final completionCount = harness.client.sentPayloads
-            .where((payload) => payload.data?.eventType == NotificationEventType.sessionCompleted)
+            .where((payload) => payload.data?.eventType == NotificationEventType.agentTurnCompleted)
             .length;
         expect(completionCount, equals(1));
       });
@@ -484,17 +507,18 @@ void main() {
       fakeAsync((async) {
         final harness = _newHarness();
 
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
         );
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
         );
 
         async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
 
         final completion = harness.client.sentPayloads.singleWhere(
-          (payload) => payload.data?.eventType == NotificationEventType.sessionCompleted,
+          (payload) => payload.data?.eventType == NotificationEventType.agentTurnCompleted,
         );
         expect(completion.body, equals("Task completed"));
       });
@@ -504,20 +528,21 @@ void main() {
       fakeAsync((async) {
         final harness = _newHarness();
 
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           SesoriSseEvent.sessionCreated(info: _session(id: "session-a", title: null)),
         );
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
         );
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
         );
 
         async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
 
         final completion = harness.client.sentPayloads.singleWhere(
-          (payload) => payload.data?.eventType == NotificationEventType.sessionCompleted,
+          (payload) => payload.data?.eventType == NotificationEventType.agentTurnCompleted,
         );
         expect(completion.title, equals("Session completed"));
       });
@@ -527,22 +552,24 @@ void main() {
       fakeAsync((async) {
         final harness = _newHarness();
 
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
         );
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
         );
         async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
         expect(harness.client.sentPayloads.length, equals(1));
 
-        harness.service.maybeSendForEvent(
+        harness.service.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
         );
         async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
 
         final completionCount = harness.client.sentPayloads
-            .where((payload) => payload.data?.eventType == NotificationEventType.sessionCompleted)
+            .where((payload) => payload.data?.eventType == NotificationEventType.agentTurnCompleted)
             .length;
         expect(completionCount, equals(1));
       });
@@ -551,7 +578,7 @@ void main() {
     test("E9: question asked for untracked session still sends aiInteraction", () {
       final harness = _newHarness();
 
-      harness.service.maybeSendForEvent(
+      harness.service.handleSseEvent(
         const SesoriSseEvent.questionAsked(
           id: "q-1",
           sessionID: "missing-session",
@@ -583,11 +610,16 @@ void main() {
 })
 _newHarness() {
   final client = FakePushNotificationClient();
+  final tracker = PushSessionStateTracker();
+  final notifier = CompletionNotifier(
+    tracker: tracker,
+    debounceDuration: const Duration(milliseconds: 500),
+  );
   final service = PushNotificationService(
     client: client,
     rateLimiter: FakePushRateLimiter(),
-    tracker: PushSessionStateTracker(),
-    debounceDuration: const Duration(milliseconds: 500),
+    tracker: tracker,
+    completionNotifier: notifier,
   );
 
   return (service: service, client: client);

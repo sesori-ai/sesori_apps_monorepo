@@ -38,9 +38,8 @@ const _$NotificationCategoryEnumMap = {
 const _$NotificationEventTypeEnumMap = {
   NotificationEventType.questionAsked: 'question_asked',
   NotificationEventType.permissionAsked: 'permission_asked',
-  NotificationEventType.messageUpdated: 'message_updated',
   NotificationEventType.installationUpdateAvailable:
       'installation_update_available',
-  NotificationEventType.sessionCompleted: 'session_completed',
+  NotificationEventType.agentTurnCompleted: 'agent_turn_completed',
   NotificationEventType.unknown: 'unknown',
 };

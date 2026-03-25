@@ -243,6 +243,40 @@ void main() {
       expect(tracker.isSessionGroupFullyIdle("root"), isTrue);
     });
 
+    test("isSessionGroupFullyIdle returns false when a grandchild is busy", () {
+      final tracker = PushSessionStateTracker();
+
+      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
+      tracker.handleEvent(
+        SesoriSseEvent.sessionCreated(
+          info: _session(id: "child", parentID: "root"),
+        ),
+      );
+      tracker.handleEvent(
+        SesoriSseEvent.sessionCreated(
+          info: _session(id: "grandchild", parentID: "child"),
+        ),
+      );
+
+      tracker.handleEvent(
+        const SesoriSseEvent.sessionStatus(
+          sessionID: "grandchild",
+          status: SessionStatus.busy(),
+        ),
+      );
+
+      expect(tracker.isSessionGroupFullyIdle("root"), isFalse);
+
+      tracker.handleEvent(
+        const SesoriSseEvent.sessionStatus(
+          sessionID: "grandchild",
+          status: SessionStatus.idle(),
+        ),
+      );
+
+      expect(tracker.isSessionGroupFullyIdle("root"), isTrue);
+    });
+
     test("hasPendingInteraction returns true for pending question or permission", () {
       final tracker = PushSessionStateTracker();
 
@@ -305,6 +339,41 @@ void main() {
         const SesoriSseEvent.questionReplied(requestID: "q-child", sessionID: "child"),
       );
       expect(tracker.hasPendingInteraction("parent"), isFalse);
+    });
+
+    test("hasPendingInteraction includes grandchild sessions", () {
+      final tracker = PushSessionStateTracker();
+
+      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
+      tracker.handleEvent(
+        SesoriSseEvent.sessionCreated(
+          info: _session(id: "child", parentID: "root"),
+        ),
+      );
+      tracker.handleEvent(
+        SesoriSseEvent.sessionCreated(
+          info: _session(id: "grandchild", parentID: "child"),
+        ),
+      );
+
+      tracker.handleEvent(
+        const SesoriSseEvent.questionAsked(
+          id: "q-grandchild",
+          sessionID: "grandchild",
+          questions: [QuestionInfo(header: "h", question: "q")],
+        ),
+      );
+
+      expect(tracker.hasPendingInteraction("root"), isTrue);
+
+      tracker.handleEvent(
+        const SesoriSseEvent.questionReplied(
+          requestID: "q-grandchild",
+          sessionID: "grandchild",
+        ),
+      );
+
+      expect(tracker.hasPendingInteraction("root"), isFalse);
     });
 
     test("getSessionTitle returns cached title or null", () {

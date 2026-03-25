@@ -6,7 +6,7 @@ import "package:test/test.dart";
 
 void main() {
   group("CompletionNotifier", () {
-    test("idle after busy fires callback after debounce", () {
+    test("idle after busy emits completion after debounce", () {
       fakeAsync((async) {
         final harness = _newHarness();
 
@@ -18,9 +18,11 @@ void main() {
         );
 
         async.elapse(const Duration(milliseconds: 499));
+        async.flushMicrotasks();
         expect(harness.completedRoots, isEmpty);
 
         async.elapse(const Duration(milliseconds: 1));
+        async.flushMicrotasks();
         expect(harness.completedRoots, equals(["session-a"]));
       });
     });
@@ -36,6 +38,7 @@ void main() {
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
         );
         async.elapse(const Duration(milliseconds: 200));
+        async.flushMicrotasks();
 
         harness.dispatch(
           const SesoriSseEvent.questionAsked(
@@ -46,6 +49,7 @@ void main() {
         );
 
         async.elapse(const Duration(milliseconds: 800));
+        async.flushMicrotasks();
         expect(harness.completedRoots, isEmpty);
       });
     });
@@ -61,6 +65,7 @@ void main() {
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
         );
         async.elapse(const Duration(milliseconds: 200));
+        async.flushMicrotasks();
 
         harness.dispatch(
           const SesoriSseEvent.permissionAsked(
@@ -72,6 +77,7 @@ void main() {
         );
 
         async.elapse(const Duration(milliseconds: 800));
+        async.flushMicrotasks();
         expect(harness.completedRoots, isEmpty);
       });
     });
@@ -87,12 +93,14 @@ void main() {
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
         );
         async.elapse(const Duration(milliseconds: 200));
+        async.flushMicrotasks();
 
         harness.dispatch(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
         );
 
         async.elapse(const Duration(milliseconds: 800));
+        async.flushMicrotasks();
         expect(harness.completedRoots, isEmpty);
       });
     });
@@ -110,15 +118,17 @@ void main() {
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
         );
         async.elapse(const Duration(milliseconds: 200));
+        async.flushMicrotasks();
 
         harness.dispatch(SesoriSseEvent.sessionDeleted(info: session));
 
         async.elapse(const Duration(milliseconds: 800));
+        async.flushMicrotasks();
         expect(harness.completedRoots, isEmpty);
       });
     });
 
-    test("question replied re-evaluates and schedules completion", () {
+    test("question replied cancels any pending completion", () {
       fakeAsync((async) {
         final harness = _newHarness();
 
@@ -129,6 +139,7 @@ void main() {
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
         );
         async.elapse(const Duration(milliseconds: 200));
+        async.flushMicrotasks();
         harness.dispatch(
           const SesoriSseEvent.questionAsked(
             id: "q-1",
@@ -141,11 +152,12 @@ void main() {
         );
 
         async.elapse(const Duration(milliseconds: 500));
-        expect(harness.completedRoots, equals(["session-a"]));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, isEmpty);
       });
     });
 
-    test("permission replied re-evaluates through requestID lookup", () {
+    test("question rejected cancels any pending completion", () {
       fakeAsync((async) {
         final harness = _newHarness();
 
@@ -156,6 +168,36 @@ void main() {
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
         );
         async.elapse(const Duration(milliseconds: 200));
+        async.flushMicrotasks();
+        harness.dispatch(
+          const SesoriSseEvent.questionAsked(
+            id: "q-1",
+            sessionID: "session-a",
+            questions: [QuestionInfo(header: "Prompt", question: "Proceed?")],
+          ),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.questionRejected(requestID: "q-1", sessionID: "session-a"),
+        );
+
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, isEmpty);
+      });
+    });
+
+    test("permission replied cancels any pending completion", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
+        );
+        async.elapse(const Duration(milliseconds: 200));
+        async.flushMicrotasks();
         harness.dispatch(
           const SesoriSseEvent.permissionAsked(
             requestID: "perm-1",
@@ -169,7 +211,8 @@ void main() {
         );
 
         async.elapse(const Duration(milliseconds: 500));
-        expect(harness.completedRoots, equals(["session-a"]));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, isEmpty);
       });
     });
 
@@ -194,12 +237,14 @@ void main() {
           const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
         );
         async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
         expect(harness.completedRoots, isEmpty);
 
         harness.dispatch(
           const SesoriSseEvent.sessionStatus(sessionID: "parent", status: SessionStatus.idle()),
         );
         async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
         expect(harness.completedRoots, equals(["parent"]));
       });
     });
@@ -215,6 +260,7 @@ void main() {
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
         );
         async.elapse(const Duration(milliseconds: 200));
+        async.flushMicrotasks();
         harness.dispatch(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
         );
@@ -223,6 +269,7 @@ void main() {
         );
 
         async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
         expect(harness.completedRoots, equals(["session-a"]));
       });
     });
@@ -238,12 +285,14 @@ void main() {
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
         );
         async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
         expect(harness.completedRoots, equals(["session-a"]));
 
         harness.dispatch(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
         );
         async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
 
         expect(harness.completedRoots, equals(["session-a"]));
       });
@@ -262,6 +311,7 @@ void main() {
         harness.notifier.reset();
 
         async.elapse(const Duration(seconds: 1));
+        async.flushMicrotasks();
         expect(harness.completedRoots, isEmpty);
       });
     });
@@ -279,11 +329,12 @@ void main() {
         harness.notifier.dispose();
 
         async.elapse(const Duration(seconds: 1));
+        async.flushMicrotasks();
         expect(harness.completedRoots, isEmpty);
       });
     });
 
-    test("callback receives root session ID for child events", () {
+    test("completion stream emits root session ID for child events", () {
       fakeAsync((async) {
         final harness = _newHarness();
 
@@ -307,6 +358,7 @@ void main() {
         );
 
         async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
         expect(harness.completedRoots, equals(["parent"]));
       });
     });
@@ -336,8 +388,8 @@ _Harness _newHarness() {
   final notifier = CompletionNotifier(
     tracker: tracker,
     debounceDuration: const Duration(milliseconds: 500),
-    onCompletion: completedRoots.add,
   );
+  notifier.completions.listen(completedRoots.add);
   return _Harness(tracker: tracker, notifier: notifier, completedRoots: completedRoots);
 }
 

@@ -21,14 +21,6 @@ void main() {
       expect(extractNotificationData(permissionEvent)?.category, NotificationCategory.aiInteraction);
     });
 
-    test("returns null for message.updated", () {
-      const event = SesoriSseEvent.messageUpdated(
-        info: Message(role: "assistant", id: "m-1", sessionID: "session-a"),
-      );
-
-      expect(extractNotificationData(event), isNull);
-    });
-
     test("maps installation.update-available to system_update", () {
       const event = SesoriSseEvent.installationUpdateAvailable(version: "1.2.3");
 

@@ -113,7 +113,7 @@ class OrchestratorSession {
           Log.v(
             "[sse] mapped to: ${sesoriEvent.runtimeType} — enqueuing (subscribers: ${_sseManager.subscriberCount})",
           );
-          _pushNotificationService.maybeSendForEvent(sesoriEvent);
+          _pushNotificationService.handleSseEvent(sesoriEvent);
           _sseManager.enqueueEvent(sesoriEvent);
         } else {
           Log.v("[sse] mapping returned null — event dropped");
@@ -191,7 +191,7 @@ class OrchestratorSession {
       _sseManager.stop();
       Log.d("[dbg] sse manager stopped");
       Log.d("[dbg] disposing push notification service...");
-      _pushNotificationService.dispose();
+      await _pushNotificationService.dispose();
       Log.d("[dbg] push notification service disposed");
       try {
         Log.d("[dbg] closing relay client...");
