@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_8WAJx3BNjJ
 createdAt: 2026-03-13T12:35:12.359372
-updatedAt: 2026-03-13T12:35:42.223600
+updatedAt: 2026-03-25T12:18:58.674701
 workspaceId: wk_CKpMKQdH7W
 folderId: fl_CEW8q5zwRE
 authentication: {}
@@ -19,9 +19,9 @@ url: ${[ base_url ]}/global/:providerID
 urlParameters:
 - enabled: true
   name: :providerID
-  value: anthropic
+  value: anthropic (test)
   id: 8y4ICupfsC
 - enabled: true
   name: ''
   value: ''
-  id: GhvfyHH8K4
+  id: xEVPhyVnxp

@@ -2,11 +2,19 @@ type: workspace
 model: workspace
 id: wk_CKpMKQdH7W
 createdAt: 2026-03-13T12:14:59.017417
-updatedAt: 2026-03-13T12:14:59.017417
+updatedAt: 2026-03-25T12:13:13.404324
 authentication: {}
 authenticationType: null
 description: ''
-headers: []
+headers:
+- enabled: true
+  name: x-opencode-directory
+  value: ${[ directory ]}
+  id: NhBk7IeTZi
+- enabled: true
+  name: ''
+  value: ''
+  id: MyUN0pfMkP
 name: OpenCode
 encryptionKeyChallenge: null
 settingValidateCertificates: true

@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_MBpgmJUDuF
 createdAt: 2026-03-13T12:49:08.853917
-updatedAt: 2026-03-13T12:56:35.314070
+updatedAt: 2026-03-25T12:15:02.925768
 workspaceId: wk_CKpMKQdH7W
 folderId: fl_yk5jRTWYoF
 authentication: {}
@@ -39,9 +39,9 @@ url: ${[ base_url ]}/session/:sessionID/fork
 urlParameters:
 - enabled: true
   name: :sessionID
-  value: ''
+  value: ${[ session_id ]}
   id: kz6efcSPKb
 - enabled: true
   name: ''
   value: ''
-  id: WYqwwFSh9E
+  id: VwjqGJztrv

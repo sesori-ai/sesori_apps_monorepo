@@ -138,6 +138,16 @@ class ActiveSessionTracker {
     return _sessionDirectories[sessionId];
   }
 
+  /// Returns the current status of every session the tracker considers
+  /// active (busy or retry).
+  ///
+  /// This map is maintained in real time by SSE events and is the most
+  /// accurate source of session status. Sessions that are idle are absent
+  /// from the map.
+  Map<String, SessionStatus> getActiveStatuses() {
+    return Map.unmodifiable(_sessionStatuses);
+  }
+
   List<ProjectActivitySummary> buildSummary() {
     // Partition active (busy/retry) sessions into root vs child.
     final activeRoots = <String>{};

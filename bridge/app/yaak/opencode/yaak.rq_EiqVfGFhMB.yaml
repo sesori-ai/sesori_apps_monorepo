@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_EiqVfGFhMB
 createdAt: 2026-03-13T12:54:45.028620
-updatedAt: 2026-03-13T12:56:35.309848
+updatedAt: 2026-03-25T12:10:18.980343
 workspaceId: wk_CKpMKQdH7W
 folderId: fl_yk5jRTWYoF
 authentication: {}
@@ -23,9 +23,9 @@ url: ${[ base_url ]}/session/:sessionID/children
 urlParameters:
 - enabled: true
   name: :sessionID
-  value: ses_318d2c9e3ffeZ6s6SJu83vXQv3
+  value: ${[ session_id ]}
   id: kz6efcSPKb
 - enabled: true
   name: ''
   value: ''
-  id: E7Q3MKJyIZ
+  id: ayZJ39gKE3

@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_TqJPQ2PVhp
 createdAt: 2026-03-13T13:05:32.481288
-updatedAt: 2026-03-13T13:05:48.252786
+updatedAt: 2026-03-25T12:15:49.240651
 workspaceId: wk_CKpMKQdH7W
 folderId: fl_HfZ2GNqEB8
 authentication: {}
@@ -24,13 +24,17 @@ url: ${[ base_url ]}/session/:sessionID/message/:messageID/part/:partID
 urlParameters:
 - enabled: true
   name: :sessionID
-  value: ses_318d2c9e3ffeZ6s6SJu83vXQv3
+  value: ${[ session_id ]}
   id: kz6efcSPKb
 - enabled: true
   name: :messageID
-  value: msg_ce72d37a5001yyBvHZnV1wfmkR
+  value: ${[ message_id ]}
   id: thUXzDnqTk
+- enabled: true
+  name: :partID
+  value: ${[ part_id ]}
+  id: wAhK658siS
 - enabled: true
   name: ''
   value: ''
-  id: msHkU69j74
+  id: 7DbsKAifh7

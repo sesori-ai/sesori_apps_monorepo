@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_35oLQknZX8
 createdAt: 2026-03-23T14:35:57.877892
-updatedAt: 2026-03-23T14:37:49.955261
+updatedAt: 2026-03-25T12:13:39.624089
 workspaceId: wk_CKpMKQdH7W
 folderId: fl_AHgrxwb38h
 authentication: {}
@@ -20,13 +20,9 @@ headers:
   value: application/json
   id: ZKKNTARaxK
 - enabled: true
-  name: x-opencode-directory
-  value: /Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo
-  id: wMmVRg8M8R
-- enabled: true
   name: ''
   value: ''
-  id: i8StkUdi4J
+  id: Wg6ivZpixf
 method: POST
 name: Reply to Question
 sortPriority: 0.0
