@@ -64,6 +64,11 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
+        <!-- Default icon for FCM notifications (when app is backgrounded/killed) -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_notification" />
+
         <meta-data android:name="google_analytics_default_allow_analytics_storage"
             android:value="true" />
         <meta-data android:name="google_analytics_default_allow_ad_storage" android:value="false" />

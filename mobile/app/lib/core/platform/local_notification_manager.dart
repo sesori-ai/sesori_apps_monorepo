@@ -44,7 +44,7 @@ class LocalNotificationManager implements NotificationCanceller {
 
     await _plugin.initialize(
       settings: const InitializationSettings(
-        android: AndroidInitializationSettings("@mipmap/ic_launcher"),
+        android: AndroidInitializationSettings("@drawable/ic_notification"),
         iOS: DarwinInitializationSettings(),
       ),
     );
@@ -70,7 +70,11 @@ class LocalNotificationManager implements NotificationCanceller {
       title: title,
       body: body,
       notificationDetails: NotificationDetails(
-        android: AndroidNotificationDetails(channelId, category.displayName),
+        android: AndroidNotificationDetails(
+          channelId,
+          category.displayName,
+          largeIcon: const DrawableResourceAndroidBitmap("@mipmap/ic_launcher"),
+        ),
         iOS: const DarwinNotificationDetails(),
       ),
     );
