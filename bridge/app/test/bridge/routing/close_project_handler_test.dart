@@ -1,7 +1,7 @@
 import "dart:io";
 
+import "package:sesori_bridge/src/bridge/hidden_projects_store.dart";
 import "package:sesori_bridge/src/bridge/routing/close_project_handler.dart";
-import "package:sesori_bridge/src/bridge/routing/hidden_projects_store.dart";
 import "package:test/test.dart";
 
 import "routing_test_helpers.dart";

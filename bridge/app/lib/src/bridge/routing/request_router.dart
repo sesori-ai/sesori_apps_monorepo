@@ -1,6 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../hidden_projects_store.dart";
 import "abort_session_handler.dart";
 import "close_project_handler.dart";
 import "create_project_handler.dart";
@@ -19,7 +20,6 @@ import "get_session_questions_handler.dart";
 import "get_session_statuses_handler.dart";
 import "get_sessions_handler.dart";
 import "health_check_handler.dart";
-import "hidden_projects_store.dart";
 import "reject_question_handler.dart";
 import "reply_to_question_handler.dart";
 import "request_handler.dart";

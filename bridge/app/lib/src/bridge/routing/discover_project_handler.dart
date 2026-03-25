@@ -4,7 +4,7 @@ import "dart:io";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "hidden_projects_store.dart";
+import "../hidden_projects_store.dart";
 import "request_handler.dart";
 
 /// Handles `POST /project/discover` — discovers an existing directory as a project.
