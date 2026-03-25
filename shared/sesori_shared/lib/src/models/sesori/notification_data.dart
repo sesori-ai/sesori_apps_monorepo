@@ -10,6 +10,7 @@ sealed class NotificationData with _$NotificationData {
     @JsonKey(unknownEnumValue: NotificationCategory.unknown) required NotificationCategory category,
     @JsonKey(unknownEnumValue: NotificationEventType.unknown) required NotificationEventType? eventType,
     required String? sessionId,
+    required String? projectId,
   }) = _NotificationData;
 
   factory NotificationData.fromJson(Map<String, dynamic> json) => _$NotificationDataFromJson(json);
