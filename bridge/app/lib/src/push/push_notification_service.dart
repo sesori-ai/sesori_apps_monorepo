@@ -104,6 +104,7 @@ class PushNotificationService {
       body: body,
       sessionId: sessionId,
       collapseKey: collapseKey,
+      projectId: sessionId != null ? _tracker.getSessionProjectId(sessionId: sessionId) : null,
     );
 
     unawaited(
@@ -181,11 +182,13 @@ SendNotificationPayload buildNotificationPayload({
   required String body,
   required String collapseKey,
   required String? sessionId,
+  required String? projectId,
 }) {
   final data = NotificationData(
     category: category,
     sessionId: sessionId,
     eventType: eventType,
+    projectId: projectId,
   );
 
   return SendNotificationPayload(

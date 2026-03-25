@@ -64,6 +64,7 @@ void main() {
             category: NotificationCategory.aiInteraction,
             eventType: NotificationEventType.questionAsked,
             sessionId: "session-a",
+            projectId: null,
           ),
         ),
       );
@@ -80,6 +81,7 @@ void main() {
           "category": "ai_interaction",
           "eventType": "question_asked",
           "sessionId": "session-a",
+          "projectId": null,
         },
       });
     });
@@ -101,6 +103,7 @@ void main() {
               category: NotificationCategory.aiInteraction,
               eventType: NotificationEventType.questionAsked,
               sessionId: null,
+              projectId: null,
             ),
           ),
         ),
@@ -138,6 +141,7 @@ void main() {
             category: NotificationCategory.aiInteraction,
             eventType: NotificationEventType.questionAsked,
             sessionId: null,
+            projectId: null,
           ),
         ),
       );
@@ -184,6 +188,7 @@ void main() {
             category: NotificationCategory.aiInteraction,
             eventType: NotificationEventType.questionAsked,
             sessionId: null,
+            projectId: null,
           ),
         ),
       );
@@ -228,6 +233,7 @@ void main() {
               category: NotificationCategory.aiInteraction,
               eventType: NotificationEventType.questionAsked,
               sessionId: null,
+              projectId: null,
             ),
           ),
         ),
@@ -267,6 +273,7 @@ void main() {
               category: NotificationCategory.aiInteraction,
               eventType: NotificationEventType.questionAsked,
               sessionId: null,
+              projectId: null,
             ),
           ),
         ),
@@ -307,6 +314,7 @@ void main() {
               category: NotificationCategory.aiInteraction,
               eventType: NotificationEventType.questionAsked,
               sessionId: null,
+              projectId: null,
             ),
           ),
         ),

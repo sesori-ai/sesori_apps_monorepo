@@ -575,6 +575,52 @@ void main() {
       });
     });
 
+    test("AC11: completion notification includes projectId from tracker", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+
+        harness.service.handleSseEvent(
+          SesoriSseEvent.sessionCreated(
+            info: _session(id: "session-a", projectID: "project-x"),
+          ),
+        );
+        harness.service.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+        );
+        harness.service.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
+        );
+
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+
+        final completion = harness.client.sentPayloads.singleWhere(
+          (payload) => payload.data?.eventType == NotificationEventType.agentTurnCompleted,
+        );
+        expect(completion.data?.projectId, equals("project-x"));
+      });
+    });
+
+    test("AC12: question notification includes projectId from tracker", () {
+      final harness = _newHarness();
+
+      harness.service.handleSseEvent(
+        SesoriSseEvent.sessionCreated(
+          info: _session(id: "session-a", projectID: "project-y"),
+        ),
+      );
+      harness.service.handleSseEvent(
+        const SesoriSseEvent.questionAsked(
+          id: "q-1",
+          sessionID: "session-a",
+          questions: [QuestionInfo(header: "h", question: "q")],
+        ),
+      );
+
+      expect(harness.client.sentPayloads.length, equals(1));
+      expect(harness.client.sentPayloads.single.data?.projectId, equals("project-y"));
+    });
+
     test("E9: question asked for untracked session still sends aiInteraction", () {
       final harness = _newHarness();
 

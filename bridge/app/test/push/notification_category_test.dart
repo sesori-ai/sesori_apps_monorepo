@@ -49,6 +49,7 @@ void main() {
         body: data.body,
         collapseKey: "${data.category.id}-${sessionId ?? "global"}",
         sessionId: sessionId,
+        projectId: null,
       );
 
       expect(payload.title, equals("Question requires input"));
@@ -71,6 +72,7 @@ void main() {
         body: data.body,
         collapseKey: "${data.category.id}-${sessionId ?? "global"}",
         sessionId: sessionId,
+        projectId: null,
       );
 
       expect(payload.collapseKey, equals("system_update-global"));
