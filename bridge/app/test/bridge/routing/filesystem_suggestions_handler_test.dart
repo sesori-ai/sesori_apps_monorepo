@@ -65,14 +65,24 @@ void main() {
       expect(response.body, equals("[]"));
     });
 
-    // Test 3: missing prefix query param returns 400
-    test("returns 400 when prefix query param is missing", () async {
+    // Test 3: missing prefix returns home directory children
+    test("returns home directory children when prefix is missing", () async {
       final response = await handler.handle(
         makeRequest("GET", "/filesystem/suggestions"),
         pathParams: {},
         queryParams: {},
       );
-      expect(response.status, equals(400));
+      expect(response.status, equals(200));
+      final body = jsonDecode(response.body!) as List<dynamic>;
+      // Home directory should have at least some child directories
+      expect(body, isNotEmpty);
+      // Every entry must have the required fields
+      for (final entry in body) {
+        final map = entry as Map<String, dynamic>;
+        expect(map.containsKey("path"), isTrue);
+        expect(map.containsKey("name"), isTrue);
+        expect(map.containsKey("isGitRepo"), isTrue);
+      }
     });
 
     // Test 4: path traversal attempt returns 400
@@ -95,14 +105,16 @@ void main() {
       expect(response.status, equals(400));
     });
 
-    // Test 6: empty prefix returns 400
-    test("returns 400 for empty prefix", () async {
+    // Test 6: empty prefix returns home directory children
+    test("returns home directory children for empty prefix", () async {
       final response = await handler.handle(
         makeRequest("GET", "/filesystem/suggestions"),
         pathParams: {},
         queryParams: {"prefix": ""},
       );
-      expect(response.status, equals(400));
+      expect(response.status, equals(200));
+      final body = jsonDecode(response.body!) as List<dynamic>;
+      expect(body, isNotEmpty);
     });
 
     // Test 7: results are capped at 20 entries

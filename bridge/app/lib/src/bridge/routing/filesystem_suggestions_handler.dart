@@ -18,9 +18,9 @@ class FilesystemSuggestionsHandler extends RequestHandler {
     required Map<String, String> queryParams,
     String? fragment,
   }) async {
-    final prefix = queryParams["prefix"];
+    var prefix = queryParams["prefix"];
     if (prefix == null || prefix.isEmpty) {
-      return buildErrorResponse(request, 400, "missing prefix query parameter");
+      prefix = Platform.environment["HOME"] ?? "/";
     }
 
     // Validate path
