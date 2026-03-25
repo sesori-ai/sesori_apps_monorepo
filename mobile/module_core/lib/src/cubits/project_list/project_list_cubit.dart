@@ -101,6 +101,50 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     return _fetchProjects(silent: true);
   }
 
+  /// Calls the bridge API to hide the project, then optimistically removes
+  /// it from the current state on success.
+  Future<void> closeProject(String projectId) async {
+    final response = await _projectService.closeProject(projectId: projectId);
+    if (isClosed) return;
+    if (response is! SuccessResponse) return;
+    if (state is! ProjectListLoaded) return;
+    final loaded = state as ProjectListLoaded;
+    emit(
+      ProjectListState.loaded(
+        projects: loaded.projects.where((p) => p.id != projectId).toList(),
+        activityById: loaded.activityById,
+      ),
+    );
+  }
+
+  /// Creates a new project at [path].
+  /// Returns `true` on success (and refreshes the project list), `false` on error.
+  Future<bool> createProject({required String path}) async {
+    final response = await _projectService.createProject(path: path);
+    if (isClosed) return false;
+    switch (response) {
+      case SuccessResponse():
+        await refreshProjects();
+        return true;
+      case ErrorResponse():
+        return false;
+    }
+  }
+
+  /// Discovers an existing project at [path].
+  /// Returns `true` on success, `false` on error.
+  Future<bool> discoverProject({required String path}) async {
+    final response = await _projectService.discoverProject(path: path);
+    if (isClosed) return false;
+    switch (response) {
+      case SuccessResponse():
+        await refreshProjects();
+        return true;
+      case ErrorResponse():
+        return false;
+    }
+  }
+
   Future<bool> _fetchProjects({bool silent = false}) async {
     final projectResponse = await _projectService.listProjects();
     if (isClosed) return false;

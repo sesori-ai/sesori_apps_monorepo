@@ -3,6 +3,7 @@ import "dart:convert";
 import "dart:io";
 
 import "package:sesori_bridge/src/bridge/debug_server.dart";
+import "package:sesori_bridge/src/bridge/persistence/hidden_projects_store.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -13,7 +14,7 @@ void main() {
 
     setUp(() async {
       plugin = _FakeBridgePlugin();
-      debugServer = DebugServer(plugin, port: 0);
+      debugServer = DebugServer(plugin: plugin, hiddenProjectsStore: HiddenProjectsStore.withFile(file: File("${Directory.systemTemp.createTempSync("dbg_").path}/hidden.json")), port: 0);
       await debugServer.start();
     });
 
@@ -56,7 +57,7 @@ void main() {
 
     test("plugin subscription is released when last client disconnects", () async {
       final trackingPlugin = _TrackingBridgePlugin();
-      final trackingServer = DebugServer(trackingPlugin, port: 0);
+      final trackingServer = DebugServer(plugin: trackingPlugin, hiddenProjectsStore: HiddenProjectsStore.withFile(file: File("${Directory.systemTemp.createTempSync("dbg_").path}/hidden.json")), port: 0);
       await trackingServer.start();
       addTearDown(trackingServer.stop);
       addTearDown(trackingPlugin.close);
@@ -83,7 +84,7 @@ void main() {
 
     setUp(() async {
       plugin = _FakeBridgePlugin();
-      debugServer = DebugServer(plugin, port: 0);
+      debugServer = DebugServer(plugin: plugin, hiddenProjectsStore: HiddenProjectsStore.withFile(file: File("${Directory.systemTemp.createTempSync("dbg_").path}/hidden.json")), port: 0);
       await debugServer.start();
     });
 

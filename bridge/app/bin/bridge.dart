@@ -11,6 +11,8 @@ import 'package:sesori_bridge/src/auth/validate.dart';
 import 'package:sesori_bridge/src/bridge/debug_server.dart';
 import 'package:sesori_bridge/src/bridge/models/bridge_config.dart';
 import 'package:sesori_bridge/src/bridge/orchestrator.dart';
+import 'package:sesori_bridge/src/bridge/persistence/bridge_diagnostics.dart';
+import 'package:sesori_bridge/src/bridge/persistence/hidden_projects_store.dart';
 import 'package:sesori_bridge/src/bridge/relay_client.dart';
 import 'package:sesori_bridge/src/push/completion_notifier.dart';
 import 'package:sesori_bridge/src/push/push_notification_client.dart';
@@ -178,19 +180,25 @@ Future<void> main(List<String> args) async {
 
   final relayClient = RelayClient(relayURL: relayURL, accessTokenProvider: tokenManager);
 
+  final hiddenProjectsStore = HiddenProjectsStore();
+
+  // Run startup diagnostics (non-blocking — logs warnings only)
+  await BridgeDiagnostics().runAll();
+
   final orchestrator = Orchestrator(
     config: bridgeConfig,
     client: relayClient,
     plugin: plugin,
     pushNotificationService: pushNotificationService,
     tokenRefresher: tokenManager,
+    hiddenProjectsStore: hiddenProjectsStore,
   );
   final session = orchestrator.create();
 
   // Create and start debug server if requested
   DebugServer? debugServer;
   if (debugPort != null) {
-    debugServer = DebugServer(plugin, port: debugPort);
+    debugServer = DebugServer(plugin: plugin, hiddenProjectsStore: hiddenProjectsStore, port: debugPort);
     try {
       await debugServer.start();
     } catch (e) {

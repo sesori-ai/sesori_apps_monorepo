@@ -224,5 +224,22 @@
    "voiceErrorTranscription": "Transcription failed. Please try again.",
    "voiceErrorNetwork": "Could not reach the server. Check your connection.",
     "voiceErrorNotAuthenticated": "Sign in to use voice input",
-    "voiceRecordingLimitReached": "Recording limit reached (15 minutes)"
+     "voiceRecordingLimitReached": "Recording limit reached (15 minutes)",
+     "addProject": "Add Project",
+     "projectNameHint": "Project name",
+      "createProjectButton": "Create",
+      "openAsProject": "Open as Project",
+      "emptyDirectory": "This directory is empty",
+      "fetchDirectoryFailed": "Could not load directory contents",
+      "gitRepoBadge": "git",
+     "projectHidden": "Project hidden",
+     "hideProject": "Hide Project",
+     "noProjects": "No projects",
+     "addProjectPrompt": "Add a project to get started",
+     "creatingProject": "Creating project...",
+     "discoveringProject": "Discovering project...",
+     "projectCreated": "Project created",
+     "projectDiscovered": "Project discovered",
+     "projectCreateFailed": "Failed to create project",
+     "projectDiscoverFailed": "Failed to discover project"
 }

@@ -1,5 +1,7 @@
 import "dart:convert";
+import "dart:io";
 
+import "package:sesori_bridge/src/bridge/persistence/hidden_projects_store.dart";
 import "package:sesori_bridge/src/bridge/routing/request_router.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -11,10 +13,20 @@ void main() {
   group("RequestRouter", () {
     late FakeBridgePlugin plugin;
     late RequestRouter router;
+    late Directory tempDir;
 
     setUp(() {
       plugin = FakeBridgePlugin();
-      router = RequestRouter(plugin);
+      tempDir = Directory.systemTemp.createTempSync("router_test_");
+      final store = HiddenProjectsStore.withFile(
+        file: File("${tempDir.path}/hidden.json"),
+      );
+      router = RequestRouter(plugin: plugin, hiddenProjectsStore: store);
+    });
+
+    tearDown(() {
+      plugin.close();
+      if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
     });
 
     tearDown(() => plugin.close());
