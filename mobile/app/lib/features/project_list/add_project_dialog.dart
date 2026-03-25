@@ -1,5 +1,3 @@
-import "dart:async";
-
 import "package:flutter/material.dart";
 import "package:get_it/get_it.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -23,8 +21,9 @@ Future<void> showAddProjectDialog(BuildContext context, ProjectListCubit cubit) 
 
 /// Modal dialog with two tabs: **Create New** and **Discover Existing**.
 ///
-/// Both tabs share the same path-input + filesystem-suggestions UX.
-/// The action button at the bottom calls the appropriate cubit method.
+/// Both tabs share a directory browser that fetches filesystem entries
+/// from the bridge. Users tap to navigate into directories and select
+/// a location rather than typing a path.
 @visibleForTesting
 class AddProjectDialog extends StatelessWidget {
   final ProjectListCubit cubit;
@@ -62,17 +61,11 @@ class AddProjectDialog extends StatelessWidget {
               ],
             ),
             SizedBox(
-              height: 360,
+              height: 420,
               child: TabBarView(
                 children: [
-                  _ProjectTab(
-                    cubit: cubit,
-                    isCreate: true,
-                  ),
-                  _ProjectTab(
-                    cubit: cubit,
-                    isCreate: false,
-                  ),
+                  _CreateTab(cubit: cubit),
+                  _DiscoverTab(cubit: cubit),
                 ],
               ),
             ),
@@ -83,66 +76,221 @@ class AddProjectDialog extends StatelessWidget {
   }
 }
 
-class _ProjectTab extends StatefulWidget {
-  final ProjectListCubit cubit;
-  final bool isCreate;
+// ---------------------------------------------------------------------------
+// Directory Browser — shared by both tabs
+// ---------------------------------------------------------------------------
 
-  const _ProjectTab({required this.cubit, required this.isCreate});
+/// A reusable directory browser widget that fetches and displays
+/// filesystem entries, supports tap-to-navigate, and a back button.
+@visibleForTesting
+class DirectoryBrowser extends StatefulWidget {
+  /// Called whenever the browsed path changes (including initial load).
+  final ValueChanged<String>? onPathChanged;
+
+  const DirectoryBrowser({this.onPathChanged, super.key});
 
   @override
-  State<_ProjectTab> createState() => _ProjectTabState();
+  State<DirectoryBrowser> createState() => DirectoryBrowserState();
 }
 
-class _ProjectTabState extends State<_ProjectTab> {
-  final TextEditingController _controller = TextEditingController();
-  Timer? _debounce;
-  List<FilesystemSuggestion> _suggestions = [];
+@visibleForTesting
+class DirectoryBrowserState extends State<DirectoryBrowser> {
+  String _currentPath = "";
+  List<FilesystemSuggestion> _entries = [];
   bool _loading = false;
+  bool _hasError = false;
+
+  String get currentPath => _currentPath;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchEntries();
+  }
+
+  Future<void> _fetchEntries() async {
+    setState(() {
+      _loading = true;
+      _hasError = false;
+    });
+
+    final response = _currentPath.isEmpty
+        ? await GetIt.instance<ProjectService>().getFilesystemSuggestions(prefix: "")
+        : await GetIt.instance<ProjectService>().getFilesystemSuggestions(prefix: _currentPath);
+
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      switch (response) {
+        case SuccessResponse(:final data):
+          _entries = data;
+          _hasError = false;
+        case ErrorResponse():
+          _entries = [];
+          _hasError = true;
+      }
+    });
+  }
+
+  void _navigateInto({required String path}) {
+    setState(() => _currentPath = path);
+    widget.onPathChanged?.call(path);
+    _fetchEntries();
+  }
+
+  void _navigateUp() {
+    if (_currentPath.isEmpty) return;
+    final lastSlash = _currentPath.lastIndexOf("/");
+    final parent = lastSlash > 0 ? _currentPath.substring(0, lastSlash) : "/";
+    setState(() => _currentPath = parent);
+    widget.onPathChanged?.call(parent);
+    _fetchEntries();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Breadcrumb header with back button
+        if (_currentPath.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(left: 4, right: 16, top: 8),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: _navigateUp,
+                  visualDensity: VisualDensity.compact,
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    _currentPath,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        // Directory listing
+        Expanded(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : _hasError
+              ? Center(
+                  child: Text(
+                    loc.fetchDirectoryFailed,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.error,
+                    ),
+                  ),
+                )
+              : _entries.isEmpty
+              ? Center(
+                  child: Text(
+                    loc.emptyDirectory,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.outline,
+                    ),
+                  ),
+                )
+              : ListView.builder(
+                  itemCount: _entries.length,
+                  itemBuilder: (context, index) {
+                    final entry = _entries[index];
+                    return _DirectoryTile(
+                      entry: entry,
+                      onTap: () => _navigateInto(path: entry.path),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DirectoryTile extends StatelessWidget {
+  final FilesystemSuggestion entry;
+  final VoidCallback onTap;
+
+  const _DirectoryTile({required this.entry, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final loc = context.loc;
+
+    return ListTile(
+      leading: Icon(Icons.folder, color: theme.colorScheme.primary),
+      title: Row(
+        children: [
+          Flexible(child: Text(entry.name, overflow: TextOverflow.ellipsis)),
+          if (entry.isGitRepo) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.tertiaryContainer,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                loc.gitRepoBadge,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onTertiaryContainer,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: onTap,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Create Tab
+// ---------------------------------------------------------------------------
+
+class _CreateTab extends StatefulWidget {
+  final ProjectListCubit cubit;
+
+  const _CreateTab({required this.cubit});
+
+  @override
+  State<_CreateTab> createState() => _CreateTabState();
+}
+
+class _CreateTabState extends State<_CreateTab> {
+  final TextEditingController _nameController = TextEditingController();
+  final GlobalKey<DirectoryBrowserState> _browserKey = GlobalKey<DirectoryBrowserState>();
+  String _browsingPath = "";
   bool _actionLoading = false;
 
   @override
   void dispose() {
-    _debounce?.cancel();
-    _controller.dispose();
+    _nameController.dispose();
     super.dispose();
   }
 
-  void _onTextChanged(String text) {
-    _debounce?.cancel();
-    if (text.isEmpty) {
-      setState(() => _suggestions = []);
-      return;
-    }
-    _debounce = Timer(const Duration(milliseconds: 300), () {
-      _fetchSuggestions(text);
-    });
-  }
+  Future<void> _onCreate() async {
+    final name = _nameController.text.trim();
+    if (name.isEmpty || _browsingPath.isEmpty) return;
 
-  Future<void> _fetchSuggestions(String prefix) async {
-    setState(() => _loading = true);
-    final response = await GetIt.instance<ProjectService>().getFilesystemSuggestions(prefix: prefix);
-    if (!mounted) return;
-    setState(() {
-      _loading = false;
-      _suggestions = switch (response) {
-        SuccessResponse(:final data) => data,
-        ErrorResponse() => [],
-      };
-    });
-  }
-
-  Future<void> _onAction() async {
-    final path = _controller.text.trim();
-    if (path.isEmpty) return;
-
+    final fullPath = "$_browsingPath/$name";
     setState(() => _actionLoading = true);
 
-    final bool success;
-    if (widget.isCreate) {
-      success = await widget.cubit.createProject(path: path);
-    } else {
-      success = await widget.cubit.discoverProject(path: path);
-    }
+    final success = await widget.cubit.createProject(path: fullPath);
 
     if (!mounted) return;
     setState(() => _actionLoading = false);
@@ -151,11 +299,11 @@ class _ProjectTabState extends State<_ProjectTab> {
     if (success) {
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(widget.isCreate ? loc.projectCreated : loc.projectDiscovered)),
+        SnackBar(content: Text(loc.projectCreated)),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(widget.isCreate ? loc.projectCreateFailed : loc.projectDiscoverFailed)),
+        SnackBar(content: Text(loc.projectCreateFailed)),
       );
     }
   }
@@ -163,84 +311,129 @@ class _ProjectTabState extends State<_ProjectTab> {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    final theme = Theme.of(context);
 
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TextField(
-            controller: _controller,
-            onChanged: _onTextChanged,
-            decoration: InputDecoration(
-              hintText: loc.projectPathHint,
-              prefixIcon: const Icon(Icons.folder_open),
-              border: const OutlineInputBorder(),
-              suffixIcon: _loading ? const _CompactSpinner() : null,
+          Expanded(
+            child: DirectoryBrowser(
+              key: _browserKey,
+              onPathChanged: (path) => setState(() => _browsingPath = path),
             ),
           ),
           const SizedBox(height: 8),
-          Expanded(
-            child: _suggestions.isEmpty
-                ? const SizedBox.shrink()
-                : ListView.builder(
-                    itemCount: _suggestions.length,
-                    itemBuilder: (context, index) {
-                      final suggestion = _suggestions[index];
-                      return ListTile(
-                        dense: true,
-                        leading: Icon(
-                          Icons.folder,
-                          color: theme.colorScheme.primary,
-                        ),
-                        title: Row(
-                          children: [
-                            Flexible(child: Text(suggestion.name, overflow: TextOverflow.ellipsis)),
-                            if (suggestion.isGitRepo) ...[
-                              const SizedBox(width: 6),
-                              Icon(Icons.commit, size: 16, color: theme.colorScheme.tertiary),
-                            ],
-                          ],
-                        ),
-                        subtitle: Text(
-                          suggestion.path,
-                          style: theme.textTheme.bodySmall,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        onTap: () {
-                          _controller.text = suggestion.path;
-                          _controller.selection = TextSelection.fromPosition(
-                            TextPosition(offset: suggestion.path.length),
-                          );
-                          setState(() => _suggestions = []);
-                          // Trigger a new suggestions fetch from the selected path
-                          _onTextChanged(suggestion.path);
-                        },
-                      );
-                    },
-                  ),
+          TextField(
+            controller: _nameController,
+            decoration: InputDecoration(
+              hintText: loc.projectNameHint,
+              prefixIcon: const Icon(Icons.edit),
+              border: const OutlineInputBorder(),
+            ),
+            onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 8),
           FilledButton(
-            onPressed: _actionLoading ? null : _onAction,
+            onPressed: _actionLoading || _nameController.text.trim().isEmpty || _browsingPath.isEmpty
+                ? null
+                : _onCreate,
             child: _actionLoading
                 ? Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const _CompactSpinner(color: Colors.white),
                       const SizedBox(width: 8),
-                      Text(widget.isCreate ? loc.creatingProject : loc.discoveringProject),
+                      Text(loc.creatingProject),
                     ],
                   )
-                : Text(widget.isCreate ? loc.createProjectButton : loc.discoverProjectButton),
+                : Text(loc.createProjectButton),
           ),
         ],
       ),
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// Discover Tab
+// ---------------------------------------------------------------------------
+
+class _DiscoverTab extends StatefulWidget {
+  final ProjectListCubit cubit;
+
+  const _DiscoverTab({required this.cubit});
+
+  @override
+  State<_DiscoverTab> createState() => _DiscoverTabState();
+}
+
+class _DiscoverTabState extends State<_DiscoverTab> {
+  final GlobalKey<DirectoryBrowserState> _browserKey = GlobalKey<DirectoryBrowserState>();
+  String _browsingPath = "";
+  bool _actionLoading = false;
+
+  Future<void> _onDiscover() async {
+    if (_browsingPath.isEmpty) return;
+
+    setState(() => _actionLoading = true);
+
+    final success = await widget.cubit.discoverProject(path: _browsingPath);
+
+    if (!mounted) return;
+    setState(() => _actionLoading = false);
+
+    final loc = context.loc;
+    if (success) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(loc.projectDiscovered)),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(loc.projectDiscoverFailed)),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: DirectoryBrowser(
+              key: _browserKey,
+              onPathChanged: (path) => setState(() => _browsingPath = path),
+            ),
+          ),
+          const SizedBox(height: 8),
+          FilledButton(
+            onPressed: _actionLoading || _browsingPath.isEmpty ? null : _onDiscover,
+            child: _actionLoading
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const _CompactSpinner(color: Colors.white),
+                      const SizedBox(width: 8),
+                      Text(loc.discoveringProject),
+                    ],
+                  )
+                : Text(loc.discoverHere),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Shared
+// ---------------------------------------------------------------------------
 
 class _CompactSpinner extends StatelessWidget {
   final Color? color;

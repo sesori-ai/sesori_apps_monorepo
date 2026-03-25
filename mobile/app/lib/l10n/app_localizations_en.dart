@@ -443,13 +443,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get discoverExistingProject => 'Discover Existing';
 
   @override
-  String get projectPathHint => 'Enter directory path';
+  String get projectNameHint => 'Project name';
 
   @override
   String get createProjectButton => 'Create Project';
 
   @override
-  String get discoverProjectButton => 'Discover Project';
+  String get discoverHere => 'Discover This Directory';
+
+  @override
+  String get emptyDirectory => 'This directory is empty';
+
+  @override
+  String get fetchDirectoryFailed => 'Could not load directory contents';
+
+  @override
+  String get gitRepoBadge => 'git';
 
   @override
   String get projectHidden => 'Project hidden';

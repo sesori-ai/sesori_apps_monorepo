@@ -853,11 +853,11 @@ abstract class AppLocalizations {
   /// **'Discover Existing'**
   String get discoverExistingProject;
 
-  /// No description provided for @projectPathHint.
+  /// No description provided for @projectNameHint.
   ///
   /// In en, this message translates to:
-  /// **'Enter directory path'**
-  String get projectPathHint;
+  /// **'Project name'**
+  String get projectNameHint;
 
   /// No description provided for @createProjectButton.
   ///
@@ -865,11 +865,29 @@ abstract class AppLocalizations {
   /// **'Create Project'**
   String get createProjectButton;
 
-  /// No description provided for @discoverProjectButton.
+  /// No description provided for @discoverHere.
   ///
   /// In en, this message translates to:
-  /// **'Discover Project'**
-  String get discoverProjectButton;
+  /// **'Discover This Directory'**
+  String get discoverHere;
+
+  /// No description provided for @emptyDirectory.
+  ///
+  /// In en, this message translates to:
+  /// **'This directory is empty'**
+  String get emptyDirectory;
+
+  /// No description provided for @fetchDirectoryFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load directory contents'**
+  String get fetchDirectoryFailed;
+
+  /// No description provided for @gitRepoBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'git'**
+  String get gitRepoBadge;
 
   /// No description provided for @projectHidden.
   ///
