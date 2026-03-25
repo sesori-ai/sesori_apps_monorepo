@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:io";
 
 import "package:firebase_messaging/firebase_messaging.dart";
@@ -6,8 +7,9 @@ import "package:injectable/injectable.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_shared/sesori_shared.dart";
+import "package:sesori_shared/sesori_shared.dart" as shared;
 
+import "../routing/app_router.dart";
 import "local_notification_manager.dart";
 
 @lazySingleton
@@ -18,6 +20,21 @@ class NotificationService {
   final AuthSession _authSession;
   final CompositeSubscription _subscriptions = CompositeSubscription();
   String? _currentToken;
+  String? _pendingSessionId;
+  String? _pendingProjectId;
+
+  @visibleForTesting
+  void Function(String route) goForTesting = appRouter.go;
+
+  @visibleForTesting
+  Future<void> Function(String route) pushForTesting = (route) async {
+    await appRouter.push<void>(route);
+  };
+
+  @visibleForTesting
+  String Function() currentPathProviderForTesting = () {
+    return appRouter.routeInformationProvider.value.uri.path;
+  };
 
   @visibleForTesting
   String? get currentTokenForTesting => _currentToken;
@@ -56,6 +73,7 @@ class NotificationService {
 
     _subscriptions.add(FirebaseMessaging.instance.onTokenRefresh.listen(_onTokenRefresh));
     _subscriptions.add(FirebaseMessaging.onMessage.listen(onForegroundMessage));
+    _subscriptions.add(_localNotificationManager.onNotificationTapped.listen(_onLocalNotificationTapped));
 
     // value stream that emits the current auth state too
     _subscriptions.add(_authSession.authStateStream.listen(onAuthStateChanged));
@@ -71,8 +89,62 @@ class NotificationService {
   }
 
   void _onNotificationTapped(RemoteMessage message) {
-    // TODO: handle event — navigate to the relevant screen based on message.data
-    // e.g. if message.data['sessionId'] is present, navigate to session detail
+    shared.NotificationData notificationData;
+    try {
+      notificationData = shared.NotificationData.fromJson(message.data);
+    } catch (error, stackTrace) {
+      logw("Failed to parse notification tap data", error, stackTrace);
+      return;
+    }
+
+    final sessionId = notificationData.sessionId;
+    final projectId = notificationData.projectId;
+    if (sessionId == null) return;
+
+    _navigateToSession(sessionId: sessionId, projectId: projectId);
+  }
+
+  @visibleForTesting
+  void onNotificationTappedForTesting(RemoteMessage message) => _onNotificationTapped(message);
+
+  void _onLocalNotificationTapped(NotificationTapEvent event) {
+    final sessionId = event.sessionId;
+    if (sessionId == null) return;
+
+    _navigateToSession(sessionId: sessionId, projectId: event.projectId);
+  }
+
+  @visibleForTesting
+  void onLocalNotificationTappedForTesting(NotificationTapEvent event) => _onLocalNotificationTapped(event);
+
+  void _navigateToSession({required String sessionId, required String? projectId}) {
+    if (_authSession.currentState is! AuthAuthenticated) {
+      _pendingSessionId = sessionId;
+      _pendingProjectId = projectId;
+      return;
+    }
+
+    _pushSessionRoute(sessionId: sessionId, projectId: projectId);
+  }
+
+  void _pushSessionRoute({required String sessionId, required String? projectId}) {
+    if (projectId == null) {
+      goForTesting(AppRoute.projects.path);
+      return;
+    }
+
+    final sessionDetailPath = AppRoute.sessionDetail.buildPath(
+      pathParams: {"projectId": projectId, "sessionId": sessionId},
+    );
+
+    if (currentPathProviderForTesting() == sessionDetailPath) {
+      return;
+    }
+
+    final sessionPath = AppRoute.sessions.buildPath(pathParams: {"projectId": projectId});
+    goForTesting(AppRoute.projects.path);
+    unawaited(pushForTesting(sessionPath));
+    unawaited(pushForTesting(sessionDetailPath));
   }
 
   Future<void> registerCurrentToken() async {
@@ -89,7 +161,7 @@ class NotificationService {
 
     final request = RegisterTokenRequest(
       token: token,
-      platform: Platform.isIOS ? DevicePlatform.ios : DevicePlatform.android,
+      platform: Platform.isIOS ? shared.DevicePlatform.ios : shared.DevicePlatform.android,
     );
     logd("[FCM] Registering push token: ...${token.takeLast(6)}");
     await _apiClient.registerToken(request);
@@ -113,6 +185,13 @@ class NotificationService {
           await registerCurrentToken();
         } catch (error, stackTrace) {
           logw("Failed to register push token after auth", error, stackTrace);
+        }
+        final pendingSessionId = _pendingSessionId;
+        if (pendingSessionId != null) {
+          _pendingSessionId = null;
+          final pendingProjectId = _pendingProjectId;
+          _pendingProjectId = null;
+          _pushSessionRoute(sessionId: pendingSessionId, projectId: pendingProjectId);
         }
       case AuthUnauthenticated() || AuthFailed():
         try {
@@ -140,7 +219,7 @@ class NotificationService {
 
     final request = RegisterTokenRequest(
       token: newToken,
-      platform: Platform.isIOS ? DevicePlatform.ios : DevicePlatform.android,
+      platform: Platform.isIOS ? shared.DevicePlatform.ios : shared.DevicePlatform.android,
     );
     await _apiClient.registerToken(request);
     _currentToken = newToken;
@@ -148,9 +227,9 @@ class NotificationService {
 
   @visibleForTesting
   Future<void> onForegroundMessage(RemoteMessage message) async {
-    NotificationData notificationData;
+    shared.NotificationData notificationData;
     try {
-      notificationData = NotificationData.fromJson(message.data);
+      notificationData = shared.NotificationData.fromJson(message.data);
     } catch (error, stackTrace) {
       logw("Failed to parse notification data", error, stackTrace);
       return;
@@ -171,6 +250,7 @@ class NotificationService {
       body: body,
       category: category,
       sessionId: notificationData.sessionId,
+      projectId: notificationData.projectId,
     );
   }
 

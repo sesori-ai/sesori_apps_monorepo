@@ -26,6 +26,7 @@ extension AppRouteToGoRoute on AppRoute {
           projectName: state.uri.queryParameters["name"],
         ),
         AppRoute.sessionDetail => SessionDetailScreen(
+          projectId: state.pathParameters["projectId"],
           sessionId: state.pathParameters["sessionId"] ?? "",
           sessionTitle: state.uri.queryParameters["title"],
           readOnly: state.uri.queryParameters["readOnly"] == "true",

@@ -627,6 +627,24 @@ void main() {
       expect(tracker.isSessionGroupFullyIdle("session-a"), isTrue);
     });
 
+    test("getSessionProjectId returns stored projectId after session upsert", () {
+      final tracker = PushSessionStateTracker();
+
+      tracker.handleEvent(
+        SesoriSseEvent.sessionCreated(
+          info: _session(id: "x", projectID: "p1"),
+        ),
+      );
+
+      expect(tracker.getSessionProjectId(sessionId: "x"), equals("p1"));
+    });
+
+    test("getSessionProjectId returns null for unknown sessionId", () {
+      final tracker = PushSessionStateTracker();
+
+      expect(tracker.getSessionProjectId(sessionId: "unknown"), isNull);
+    });
+
     test("wasPreviouslyBusy returns true if only a descendant was busy", () {
       final tracker = PushSessionStateTracker();
 

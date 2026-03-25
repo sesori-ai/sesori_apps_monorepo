@@ -40,7 +40,10 @@ class SubtaskPartWidget extends StatelessWidget {
               ? () {
                   context.pushRoute(
                     AppRoute.sessionDetail,
-                    pathParams: {"sessionId": childSession.id},
+                    pathParams: {
+                      "projectId": childSession.projectID,
+                      "sessionId": childSession.id,
+                    },
                     queryParams: childSession.title != null ? {"title": childSession.title!} : null,
                   );
                 }

@@ -34,9 +34,16 @@ void main() {
 
     test("substitutes path params for sessionDetail", () {
       final result = AppRoute.sessionDetail.buildPath(
-        pathParams: {"sessionId": "ses-456"},
+        pathParams: {"projectId": "proj-123", "sessionId": "ses-456"},
       );
-      expect(result, "/sessions/ses-456");
+      expect(result, "/projects/proj-123/sessions/ses-456");
+    });
+
+    test("builds /projects/p1/sessions/s1 for sessionDetail", () {
+      final result = AppRoute.sessionDetail.buildPath(
+        pathParams: {"projectId": "p1", "sessionId": "s1"},
+      );
+      expect(result, "/projects/p1/sessions/s1");
     });
 
     test("appends query params", () {
@@ -57,20 +64,26 @@ void main() {
 
     test("encodes query param values automatically", () {
       final result = AppRoute.sessionDetail.buildPath(
-        pathParams: {"sessionId": "ses-1"},
+        pathParams: {"projectId": "proj-1", "sessionId": "ses-1"},
         queryParams: {"title": "hello world & more"},
       );
-      expect(result, contains("/sessions/ses-1?"));
+      expect(result, contains("/projects/proj-1/sessions/ses-1?"));
       // Verify the value is encoded (space becomes + or %20, & becomes %26)
       expect(result, isNot(contains("& more")));
     });
 
-    test("encodes path param values with special characters", () {
+    test("encodes sessionDetail path params with special characters", () {
       final result = AppRoute.sessionDetail.buildPath(
-        pathParams: {"sessionId": "id/with?special&chars"},
+        pathParams: {
+          "projectId": "project/with?special&chars",
+          "sessionId": "id/with?special&chars",
+        },
       );
       // Special characters in the param value must be percent-encoded
-      expect(result, "/sessions/id%2Fwith%3Fspecial%26chars");
+      expect(
+        result,
+        "/projects/project%2Fwith%3Fspecial%26chars/sessions/id%2Fwith%3Fspecial%26chars",
+      );
     });
 
     test("ignores empty query params map", () {
@@ -144,12 +157,13 @@ void main() {
       final widget = goRoute.builder!(
         _FakeBuildContext(),
         _FakeGoRouterState(
-          pathParameters: {"sessionId": "ses-99"},
+          pathParameters: {"projectId": "proj-42", "sessionId": "ses-99"},
           queryParameters: {"title": "Debug session", "readOnly": "true"},
         ),
       );
       expect(widget, isA<SessionDetailScreen>());
       final screen = widget as SessionDetailScreen;
+      expect(screen.projectId, "proj-42");
       expect(screen.sessionId, "ses-99");
       expect(screen.sessionTitle, "Debug session");
       expect(screen.readOnly, isTrue);
@@ -160,10 +174,11 @@ void main() {
       final widget = goRoute.builder!(
         _FakeBuildContext(),
         _FakeGoRouterState(
-          pathParameters: {"sessionId": "ses-1"},
+          pathParameters: {"projectId": "proj-1", "sessionId": "ses-1"},
         ),
       );
       final screen = widget as SessionDetailScreen;
+      expect(screen.projectId, "proj-1");
       expect(screen.sessionId, "ses-1");
       expect(screen.sessionTitle, isNull);
       expect(screen.readOnly, isFalse);

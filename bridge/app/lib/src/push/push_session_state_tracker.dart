@@ -146,6 +146,10 @@ class PushSessionStateTracker {
     return _sessions[sessionId]?.title;
   }
 
+  String? getSessionProjectId({required String sessionId}) {
+    return _sessions[sessionId]?.projectId;
+  }
+
   String? getLatestAssistantText(String sessionId) {
     return _sessions[sessionId]?.latestAssistantText;
   }
@@ -198,6 +202,7 @@ class PushSessionStateTracker {
     }
 
     sessionState.title = session.title;
+    sessionState.projectId = session.projectID;
 
     _rebuildChildLinksForParent(sessionId);
   }
@@ -248,6 +253,7 @@ class PushSessionStateTracker {
 
 class _SessionState {
   String? parentId;
+  String? projectId;
   String? title;
   SessionStatus? status;
   bool previouslyBusy = false;
