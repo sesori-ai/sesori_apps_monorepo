@@ -626,6 +626,30 @@ void main() {
       expect(tracker.wasPreviouslyBusy("session-a"), isFalse);
       expect(tracker.isSessionGroupFullyIdle("session-a"), isTrue);
     });
+
+    test("wasPreviouslyBusy returns true if only a descendant was busy", () {
+      final tracker = PushSessionStateTracker();
+
+      tracker.handleEvent(
+        SesoriSseEvent.sessionCreated(info: _session(id: "root")),
+      );
+      tracker.handleEvent(
+        SesoriSseEvent.sessionCreated(
+          info: _session(id: "child", parentID: "root"),
+        ),
+      );
+
+      // Only child goes busy, root never does.
+      tracker.handleEvent(
+        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+      );
+
+      // Root was never busy itself, but its descendant was.
+      expect(tracker.wasPreviouslyBusy("root"), isTrue);
+    });
   });
 }
 

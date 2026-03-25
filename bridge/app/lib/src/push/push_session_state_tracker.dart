@@ -116,8 +116,30 @@ class PushSessionStateTracker {
     return false;
   }
 
+  /// True if [sessionId] or any of its descendants was previously busy.
   bool wasPreviouslyBusy(String sessionId) {
-    return _sessions[sessionId]?.previouslyBusy ?? false;
+    final queue = Queue<String>()..add(sessionId);
+    final visited = <String>{};
+
+    while (queue.isNotEmpty) {
+      final currentId = queue.removeFirst();
+      if (!visited.add(currentId)) {
+        continue;
+      }
+
+      final sessionState = _sessions[currentId];
+      if (sessionState == null) {
+        continue;
+      }
+
+      if (sessionState.previouslyBusy) {
+        return true;
+      }
+
+      queue.addAll(sessionState.childIds);
+    }
+
+    return false;
   }
 
   String? getSessionTitle(String sessionId) {

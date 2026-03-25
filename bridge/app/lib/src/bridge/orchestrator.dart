@@ -155,7 +155,6 @@ class OrchestratorSession {
 
         Log.w("Connection lost. Reconnecting...");
         _sseManager.stop();
-        _pushNotificationService.reset();
 
         var backoff = const Duration(seconds: 1);
         while (!_cancelled) {
