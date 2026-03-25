@@ -661,8 +661,8 @@ void main() {
         // Emit a session.created event for a different project.
         eventController.add(
           SseEvent(
-            data: SesoriSseEvent.sessionCreated(
-              info: const Session(
+            data: const SesoriSseEvent.sessionCreated(
+              info: Session(
                 id: "foreign-session",
                 projectID: "project-other",
                 directory: "/other/project",
@@ -693,8 +693,8 @@ void main() {
         // Emit a session.updated event for a different project.
         eventController.add(
           SseEvent(
-            data: SesoriSseEvent.sessionUpdated(
-              info: const Session(
+            data: const SesoriSseEvent.sessionUpdated(
+              info: Session(
                 id: "foreign-session",
                 projectID: "project-other",
                 directory: "/other/project",
@@ -723,8 +723,8 @@ void main() {
         // Emit a session.deleted event for a different project.
         eventController.add(
           SseEvent(
-            data: SesoriSseEvent.sessionDeleted(
-              info: const Session(
+            data: const SesoriSseEvent.sessionDeleted(
+              info: Session(
                 id: "foreign-session",
                 projectID: "project-other",
                 directory: "/other/project",
