@@ -1,12 +1,18 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Modify this file to customize your launch splash screen -->
+<?xml version="1.0" encoding="utf-8"?><!-- Modify this file to customize your launch splash screen -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@android:color/white" />
 
     <!-- You can insert your own image assets here -->
-    <!-- <item>
-        <bitmap
-            android:gravity="center"
-            android:src="@mipmap/launch_image" />
-    </item> -->
+    <!--    <item-->
+    <!--        android:drawable="@drawable/ic_monogram_white"-->
+    <!--        android:gravity="center"-->
+    <!--        android:top="-10dp"-->
+    <!--        android:bottom="10dp"-->
+    <!--        android:width="230dp"-->
+    <!--        android:height="230dp" />-->
+
+    <item
+        android:width="192dp"
+        android:height="192dp"
+        android:drawable="@drawable/monogram_108"
+        android:gravity="center" />
 </layer-list>
