@@ -2,7 +2,6 @@ import "package:bloc_test/bloc_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
-import "package:sesori_dart_core/src/capabilities/project/closed_projects_storage.dart";
 import "package:sesori_dart_core/src/capabilities/project/project_service.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart";
 import "package:sesori_dart_core/src/capabilities/sse/sse_event_repository.dart";
@@ -20,8 +19,6 @@ import "package:test/test.dart";
 class MockProjectService extends Mock implements ProjectService {}
 
 class MockConnectionService extends Mock implements ConnectionService {}
-
-class MockClosedProjectsStorage extends Mock implements ClosedProjectsStorage {}
 
 /// Provides real BehaviorSubject streams so the cubit can subscribe to them.
 class MockSseEventRepository extends Mock implements SseEventRepository {
@@ -68,7 +65,6 @@ void main() {
   late MockConnectionService mockConnectionService;
   late MockSseEventRepository mockSseEventRepository;
   late MockRouteSource mockRouteSource;
-  late MockClosedProjectsStorage mockStorage;
 
   // Three reusable projects.
   final projectA = _makeProject(id: "A");
@@ -80,12 +76,6 @@ void main() {
     mockConnectionService = MockConnectionService();
     mockSseEventRepository = MockSseEventRepository();
     mockRouteSource = MockRouteSource();
-    mockStorage = MockClosedProjectsStorage();
-
-    // Default stubs — no closed projects, storage mutations succeed.
-    when(() => mockStorage.getClosedProjectIds()).thenAnswer((_) async => <String>{});
-    when(() => mockStorage.closeProject(any())).thenAnswer((_) async {});
-    when(() => mockStorage.openProject(any())).thenAnswer((_) async {});
   });
 
   ProjectListCubit buildCubit() => ProjectListCubit(
@@ -93,7 +83,6 @@ void main() {
     mockConnectionService,
     mockSseEventRepository,
     mockRouteSource,
-    mockStorage,
   );
 
   // -------------------------------------------------------------------------
@@ -101,11 +90,14 @@ void main() {
   // -------------------------------------------------------------------------
 
   blocTest<ProjectListCubit, ProjectListState>(
-    "closeProject: removes project from state and calls storage.closeProject",
+    "closeProject: removes project from state and calls service.closeProject",
     build: () {
       when(() => mockProjectService.listProjects()).thenAnswer(
         (_) async => ApiResponse.success([projectA, projectB, projectC]),
       );
+      when(
+        () => mockProjectService.closeProject(projectId: any(named: "projectId")),
+      ).thenAnswer((_) async => ApiResponse.success(null));
       return buildCubit();
     },
     act: (cubit) async {
@@ -133,46 +125,12 @@ void main() {
           ),
     ],
     verify: (cubit) {
-      verify(() => mockStorage.closeProject("B")).called(1);
+      verify(() => mockProjectService.closeProject(projectId: "B")).called(1);
     },
   );
 
   // -------------------------------------------------------------------------
-  // Test 2: loadProjects filters closed IDs
-  // -------------------------------------------------------------------------
-
-  blocTest<ProjectListCubit, ProjectListState>(
-    "loadProjects: filters out projects whose IDs are in closed storage",
-    build: () {
-      when(() => mockStorage.getClosedProjectIds()).thenAnswer((_) async => {"B"});
-      when(() => mockProjectService.listProjects()).thenAnswer(
-        (_) async => ApiResponse.success([projectA, projectB, projectC]),
-      );
-      return buildCubit();
-    },
-    // No act needed — constructor triggers the load.
-    expect: () => [
-      isA<ProjectListLoaded>()
-          .having(
-            (s) => s.projects.any((p) => p.id == "B"),
-            "B is absent",
-            isFalse,
-          )
-          .having(
-            (s) => s.projects.map((p) => p.id).toList(),
-            "remaining project ids",
-            containsAll(["A", "C"]),
-          )
-          .having(
-            (s) => s.projects.length,
-            "projects length",
-            2,
-          ),
-    ],
-  );
-
-  // -------------------------------------------------------------------------
-  // Test 3: createProject success
+  // Test 2: createProject success
   // -------------------------------------------------------------------------
 
   blocTest<ProjectListCubit, ProjectListState>(
@@ -209,7 +167,7 @@ void main() {
   );
 
   // -------------------------------------------------------------------------
-  // Test 4: createProject failure
+  // Test 3: createProject failure
   // -------------------------------------------------------------------------
 
   blocTest<ProjectListCubit, ProjectListState>(
@@ -231,14 +189,12 @@ void main() {
   );
 
   // -------------------------------------------------------------------------
-  // Test 5: discoverProject success
+  // Test 4: discoverProject success
   // -------------------------------------------------------------------------
 
   blocTest<ProjectListCubit, ProjectListState>(
-    "discoverProject: calls openProject on storage and refreshes on success",
+    "discoverProject: refreshes project list on success",
     build: () {
-      // B is closed initially — service still returns only [A] to keep it simple.
-      when(() => mockStorage.getClosedProjectIds()).thenAnswer((_) async => {"B"});
       when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.success([projectA]));
       when(
         () => mockProjectService.discoverProject(path: any(named: "path")),
@@ -247,8 +203,6 @@ void main() {
     },
     act: (cubit) async {
       await Future<void>.delayed(Duration.zero); // let initial load finish ([A])
-      // After openProject, B is no longer closed.
-      when(() => mockStorage.getClosedProjectIds()).thenAnswer((_) async => <String>{});
       when(() => mockProjectService.listProjects()).thenAnswer(
         (_) async => ApiResponse.success([projectA, projectB]),
       );
@@ -270,49 +224,7 @@ void main() {
           ),
     ],
     verify: (cubit) {
-      verify(() => mockStorage.openProject("B")).called(1);
-    },
-  );
-
-  // -------------------------------------------------------------------------
-  // Test 6: discoverProject auto-uncloses — previously closed project reappears
-  // -------------------------------------------------------------------------
-
-  blocTest<ProjectListCubit, ProjectListState>(
-    "discoverProject: a previously closed project reappears in the list after discover",
-    build: () {
-      // B is closed — initial list has A & C (B filtered out).
-      when(() => mockStorage.getClosedProjectIds()).thenAnswer((_) async => {"B"});
-      when(() => mockProjectService.listProjects()).thenAnswer(
-        (_) async => ApiResponse.success([projectA, projectB, projectC]),
-      );
-      when(
-        () => mockProjectService.discoverProject(path: any(named: "path")),
-      ).thenAnswer((_) async => ApiResponse.success(projectB));
-      return buildCubit();
-    },
-    act: (cubit) async {
-      await Future<void>.delayed(Duration.zero); // initial state: [A, C]
-      // Simulate storage removing B from closed set after openProject.
-      when(() => mockStorage.getClosedProjectIds()).thenAnswer((_) async => <String>{});
-      await cubit.discoverProject(path: "/dev/B");
-    },
-    skip: 1, // skip initial ProjectListLoaded([A, C])
-    expect: () => [
-      isA<ProjectListLoaded>()
-          .having(
-            (s) => s.projects.any((p) => p.id == "B"),
-            "B reappears after discover",
-            isTrue,
-          )
-          .having(
-            (s) => s.projects.length,
-            "all three projects present",
-            3,
-          ),
-    ],
-    verify: (cubit) {
-      verify(() => mockStorage.openProject("B")).called(1);
+      verify(() => mockProjectService.discoverProject(path: "/dev/B")).called(1);
     },
   );
 }

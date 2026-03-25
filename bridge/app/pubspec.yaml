@@ -24,6 +24,7 @@ dependencies:
     path: ../sesori_plugin_interface
   opencode_plugin:
     path: ../sesori_plugin_opencode
+  meta: ^1.17.0
 
 dev_dependencies:
   test: ^1.25.0

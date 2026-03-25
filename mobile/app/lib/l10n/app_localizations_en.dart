@@ -458,6 +458,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectHidden => 'Project hidden';
 
   @override
+  String get hideProject => 'Hide Project';
+
+  @override
   String get noProjects => 'No projects';
 
   @override

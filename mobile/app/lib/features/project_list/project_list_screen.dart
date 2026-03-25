@@ -21,7 +21,6 @@ class ProjectListScreen extends StatelessWidget {
         getIt<ConnectionService>(),
         getIt<SseEventRepository>(),
         getIt<RouteSource>(),
-        getIt<ClosedProjectsStorage>(),
       ),
       child: const _ProjectListBody(),
     );
@@ -51,6 +50,36 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
   void dispose() {
     _ticker.cancel();
     super.dispose();
+  }
+
+  void _showProjectMenu(BuildContext context, Project project) {
+    // Capture messenger and cubit before any Navigator.pop to avoid
+    // post-pop context access.
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final cubit = context.read<ProjectListCubit>();
+    final loc = context.loc;
+
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.visibility_off_outlined),
+              title: Text(loc.hideProject),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                cubit.closeProject(project.id);
+                scaffoldMessenger.showSnackBar(
+                  SnackBar(content: Text(loc.projectHidden)),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -127,28 +156,10 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
                   itemCount: projects.length,
                   itemBuilder: (context, index) {
                     final project = projects[index];
-                    return Dismissible(
-                      key: ValueKey(project.id),
-                      direction: DismissDirection.endToStart,
-                      background: Container(
-                        alignment: Alignment.centerRight,
-                        padding: const EdgeInsets.only(right: 24),
-                        color: Theme.of(context).colorScheme.error,
-                        child: Icon(
-                          Icons.visibility_off,
-                          color: Theme.of(context).colorScheme.onError,
-                        ),
-                      ),
-                      onDismissed: (_) {
-                        context.read<ProjectListCubit>().closeProject(project.id);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(loc.projectHidden)),
-                        );
-                      },
-                      child: _ProjectTile(
-                        project: project,
-                        activeSessions: activityById[project.id] ?? 0,
-                      ),
+                    return _ProjectTile(
+                      project: project,
+                      activeSessions: activityById[project.id] ?? 0,
+                      onLongPress: () => _showProjectMenu(context, project),
                     );
                   },
                 ),
@@ -165,8 +176,13 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
 class _ProjectTile extends StatelessWidget {
   final Project project;
   final int activeSessions;
+  final VoidCallback? onLongPress;
 
-  const _ProjectTile({required this.project, required this.activeSessions});
+  const _ProjectTile({
+    required this.project,
+    required this.activeSessions,
+    this.onLongPress,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -228,6 +244,7 @@ class _ProjectTile extends StatelessWidget {
           queryParams: {"name": displayName},
         );
       },
+      onLongPress: onLongPress,
     );
   }
 

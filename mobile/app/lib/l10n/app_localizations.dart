@@ -883,6 +883,12 @@ abstract class AppLocalizations {
   /// **'Project hidden'**
   String get projectHidden;
 
+  /// No description provided for @hideProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide Project'**
+  String get hideProject;
+
   /// No description provided for @noProjects.
   ///
   /// In en, this message translates to:

@@ -6,7 +6,6 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../../capabilities/project/closed_projects_storage.dart";
 import "../../capabilities/project/project_service.dart";
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/sse/sse_event_repository.dart";
@@ -24,7 +23,6 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   final ProjectService _projectService;
   final ConnectionService _connectionService;
   final SseEventRepository _sseEventRepository;
-  final ClosedProjectsStorage _closedStorage;
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
   ProjectListCubit(
@@ -32,11 +30,9 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     ConnectionService connectionService,
     SseEventRepository sseEventRepository,
     RouteSource routeSource,
-    ClosedProjectsStorage closedStorage,
   ) : _projectService = projectService,
       _connectionService = connectionService,
       _sseEventRepository = sseEventRepository,
-      _closedStorage = closedStorage,
       super(const ProjectListState.loading()) {
     loadProjects();
 
@@ -105,10 +101,12 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     return _fetchProjects(silent: true);
   }
 
-  /// Removes the project from the visible list and persists the closed state.
+  /// Calls the bridge API to hide the project, then optimistically removes
+  /// it from the current state on success.
   Future<void> closeProject(String projectId) async {
-    await _closedStorage.closeProject(projectId);
+    final response = await _projectService.closeProject(projectId: projectId);
     if (isClosed) return;
+    if (response is! SuccessResponse) return;
     if (state is! ProjectListLoaded) return;
     final loaded = state as ProjectListLoaded;
     emit(
@@ -134,15 +132,12 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   }
 
   /// Discovers an existing project at [path].
-  /// If the project was previously closed, it is re-opened in storage before
-  /// refreshing so it becomes visible again.
   /// Returns `true` on success, `false` on error.
   Future<bool> discoverProject({required String path}) async {
     final response = await _projectService.discoverProject(path: path);
     if (isClosed) return false;
     switch (response) {
-      case SuccessResponse(:final data):
-        await _closedStorage.openProject(data.id);
+      case SuccessResponse():
         await refreshProjects();
         return true;
       case ErrorResponse():
@@ -156,9 +151,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
 
     switch (projectResponse) {
       case SuccessResponse(:final data):
-        final closedIds = await _closedStorage.getClosedProjectIds();
-        if (isClosed) return false;
-        final projects = data.where((p) => !closedIds.contains(p.id)).toList();
+        final projects = data.toList();
         projects.sort(
           (a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0),
         );

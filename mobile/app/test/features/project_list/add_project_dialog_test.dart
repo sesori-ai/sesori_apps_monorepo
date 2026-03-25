@@ -85,24 +85,32 @@ Widget _buildProjectListShell({required ProjectListCubit cubit}) {
                     )
                   : ListView.builder(
                       itemCount: projects.length,
-                      itemBuilder: (context, index) {
+                      itemBuilder: (ctx, index) {
                         final project = projects[index];
-                        return Dismissible(
-                          key: ValueKey(project.id),
-                          direction: DismissDirection.endToStart,
-                          onDismissed: (_) {
-                            context.read<ProjectListCubit>().closeProject(project.id);
+                        final listCubit = context.read<ProjectListCubit>();
+                        return ListTile(
+                          key: Key("project-tile-${project.id}"),
+                          title: Text(project.name ?? project.id),
+                          onLongPress: () {
+                            showModalBottomSheet<void>(
+                              context: ctx,
+                              builder: (sheetContext) => SafeArea(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    ListTile(
+                                      leading: const Icon(Icons.visibility_off_outlined),
+                                      title: Text(loc.hideProject),
+                                      onTap: () {
+                                        Navigator.of(sheetContext).pop();
+                                        listCubit.closeProject(project.id);
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
                           },
-                          background: Container(
-                            alignment: Alignment.centerRight,
-                            padding: const EdgeInsets.only(right: 24),
-                            color: Colors.red,
-                            child: const Icon(Icons.visibility_off, color: Colors.white),
-                          ),
-                          child: ListTile(
-                            key: Key("project-tile-${project.id}"),
-                            title: Text(project.name ?? project.id),
-                          ),
                         );
                       },
                     ),
@@ -181,11 +189,28 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
-  // Swipe to close
+  // Long-press to hide
   // -------------------------------------------------------------------------
 
-  group("Swipe to close", () {
-    testWidgets("swiping a project tile left calls closeProject", (tester) async {
+  group("Long-press to hide", () {
+    testWidgets("long-pressing a project tile shows bottom sheet with Hide Project", (tester) async {
+      final project = testProject();
+      when(() => mockCubit.state).thenReturn(
+        ProjectListState.loaded(projects: [project], activityById: const {}),
+      );
+
+      await tester.pumpWidget(_buildProjectListShell(cubit: mockCubit));
+
+      final tileFinder = find.byKey(Key("project-tile-${project.id}"));
+      expect(tileFinder, findsOneWidget);
+
+      await tester.longPress(tileFinder);
+      await tester.pumpAndSettle();
+
+      expect(find.text("Hide Project"), findsOneWidget);
+    });
+
+    testWidgets("tapping Hide Project calls closeProject", (tester) async {
       final project = testProject();
       when(() => mockCubit.state).thenReturn(
         ProjectListState.loaded(projects: [project], activityById: const {}),
@@ -195,9 +220,10 @@ void main() {
       await tester.pumpWidget(_buildProjectListShell(cubit: mockCubit));
 
       final tileFinder = find.byKey(Key("project-tile-${project.id}"));
-      expect(tileFinder, findsOneWidget);
+      await tester.longPress(tileFinder);
+      await tester.pumpAndSettle();
 
-      await tester.drag(tileFinder, const Offset(-500, 0));
+      await tester.tap(find.text("Hide Project"));
       await tester.pumpAndSettle();
 
       verify(() => mockCubit.closeProject(project.id)).called(1);

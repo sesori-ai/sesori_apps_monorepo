@@ -233,6 +233,7 @@
       "fetchDirectoryFailed": "Could not load directory contents",
       "gitRepoBadge": "git",
      "projectHidden": "Project hidden",
+     "hideProject": "Hide Project",
      "noProjects": "No projects",
      "addProjectPrompt": "Add a project to get started",
      "creatingProject": "Creating project...",

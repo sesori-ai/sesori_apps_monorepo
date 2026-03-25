@@ -13,7 +13,6 @@ export "src/api/client/relay_http_client.dart";
 export "src/capabilities/notifications/notification_api_client.dart";
 export "src/capabilities/notifications/notification_preferences_service.dart";
 export "src/capabilities/notifications/register_token_request.dart";
-export "src/capabilities/project/closed_projects_storage.dart";
 export "src/capabilities/project/project_service.dart";
 export "src/capabilities/relay/relay_client.dart";
 export "src/capabilities/relay/relay_config.dart";

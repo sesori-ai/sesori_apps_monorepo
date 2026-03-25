@@ -2,6 +2,7 @@ import "dart:convert";
 import "dart:io";
 
 import "package:sesori_bridge/src/bridge/routing/discover_project_handler.dart";
+import "package:sesori_bridge/src/bridge/routing/hidden_projects_store.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -10,15 +11,17 @@ import "routing_test_helpers.dart";
 void main() {
   group("DiscoverProjectHandler", () {
     late FakeBridgePlugin plugin;
+    late HiddenProjectsStore hiddenStore;
     late DiscoverProjectHandler handler;
     late Directory tempDir;
     late File tempFile;
 
     setUp(() {
       plugin = FakeBridgePlugin();
-      handler = DiscoverProjectHandler(plugin);
       tempDir = Directory.systemTemp.createTempSync("sesori_discover_test_");
       tempFile = File("${tempDir.path}/test_file.txt")..createSync();
+      hiddenStore = HiddenProjectsStore.withFile(file: File("${tempDir.path}/hidden_projects.json"));
+      handler = DiscoverProjectHandler(plugin, hiddenStore);
     });
 
     tearDown(() async {
@@ -281,6 +284,24 @@ void main() {
       expect(first.status, equals(200));
       expect(second.status, equals(200));
       expect(first.body, equals(second.body));
+    });
+
+    test("unhides discovered project id", () async {
+      plugin.currentProjectResult = PluginProject(id: tempDir.path);
+      await hiddenStore.hideProject(projectId: tempDir.path);
+
+      await handler.handle(
+        makeRequest(
+          "POST",
+          "/project/discover",
+          body: jsonEncode({"path": tempDir.path}),
+        ),
+        pathParams: {},
+        queryParams: {},
+      );
+
+      final hiddenIds = await hiddenStore.getHiddenProjectIds();
+      expect(hiddenIds, isNot(contains(tempDir.path)));
     });
   });
 }

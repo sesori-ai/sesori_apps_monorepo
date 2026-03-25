@@ -4,13 +4,15 @@ import "dart:io";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "hidden_projects_store.dart";
 import "request_handler.dart";
 
 /// Handles `POST /project/discover` — discovers an existing directory as a project.
 class DiscoverProjectHandler extends RequestHandler {
   final BridgePlugin _plugin;
+  final HiddenProjectsStore _hiddenStore;
 
-  DiscoverProjectHandler(this._plugin) : super(HttpMethod.post, "/project/discover");
+  DiscoverProjectHandler(this._plugin, this._hiddenStore) : super(HttpMethod.post, "/project/discover");
 
   @override
   Future<RelayResponse> handle(
@@ -59,6 +61,7 @@ class DiscoverProjectHandler extends RequestHandler {
 
     // Discover via plugin (getProject triggers auto-discovery)
     final pluginProject = await _plugin.getProject(path);
+    await _hiddenStore.unhideProject(projectId: pluginProject.id);
 
     // Map to shared type
     final project = Project(

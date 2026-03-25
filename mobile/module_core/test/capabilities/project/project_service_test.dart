@@ -125,6 +125,45 @@ void main() {
     });
 
     // -------------------------------------------------------------------------
+    // 3b. closeProject sends DELETE /project/<id>
+    // -------------------------------------------------------------------------
+
+    test("closeProject sends DELETE /project/<id>", () async {
+      when(
+        () => mockClient.delete<void>(
+          any(),
+          fromJson: any(named: "fromJson"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(null));
+
+      final result = await service.closeProject(projectId: "proj-1");
+
+      expect(result, isA<SuccessResponse<void>>());
+
+      verify(
+        () => mockClient.delete<void>(
+          "/project/proj-1",
+          fromJson: any(named: "fromJson"),
+        ),
+      ).called(1);
+    });
+
+    test("closeProject error response maps to ErrorResponse", () async {
+      final error = ApiError.generic();
+      when(
+        () => mockClient.delete<void>(
+          any(),
+          fromJson: any(named: "fromJson"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.error(error));
+
+      final result = await service.closeProject(projectId: "proj-1");
+
+      expect(result, isA<ErrorResponse<void>>());
+      expect((result as ErrorResponse<void>).error, equals(error));
+    });
+
+    // -------------------------------------------------------------------------
     // 4. createProject error response maps to ErrorResponse correctly
     // -------------------------------------------------------------------------
 

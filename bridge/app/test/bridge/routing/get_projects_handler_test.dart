@@ -1,6 +1,8 @@
 import "dart:convert";
+import "dart:io";
 
 import "package:sesori_bridge/src/bridge/routing/get_projects_handler.dart";
+import "package:sesori_bridge/src/bridge/routing/hidden_projects_store.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -9,14 +11,25 @@ import "routing_test_helpers.dart";
 void main() {
   group("GetProjectsHandler", () {
     late FakeBridgePlugin plugin;
+    late Directory tempDir;
+    late HiddenProjectsStore hiddenStore;
     late GetProjectsHandler handler;
 
     setUp(() {
       plugin = FakeBridgePlugin();
-      handler = GetProjectsHandler(plugin);
+      tempDir = Directory.systemTemp.createTempSync("sesori_get_projects_handler_");
+      hiddenStore = HiddenProjectsStore.withFile(
+        file: File("${tempDir.path}/hidden_projects.json"),
+      );
+      handler = GetProjectsHandler(plugin, hiddenStore);
     });
 
-    tearDown(() => plugin.close());
+    tearDown(() async {
+      await plugin.close();
+      if (tempDir.existsSync()) {
+        tempDir.deleteSync(recursive: true);
+      }
+    });
 
     test("canHandle GET /project", () {
       expect(handler.canHandle(makeRequest("GET", "/project")), isTrue);
@@ -120,6 +133,26 @@ void main() {
 
       final body = jsonDecode(response.body!) as List<dynamic>;
       expect(body.length, equals(3));
+    });
+
+    test("filters out hidden project ids", () async {
+      plugin.projectsResult = [
+        const PluginProject(id: "visible-1"),
+        const PluginProject(id: "hidden-1"),
+        const PluginProject(id: "visible-2"),
+      ];
+      await hiddenStore.hideProject(projectId: "hidden-1");
+
+      final response = await handler.handle(
+        makeRequest("GET", "/project"),
+        pathParams: {},
+        queryParams: {},
+      );
+
+      final body = jsonDecode(response.body!) as List<dynamic>;
+      final ids = body.map((item) => (item as Map<String, dynamic>)["id"] as String).toList();
+
+      expect(ids, equals(["visible-1", "visible-2"]));
     });
   });
 }
