@@ -5,7 +5,7 @@ import "dart:io";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "hidden_projects_store.dart";
+import "persistence/hidden_projects_store.dart";
 import "routing/request_router.dart";
 import "sse/bridge_event_mapper.dart";
 
@@ -20,10 +20,13 @@ class DebugServer {
 
   int _nextRequestId = 1;
 
-  DebugServer(BridgePlugin plugin, {required this.port})
-    : _plugin = plugin,
-      _router = RequestRouter(plugin: plugin, hiddenProjectsStore: HiddenProjectsStore()),
-      _mapper = BridgeEventMapper(plugin);
+  DebugServer({
+    required BridgePlugin plugin,
+    required HiddenProjectsStore hiddenProjectsStore,
+    required this.port,
+  }) : _plugin = plugin,
+       _router = RequestRouter(plugin: plugin, hiddenProjectsStore: hiddenProjectsStore),
+       _mapper = BridgeEventMapper(plugin);
 
   int? get boundPort => _server?.port;
 

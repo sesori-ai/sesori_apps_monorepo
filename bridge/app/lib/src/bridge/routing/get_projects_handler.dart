@@ -3,7 +3,7 @@ import "dart:convert";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../hidden_projects_store.dart";
+import "../persistence/hidden_projects_store.dart";
 import "plugin_project_mapper.dart";
 import "request_handler.dart";
 

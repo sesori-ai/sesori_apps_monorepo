@@ -1,7 +1,7 @@
 import "dart:convert";
 import "dart:io";
 
-import "package:sesori_bridge/src/bridge/hidden_projects_store.dart";
+import "package:sesori_bridge/src/bridge/persistence/hidden_projects_store.dart";
 import "package:sesori_bridge/src/bridge/routing/request_router.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";

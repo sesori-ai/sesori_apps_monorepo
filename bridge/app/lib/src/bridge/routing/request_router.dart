@@ -1,7 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../hidden_projects_store.dart";
+import "../persistence/hidden_projects_store.dart";
 import "abort_session_handler.dart";
 import "close_project_handler.dart";
 import "create_project_handler.dart";

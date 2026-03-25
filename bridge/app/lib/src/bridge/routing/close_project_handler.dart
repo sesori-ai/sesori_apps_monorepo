@@ -1,6 +1,6 @@
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../hidden_projects_store.dart";
+import "../persistence/hidden_projects_store.dart";
 import "request_handler.dart";
 
 const _idParam = "id";
