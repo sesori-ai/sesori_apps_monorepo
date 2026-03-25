@@ -9,6 +9,8 @@
 // coverage:ignore-file
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+import 'package:flutter_local_notifications/flutter_local_notifications.dart'
+    as _i163;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart' as _i558;
 import 'package:get_it/get_it.dart' as _i174;
 import 'package:http/http.dart' as _i519;
@@ -54,11 +56,11 @@ extension GetItInjectableX on _i174.GetIt {
       () => registerModule.relayCryptoService,
     );
     gh.lazySingleton<_i1039.AudioRecorder>(() => registerModule.audioRecorder);
+    gh.lazySingleton<_i163.FlutterLocalNotificationsPlugin>(
+      () => registerModule.flutterLocalNotificationsPlugin,
+    );
     gh.lazySingleton<_i558.FlutterSecureStorage>(
       () => registerModule.secureStorage,
-    );
-    gh.lazySingleton<_i492.LocalNotificationManager>(
-      () => _i492.LocalNotificationManager(),
     );
     gh.singleton<_i948.LifecycleSource>(() => _i875.AppLifecycleObserver());
     gh.singleton<_i948.RouteSource>(() => _i597.GoRouterRouteSource());
@@ -79,6 +81,11 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i816.FlutterSecureStorageAdapter(gh<_i558.FlutterSecureStorage>()),
     );
     gh.lazySingleton<_i948.UrlLauncher>(() => _i10.FlutterUrlLauncher());
+    gh.lazySingleton<_i492.LocalNotificationManager>(
+      () => _i492.LocalNotificationManager(
+        plugin: gh<_i163.FlutterLocalNotificationsPlugin>(),
+      ),
+    );
     gh.lazySingleton<_i1038.VoiceTranscriptionService>(
       () => _i1038.VoiceTranscriptionService(
         gh<_i948.VoiceApi>(),
@@ -97,6 +104,11 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i442.AuthSession>(),
       ),
       dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i948.NotificationCanceller>(
+      () => registerModule.notificationCanceller(
+        gh<_i492.LocalNotificationManager>(),
+      ),
     );
     return this;
   }

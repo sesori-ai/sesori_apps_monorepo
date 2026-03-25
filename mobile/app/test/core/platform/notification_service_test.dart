@@ -1,9 +1,11 @@
+import "package:firebase_messaging/firebase_messaging.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/platform/local_notification_manager.dart";
 import "package:sesori_mobile/core/platform/notification_service.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "../../helpers/test_helpers.dart";
 
@@ -14,6 +16,9 @@ class MockNotificationPreferencesService extends Mock implements NotificationPre
 class MockLocalNotificationManager extends Mock implements LocalNotificationManager {}
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(NotificationCategory.aiInteraction);
+  });
   late MockNotificationApiClient apiClient;
   late MockNotificationPreferencesService preferencesService;
   late MockLocalNotificationManager localNotificationManager;
@@ -106,6 +111,78 @@ void main() {
       await service.unregisterCurrentToken();
 
       verifyZeroInteractions(apiClient);
+    });
+  });
+
+  group("onForegroundMessage", () {
+    test("passes sessionId to show() when message contains sessionId", () async {
+      when(() => preferencesService.isEnabled(any())).thenAnswer((_) async => true);
+      when(
+        () => localNotificationManager.show(
+          title: any(named: "title"),
+          body: any(named: "body"),
+          category: any(named: "category"),
+          sessionId: any(named: "sessionId"),
+        ),
+      ).thenAnswer((_) async {});
+
+      const sessionId = "ses_abc";
+      const message = RemoteMessage(
+        data: {
+          "category": "ai_interaction",
+          "eventType": "question_asked",
+          "sessionId": sessionId,
+        },
+        notification: RemoteNotification(
+          title: "Test Title",
+          body: "Test Body",
+        ),
+      );
+
+      await service.onForegroundMessage(message);
+
+      verify(
+        () => localNotificationManager.show(
+          title: "Test Title",
+          body: "Test Body",
+          category: NotificationCategory.aiInteraction,
+          sessionId: sessionId,
+        ),
+      ).called(1);
+    });
+
+    test("calls show() without sessionId when message has no sessionId", () async {
+      when(() => preferencesService.isEnabled(any())).thenAnswer((_) async => true);
+      when(
+        () => localNotificationManager.show(
+          title: any(named: "title"),
+          body: any(named: "body"),
+          category: any(named: "category"),
+          sessionId: any(named: "sessionId"),
+        ),
+      ).thenAnswer((_) async {});
+
+      const message = RemoteMessage(
+        data: {
+          "category": "session_message",
+          "eventType": null,
+        },
+        notification: RemoteNotification(
+          title: "Test Title",
+          body: "Test Body",
+        ),
+      );
+
+      await service.onForegroundMessage(message);
+
+      verify(
+        () => localNotificationManager.show(
+          title: "Test Title",
+          body: "Test Body",
+          category: NotificationCategory.sessionMessage,
+          sessionId: null,
+        ),
+      ).called(1);
     });
   });
 }

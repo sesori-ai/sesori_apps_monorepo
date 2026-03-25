@@ -80,6 +80,21 @@ Branch naming: `type/short-description` (e.g. `feat/relay-reconnect`).
 | mobile/app | `flutter test` |
 | mobile pure Dart modules | `dart test` |
 
+## Dart Coding Conventions
+
+- Always use **named arguments with the `required` keyword**, including for nullable parameters. Never use positional arguments.
+
+```dart
+// CORRECT
+int computeNotificationId({required String sessionId, required NotificationCategory category}) { ... }
+void show({required String title, required String? sessionId}) { ... }
+MyClass({required FlutterLocalNotificationsPlugin plugin}) : _plugin = plugin;
+
+// WRONG — positional arguments
+int computeNotificationId(String sessionId, NotificationCategory category) { ... }
+MyClass([FlutterLocalNotificationsPlugin? plugin]) : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
+```
+
 ## Analysis
 
 Strict analysis is enabled across all packages. Don't add `// ignore:` comments without a written justification in the same line.
