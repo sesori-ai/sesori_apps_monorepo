@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_vjYY9Smsj6
 createdAt: 2026-03-13T12:37:01.107807
-updatedAt: 2026-03-21T12:41:31.596738
+updatedAt: 2026-03-25T12:17:01.818646
 workspaceId: wk_CKpMKQdH7W
 folderId: fl_MnoHDmtDYi
 authentication: {}
@@ -12,13 +12,9 @@ bodyType: null
 description: "`x-opencode-directory` header \n* used to give a path to look. \n* When missing, it uses the path where the server was started.\n* Seems to find the best match (it will keep on going one dir level up until it finds an existing opencode project)"
 headers:
 - enabled: true
-  name: x-opencode-directory
-  value: /Users/alexandrudochioiu/sesori-ai/sesori_auth_server/test/
-  id: ZncWse2XIT
-- enabled: true
   name: ''
   value: ''
-  id: IXVQt4MquG
+  id: sWXf56neYY
 method: GET
 name: Current (or at directory)
 sortPriority: 2000.0

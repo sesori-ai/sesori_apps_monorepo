@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_YJFJuFifCr
 createdAt: 2026-03-13T12:56:30.781590
-updatedAt: 2026-03-13T12:57:08.376804
+updatedAt: 2026-03-25T12:13:17.727750
 workspaceId: wk_CKpMKQdH7W
 folderId: fl_McTnzzzzcF
 authentication: {}
@@ -22,17 +22,17 @@ description: |-
     "session_xyz": "busy"
   }
   ```
-headers: []
+headers:
+- enabled: true
+  name: ''
+  value: ''
+  id: AiPMZcJ3fq
 method: GET
 name: Session Status
 sortPriority: 2333.3333333333335
 url: ${[ base_url ]}/session/status
 urlParameters:
 - enabled: true
-  name: :sessionID
-  value: ses_318d2c9e3ffeZ6s6SJu83vXQv3
-  id: kz6efcSPKb
-- enabled: true
   name: ''
   value: ''
-  id: E7Q3MKJyIZ
+  id: scwHIAhW2X

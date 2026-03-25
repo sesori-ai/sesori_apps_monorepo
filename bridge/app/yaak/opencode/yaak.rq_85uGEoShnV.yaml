@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_85uGEoShnV
 createdAt: 2026-03-13T12:53:20.497170
-updatedAt: 2026-03-13T12:56:35.318199
+updatedAt: 2026-03-25T12:14:04.495982
 workspaceId: wk_CKpMKQdH7W
 folderId: fl_yk5jRTWYoF
 authentication: {}
@@ -39,9 +39,9 @@ url: ${[ base_url ]}/session/:sessionID/revert
 urlParameters:
 - enabled: true
   name: :sessionID
-  value: ''
+  value: ${[ session_id ]}
   id: kz6efcSPKb
 - enabled: true
   name: ''
   value: ''
-  id: WYqwwFSh9E
+  id: GBpiQMvJfc

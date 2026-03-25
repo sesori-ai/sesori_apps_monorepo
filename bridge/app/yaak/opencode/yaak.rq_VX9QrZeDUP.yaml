@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_VX9QrZeDUP
 createdAt: 2026-03-13T12:55:12.667466
-updatedAt: 2026-03-13T12:56:35.310673
+updatedAt: 2026-03-25T12:10:22.042313
 workspaceId: wk_CKpMKQdH7W
 folderId: fl_yk5jRTWYoF
 authentication: {}
@@ -23,9 +23,9 @@ url: ${[ base_url ]}/session/:sessionID/todo
 urlParameters:
 - enabled: true
   name: :sessionID
-  value: ses_318d2c9e3ffeZ6s6SJu83vXQv3
+  value: ${[ session_id ]}
   id: kz6efcSPKb
 - enabled: true
   name: ''
   value: ''
-  id: E7Q3MKJyIZ
+  id: eTpyy8rdgv

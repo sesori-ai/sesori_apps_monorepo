@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_8qQzdWKdFL
 createdAt: 2026-03-13T13:01:04.771763
-updatedAt: 2026-03-13T13:03:04.957235
+updatedAt: 2026-03-25T12:12:02.965624
 workspaceId: wk_CKpMKQdH7W
 folderId: fl_Y6vgggGpzk
 authentication: {}
@@ -41,9 +41,9 @@ url: ${[ base_url ]}/session/:sessionID/prompt_async
 urlParameters:
 - enabled: true
   name: :sessionID
-  value: ses_318d2c9e3ffeZ6s6SJu83vXQv3
+  value: ${[ session_id ]}
   id: kz6efcSPKb
 - enabled: true
   name: ''
   value: ''
-  id: DHI5EH0usq
+  id: vjj9eRDv2N
