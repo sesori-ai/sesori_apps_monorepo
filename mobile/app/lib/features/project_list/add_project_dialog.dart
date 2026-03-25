@@ -19,82 +19,193 @@ Future<void> showAddProjectDialog(BuildContext context, ProjectListCubit cubit) 
   );
 }
 
-/// Modal dialog with two tabs: **Create New** and **Discover Existing**.
-///
-/// Both tabs share a directory browser that fetches filesystem entries
-/// from the bridge. Users tap to navigate into directories and select
-/// a location rather than typing a path.
+/// Single-view dialog with a directory browser and two actions:
+/// - **Open as Project** — discovers the currently browsed directory
+/// - **Create New Project** — creates `{currentDir}/{name}` from a name input
 @visibleForTesting
-class AddProjectDialog extends StatelessWidget {
+class AddProjectDialog extends StatefulWidget {
   final ProjectListCubit cubit;
 
   const AddProjectDialog({required this.cubit, super.key});
 
   @override
+  State<AddProjectDialog> createState() => _AddProjectDialogState();
+}
+
+class _AddProjectDialogState extends State<AddProjectDialog> {
+  final TextEditingController _nameController = TextEditingController();
+  final GlobalKey<_DirectoryBrowserState> _browserKey = GlobalKey<_DirectoryBrowserState>();
+  String _browsingPath = "";
+  bool _actionLoading = false;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _onOpen() async {
+    if (_browsingPath.isEmpty) return;
+    setState(() => _actionLoading = true);
+
+    final success = await widget.cubit.discoverProject(path: _browsingPath);
+
+    if (!mounted) return;
+    setState(() => _actionLoading = false);
+
+    final loc = context.loc;
+    if (success) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(loc.projectDiscovered)),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(loc.projectDiscoverFailed)),
+      );
+    }
+  }
+
+  Future<void> _onCreate() async {
+    final name = _nameController.text.trim();
+    if (name.isEmpty || _browsingPath.isEmpty) return;
+
+    final fullPath = "$_browsingPath/$name";
+    setState(() => _actionLoading = true);
+
+    final success = await widget.cubit.createProject(path: fullPath);
+
+    if (!mounted) return;
+    setState(() => _actionLoading = false);
+
+    final loc = context.loc;
+    if (success) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(loc.projectCreated)),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(loc.projectCreateFailed)),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final loc = context.loc;
 
-    return DefaultTabController(
-      length: 2,
-      child: Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 8),
-            // Drag handle
-            Center(
-              child: Container(
-                width: 32,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
-                  borderRadius: BorderRadius.circular(2),
-                ),
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 8),
+          // Drag handle
+          Center(
+            child: Container(
+              width: 32,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const SizedBox(height: 8),
-            TabBar(
-              tabs: [
-                Tab(text: loc.createNewProject),
-                Tab(text: loc.discoverExistingProject),
+          ),
+          const SizedBox(height: 8),
+          // Title
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(loc.addProject, style: Theme.of(context).textTheme.titleMedium),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Directory browser
+          SizedBox(
+            height: 300,
+            child: _DirectoryBrowser(
+              key: _browserKey,
+              onPathChanged: (path) => setState(() => _browsingPath = path),
+            ),
+          ),
+          // Action area
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Open as Project button
+                OutlinedButton(
+                  onPressed: _actionLoading || _browsingPath.isEmpty ? null : _onOpen,
+                  child: _actionLoading
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const _CompactSpinner(),
+                            const SizedBox(width: 8),
+                            Text(loc.discoveringProject),
+                          ],
+                        )
+                      : Text(loc.openAsProject),
+                ),
+                const SizedBox(height: 8),
+                // Create: name field + button
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 48,
+                        child: TextField(
+                          controller: _nameController,
+                          decoration: InputDecoration(
+                            hintText: loc.projectNameHint,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                            border: const OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          onChanged: (_) => setState(() {}),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      height: 48,
+                      child: FilledButton(
+                        onPressed: _actionLoading || _nameController.text.trim().isEmpty || _browsingPath.isEmpty
+                            ? null
+                            : _onCreate,
+                        child: _actionLoading
+                            ? const _CompactSpinner(color: Colors.white)
+                            : Text(loc.createProjectButton),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
-            SizedBox(
-              height: 420,
-              child: TabBarView(
-                children: [
-                  _CreateTab(cubit: cubit),
-                  _DiscoverTab(cubit: cubit),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
 // ---------------------------------------------------------------------------
-// Directory Browser — shared by both tabs
+// Directory Browser
 // ---------------------------------------------------------------------------
 
-/// A reusable directory browser widget that fetches and displays
-/// filesystem entries, supports tap-to-navigate, and a back button.
-@visibleForTesting
-class DirectoryBrowser extends StatefulWidget {
-  /// Called whenever the browsed path changes (including initial load).
+class _DirectoryBrowser extends StatefulWidget {
   final ValueChanged<String>? onPathChanged;
 
-  const DirectoryBrowser({this.onPathChanged, super.key});
+  const _DirectoryBrowser({this.onPathChanged, super.key});
 
   @override
-  State<DirectoryBrowser> createState() => DirectoryBrowserState();
+  State<_DirectoryBrowser> createState() => _DirectoryBrowserState();
 }
 
-@visibleForTesting
-class DirectoryBrowserState extends State<DirectoryBrowser> {
+class _DirectoryBrowserState extends State<_DirectoryBrowser> {
   String _currentPath = "";
   List<FilesystemSuggestion> _entries = [];
   bool _loading = false;
@@ -114,9 +225,9 @@ class DirectoryBrowserState extends State<DirectoryBrowser> {
       _hasError = false;
     });
 
-    final response = _currentPath.isEmpty
-        ? await GetIt.instance<ProjectService>().getFilesystemSuggestions(prefix: "")
-        : await GetIt.instance<ProjectService>().getFilesystemSuggestions(prefix: _currentPath);
+    final response = await GetIt.instance<ProjectService>().getFilesystemSuggestions(
+      prefix: _currentPath,
+    );
 
     if (!mounted) return;
     setState(() {
@@ -158,7 +269,7 @@ class DirectoryBrowserState extends State<DirectoryBrowser> {
         // Breadcrumb header with back button
         if (_currentPath.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.only(left: 4, right: 16, top: 8),
+            padding: const EdgeInsets.only(left: 4, right: 16, top: 4),
             child: Row(
               children: [
                 IconButton(
@@ -254,179 +365,6 @@ class _DirectoryTile extends StatelessWidget {
       ),
       trailing: const Icon(Icons.chevron_right),
       onTap: onTap,
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Create Tab
-// ---------------------------------------------------------------------------
-
-class _CreateTab extends StatefulWidget {
-  final ProjectListCubit cubit;
-
-  const _CreateTab({required this.cubit});
-
-  @override
-  State<_CreateTab> createState() => _CreateTabState();
-}
-
-class _CreateTabState extends State<_CreateTab> {
-  final TextEditingController _nameController = TextEditingController();
-  final GlobalKey<DirectoryBrowserState> _browserKey = GlobalKey<DirectoryBrowserState>();
-  String _browsingPath = "";
-  bool _actionLoading = false;
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _onCreate() async {
-    final name = _nameController.text.trim();
-    if (name.isEmpty || _browsingPath.isEmpty) return;
-
-    final fullPath = "$_browsingPath/$name";
-    setState(() => _actionLoading = true);
-
-    final success = await widget.cubit.createProject(path: fullPath);
-
-    if (!mounted) return;
-    setState(() => _actionLoading = false);
-
-    final loc = context.loc;
-    if (success) {
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(loc.projectCreated)),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(loc.projectCreateFailed)),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final loc = context.loc;
-
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: DirectoryBrowser(
-              key: _browserKey,
-              onPathChanged: (path) => setState(() => _browsingPath = path),
-            ),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _nameController,
-            decoration: InputDecoration(
-              hintText: loc.projectNameHint,
-              prefixIcon: const Icon(Icons.edit),
-              border: const OutlineInputBorder(),
-            ),
-            onChanged: (_) => setState(() {}),
-          ),
-          const SizedBox(height: 8),
-          FilledButton(
-            onPressed: _actionLoading || _nameController.text.trim().isEmpty || _browsingPath.isEmpty
-                ? null
-                : _onCreate,
-            child: _actionLoading
-                ? Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const _CompactSpinner(color: Colors.white),
-                      const SizedBox(width: 8),
-                      Text(loc.creatingProject),
-                    ],
-                  )
-                : Text(loc.createProjectButton),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Discover Tab
-// ---------------------------------------------------------------------------
-
-class _DiscoverTab extends StatefulWidget {
-  final ProjectListCubit cubit;
-
-  const _DiscoverTab({required this.cubit});
-
-  @override
-  State<_DiscoverTab> createState() => _DiscoverTabState();
-}
-
-class _DiscoverTabState extends State<_DiscoverTab> {
-  final GlobalKey<DirectoryBrowserState> _browserKey = GlobalKey<DirectoryBrowserState>();
-  String _browsingPath = "";
-  bool _actionLoading = false;
-
-  Future<void> _onDiscover() async {
-    if (_browsingPath.isEmpty) return;
-
-    setState(() => _actionLoading = true);
-
-    final success = await widget.cubit.discoverProject(path: _browsingPath);
-
-    if (!mounted) return;
-    setState(() => _actionLoading = false);
-
-    final loc = context.loc;
-    if (success) {
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(loc.projectDiscovered)),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(loc.projectDiscoverFailed)),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final loc = context.loc;
-
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: DirectoryBrowser(
-              key: _browserKey,
-              onPathChanged: (path) => setState(() => _browsingPath = path),
-            ),
-          ),
-          const SizedBox(height: 8),
-          FilledButton(
-            onPressed: _actionLoading || _browsingPath.isEmpty ? null : _onDiscover,
-            child: _actionLoading
-                ? Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const _CompactSpinner(color: Colors.white),
-                      const SizedBox(width: 8),
-                      Text(loc.discoveringProject),
-                    ],
-                  )
-                : Text(loc.discoverHere),
-          ),
-        ],
-      ),
     );
   }
 }

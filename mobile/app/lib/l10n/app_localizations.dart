@@ -841,18 +841,6 @@ abstract class AppLocalizations {
   /// **'Add Project'**
   String get addProject;
 
-  /// No description provided for @createNewProject.
-  ///
-  /// In en, this message translates to:
-  /// **'Create New'**
-  String get createNewProject;
-
-  /// No description provided for @discoverExistingProject.
-  ///
-  /// In en, this message translates to:
-  /// **'Discover Existing'**
-  String get discoverExistingProject;
-
   /// No description provided for @projectNameHint.
   ///
   /// In en, this message translates to:
@@ -862,14 +850,14 @@ abstract class AppLocalizations {
   /// No description provided for @createProjectButton.
   ///
   /// In en, this message translates to:
-  /// **'Create Project'**
+  /// **'Create'**
   String get createProjectButton;
 
-  /// No description provided for @discoverHere.
+  /// No description provided for @openAsProject.
   ///
   /// In en, this message translates to:
-  /// **'Discover This Directory'**
-  String get discoverHere;
+  /// **'Open as Project'**
+  String get openAsProject;
 
   /// No description provided for @emptyDirectory.
   ///

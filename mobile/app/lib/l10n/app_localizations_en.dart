@@ -437,19 +437,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addProject => 'Add Project';
 
   @override
-  String get createNewProject => 'Create New';
-
-  @override
-  String get discoverExistingProject => 'Discover Existing';
-
-  @override
   String get projectNameHint => 'Project name';
 
   @override
-  String get createProjectButton => 'Create Project';
+  String get createProjectButton => 'Create';
 
   @override
-  String get discoverHere => 'Discover This Directory';
+  String get openAsProject => 'Open as Project';
 
   @override
   String get emptyDirectory => 'This directory is empty';

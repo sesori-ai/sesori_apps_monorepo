@@ -38,7 +38,6 @@ const _projectsDirEntries = [
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Wraps [child] with `MaterialApp` + localization + `BlocProvider`.
 Widget _buildApp({required ProjectListCubit cubit, required Widget child}) {
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -50,7 +49,6 @@ Widget _buildApp({required ProjectListCubit cubit, required Widget child}) {
   );
 }
 
-/// A minimal Scaffold that mirrors the real screen's FAB + body switch.
 Widget _buildProjectListShell({required ProjectListCubit cubit}) {
   return _buildApp(
     cubit: cubit,
@@ -116,7 +114,6 @@ Widget _buildProjectListShell({required ProjectListCubit cubit}) {
   );
 }
 
-/// Stubs the project service to return [entries] for any prefix.
 void _stubSuggestionsWithEntries(
   MockProjectService service, {
   required List<FilesystemSuggestion> entries,
@@ -126,7 +123,6 @@ void _stubSuggestionsWithEntries(
   ).thenAnswer((_) async => ApiResponse.success(entries));
 }
 
-/// Stubs the project service to return different entries per prefix.
 void _stubSuggestionsPerPrefix(
   MockProjectService service, {
   required Map<String, List<FilesystemSuggestion>> byPrefix,
@@ -145,7 +141,6 @@ void main() {
     mockCubit = MockProjectListCubit();
     mockProjectService = MockProjectService();
 
-    // Register ProjectService in GetIt so the dialog can resolve it.
     final getIt = GetIt.instance;
     if (getIt.isRegistered<ProjectService>()) {
       getIt.unregister<ProjectService>();
@@ -161,11 +156,11 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
-  // Test 1: FAB exists and opens dialog when tapped
+  // FAB
   // -------------------------------------------------------------------------
 
   group("FAB", () {
-    testWidgets("FAB is visible and opens add project dialog when tapped", (tester) async {
+    testWidgets("opens add project dialog when tapped", (tester) async {
       when(() => mockCubit.state).thenReturn(
         const ProjectListState.loaded(projects: [], activityById: {}),
       );
@@ -173,22 +168,20 @@ void main() {
 
       await tester.pumpWidget(_buildProjectListShell(cubit: mockCubit));
 
-      // FAB exists
       expect(find.byType(FloatingActionButton), findsOneWidget);
-      expect(find.byIcon(Icons.add), findsWidgets); // FAB icon + possible empty-state button
 
-      // Tap FAB to open dialog
       await tester.tap(find.byType(FloatingActionButton));
       await tester.pumpAndSettle();
 
-      // Dialog should be visible with two tabs
-      expect(find.text("Create New"), findsOneWidget);
-      expect(find.text("Discover Existing"), findsOneWidget);
+      // Single view — title + directory entries + both action buttons
+      expect(find.text("Add Project"), findsWidgets);
+      expect(find.text("projects"), findsOneWidget);
+      expect(find.text("Open as Project"), findsOneWidget);
     });
   });
 
   // -------------------------------------------------------------------------
-  // Test 2: Swipe-to-dismiss on a project tile calls closeProject
+  // Swipe to close
   // -------------------------------------------------------------------------
 
   group("Swipe to close", () {
@@ -201,11 +194,9 @@ void main() {
 
       await tester.pumpWidget(_buildProjectListShell(cubit: mockCubit));
 
-      // Find the ListTile by key
       final tileFinder = find.byKey(Key("project-tile-${project.id}"));
       expect(tileFinder, findsOneWidget);
 
-      // Swipe left (endToStart)
       await tester.drag(tileFinder, const Offset(-500, 0));
       await tester.pumpAndSettle();
 
@@ -214,7 +205,7 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
-  // Test 3: Empty state shows "Add Project" prompt
+  // Empty state
   // -------------------------------------------------------------------------
 
   group("Empty state", () {
@@ -241,17 +232,17 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, "Add Project"));
       await tester.pumpAndSettle();
 
-      expect(find.text("Create New"), findsOneWidget);
-      expect(find.text("Discover Existing"), findsOneWidget);
+      expect(find.text("Open as Project"), findsOneWidget);
+      expect(find.text("Project name"), findsOneWidget);
     });
   });
 
   // -------------------------------------------------------------------------
-  // Test 4: Dialog renders directory browser with entries
+  // AddProjectDialog — single view
   // -------------------------------------------------------------------------
 
   group("AddProjectDialog", () {
-    testWidgets("renders with two tabs and shows directory entries on open", (tester) async {
+    testWidgets("shows directory browser with entries and both action buttons", (tester) async {
       _stubSuggestionsWithEntries(mockProjectService, entries: _homeDirEntries);
 
       await tester.pumpWidget(
@@ -271,23 +262,23 @@ void main() {
       await tester.tap(find.text("Open"));
       await tester.pumpAndSettle();
 
-      // Two tabs
-      expect(find.text("Create New"), findsOneWidget);
-      expect(find.text("Discover Existing"), findsOneWidget);
-
-      // Directory entries visible (Create tab shows its browser)
+      // Directory entries visible
       expect(find.text("projects"), findsOneWidget);
       expect(find.text("work"), findsOneWidget);
       expect(find.text("my-repo"), findsOneWidget);
 
-      // Git badge visible for my-repo
+      // Git badge
       expect(find.text("git"), findsOneWidget);
 
-      // No path text field — only a project name field in Create tab
+      // Both action buttons
+      expect(find.text("Open as Project"), findsOneWidget);
+      expect(find.text("Create"), findsOneWidget);
+
+      // Project name field
       expect(find.text("Project name"), findsOneWidget);
 
-      // Create Project button visible
-      expect(find.text("Create Project"), findsOneWidget);
+      // No tab bar
+      expect(find.byType(TabBar), findsNothing);
     });
 
     testWidgets("tapping a directory entry navigates into it", (tester) async {
@@ -316,22 +307,14 @@ void main() {
       await tester.tap(find.text("Open"));
       await tester.pumpAndSettle();
 
-      // Tap "projects" directory
       await tester.tap(find.text("projects"));
       await tester.pumpAndSettle();
 
-      // Now we should see the children of /home/user/projects
       expect(find.text("app-one"), findsOneWidget);
       expect(find.text("lib-two"), findsOneWidget);
-
-      // Previous entries should be gone
       expect(find.text("work"), findsNothing);
-
-      // Breadcrumb path should show current path
       expect(find.text("/home/user/projects"), findsOneWidget);
-
-      // Back button should be visible
-      expect(find.byIcon(Icons.arrow_back), findsWidgets);
+      expect(find.byIcon(Icons.arrow_back), findsOneWidget);
     });
 
     testWidgets("back button navigates up one directory level", (tester) async {
@@ -361,49 +344,18 @@ void main() {
       await tester.tap(find.text("Open"));
       await tester.pumpAndSettle();
 
-      // Navigate into "projects"
       await tester.tap(find.text("projects"));
       await tester.pumpAndSettle();
-
       expect(find.text("app-one"), findsOneWidget);
 
-      // Tap back button (find the first one — Create tab's browser)
-      await tester.tap(find.byIcon(Icons.arrow_back).first);
+      await tester.tap(find.byIcon(Icons.arrow_back));
       await tester.pumpAndSettle();
 
-      // Should show parent directory entries again
       expect(find.text("projects"), findsOneWidget);
       expect(find.text("work"), findsOneWidget);
     });
 
-    testWidgets("switching to Discover tab shows Discover This Directory button", (tester) async {
-      _stubSuggestionsWithEntries(mockProjectService, entries: _homeDirEntries);
-
-      await tester.pumpWidget(
-        _buildApp(
-          cubit: mockCubit,
-          child: Scaffold(
-            body: Builder(
-              builder: (context) => ElevatedButton(
-                onPressed: () => showAddProjectDialog(context, mockCubit),
-                child: const Text("Open"),
-              ),
-            ),
-          ),
-        ),
-      );
-
-      await tester.tap(find.text("Open"));
-      await tester.pumpAndSettle();
-
-      // Switch to Discover tab
-      await tester.tap(find.text("Discover Existing"));
-      await tester.pumpAndSettle();
-
-      expect(find.text("Discover This Directory"), findsOneWidget);
-    });
-
-    testWidgets("Discover tab calls discoverProject with current path", (tester) async {
+    testWidgets("Open as Project calls discoverProject with browsed path", (tester) async {
       _stubSuggestionsPerPrefix(
         mockProjectService,
         byPrefix: {
@@ -430,22 +382,18 @@ void main() {
       await tester.tap(find.text("Open"));
       await tester.pumpAndSettle();
 
-      // Switch to Discover tab
-      await tester.tap(find.text("Discover Existing"));
-      await tester.pumpAndSettle();
-
       // Navigate into my-repo
       await tester.tap(find.text("my-repo"));
       await tester.pumpAndSettle();
 
-      // Tap "Discover This Directory"
-      await tester.tap(find.text("Discover This Directory"));
+      // Tap "Open as Project"
+      await tester.tap(find.text("Open as Project"));
       await tester.pumpAndSettle();
 
       verify(() => mockCubit.discoverProject(path: "/home/user/my-repo")).called(1);
     });
 
-    testWidgets("Create tab calls createProject with browsing path + name", (tester) async {
+    testWidgets("Create constructs path from browsed dir + typed name", (tester) async {
       _stubSuggestionsPerPrefix(
         mockProjectService,
         byPrefix: {
@@ -476,12 +424,12 @@ void main() {
       await tester.tap(find.text("projects"));
       await tester.pumpAndSettle();
 
-      // Type a project name
+      // Type project name
       await tester.enterText(find.byType(TextField), "new-app");
       await tester.pumpAndSettle();
 
-      // Tap "Create Project"
-      await tester.tap(find.text("Create Project"));
+      // Tap "Create"
+      await tester.tap(find.text("Create"));
       await tester.pumpAndSettle();
 
       verify(() => mockCubit.createProject(path: "/home/user/projects/new-app")).called(1);
@@ -511,8 +459,6 @@ void main() {
     });
 
     testWidgets("loading state shows progress indicator", (tester) async {
-      // Use a Completer that never completes — keeps loading state active
-      // without creating a pending Timer.
       when(
         () => mockProjectService.getFilesystemSuggestions(prefix: any(named: "prefix")),
       ).thenAnswer((_) => Completer<ApiResponse<List<FilesystemSuggestion>>>().future);
@@ -532,7 +478,7 @@ void main() {
       );
 
       await tester.tap(find.text("Open"));
-      await tester.pump(); // Just one frame — don't settle, to keep loading
+      await tester.pump();
 
       expect(find.byType(CircularProgressIndicator), findsWidgets);
     });
