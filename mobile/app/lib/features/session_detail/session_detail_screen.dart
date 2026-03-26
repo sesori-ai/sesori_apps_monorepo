@@ -333,6 +333,8 @@ class _MessageList extends StatefulWidget {
 
 class _MessageListState extends State<_MessageList> {
   late final ScrollController _scrollController;
+  bool _following = true;
+  static const _kNearBottomThreshold = 20.0;
 
   @override
   void initState() {
@@ -347,18 +349,48 @@ class _MessageListState extends State<_MessageList> {
   }
 
   @override
+  void didUpdateWidget(covariant _MessageList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_following) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _scrollController.hasClients) {
+          _scrollController.jumpTo(0);
+        }
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        ListView.builder(
-          controller: _scrollController,
-          reverse: true,
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          itemCount: widget.messages.length,
-          itemBuilder: (context, index) {
-            final message = widget.messages[widget.messages.length - 1 - index];
-            return _buildMessageWidget(message);
+        NotificationListener<ScrollNotification>(
+          onNotification: (notification) {
+            if (notification is ScrollUpdateNotification && notification.dragDetails != null) {
+              // reverse: true — offset 0 is the bottom (newest), offset > 0 is scrolled up
+              final pixels = _scrollController.position.pixels;
+              if (_following && pixels > _kNearBottomThreshold) {
+                setState(() {
+                  _following = false;
+                });
+              } else if (!_following && pixels <= _kNearBottomThreshold) {
+                setState(() {
+                  _following = true;
+                });
+              }
+            }
+            return false;
           },
+          child: ListView.builder(
+            controller: _scrollController,
+            reverse: true,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            itemCount: widget.messages.length,
+            itemBuilder: (context, index) {
+              final message = widget.messages[widget.messages.length - 1 - index];
+              return _buildMessageWidget(message);
+            },
+          ),
         ),
       ],
     );
