@@ -8,6 +8,7 @@ import 'package:sesori_bridge/src/auth/profile.dart';
 import 'package:sesori_bridge/src/auth/token.dart';
 import 'package:sesori_bridge/src/auth/token_manager.dart';
 import 'package:sesori_bridge/src/auth/validate.dart';
+import 'package:sesori_bridge/src/bridge/bandwidth_tracker.dart';
 import 'package:sesori_bridge/src/bridge/debug_server.dart';
 import 'package:sesori_bridge/src/bridge/models/bridge_config.dart';
 import 'package:sesori_bridge/src/bridge/orchestrator.dart';
@@ -195,6 +196,9 @@ Future<void> main(List<String> args) async {
   );
   final session = orchestrator.create();
 
+  // Wire up bandwidth tracking when debug server is active
+  final bandwidthTracker = debugPort != null ? BandwidthTracker(bytesSent: session.bytesSent) : null;
+
   // Create and start debug server if requested
   DebugServer? debugServer;
   if (debugPort != null) {
@@ -225,11 +229,11 @@ Future<void> main(List<String> args) async {
     await session.run();
   } catch (e) {
     Log.e('$e');
-    await _shutdown(cmd, sigintSub, sigtermSub, debugServer, db);
+    await _shutdown(cmd, sigintSub, sigtermSub, debugServer, db, bandwidthTracker);
     exit(1);
   }
 
-  await _shutdown(cmd, sigintSub, sigtermSub, debugServer, db);
+  await _shutdown(cmd, sigintSub, sigtermSub, debugServer, db, bandwidthTracker);
 }
 
 /// Performs graceful shutdown: stops the server and cancels signal listeners.
@@ -242,11 +246,14 @@ Future<void> _shutdown(
   StreamSubscription<ProcessSignal>? sigtermSub,
   DebugServer? debugServer,
   AppDatabase db,
+  BandwidthTracker? bandwidthTracker,
 ) async {
   final safetyTimer = Timer(const Duration(seconds: 10), () {
     Log.e('Failed to finish gracefully');
     exit(0);
   });
+
+  bandwidthTracker?.dispose();
 
   await Future.wait([
     stopServer(serverProcess),

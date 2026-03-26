@@ -36,7 +36,7 @@ abstract class BridgePlugin {
 
   Future<Map<String, PluginSessionStatus>> getSessionStatuses();
 
-  /// Get messages for a session (last exchange).
+  /// Get all messages for a session.
   Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId);
 
   Future<void> sendPrompt({

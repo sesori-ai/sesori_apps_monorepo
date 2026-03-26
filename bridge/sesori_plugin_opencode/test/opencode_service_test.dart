@@ -106,8 +106,8 @@ void main() {
     });
   });
 
-  group("OpenCodeService.getLastExchange", () {
-    test("returns from last user message onwards", () async {
+  group("OpenCodeService.getMessages", () {
+    test("returns all messages from api", () async {
       final repository = FakeOpenCodeRepository(
         messages: [
           _msg("assistant", "m1"),
@@ -117,9 +117,9 @@ void main() {
       );
       final service = OpenCodeService(repository, FakeActiveSessionTracker());
 
-      final result = await service.getLastExchange(sessionId: "ses-1", directory: null);
+      final result = await service.getMessages(sessionId: "ses-1", directory: null);
 
-      expect(result.map(_messageId).toList(), equals(["m2", "m3"]));
+      expect(result.map(_messageId).toList(), equals(["m1", "m2", "m3"]));
       expect(repository.api.lastRequestedSessionId, equals("ses-1"));
     });
 
@@ -127,80 +127,17 @@ void main() {
       final repository = FakeOpenCodeRepository(messages: [_msg("user", "m1")]);
       final service = OpenCodeService(repository, FakeActiveSessionTracker());
 
-      await service.getLastExchange(sessionId: "ses-1", directory: "/repo");
+      await service.getMessages(sessionId: "ses-1", directory: "/repo");
 
       expect(repository.api.lastRequestedSessionId, equals("ses-1"));
       expect(repository.api.lastRequestedDirectory, equals("/repo"));
-    });
-
-    test("multiple user messages returns from last user", () async {
-      final repository = FakeOpenCodeRepository(
-        messages: [
-          _msg("user", "m1"),
-          _msg("assistant", "m2"),
-          _msg("user", "m3"),
-          _msg("assistant", "m4"),
-        ],
-      );
-      final service = OpenCodeService(repository, FakeActiveSessionTracker());
-
-      final result = await service.getLastExchange(sessionId: "ses-1", directory: null);
-
-      expect(result.map(_messageId).toList(), equals(["m3", "m4"]));
-    });
-
-    test("no user message returns empty", () async {
-      final repository = FakeOpenCodeRepository(
-        messages: [_msg("assistant", "m1"), _msg("assistant", "m2")],
-      );
-      final service = OpenCodeService(repository, FakeActiveSessionTracker());
-
-      final result = await service.getLastExchange(sessionId: "ses-1", directory: null);
-
-      expect(result, isEmpty);
     });
 
     test("empty list returns empty", () async {
       final repository = FakeOpenCodeRepository(messages: const []);
       final service = OpenCodeService(repository, FakeActiveSessionTracker());
 
-      final result = await service.getLastExchange(sessionId: "ses-1", directory: null);
-
-      expect(result, isEmpty);
-    });
-
-    test("single user message returns one element", () async {
-      final repository = FakeOpenCodeRepository(messages: [_msg("user", "m1")]);
-      final service = OpenCodeService(repository, FakeActiveSessionTracker());
-
-      final result = await service.getLastExchange(sessionId: "ses-1", directory: null);
-
-      expect(result.map(_messageId).toList(), equals(["m1"]));
-    });
-
-    test("non-user roles before last user are excluded from result", () async {
-      final repository = FakeOpenCodeRepository(
-        messages: [
-          _msg("system", "m0"),
-          _msg("user", "m1"),
-          _msg("assistant", "m2"),
-        ],
-      );
-      final service = OpenCodeService(repository, FakeActiveSessionTracker());
-
-      final result = await service.getLastExchange(sessionId: "ses-1", directory: null);
-
-      expect(result, hasLength(2));
-      expect(_messageId(result.first), equals("m1"));
-    });
-
-    test("api throw returns empty", () async {
-      final repository = FakeOpenCodeRepository(
-        messagesError: Exception("boom"),
-      );
-      final service = OpenCodeService(repository, FakeActiveSessionTracker());
-
-      final result = await service.getLastExchange(sessionId: "ses-1", directory: null);
+      final result = await service.getMessages(sessionId: "ses-1", directory: null);
 
       expect(result, isEmpty);
     });
