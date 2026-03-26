@@ -1,6 +1,6 @@
 import "dart:convert";
 
-import "package:sesori_bridge/src/bridge/persistence/daos/hidden_projects_dao.dart";
+import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/routing/get_projects_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -13,13 +13,13 @@ void main() {
   group("GetProjectsHandler", () {
     late FakeBridgePlugin plugin;
     late AppDatabase db;
-    late HiddenProjectsDao hiddenStore;
+    late ProjectsDao hiddenStore;
     late GetProjectsHandler handler;
 
     setUp(() {
       plugin = FakeBridgePlugin();
       db = createTestDatabase();
-      hiddenStore = db.hiddenProjectsDao;
+      hiddenStore = db.projectsDao;
       handler = GetProjectsHandler(plugin, hiddenStore);
     });
 

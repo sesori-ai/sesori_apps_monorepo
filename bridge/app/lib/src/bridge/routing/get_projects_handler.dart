@@ -3,14 +3,14 @@ import "dart:convert";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../persistence/daos/hidden_projects_dao.dart";
+import "../persistence/daos/projects_dao.dart";
 import "plugin_project_mapper.dart";
 import "request_handler.dart";
 
 /// Handles `GET /project` — returns all projects from the plugin.
 class GetProjectsHandler extends RequestHandler {
   final BridgePlugin _plugin;
-  final HiddenProjectsDao _hiddenStore;
+  final ProjectsDao _hiddenStore;
 
   GetProjectsHandler(this._plugin, this._hiddenStore) : super(HttpMethod.get, "/project");
 

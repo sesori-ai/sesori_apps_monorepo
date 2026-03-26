@@ -1,7 +1,7 @@
 import "dart:convert";
 import "dart:io";
 
-import "package:sesori_bridge/src/bridge/persistence/daos/hidden_projects_dao.dart";
+import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/routing/open_project_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -14,7 +14,7 @@ void main() {
   group("OpenProjectHandler", () {
     late FakeBridgePlugin plugin;
     late AppDatabase db;
-    late HiddenProjectsDao hiddenStore;
+    late ProjectsDao hiddenStore;
     late OpenProjectHandler handler;
     late Directory tempDir;
     late File tempFile;
@@ -24,7 +24,7 @@ void main() {
       db = createTestDatabase();
       tempDir = Directory.systemTemp.createTempSync("sesori_discover_test_");
       tempFile = File("${tempDir.path}/test_file.txt")..createSync();
-      hiddenStore = db.hiddenProjectsDao;
+      hiddenStore = db.projectsDao;
       handler = OpenProjectHandler(plugin, hiddenStore);
     });
 

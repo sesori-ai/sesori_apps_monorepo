@@ -5,7 +5,7 @@ import "dart:io";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "persistence/daos/hidden_projects_dao.dart";
+import "persistence/daos/projects_dao.dart";
 import "routing/request_router.dart";
 import "sse/bridge_event_mapper.dart";
 
@@ -22,10 +22,10 @@ class DebugServer {
 
   DebugServer({
     required BridgePlugin plugin,
-    required HiddenProjectsDao hiddenProjectsDao,
+    required ProjectsDao projectsDao,
     required this.port,
   }) : _plugin = plugin,
-       _router = RequestRouter(plugin: plugin, hiddenProjectsDao: hiddenProjectsDao),
+       _router = RequestRouter(plugin: plugin, projectsDao: projectsDao),
        _mapper = BridgeEventMapper(plugin);
 
   int? get boundPort => _server?.port;

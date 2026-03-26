@@ -1,17 +1,17 @@
-import "package:sesori_bridge/src/bridge/persistence/daos/hidden_projects_dao.dart";
+import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_database.dart";
 
 void main() {
-  group("HiddenProjectsDao", () {
+  group("ProjectsDao", () {
     late AppDatabase db;
-    late HiddenProjectsDao dao;
+    late ProjectsDao dao;
 
     setUp(() {
       db = createTestDatabase();
-      dao = db.hiddenProjectsDao;
+      dao = db.projectsDao;
     });
 
     tearDown(() async {
@@ -61,6 +61,23 @@ void main() {
 
       final hiddenIds = await dao.getHiddenProjectIds();
       expect(hiddenIds, equals({"/Users/alex/projects/my-app"}));
+    });
+
+    test("hiddenProjectIdsStream emits when hide/unhide changes hidden set", () async {
+      final expectation = expectLater(
+        dao.hiddenProjectIdsStream.take(3),
+        emitsInOrder([
+          equals(<String>{}),
+          equals({"project-1"}),
+          equals(<String>{}),
+        ]),
+      );
+
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      await dao.hideProject(projectId: "project-1");
+      await dao.unhideProject(projectId: "project-1");
+
+      await expectation;
     });
   });
 }

@@ -18,7 +18,7 @@ void main() {
     setUp(() async {
       plugin = _FakeBridgePlugin();
       db = createTestDatabase();
-      debugServer = DebugServer(plugin: plugin, hiddenProjectsDao: db.hiddenProjectsDao, port: 0);
+      debugServer = DebugServer(plugin: plugin, projectsDao: db.projectsDao, port: 0);
       await debugServer.start();
     });
 
@@ -65,7 +65,7 @@ void main() {
       final trackingDb = createTestDatabase();
       final trackingServer = DebugServer(
         plugin: trackingPlugin,
-        hiddenProjectsDao: trackingDb.hiddenProjectsDao,
+        projectsDao: trackingDb.projectsDao,
         port: 0,
       );
       await trackingServer.start();
@@ -97,7 +97,7 @@ void main() {
     setUp(() async {
       plugin = _FakeBridgePlugin();
       db = createTestDatabase();
-      debugServer = DebugServer(plugin: plugin, hiddenProjectsDao: db.hiddenProjectsDao, port: 0);
+      debugServer = DebugServer(plugin: plugin, projectsDao: db.projectsDao, port: 0);
       await debugServer.start();
     });
 

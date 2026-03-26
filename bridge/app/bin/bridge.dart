@@ -191,14 +191,14 @@ Future<void> main(List<String> args) async {
     plugin: plugin,
     pushNotificationService: pushNotificationService,
     tokenRefresher: tokenManager,
-    hiddenProjectsDao: db.hiddenProjectsDao,
+    projectsDao: db.projectsDao,
   );
   final session = orchestrator.create();
 
   // Create and start debug server if requested
   DebugServer? debugServer;
   if (debugPort != null) {
-    debugServer = DebugServer(plugin: plugin, hiddenProjectsDao: db.hiddenProjectsDao, port: debugPort);
+    debugServer = DebugServer(plugin: plugin, projectsDao: db.projectsDao, port: debugPort);
     try {
       await debugServer.start();
     } catch (e) {

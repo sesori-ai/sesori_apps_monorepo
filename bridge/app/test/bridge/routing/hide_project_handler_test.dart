@@ -1,6 +1,6 @@
 import "dart:convert";
 
-import "package:sesori_bridge/src/bridge/persistence/daos/hidden_projects_dao.dart";
+import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/routing/hide_project_handler.dart";
 import "package:test/test.dart";
@@ -11,12 +11,12 @@ import "routing_test_helpers.dart";
 void main() {
   group("HideProjectHandler", () {
     late AppDatabase db;
-    late HiddenProjectsDao dao;
+    late ProjectsDao dao;
     late HideProjectHandler handler;
 
     setUp(() {
       db = createTestDatabase();
-      dao = db.hiddenProjectsDao;
+      dao = db.projectsDao;
       handler = HideProjectHandler(dao);
     });
 

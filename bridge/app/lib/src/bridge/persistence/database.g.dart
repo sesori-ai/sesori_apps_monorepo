@@ -3,25 +3,24 @@
 part of 'database.dart';
 
 // ignore_for_file: type=lint
-class $HiddenProjectsTable extends HiddenProjects
-    with TableInfo<$HiddenProjectsTable, HiddenProject> {
+mixin $ProjectsTableTableToColumns implements Insertable<Project> {
+  String get projectId;
+  bool get hidden;
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['project_id'] = Variable<String>(projectId);
+    map['hidden'] = Variable<bool>(hidden);
+    return map;
+  }
+}
+
+class $ProjectsTableTable extends ProjectsTable
+    with TableInfo<$ProjectsTableTable, Project> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
-  $HiddenProjectsTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
-  @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
-    'id',
-    aliasedName,
-    false,
-    hasAutoIncrement: true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'PRIMARY KEY AUTOINCREMENT',
-    ),
-  );
+  $ProjectsTableTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _projectIdMeta = const VerificationMeta(
     'projectId',
   );
@@ -32,25 +31,34 @@ class $HiddenProjectsTable extends HiddenProjects
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
-    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _hiddenMeta = const VerificationMeta('hidden');
+  @override
+  late final GeneratedColumn<bool> hidden = GeneratedColumn<bool>(
+    'hidden',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("hidden" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
   );
   @override
-  List<GeneratedColumn> get $columns => [id, projectId];
+  List<GeneratedColumn> get $columns => [projectId, hidden];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
-  static const String $name = 'hidden_projects';
+  static const String $name = 'projects_table';
   @override
   VerificationContext validateIntegrity(
-    Insertable<HiddenProject> instance, {
+    Insertable<Project> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
-    if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    }
     if (data.containsKey('project_id')) {
       context.handle(
         _projectIdMeta,
@@ -59,140 +67,89 @@ class $HiddenProjectsTable extends HiddenProjects
     } else if (isInserting) {
       context.missing(_projectIdMeta);
     }
+    if (data.containsKey('hidden')) {
+      context.handle(
+        _hiddenMeta,
+        hidden.isAcceptableOrUnknown(data['hidden']!, _hiddenMeta),
+      );
+    }
     return context;
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {id};
+  Set<GeneratedColumn> get $primaryKey => {projectId};
   @override
-  HiddenProject map(Map<String, dynamic> data, {String? tablePrefix}) {
+  Project map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return HiddenProject(
-      id: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}id'],
-      )!,
+    return Project(
       projectId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}project_id'],
       )!,
+      hidden: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}hidden'],
+      )!,
     );
   }
 
   @override
-  $HiddenProjectsTable createAlias(String alias) {
-    return $HiddenProjectsTable(attachedDatabase, alias);
+  $ProjectsTableTable createAlias(String alias) {
+    return $ProjectsTableTable(attachedDatabase, alias);
   }
+
+  @override
+  bool get withoutRowId => true;
 }
 
-class HiddenProject extends DataClass implements Insertable<HiddenProject> {
-  final int id;
-  final String projectId;
-  const HiddenProject({required this.id, required this.projectId});
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
-    map['project_id'] = Variable<String>(projectId);
-    return map;
-  }
-
-  HiddenProjectsCompanion toCompanion(bool nullToAbsent) {
-    return HiddenProjectsCompanion(id: Value(id), projectId: Value(projectId));
-  }
-
-  factory HiddenProject.fromJson(
-    Map<String, dynamic> json, {
-    ValueSerializer? serializer,
-  }) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return HiddenProject(
-      id: serializer.fromJson<int>(json['id']),
-      projectId: serializer.fromJson<String>(json['projectId']),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
-      'projectId': serializer.toJson<String>(projectId),
-    };
-  }
-
-  HiddenProject copyWith({int? id, String? projectId}) =>
-      HiddenProject(id: id ?? this.id, projectId: projectId ?? this.projectId);
-  HiddenProject copyWithCompanion(HiddenProjectsCompanion data) {
-    return HiddenProject(
-      id: data.id.present ? data.id.value : this.id,
-      projectId: data.projectId.present ? data.projectId.value : this.projectId,
-    );
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('HiddenProject(')
-          ..write('id: $id, ')
-          ..write('projectId: $projectId')
-          ..write(')'))
-        .toString();
-  }
-
-  @override
-  int get hashCode => Object.hash(id, projectId);
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is HiddenProject &&
-          other.id == this.id &&
-          other.projectId == this.projectId);
-}
-
-class HiddenProjectsCompanion extends UpdateCompanion<HiddenProject> {
-  final Value<int> id;
+class ProjectsTableCompanion extends UpdateCompanion<Project> {
   final Value<String> projectId;
-  const HiddenProjectsCompanion({
-    this.id = const Value.absent(),
+  final Value<bool> hidden;
+  const ProjectsTableCompanion({
     this.projectId = const Value.absent(),
+    this.hidden = const Value.absent(),
   });
-  HiddenProjectsCompanion.insert({
-    this.id = const Value.absent(),
+  ProjectsTableCompanion.insert({
     required String projectId,
+    this.hidden = const Value.absent(),
   }) : projectId = Value(projectId);
-  static Insertable<HiddenProject> custom({
-    Expression<int>? id,
+  static Insertable<Project> custom({
     Expression<String>? projectId,
+    Expression<bool>? hidden,
   }) {
     return RawValuesInsertable({
-      if (id != null) 'id': id,
       if (projectId != null) 'project_id': projectId,
+      if (hidden != null) 'hidden': hidden,
     });
   }
 
-  HiddenProjectsCompanion copyWith({Value<int>? id, Value<String>? projectId}) {
-    return HiddenProjectsCompanion(
-      id: id ?? this.id,
+  ProjectsTableCompanion copyWith({
+    Value<String>? projectId,
+    Value<bool>? hidden,
+  }) {
+    return ProjectsTableCompanion(
       projectId: projectId ?? this.projectId,
+      hidden: hidden ?? this.hidden,
     );
   }
 
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    if (id.present) {
-      map['id'] = Variable<int>(id.value);
-    }
     if (projectId.present) {
       map['project_id'] = Variable<String>(projectId.value);
+    }
+    if (hidden.present) {
+      map['hidden'] = Variable<bool>(hidden.value);
     }
     return map;
   }
 
   @override
   String toString() {
-    return (StringBuffer('HiddenProjectsCompanion(')
-          ..write('id: $id, ')
-          ..write('projectId: $projectId')
+    return (StringBuffer('ProjectsTableCompanion(')
+          ..write('projectId: $projectId, ')
+          ..write('hidden: $hidden')
           ..write(')'))
         .toString();
   }
@@ -201,123 +158,125 @@ class HiddenProjectsCompanion extends UpdateCompanion<HiddenProject> {
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
-  late final $HiddenProjectsTable hiddenProjects = $HiddenProjectsTable(this);
-  late final HiddenProjectsDao hiddenProjectsDao = HiddenProjectsDao(
-    this as AppDatabase,
-  );
+  late final $ProjectsTableTable projectsTable = $ProjectsTableTable(this);
+  late final ProjectsDao projectsDao = ProjectsDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities => [hiddenProjects];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [projectsTable];
 }
 
-typedef $$HiddenProjectsTableCreateCompanionBuilder =
-    HiddenProjectsCompanion Function({
-      Value<int> id,
+typedef $$ProjectsTableTableCreateCompanionBuilder =
+    ProjectsTableCompanion Function({
       required String projectId,
+      Value<bool> hidden,
     });
-typedef $$HiddenProjectsTableUpdateCompanionBuilder =
-    HiddenProjectsCompanion Function({Value<int> id, Value<String> projectId});
+typedef $$ProjectsTableTableUpdateCompanionBuilder =
+    ProjectsTableCompanion Function({
+      Value<String> projectId,
+      Value<bool> hidden,
+    });
 
-class $$HiddenProjectsTableFilterComposer
-    extends Composer<_$AppDatabase, $HiddenProjectsTable> {
-  $$HiddenProjectsTableFilterComposer({
+class $$ProjectsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $ProjectsTableTable> {
+  $$ProjectsTableTableFilterComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<int> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnFilters(column),
-  );
-
   ColumnFilters<String> get projectId => $composableBuilder(
     column: $table.projectId,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnFilters<bool> get hidden => $composableBuilder(
+    column: $table.hidden,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
-class $$HiddenProjectsTableOrderingComposer
-    extends Composer<_$AppDatabase, $HiddenProjectsTable> {
-  $$HiddenProjectsTableOrderingComposer({
+class $$ProjectsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $ProjectsTableTable> {
+  $$ProjectsTableTableOrderingComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<int> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<String> get projectId => $composableBuilder(
     column: $table.projectId,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get hidden => $composableBuilder(
+    column: $table.hidden,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
-class $$HiddenProjectsTableAnnotationComposer
-    extends Composer<_$AppDatabase, $HiddenProjectsTable> {
-  $$HiddenProjectsTableAnnotationComposer({
+class $$ProjectsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ProjectsTableTable> {
+  $$ProjectsTableTableAnnotationComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<int> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
   GeneratedColumn<String> get projectId =>
       $composableBuilder(column: $table.projectId, builder: (column) => column);
+
+  GeneratedColumn<bool> get hidden =>
+      $composableBuilder(column: $table.hidden, builder: (column) => column);
 }
 
-class $$HiddenProjectsTableTableManager
+class $$ProjectsTableTableTableManager
     extends
         RootTableManager<
           _$AppDatabase,
-          $HiddenProjectsTable,
-          HiddenProject,
-          $$HiddenProjectsTableFilterComposer,
-          $$HiddenProjectsTableOrderingComposer,
-          $$HiddenProjectsTableAnnotationComposer,
-          $$HiddenProjectsTableCreateCompanionBuilder,
-          $$HiddenProjectsTableUpdateCompanionBuilder,
+          $ProjectsTableTable,
+          Project,
+          $$ProjectsTableTableFilterComposer,
+          $$ProjectsTableTableOrderingComposer,
+          $$ProjectsTableTableAnnotationComposer,
+          $$ProjectsTableTableCreateCompanionBuilder,
+          $$ProjectsTableTableUpdateCompanionBuilder,
           (
-            HiddenProject,
-            BaseReferences<_$AppDatabase, $HiddenProjectsTable, HiddenProject>,
+            Project,
+            BaseReferences<_$AppDatabase, $ProjectsTableTable, Project>,
           ),
-          HiddenProject,
+          Project,
           PrefetchHooks Function()
         > {
-  $$HiddenProjectsTableTableManager(
-    _$AppDatabase db,
-    $HiddenProjectsTable table,
-  ) : super(
+  $$ProjectsTableTableTableManager(_$AppDatabase db, $ProjectsTableTable table)
+    : super(
         TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
-              $$HiddenProjectsTableFilterComposer($db: db, $table: table),
+              $$ProjectsTableTableFilterComposer($db: db, $table: table),
           createOrderingComposer: () =>
-              $$HiddenProjectsTableOrderingComposer($db: db, $table: table),
+              $$ProjectsTableTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
-              $$HiddenProjectsTableAnnotationComposer($db: db, $table: table),
+              $$ProjectsTableTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
                 Value<String> projectId = const Value.absent(),
-              }) => HiddenProjectsCompanion(id: id, projectId: projectId),
+                Value<bool> hidden = const Value.absent(),
+              }) =>
+                  ProjectsTableCompanion(projectId: projectId, hidden: hidden),
           createCompanionCallback:
               ({
-                Value<int> id = const Value.absent(),
                 required String projectId,
-              }) =>
-                  HiddenProjectsCompanion.insert(id: id, projectId: projectId),
+                Value<bool> hidden = const Value.absent(),
+              }) => ProjectsTableCompanion.insert(
+                projectId: projectId,
+                hidden: hidden,
+              ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
@@ -326,27 +285,24 @@ class $$HiddenProjectsTableTableManager
       );
 }
 
-typedef $$HiddenProjectsTableProcessedTableManager =
+typedef $$ProjectsTableTableProcessedTableManager =
     ProcessedTableManager<
       _$AppDatabase,
-      $HiddenProjectsTable,
-      HiddenProject,
-      $$HiddenProjectsTableFilterComposer,
-      $$HiddenProjectsTableOrderingComposer,
-      $$HiddenProjectsTableAnnotationComposer,
-      $$HiddenProjectsTableCreateCompanionBuilder,
-      $$HiddenProjectsTableUpdateCompanionBuilder,
-      (
-        HiddenProject,
-        BaseReferences<_$AppDatabase, $HiddenProjectsTable, HiddenProject>,
-      ),
-      HiddenProject,
+      $ProjectsTableTable,
+      Project,
+      $$ProjectsTableTableFilterComposer,
+      $$ProjectsTableTableOrderingComposer,
+      $$ProjectsTableTableAnnotationComposer,
+      $$ProjectsTableTableCreateCompanionBuilder,
+      $$ProjectsTableTableUpdateCompanionBuilder,
+      (Project, BaseReferences<_$AppDatabase, $ProjectsTableTable, Project>),
+      Project,
       PrefetchHooks Function()
     >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
   $AppDatabaseManager(this._db);
-  $$HiddenProjectsTableTableManager get hiddenProjects =>
-      $$HiddenProjectsTableTableManager(_db, _db.hiddenProjects);
+  $$ProjectsTableTableTableManager get projectsTable =>
+      $$ProjectsTableTableTableManager(_db, _db.projectsTable);
 }

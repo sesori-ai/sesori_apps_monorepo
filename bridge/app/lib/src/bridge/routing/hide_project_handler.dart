@@ -2,7 +2,7 @@ import "dart:convert";
 
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../persistence/daos/hidden_projects_dao.dart";
+import "../persistence/daos/projects_dao.dart";
 import "request_handler.dart";
 
 /// Handles `POST /project/hide` — hides a project from listings.
@@ -11,7 +11,7 @@ import "request_handler.dart";
 /// slashes (it can be a filesystem path), so it is passed in the body rather
 /// than as a URL path parameter.
 class HideProjectHandler extends RequestHandler {
-  final HiddenProjectsDao _store;
+  final ProjectsDao _store;
 
   HideProjectHandler(this._store) : super(HttpMethod.post, "/project/hide");
 
