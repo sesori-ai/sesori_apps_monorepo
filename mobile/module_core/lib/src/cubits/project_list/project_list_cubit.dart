@@ -8,6 +8,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../capabilities/project/project_service.dart";
 import "../../capabilities/server_connection/connection_service.dart";
+import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/sse/sse_event_repository.dart";
 import "../../logging/logging.dart";
 import "../../platform/route_source.dart";
@@ -73,6 +74,13 @@ class ProjectListCubit extends Cubit<ProjectListState> {
             unawaited(refreshProjects());
           }),
     );
+
+    // 4. Connection reconnect: silent refresh when connection is restored.
+    //    skip(1) ignores the BehaviorSubject replay of the current status —
+    //    we only want to react to actual transitions (e.g. disconnected → connected).
+    _subscriptions.add(
+      _connectionService.status.skip(1).listen(_onConnectionStatusChanged),
+    );
   }
 
   void setActiveProject(Project project) {
@@ -90,15 +98,27 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     );
   }
 
+  void _onConnectionStatusChanged(ConnectionStatus status) {
+    logd("[ProjectList] connection status: ${status.runtimeType}");
+    if (isClosed) return;
+    if (status is ConnectionConnected && state is ProjectListLoaded) {
+      unawaited(refreshProjects());
+    }
+  }
+
   Future<void> loadProjects() async {
     emit(const ProjectListState.loading());
     await _fetchProjects();
   }
 
+  /// In-flight silent refresh, used for coalescing.
+  Future<bool>? _activeRefresh;
+
   /// Re-fetches projects without showing the full-screen loading indicator.
-  /// Returns `false` when the refresh fails so the UI can show feedback.
-  Future<bool> refreshProjects() async {
-    return _fetchProjects(silent: true);
+  /// Concurrent calls are coalesced: if a refresh is already in-flight, the
+  /// existing Future is returned instead of starting a second network request.
+  Future<bool> refreshProjects() {
+    return _activeRefresh ??= _fetchProjects(silent: true).whenComplete(() => _activeRefresh = null);
   }
 
   /// Calls the bridge API to hide the project, then optimistically removes

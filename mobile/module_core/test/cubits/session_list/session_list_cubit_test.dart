@@ -1,14 +1,17 @@
 import "dart:async";
 
 import "package:bloc_test/bloc_test.dart";
-import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
+import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/capabilities/sse/session_activity_info.dart";
 import "package:sesori_dart_core/src/cubits/session_list/session_list_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_list/session_list_state.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:test/test.dart";
 
 import "../../helpers/test_helpers.dart";
 
@@ -20,6 +23,7 @@ void main() {
     late MockConnectionService mockConnectionService;
     late MockSseEventRepository mockSseEventRepository;
     late StreamController<SseEvent> eventController;
+    late BehaviorSubject<ConnectionStatus> statusController;
 
     const projectId = "project-1";
 
@@ -28,13 +32,18 @@ void main() {
       mockConnectionService = MockConnectionService();
       mockSseEventRepository = MockSseEventRepository();
       eventController = StreamController<SseEvent>.broadcast();
+      statusController = BehaviorSubject<ConnectionStatus>.seeded(
+        const ConnectionStatus.disconnected(),
+      );
 
       // Must be stubbed before any cubit is built — constructor subscribes immediately.
       when(() => mockConnectionService.events).thenAnswer((_) => eventController.stream);
+      when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
     });
 
     tearDown(() async {
       await eventController.close();
+      await statusController.close();
     });
 
     /// Convenience factory — stubs must be set up before calling this.
@@ -245,9 +254,13 @@ void main() {
         final result = await cubit.createSession();
         expect(result?.id, "new-session");
       },
-      // createSession emits no state changes — only the initial load is skipped.
+      // createSession now optimistically inserts the new session into state.
       skip: 1,
-      expect: () => <SessionListState>[],
+      expect: () => [
+        isA<SessionListLoaded>()
+            .having((s) => s.sessions.length, "sessions count", 2)
+            .having((s) => s.sessions.first.id, "new session first", "new-session"),
+      ],
     );
 
     // -------------------------------------------------------------------------
@@ -686,6 +699,246 @@ void main() {
     // -------------------------------------------------------------------------
     // SSE events from other projects are ignored
     // -------------------------------------------------------------------------
+
+    blocTest<SessionListCubit, SessionListState>(
+      "SSE session.created for same project adds to list",
+      build: () {
+        const existing = Session(
+          id: "s1",
+          projectID: projectId,
+          directory: "/home/user/my-project",
+          title: "Existing",
+          time: SessionTime(created: 1, updated: 2),
+        );
+        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+          (_) async => ApiResponse.success([existing]),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        eventController.add(
+          SseEvent(
+            data: const SesoriSseEvent.sessionCreated(
+              info: Session(
+                id: "s2",
+                projectID: projectId,
+                directory: "/home/user/my-project",
+                title: "New",
+                time: SessionTime(created: 3, updated: 4),
+              ),
+            ),
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+      },
+      skip: 1,
+      expect: () => [
+        isA<SessionListLoaded>()
+            .having((s) => s.sessions.length, "sessions count", 2)
+            .having((s) => s.sessions.first.id, "new session first", "s2"),
+      ],
+    );
+
+    blocTest<SessionListCubit, SessionListState>(
+      "SSE session.updated for same project updates existing session",
+      build: () {
+        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+          (_) async => ApiResponse.success([
+            testSession(id: "s1", title: "Original"),
+          ]),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        eventController.add(
+          SseEvent(
+            data: SesoriSseEvent.sessionUpdated(
+              info: testSession(id: "s1", title: "Updated"),
+            ),
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+      },
+      skip: 1,
+      expect: () => [
+        isA<SessionListLoaded>()
+            .having((s) => s.sessions.length, "sessions count", 1)
+            .having((s) => s.sessions.first.title, "updated title", "Updated"),
+      ],
+    );
+
+    blocTest<SessionListCubit, SessionListState>(
+      "SSE session.deleted for same project removes from list",
+      build: () {
+        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+          (_) async => ApiResponse.success([
+            testSession(id: "s1", title: "First"),
+            testSession(id: "s2", title: "Second"),
+          ]),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        eventController.add(
+          SseEvent(
+            data: SesoriSseEvent.sessionDeleted(
+              info: testSession(id: "s1", title: "First"),
+            ),
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+      },
+      skip: 1,
+      expect: () => [
+        isA<SessionListLoaded>()
+            .having((s) => s.sessions.length, "sessions count", 1)
+            .having((s) => s.sessions.first.id, "remaining session", "s2"),
+      ],
+    );
+
+    blocTest<SessionListCubit, SessionListState>(
+      "SSE session.created for child session is ignored",
+      build: () {
+        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+          (_) async => ApiResponse.success([
+            testSession(id: "s1"),
+          ]),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        eventController.add(
+          SseEvent(
+            data: const SesoriSseEvent.sessionCreated(
+              info: Session(
+                id: "child-1",
+                projectID: projectId,
+                parentID: "s1",
+                directory: "/home/user/my-project",
+                title: "Child Session",
+                time: SessionTime(created: 1, updated: 2),
+              ),
+            ),
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+      },
+      skip: 1,
+      expect: () => <SessionListState>[],
+    );
+
+    blocTest<SessionListCubit, SessionListState>(
+      "connection reconnect triggers silent refresh",
+      build: () {
+        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+          (_) async => ApiResponse.success([
+            testSession(id: "s1", title: "First"),
+          ]),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+          (_) async => ApiResponse.success([
+            testSession(id: "s1", title: "First"),
+            testSession(id: "s2", title: "Second"),
+          ]),
+        );
+
+        const config = ServerConnectionConfig(
+          relayHost: "relay.example.com",
+          authToken: "test-token",
+        );
+        const health = HealthResponse(healthy: true, version: "0.1.200");
+        statusController.add(
+          const ConnectionStatus.connected(config: config, health: health),
+        );
+        await Future<void>.delayed(Duration.zero);
+      },
+      skip: 1,
+      expect: () => [
+        isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions count after reconnect", 2),
+      ],
+    );
+
+    blocTest<SessionListCubit, SessionListState>(
+      "rapid ConnectionConnected events coalesce into single refresh",
+      build: () {
+        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+          (_) async => ApiResponse.success([testSession(id: "s1")]),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        // Wait for initial load to complete.
+        await Future<void>.delayed(Duration.zero);
+        // Reset interaction count after initial load.
+        reset(mockSessionService);
+
+        // Use a Completer so the first refresh stays in-flight while the
+        // second ConnectionConnected arrives — this is what exercises the guard.
+        final completer = Completer<ApiResponse<List<Session>>>();
+        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer((_) => completer.future);
+
+        const config = ServerConnectionConfig(
+          relayHost: "relay.example.com",
+          authToken: "test-token",
+        );
+        const health = HealthResponse(healthy: true, version: "0.1.200");
+        const connected = ConnectionStatus.connected(config: config, health: health);
+
+        // Fire two rapid ConnectionConnected events.
+        statusController.add(connected);
+        statusController.add(connected);
+        await Future<void>.delayed(Duration.zero);
+
+        // Let the in-flight refresh complete.
+        completer.complete(ApiResponse.success([testSession(id: "s1")]));
+        await Future<void>.delayed(Duration.zero);
+      },
+      skip: 1,
+      // State is deduplicated (same data), so no new emissions — verify call count instead.
+      expect: () => <SessionListState>[],
+      verify: (_) {
+        // Should have been called only once despite two ConnectionConnected events.
+        verify(() => mockSessionService.listSessions(projectId: projectId)).called(1);
+      },
+    );
+
+    blocTest<SessionListCubit, SessionListState>(
+      "ConnectionConnected while state is loading does not trigger refresh",
+      build: () {
+        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+          (_) async => ApiResponse.success([testSession(id: "s1")]),
+        );
+
+        // Seed the status controller as Connected BEFORE building the cubit,
+        // so the cubit receives ConnectionConnected immediately on subscribe.
+        const config = ServerConnectionConfig(
+          relayHost: "relay.example.com",
+          authToken: "test-token",
+        );
+        const health = HealthResponse(healthy: true, version: "0.1.200");
+        statusController.add(
+          const ConnectionStatus.connected(config: config, health: health),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+      },
+      skip: 1,
+      verify: (_) {
+        // Only 1 call from the constructor's loadSessions().
+        // The ConnectionConnected should NOT trigger a second fetch.
+        verify(() => mockSessionService.listSessions(projectId: projectId)).called(1);
+      },
+    );
 
     blocTest<SessionListCubit, SessionListState>(
       "SSE session.created for a different project is ignored",
