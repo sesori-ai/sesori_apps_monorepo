@@ -470,6 +470,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     _isSending = true;
     _emitQueueUpdate();
 
+    var sendSucceeded = false;
     try {
       final current = state;
       final result = await _service.sendMessage(
@@ -484,11 +485,18 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       if (result case ErrorResponse()) {
         _promptQueue.requeue(message);
         _emitQueueUpdate();
+      } else {
+        sendSucceeded = true;
       }
     } finally {
       _isSending = false;
     }
-    _tryDrainQueue();
+
+    // Continue draining only if the send succeeded. On failure the message
+    // stays re-queued and will be retried on the next reconnect event.
+    if (sendSucceeded) {
+      _tryDrainQueue();
+    }
   }
 
   /// Syncs [_promptQueue] items into the cubit state.

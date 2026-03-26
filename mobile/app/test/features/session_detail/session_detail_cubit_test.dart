@@ -882,6 +882,17 @@ void main() {
           ["will fail"],
         ),
       ],
+      verify: (_) {
+        verify(
+          () => mockSessionService.sendMessage(
+            sessionId,
+            "will fail",
+            agent: any(named: "agent"),
+            providerID: any(named: "providerID"),
+            modelID: any(named: "modelID"),
+          ),
+        ).called(1);
+      },
     );
   });
 }
