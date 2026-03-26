@@ -192,7 +192,6 @@ MessageWithParts testMessageWithParts({String? id}) {
       id: messageId,
       role: "assistant",
       sessionID: "session-1",
-      time: const MessageTime(created: 1700000000000),
     ),
     parts: [
       MessagePart(

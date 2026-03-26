@@ -33,7 +33,6 @@ class ConnectionService {
   RelayClient? _relayClient;
   StreamSubscription<RelaySseEvent>? _relaySseSubscription;
   StreamSubscription<BridgeStatus>? _bridgeStatusSubscription;
-  Timer? _heartbeatWatchdog;
   Timer? _reconnectTimer;
   int _requestCounter = 0;
   final Random _requestIdRandom = Random();
@@ -41,7 +40,6 @@ class ConnectionService {
   Duration _relayReconnectBackoff = const Duration(seconds: 1);
   bool _isInBackground = false;
 
-  static const _heartbeatTimeout = Duration(seconds: 15);
   static const _maxRelayReconnectBackoff = Duration(seconds: 30);
 
   ConnectionService(
@@ -137,7 +135,6 @@ class ConnectionService {
   ) => _connectViaRelay(config);
 
   Future<ApiResponse<HealthResponse>> _connectViaRelay(ServerConnectionConfig config) async {
-    _heartbeatWatchdog?.cancel();
     await _disconnectRelayClient();
 
     final relayClient = RelayClient(
@@ -203,7 +200,6 @@ class ConnectionService {
   /// Manually disconnect. Clears config, closes SSE, cancels timers.
   void disconnect() {
     unawaited(_disconnectRelayClient());
-    _heartbeatWatchdog?.cancel();
     _status.add(const ConnectionStatus.disconnected());
   }
 
@@ -293,19 +289,10 @@ class ConnectionService {
 
       logd("[SSE] event: ${eventData.runtimeType}");
 
-      if (eventData is SesoriServerConnected || eventData is SesoriServerHeartbeat) {
-        _resetHeartbeatWatchdog();
-      }
-
       _events.add(SseEvent(data: eventData, directory: json["directory"] as String?));
     } catch (e, st) {
       loge("Failed to parse SSE frame", e, st);
     }
-  }
-
-  void _resetHeartbeatWatchdog() {
-    _heartbeatWatchdog?.cancel();
-    _heartbeatWatchdog = Timer(_heartbeatTimeout, _onRelayConnectionDrop);
   }
 
   Future<void> _disconnectRelayClient() async {
@@ -358,7 +345,6 @@ class ConnectionService {
     if (_isInBackground) {
       logd("App is backgrounded — deferring reconnect to foreground resume");
       unawaited(_disconnectRelayClient());
-      _heartbeatWatchdog?.cancel();
       _status.add(ConnectionStatus.connectionLost(config: config));
       return;
     }
@@ -371,7 +357,6 @@ class ConnectionService {
         _authRetryCount++;
         logd("Auth close code $closeCode - attempting token refresh (attempt $_authRetryCount)");
         unawaited(_disconnectRelayClient());
-        _heartbeatWatchdog?.cancel();
         _status.add(ConnectionStatus.reconnecting(config: config));
         unawaited(_reconnectRelayWithRefresh(config));
         return;
@@ -383,13 +368,11 @@ class ConnectionService {
         logw("Relay closed with terminal closeCode=$closeCode, stopping reconnect loop");
       }
       unawaited(_disconnectRelayClient());
-      _heartbeatWatchdog?.cancel();
       _status.add(ConnectionStatus.connectionLost(config: config));
       return;
     }
 
     unawaited(_disconnectRelayClient());
-    _heartbeatWatchdog?.cancel();
     _status.add(ConnectionStatus.reconnecting(config: config));
 
     unawaited(_reconnectRelayWithRefresh(config));
@@ -478,7 +461,6 @@ class ConnectionService {
   void dispose() {
     _reconnectTimer?.cancel();
     unawaited(_disconnectRelayClient());
-    _heartbeatWatchdog?.cancel();
     _compositeSubscription.dispose();
     _events.close();
     _status.close();

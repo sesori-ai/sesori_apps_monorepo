@@ -355,7 +355,6 @@ void main() {
           id: "msg-new",
           role: "user",
           sessionID: sessionId,
-          time: MessageTime(created: 1700000000001),
         );
         sessionEvents.add(const SesoriMessageUpdated(info: message));
       },
