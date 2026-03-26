@@ -214,12 +214,12 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       ]);
       if (isClosed) return;
 
-      final messagesResponse = responses[0] as ApiResponse<List<MessageWithParts>>;
-      final questionsResponse = responses[1] as ApiResponse<List<PendingQuestion>>;
-      final childrenResponse = responses[2] as ApiResponse<List<Session>>;
-      final statusesResponse = responses[3] as ApiResponse<Map<String, SessionStatus>>;
-      final agentsResponse = responses[4] as ApiResponse<List<AgentInfo>>;
-      final providersResponse = responses[5] as ApiResponse<ProviderListResponse>;
+      final messagesResponse = responses[0]! as ApiResponse<List<MessageWithParts>>;
+      final questionsResponse = responses[1]! as ApiResponse<List<PendingQuestion>>;
+      final childrenResponse = responses[2]! as ApiResponse<List<Session>>;
+      final statusesResponse = responses[3]! as ApiResponse<Map<String, SessionStatus>>;
+      final agentsResponse = responses[4]! as ApiResponse<List<AgentInfo>>;
+      final providersResponse = responses[5]! as ApiResponse<ProviderListResponse>;
 
       final messages = switch (messagesResponse) {
         SuccessResponse(:final data) => data,

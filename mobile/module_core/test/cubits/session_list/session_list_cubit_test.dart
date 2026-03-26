@@ -1315,7 +1315,7 @@ void main() {
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero); // let initial load complete
-        (mockConnectionService as MockConnectionService).emitStaleReconnect();
+        mockConnectionService.emitStaleReconnect();
         await Future<void>.delayed(Duration.zero); // let refresh start
       },
       expect: () => [
@@ -1338,11 +1338,11 @@ void main() {
       },
       act: (cubit) async {
         // Emit stale while still loading
-        (mockConnectionService as MockConnectionService).emitStaleReconnect();
+        mockConnectionService.emitStaleReconnect();
         await Future<void>.delayed(Duration.zero);
       },
       skip: 1, // Skip the initial loading state
-      expect: () => [
+      expect: () => <SessionListState>[
         // No additional states from stale signal since state is not loaded
       ],
     );
@@ -1361,7 +1361,7 @@ void main() {
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero); // let initial load complete
         // Emit both stale and ConnectionConnected simultaneously
-        (mockConnectionService as MockConnectionService).emitStaleReconnect();
+        mockConnectionService.emitStaleReconnect();
         statusController.add(
           const ConnectionStatus.connected(
             config: ServerConnectionConfig(relayHost: "test.example.com"),
