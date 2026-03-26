@@ -34,20 +34,9 @@ class GetSessionMessagesHandler extends RequestHandler {
               role: m.info.role,
               id: m.info.id,
               sessionID: m.info.sessionID,
-              parentID: m.info.parentID,
               agent: m.info.agent,
               modelID: m.info.modelID,
               providerID: m.info.providerID,
-              cost: m.info.cost,
-              time: switch (m.info.time) {
-                PluginMessageTime(:final created, :final completed) => MessageTime(
-                  created: created,
-                  completed: completed,
-                ),
-                null => null,
-              },
-              finish: m.info.finish,
-              // tokens:
             ),
             parts: m.parts
                 .map(
@@ -58,7 +47,6 @@ class GetSessionMessagesHandler extends RequestHandler {
                     type: p.type,
                     text: p.text,
                     tool: p.tool,
-                    callID: p.callID,
                     state: switch (p.state) {
                       PluginToolState(:final status, :final title, :final output, :final error) => ToolState(
                         status: status,
@@ -68,19 +56,9 @@ class GetSessionMessagesHandler extends RequestHandler {
                       ),
                       null => null,
                     },
-                    mime: p.mime,
-                    url: p.url,
-                    filename: p.filename,
-                    cost: p.cost,
-                    reason: p.reason,
                     prompt: p.prompt,
                     description: p.description,
                     agent: p.agent,
-                    snapshot: p.snapshot,
-                    time: switch (p.time) {
-                      PluginPartTime(:final start, :final end) => PartTime(start: start, end: end),
-                      null => null,
-                    },
                   ),
                 )
                 .toList(),
