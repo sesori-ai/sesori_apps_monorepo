@@ -3,7 +3,6 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../persistence/hidden_projects_store.dart";
 import "abort_session_handler.dart";
-import "close_project_handler.dart";
 import "create_project_handler.dart";
 import "create_session_handler.dart";
 import "delete_session_handler.dart";
@@ -19,6 +18,7 @@ import "get_session_questions_handler.dart";
 import "get_session_statuses_handler.dart";
 import "get_sessions_handler.dart";
 import "health_check_handler.dart";
+import "hide_project_handler.dart";
 import "open_project_handler.dart";
 import "reject_question_handler.dart";
 import "reply_to_question_handler.dart";
@@ -65,7 +65,7 @@ class RequestRouter {
       RejectQuestionHandler(plugin),
       CreateProjectHandler(plugin),
       OpenProjectHandler(plugin, hiddenStore),
-      CloseProjectHandler(hiddenStore),
+      HideProjectHandler(hiddenStore),
       FilesystemSuggestionsHandler(),
     ];
   }

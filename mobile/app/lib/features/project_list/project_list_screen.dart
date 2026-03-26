@@ -70,7 +70,7 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
               title: Text(loc.hideProject),
               onTap: () {
                 Navigator.of(sheetContext).pop();
-                cubit.closeProject(project.id);
+                cubit.hideProject(project.id);
                 scaffoldMessenger.showSnackBar(
                   SnackBar(content: Text(loc.projectHidden)),
                 );
