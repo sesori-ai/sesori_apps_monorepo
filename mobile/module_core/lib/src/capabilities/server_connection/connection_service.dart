@@ -3,6 +3,7 @@ import "dart:convert";
 import "dart:math";
 
 import "package:injectable/injectable.dart";
+import "package:meta/meta.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -24,9 +25,11 @@ class ConnectionService {
   final AuthTokenProvider _authTokenProvider;
   final AuthSession _authSession;
   final FailureReporter _failureReporter;
+  final DateTime Function() _clock;
 
   final BehaviorSubject<ConnectionStatus> _status = BehaviorSubject.seeded(const ConnectionStatus.disconnected());
   final StreamController<SseEvent> _events = StreamController<SseEvent>.broadcast();
+  final StreamController<void> _staleReconnect = StreamController<void>.broadcast();
 
   final _compositeSubscription = CompositeSubscription();
 
@@ -39,8 +42,10 @@ class ConnectionService {
   int _authRetryCount = 0;
   Duration _relayReconnectBackoff = const Duration(seconds: 1);
   bool _isInBackground = false;
+  DateTime? _backgroundedAt;
 
   static const _maxRelayReconnectBackoff = Duration(seconds: 30);
+  static const sseBufferWindow = Duration(minutes: 5);
 
   ConnectionService(
     RelayCryptoService cryptoService,
@@ -48,13 +53,15 @@ class ConnectionService {
     AuthTokenProvider authTokenProvider,
     AuthSession authSession,
     LifecycleSource lifecycleSource,
-    FailureReporter failureReporter,
-  ) : _cryptoService = cryptoService,
-      _roomKeyStorage = roomKeyStorage,
-      _authTokenProvider = authTokenProvider,
-      _authSession = authSession,
-      _lifecycleSource = lifecycleSource,
-      _failureReporter = failureReporter {
+    FailureReporter failureReporter, {
+    @visibleForTesting DateTime Function() clock = DateTime.now,
+  }) : _cryptoService = cryptoService,
+       _roomKeyStorage = roomKeyStorage,
+       _authTokenProvider = authTokenProvider,
+       _authSession = authSession,
+       _lifecycleSource = lifecycleSource,
+       _failureReporter = failureReporter,
+       _clock = clock {
     _compositeSubscription.add(
       _lifecycleSource.lifecycleStateStream.listen((state) {
         switch (state) {
@@ -89,6 +96,7 @@ class ConnectionService {
   void _onAppBackgrounded() {
     if (_isInBackground) return;
     _isInBackground = true;
+    _backgroundedAt = _clock();
     logd("App backgrounded — pausing reconnect attempts");
     _reconnectTimer?.cancel();
   }
@@ -100,6 +108,8 @@ class ConnectionService {
   /// Push-based SSE event stream for all typed events.
   Stream<SseEvent> get events => _events.stream;
 
+  Stream<void> get staleReconnect => _staleReconnect.stream;
+
   /// Filtered stream of events scoped to [sessionId], already typed as
   /// [SesoriSessionEvent]. Enables exhaustive switching in session cubits
   /// without leaking unrelated event types.
@@ -110,6 +120,11 @@ class ConnectionService {
 
   /// Synchronous access to the current connection status.
   ConnectionStatus get currentStatus => _status.value;
+
+  @visibleForTesting
+  void emitStatusForTesting(ConnectionStatus status) {
+    _status.add(status);
+  }
 
   /// The active config, or null if disconnected.
   ServerConnectionConfig? get activeConfig => switch (_status.value) {
@@ -329,6 +344,16 @@ class ConnectionService {
     _isInBackground = false;
     logd("App resumed — checking connection state");
 
+    final backgroundedAt = _backgroundedAt;
+    _backgroundedAt = null;
+    if (backgroundedAt != null) {
+      final elapsed = _clock().difference(backgroundedAt);
+      if (elapsed >= sseBufferWindow && activeConfig != null) {
+        logd("App was backgrounded for $elapsed — emitting stale reconnect signal");
+        _staleReconnect.add(null);
+      }
+    }
+
     final status = _status.value;
     final config = activeConfig;
     if (config == null) return;
@@ -467,6 +492,7 @@ class ConnectionService {
     _reconnectTimer?.cancel();
     unawaited(_disconnectRelayClient());
     _compositeSubscription.dispose();
+    _staleReconnect.close();
     _events.close();
     _status.close();
   }
