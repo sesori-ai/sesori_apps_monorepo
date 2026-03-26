@@ -38,7 +38,9 @@ class SessionListCubit extends Cubit<SessionListState> {
        super(const SessionListState.loading()) {
     loadSessions();
     _subscriptions.add(_connectionService.events.listen(_handleEvent));
-    _subscriptions.add(_connectionService.status.listen(_onConnectionStatusChanged));
+    // skip(1) ignores the BehaviorSubject replay of the current status —
+    // we only want to react to actual transitions (e.g. disconnected → connected).
+    _subscriptions.add(_connectionService.status.skip(1).listen(_onConnectionStatusChanged));
     _subscriptions.add(
       _sseEventRepository.sessionActivity.listen(_onSessionActivityUpdated),
     );
@@ -149,7 +151,7 @@ class SessionListCubit extends Cubit<SessionListState> {
   void _onConnectionStatusChanged(ConnectionStatus status) {
     logd("[SessionList] connection status: ${status.runtimeType}");
     if (isClosed) return;
-    if (status is ConnectionConnected) {
+    if (status is ConnectionConnected && state is SessionListLoaded) {
       unawaited(refreshSessions());
     }
   }
@@ -354,10 +356,14 @@ class SessionListCubit extends Cubit<SessionListState> {
     await _fetchSessions();
   }
 
+  /// In-flight silent refresh, used for coalescing.
+  Future<bool>? _activeRefresh;
+
   /// Re-fetches sessions without showing the full-screen loading indicator.
-  /// Returns `false` when the refresh fails so the UI can show feedback.
-  Future<bool> refreshSessions() async {
-    return _fetchSessions(silent: true);
+  /// Concurrent calls are coalesced: if a refresh is already in-flight, the
+  /// existing Future is returned instead of starting a second network request.
+  Future<bool> refreshSessions() {
+    return _activeRefresh ??= _fetchSessions(silent: true).whenComplete(() => _activeRefresh = null);
   }
 
   Future<bool> _fetchSessions({bool silent = false}) async {

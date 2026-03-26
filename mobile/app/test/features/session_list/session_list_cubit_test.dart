@@ -867,6 +867,80 @@ void main() {
     );
 
     blocTest<SessionListCubit, SessionListState>(
+      "rapid ConnectionConnected events coalesce into single refresh",
+      build: () {
+        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+          (_) async => ApiResponse.success([testSession(id: "s1")]),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        // Wait for initial load to complete.
+        await Future<void>.delayed(Duration.zero);
+        // Reset interaction count after initial load.
+        reset(mockSessionService);
+
+        // Use a Completer so the first refresh stays in-flight while the
+        // second ConnectionConnected arrives — this is what exercises the guard.
+        final completer = Completer<ApiResponse<List<Session>>>();
+        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer((_) => completer.future);
+
+        const config = ServerConnectionConfig(
+          relayHost: "relay.example.com",
+          authToken: "test-token",
+        );
+        const health = HealthResponse(healthy: true, version: "0.1.200");
+        const connected = ConnectionStatus.connected(config: config, health: health);
+
+        // Fire two rapid ConnectionConnected events.
+        statusController.add(connected);
+        statusController.add(connected);
+        await Future<void>.delayed(Duration.zero);
+
+        // Let the in-flight refresh complete.
+        completer.complete(ApiResponse.success([testSession(id: "s1")]));
+        await Future<void>.delayed(Duration.zero);
+      },
+      skip: 1,
+      // State is deduplicated (same data), so no new emissions — verify call count instead.
+      expect: () => <SessionListState>[],
+      verify: (_) {
+        // Should have been called only once despite two ConnectionConnected events.
+        verify(() => mockSessionService.listSessions(projectId: projectId)).called(1);
+      },
+    );
+
+    blocTest<SessionListCubit, SessionListState>(
+      "ConnectionConnected while state is loading does not trigger refresh",
+      build: () {
+        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+          (_) async => ApiResponse.success([testSession(id: "s1")]),
+        );
+
+        // Seed the status controller as Connected BEFORE building the cubit,
+        // so the cubit receives ConnectionConnected immediately on subscribe.
+        const config = ServerConnectionConfig(
+          relayHost: "relay.example.com",
+          authToken: "test-token",
+        );
+        const health = HealthResponse(healthy: true, version: "0.1.200");
+        statusController.add(
+          const ConnectionStatus.connected(config: config, health: health),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+      },
+      skip: 1,
+      verify: (_) {
+        // Only 1 call from the constructor's loadSessions().
+        // The ConnectionConnected should NOT trigger a second fetch.
+        verify(() => mockSessionService.listSessions(projectId: projectId)).called(1);
+      },
+    );
+
+    blocTest<SessionListCubit, SessionListState>(
       "SSE session.created for a different project is ignored",
       build: () {
         when(
