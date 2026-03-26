@@ -1,6 +1,20 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+/// Maps [PluginMessagePartType] to [MessagePartType] with compile-time safety.
+/// An exhaustive switch ensures any new enum value causes a compile error here,
+/// rather than a runtime crash from `values.byName()`.
+MessagePartType _mapPartType(PluginMessagePartType type) => switch (type) {
+  PluginMessagePartType.text => MessagePartType.text,
+  PluginMessagePartType.reasoning => MessagePartType.reasoning,
+  PluginMessagePartType.tool => MessagePartType.tool,
+  PluginMessagePartType.subtask => MessagePartType.subtask,
+  PluginMessagePartType.stepStart => MessagePartType.stepStart,
+  PluginMessagePartType.stepFinish => MessagePartType.stepFinish,
+  PluginMessagePartType.file => MessagePartType.file,
+  PluginMessagePartType.snapshot => MessagePartType.snapshot,
+};
+
 /// Maps [BridgeSseEvent]s from the plugin to [SesoriSseEvent]s for relay delivery.
 ///
 /// Handles all event type conversions and builds the projects summary event.
@@ -58,7 +72,7 @@ class BridgeEventMapper {
             id: truncated.id,
             sessionID: truncated.sessionID,
             messageID: truncated.messageID,
-            type: MessagePartType.values.byName(truncated.type.name),
+            type: _mapPartType(truncated.type),
             text: truncated.text,
             tool: truncated.tool,
             state: switch (truncated.state) {
@@ -219,12 +233,15 @@ class BridgeEventMapper {
   }
 
   /// Returns [part] with tool output truncated to [maxToolOutputLength]
-  /// characters, or the original part if no truncation is needed.
+  /// runes, or the original part if no truncation is needed.
+  /// Uses rune-based truncation to avoid splitting UTF-16 surrogate pairs.
   PluginMessagePart _truncateToolOutput(PluginMessagePart part) {
     final output = part.state?.output;
     if (output == null || output.length <= maxToolOutputLength) return part;
     return part.copyWith(
-      state: part.state!.copyWith(output: output.substring(0, maxToolOutputLength)),
+      state: part.state!.copyWith(
+        output: String.fromCharCodes(output.runes.take(maxToolOutputLength)),
+      ),
     );
   }
 }

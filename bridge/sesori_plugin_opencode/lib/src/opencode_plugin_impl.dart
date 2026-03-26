@@ -515,7 +515,10 @@ class OpenCodePlugin implements BridgePlugin {
     );
   }
 
-  PluginMessagePartType _toPluginPartType(String type) => switch (type) {
+  /// Maps an OpenCode part type string to [PluginMessagePartType].
+  /// Unknown types are mapped to [PluginMessagePartType.file] (invisible)
+  /// to avoid forwarding unsupported data to mobile.
+  static PluginMessagePartType _toPluginPartType({required String type}) => switch (type) {
     "text" => PluginMessagePartType.text,
     "reasoning" => PluginMessagePartType.reasoning,
     "tool" => PluginMessagePartType.tool,
@@ -532,7 +535,7 @@ class OpenCodePlugin implements BridgePlugin {
       id: raw.id,
       sessionID: raw.sessionID,
       messageID: raw.messageID,
-      type: _toPluginPartType(raw.type),
+      type: _toPluginPartType(type: raw.type),
       text: raw.text,
       tool: raw.tool,
       state: switch (raw.state) {
@@ -540,7 +543,7 @@ class OpenCodePlugin implements BridgePlugin {
           status: status,
           title: title,
           output: output != null && output.length > maxToolOutputLength
-              ? output.substring(0, maxToolOutputLength)
+              ? String.fromCharCodes(output.runes.take(maxToolOutputLength))
               : output,
           error: error,
         ),
