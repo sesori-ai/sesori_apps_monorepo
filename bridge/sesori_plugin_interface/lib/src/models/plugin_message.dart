@@ -25,11 +25,13 @@ enum PluginMessagePartType {
   @JsonValue("file")
   file,
   @JsonValue("snapshot")
-  snapshot
+  snapshot,
+  @JsonValue("unknown")
+  unknown
   ;
 
   /// Whether this part type is visible to mobile (rendered in the UI).
-  bool get isVisible => this != file && this != snapshot;
+  bool get isVisible => this != file && this != snapshot && this != unknown;
 }
 
 @freezed

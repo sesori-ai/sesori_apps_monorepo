@@ -36,6 +36,7 @@ const _$PluginMessagePartTypeEnumMap = {
   PluginMessagePartType.stepFinish: 'step-finish',
   PluginMessagePartType.file: 'file',
   PluginMessagePartType.snapshot: 'snapshot',
+  PluginMessagePartType.unknown: 'unknown',
 };
 
 Map<String, dynamic> _$PluginToolStateToJson(_PluginToolState instance) =>

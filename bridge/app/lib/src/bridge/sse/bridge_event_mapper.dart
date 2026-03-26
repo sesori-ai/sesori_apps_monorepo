@@ -1,19 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-/// Maps [PluginMessagePartType] to [MessagePartType] with compile-time safety.
-/// An exhaustive switch ensures any new enum value causes a compile error here,
-/// rather than a runtime crash from `values.byName()`.
-MessagePartType _mapPartType(PluginMessagePartType type) => switch (type) {
-  PluginMessagePartType.text => MessagePartType.text,
-  PluginMessagePartType.reasoning => MessagePartType.reasoning,
-  PluginMessagePartType.tool => MessagePartType.tool,
-  PluginMessagePartType.subtask => MessagePartType.subtask,
-  PluginMessagePartType.stepStart => MessagePartType.stepStart,
-  PluginMessagePartType.stepFinish => MessagePartType.stepFinish,
-  PluginMessagePartType.file => MessagePartType.file,
-  PluginMessagePartType.snapshot => MessagePartType.snapshot,
-};
+import "../plugin_to_shared_mapping.dart";
 
 /// Maps [BridgeSseEvent]s from the plugin to [SesoriSseEvent]s for relay delivery.
 ///
@@ -67,28 +55,7 @@ class BridgeEventMapper {
       case BridgeSseMessagePartUpdated(:final part):
         if (!part.type.isVisible) return null;
         final truncated = _truncateToolOutput(part);
-        return SesoriSseEvent.messagePartUpdated(
-          part: MessagePart(
-            id: truncated.id,
-            sessionID: truncated.sessionID,
-            messageID: truncated.messageID,
-            type: _mapPartType(truncated.type),
-            text: truncated.text,
-            tool: truncated.tool,
-            state: switch (truncated.state) {
-              PluginToolState(:final status, :final title, :final output, :final error) => ToolState(
-                status: status,
-                title: title,
-                output: output,
-                error: error,
-              ),
-              null => null,
-            },
-            prompt: truncated.prompt,
-            description: truncated.description,
-            agent: truncated.agent,
-          ),
-        );
+        return SesoriSseEvent.messagePartUpdated(part: truncated.toShared());
       case BridgeSseMessagePartDelta(
         :final sessionID,
         :final messageID,

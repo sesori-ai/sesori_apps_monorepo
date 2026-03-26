@@ -516,8 +516,8 @@ class OpenCodePlugin implements BridgePlugin {
   }
 
   /// Maps an OpenCode part type string to [PluginMessagePartType].
-  /// Unknown types are mapped to [PluginMessagePartType.file] (invisible)
-  /// to avoid forwarding unsupported data to mobile.
+  /// Unknown types are mapped to [PluginMessagePartType.unknown] (invisible)
+  /// and logged as a warning so new types are noticed.
   static PluginMessagePartType _toPluginPartType({required String type}) => switch (type) {
     "text" => PluginMessagePartType.text,
     "reasoning" => PluginMessagePartType.reasoning,
@@ -527,7 +527,10 @@ class OpenCodePlugin implements BridgePlugin {
     "step-finish" => PluginMessagePartType.stepFinish,
     "file" => PluginMessagePartType.file,
     "snapshot" => PluginMessagePartType.snapshot,
-    _ => PluginMessagePartType.file,
+    _ => () {
+      Log.w("Unknown message part type: '$type' — filtering out");
+      return PluginMessagePartType.unknown;
+    }(),
   };
 
   PluginMessagePart _mapMessagePart(MessagePart raw) {
