@@ -102,10 +102,13 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     logd("[ProjectList] connection status: ${status.runtimeType}");
     if (isClosed) return;
     if (status is ConnectionConnected) {
-      if (state is ProjectListLoaded) {
-        unawaited(refreshProjects());
-      } else if (state is ProjectListFailed) {
-        unawaited(loadProjects());
+      switch (state) {
+        case ProjectListLoaded():
+          unawaited(refreshProjects());
+        case ProjectListFailed():
+          unawaited(loadProjects());
+        case ProjectListLoading():
+          break; // Load already in progress.
       }
     }
   }
