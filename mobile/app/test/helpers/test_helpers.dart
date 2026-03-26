@@ -164,16 +164,20 @@ Project testProject({String? path, String? name}) {
 Session testSession({
   String? id,
   String? title,
+  String? parentID,
+  int? createdAt,
+  int? updatedAt,
   DateTime? archivedAt,
 }) {
   return Session(
     id: id ?? "session-1",
     projectID: "project-1",
     directory: "/home/user/my-project",
+    parentID: parentID,
     title: title,
     time: SessionTime(
-      created: 1700000000000,
-      updated: 1700000000000,
+      created: createdAt ?? 1700000000000,
+      updated: updatedAt ?? 1700000000000,
       archived: archivedAt?.millisecondsSinceEpoch,
     ),
   );

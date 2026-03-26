@@ -92,7 +92,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         final childSessions = switch (childrenResponse) {
           SuccessResponse(:final data) => data,
           ErrorResponse() => <Session>[],
-        };
+        }..sort((a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0));
         // Filter statuses to only include child session IDs.
         final childIds = childSessions.map((c) => c.id).toSet();
         final childStatuses = Map<String, SessionStatus>.fromEntries(
@@ -256,7 +256,9 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (current.children.any((c) => c.id == child.id)) return;
 
     if (isClosed) return;
-    emit(current.copyWith(children: [...current.children, child]));
+    final updated = [...current.children, child]
+      ..sort((a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0));
+    emit(current.copyWith(children: updated));
   }
 
   void _onChildSessionStatus(String sessionId, SessionStatus status) {
