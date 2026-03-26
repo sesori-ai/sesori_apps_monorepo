@@ -38,7 +38,9 @@ class _BackgroundTasksBarState extends State<BackgroundTasksBar> {
 
   List<Session> get _runningTasks => widget.children.where(_isRunning).toList();
 
-  List<Session> get _completedTasks => widget.children.where((c) => !_isRunning(c)).toList();
+  List<Session> get _completedTasks =>
+      widget.children.where((c) => !_isRunning(c)).toList()
+        ..sort((a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0));
 
   @override
   Widget build(BuildContext context) {
