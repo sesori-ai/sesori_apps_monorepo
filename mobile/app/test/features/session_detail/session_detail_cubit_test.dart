@@ -472,6 +472,74 @@ void main() {
     );
 
     blocTest<SessionDetailCubit, SessionDetailState>(
+      "children are sorted most-recent-first on initial load",
+      build: () {
+        final oldChild = testSession(id: "child-old", parentID: sessionId, updatedAt: 1000);
+        final midChild = testSession(id: "child-mid", parentID: sessionId, updatedAt: 2000);
+        final newChild = testSession(id: "child-new", parentID: sessionId, updatedAt: 3000);
+
+        // Service returns children in ASC order (oldest first).
+        when(
+          () => mockSessionService.getChildren(sessionId),
+        ).thenAnswer((_) async => ApiResponse.success([oldChild, midChild, newChild]));
+
+        return SessionDetailCubit(
+          mockSessionService,
+          mockConnectionService,
+          sessionId: sessionId,
+          notificationCanceller: mockNotificationCanceller,
+        );
+      },
+      expect: () => [
+        isA<SessionDetailLoaded>().having(
+          (state) => state.children.map((c) => c.id).toList(),
+          "children ids (DESC)",
+          ["child-new", "child-mid", "child-old"],
+        ),
+      ],
+    );
+
+    blocTest<SessionDetailCubit, SessionDetailState>(
+      "new child session via SSE is inserted in sorted order",
+      build: () {
+        final existingChild = testSession(id: "child-1", parentID: sessionId, updatedAt: 1000);
+
+        when(
+          () => mockSessionService.getChildren(sessionId),
+        ).thenAnswer((_) async => ApiResponse.success([existingChild]));
+
+        return SessionDetailCubit(
+          mockSessionService,
+          mockConnectionService,
+          sessionId: sessionId,
+          notificationCanceller: mockNotificationCanceller,
+        );
+      },
+      act: (cubit) async {
+        await _awaitLoaded(cubit);
+
+        // A newer child session arrives via global SSE event.
+        final newerChild = testSession(id: "child-2", parentID: sessionId, updatedAt: 5000);
+        globalEvents.add(SseEvent(data: SesoriSessionCreated(info: newerChild)));
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      },
+      expect: () => [
+        // Initial load with one child.
+        isA<SessionDetailLoaded>().having(
+          (state) => state.children.map((c) => c.id).toList(),
+          "children ids",
+          ["child-1"],
+        ),
+        // After SSE event, newer child sorted first.
+        isA<SessionDetailLoaded>().having(
+          (state) => state.children.map((c) => c.id).toList(),
+          "children ids (DESC)",
+          ["child-2", "child-1"],
+        ),
+      ],
+    );
+
+    blocTest<SessionDetailCubit, SessionDetailState>(
       "close disposes event subscriptions",
       build: () => SessionDetailCubit(
         mockSessionService,
