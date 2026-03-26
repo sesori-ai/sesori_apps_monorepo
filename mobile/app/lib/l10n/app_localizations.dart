@@ -439,6 +439,12 @@ abstract class AppLocalizations {
   /// **'Follow'**
   String get sessionDetailFollowOutput;
 
+  /// No description provided for @sessionDetailJumpToLatest.
+  ///
+  /// In en, this message translates to:
+  /// **'Jump to latest'**
+  String get sessionDetailJumpToLatest;
+
   /// No description provided for @questionModalTitle.
   ///
   /// In en, this message translates to:

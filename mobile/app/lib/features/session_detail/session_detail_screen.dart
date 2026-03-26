@@ -314,7 +314,7 @@ class _PendingQuestionsBanner extends StatelessWidget {
   }
 }
 
-class _MessageList extends StatelessWidget {
+class _MessageList extends StatefulWidget {
   final List<MessageWithParts> messages;
   final Map<String, String> streamingText;
   final List<Session> children;
@@ -328,15 +328,39 @@ class _MessageList extends StatelessWidget {
   });
 
   @override
+  State<_MessageList> createState() => _MessageListState();
+}
+
+class _MessageListState extends State<_MessageList> {
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      reverse: true,
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: messages.length,
-      itemBuilder: (context, index) {
-        final message = messages[messages.length - 1 - index];
-        return _buildMessageWidget(message);
-      },
+    return Stack(
+      children: [
+        ListView.builder(
+          controller: _scrollController,
+          reverse: true,
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          itemCount: widget.messages.length,
+          itemBuilder: (context, index) {
+            final message = widget.messages[widget.messages.length - 1 - index];
+            return _buildMessageWidget(message);
+          },
+        ),
+      ],
     );
   }
 
@@ -347,9 +371,9 @@ class _MessageList extends StatelessWidget {
 
     return AssistantMessageCard(
       message: message,
-      streamingText: streamingText,
-      children: children,
-      childStatuses: childStatuses,
+      streamingText: widget.streamingText,
+      children: widget.children,
+      childStatuses: widget.childStatuses,
     );
   }
 }
