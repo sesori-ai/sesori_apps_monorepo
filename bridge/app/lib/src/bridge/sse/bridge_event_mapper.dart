@@ -15,7 +15,7 @@ class BridgeEventMapper {
       case BridgeSseServerConnected():
         return const SesoriSseEvent.serverConnected();
       case BridgeSseServerHeartbeat():
-        return const SesoriSseEvent.serverHeartbeat();
+        return null;
       case BridgeSseServerInstanceDisposed(:final directory):
         return SesoriSseEvent.serverInstanceDisposed(directory: directory);
       case BridgeSseGlobalDisposed():
@@ -26,12 +26,8 @@ class BridgeEventMapper {
         return _tryParseSseEvent({"type": "session.updated", "info": info});
       case BridgeSseSessionDeleted(:final info):
         return _tryParseSseEvent({"type": "session.deleted", "info": info});
-      case BridgeSseSessionDiff(:final sessionID, :final diff):
-        return _tryParseSseEvent({
-          "type": "session.diff",
-          "sessionID": sessionID,
-          "diff": diff,
-        });
+      case BridgeSseSessionDiff(:final sessionID):
+        return SesoriSseEvent.sessionDiff(sessionID: sessionID);
       case BridgeSseSessionError(:final sessionID):
         return SesoriSseEvent.sessionError(sessionID: sessionID);
       case BridgeSseSessionCompacted(:final sessionID):
@@ -55,7 +51,14 @@ class BridgeEventMapper {
           messageID: messageID,
         );
       case BridgeSseMessagePartUpdated(:final part):
-        return _tryParseSseEvent({"type": "message.part.updated", "part": part});
+        final partType = part["type"] as String?;
+        if (partType == "file" || partType == "snapshot") return null;
+
+        final modifiedPart = _truncateToolOutput(part);
+        return _tryParseSseEvent({
+          "type": "message.part.updated",
+          "part": modifiedPart,
+        });
       case BridgeSseMessagePartDelta(
         :final sessionID,
         :final messageID,
@@ -197,5 +200,20 @@ class BridgeEventMapper {
       Log.w("failed to parse SSE event from payload: $payload, error: $e");
       return null;
     }
+  }
+
+  /// Returns a copy of [part] with `state.output` truncated to 500 characters
+  /// if it exceeds that length, or the original map if no truncation is needed.
+  Map<String, dynamic> _truncateToolOutput(Map<String, dynamic> part) {
+    final state = part["state"];
+    if (state is! Map<String, dynamic>) return part;
+
+    final output = state["output"];
+    if (output is! String || output.length <= 500) return part;
+
+    return {
+      ...part,
+      "state": {...state, "output": output.substring(0, 500)},
+    };
   }
 }
