@@ -24,6 +24,7 @@ class TextPartWidget extends StatelessWidget {
       child: MarkdownBody(
         data: text,
         selectable: true,
+        onTapLink: handleMarkdownLinkTap,
         styleSheet: buildSessionMarkdownStyleSheet(theme),
       ),
     );

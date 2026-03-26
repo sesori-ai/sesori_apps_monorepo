@@ -148,6 +148,7 @@ class _ReasoningPartWidgetState extends State<ReasoningPartWidget> {
                               MarkdownBody(
                                 data: text,
                                 selectable: true,
+                                onTapLink: handleMarkdownLinkTap,
                                 styleSheet: buildSessionMarkdownStyleSheet(
                                   theme,
                                   paragraphStyle: theme.textTheme.bodySmall?.copyWith(
