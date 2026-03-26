@@ -615,6 +615,41 @@ void main() {
     );
 
     blocTest<ProjectListCubit, ProjectListState>(
+      "connection reconnect triggers loadProjects when state is ProjectListFailed",
+      build: () {
+        when(() => mockProjectService.listProjects()).thenAnswer(
+          (_) async => ApiResponse.error(ApiError.generic()),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        // Switch mock to succeed so the reconnect-triggered load works.
+        when(() => mockProjectService.listProjects()).thenAnswer(
+          (_) async => ApiResponse.success([testProject()]),
+        );
+        const config = ServerConnectionConfig(
+          relayHost: "relay.example.com",
+          authToken: "test-token",
+        );
+        const health = HealthResponse(healthy: true, version: "0.1.200");
+        statusController.add(
+          const ConnectionStatus.connected(config: config, health: health),
+        );
+        await Future<void>.delayed(Duration.zero);
+      },
+      skip: 1, // Skip the initial ProjectListFailed from constructor.
+      expect: () => [
+        isA<ProjectListLoading>(),
+        isA<ProjectListLoaded>().having(
+          (s) => s.projects.length,
+          "projects count after reconnect retry",
+          1,
+        ),
+      ],
+    );
+
+    blocTest<ProjectListCubit, ProjectListState>(
       "rapid ConnectionConnected events coalesce into single refresh",
       build: () {
         when(() => mockProjectService.listProjects()).thenAnswer(
