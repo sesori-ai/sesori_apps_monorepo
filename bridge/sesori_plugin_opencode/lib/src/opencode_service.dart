@@ -1,3 +1,4 @@
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart" show ProjectActivitySummary;
 
 import "../opencode_plugin.dart";
@@ -31,7 +32,12 @@ class OpenCodeService {
     required String sessionId,
     required String? directory,
   }) async {
-    return repository.api.getMessages(sessionId: sessionId, directory: directory);
+    try {
+      return await repository.api.getMessages(sessionId: sessionId, directory: directory);
+    } catch (e) {
+      Log.w("Failed to get messages for session $sessionId: $e");
+      return [];
+    }
   }
 
   bool handleSseEvent(SseEventData event, String? directory) {

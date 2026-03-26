@@ -16,7 +16,7 @@ class SSEManager {
   /// How long a disconnected subscriber's orphan queue stays valid.
   final Duration replayWindow;
 
-  final void Function(int bytes)? _onBytesSent;
+  final void Function(int bytes) _onBytesSent;
 
   /// Maximum number of events retained per subscriber queue.
   static const int maxQueueSize = 50000;
@@ -27,7 +27,7 @@ class SSEManager {
 
   List<int>? _roomKey;
 
-  SSEManager({required this.replayWindow, required void Function(int bytes)? onBytesSent}) : _onBytesSent = onBytesSent;
+  SSEManager({required this.replayWindow, required void Function(int bytes) onBytesSent}) : _onBytesSent = onBytesSent;
 
   /// Stores a copy of the room key used to encrypt outgoing SSE events.
   void setRoomKey(List<int> roomKey) {
@@ -159,7 +159,7 @@ class SSEManager {
       final relayMessage = RelayMessage.sseEvent(data: eventData);
       final payloadBytes = utf8.encode(jsonEncode(relayMessage.toJson()));
       Log.v("[sse] sending ${payloadBytes.length} bytes to connID=$connID");
-      _onBytesSent?.call(payloadBytes.length);
+      _onBytesSent(payloadBytes.length);
       final framed = await frame(payloadBytes, encryptor!);
       client.send(connID, framed);
     };

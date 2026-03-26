@@ -197,11 +197,7 @@ Future<void> main(List<String> args) async {
   final session = orchestrator.create();
 
   // Wire up bandwidth tracking when debug server is active
-  BandwidthTracker? bandwidthTracker;
-  if (debugPort != null) {
-    bandwidthTracker = BandwidthTracker();
-    session.bytesSent.listen((bytes) => bandwidthTracker!.record(bytes: bytes));
-  }
+  final bandwidthTracker = debugPort != null ? BandwidthTracker(bytesSent: session.bytesSent) : null;
 
   // Create and start debug server if requested
   DebugServer? debugServer;
@@ -229,18 +225,15 @@ Future<void> main(List<String> args) async {
   }
 
   // Run bridge; stop the server process on exit regardless of outcome
-  bandwidthTracker?.start();
   try {
     await session.run();
   } catch (e) {
     Log.e('$e');
-    bandwidthTracker?.stop();
-    await _shutdown(cmd, sigintSub, sigtermSub, debugServer, db);
+    await _shutdown(cmd, sigintSub, sigtermSub, debugServer, db, bandwidthTracker);
     exit(1);
   }
 
-  bandwidthTracker?.stop();
-  await _shutdown(cmd, sigintSub, sigtermSub, debugServer, db);
+  await _shutdown(cmd, sigintSub, sigtermSub, debugServer, db, bandwidthTracker);
 }
 
 /// Performs graceful shutdown: stops the server and cancels signal listeners.
@@ -253,11 +246,14 @@ Future<void> _shutdown(
   StreamSubscription<ProcessSignal>? sigtermSub,
   DebugServer? debugServer,
   AppDatabase db,
+  BandwidthTracker? bandwidthTracker,
 ) async {
   final safetyTimer = Timer(const Duration(seconds: 10), () {
     Log.e('Failed to finish gracefully');
     exit(0);
   });
+
+  bandwidthTracker?.dispose();
 
   await Future.wait([
     stopServer(serverProcess),
