@@ -493,23 +493,11 @@ abstract class AppLocalizations {
   /// **'Background task'**
   String get sessionDetailSubtaskUnnamed;
 
-  /// No description provided for @sessionDetailQueue.
-  ///
-  /// In en, this message translates to:
-  /// **'Queue message'**
-  String get sessionDetailQueue;
-
   /// No description provided for @sessionDetailQueuedMessage.
   ///
   /// In en, this message translates to:
   /// **'Queued'**
   String get sessionDetailQueuedMessage;
-
-  /// No description provided for @sessionDetailSendNow.
-  ///
-  /// In en, this message translates to:
-  /// **'Send now'**
-  String get sessionDetailSendNow;
 
   /// No description provided for @sessionDetailCancelQueued.
   ///

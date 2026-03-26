@@ -143,9 +143,7 @@
     }
   },
   "sessionDetailSubtaskUnnamed": "Background task",
-  "sessionDetailQueue": "Queue message",
   "sessionDetailQueuedMessage": "Queued",
-  "sessionDetailSendNow": "Send now",
   "sessionDetailCancelQueued": "Cancel",
   "sessionDetailPickerAgent": "Agent",
   "sessionDetailPickerModel": "Model",
