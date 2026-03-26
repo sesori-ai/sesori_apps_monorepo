@@ -72,6 +72,8 @@ Conventional commits: `fix:`, `feat:`, `ci:`, `docs:`, `chore:`.
 
 Branch naming: `type/short-description` (e.g. `feat/relay-reconnect`).
 
+Worktrees: Always create new worktrees inside the `.worktrees/` directory at the repo root (e.g. `.worktrees/feat-relay-reconnect`). Unless explicitly told otherwise, the worktree should start from the `main` branch.
+
 ## Testing
 
 | Location | Command |
