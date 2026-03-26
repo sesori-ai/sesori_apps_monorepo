@@ -274,6 +274,7 @@ class _QuestionModalState extends State<QuestionModal> {
                 MarkdownBody(
                   data: info.question,
                   selectable: true,
+                  onTapLink: handleMarkdownLinkTap,
                   styleSheet: buildSessionMarkdownStyleSheet(
                     theme,
                     paragraphStyle: theme.textTheme.bodyLarge,
