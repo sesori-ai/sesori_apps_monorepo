@@ -235,6 +235,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         _onChildSessionCreated(info);
       case SesoriSessionStatus(:final sessionID, :final status):
         _onChildSessionStatus(sessionID, status);
+      case SesoriSessionUpdated(:final info):
+        _onChildSessionUpdated(info);
       default:
         break;
     }
@@ -274,6 +276,20 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         childStatuses: {...current.childStatuses, sessionId: status},
       ),
     );
+  }
+
+  void _onChildSessionUpdated(Session updatedChild) {
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
+
+    // Only update if this is one of our child sessions.
+    final index = current.children.indexWhere((c) => c.id == updatedChild.id);
+    if (index < 0) return;
+
+    if (isClosed) return;
+    final updatedChildren = List<Session>.of(current.children);
+    updatedChildren[index] = updatedChild;
+    emit(current.copyWith(children: updatedChildren));
   }
 
   void _onMessageUpdated(Message message) {
