@@ -439,7 +439,7 @@ abstract class AppLocalizations {
   /// **'Follow'**
   String get sessionDetailFollowOutput;
 
-  /// No description provided for @sessionDetailJumpToLatest.
+  /// Text for the floating pill button that appears when the user scrolls up in the message list, allowing them to jump back to the newest messages.
   ///
   /// In en, this message translates to:
   /// **'Jump to latest'**
