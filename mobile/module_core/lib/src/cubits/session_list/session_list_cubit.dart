@@ -147,21 +147,23 @@ class SessionListCubit extends Cubit<SessionListState> {
   }
 
   /// Unarchives a session. Returns `true` on success so the screen can show
-  /// an undo toast.
+  /// a confirmation message.
+  ///
+  /// Unlike [archiveSession], this does NOT set [_undoSnapshot] because the
+  /// operation internally creates a new session (via fork + delete) with a
+  /// different ID, so the original cannot be restored.
   Future<bool> unarchiveSession(String sessionId) async {
     if (state is! SessionListLoaded) return false;
 
     final index = _allSessions.indexWhere((s) => s.id == sessionId);
     if (index < 0) return false;
 
-    // Store for undo before modifying.
-    _undoSnapshot = _allSessions[index];
+    // Store for rollback (NOT for undo — undo is disabled for unarchive).
+    final original = _allSessions[index];
 
-    // Optimistically mark as unarchived.
-    _allSessions = List<Session>.from(_allSessions);
-    _allSessions[index] = _allSessions[index].copyWith(
-      time: _allSessions[index].time?.copyWith(archived: null),
-    );
+    // Optimistically REMOVE the session (it's archived, so removing it
+    // from the list is the expected visual outcome).
+    _allSessions = List<Session>.from(_allSessions)..removeAt(index);
     _emitFiltered();
 
     final response = await _service.unarchiveSession(sessionId);
@@ -169,14 +171,14 @@ class SessionListCubit extends Cubit<SessionListState> {
 
     return switch (response) {
       SuccessResponse(:final data) => () {
-        // Replace with fresh server data.
+        // Insert the NEW session (which may have a different ID).
         _reinsertSession(data);
         return true;
       }(),
       ErrorResponse(:final error) => () {
         loge("Failed to unarchive session: $error");
-        // Rollback — restore the archived session.
-        _rollbackLastAction();
+        // Rollback — re-insert the ORIGINAL session.
+        _reinsertSession(original);
         return false;
       }(),
     };
