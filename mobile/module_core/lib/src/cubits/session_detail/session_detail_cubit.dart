@@ -26,7 +26,9 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   late final StreamSubscription<SesoriSessionEvent> _eventSubscription;
   late final StreamSubscription<SseEvent> _globalEventSubscription;
   late final StreamSubscription<ConnectionStatus> _connectionStatusSubscription;
+  late final StreamSubscription<void> _staleSubscription;
   late final StreamingTextBuffer _streamingBuffer;
+  Future<void>? _activeRefresh;
 
   /// Fires the [SesoriQuestionAsked] whenever a new question arrives, so the
   /// screen can auto-open the question modal.
@@ -49,6 +51,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     _eventSubscription = _connectionService.sessionEvents(_sessionId).listen(_handleEvent);
     _globalEventSubscription = _connectionService.events.listen(_handleGlobalEvent);
     _connectionStatusSubscription = _connectionService.status.listen(_onConnectionStatusChanged);
+    _staleSubscription = _connectionService.staleReconnect.listen((_) => _silentRefresh());
     _loadMessages();
   }
 
@@ -183,6 +186,108 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   }
 
   Future<void> reload() => _loadMessages();
+
+  void _silentRefresh() {
+    if (state is! SessionDetailLoaded) return;
+    _activeRefresh ??= _doSilentRefresh().whenComplete(() => _activeRefresh = null);
+  }
+
+  Future<void> _doSilentRefresh() async {
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
+
+    final preservedSelectedAgent = current.selectedAgent;
+    final preservedSelectedProviderID = current.selectedProviderID;
+    final preservedSelectedModelID = current.selectedModelID;
+
+    _streamingBuffer.clear();
+    emit(current.copyWith(isRefreshing: true, streamingText: const {}));
+
+    try {
+      final responses = await Future.wait<Object?>([
+        _service.getMessages(_sessionId),
+        _service.getPendingQuestions(_sessionId),
+        _service.getChildren(_sessionId),
+        _service.getSessionStatuses(),
+        _service.listAgents(),
+        _service.listProviders(),
+      ]);
+      if (isClosed) return;
+
+      final messagesResponse = responses[0] as ApiResponse<List<MessageWithParts>>;
+      final questionsResponse = responses[1] as ApiResponse<List<PendingQuestion>>;
+      final childrenResponse = responses[2] as ApiResponse<List<Session>>;
+      final statusesResponse = responses[3] as ApiResponse<Map<String, SessionStatus>>;
+      final agentsResponse = responses[4] as ApiResponse<List<AgentInfo>>;
+      final providersResponse = responses[5] as ApiResponse<ProviderListResponse>;
+
+      final messages = switch (messagesResponse) {
+        SuccessResponse(:final data) => data,
+        ErrorResponse(:final error) => throw StateError("messages: $error"),
+      };
+      final pendingQuestions = switch (questionsResponse) {
+        SuccessResponse(:final data) => data,
+        ErrorResponse(:final error) => throw StateError("questions: $error"),
+      };
+      final childSessions = switch (childrenResponse) {
+        SuccessResponse(:final data) => data,
+        ErrorResponse(:final error) => throw StateError("children: $error"),
+      };
+      final allStatuses = switch (statusesResponse) {
+        SuccessResponse(:final data) => data,
+        ErrorResponse(:final error) => throw StateError("statuses: $error"),
+      };
+      final allAgents = switch (agentsResponse) {
+        SuccessResponse(:final data) => data,
+        ErrorResponse(:final error) => throw StateError("agents: $error"),
+      };
+      final providerData = switch (providersResponse) {
+        SuccessResponse(:final data) => data,
+        ErrorResponse(:final error) => throw StateError("providers: $error"),
+      };
+
+      final latestAssistant = _latestAssistantMessage(messages);
+      final childIds = childSessions.map((c) => c.id).toSet();
+      final childStatuses = Map<String, SessionStatus>.fromEntries(
+        allStatuses.entries.where((e) => childIds.contains(e.key)),
+      );
+      final availableAgents = allAgents.where((a) => !a.hidden && a.mode != AgentMode.subagent).toList();
+      final availableProviders = providerData.items;
+
+      emit(
+        current.copyWith(
+          messages: messages,
+          streamingText: const {},
+          sessionStatus: allStatuses[_sessionId] ?? const SessionStatus.idle(),
+          pendingQuestions: pendingQuestions
+              .where((q) => q.sessionID == _sessionId)
+              .map(
+                (q) => SesoriQuestionAsked(
+                  id: q.id,
+                  sessionID: q.sessionID,
+                  questions: q.questions,
+                ),
+              )
+              .toList(),
+          agent: latestAssistant?.agent,
+          modelID: latestAssistant?.modelID,
+          providerID: latestAssistant?.providerID,
+          children: childSessions,
+          childStatuses: childStatuses,
+          availableAgents: availableAgents,
+          availableProviders: availableProviders,
+          selectedAgent: preservedSelectedAgent,
+          selectedProviderID: preservedSelectedProviderID,
+          selectedModelID: preservedSelectedModelID,
+          isRefreshing: false,
+        ),
+      );
+    } catch (error) {
+      logw("Silent refresh failed: $error");
+      if (isClosed) return;
+      emit(current.copyWith(isRefreshing: false));
+    }
+  }
 
   /// Returns the latest assistant [Message] from the list, or null if none.
   Message? _latestAssistantMessage(List<MessageWithParts> messages) {
@@ -661,6 +766,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     _eventSubscription.cancel();
     _globalEventSubscription.cancel();
     _connectionStatusSubscription.cancel();
+    _staleSubscription.cancel();
     _streamingBuffer.dispose();
     _questionStream.close();
     return super.close();
