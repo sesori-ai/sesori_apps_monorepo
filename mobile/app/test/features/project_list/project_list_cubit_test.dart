@@ -4,8 +4,11 @@ import "package:bloc_test/bloc_test.dart";
 import "package:fake_async/fake_async.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart" show AppRoute;
+import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
+import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/project_list/project_list_cubit.dart";
 import "package:sesori_dart_core/src/cubits/project_list/project_list_state.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -27,12 +30,23 @@ void main() {
     late MockConnectionService mockConnectionService;
     late MockSseEventRepository mockSseEventRepository;
     late MockRouteSource mockRouteSource;
+    late BehaviorSubject<ConnectionStatus> statusController;
 
     setUp(() {
       mockProjectService = MockProjectService();
       mockConnectionService = MockConnectionService();
       mockSseEventRepository = MockSseEventRepository();
       mockRouteSource = MockRouteSource();
+      statusController = BehaviorSubject<ConnectionStatus>.seeded(
+        const ConnectionStatus.disconnected(),
+      );
+
+      // Must be stubbed before any cubit is built — constructor subscribes immediately.
+      when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
+    });
+
+    tearDown(() async {
+      await statusController.close();
     });
 
     /// Creates a fresh [ProjectListCubit] with the route source seeded to
@@ -420,5 +434,39 @@ void main() {
         });
       });
     });
+
+    blocTest<ProjectListCubit, ProjectListState>(
+      "connection reconnect triggers silent refresh",
+      build: () {
+        when(() => mockProjectService.listProjects()).thenAnswer(
+          (_) async => ApiResponse.success([testProject()]),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        // Change mock to return updated data
+        when(() => mockProjectService.listProjects()).thenAnswer(
+          (_) async => ApiResponse.success([
+            testProject(),
+            testProject(path: "/home/user/another-project"),
+          ]),
+        );
+        // Emit connected status
+        const config = ServerConnectionConfig(
+          relayHost: "relay.example.com",
+          authToken: "test-token",
+        );
+        const health = HealthResponse(healthy: true, version: "0.1.200");
+        statusController.add(
+          const ConnectionStatus.connected(config: config, health: health),
+        );
+        await Future<void>.delayed(Duration.zero);
+      },
+      skip: 1,
+      expect: () => [
+        isA<ProjectListLoaded>().having((s) => s.projects.length, "projects count after reconnect", 2),
+      ],
+    );
   });
 }

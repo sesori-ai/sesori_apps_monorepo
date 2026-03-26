@@ -8,6 +8,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../capabilities/project/project_service.dart";
 import "../../capabilities/server_connection/connection_service.dart";
+import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/sse/sse_event_repository.dart";
 import "../../logging/logging.dart";
 import "../../platform/route_source.dart";
@@ -73,6 +74,11 @@ class ProjectListCubit extends Cubit<ProjectListState> {
             unawaited(refreshProjects());
           }),
     );
+
+    // 4. Connection reconnect: silent refresh when connection is restored.
+    _subscriptions.add(
+      _connectionService.status.listen(_onConnectionStatusChanged),
+    );
   }
 
   void setActiveProject(Project project) {
@@ -88,6 +94,14 @@ class ProjectListCubit extends Cubit<ProjectListState> {
         activityById: activityById,
       ),
     );
+  }
+
+  void _onConnectionStatusChanged(ConnectionStatus status) {
+    logd("[ProjectList] connection status: ${status.runtimeType}");
+    if (isClosed) return;
+    if (status is ConnectionConnected) {
+      unawaited(refreshProjects());
+    }
   }
 
   Future<void> loadProjects() async {
