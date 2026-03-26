@@ -13,7 +13,7 @@ import "../helpers/test_helpers.dart";
 void main() {
   group("SSEManager", () {
     test("subscribe registers subscribers", () {
-      final manager = SSEManager(replayWindow: const Duration(seconds: 30));
+      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow);
       final relayClient = RelayClient(
         relayURL: "ws://127.0.0.1:1",
         accessTokenProvider: FakeAccessTokenProvider(""),
@@ -27,7 +27,7 @@ void main() {
     });
 
     test("enqueueEvent with no subscribers does nothing", () async {
-      final manager = SSEManager(replayWindow: const Duration(seconds: 30));
+      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow);
       final client = _RecordingRelayClient();
       manager.setRoomKey(makeRoomKey());
 
@@ -40,7 +40,7 @@ void main() {
     test("enqueueEvent delivers typed payload envelope to all subscribers", () async {
       final roomKey = makeRoomKey();
       final client = _RecordingRelayClient();
-      final manager = SSEManager(replayWindow: const Duration(seconds: 30));
+      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow);
       manager.setRoomKey(roomKey);
       addTearDown(manager.stop);
 
@@ -78,7 +78,7 @@ void main() {
 
     test("without room key events are not sent", () async {
       final client = _RecordingRelayClient();
-      final manager = SSEManager(replayWindow: const Duration(seconds: 30));
+      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow);
       addTearDown(manager.stop);
 
       manager.subscribePath(7, "/global/event", client);
@@ -89,7 +89,7 @@ void main() {
     });
 
     test("non-last unsubscribe creates orphan queue", () {
-      final manager = SSEManager(replayWindow: const Duration(seconds: 30));
+      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow);
       final relayClient = RelayClient(
         relayURL: "ws://127.0.0.1:1",
         accessTokenProvider: FakeAccessTokenProvider(""),
@@ -104,10 +104,56 @@ void main() {
       expect(manager.pendingReplayCount, equals(1));
     });
 
+    test("last unsubscribe creates orphan queue", () {
+      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow);
+      final relayClient = RelayClient(
+        relayURL: "ws://127.0.0.1:1",
+        accessTokenProvider: FakeAccessTokenProvider(""),
+      );
+      addTearDown(manager.stop);
+
+      manager.subscribePath(1, "/global/event", relayClient);
+      manager.unsubscribe(1);
+
+      expect(manager.subscriberCount, equals(0));
+      expect(manager.pendingReplayCount, equals(1));
+    });
+
+    test("single subscriber reconnect replays buffered events", () async {
+      final roomKey = makeRoomKey();
+      final client = _RecordingRelayClient();
+      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow);
+      manager.setRoomKey(roomKey);
+      addTearDown(manager.stop);
+
+      // Phone connects and receives one event.
+      manager.subscribePath(1, "/global/event", client);
+      manager.enqueueEvent(_event("event-a"));
+      await _waitForSendCount(client, 1);
+      expect(client.sentConnIDs, [1]);
+
+      // Phone disconnects — only subscriber, queue should become orphan.
+      manager.unsubscribe(1);
+      expect(manager.pendingReplayCount, equals(1));
+
+      // Events arriving while phone is away are buffered in the orphan queue.
+      manager.enqueueEvent(_event("event-b"));
+      manager.enqueueEvent(_event("event-c"));
+
+      // Phone reconnects with a new connID (relay assigns fresh IDs).
+      manager.subscribePath(5, "/global/event", client);
+      await _waitForSendCount(client, 3);
+
+      // The two buffered events were replayed to the new connID.
+      expect(client.sentConnIDs[1], equals(5));
+      expect(client.sentConnIDs[2], equals(5));
+      expect(manager.pendingReplayCount, equals(0));
+    });
+
     test("orphan queue replays to next subscriber within replay window", () async {
       final roomKey = makeRoomKey();
       final client = _RecordingRelayClient();
-      final manager = SSEManager(replayWindow: const Duration(seconds: 30));
+      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow);
       manager.setRoomKey(roomKey);
       addTearDown(manager.stop);
 
@@ -135,7 +181,7 @@ void main() {
       await withClock(fakeClock, () async {
         final roomKey = makeRoomKey();
         final client = _RecordingRelayClient();
-        final manager = SSEManager(replayWindow: const Duration(seconds: 30));
+        final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow);
         manager.setRoomKey(roomKey);
         addTearDown(manager.stop);
 
@@ -146,7 +192,7 @@ void main() {
         manager.enqueueEvent(_event("queued-for-orphan"));
         await _waitForSendCount(client, 1);
 
-        now = now.add(const Duration(seconds: 31));
+        now = now.add(SSEManager.defaultReplayWindow + const Duration(seconds: 1));
         final sendsBefore = client.sentConnIDs.length;
 
         manager.subscribePath(3, "/global/event", client);
@@ -157,8 +203,42 @@ void main() {
       });
     });
 
+    test("orphanAll moves all subscribers to orphan state", () async {
+      final roomKey = makeRoomKey();
+      final client = _RecordingRelayClient();
+      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow);
+      manager.setRoomKey(roomKey);
+      addTearDown(manager.stop);
+
+      manager.subscribePath(1, "/global/event", client);
+      manager.subscribePath(2, "/global/event", client);
+
+      manager.enqueueEvent(_event("before-orphan"));
+      await _waitForSendCount(client, 2);
+
+      // Simulate relay disconnect — all subscribers become orphans.
+      manager.orphanAll();
+      expect(manager.subscriberCount, equals(0));
+      expect(manager.pendingReplayCount, equals(2));
+
+      // Events arriving during relay reconnect are buffered.
+      manager.enqueueEvent(_event("during-reconnect"));
+
+      // First phone reconnects — picks up orphan with buffered event.
+      manager.subscribePath(3, "/global/event", client);
+      await _waitForSendCount(client, 3);
+      expect(client.sentConnIDs[2], equals(3));
+      expect(manager.pendingReplayCount, equals(1));
+
+      // Second phone reconnects.
+      manager.subscribePath(4, "/global/event", client);
+      await _waitForSendCount(client, 4);
+      expect(client.sentConnIDs[3], equals(4));
+      expect(manager.pendingReplayCount, equals(0));
+    });
+
     test("stop clears subscribers and orphan queues", () {
-      final manager = SSEManager(replayWindow: const Duration(seconds: 30));
+      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow);
       final relayClient = RelayClient(
         relayURL: "ws://127.0.0.1:1",
         accessTokenProvider: FakeAccessTokenProvider(""),

@@ -160,7 +160,8 @@ class OrchestratorSession {
         }
 
         Log.w("Connection lost. Reconnecting...");
-        _sseManager.stop();
+        _sseManager.orphanAll();
+        activePhones.clear();
 
         var backoff = const Duration(seconds: 1);
         while (!_cancelled) {

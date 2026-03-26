@@ -9,6 +9,10 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../relay_client.dart";
 
 class SSEManager {
+  /// Default duration for which orphan queues remain valid after a phone
+  /// disconnects. Referenced by the CLI entry point and tests.
+  static const Duration defaultReplayWindow = Duration(minutes: 5);
+
   /// How long a disconnected subscriber's orphan queue stays valid.
   final Duration replayWindow;
 
@@ -50,18 +54,12 @@ class SSEManager {
 
   /// Removes [connID] from active subscribers.
   ///
-  /// If other subscribers remain, the queue is paused and retained as an
-  /// orphan queue for replay during [replayWindow]. If this was the last
-  /// subscriber, orphan state is cleared.
+  /// The queue is paused and retained as an orphan queue for replay during
+  /// [replayWindow]. If the phone reconnects within that window, the orphan
+  /// is resumed via [subscribePath] and all buffered events are delivered.
   void unsubscribe(int connID) {
     final queue = _subscribers.remove(connID);
     if (queue == null) return;
-
-    if (_subscribers.isEmpty) {
-      queue.dispose();
-      _disposeOrphans();
-      return;
-    }
 
     queue.pause();
     _orphanQueues.addLast((
@@ -72,6 +70,22 @@ class SSEManager {
 
   /// Alias for [unsubscribe].
   void removeSubscriber(int connID) => unsubscribe(connID);
+
+  /// Pauses all active subscriber queues and moves them to orphan state.
+  ///
+  /// Use this when the relay connection drops but may recover. Orphan queues
+  /// continue to buffer incoming events and will be replayed when phones
+  /// reconnect within [replayWindow].
+  void orphanAll() {
+    for (final queue in _subscribers.values) {
+      queue.pause();
+      _orphanQueues.addLast((
+        queue: queue,
+        expiry: clock.now().add(replayWindow),
+      ));
+    }
+    _subscribers.clear();
+  }
 
   /// Clears all subscribers and orphan state.
   void stop() {
