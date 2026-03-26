@@ -214,25 +214,18 @@ class _PromptInputState extends State<PromptInput> {
                   onTap: _handleMicTap,
                 ),
                 if (_voiceState == _VoiceState.idle) ...[
-                  if (widget.isBusy) ...[
-                    IconButton(
-                      onPressed: _handleSend,
-                      icon: const Icon(Icons.send),
-                      color: theme.colorScheme.tertiary,
-                      tooltip: loc.sessionDetailQueue,
-                    ),
+                  IconButton(
+                    onPressed: _handleSend,
+                    icon: const Icon(Icons.send),
+                    color: theme.colorScheme.primary,
+                    tooltip: loc.sessionDetailSend,
+                  ),
+                  if (widget.isBusy)
                     IconButton(
                       onPressed: widget.onAbort,
                       icon: const Icon(Icons.stop_circle),
                       color: theme.colorScheme.error,
                       tooltip: loc.sessionDetailAbort,
-                    ),
-                  ] else
-                    IconButton(
-                      onPressed: _handleSend,
-                      icon: const Icon(Icons.send),
-                      color: theme.colorScheme.primary,
-                      tooltip: loc.sessionDetailSend,
                     ),
                 ],
               ],

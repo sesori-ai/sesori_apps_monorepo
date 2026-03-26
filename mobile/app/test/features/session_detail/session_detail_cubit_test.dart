@@ -123,7 +123,7 @@ void main() {
     );
 
     blocTest<SessionDetailCubit, SessionDetailState>(
-      "sendMessage when idle delegates to service with trimmed text",
+      "sendMessage when connected delegates to service with trimmed text",
       build: () => SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
@@ -142,6 +142,49 @@ void main() {
           () => mockSessionService.sendMessage(
             sessionId,
             "hi",
+            agent: "coder",
+            providerID: "anthropic",
+            modelID: "claude-3-5-sonnet",
+          ),
+        ).called(1);
+      },
+    );
+
+    blocTest<SessionDetailCubit, SessionDetailState>(
+      "sendMessage sends immediately when session is busy but connected",
+      build: () => SessionDetailCubit(
+        mockSessionService,
+        mockConnectionService,
+        sessionId: sessionId,
+        notificationCanceller: mockNotificationCanceller,
+      ),
+      act: (cubit) async {
+        await _awaitLoaded(cubit);
+
+        // Session becomes busy.
+        sessionEvents.add(
+          const SesoriSessionStatus(sessionID: sessionId, status: SessionStatus.busy()),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+
+        // Send message while busy — should send immediately (not queue).
+        await cubit.sendMessage("hello");
+      },
+      expect: () => [
+        isA<SessionDetailLoaded>(),
+        // Session busy.
+        isA<SessionDetailLoaded>().having(
+          (state) => state.sessionStatus,
+          "sessionStatus",
+          const SessionStatus.busy(),
+        ),
+        // No queuedMessages emission — message was sent directly.
+      ],
+      verify: (_) {
+        verify(
+          () => mockSessionService.sendMessage(
+            sessionId,
+            "hello",
             agent: "coder",
             providerID: "anthropic",
             modelID: "claude-3-5-sonnet",
@@ -579,23 +622,24 @@ void main() {
 
     blocTest<SessionDetailCubit, SessionDetailState>(
       "session becoming idle does not drain queue when disconnected",
-      build: () => SessionDetailCubit(
-        mockSessionService,
-        mockConnectionService,
-        sessionId: sessionId,
-        notificationCanceller: mockNotificationCanceller,
-      ),
+      build: () {
+        // Start with a busy session so the idle SSE event produces a real state
+        // transition (idle vs busy), allowing the test to verify the queue is
+        // NOT drained even when the session becomes idle while disconnected.
+        when(
+          () => mockSessionService.getSessionStatuses(),
+        ).thenAnswer(
+          (_) async => ApiResponse.success({sessionId: const SessionStatus.busy()}),
+        );
+        return SessionDetailCubit(
+          mockSessionService,
+          mockConnectionService,
+          sessionId: sessionId,
+          notificationCanceller: mockNotificationCanceller,
+        );
+      },
       act: (cubit) async {
         await _awaitLoaded(cubit);
-
-        // Session becomes busy.
-        sessionEvents.add(
-          const SesoriSessionStatus(sessionID: sessionId, status: SessionStatus.busy()),
-        );
-        await Future<void>.delayed(const Duration(milliseconds: 10));
-
-        // Send message while busy — queued.
-        await cubit.sendMessage("queued msg");
 
         // Connection drops.
         when(() => mockConnectionService.currentStatus).thenReturn(
@@ -603,6 +647,9 @@ void main() {
             config: ServerConnectionConfig(relayHost: "fake.example.com"),
           ),
         );
+
+        // Send message while disconnected — queued.
+        await cubit.sendMessage("queued msg");
 
         // Session becomes idle — but connection is lost, so queue stays.
         sessionEvents.add(
@@ -613,12 +660,6 @@ void main() {
       expect: () => [
         // Initial load.
         isA<SessionDetailLoaded>(),
-        // Session busy.
-        isA<SessionDetailLoaded>().having(
-          (state) => state.sessionStatus,
-          "sessionStatus",
-          const SessionStatus.busy(),
-        ),
         // Message queued.
         isA<SessionDetailLoaded>().having(
           (state) => state.queuedMessages,
@@ -709,117 +750,6 @@ void main() {
     );
 
     blocTest<SessionDetailCubit, SessionDetailState>(
-      "sendNow re-queues on send failure",
-      build: () => SessionDetailCubit(
-        mockSessionService,
-        mockConnectionService,
-        sessionId: sessionId,
-        notificationCanceller: mockNotificationCanceller,
-      ),
-      act: (cubit) async {
-        await _awaitLoaded(cubit);
-
-        // Session becomes busy.
-        sessionEvents.add(
-          const SesoriSessionStatus(sessionID: sessionId, status: SessionStatus.busy()),
-        );
-        await Future<void>.delayed(const Duration(milliseconds: 10));
-
-        // Queue a message.
-        await cubit.sendMessage("important msg");
-
-        // Make next send fail.
-        when(
-          () => mockSessionService.sendMessage(
-            any(),
-            any(),
-            agent: any(named: "agent"),
-            providerID: any(named: "providerID"),
-            modelID: any(named: "modelID"),
-          ),
-        ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
-
-        // Try to send now (abort + send) — send fails.
-        await cubit.sendNow(0);
-      },
-      expect: () => [
-        // Initial load.
-        isA<SessionDetailLoaded>(),
-        // Session busy.
-        isA<SessionDetailLoaded>().having(
-          (state) => state.sessionStatus,
-          "sessionStatus",
-          const SessionStatus.busy(),
-        ),
-        // Message queued.
-        isA<SessionDetailLoaded>().having(
-          (state) => state.queuedMessages,
-          "queuedMessages",
-          ["important msg"],
-        ),
-        // Dequeued (optimistic).
-        isA<SessionDetailLoaded>().having(
-          (state) => state.queuedMessages,
-          "queuedMessages",
-          isEmpty,
-        ),
-        // Re-queued after failure.
-        isA<SessionDetailLoaded>().having(
-          (state) => state.queuedMessages,
-          "queuedMessages",
-          ["important msg"],
-        ),
-      ],
-    );
-
-    blocTest<SessionDetailCubit, SessionDetailState>(
-      "sendNow does nothing when disconnected",
-      build: () {
-        when(() => mockConnectionService.currentStatus).thenReturn(
-          const ConnectionStatus.connectionLost(
-            config: ServerConnectionConfig(relayHost: "fake.example.com"),
-          ),
-        );
-        return SessionDetailCubit(
-          mockSessionService,
-          mockConnectionService,
-          sessionId: sessionId,
-          notificationCanceller: mockNotificationCanceller,
-        );
-      },
-      act: (cubit) async {
-        await _awaitLoaded(cubit);
-
-        // Queue a message while disconnected.
-        await cubit.sendMessage("queued");
-
-        // sendNow should be a no-op when disconnected.
-        await cubit.sendNow(0);
-      },
-      expect: () => [
-        isA<SessionDetailLoaded>(),
-        isA<SessionDetailLoaded>().having(
-          (state) => state.queuedMessages,
-          "queuedMessages",
-          ["queued"],
-        ),
-        // No further state change — message stays queued.
-      ],
-      verify: (_) {
-        verifyNever(() => mockSessionService.abortSession(any()));
-        verifyNever(
-          () => mockSessionService.sendMessage(
-            any(),
-            any(),
-            agent: any(named: "agent"),
-            providerID: any(named: "providerID"),
-            modelID: any(named: "modelID"),
-          ),
-        );
-      },
-    );
-
-    blocTest<SessionDetailCubit, SessionDetailState>(
       "multiple queued messages drain sequentially on reconnection",
       build: () => SessionDetailCubit(
         mockSessionService,
@@ -855,12 +785,8 @@ void main() {
           ),
         );
 
-        // Wait for first message to drain; then session goes idle to drain second.
-        await Future<void>.delayed(const Duration(milliseconds: 10));
-        sessionEvents.add(
-          const SesoriSessionStatus(sessionID: sessionId, status: SessionStatus.idle()),
-        );
-        await Future<void>.delayed(const Duration(milliseconds: 50));
+        // Wait for both messages to drain via self-chaining.
+        await Future<void>.delayed(const Duration(milliseconds: 100));
       },
       verify: (_) {
         verify(
@@ -909,40 +835,40 @@ void main() {
       act: (cubit) async {
         await _awaitLoaded(cubit);
 
-        // Session becomes busy.
-        sessionEvents.add(
-          const SesoriSessionStatus(sessionID: sessionId, status: SessionStatus.busy()),
+        // Simulate disconnection.
+        when(() => mockConnectionService.currentStatus).thenReturn(
+          const ConnectionStatus.connectionLost(
+            config: ServerConnectionConfig(relayHost: "fake.example.com"),
+          ),
         );
-        await Future<void>.delayed(const Duration(milliseconds: 10));
 
         // Queue a message.
         await cubit.sendMessage("will fail");
 
-        // Session goes idle — triggers drain, but send will fail.
-        sessionEvents.add(
-          const SesoriSessionStatus(sessionID: sessionId, status: SessionStatus.idle()),
+        // Simulate reconnection — triggers drain, but send will fail.
+        when(() => mockConnectionService.currentStatus).thenReturn(
+          ConnectionStatus.connected(
+            config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+            health: testHealthResponse(),
+          ),
+        );
+        connectionStatus.add(
+          ConnectionStatus.connected(
+            config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+            health: testHealthResponse(),
+          ),
         );
         await Future<void>.delayed(const Duration(milliseconds: 50));
       },
       expect: () => [
         // Initial load.
         isA<SessionDetailLoaded>(),
-        // Session busy.
-        isA<SessionDetailLoaded>().having(
-          (state) => state.sessionStatus,
-          "sessionStatus",
-          const SessionStatus.busy(),
-        ),
         // Message queued.
         isA<SessionDetailLoaded>().having(
           (state) => state.queuedMessages,
           "queuedMessages",
           ["will fail"],
         ),
-        // Session idle.
-        isA<SessionDetailLoaded>()
-            .having((state) => state.sessionStatus, "sessionStatus", const SessionStatus.idle())
-            .having((state) => state.queuedMessages, "queuedMessages", ["will fail"]),
         // Dequeued (optimistic).
         isA<SessionDetailLoaded>().having(
           (state) => state.queuedMessages,
@@ -956,6 +882,17 @@ void main() {
           ["will fail"],
         ),
       ],
+      verify: (_) {
+        verify(
+          () => mockSessionService.sendMessage(
+            sessionId,
+            "will fail",
+            agent: any(named: "agent"),
+            providerID: any(named: "providerID"),
+            modelID: any(named: "modelID"),
+          ),
+        ).called(1);
+      },
     );
   });
 }

@@ -236,7 +236,6 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
                 if (queuedMessages.isNotEmpty)
                   _QueuedMessagesSection(
                     messages: queuedMessages,
-                    onSendNow: (index) => context.read<SessionDetailCubit>().sendNow(index),
                     onCancel: (index) => context.read<SessionDetailCubit>().cancelQueuedMessage(index),
                   ),
                 PromptInput(
@@ -495,12 +494,10 @@ class _AgentModelButtons extends StatelessWidget {
 
 class _QueuedMessagesSection extends StatelessWidget {
   final List<String> messages;
-  final ValueChanged<int> onSendNow;
   final ValueChanged<int> onCancel;
 
   const _QueuedMessagesSection({
     required this.messages,
-    required this.onSendNow,
     required this.onCancel,
   });
 
@@ -512,7 +509,6 @@ class _QueuedMessagesSection extends StatelessWidget {
         for (var i = 0; i < messages.length; i++)
           QueuedMessageBubble(
             text: messages[i],
-            onSendNow: () => onSendNow(i),
             onCancel: () => onCancel(i),
           ),
       ],

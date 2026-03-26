@@ -319,12 +319,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
     if (isClosed) return;
     emit(current.copyWith(sessionStatus: sessionStatus));
-
-    // Auto-send the first queued message when the session becomes idle
-    // and the connection is active.
-    if (sessionStatus is SessionStatusIdle) {
-      _tryDrainQueue();
-    }
   }
 
   // ---------------------------------------------------------------------------
@@ -411,14 +405,13 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     }
   }
 
-  /// Attempts to send the next queued message when both conditions are met:
-  /// connection is alive AND session is idle.
+  /// Attempts to send the next queued message when the condition is met:
+  /// connection is alive.
   void _tryDrainQueue() {
     if (isClosed) return;
     if (_promptQueue.isEmpty) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
-    if (current.sessionStatus is! SessionStatusIdle) return;
     if (!_isConnected) return;
     _sendNextQueued();
   }
@@ -429,8 +422,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
     final current = state;
     if (current is SessionDetailLoaded) {
-      // Queue if session is busy or connection is not active.
-      if (current.sessionStatus is! SessionStatusIdle || !_isConnected) {
+      // Queue if connection is not active.
+      if (!_isConnected) {
         _promptQueue.enqueue(trimmed);
         _emitQueueUpdate(current);
         return;
@@ -458,34 +451,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     _promptQueue.enqueue(trimmed);
   }
 
-  /// Abort the current operation and immediately send a queued message.
-  Future<void> sendNow(int index) async {
-    if (!_isConnected) return;
-    final current = state;
-    if (current is! SessionDetailLoaded) return;
-
-    final message = _promptQueue.cancel(index);
-    if (message == null) return;
-    _emitQueueUpdate(current);
-
-    // Abort current operation, then send.
-    await _service.abortSession(_sessionId);
-    if (isClosed) return;
-    final result = await _service.sendMessage(
-      _sessionId,
-      message,
-      agent: current.selectedAgent,
-      providerID: current.selectedProviderID,
-      modelID: current.selectedModelID,
-    );
-
-    // If send failed, re-queue the message at the front.
-    if (result case ErrorResponse()) {
-      _promptQueue.requeue(message);
-      _emitQueueUpdate();
-    }
-  }
-
   void cancelQueuedMessage(int index) {
     final current = state;
     if (current is! SessionDetailLoaded) return;
@@ -505,6 +470,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     _isSending = true;
     _emitQueueUpdate();
 
+    var sendSucceeded = false;
     try {
       final current = state;
       final result = await _service.sendMessage(
@@ -519,9 +485,17 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       if (result case ErrorResponse()) {
         _promptQueue.requeue(message);
         _emitQueueUpdate();
+      } else {
+        sendSucceeded = true;
       }
     } finally {
       _isSending = false;
+    }
+
+    // Continue draining only if the send succeeded. On failure the message
+    // stays re-queued and will be retried on the next reconnect event.
+    if (sendSucceeded) {
+      _tryDrainQueue();
     }
   }
 

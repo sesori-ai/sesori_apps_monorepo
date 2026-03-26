@@ -237,13 +237,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailSubtaskUnnamed => 'Background task';
 
   @override
-  String get sessionDetailQueue => 'Queue message';
-
-  @override
   String get sessionDetailQueuedMessage => 'Queued';
-
-  @override
-  String get sessionDetailSendNow => 'Send now';
 
   @override
   String get sessionDetailCancelQueued => 'Cancel';

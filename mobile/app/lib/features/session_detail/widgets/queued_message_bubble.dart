@@ -4,13 +4,11 @@ import "../../../core/extensions/build_context_x.dart";
 
 class QueuedMessageBubble extends StatelessWidget {
   final String text;
-  final VoidCallback onSendNow;
   final VoidCallback onCancel;
 
   const QueuedMessageBubble({
     super.key,
     required this.text,
-    required this.onSendNow,
     required this.onCancel,
   });
 
@@ -77,19 +75,6 @@ class QueuedMessageBubble extends StatelessWidget {
                     child: Row(
                       mainAxisSize: .min,
                       children: [
-                        TextButton.icon(
-                          onPressed: onSendNow,
-                          icon: const Icon(Icons.flash_on, size: 16),
-                          label: Text(loc.sessionDetailSendNow),
-                          style: TextButton.styleFrom(
-                            foregroundColor: theme.colorScheme.tertiary,
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            minimumSize: .zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            textStyle: theme.textTheme.labelSmall,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
                         TextButton.icon(
                           onPressed: onCancel,
                           icon: const Icon(Icons.close, size: 14),
