@@ -42,6 +42,7 @@ class SessionDetailScreen extends StatelessWidget {
         notificationCanceller: getIt<NotificationCanceller>(),
       ),
       child: _SessionDetailBody(
+        projectId: projectId,
         sessionId: sessionId,
         sessionTitle: sessionTitle,
         readOnly: readOnly,
@@ -51,11 +52,12 @@ class SessionDetailScreen extends StatelessWidget {
 }
 
 class _SessionDetailBody extends StatefulWidget {
+  final String? projectId;
   final String sessionId;
   final String? sessionTitle;
   final bool readOnly;
 
-  const _SessionDetailBody({required this.sessionId, this.sessionTitle, this.readOnly = false});
+  const _SessionDetailBody({this.projectId, required this.sessionId, this.sessionTitle, this.readOnly = false});
 
   @override
   State<_SessionDetailBody> createState() => _SessionDetailBodyState();
@@ -180,7 +182,10 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
             tooltip: "File changes",
             onPressed: () => context.pushRoute(
               AppRoute.sessionDiffs,
-              pathParams: {"sessionId": widget.sessionId},
+              pathParams: {
+                if (widget.projectId != null) "projectId": widget.projectId!,
+                "sessionId": widget.sessionId,
+              },
             ),
           ),
           if (state

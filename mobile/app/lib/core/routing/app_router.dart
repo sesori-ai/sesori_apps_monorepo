@@ -33,6 +33,7 @@ extension AppRouteToGoRoute on AppRoute {
           readOnly: state.uri.queryParameters["readOnly"] == "true",
         ),
         AppRoute.sessionDiffs => SessionDiffsScreen(
+          projectId: state.pathParameters["projectId"],
           sessionId: state.pathParameters["sessionId"] ?? "",
         ),
       },

@@ -10,10 +10,12 @@ import "widgets/diff_file_widget.dart";
 import "widgets/diff_refresh_banner.dart";
 
 class SessionDiffsScreen extends StatelessWidget {
+  final String? projectId;
   final String sessionId;
 
   const SessionDiffsScreen({
     super.key,
+    this.projectId,
     required this.sessionId,
   });
 
