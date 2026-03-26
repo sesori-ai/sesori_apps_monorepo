@@ -360,8 +360,24 @@ class _MessageListState extends State<_MessageList> {
     }
   }
 
+  void _jumpToLatest() {
+    setState(() {
+      _following = true;
+    });
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final loc = context.loc;
+
     return Stack(
       children: [
         NotificationListener<ScrollNotification>(
@@ -392,6 +408,43 @@ class _MessageListState extends State<_MessageList> {
             },
           ),
         ),
+        if (!_following)
+          Positioned(
+            bottom: 12,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Material(
+                elevation: 4,
+                borderRadius: BorderRadius.circular(20),
+                color: theme.colorScheme.primaryContainer,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(20),
+                  onTap: _jumpToLatest,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.arrow_downward,
+                          size: 16,
+                          color: theme.colorScheme.onPrimaryContainer,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          loc.sessionDetailJumpToLatest,
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            color: theme.colorScheme.onPrimaryContainer,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }
