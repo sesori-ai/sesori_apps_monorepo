@@ -1,35 +1,30 @@
 import "dart:convert";
-import "dart:io";
 
-import "package:sesori_bridge/src/bridge/persistence/hidden_projects_store.dart";
+import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/routing/request_router.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
 void main() {
   group("RequestRouter", () {
     late FakeBridgePlugin plugin;
     late RequestRouter router;
-    late Directory tempDir;
+    late AppDatabase db;
 
     setUp(() {
       plugin = FakeBridgePlugin();
-      tempDir = Directory.systemTemp.createTempSync("router_test_");
-      final store = HiddenProjectsStore.withFile(
-        file: File("${tempDir.path}/hidden.json"),
-      );
-      router = RequestRouter(plugin: plugin, hiddenProjectsStore: store);
+      db = createTestDatabase();
+      router = RequestRouter(plugin: plugin, projectsDao: db.projectsDao);
     });
 
-    tearDown(() {
-      plugin.close();
-      if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
+    tearDown(() async {
+      await plugin.close();
+      await db.close();
     });
-
-    tearDown(() => plugin.close());
 
     test("routes GET /global/health to HealthCheckHandler", () async {
       final response = await router.route(makeRequest("GET", "/global/health"));

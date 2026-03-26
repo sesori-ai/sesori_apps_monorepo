@@ -10,3 +10,6 @@ targets:
           format: false
           map: false
           when: false
+      drift_dev:
+        options:
+          write_to_columns_mixins: true

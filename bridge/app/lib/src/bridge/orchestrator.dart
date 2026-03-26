@@ -11,7 +11,7 @@ import "../auth/token_refresher.dart";
 import "../push/push_notification_service.dart";
 import "key_exchange.dart";
 import "models/bridge_config.dart";
-import "persistence/hidden_projects_store.dart";
+import "persistence/daos/projects_dao.dart";
 import "relay_client.dart";
 import "routing/request_router.dart";
 import "sse/bridge_event_mapper.dart";
@@ -25,7 +25,7 @@ class Orchestrator {
   final BridgePlugin _plugin;
   final PushNotificationService _pushNotificationService;
   final TokenRefresher _tokenRefresher;
-  final HiddenProjectsStore _hiddenProjectsStore;
+  final ProjectsDao _projectsDao;
 
   Orchestrator({
     required this.config,
@@ -33,12 +33,12 @@ class Orchestrator {
     required BridgePlugin plugin,
     required PushNotificationService pushNotificationService,
     required TokenRefresher tokenRefresher,
-    required HiddenProjectsStore hiddenProjectsStore,
+    required ProjectsDao projectsDao,
   }) : _client = client,
        _plugin = plugin,
        _pushNotificationService = pushNotificationService,
        _tokenRefresher = tokenRefresher,
-       _hiddenProjectsStore = hiddenProjectsStore;
+       _projectsDao = projectsDao;
 
   /// Creates a new session with a fresh room key and SSE manager.
   OrchestratorSession create() {
@@ -52,7 +52,7 @@ class Orchestrator {
       plugin: _plugin,
       pushNotificationService: _pushNotificationService,
       tokenRefresher: _tokenRefresher,
-      hiddenProjectsStore: _hiddenProjectsStore,
+      projectsDao: _projectsDao,
       roomKey: roomKey,
       sseManager: sseManager,
     );
@@ -94,7 +94,7 @@ class OrchestratorSession {
     required BridgePlugin plugin,
     required PushNotificationService pushNotificationService,
     required TokenRefresher tokenRefresher,
-    required HiddenProjectsStore hiddenProjectsStore,
+    required ProjectsDao projectsDao,
     required List<int> roomKey,
     required SSEManager sseManager,
   }) : _client = client,
@@ -103,7 +103,7 @@ class OrchestratorSession {
        _tokenRefresher = tokenRefresher,
        _roomKey = roomKey,
        _sseManager = sseManager,
-       _router = RequestRouter(plugin: plugin, hiddenProjectsStore: hiddenProjectsStore),
+       _router = RequestRouter(plugin: plugin, projectsDao: projectsDao),
        _mapper = BridgeEventMapper(plugin);
 
   Future<void> run() async {

@@ -71,4 +71,4 @@ jobs:
       - name: Compile smoke test
         shell: bash
         working-directory: bridge/app
-        run: dart compile exe bin/bridge.dart -o sesori-bridge-linux-x64
+        run: dart build cli -o build

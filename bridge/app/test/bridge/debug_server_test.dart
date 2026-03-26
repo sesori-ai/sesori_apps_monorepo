@@ -3,24 +3,29 @@ import "dart:convert";
 import "dart:io";
 
 import "package:sesori_bridge/src/bridge/debug_server.dart";
-import "package:sesori_bridge/src/bridge/persistence/hidden_projects_store.dart";
+import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
+
+import "../helpers/test_database.dart";
 
 void main() {
   group("DebugServer SSE multi-client", () {
     late _FakeBridgePlugin plugin;
+    late AppDatabase db;
     late DebugServer debugServer;
 
     setUp(() async {
       plugin = _FakeBridgePlugin();
-      debugServer = DebugServer(plugin: plugin, hiddenProjectsStore: HiddenProjectsStore.withFile(file: File("${Directory.systemTemp.createTempSync("dbg_").path}/hidden.json")), port: 0);
+      db = createTestDatabase();
+      debugServer = DebugServer(plugin: plugin, projectsDao: db.projectsDao, port: 0);
       await debugServer.start();
     });
 
     tearDown(() async {
       await debugServer.stop();
       await plugin.close();
+      await db.close();
     });
 
     test("second SSE client receives events alongside first", () async {
@@ -57,10 +62,16 @@ void main() {
 
     test("plugin subscription is released when last client disconnects", () async {
       final trackingPlugin = _TrackingBridgePlugin();
-      final trackingServer = DebugServer(plugin: trackingPlugin, hiddenProjectsStore: HiddenProjectsStore.withFile(file: File("${Directory.systemTemp.createTempSync("dbg_").path}/hidden.json")), port: 0);
+      final trackingDb = createTestDatabase();
+      final trackingServer = DebugServer(
+        plugin: trackingPlugin,
+        projectsDao: trackingDb.projectsDao,
+        port: 0,
+      );
       await trackingServer.start();
       addTearDown(trackingServer.stop);
       addTearDown(trackingPlugin.close);
+      addTearDown(trackingDb.close);
 
       final first = await _SseTestClient.connect(trackingServer.boundPort!);
       final second = await _SseTestClient.connect(trackingServer.boundPort!);
@@ -80,16 +91,20 @@ void main() {
 
   group("DebugServer HTTP requests", () {
     late _FakeBridgePlugin plugin;
+    late AppDatabase db;
     late DebugServer debugServer;
 
     setUp(() async {
       plugin = _FakeBridgePlugin();
-      debugServer = DebugServer(plugin: plugin, hiddenProjectsStore: HiddenProjectsStore.withFile(file: File("${Directory.systemTemp.createTempSync("dbg_").path}/hidden.json")), port: 0);
+      db = createTestDatabase();
+      debugServer = DebugServer(plugin: plugin, projectsDao: db.projectsDao, port: 0);
       await debugServer.start();
     });
 
     tearDown(() async {
       await debugServer.stop();
+      await plugin.close();
+      await db.close();
     });
 
     test("GET /project returns project list as JSON", () async {

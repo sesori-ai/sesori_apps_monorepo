@@ -4,14 +4,14 @@ import "dart:io";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../persistence/hidden_projects_store.dart";
+import "../persistence/daos/projects_dao.dart";
 import "plugin_project_mapper.dart";
 import "request_handler.dart";
 
 /// Handles `POST /project/open` — opens an existing directory as a project.
 class OpenProjectHandler extends RequestHandler {
   final BridgePlugin _plugin;
-  final HiddenProjectsStore _hiddenStore;
+  final ProjectsDao _hiddenStore;
 
   OpenProjectHandler(this._plugin, this._hiddenStore) : super(HttpMethod.post, "/project/open");
 

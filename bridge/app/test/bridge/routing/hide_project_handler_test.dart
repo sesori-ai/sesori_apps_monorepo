@@ -1,28 +1,27 @@
 import "dart:convert";
-import "dart:io";
 
-import "package:sesori_bridge/src/bridge/persistence/hidden_projects_store.dart";
+import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
+import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/routing/hide_project_handler.dart";
 import "package:test/test.dart";
 
+import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
 void main() {
   group("HideProjectHandler", () {
-    late Directory tempDir;
-    late HiddenProjectsStore store;
+    late AppDatabase db;
+    late ProjectsDao dao;
     late HideProjectHandler handler;
 
     setUp(() {
-      tempDir = Directory.systemTemp.createTempSync("sesori_hide_project_handler_");
-      store = HiddenProjectsStore.withFile(file: File("${tempDir.path}/hidden_projects.json"));
-      handler = HideProjectHandler(store);
+      db = createTestDatabase();
+      dao = db.projectsDao;
+      handler = HideProjectHandler(dao);
     });
 
     tearDown(() async {
-      if (tempDir.existsSync()) {
-        tempDir.deleteSync(recursive: true);
-      }
+      await db.close();
     });
 
     test("canHandle POST /project/hide", () {
@@ -40,7 +39,7 @@ void main() {
         queryParams: {},
       );
 
-      final hiddenIds = await store.getHiddenProjectIds();
+      final hiddenIds = await dao.getHiddenProjectIds();
       expect(response.status, equals(200));
       expect(hiddenIds, contains("p1"));
     });
@@ -53,7 +52,7 @@ void main() {
         queryParams: {},
       );
 
-      final hiddenIds = await store.getHiddenProjectIds();
+      final hiddenIds = await dao.getHiddenProjectIds();
       expect(response.status, equals(200));
       expect(hiddenIds, contains(projectId));
     });
