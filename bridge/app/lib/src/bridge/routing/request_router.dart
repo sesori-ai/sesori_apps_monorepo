@@ -1,7 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../persistence/hidden_projects_store.dart";
+import "../persistence/daos/hidden_projects_dao.dart";
 import "abort_session_handler.dart";
 import "create_project_handler.dart";
 import "create_session_handler.dart";
@@ -36,14 +36,14 @@ import "update_session_archive_status_handler.dart";
 class RequestRouter {
   final List<RequestHandler> _handlers;
 
-  RequestRouter({required BridgePlugin plugin, required HiddenProjectsStore hiddenProjectsStore})
-    : _handlers = _buildHandlers(plugin: plugin, hiddenProjectsStore: hiddenProjectsStore);
+  RequestRouter({required BridgePlugin plugin, required HiddenProjectsDao hiddenProjectsDao})
+    : _handlers = _buildHandlers(plugin: plugin, hiddenProjectsDao: hiddenProjectsDao);
 
   static List<RequestHandler> _buildHandlers({
     required BridgePlugin plugin,
-    required HiddenProjectsStore hiddenProjectsStore,
+    required HiddenProjectsDao hiddenProjectsDao,
   }) {
-    final hiddenStore = hiddenProjectsStore;
+    final hiddenStore = hiddenProjectsDao;
     return [
       HealthCheckHandler(plugin),
       GetCurrentProjectHandler(plugin),

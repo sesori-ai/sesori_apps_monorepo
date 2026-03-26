@@ -1,34 +1,31 @@
 import "dart:convert";
-import "dart:io";
 
-import "package:sesori_bridge/src/bridge/persistence/hidden_projects_store.dart";
+import "package:sesori_bridge/src/bridge/persistence/daos/hidden_projects_dao.dart";
+import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/routing/get_projects_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
 void main() {
   group("GetProjectsHandler", () {
     late FakeBridgePlugin plugin;
-    late Directory tempDir;
-    late HiddenProjectsStore hiddenStore;
+    late AppDatabase db;
+    late HiddenProjectsDao hiddenStore;
     late GetProjectsHandler handler;
 
     setUp(() {
       plugin = FakeBridgePlugin();
-      tempDir = Directory.systemTemp.createTempSync("sesori_get_projects_handler_");
-      hiddenStore = HiddenProjectsStore.withFile(
-        file: File("${tempDir.path}/hidden_projects.json"),
-      );
+      db = createTestDatabase();
+      hiddenStore = db.hiddenProjectsDao;
       handler = GetProjectsHandler(plugin, hiddenStore);
     });
 
     tearDown(() async {
       await plugin.close();
-      if (tempDir.existsSync()) {
-        tempDir.deleteSync(recursive: true);
-      }
+      await db.close();
     });
 
     test("canHandle GET /project", () {

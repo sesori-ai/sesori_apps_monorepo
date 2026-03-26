@@ -12,7 +12,7 @@ import 'package:sesori_bridge/src/bridge/debug_server.dart';
 import 'package:sesori_bridge/src/bridge/models/bridge_config.dart';
 import 'package:sesori_bridge/src/bridge/orchestrator.dart';
 import 'package:sesori_bridge/src/bridge/persistence/bridge_diagnostics.dart';
-import 'package:sesori_bridge/src/bridge/persistence/hidden_projects_store.dart';
+import 'package:sesori_bridge/src/bridge/persistence/database.dart';
 import 'package:sesori_bridge/src/bridge/relay_client.dart';
 import 'package:sesori_bridge/src/bridge/sse/sse_manager.dart';
 import 'package:sesori_bridge/src/push/completion_notifier.dart';
@@ -180,7 +180,7 @@ Future<void> main(List<String> args) async {
 
   final relayClient = RelayClient(relayURL: relayURL, accessTokenProvider: tokenManager);
 
-  final hiddenProjectsStore = HiddenProjectsStore();
+  final db = AppDatabase.create();
 
   // Run startup diagnostics (non-blocking — logs warnings only)
   await BridgeDiagnostics().runAll();
@@ -191,19 +191,20 @@ Future<void> main(List<String> args) async {
     plugin: plugin,
     pushNotificationService: pushNotificationService,
     tokenRefresher: tokenManager,
-    hiddenProjectsStore: hiddenProjectsStore,
+    hiddenProjectsDao: db.hiddenProjectsDao,
   );
   final session = orchestrator.create();
 
   // Create and start debug server if requested
   DebugServer? debugServer;
   if (debugPort != null) {
-    debugServer = DebugServer(plugin: plugin, hiddenProjectsStore: hiddenProjectsStore, port: debugPort);
+    debugServer = DebugServer(plugin: plugin, hiddenProjectsDao: db.hiddenProjectsDao, port: debugPort);
     try {
       await debugServer.start();
     } catch (e) {
       Log.e('failed to start debug server: $e');
       await stopServer(cmd);
+      await db.close();
       exit(1);
     }
   }
@@ -224,11 +225,11 @@ Future<void> main(List<String> args) async {
     await session.run();
   } catch (e) {
     Log.e('$e');
-    await _shutdown(cmd, sigintSub, sigtermSub, debugServer);
+    await _shutdown(cmd, sigintSub, sigtermSub, debugServer, db);
     exit(1);
   }
 
-  await _shutdown(cmd, sigintSub, sigtermSub, debugServer);
+  await _shutdown(cmd, sigintSub, sigtermSub, debugServer, db);
 }
 
 /// Performs graceful shutdown: stops the server and cancels signal listeners.
@@ -240,6 +241,7 @@ Future<void> _shutdown(
   StreamSubscription<ProcessSignal> sigintSub,
   StreamSubscription<ProcessSignal>? sigtermSub,
   DebugServer? debugServer,
+  AppDatabase db,
 ) async {
   final safetyTimer = Timer(const Duration(seconds: 10), () {
     Log.e('Failed to finish gracefully');
@@ -251,6 +253,7 @@ Future<void> _shutdown(
     sigintSub.cancel(),
     if (sigtermSub != null) sigtermSub.cancel(),
     if (debugServer != null) debugServer.stop(),
+    db.close(),
   ]);
 
   safetyTimer.cancel();
