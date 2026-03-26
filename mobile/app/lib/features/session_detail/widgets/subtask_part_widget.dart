@@ -38,17 +38,16 @@ class SubtaskPartWidget extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           onTap: childSession != null
               ? () {
-                  final queryParams = <String, String>{"readOnly": "true"};
-                  if (childSession.title != null) {
-                    queryParams["title"] = childSession.title!;
-                  }
                   context.pushRoute(
                     AppRoute.sessionDetail,
                     pathParams: {
                       "projectId": childSession.projectID,
                       "sessionId": childSession.id,
                     },
-                    queryParams: queryParams,
+                    queryParams: {
+                      "readOnly": "true",
+                      if (childSession.title != null) "title": childSession.title!,
+                    },
                   );
                 }
               : null,
