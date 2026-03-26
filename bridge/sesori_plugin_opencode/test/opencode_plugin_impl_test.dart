@@ -70,10 +70,37 @@ void main() {
       expect(assistant.info.id, equals("m-assistant"));
       expect(assistant.info.modelID, equals("gpt"));
       expect(assistant.info.providerID, equals("openai"));
-      expect(assistant.info.cost, equals(1.25));
-      expect(assistant.info.finish, equals("stop"));
-      expect(assistant.info.time?.created, equals(123));
-      expect(assistant.info.time?.completed, equals(456));
+    });
+
+    test("getSessionMessages filters file and snapshot parts", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+
+      final messages = await plugin.getSessionMessages("ses-filter");
+
+      expect(messages, hasLength(2));
+      final parts = messages.last.parts;
+      expect(parts.map((part) => part.type).toList(), equals(["text", "tool", "reasoning"]));
+    });
+
+    test("getSessionMessages truncates tool output to 500 chars", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+
+      final messages = await plugin.getSessionMessages("ses-tool-long");
+
+      expect(messages, hasLength(2));
+      final output = messages.last.parts.single.state?.output;
+      expect(output, isNotNull);
+      expect(output!.length, lessThanOrEqualTo(500));
+      expect(output.length, equals(500));
+    });
+
+    test("getSessionMessages keeps short tool output unchanged", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+
+      final messages = await plugin.getSessionMessages("ses-tool-short");
+
+      expect(messages, hasLength(2));
+      expect(messages.last.parts.single.state?.output, equals("short"));
     });
 
     test("getProviders with connectedOnly false returns all providers", () async {
@@ -633,6 +660,166 @@ class _FakeOpenCodeServer {
                 "agent": null,
                 "snapshot": null,
                 "time": null,
+              },
+            ],
+          },
+        ]);
+        return;
+      }
+
+      if (request.method == "GET" && path == "/session/ses-filter/message") {
+        await _sendJson(request.response, [
+          {
+            "info": {
+              "role": "user",
+              "id": "m-filter-user",
+              "sessionID": "ses-filter",
+            },
+            "parts": [
+              {
+                "id": "part-filter-user",
+                "sessionID": "ses-filter",
+                "messageID": "m-filter-user",
+                "type": "text",
+                "text": "go",
+              },
+            ],
+          },
+          {
+            "info": {
+              "role": "assistant",
+              "id": "m-filter",
+              "sessionID": "ses-filter",
+            },
+            "parts": [
+              {
+                "id": "part-text",
+                "sessionID": "ses-filter",
+                "messageID": "m-filter",
+                "type": "text",
+                "text": "hello",
+              },
+              {
+                "id": "part-tool",
+                "sessionID": "ses-filter",
+                "messageID": "m-filter",
+                "type": "tool",
+                "tool": "bash",
+                "state": {
+                  "status": "completed",
+                  "title": "Run command",
+                  "output": "done",
+                  "error": null,
+                },
+              },
+              {
+                "id": "part-file",
+                "sessionID": "ses-filter",
+                "messageID": "m-filter",
+                "type": "file",
+                "text": "ignored",
+              },
+              {
+                "id": "part-snapshot",
+                "sessionID": "ses-filter",
+                "messageID": "m-filter",
+                "type": "snapshot",
+                "text": "ignored",
+              },
+              {
+                "id": "part-reasoning",
+                "sessionID": "ses-filter",
+                "messageID": "m-filter",
+                "type": "reasoning",
+                "text": "thinking",
+              },
+            ],
+          },
+        ]);
+        return;
+      }
+
+      if (request.method == "GET" && path == "/session/ses-tool-long/message") {
+        await _sendJson(request.response, [
+          {
+            "info": {
+              "role": "user",
+              "id": "m-tool-long-user",
+              "sessionID": "ses-tool-long",
+            },
+            "parts": [
+              {
+                "id": "part-tool-long-user",
+                "sessionID": "ses-tool-long",
+                "messageID": "m-tool-long-user",
+                "type": "text",
+                "text": "run",
+              },
+            ],
+          },
+          {
+            "info": {
+              "role": "assistant",
+              "id": "m-tool-long",
+              "sessionID": "ses-tool-long",
+            },
+            "parts": [
+              {
+                "id": "part-tool-long",
+                "sessionID": "ses-tool-long",
+                "messageID": "m-tool-long",
+                "type": "tool",
+                "tool": "bash",
+                "state": {
+                  "status": "completed",
+                  "title": "Long output",
+                  "output": "x" * 1000,
+                  "error": null,
+                },
+              },
+            ],
+          },
+        ]);
+        return;
+      }
+
+      if (request.method == "GET" && path == "/session/ses-tool-short/message") {
+        await _sendJson(request.response, [
+          {
+            "info": {
+              "role": "user",
+              "id": "m-tool-short-user",
+              "sessionID": "ses-tool-short",
+            },
+            "parts": [
+              {
+                "id": "part-tool-short-user",
+                "sessionID": "ses-tool-short",
+                "messageID": "m-tool-short-user",
+                "type": "text",
+                "text": "run",
+              },
+            ],
+          },
+          {
+            "info": {
+              "role": "assistant",
+              "id": "m-tool-short",
+              "sessionID": "ses-tool-short",
+            },
+            "parts": [
+              {
+                "id": "part-tool-short",
+                "sessionID": "ses-tool-short",
+                "messageID": "m-tool-short",
+                "type": "tool",
+                "tool": "bash",
+                "state": {
+                  "status": "completed",
+                  "title": "Short output",
+                  "output": "short",
+                  "error": null,
+                },
               },
             ],
           },

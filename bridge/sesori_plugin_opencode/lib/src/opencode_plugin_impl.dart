@@ -507,21 +507,11 @@ class OpenCodePlugin implements BridgePlugin {
         role: info.role,
         id: info.id,
         sessionID: info.sessionID,
-        parentID: info.parentID,
         agent: info.agent,
         modelID: info.modelID,
         providerID: info.providerID,
-        cost: info.cost,
-        time: switch (info.time) {
-          MessageTime(:final created, :final completed) => PluginMessageTime(
-            created: created,
-            completed: completed,
-          ),
-          null => null,
-        },
-        finish: info.finish,
       ),
-      parts: parts.map(_mapMessagePart).toList(),
+      parts: parts.where((p) => p.type != "file" && p.type != "snapshot").map(_mapMessagePart).toList(),
     );
   }
 
@@ -533,32 +523,18 @@ class OpenCodePlugin implements BridgePlugin {
       type: raw.type,
       text: raw.text,
       tool: raw.tool,
-      callID: raw.callID,
       state: switch (raw.state) {
         ToolState(:final status, :final title, :final output, :final error) => PluginToolState(
           status: status,
           title: title,
-          output: output,
+          output: output != null && output.length > 500 ? output.substring(0, 500) : output,
           error: error,
         ),
         null => null,
       },
-      mime: raw.mime,
-      url: raw.url,
-      filename: raw.filename,
-      cost: raw.cost,
-      reason: raw.reason,
       prompt: raw.prompt,
       description: raw.description,
       agent: raw.agent,
-      snapshot: raw.snapshot,
-      time: switch (raw.time) {
-        PartTime(:final start, :final end) => PluginPartTime(
-          start: start,
-          end: end,
-        ),
-        null => null,
-      },
     );
   }
 
@@ -571,9 +547,8 @@ class OpenCodePlugin implements BridgePlugin {
       SseSessionCreated(:final info) => BridgeSseSessionCreated(info: info.toJson()),
       SseSessionUpdated(:final info) => BridgeSseSessionUpdated(info: info.toJson()),
       SseSessionDeleted(:final info) => BridgeSseSessionDeleted(info: info.toJson()),
-      SseSessionDiff(:final sessionID, :final diff) => BridgeSseSessionDiff(
+      SseSessionDiff(:final sessionID) => BridgeSseSessionDiff(
         sessionID: sessionID,
-        diff: diff.map((item) => item.toJson()).toList(),
       ),
       SseSessionError(:final sessionID) => BridgeSseSessionError(sessionID: sessionID),
       SseSessionCompacted(:final sessionID) => BridgeSseSessionCompacted(sessionID: sessionID),
