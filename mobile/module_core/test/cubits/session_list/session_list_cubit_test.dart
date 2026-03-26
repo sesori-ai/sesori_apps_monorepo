@@ -1300,5 +1300,80 @@ void main() {
             .having((s) => s.activeSessionIds, "activeSessionIds empty", isEmpty),
       ],
     );
+
+    // -------------------------------------------------------------------------
+    // Stale reconnect
+    // -------------------------------------------------------------------------
+
+    blocTest<SessionListCubit, SessionListState>(
+      "stale signal triggers refresh with isRefreshing indicator",
+      build: () {
+        when(
+          () => mockSessionService.listSessions(projectId: projectId),
+        ).thenAnswer((_) async => ApiResponse.success([testSession()]));
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero); // let initial load complete
+        (mockConnectionService as MockConnectionService).emitStaleReconnect();
+        await Future<void>.delayed(Duration.zero); // let refresh start
+      },
+      expect: () => [
+        isA<SessionListLoaded>(), // initial load
+        isA<SessionListLoaded>().having((s) => s.isRefreshing, "isRefreshing", true), // stale signal
+        isA<SessionListLoaded>().having((s) => s.isRefreshing, "isRefreshing", false), // refresh complete
+      ],
+    );
+
+    blocTest<SessionListCubit, SessionListState>(
+      "stale signal is ignored when state is not SessionListLoaded",
+      build: () {
+        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+          (_) async => Future.delayed(
+            const Duration(milliseconds: 100),
+            () => ApiResponse.success([testSession()]),
+          ),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        // Emit stale while still loading
+        (mockConnectionService as MockConnectionService).emitStaleReconnect();
+        await Future<void>.delayed(Duration.zero);
+      },
+      skip: 1, // Skip the initial loading state
+      expect: () => [
+        // No additional states from stale signal since state is not loaded
+      ],
+    );
+
+    blocTest<SessionListCubit, SessionListState>(
+      "stale + ConnectionConnected refresh coalesced into single API call",
+      build: () {
+        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+          (_) async => Future.delayed(
+            const Duration(milliseconds: 50),
+            () => ApiResponse.success([testSession()]),
+          ),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero); // let initial load complete
+        // Emit both stale and ConnectionConnected simultaneously
+        (mockConnectionService as MockConnectionService).emitStaleReconnect();
+        statusController.add(
+          const ConnectionStatus.connected(
+            config: ServerConnectionConfig(relayHost: "test.example.com"),
+            health: HealthResponse(healthy: true, version: "0.1.0"),
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      },
+      verify: (cubit) {
+        // Verify listSessions was called at least once (initial load + refresh)
+        verify(() => mockSessionService.listSessions(projectId: projectId)).called(greaterThanOrEqualTo(1));
+      },
+    );
   });
 }

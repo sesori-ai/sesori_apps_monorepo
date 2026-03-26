@@ -47,6 +47,9 @@ class SessionListCubit extends Cubit<SessionListState> {
     _subscriptions.add(
       _sseEventRepository.sessionActivity.listen(_onSessionActivityUpdated),
     );
+    _subscriptions.add(
+      _connectionService.staleReconnect.listen((_) => _onStaleReconnect()),
+    );
   }
 
   void _handleEvent(SseEvent event) {
@@ -173,6 +176,22 @@ class SessionListCubit extends Cubit<SessionListState> {
     if (status is ConnectionConnected && state is SessionListLoaded) {
       unawaited(refreshSessions());
     }
+  }
+
+  void _onStaleReconnect() {
+    if (isClosed) return;
+    if (state is! SessionListLoaded) return;
+    final loaded = state as SessionListLoaded;
+    emit(loaded.copyWith(isRefreshing: true));
+    unawaited(
+      refreshSessions().whenComplete(() {
+        if (isClosed) return;
+        final current = state;
+        if (current is SessionListLoaded) {
+          emit(current.copyWith(isRefreshing: false));
+        }
+      }),
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -376,11 +395,14 @@ class SessionListCubit extends Cubit<SessionListState> {
 
     if (isClosed) return;
     final projectActivity = _sseEventRepository.currentSessionActivity[_projectId] ?? <String, SessionActivityInfo>{};
+    final currentState = state;
+    final isRefreshing = currentState is SessionListLoaded ? currentState.isRefreshing : false;
     emit(
       SessionListState.loaded(
         sessions: sorted,
         showArchived: _showArchived,
         activeSessionIds: projectActivity,
+        isRefreshing: isRefreshing,
       ),
     );
   }

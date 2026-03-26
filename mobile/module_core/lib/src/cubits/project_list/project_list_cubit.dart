@@ -84,6 +84,11 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     _subscriptions.add(
       _connectionService.status.skip(1).listen(_onConnectionStatusChanged),
     );
+
+    // 5. Stale reconnect: refresh when the relay detects stale state.
+    _subscriptions.add(
+      _connectionService.staleReconnect.listen((_) => _onStaleReconnect()),
+    );
   }
 
   void setActiveProject(Project project) {
@@ -130,6 +135,22 @@ class ProjectListCubit extends Cubit<ProjectListState> {
           break; // Load already in progress.
       }
     }
+  }
+
+  void _onStaleReconnect() {
+    if (isClosed) return;
+    if (state is! ProjectListLoaded) return;
+    final loaded = state as ProjectListLoaded;
+    emit(loaded.copyWith(isRefreshing: true));
+    unawaited(
+      refreshProjects().whenComplete(() {
+        if (isClosed) return;
+        final current = state;
+        if (current is ProjectListLoaded) {
+          emit(current.copyWith(isRefreshing: false));
+        }
+      }),
+    );
   }
 
   Future<void> loadProjects() async {

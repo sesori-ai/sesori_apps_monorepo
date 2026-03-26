@@ -799,5 +799,117 @@ void main() {
         verify(() => mockProjectService.listProjects()).called(1);
       },
     );
+
+    // -------------------------------------------------------------------------
+    // Stale reconnect
+    // -------------------------------------------------------------------------
+
+    group("stale reconnect", () {
+      blocTest<ProjectListCubit, ProjectListState>(
+        "stale signal triggers refresh with isRefreshing indicator",
+        build: () {
+          when(() => mockProjectService.listProjects()).thenAnswer(
+            (_) async => ApiResponse.success([testProject()]),
+          );
+          return buildCubit();
+        },
+        act: (cubit) async {
+          await Future<void>.delayed(Duration.zero);
+          mockConnectionService.emitStaleReconnect();
+          await Future<void>.delayed(Duration.zero);
+        },
+        skip: 1,
+        expect: () => [
+          isA<ProjectListLoaded>()
+              .having(
+                (s) => s.isRefreshing,
+                "isRefreshing when stale emitted",
+                isTrue,
+              )
+              .having(
+                (s) => s.projects,
+                "projects preserved",
+                [testProject()],
+              ),
+          isA<ProjectListLoaded>()
+              .having(
+                (s) => s.isRefreshing,
+                "isRefreshing after refresh completes",
+                isFalse,
+              )
+              .having(
+                (s) => s.projects,
+                "projects preserved",
+                [testProject()],
+              ),
+        ],
+        verify: (_) {
+          // 1 call from constructor, 1 from stale reconnect
+          verify(() => mockProjectService.listProjects()).called(2);
+        },
+      );
+
+      blocTest<ProjectListCubit, ProjectListState>(
+        "stale signal is ignored when state is not ProjectListLoaded",
+        build: () {
+          when(() => mockProjectService.listProjects()).thenAnswer(
+            (_) async => ApiResponse.error(ApiError.generic()),
+          );
+          return buildCubit();
+        },
+        act: (cubit) async {
+          await Future<void>.delayed(Duration.zero);
+          mockConnectionService.emitStaleReconnect();
+          await Future<void>.delayed(Duration.zero);
+        },
+        skip: 1,
+        expect: () => <ProjectListState>[],
+        verify: (_) {
+          // Only 1 call from constructor, stale should not trigger refresh
+          verify(() => mockProjectService.listProjects()).called(1);
+        },
+      );
+
+      blocTest<ProjectListCubit, ProjectListState>(
+        "stale + ConnectionConnected refresh coalesced into single API call",
+        build: () {
+          when(() => mockProjectService.listProjects()).thenAnswer(
+            (_) async => ApiResponse.success([testProject()]),
+          );
+          return buildCubit();
+        },
+        act: (cubit) async {
+          await Future<void>.delayed(Duration.zero);
+          // Emit both stale and connection connected simultaneously
+          mockConnectionService.emitStaleReconnect();
+          const config = ServerConnectionConfig(
+            relayHost: "relay.example.com",
+            authToken: "test-token",
+          );
+          const health = HealthResponse(healthy: true, version: "0.1.200");
+          statusController.add(
+            const ConnectionStatus.connected(config: config, health: health),
+          );
+          await Future<void>.delayed(Duration.zero);
+        },
+        skip: 1,
+        expect: () => [
+          isA<ProjectListLoaded>().having(
+            (s) => s.isRefreshing,
+            "isRefreshing when stale emitted",
+            isTrue,
+          ),
+          isA<ProjectListLoaded>().having(
+            (s) => s.isRefreshing,
+            "isRefreshing after refresh completes",
+            isFalse,
+          ),
+        ],
+        verify: (_) {
+          // 1 call from constructor, 1 from stale (coalesced with ConnectionConnected)
+          verify(() => mockProjectService.listProjects()).called(2);
+        },
+      );
+    });
   });
 }
