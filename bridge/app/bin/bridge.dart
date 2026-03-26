@@ -8,6 +8,7 @@ import 'package:sesori_bridge/src/auth/profile.dart';
 import 'package:sesori_bridge/src/auth/token.dart';
 import 'package:sesori_bridge/src/auth/token_manager.dart';
 import 'package:sesori_bridge/src/auth/validate.dart';
+import 'package:sesori_bridge/src/bridge/bandwidth_tracker.dart';
 import 'package:sesori_bridge/src/bridge/debug_server.dart';
 import 'package:sesori_bridge/src/bridge/models/bridge_config.dart';
 import 'package:sesori_bridge/src/bridge/orchestrator.dart';
@@ -195,6 +196,13 @@ Future<void> main(List<String> args) async {
   );
   final session = orchestrator.create();
 
+  // Wire up bandwidth tracking when debug server is active
+  BandwidthTracker? bandwidthTracker;
+  if (debugPort != null) {
+    bandwidthTracker = BandwidthTracker();
+    session.bytesSent.listen((bytes) => bandwidthTracker!.record(bytes: bytes));
+  }
+
   // Create and start debug server if requested
   DebugServer? debugServer;
   if (debugPort != null) {
@@ -221,14 +229,17 @@ Future<void> main(List<String> args) async {
   }
 
   // Run bridge; stop the server process on exit regardless of outcome
+  bandwidthTracker?.start();
   try {
     await session.run();
   } catch (e) {
     Log.e('$e');
+    bandwidthTracker?.stop();
     await _shutdown(cmd, sigintSub, sigtermSub, debugServer, db);
     exit(1);
   }
 
+  bandwidthTracker?.stop();
   await _shutdown(cmd, sigintSub, sigtermSub, debugServer, db);
 }
 

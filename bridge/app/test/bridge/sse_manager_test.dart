@@ -13,7 +13,7 @@ import "../helpers/test_helpers.dart";
 void main() {
   group("SSEManager", () {
     test("subscribe registers subscribers", () {
-      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow);
+      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow, onBytesSent: null);
       final relayClient = RelayClient(
         relayURL: "ws://127.0.0.1:1",
         accessTokenProvider: FakeAccessTokenProvider(""),
@@ -27,7 +27,7 @@ void main() {
     });
 
     test("enqueueEvent with no subscribers does nothing", () async {
-      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow);
+      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow, onBytesSent: null);
       final client = _RecordingRelayClient();
       manager.setRoomKey(makeRoomKey());
 
@@ -40,7 +40,7 @@ void main() {
     test("enqueueEvent delivers typed payload envelope to all subscribers", () async {
       final roomKey = makeRoomKey();
       final client = _RecordingRelayClient();
-      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow);
+      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow, onBytesSent: null);
       manager.setRoomKey(roomKey);
       addTearDown(manager.stop);
 
@@ -78,7 +78,7 @@ void main() {
 
     test("without room key events are not sent", () async {
       final client = _RecordingRelayClient();
-      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow);
+      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow, onBytesSent: null);
       addTearDown(manager.stop);
 
       manager.subscribePath(7, "/global/event", client);
@@ -89,7 +89,7 @@ void main() {
     });
 
     test("non-last unsubscribe creates orphan queue", () {
-      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow);
+      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow, onBytesSent: null);
       final relayClient = RelayClient(
         relayURL: "ws://127.0.0.1:1",
         accessTokenProvider: FakeAccessTokenProvider(""),
@@ -105,7 +105,7 @@ void main() {
     });
 
     test("last unsubscribe creates orphan queue", () {
-      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow);
+      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow, onBytesSent: null);
       final relayClient = RelayClient(
         relayURL: "ws://127.0.0.1:1",
         accessTokenProvider: FakeAccessTokenProvider(""),
@@ -122,7 +122,7 @@ void main() {
     test("single subscriber reconnect replays buffered events", () async {
       final roomKey = makeRoomKey();
       final client = _RecordingRelayClient();
-      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow);
+      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow, onBytesSent: null);
       manager.setRoomKey(roomKey);
       addTearDown(manager.stop);
 
@@ -153,7 +153,7 @@ void main() {
     test("orphan queue replays to next subscriber within replay window", () async {
       final roomKey = makeRoomKey();
       final client = _RecordingRelayClient();
-      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow);
+      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow, onBytesSent: null);
       manager.setRoomKey(roomKey);
       addTearDown(manager.stop);
 
@@ -181,7 +181,7 @@ void main() {
       await withClock(fakeClock, () async {
         final roomKey = makeRoomKey();
         final client = _RecordingRelayClient();
-        final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow);
+        final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow, onBytesSent: null);
         manager.setRoomKey(roomKey);
         addTearDown(manager.stop);
 
@@ -206,7 +206,7 @@ void main() {
     test("orphanAll moves all subscribers to orphan state", () async {
       final roomKey = makeRoomKey();
       final client = _RecordingRelayClient();
-      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow);
+      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow, onBytesSent: null);
       manager.setRoomKey(roomKey);
       addTearDown(manager.stop);
 
@@ -238,7 +238,7 @@ void main() {
     });
 
     test("stop clears subscribers and orphan queues", () {
-      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow);
+      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow, onBytesSent: null);
       final relayClient = RelayClient(
         relayURL: "ws://127.0.0.1:1",
         accessTokenProvider: FakeAccessTokenProvider(""),

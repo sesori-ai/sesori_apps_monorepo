@@ -1,4 +1,3 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart" show ProjectActivitySummary;
 
 import "../opencode_plugin.dart";
@@ -28,31 +27,11 @@ class OpenCodeService {
     return _applyLimit(afterStart, limit);
   }
 
-  Future<List<MessageWithParts>> getLastExchange({
+  Future<List<MessageWithParts>> getMessages({
     required String sessionId,
     required String? directory,
   }) async {
-    try {
-      final messages = await repository.api.getMessages(sessionId: sessionId, directory: directory);
-      Log.d("[dbg] got ${messages.length} messages for session $sessionId");
-      if (messages.isNotEmpty) {
-        Log.v("[dbg] first message: ${messages[0].toJson()}");
-      }
-      if (messages.isEmpty) return [];
-
-      int lastUserIndex = -1;
-      for (int i = messages.length - 1; i >= 0; i--) {
-        if (messages[i].info.role == "user") {
-          lastUserIndex = i;
-          break;
-        }
-      }
-
-      if (lastUserIndex == -1) return [];
-      return messages.sublist(lastUserIndex);
-    } catch (_) {
-      return [];
-    }
+    return repository.api.getMessages(sessionId: sessionId, directory: directory);
   }
 
   bool handleSseEvent(SseEventData event, String? directory) {

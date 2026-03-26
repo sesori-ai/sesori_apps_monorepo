@@ -43,7 +43,11 @@ class Orchestrator {
   /// Creates a new session with a fresh room key and SSE manager.
   OrchestratorSession create() {
     final roomKey = _generateRoomKey();
-    final sseManager = _buildSseManager();
+    final bytesSentController = StreamController<int>.broadcast();
+    final sseManager = SSEManager(
+      replayWindow: config.sseReplayWindow,
+      onBytesSent: bytesSentController.add,
+    );
     sseManager.setRoomKey(roomKey);
 
     return OrchestratorSession._(
@@ -55,11 +59,8 @@ class Orchestrator {
       projectsDao: _projectsDao,
       roomKey: roomKey,
       sseManager: sseManager,
+      bytesSentController: bytesSentController,
     );
-  }
-
-  SSEManager _buildSseManager() {
-    return SSEManager(replayWindow: config.sseReplayWindow);
   }
 
   static List<int> _generateRoomKey() {
@@ -84,6 +85,7 @@ class OrchestratorSession {
   final BridgeEventMapper _mapper;
   final PushNotificationService _pushNotificationService;
   final TokenRefresher _tokenRefresher;
+  final StreamController<int> _bytesSentController;
   StreamSubscription<BridgeSseEvent>? _eventSubscription;
 
   bool _cancelled = false;
@@ -97,14 +99,22 @@ class OrchestratorSession {
     required ProjectsDao projectsDao,
     required List<int> roomKey,
     required SSEManager sseManager,
+    required StreamController<int> bytesSentController,
   }) : _client = client,
        _plugin = plugin,
        _pushNotificationService = pushNotificationService,
        _tokenRefresher = tokenRefresher,
        _roomKey = roomKey,
        _sseManager = sseManager,
+       _bytesSentController = bytesSentController,
        _router = RequestRouter(plugin: plugin, projectsDao: projectsDao),
        _mapper = BridgeEventMapper(plugin);
+
+  /// Broadcast stream of byte counts emitted each time data is sent to a phone.
+  ///
+  /// Includes both API responses and SSE events. Subscribe to this stream to
+  /// track bandwidth (e.g. with [BandwidthTracker]).
+  Stream<int> get bytesSent => _bytesSentController.stream;
 
   Future<void> run() async {
     final kxManager = KeyExchangeManager(_roomKey);
@@ -199,6 +209,7 @@ class OrchestratorSession {
       Log.d("[dbg] disposing push notification service...");
       await _pushNotificationService.dispose();
       Log.d("[dbg] push notification service disposed");
+      await _bytesSentController.close();
       try {
         Log.d("[dbg] closing relay client...");
         await _client.close();
@@ -462,10 +473,13 @@ class OrchestratorSession {
     required RelayMessage message,
   }) async {
     final respJson = jsonEncode(message.toJson());
+    final jsonBytes = utf8.encode(respJson);
+    Log.d("[response] sending ${jsonBytes.length} bytes to connID=$connID");
+    _bytesSentController.add(jsonBytes.length);
     final cryptoService = RelayCryptoService();
     final encryptionKey = SecretKey(List<int>.from(_roomKey));
     final encryptor = cryptoService.createSessionEncryptor(encryptionKey);
-    final framed = await frame(utf8.encode(respJson), encryptor);
+    final framed = await frame(jsonBytes, encryptor);
     _client.send(connID, framed);
   }
 }

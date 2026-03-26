@@ -346,7 +346,7 @@ class OpenCodePlugin implements BridgePlugin {
   Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async {
     final directory = _service.tracker.getSessionDirectory(sessionId: sessionId);
     final messages = await _call(
-      () => _service.getLastExchange(
+      () => _service.getMessages(
         sessionId: sessionId,
         directory: directory,
       ),
