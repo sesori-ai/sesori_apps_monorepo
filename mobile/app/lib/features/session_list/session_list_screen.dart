@@ -110,7 +110,11 @@ class _SessionListBody extends StatelessWidget {
     final success = await cubit.unarchiveSession(sessionId);
     if (!success || !context.mounted) return;
 
-    _showUndoSnackBar(context, cubit, loc.sessionListUnarchived);
+    // Show confirmation without undo — unarchive creates a new session
+    // (via fork + delete), so the original cannot be restored.
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(content: Text(loc.sessionListUnarchived)));
   }
 
   void _showUndoSnackBar(BuildContext context, SessionListCubit cubit, String message) {

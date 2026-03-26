@@ -391,7 +391,7 @@ void main() {
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
-      "unarchiveSession: optimistically unarchives session and returns true on API success",
+      "unarchiveSession: optimistically removes session and inserts new session on API success",
       build: () {
         final archivedSession = testSession(
           id: "s1",
@@ -400,8 +400,9 @@ void main() {
         when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success([archivedSession]),
         );
+        // API returns a session with a DIFFERENT ID (fork + delete creates new session).
         when(() => mockSessionService.unarchiveSession("s1")).thenAnswer(
-          (_) async => ApiResponse.success(testSession(id: "s1")),
+          (_) async => ApiResponse.success(testSession(id: "s1-new")),
         );
         return buildCubit();
       },
@@ -419,10 +420,12 @@ void main() {
         isA<SessionListLoaded>()
             .having((s) => s.showArchived, "showArchived", isTrue)
             .having((s) => s.sessions.length, "sessions after toggle", 1),
-        // Optimistic unarchive: session now has archived=null.
-        // Server response is identical, so bloc deduplicates — only one emission.
+        // Optimistic remove: old session (s1) removed from list.
+        isA<SessionListLoaded>().having((s) => s.sessions, "sessions after optimistic remove", isEmpty),
+        // API success: new session (s1-new, different ID) inserted.
         isA<SessionListLoaded>()
-            .having((s) => s.sessions.length, "sessions after unarchive", 1)
+            .having((s) => s.sessions.length, "sessions after API success", 1)
+            .having((s) => s.sessions.first.id, "new session id", "s1-new")
             .having((s) => s.sessions.first.time?.archived, "archived cleared", isNull),
       ],
     );
@@ -458,9 +461,9 @@ void main() {
         isA<SessionListLoaded>()
             .having((s) => s.showArchived, "showArchived", isTrue)
             .having((s) => s.sessions.length, "sessions after toggle", 1),
-        // Optimistic unarchive: session still visible.
-        isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions after optimistic unarchive", 1),
-        // Rollback: archived session restored.
+        // Optimistic remove: old session removed from list.
+        isA<SessionListLoaded>().having((s) => s.sessions, "sessions after optimistic remove", isEmpty),
+        // Rollback: original archived session re-inserted (with archived timestamp).
         isA<SessionListLoaded>()
             .having((s) => s.sessions.length, "sessions after rollback", 1)
             .having((s) => s.sessions.first.time?.archived, "archived timestamp restored", isNotNull),
@@ -503,11 +506,55 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 16. undoLastArchiveAction — reverses unarchive (undo = re-archive)
+    // 16. undoLastArchiveAction — returns false after unarchive (undo disabled)
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
-      "undoLastArchiveAction: re-archives after unarchive",
+      "undoLastArchiveAction: returns false after unarchive (undo disabled for unarchive)",
+      build: () {
+        final archivedSession = testSession(
+          id: "s1",
+          archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000001000),
+        );
+        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+          (_) async => ApiResponse.success([archivedSession]),
+        );
+        // Returns new ID to reflect fork+delete behaviour.
+        when(() => mockSessionService.unarchiveSession("s1")).thenAnswer(
+          (_) async => ApiResponse.success(testSession(id: "s1-new")),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        cubit.toggleArchived();
+        await cubit.unarchiveSession("s1");
+        final undoResult = await cubit.undoLastArchiveAction();
+        // Undo snapshot is NOT set during unarchive → undo always returns false.
+        expect(undoResult, isFalse);
+      },
+      skip: 1,
+      expect: () => [
+        // toggleArchived: shows the archived session.
+        isA<SessionListLoaded>()
+            .having((s) => s.showArchived, "showArchived", isTrue)
+            .having((s) => s.sessions.length, "sessions after toggle", 1),
+        // Optimistic remove: session removed.
+        isA<SessionListLoaded>().having((s) => s.sessions, "sessions after optimistic remove", isEmpty),
+        // API success: new session (s1-new) inserted.
+        isA<SessionListLoaded>()
+            .having((s) => s.sessions.length, "sessions after unarchive", 1)
+            .having((s) => s.sessions.first.id, "new session id", "s1-new"),
+        // No undo emission — undoLastArchiveAction returned false (undo disabled for unarchive).
+      ],
+    );
+
+    // -------------------------------------------------------------------------
+    // 16b. unarchiveSession does not set undo snapshot
+    // -------------------------------------------------------------------------
+
+    blocTest<SessionListCubit, SessionListState>(
+      "unarchiveSession: does not set undo snapshot — undoLastArchiveAction returns false",
       build: () {
         final archivedSession = testSession(
           id: "s1",
@@ -517,10 +564,7 @@ void main() {
           (_) async => ApiResponse.success([archivedSession]),
         );
         when(() => mockSessionService.unarchiveSession("s1")).thenAnswer(
-          (_) async => ApiResponse.success(testSession(id: "s1")),
-        );
-        when(() => mockSessionService.archiveSession("s1")).thenAnswer(
-          (_) async => ApiResponse.success(archivedSession),
+          (_) async => ApiResponse.success(testSession(id: "s1-new")),
         );
         return buildCubit();
       },
@@ -529,23 +573,18 @@ void main() {
         cubit.toggleArchived();
         await cubit.unarchiveSession("s1");
         final undoResult = await cubit.undoLastArchiveAction();
-        expect(undoResult, isTrue);
+        // No undo snapshot was stored → must return false.
+        expect(undoResult, isFalse);
       },
       skip: 1,
+      // State emissions match the success path; the undo call emits nothing.
       expect: () => [
-        // toggleArchived: shows the archived session.
+        isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions after toggle", 1),
+        isA<SessionListLoaded>().having((s) => s.sessions, "sessions after optimistic remove", isEmpty),
         isA<SessionListLoaded>()
-            .having((s) => s.showArchived, "showArchived", isTrue)
-            .having((s) => s.sessions.length, "sessions after toggle", 1),
-        // Optimistic unarchive: session now has archived=null.
-        // Server response is identical, so bloc deduplicates — only one emission.
-        isA<SessionListLoaded>()
-            .having((s) => s.sessions.length, "sessions after unarchive", 1)
-            .having((s) => s.sessions.first.time?.archived, "archived cleared", isNull),
-        // Undo (re-archive): session still visible (showArchived is true), archived restored.
-        isA<SessionListLoaded>()
-            .having((s) => s.sessions.length, "sessions after undo", 1)
-            .having((s) => s.sessions.first.time?.archived, "re-archived timestamp", isNotNull),
+            .having((s) => s.sessions.length, "sessions after reinsert", 1)
+            .having((s) => s.sessions.first.id, "new session id", "s1-new"),
+        // No 4th emission — undo snapshot was null.
       ],
     );
 
