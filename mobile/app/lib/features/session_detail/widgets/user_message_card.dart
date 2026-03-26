@@ -9,7 +9,10 @@ class UserMessageCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final text = message.parts.where((part) => part.type == "text").map((part) => part.text ?? "").join("\n");
+    final text = message.parts
+        .where((part) => part.type == MessagePartType.text)
+        .map((part) => part.text ?? "")
+        .join("\n");
 
     return Align(
       alignment: .centerRight,

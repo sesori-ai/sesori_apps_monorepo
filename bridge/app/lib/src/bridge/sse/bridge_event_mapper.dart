@@ -1,6 +1,8 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../plugin_to_shared_mapping.dart";
+
 /// Maps [BridgeSseEvent]s from the plugin to [SesoriSseEvent]s for relay delivery.
 ///
 /// Handles all event type conversions and builds the projects summary event.
@@ -15,7 +17,7 @@ class BridgeEventMapper {
       case BridgeSseServerConnected():
         return const SesoriSseEvent.serverConnected();
       case BridgeSseServerHeartbeat():
-        return const SesoriSseEvent.serverHeartbeat();
+        return null;
       case BridgeSseServerInstanceDisposed(:final directory):
         return SesoriSseEvent.serverInstanceDisposed(directory: directory);
       case BridgeSseGlobalDisposed():
@@ -26,12 +28,8 @@ class BridgeEventMapper {
         return _tryParseSseEvent({"type": "session.updated", "info": info});
       case BridgeSseSessionDeleted(:final info):
         return _tryParseSseEvent({"type": "session.deleted", "info": info});
-      case BridgeSseSessionDiff(:final sessionID, :final diff):
-        return _tryParseSseEvent({
-          "type": "session.diff",
-          "sessionID": sessionID,
-          "diff": diff,
-        });
+      case BridgeSseSessionDiff(:final sessionID):
+        return SesoriSseEvent.sessionDiff(sessionID: sessionID);
       case BridgeSseSessionError(:final sessionID):
         return SesoriSseEvent.sessionError(sessionID: sessionID);
       case BridgeSseSessionCompacted(:final sessionID):
@@ -55,7 +53,9 @@ class BridgeEventMapper {
           messageID: messageID,
         );
       case BridgeSseMessagePartUpdated(:final part):
-        return _tryParseSseEvent({"type": "message.part.updated", "part": part});
+        if (!part.type.isVisible) return null;
+        final truncated = _truncateToolOutput(part);
+        return SesoriSseEvent.messagePartUpdated(part: truncated.toShared());
       case BridgeSseMessagePartDelta(
         :final sessionID,
         :final messageID,
@@ -197,5 +197,18 @@ class BridgeEventMapper {
       Log.w("failed to parse SSE event from payload: $payload, error: $e");
       return null;
     }
+  }
+
+  /// Returns [part] with tool output truncated to [maxToolOutputLength]
+  /// runes, or the original part if no truncation is needed.
+  /// Uses rune-based truncation to avoid splitting UTF-16 surrogate pairs.
+  PluginMessagePart _truncateToolOutput(PluginMessagePart part) {
+    final output = part.state?.output;
+    if (output == null || output.length <= maxToolOutputLength) return part;
+    return part.copyWith(
+      state: part.state!.copyWith(
+        output: String.fromCharCodes(output.runes.take(maxToolOutputLength)),
+      ),
+    );
   }
 }

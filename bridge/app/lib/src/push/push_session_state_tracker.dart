@@ -221,7 +221,7 @@ class PushSessionStateTracker {
   }
 
   void _handleMessagePartUpdated(MessagePart part) {
-    if (part.type != "text") {
+    if (part.type != MessagePartType.text) {
       return;
     }
 

@@ -3,6 +3,7 @@ import "dart:convert";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../plugin_to_shared_mapping.dart";
 import "request_handler.dart";
 
 const _idParam = "id";
@@ -34,56 +35,11 @@ class GetSessionMessagesHandler extends RequestHandler {
               role: m.info.role,
               id: m.info.id,
               sessionID: m.info.sessionID,
-              parentID: m.info.parentID,
               agent: m.info.agent,
               modelID: m.info.modelID,
               providerID: m.info.providerID,
-              cost: m.info.cost,
-              time: switch (m.info.time) {
-                PluginMessageTime(:final created, :final completed) => MessageTime(
-                  created: created,
-                  completed: completed,
-                ),
-                null => null,
-              },
-              finish: m.info.finish,
-              // tokens:
             ),
-            parts: m.parts
-                .map(
-                  (p) => MessagePart(
-                    id: p.id,
-                    sessionID: p.sessionID,
-                    messageID: p.messageID,
-                    type: p.type,
-                    text: p.text,
-                    tool: p.tool,
-                    callID: p.callID,
-                    state: switch (p.state) {
-                      PluginToolState(:final status, :final title, :final output, :final error) => ToolState(
-                        status: status,
-                        title: title,
-                        output: output,
-                        error: error,
-                      ),
-                      null => null,
-                    },
-                    mime: p.mime,
-                    url: p.url,
-                    filename: p.filename,
-                    cost: p.cost,
-                    reason: p.reason,
-                    prompt: p.prompt,
-                    description: p.description,
-                    agent: p.agent,
-                    snapshot: p.snapshot,
-                    time: switch (p.time) {
-                      PluginPartTime(:final start, :final end) => PartTime(start: start, end: end),
-                      null => null,
-                    },
-                  ),
-                )
-                .toList(),
+            parts: m.parts.map((p) => p.toShared()).toList(),
           ),
         )
         .toList();

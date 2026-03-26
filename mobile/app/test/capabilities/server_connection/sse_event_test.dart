@@ -8,7 +8,6 @@ void main() {
       final event = SseEvent(
         data: const SesoriSessionDiff(
           sessionID: "session-diff-1",
-          diff: [],
         ),
       );
 
@@ -152,7 +151,6 @@ void main() {
       final event = SseEvent(
         data: const SesoriSessionDiff(
           sessionID: "session-lazy-1",
-          diff: [],
         ),
       );
 

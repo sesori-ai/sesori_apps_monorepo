@@ -10,25 +10,15 @@ _MessagePart _$MessagePartFromJson(Map json) => _MessagePart(
   id: json['id'] as String,
   sessionID: json['sessionID'] as String,
   messageID: json['messageID'] as String,
-  type: json['type'] as String,
+  type: $enumDecode(_$MessagePartTypeEnumMap, json['type']),
   text: json['text'] as String?,
   tool: json['tool'] as String?,
-  callID: json['callID'] as String?,
   state: json['state'] == null
       ? null
       : ToolState.fromJson(Map<String, dynamic>.from(json['state'] as Map)),
-  mime: json['mime'] as String?,
-  url: json['url'] as String?,
-  filename: json['filename'] as String?,
-  cost: (json['cost'] as num?)?.toDouble(),
-  reason: json['reason'] as String?,
   prompt: json['prompt'] as String?,
   description: json['description'] as String?,
   agent: json['agent'] as String?,
-  snapshot: json['snapshot'] as String?,
-  time: json['time'] == null
-      ? null
-      : PartTime.fromJson(Map<String, dynamic>.from(json['time'] as Map)),
 );
 
 Map<String, dynamic> _$MessagePartToJson(_MessagePart instance) =>
@@ -36,22 +26,25 @@ Map<String, dynamic> _$MessagePartToJson(_MessagePart instance) =>
       'id': instance.id,
       'sessionID': instance.sessionID,
       'messageID': instance.messageID,
-      'type': instance.type,
+      'type': _$MessagePartTypeEnumMap[instance.type]!,
       'text': instance.text,
       'tool': instance.tool,
-      'callID': instance.callID,
       'state': instance.state?.toJson(),
-      'mime': instance.mime,
-      'url': instance.url,
-      'filename': instance.filename,
-      'cost': instance.cost,
-      'reason': instance.reason,
       'prompt': instance.prompt,
       'description': instance.description,
       'agent': instance.agent,
-      'snapshot': instance.snapshot,
-      'time': instance.time?.toJson(),
     };
+
+const _$MessagePartTypeEnumMap = {
+  MessagePartType.text: 'text',
+  MessagePartType.reasoning: 'reasoning',
+  MessagePartType.tool: 'tool',
+  MessagePartType.subtask: 'subtask',
+  MessagePartType.stepStart: 'step-start',
+  MessagePartType.stepFinish: 'step-finish',
+  MessagePartType.file: 'file',
+  MessagePartType.snapshot: 'snapshot',
+};
 
 _ToolState _$ToolStateFromJson(Map json) => _ToolState(
   status: json['status'] as String,
@@ -67,13 +60,3 @@ Map<String, dynamic> _$ToolStateToJson(_ToolState instance) =>
       'output': instance.output,
       'error': instance.error,
     };
-
-_PartTime _$PartTimeFromJson(Map json) => _PartTime(
-  start: (json['start'] as num?)?.toInt(),
-  end: (json['end'] as num?)?.toInt(),
-);
-
-Map<String, dynamic> _$PartTimeToJson(_PartTime instance) => <String, dynamic>{
-  'start': instance.start,
-  'end': instance.end,
-};

@@ -4,7 +4,6 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:sesori_mobile/core/platform/local_notification_manager.dart';
-import 'package:sesori_mobile/core/platform/notification_tap_event.dart';
 import 'package:sesori_mobile/core/platform/notification_id_utils.dart';
 import 'package:sesori_shared/sesori_shared.dart';
 

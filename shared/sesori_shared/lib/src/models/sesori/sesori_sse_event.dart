@@ -1,6 +1,5 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
-import "file_diff.dart";
 import "message.dart";
 import "message_part.dart";
 import "project_activity_summary.dart";
@@ -71,7 +70,6 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   @Implements<SesoriSessionEvent>()
   const factory SesoriSseEvent.sessionDiff({
     required String sessionID,
-    required List<FileDiff> diff,
   }) = SesoriSessionDiff;
 
   @FreezedUnionValue("session.error")

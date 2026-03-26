@@ -36,12 +36,12 @@ class AssistantMessageCard extends StatelessWidget {
 
   bool _isVisible(MessagePart part) {
     return const [
-      "text",
-      "reasoning",
-      "tool",
-      "subtask",
-      "step-start",
-      "step-finish",
+      MessagePartType.text,
+      MessagePartType.reasoning,
+      MessagePartType.tool,
+      MessagePartType.subtask,
+      MessagePartType.stepStart,
+      MessagePartType.stepFinish,
     ].contains(part.type);
   }
 
@@ -49,18 +49,18 @@ class AssistantMessageCard extends StatelessWidget {
     final streaming = streamingText[part.id];
 
     return switch (part.type) {
-      "text" => TextPartWidget(
+      MessagePartType.text => TextPartWidget(
         key: ValueKey(part.id),
         text: streaming ?? part.text ?? "",
         isStreaming: streaming != null,
       ),
-      "reasoning" => ReasoningPartWidget(
+      MessagePartType.reasoning => ReasoningPartWidget(
         key: ValueKey(part.id),
         text: streaming ?? part.text ?? "",
         isStreaming: streaming != null,
       ),
-      "tool" => ToolPartWidget(key: ValueKey(part.id), part: part),
-      "subtask" => SubtaskPartWidget(
+      MessagePartType.tool => ToolPartWidget(key: ValueKey(part.id), part: part),
+      MessagePartType.subtask => SubtaskPartWidget(
         key: ValueKey(part.id),
         part: part,
         children: children,

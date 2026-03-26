@@ -69,18 +69,11 @@ Map<String, dynamic> _$SesoriSessionDeletedToJson(
 
 SesoriSessionDiff _$SesoriSessionDiffFromJson(Map json) => SesoriSessionDiff(
   sessionID: json['sessionID'] as String,
-  diff: (json['diff'] as List<dynamic>)
-      .map((e) => FileDiff.fromJson(Map<String, dynamic>.from(e as Map)))
-      .toList(),
   $type: json['type'] as String?,
 );
 
 Map<String, dynamic> _$SesoriSessionDiffToJson(SesoriSessionDiff instance) =>
-    <String, dynamic>{
-      'sessionID': instance.sessionID,
-      'diff': instance.diff.map((e) => e.toJson()).toList(),
-      'type': instance.$type,
-    };
+    <String, dynamic>{'sessionID': instance.sessionID, 'type': instance.$type};
 
 SesoriSessionError _$SesoriSessionErrorFromJson(Map json) => SesoriSessionError(
   sessionID: json['sessionID'] as String,

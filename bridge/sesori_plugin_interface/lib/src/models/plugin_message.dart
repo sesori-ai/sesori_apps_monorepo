@@ -4,6 +4,36 @@ part "plugin_message.freezed.dart";
 
 part "plugin_message.g.dart";
 
+/// Maximum length for tool output sent to mobile.
+/// Mobile truncates to this length anyway, so we truncate at the source.
+const maxToolOutputLength = 500;
+
+@JsonEnum()
+enum PluginMessagePartType {
+  @JsonValue("text")
+  text,
+  @JsonValue("reasoning")
+  reasoning,
+  @JsonValue("tool")
+  tool,
+  @JsonValue("subtask")
+  subtask,
+  @JsonValue("step-start")
+  stepStart,
+  @JsonValue("step-finish")
+  stepFinish,
+  @JsonValue("file")
+  file,
+  @JsonValue("snapshot")
+  snapshot,
+  @JsonValue("unknown")
+  unknown
+  ;
+
+  /// Whether this part type is visible to mobile (rendered in the UI).
+  bool get isVisible => this != file && this != snapshot && this != unknown;
+}
+
 @freezed
 sealed class PluginMessageWithParts with _$PluginMessageWithParts {
   const factory PluginMessageWithParts({
@@ -18,28 +48,16 @@ sealed class PluginMessagePart with _$PluginMessagePart {
     required String id,
     required String sessionID,
     required String messageID,
-    required String type,
+    required PluginMessagePartType type,
     // text / reasoning
     required String? text,
     // tool
     required String? tool,
-    required String? callID,
     required PluginToolState? state,
-    // file
-    required String? mime,
-    required String? url,
-    required String? filename,
-    // step-finish
-    required double? cost,
-    required String? reason,
     // subtask
     required String? prompt,
     required String? description,
     required String? agent,
-    // snapshot / step-start
-    required String? snapshot,
-    // time (for text, reasoning, tool)
-    required PluginPartTime? time,
   }) = _PluginMessagePart;
 }
 
@@ -54,33 +72,13 @@ sealed class PluginToolState with _$PluginToolState {
 }
 
 @freezed
-sealed class PluginPartTime with _$PluginPartTime {
-  const factory PluginPartTime({
-    required int? start,
-    required int? end,
-  }) = _PluginPartTime;
-}
-
-@freezed
 sealed class PluginMessage with _$PluginMessage {
   const factory PluginMessage({
     required String role,
     required String id,
     required String sessionID,
-    required String? parentID,
     required String? agent,
     required String? modelID,
     required String? providerID,
-    required double? cost,
-    required PluginMessageTime? time,
-    required String? finish,
   }) = _PluginMessage;
-}
-
-@freezed
-sealed class PluginMessageTime with _$PluginMessageTime {
-  const factory PluginMessageTime({
-    required int created,
-    required int? completed,
-  }) = _PluginMessageTime;
 }
