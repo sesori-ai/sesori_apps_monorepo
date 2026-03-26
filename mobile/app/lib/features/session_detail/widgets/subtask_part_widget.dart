@@ -44,7 +44,10 @@ class SubtaskPartWidget extends StatelessWidget {
                       "projectId": childSession.projectID,
                       "sessionId": childSession.id,
                     },
-                    queryParams: childSession.title != null ? {"title": childSession.title!} : null,
+                    queryParams: {
+                      "readOnly": "true",
+                      "title": ?childSession.title,
+                    },
                   );
                 }
               : null,
@@ -122,8 +125,8 @@ class SubtaskPartWidget extends StatelessWidget {
 
   /// Try to find the child session that matches this subtask part.
   ///
-  /// We match by looking for child sessions whose title or description
-  /// matches the subtask description. If no direct match, we return null.
+  /// Uses multi-strategy matching: exact → case-insensitive → contains.
+  /// If no match found, returns null.
   Session? _findChildSession() {
     if (children.isEmpty) return null;
     // If there's only one child, it's likely the one.
@@ -132,12 +135,25 @@ class SubtaskPartWidget extends StatelessWidget {
     final desc = part.description ?? part.prompt;
     if (desc == null) return null;
 
-    // Try exact title match.
+    // 1. Exact match.
     for (final child in children) {
       if (child.title == desc) return child;
     }
 
-    // No exact match — return null, the subtask just renders without navigation.
+    // 2. Case-insensitive match.
+    final descLower = desc.toLowerCase();
+    for (final child in children) {
+      if (child.title?.toLowerCase() == descLower) return child;
+    }
+
+    // 3. Contains match (either direction).
+    for (final child in children) {
+      final titleLower = child.title?.toLowerCase();
+      if (titleLower != null && (titleLower.contains(descLower) || descLower.contains(titleLower))) {
+        return child;
+      }
+    }
+
     return null;
   }
 }
