@@ -22,7 +22,7 @@ sealed class SessionDetailState with _$SessionDetailState {
     // Background tasks (child sessions).
     @Default([]) List<Session> children,
     @Default({}) Map<String, SessionStatus> childStatuses,
-    // Queued messages (waiting to be sent when session becomes idle).
+    // Queued messages (waiting to be sent when connection is restored).
     @Default([]) List<String> queuedMessages,
     // Available agents and providers for selection.
     @Default([]) List<AgentInfo> availableAgents,

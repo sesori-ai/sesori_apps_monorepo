@@ -4,7 +4,7 @@ import "dart:collection";
 ///
 /// This is a thin data structure — it owns the list of pending messages and
 /// provides methods to enqueue, dequeue, requeue, and cancel items. The send
-/// logic and condition checks (connection alive, session idle) remain in the
+/// logic and condition checks (connection alive) remain in the
 /// cubit that owns this queue.
 class PromptSendQueue {
   final Queue<String> _items = Queue<String>();
