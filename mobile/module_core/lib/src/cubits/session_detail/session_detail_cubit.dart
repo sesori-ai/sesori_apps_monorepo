@@ -204,22 +204,22 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     emit(current.copyWith(isRefreshing: true, streamingText: const {}));
 
     try {
-      final responses = await Future.wait<Object?>([
+      final (
+        messagesResponse,
+        questionsResponse,
+        childrenResponse,
+        statusesResponse,
+        agentsResponse,
+        providersResponse,
+      ) = await wait6(
         _service.getMessages(_sessionId),
         _service.getPendingQuestions(_sessionId),
         _service.getChildren(_sessionId),
         _service.getSessionStatuses(),
         _service.listAgents(),
         _service.listProviders(),
-      ]);
+      );
       if (isClosed) return;
-
-      final messagesResponse = responses[0]! as ApiResponse<List<MessageWithParts>>;
-      final questionsResponse = responses[1]! as ApiResponse<List<PendingQuestion>>;
-      final childrenResponse = responses[2]! as ApiResponse<List<Session>>;
-      final statusesResponse = responses[3]! as ApiResponse<Map<String, SessionStatus>>;
-      final agentsResponse = responses[4]! as ApiResponse<List<AgentInfo>>;
-      final providersResponse = responses[5]! as ApiResponse<ProviderListResponse>;
 
       final messages = switch (messagesResponse) {
         SuccessResponse(:final data) => data,
