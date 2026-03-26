@@ -62,6 +62,24 @@ modules/
 - **Always use typed models** — deserialize JSON responses into Freezed objects immediately. Never pass raw `Map<String, dynamic>` or `List<dynamic>` through business logic.
 - **API classes return Freezed types** — e.g. `Future<List<Project>>` not `Future<http.Response>`. Parsing lives in the API layer.
 - **Constructor injection for testability** — business logic classes (e.g. `ActiveSessionTracker`) receive their API dependency via constructor, enabling fake/mock injection in tests.
+- **Request bodies use shared Freezed models** — every handler that accepts a JSON body must have a corresponding Freezed request class in `sesori_shared` (e.g. `HideProjectRequest`, `CreateProjectRequest`). Parse with `FooRequest.fromJson(map)` inside a try/catch:
+  ```dart
+  final FooRequest fooRequest;
+  try {
+    final decoded = jsonDecode(request.body ?? "{}");
+    fooRequest = FooRequest.fromJson(
+      switch (decoded) {
+        final Map<String, dynamic> map => map,
+        _ => throw const FormatException("invalid JSON body"),
+      },
+    );
+  } on FormatException {
+    return buildErrorResponse(request, 400, "invalid JSON body");
+  } on Object {
+    return buildErrorResponse(request, 400, "invalid JSON body");
+  }
+  ```
+  The `on Object` catch is intentional — Freezed's `fromJson` throws `TypeError` (not `FormatException`) for missing required fields.
 
 ## ANTI-PATTERNS
 
@@ -70,6 +88,7 @@ modules/
 - **Never inline HTTP calls in business logic** — extract to a dedicated API class with typed return values
 - **Never pass raw JSON maps through layers** — always deserialize at the boundary (API class) and use Freezed objects downstream
 - **Never construct classes with server URLs/passwords directly** — inject an API client instance instead
+- **Never use inline JSON maps for request bodies** — always create a Freezed class in `sesori_shared` and use `toJson()`/`fromJson()`. Never write `body: {"key": value}` in service or handler code.
 
 ## TESTING
 
