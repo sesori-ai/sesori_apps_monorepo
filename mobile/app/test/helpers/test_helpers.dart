@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:firebase_crashlytics/firebase_crashlytics.dart";
 import "package:flutter_secure_storage/flutter_secure_storage.dart";
 import "package:http/http.dart" as http;
@@ -33,7 +35,14 @@ class MockProjectService extends Mock implements ProjectService {}
 
 class MockSessionService extends Mock implements SessionService {}
 
-class MockConnectionService extends Mock implements ConnectionService {}
+class MockConnectionService extends Mock implements ConnectionService {
+  final StreamController<void> _staleReconnect = StreamController<void>.broadcast();
+
+  @override
+  Stream<void> get staleReconnect => _staleReconnect.stream;
+
+  void emitStaleReconnect() => _staleReconnect.add(null);
+}
 
 class MockOAuthFlowProvider extends Mock implements OAuthFlowProvider {}
 

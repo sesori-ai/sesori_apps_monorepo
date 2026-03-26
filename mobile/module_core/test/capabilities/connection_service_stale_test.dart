@@ -21,6 +21,8 @@ class MockAuthSession extends Mock implements AuthSession {}
 
 class MockLifecycleSource extends Mock implements LifecycleSource {}
 
+class MockFailureReporter extends Mock implements FailureReporter {}
+
 void main() {
   group("ConnectionService stale reconnect", () {
     late MockRelayCryptoService cryptoService;
@@ -61,6 +63,7 @@ void main() {
         authTokenProvider,
         authSession,
         lifecycleSource,
+        MockFailureReporter(),
         clock: () => now,
       );
     });
