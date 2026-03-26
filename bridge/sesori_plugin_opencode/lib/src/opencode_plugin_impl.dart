@@ -511,23 +511,37 @@ class OpenCodePlugin implements BridgePlugin {
         modelID: info.modelID,
         providerID: info.providerID,
       ),
-      parts: parts.where((p) => p.type != "file" && p.type != "snapshot").map(_mapMessagePart).toList(),
+      parts: parts.map(_mapMessagePart).where((p) => p.type.isVisible).toList(),
     );
   }
+
+  PluginMessagePartType _toPluginPartType(String type) => switch (type) {
+    "text" => PluginMessagePartType.text,
+    "reasoning" => PluginMessagePartType.reasoning,
+    "tool" => PluginMessagePartType.tool,
+    "subtask" => PluginMessagePartType.subtask,
+    "step-start" => PluginMessagePartType.stepStart,
+    "step-finish" => PluginMessagePartType.stepFinish,
+    "file" => PluginMessagePartType.file,
+    "snapshot" => PluginMessagePartType.snapshot,
+    _ => PluginMessagePartType.file,
+  };
 
   PluginMessagePart _mapMessagePart(MessagePart raw) {
     return PluginMessagePart(
       id: raw.id,
       sessionID: raw.sessionID,
       messageID: raw.messageID,
-      type: raw.type,
+      type: _toPluginPartType(raw.type),
       text: raw.text,
       tool: raw.tool,
       state: switch (raw.state) {
         ToolState(:final status, :final title, :final output, :final error) => PluginToolState(
           status: status,
           title: title,
-          output: output != null && output.length > 500 ? output.substring(0, 500) : output,
+          output: output != null && output.length > maxToolOutputLength
+              ? output.substring(0, maxToolOutputLength)
+              : output,
           error: error,
         ),
         null => null,
@@ -563,7 +577,7 @@ class OpenCodePlugin implements BridgePlugin {
         sessionID: sessionID,
         messageID: messageID,
       ),
-      SseMessagePartUpdated(:final part) => BridgeSseMessagePartUpdated(part: part.toJson()),
+      SseMessagePartUpdated(:final part) => BridgeSseMessagePartUpdated(part: _mapMessagePart(part)),
       SseMessagePartDelta(
         :final sessionID,
         :final messageID,

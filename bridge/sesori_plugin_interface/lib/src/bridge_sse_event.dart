@@ -1,3 +1,5 @@
+import "models/plugin_message.dart";
+
 sealed class BridgeSseEvent {
   const BridgeSseEvent();
 }
@@ -72,7 +74,7 @@ class BridgeSseMessageRemoved extends BridgeSseEvent {
 }
 
 class BridgeSseMessagePartUpdated extends BridgeSseEvent {
-  final Map<String, dynamic> part;
+  final PluginMessagePart part;
   const BridgeSseMessagePartUpdated({required this.part});
 }
 

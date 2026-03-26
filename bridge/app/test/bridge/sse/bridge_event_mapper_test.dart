@@ -23,18 +23,24 @@ void main() {
       final result = mapper.map(const BridgeSseSessionDiff(sessionID: "s1"));
 
       expect(result, isA<SesoriSessionDiff>());
-      expect((result as SesoriSessionDiff).sessionID, equals("s1"));
+      expect((result! as SesoriSessionDiff).sessionID, equals("s1"));
     });
 
     test("filters file message part updates", () {
       final result = mapper.map(
         const BridgeSseMessagePartUpdated(
-          part: {
-            "type": "file",
-            "id": "p1",
-            "sessionID": "s1",
-            "messageID": "m1",
-          },
+          part: PluginMessagePart(
+            id: "p1",
+            sessionID: "s1",
+            messageID: "m1",
+            type: PluginMessagePartType.file,
+            text: null,
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+          ),
         ),
       );
 
@@ -44,12 +50,18 @@ void main() {
     test("filters snapshot message part updates", () {
       final result = mapper.map(
         const BridgeSseMessagePartUpdated(
-          part: {
-            "type": "snapshot",
-            "id": "p1",
-            "sessionID": "s1",
-            "messageID": "m1",
-          },
+          part: PluginMessagePart(
+            id: "p1",
+            sessionID: "s1",
+            messageID: "m1",
+            type: PluginMessagePartType.snapshot,
+            text: null,
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+          ),
         ),
       );
 
@@ -60,18 +72,28 @@ void main() {
       final longOutput = List.filled(1000, "x").join();
       final result = mapper.map(
         BridgeSseMessagePartUpdated(
-          part: {
-            "type": "tool",
-            "id": "p1",
-            "sessionID": "s1",
-            "messageID": "m1",
-            "state": {"status": "completed", "output": longOutput},
-          },
+          part: PluginMessagePart(
+            id: "p1",
+            sessionID: "s1",
+            messageID: "m1",
+            type: PluginMessagePartType.tool,
+            text: null,
+            tool: null,
+            state: PluginToolState(
+              status: "completed",
+              title: null,
+              output: longOutput,
+              error: null,
+            ),
+            prompt: null,
+            description: null,
+            agent: null,
+          ),
         ),
       );
 
       expect(result, isA<SesoriMessagePartUpdated>());
-      final event = result as SesoriMessagePartUpdated;
+      final event = result! as SesoriMessagePartUpdated;
       expect(event.part.state?.output?.length, lessThanOrEqualTo(500));
       expect(event.part.state?.output?.length, equals(500));
     });
@@ -79,37 +101,52 @@ void main() {
     test("passes through text message parts", () {
       final result = mapper.map(
         const BridgeSseMessagePartUpdated(
-          part: {
-            "type": "text",
-            "id": "p1",
-            "sessionID": "s1",
-            "messageID": "m1",
-            "text": "hello",
-          },
+          part: PluginMessagePart(
+            id: "p1",
+            sessionID: "s1",
+            messageID: "m1",
+            type: PluginMessagePartType.text,
+            text: "hello",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+          ),
         ),
       );
 
       expect(result, isA<SesoriMessagePartUpdated>());
-      final event = result as SesoriMessagePartUpdated;
-      expect(event.part.type, equals("text"));
+      final event = result! as SesoriMessagePartUpdated;
+      expect(event.part.type, equals(MessagePartType.text));
       expect(event.part.text, equals("hello"));
     });
 
     test("keeps short tool output unchanged", () {
       final result = mapper.map(
         const BridgeSseMessagePartUpdated(
-          part: {
-            "type": "tool",
-            "id": "p1",
-            "sessionID": "s1",
-            "messageID": "m1",
-            "state": {"status": "completed", "output": "short"},
-          },
+          part: PluginMessagePart(
+            id: "p1",
+            sessionID: "s1",
+            messageID: "m1",
+            type: PluginMessagePartType.tool,
+            text: null,
+            tool: null,
+            state: PluginToolState(
+              status: "completed",
+              title: null,
+              output: "short",
+              error: null,
+            ),
+            prompt: null,
+            description: null,
+            agent: null,
+          ),
         ),
       );
 
       expect(result, isA<SesoriMessagePartUpdated>());
-      final event = result as SesoriMessagePartUpdated;
+      final event = result! as SesoriMessagePartUpdated;
       expect(event.part.state?.output, equals("short"));
     });
   });

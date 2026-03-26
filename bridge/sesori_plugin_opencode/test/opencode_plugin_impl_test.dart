@@ -79,7 +79,10 @@ void main() {
 
       expect(messages, hasLength(2));
       final parts = messages.last.parts;
-      expect(parts.map((part) => part.type).toList(), equals(["text", "tool", "reasoning"]));
+      expect(
+        parts.map((part) => part.type).toList(),
+        equals([PluginMessagePartType.text, PluginMessagePartType.tool, PluginMessagePartType.reasoning]),
+      );
     });
 
     test("getSessionMessages truncates tool output to 500 chars", () async {
@@ -472,14 +475,18 @@ class _FakeOpenCodeServer {
           await request.response.close();
           return;
         }
+        final originalTime = switch (original["time"]) {
+          final Map<String, dynamic> time => time,
+          _ => const <String, dynamic>{},
+        };
 
         final forked = {
           ...original,
           "id": "$sessionId-fork",
           "title": "${original["title"]} (fork #1)",
           "time": {
-            "created": original["time"]["created"],
-            "updated": original["time"]["updated"],
+            "created": originalTime["created"],
+            "updated": originalTime["updated"],
           },
         };
         _sessions[forked["id"]! as String] = Map<String, dynamic>.from(forked);

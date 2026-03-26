@@ -198,7 +198,7 @@ MessageWithParts testMessageWithParts({String? id}) {
         id: "part-1",
         sessionID: "session-1",
         messageID: messageId,
-        type: "text",
+        type: MessagePartType.text,
         text: "Hello, world!",
       ),
     ],

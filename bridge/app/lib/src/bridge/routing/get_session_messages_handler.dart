@@ -44,7 +44,7 @@ class GetSessionMessagesHandler extends RequestHandler {
                     id: p.id,
                     sessionID: p.sessionID,
                     messageID: p.messageID,
-                    type: p.type,
+                    type: MessagePartType.values.byName(p.type.name),
                     text: p.text,
                     tool: p.tool,
                     state: switch (p.state) {

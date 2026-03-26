@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$MessagePart {
 
- String get id; String get sessionID; String get messageID; String get type; String? get text; String? get tool; ToolState? get state; String? get prompt; String? get description; String? get agent;
+ String get id; String get sessionID; String get messageID; MessagePartType get type; String? get text; String? get tool; ToolState? get state; String? get prompt; String? get description; String? get agent;
 /// Create a copy of MessagePart
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -48,7 +48,7 @@ abstract mixin class $MessagePartCopyWith<$Res>  {
   factory $MessagePartCopyWith(MessagePart value, $Res Function(MessagePart) _then) = _$MessagePartCopyWithImpl;
 @useResult
 $Res call({
- String id, String sessionID, String messageID, String type, String? text, String? tool, ToolState? state, String? prompt, String? description, String? agent
+ String id, String sessionID, String messageID, MessagePartType type, String? text, String? tool, ToolState? state, String? prompt, String? description, String? agent
 });
 
 
@@ -71,7 +71,7 @@ id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
 as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
-as String,text: freezed == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
+as MessagePartType,text: freezed == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
 as String?,tool: freezed == tool ? _self.tool : tool // ignore: cast_nullable_to_non_nullable
 as String?,state: freezed == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
 as ToolState?,prompt: freezed == prompt ? _self.prompt : prompt // ignore: cast_nullable_to_non_nullable
@@ -107,7 +107,7 @@ class _MessagePart implements MessagePart {
 @override final  String id;
 @override final  String sessionID;
 @override final  String messageID;
-@override final  String type;
+@override final  MessagePartType type;
 @override final  String? text;
 @override final  String? tool;
 @override final  ToolState? state;
@@ -148,7 +148,7 @@ abstract mixin class _$MessagePartCopyWith<$Res> implements $MessagePartCopyWith
   factory _$MessagePartCopyWith(_MessagePart value, $Res Function(_MessagePart) _then) = __$MessagePartCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String messageID, String type, String? text, String? tool, ToolState? state, String? prompt, String? description, String? agent
+ String id, String sessionID, String messageID, MessagePartType type, String? text, String? tool, ToolState? state, String? prompt, String? description, String? agent
 });
 
 
@@ -171,7 +171,7 @@ id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
 as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
-as String,text: freezed == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
+as MessagePartType,text: freezed == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
 as String?,tool: freezed == tool ? _self.tool : tool // ignore: cast_nullable_to_non_nullable
 as String?,state: freezed == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
 as ToolState?,prompt: freezed == prompt ? _self.prompt : prompt // ignore: cast_nullable_to_non_nullable

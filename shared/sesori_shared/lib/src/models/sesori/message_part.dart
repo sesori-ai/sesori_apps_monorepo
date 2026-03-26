@@ -4,13 +4,33 @@ part "message_part.freezed.dart";
 
 part "message_part.g.dart";
 
+@JsonEnum()
+enum MessagePartType {
+  @JsonValue("text")
+  text,
+  @JsonValue("reasoning")
+  reasoning,
+  @JsonValue("tool")
+  tool,
+  @JsonValue("subtask")
+  subtask,
+  @JsonValue("step-start")
+  stepStart,
+  @JsonValue("step-finish")
+  stepFinish,
+  @JsonValue("file")
+  file,
+  @JsonValue("snapshot")
+  snapshot,
+}
+
 @Freezed(fromJson: true, toJson: true)
 sealed class MessagePart with _$MessagePart {
   const factory MessagePart({
     required String id,
     required String sessionID,
     required String messageID,
-    required String type,
+    required MessagePartType type,
     String? text,
     String? tool,
     ToolState? state,

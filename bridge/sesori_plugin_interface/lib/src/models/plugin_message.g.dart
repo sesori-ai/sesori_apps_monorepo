@@ -18,7 +18,7 @@ Map<String, dynamic> _$PluginMessagePartToJson(_PluginMessagePart instance) =>
       'id': instance.id,
       'sessionID': instance.sessionID,
       'messageID': instance.messageID,
-      'type': instance.type,
+      'type': _$PluginMessagePartTypeEnumMap[instance.type]!,
       'text': instance.text,
       'tool': instance.tool,
       'state': instance.state?.toJson(),
@@ -26,6 +26,17 @@ Map<String, dynamic> _$PluginMessagePartToJson(_PluginMessagePart instance) =>
       'description': instance.description,
       'agent': instance.agent,
     };
+
+const _$PluginMessagePartTypeEnumMap = {
+  PluginMessagePartType.text: 'text',
+  PluginMessagePartType.reasoning: 'reasoning',
+  PluginMessagePartType.tool: 'tool',
+  PluginMessagePartType.subtask: 'subtask',
+  PluginMessagePartType.stepStart: 'step-start',
+  PluginMessagePartType.stepFinish: 'step-finish',
+  PluginMessagePartType.file: 'file',
+  PluginMessagePartType.snapshot: 'snapshot',
+};
 
 Map<String, dynamic> _$PluginToolStateToJson(_PluginToolState instance) =>
     <String, dynamic>{

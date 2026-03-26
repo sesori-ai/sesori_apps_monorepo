@@ -10,7 +10,7 @@ _MessagePart _$MessagePartFromJson(Map json) => _MessagePart(
   id: json['id'] as String,
   sessionID: json['sessionID'] as String,
   messageID: json['messageID'] as String,
-  type: json['type'] as String,
+  type: $enumDecode(_$MessagePartTypeEnumMap, json['type']),
   text: json['text'] as String?,
   tool: json['tool'] as String?,
   state: json['state'] == null
@@ -26,7 +26,7 @@ Map<String, dynamic> _$MessagePartToJson(_MessagePart instance) =>
       'id': instance.id,
       'sessionID': instance.sessionID,
       'messageID': instance.messageID,
-      'type': instance.type,
+      'type': _$MessagePartTypeEnumMap[instance.type]!,
       'text': instance.text,
       'tool': instance.tool,
       'state': instance.state?.toJson(),
@@ -34,6 +34,17 @@ Map<String, dynamic> _$MessagePartToJson(_MessagePart instance) =>
       'description': instance.description,
       'agent': instance.agent,
     };
+
+const _$MessagePartTypeEnumMap = {
+  MessagePartType.text: 'text',
+  MessagePartType.reasoning: 'reasoning',
+  MessagePartType.tool: 'tool',
+  MessagePartType.subtask: 'subtask',
+  MessagePartType.stepStart: 'step-start',
+  MessagePartType.stepFinish: 'step-finish',
+  MessagePartType.file: 'file',
+  MessagePartType.snapshot: 'snapshot',
+};
 
 _ToolState _$ToolStateFromJson(Map json) => _ToolState(
   status: json['status'] as String,

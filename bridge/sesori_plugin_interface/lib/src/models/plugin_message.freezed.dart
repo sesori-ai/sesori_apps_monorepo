@@ -174,7 +174,7 @@ $PluginMessageCopyWith<$Res> get info {
 /// @nodoc
 mixin _$PluginMessagePart {
 
- String get id; String get sessionID; String get messageID; String get type;// text / reasoning
+ String get id; String get sessionID; String get messageID; PluginMessagePartType get type;// text / reasoning
  String? get text;// tool
  String? get tool; PluginToolState? get state;// subtask
  String? get prompt; String? get description; String? get agent;
@@ -210,7 +210,7 @@ abstract mixin class $PluginMessagePartCopyWith<$Res>  {
   factory $PluginMessagePartCopyWith(PluginMessagePart value, $Res Function(PluginMessagePart) _then) = _$PluginMessagePartCopyWithImpl;
 @useResult
 $Res call({
- String id, String sessionID, String messageID, String type, String? text, String? tool, PluginToolState? state, String? prompt, String? description, String? agent
+ String id, String sessionID, String messageID, PluginMessagePartType type, String? text, String? tool, PluginToolState? state, String? prompt, String? description, String? agent
 });
 
 
@@ -233,7 +233,7 @@ id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
 as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
-as String,text: freezed == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
+as PluginMessagePartType,text: freezed == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
 as String?,tool: freezed == tool ? _self.tool : tool // ignore: cast_nullable_to_non_nullable
 as String?,state: freezed == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
 as PluginToolState?,prompt: freezed == prompt ? _self.prompt : prompt // ignore: cast_nullable_to_non_nullable
@@ -269,7 +269,7 @@ class _PluginMessagePart implements PluginMessagePart {
 @override final  String id;
 @override final  String sessionID;
 @override final  String messageID;
-@override final  String type;
+@override final  PluginMessagePartType type;
 // text / reasoning
 @override final  String? text;
 // tool
@@ -313,7 +313,7 @@ abstract mixin class _$PluginMessagePartCopyWith<$Res> implements $PluginMessage
   factory _$PluginMessagePartCopyWith(_PluginMessagePart value, $Res Function(_PluginMessagePart) _then) = __$PluginMessagePartCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String messageID, String type, String? text, String? tool, PluginToolState? state, String? prompt, String? description, String? agent
+ String id, String sessionID, String messageID, PluginMessagePartType type, String? text, String? tool, PluginToolState? state, String? prompt, String? description, String? agent
 });
 
 
@@ -336,7 +336,7 @@ id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
 as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
-as String,text: freezed == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
+as PluginMessagePartType,text: freezed == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
 as String?,tool: freezed == tool ? _self.tool : tool // ignore: cast_nullable_to_non_nullable
 as String?,state: freezed == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
 as PluginToolState?,prompt: freezed == prompt ? _self.prompt : prompt // ignore: cast_nullable_to_non_nullable

@@ -51,14 +51,30 @@ class BridgeEventMapper {
           messageID: messageID,
         );
       case BridgeSseMessagePartUpdated(:final part):
-        final partType = part["type"] as String?;
-        if (partType == "file" || partType == "snapshot") return null;
-
-        final modifiedPart = _truncateToolOutput(part);
-        return _tryParseSseEvent({
-          "type": "message.part.updated",
-          "part": modifiedPart,
-        });
+        if (!part.type.isVisible) return null;
+        final truncated = _truncateToolOutput(part);
+        return SesoriSseEvent.messagePartUpdated(
+          part: MessagePart(
+            id: truncated.id,
+            sessionID: truncated.sessionID,
+            messageID: truncated.messageID,
+            type: MessagePartType.values.byName(truncated.type.name),
+            text: truncated.text,
+            tool: truncated.tool,
+            state: switch (truncated.state) {
+              PluginToolState(:final status, :final title, :final output, :final error) => ToolState(
+                status: status,
+                title: title,
+                output: output,
+                error: error,
+              ),
+              null => null,
+            },
+            prompt: truncated.prompt,
+            description: truncated.description,
+            agent: truncated.agent,
+          ),
+        );
       case BridgeSseMessagePartDelta(
         :final sessionID,
         :final messageID,
@@ -202,18 +218,13 @@ class BridgeEventMapper {
     }
   }
 
-  /// Returns a copy of [part] with `state.output` truncated to 500 characters
-  /// if it exceeds that length, or the original map if no truncation is needed.
-  Map<String, dynamic> _truncateToolOutput(Map<String, dynamic> part) {
-    final state = part["state"];
-    if (state is! Map<String, dynamic>) return part;
-
-    final output = state["output"];
-    if (output is! String || output.length <= 500) return part;
-
-    return {
-      ...part,
-      "state": {...state, "output": output.substring(0, 500)},
-    };
+  /// Returns [part] with tool output truncated to [maxToolOutputLength]
+  /// characters, or the original part if no truncation is needed.
+  PluginMessagePart _truncateToolOutput(PluginMessagePart part) {
+    final output = part.state?.output;
+    if (output == null || output.length <= maxToolOutputLength) return part;
+    return part.copyWith(
+      state: part.state!.copyWith(output: output.substring(0, maxToolOutputLength)),
+    );
   }
 }
