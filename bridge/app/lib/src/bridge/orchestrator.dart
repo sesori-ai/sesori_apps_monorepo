@@ -159,7 +159,7 @@ class OrchestratorSession {
           break;
         }
 
-        Log.w("Connection lost. Reconnecting...");
+        Log.w("Relay connection lost. Reconnecting...");
         _sseManager.orphanAll();
         activePhones.clear();
 
