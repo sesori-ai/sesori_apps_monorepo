@@ -46,7 +46,7 @@ class SubtaskPartWidget extends StatelessWidget {
                     },
                     queryParams: {
                       "readOnly": "true",
-                      if (childSession.title != null) "title": childSession.title!,
+                      "title": ?childSession.title,
                     },
                   );
                 }
