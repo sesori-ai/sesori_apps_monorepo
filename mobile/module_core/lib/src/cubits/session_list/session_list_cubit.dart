@@ -6,6 +6,7 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../capabilities/server_connection/connection_service.dart";
+import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/server_connection/models/sse_event.dart";
 import "../../capabilities/session/session_service.dart";
 import "../../capabilities/sse/session_activity_info.dart";
@@ -17,6 +18,7 @@ class SessionListCubit extends Cubit<SessionListState> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
   final SessionService _service;
+  final ConnectionService _connectionService;
   final SseEventRepository _sseEventRepository;
   final String _projectId;
 
@@ -30,17 +32,21 @@ class SessionListCubit extends Cubit<SessionListState> {
     SseEventRepository sseEventRepository, {
     required String projectId,
   }) : _service = service,
+       _connectionService = connectionService,
        _sseEventRepository = sseEventRepository,
        _projectId = projectId,
        super(const SessionListState.loading()) {
     loadSessions();
-    _subscriptions.add(connectionService.events.listen(_handleEvent));
+    _subscriptions.add(_connectionService.events.listen(_handleEvent));
+    _subscriptions.add(_connectionService.status.listen(_onConnectionStatusChanged));
     _subscriptions.add(
       _sseEventRepository.sessionActivity.listen(_onSessionActivityUpdated),
     );
   }
 
   void _handleEvent(SseEvent event) {
+    if (isClosed) return;
+    logd("[SessionList] event received: ${event.data.runtimeType}");
     switch (event.data) {
       case SesoriSessionCreated(:final info):
         _onSessionCreated(info);
@@ -69,44 +75,83 @@ class SessionListCubit extends Cubit<SessionListState> {
 
   void _onSessionCreated(Session session) {
     // Only add root sessions that belong to this project.
-    if (session.parentID != null) return;
-    if (session.projectID != _projectId) return;
+    if (session.parentID != null) {
+      logd("[SessionList] session.created ignored id=${session.id} reason=child");
+      return;
+    }
+    if (session.projectID != _projectId) {
+      logd("[SessionList] session.created ignored id=${session.id} reason=project_mismatch");
+      return;
+    }
 
-    if (state is! SessionListLoaded) return;
+    if (state is! SessionListLoaded) {
+      logd("[SessionList] session.created ignored id=${session.id} reason=state_not_loaded");
+      return;
+    }
 
     // Avoid duplicates.
-    if (_allSessions.any((s) => s.id == session.id)) return;
+    if (_allSessions.any((s) => s.id == session.id)) {
+      logd("[SessionList] session.created ignored id=${session.id} reason=duplicate");
+      return;
+    }
 
     _allSessions = [session, ..._allSessions];
+    logd("[SessionList] session.created added id=${session.id}");
     _emitFiltered();
   }
 
   void _onSessionUpdated(Session session) {
-    if (session.projectID != _projectId) return;
-    if (state is! SessionListLoaded) return;
+    if (session.projectID != _projectId) {
+      logd("[SessionList] session.updated ignored id=${session.id} reason=project_mismatch");
+      return;
+    }
+    if (state is! SessionListLoaded) {
+      logd("[SessionList] session.updated ignored id=${session.id} reason=state_not_loaded");
+      return;
+    }
 
     final index = _allSessions.indexWhere((s) => s.id == session.id);
 
     if (index < 0) {
       // Session was unarchived (or created elsewhere) — add it if it belongs here.
+      logd("[SessionList] session.updated not_found id=${session.id} action=add_via_created");
       _onSessionCreated(session);
       return;
     }
 
     _allSessions = List<Session>.from(_allSessions);
     _allSessions[index] = session;
+    logd("[SessionList] session.updated updated id=${session.id}");
     _emitFiltered();
   }
 
   void _onSessionDeleted(Session session) {
-    if (session.projectID != _projectId) return;
-    if (state is! SessionListLoaded) return;
+    if (session.projectID != _projectId) {
+      logd("[SessionList] session.deleted ignored id=${session.id} reason=project_mismatch");
+      return;
+    }
+    if (state is! SessionListLoaded) {
+      logd("[SessionList] session.deleted ignored id=${session.id} reason=state_not_loaded");
+      return;
+    }
 
     final before = _allSessions.length;
     _allSessions = _allSessions.where((s) => s.id != session.id).toList();
-    if (_allSessions.length == before) return;
+    if (_allSessions.length == before) {
+      logd("[SessionList] session.deleted not_found id=${session.id}");
+      return;
+    }
 
+    logd("[SessionList] session.deleted removed id=${session.id}");
     _emitFiltered();
+  }
+
+  void _onConnectionStatusChanged(ConnectionStatus status) {
+    logd("[SessionList] connection status: ${status.runtimeType}");
+    if (isClosed) return;
+    if (status is ConnectionConnected) {
+      unawaited(refreshSessions());
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -268,7 +313,10 @@ class SessionListCubit extends Cubit<SessionListState> {
     if (isClosed) return null;
 
     return switch (response) {
-      SuccessResponse(:final data) => data,
+      SuccessResponse(:final data) => () {
+        _onSessionCreated(data);
+        return data;
+      }(),
       ErrorResponse() => null,
     };
   }
