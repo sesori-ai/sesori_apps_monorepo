@@ -206,6 +206,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailFollowOutput => 'Follow';
 
   @override
+  String get sessionDetailJumpToLatest => 'Jump to latest';
+
+  @override
   String get questionModalTitle => 'Question';
 
   @override

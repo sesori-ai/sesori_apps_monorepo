@@ -117,6 +117,10 @@
   "sessionDetailToolCompleted": "Done",
   "sessionDetailToolError": "Failed",
   "sessionDetailFollowOutput": "Follow",
+  "sessionDetailJumpToLatest": "Jump to latest",
+  "@sessionDetailJumpToLatest": {
+    "description": "Text for the floating pill button that appears when the user scrolls up in the message list, allowing them to jump back to the newest messages."
+  },
   "questionModalTitle": "Question",
   "questionModalReject": "Reject",
   "questionModalCustomHint": "Type your own answer",

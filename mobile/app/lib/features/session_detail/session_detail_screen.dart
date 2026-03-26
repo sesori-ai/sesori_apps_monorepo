@@ -314,7 +314,7 @@ class _PendingQuestionsBanner extends StatelessWidget {
   }
 }
 
-class _MessageList extends StatelessWidget {
+class _MessageList extends StatefulWidget {
   final List<MessageWithParts> messages;
   final Map<String, String> streamingText;
   final List<Session> children;
@@ -328,15 +328,124 @@ class _MessageList extends StatelessWidget {
   });
 
   @override
+  State<_MessageList> createState() => _MessageListState();
+}
+
+class _MessageListState extends State<_MessageList> {
+  late final ScrollController _scrollController;
+  bool _following = true;
+  static const _kNearBottomThreshold = 20.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant _MessageList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_following) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _scrollController.hasClients) {
+          _scrollController.jumpTo(0);
+        }
+      });
+    }
+  }
+
+  void _jumpToLatest() {
+    setState(() {
+      _following = true;
+    });
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      reverse: true,
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: messages.length,
-      itemBuilder: (context, index) {
-        final message = messages[messages.length - 1 - index];
-        return _buildMessageWidget(message);
-      },
+    final theme = Theme.of(context);
+    final loc = context.loc;
+
+    return Stack(
+      children: [
+        NotificationListener<ScrollNotification>(
+          onNotification: (notification) {
+            if (notification is ScrollUpdateNotification && notification.dragDetails != null) {
+              // reverse: true — offset 0 is the bottom (newest), offset > 0 is scrolled up
+              final pixels = _scrollController.position.pixels;
+              if (_following && pixels > _kNearBottomThreshold) {
+                setState(() {
+                  _following = false;
+                });
+              } else if (!_following && pixels <= _kNearBottomThreshold) {
+                setState(() {
+                  _following = true;
+                });
+              }
+            }
+            return false;
+          },
+          child: ListView.builder(
+            controller: _scrollController,
+            reverse: true,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            itemCount: widget.messages.length,
+            itemBuilder: (context, index) {
+              final message = widget.messages[widget.messages.length - 1 - index];
+              return _buildMessageWidget(message);
+            },
+          ),
+        ),
+        if (!_following)
+          Positioned(
+            bottom: 12,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Material(
+                elevation: 4,
+                borderRadius: BorderRadius.circular(20),
+                color: theme.colorScheme.primaryContainer,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(20),
+                  onTap: _jumpToLatest,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.arrow_downward,
+                          size: 16,
+                          color: theme.colorScheme.onPrimaryContainer,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          loc.sessionDetailJumpToLatest,
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            color: theme.colorScheme.onPrimaryContainer,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -347,9 +456,9 @@ class _MessageList extends StatelessWidget {
 
     return AssistantMessageCard(
       message: message,
-      streamingText: streamingText,
-      children: children,
-      childStatuses: childStatuses,
+      streamingText: widget.streamingText,
+      children: widget.children,
+      childStatuses: widget.childStatuses,
     );
   }
 }
