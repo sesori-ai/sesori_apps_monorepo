@@ -15,14 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$MessagePart {
 
- String get id; String get sessionID; String get messageID; String get type;// text / reasoning
- String? get text;// tool
- String? get tool; String? get callID; ToolState? get state;// file
- String? get mime; String? get url; String? get filename;// step-finish
- double? get cost; String? get reason;// subtask
- String? get prompt; String? get description; String? get agent;// snapshot / step-start
- String? get snapshot;// time (for text, reasoning, tool)
- PartTime? get time;
+ String get id; String get sessionID; String get messageID; String get type; String? get text; String? get tool; ToolState? get state; String? get prompt; String? get description; String? get agent;
 /// Create a copy of MessagePart
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -35,16 +28,16 @@ $MessagePartCopyWith<MessagePart> get copyWith => _$MessagePartCopyWithImpl<Mess
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.type, type) || other.type == type)&&(identical(other.text, text) || other.text == text)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.callID, callID) || other.callID == callID)&&(identical(other.state, state) || other.state == state)&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.url, url) || other.url == url)&&(identical(other.filename, filename) || other.filename == filename)&&(identical(other.cost, cost) || other.cost == cost)&&(identical(other.reason, reason) || other.reason == reason)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.snapshot, snapshot) || other.snapshot == snapshot)&&(identical(other.time, time) || other.time == time));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.type, type) || other.type == type)&&(identical(other.text, text) || other.text == text)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.state, state) || other.state == state)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,type,text,tool,callID,state,mime,url,filename,cost,reason,prompt,description,agent,snapshot,time);
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,type,text,tool,state,prompt,description,agent);
 
 @override
 String toString() {
-  return 'MessagePart(id: $id, sessionID: $sessionID, messageID: $messageID, type: $type, text: $text, tool: $tool, callID: $callID, state: $state, mime: $mime, url: $url, filename: $filename, cost: $cost, reason: $reason, prompt: $prompt, description: $description, agent: $agent, snapshot: $snapshot, time: $time)';
+  return 'MessagePart(id: $id, sessionID: $sessionID, messageID: $messageID, type: $type, text: $text, tool: $tool, state: $state, prompt: $prompt, description: $description, agent: $agent)';
 }
 
 
@@ -55,11 +48,11 @@ abstract mixin class $MessagePartCopyWith<$Res>  {
   factory $MessagePartCopyWith(MessagePart value, $Res Function(MessagePart) _then) = _$MessagePartCopyWithImpl;
 @useResult
 $Res call({
- String id, String sessionID, String messageID, String type, String? text, String? tool, String? callID, ToolState? state, String? mime, String? url, String? filename, double? cost, String? reason, String? prompt, String? description, String? agent, String? snapshot, PartTime? time
+ String id, String sessionID, String messageID, String type, String? text, String? tool, ToolState? state, String? prompt, String? description, String? agent
 });
 
 
-$ToolStateCopyWith<$Res>? get state;$PartTimeCopyWith<$Res>? get time;
+$ToolStateCopyWith<$Res>? get state;
 
 }
 /// @nodoc
@@ -72,7 +65,7 @@ class _$MessagePartCopyWithImpl<$Res>
 
 /// Create a copy of MessagePart
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? type = null,Object? text = freezed,Object? tool = freezed,Object? callID = freezed,Object? state = freezed,Object? mime = freezed,Object? url = freezed,Object? filename = freezed,Object? cost = freezed,Object? reason = freezed,Object? prompt = freezed,Object? description = freezed,Object? agent = freezed,Object? snapshot = freezed,Object? time = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? type = null,Object? text = freezed,Object? tool = freezed,Object? state = freezed,Object? prompt = freezed,Object? description = freezed,Object? agent = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
@@ -80,19 +73,11 @@ as String,messageID: null == messageID ? _self.messageID : messageID // ignore: 
 as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as String,text: freezed == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
 as String?,tool: freezed == tool ? _self.tool : tool // ignore: cast_nullable_to_non_nullable
-as String?,callID: freezed == callID ? _self.callID : callID // ignore: cast_nullable_to_non_nullable
 as String?,state: freezed == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
-as ToolState?,mime: freezed == mime ? _self.mime : mime // ignore: cast_nullable_to_non_nullable
-as String?,url: freezed == url ? _self.url : url // ignore: cast_nullable_to_non_nullable
-as String?,filename: freezed == filename ? _self.filename : filename // ignore: cast_nullable_to_non_nullable
-as String?,cost: freezed == cost ? _self.cost : cost // ignore: cast_nullable_to_non_nullable
-as double?,reason: freezed == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
-as String?,prompt: freezed == prompt ? _self.prompt : prompt // ignore: cast_nullable_to_non_nullable
+as ToolState?,prompt: freezed == prompt ? _self.prompt : prompt // ignore: cast_nullable_to_non_nullable
 as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
-as String?,snapshot: freezed == snapshot ? _self.snapshot : snapshot // ignore: cast_nullable_to_non_nullable
-as String?,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
-as PartTime?,
+as String?,
   ));
 }
 /// Create a copy of MessagePart
@@ -107,18 +92,6 @@ $ToolStateCopyWith<$Res>? get state {
   return $ToolStateCopyWith<$Res>(_self.state!, (value) {
     return _then(_self.copyWith(state: value));
   });
-}/// Create a copy of MessagePart
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$PartTimeCopyWith<$Res>? get time {
-    if (_self.time == null) {
-    return null;
-  }
-
-  return $PartTimeCopyWith<$Res>(_self.time!, (value) {
-    return _then(_self.copyWith(time: value));
-  });
 }
 }
 
@@ -128,34 +101,19 @@ $PartTimeCopyWith<$Res>? get time {
 @JsonSerializable()
 
 class _MessagePart implements MessagePart {
-  const _MessagePart({required this.id, required this.sessionID, required this.messageID, required this.type, this.text, this.tool, this.callID, this.state, this.mime, this.url, this.filename, this.cost, this.reason, this.prompt, this.description, this.agent, this.snapshot, this.time});
+  const _MessagePart({required this.id, required this.sessionID, required this.messageID, required this.type, this.text, this.tool, this.state, this.prompt, this.description, this.agent});
   factory _MessagePart.fromJson(Map<String, dynamic> json) => _$MessagePartFromJson(json);
 
 @override final  String id;
 @override final  String sessionID;
 @override final  String messageID;
 @override final  String type;
-// text / reasoning
 @override final  String? text;
-// tool
 @override final  String? tool;
-@override final  String? callID;
 @override final  ToolState? state;
-// file
-@override final  String? mime;
-@override final  String? url;
-@override final  String? filename;
-// step-finish
-@override final  double? cost;
-@override final  String? reason;
-// subtask
 @override final  String? prompt;
 @override final  String? description;
 @override final  String? agent;
-// snapshot / step-start
-@override final  String? snapshot;
-// time (for text, reasoning, tool)
-@override final  PartTime? time;
 
 /// Create a copy of MessagePart
 /// with the given fields replaced by the non-null parameter values.
@@ -170,16 +128,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MessagePart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.type, type) || other.type == type)&&(identical(other.text, text) || other.text == text)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.callID, callID) || other.callID == callID)&&(identical(other.state, state) || other.state == state)&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.url, url) || other.url == url)&&(identical(other.filename, filename) || other.filename == filename)&&(identical(other.cost, cost) || other.cost == cost)&&(identical(other.reason, reason) || other.reason == reason)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.snapshot, snapshot) || other.snapshot == snapshot)&&(identical(other.time, time) || other.time == time));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MessagePart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.type, type) || other.type == type)&&(identical(other.text, text) || other.text == text)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.state, state) || other.state == state)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,type,text,tool,callID,state,mime,url,filename,cost,reason,prompt,description,agent,snapshot,time);
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,type,text,tool,state,prompt,description,agent);
 
 @override
 String toString() {
-  return 'MessagePart(id: $id, sessionID: $sessionID, messageID: $messageID, type: $type, text: $text, tool: $tool, callID: $callID, state: $state, mime: $mime, url: $url, filename: $filename, cost: $cost, reason: $reason, prompt: $prompt, description: $description, agent: $agent, snapshot: $snapshot, time: $time)';
+  return 'MessagePart(id: $id, sessionID: $sessionID, messageID: $messageID, type: $type, text: $text, tool: $tool, state: $state, prompt: $prompt, description: $description, agent: $agent)';
 }
 
 
@@ -190,11 +148,11 @@ abstract mixin class _$MessagePartCopyWith<$Res> implements $MessagePartCopyWith
   factory _$MessagePartCopyWith(_MessagePart value, $Res Function(_MessagePart) _then) = __$MessagePartCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String messageID, String type, String? text, String? tool, String? callID, ToolState? state, String? mime, String? url, String? filename, double? cost, String? reason, String? prompt, String? description, String? agent, String? snapshot, PartTime? time
+ String id, String sessionID, String messageID, String type, String? text, String? tool, ToolState? state, String? prompt, String? description, String? agent
 });
 
 
-@override $ToolStateCopyWith<$Res>? get state;@override $PartTimeCopyWith<$Res>? get time;
+@override $ToolStateCopyWith<$Res>? get state;
 
 }
 /// @nodoc
@@ -207,7 +165,7 @@ class __$MessagePartCopyWithImpl<$Res>
 
 /// Create a copy of MessagePart
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? type = null,Object? text = freezed,Object? tool = freezed,Object? callID = freezed,Object? state = freezed,Object? mime = freezed,Object? url = freezed,Object? filename = freezed,Object? cost = freezed,Object? reason = freezed,Object? prompt = freezed,Object? description = freezed,Object? agent = freezed,Object? snapshot = freezed,Object? time = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? type = null,Object? text = freezed,Object? tool = freezed,Object? state = freezed,Object? prompt = freezed,Object? description = freezed,Object? agent = freezed,}) {
   return _then(_MessagePart(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
@@ -215,19 +173,11 @@ as String,messageID: null == messageID ? _self.messageID : messageID // ignore: 
 as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as String,text: freezed == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
 as String?,tool: freezed == tool ? _self.tool : tool // ignore: cast_nullable_to_non_nullable
-as String?,callID: freezed == callID ? _self.callID : callID // ignore: cast_nullable_to_non_nullable
 as String?,state: freezed == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
-as ToolState?,mime: freezed == mime ? _self.mime : mime // ignore: cast_nullable_to_non_nullable
-as String?,url: freezed == url ? _self.url : url // ignore: cast_nullable_to_non_nullable
-as String?,filename: freezed == filename ? _self.filename : filename // ignore: cast_nullable_to_non_nullable
-as String?,cost: freezed == cost ? _self.cost : cost // ignore: cast_nullable_to_non_nullable
-as double?,reason: freezed == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
-as String?,prompt: freezed == prompt ? _self.prompt : prompt // ignore: cast_nullable_to_non_nullable
+as ToolState?,prompt: freezed == prompt ? _self.prompt : prompt // ignore: cast_nullable_to_non_nullable
 as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
-as String?,snapshot: freezed == snapshot ? _self.snapshot : snapshot // ignore: cast_nullable_to_non_nullable
-as String?,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
-as PartTime?,
+as String?,
   ));
 }
 
@@ -242,18 +192,6 @@ $ToolStateCopyWith<$Res>? get state {
 
   return $ToolStateCopyWith<$Res>(_self.state!, (value) {
     return _then(_self.copyWith(state: value));
-  });
-}/// Create a copy of MessagePart
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$PartTimeCopyWith<$Res>? get time {
-    if (_self.time == null) {
-    return null;
-  }
-
-  return $PartTimeCopyWith<$Res>(_self.time!, (value) {
-    return _then(_self.copyWith(time: value));
   });
 }
 }
@@ -395,143 +333,6 @@ as String,title: freezed == title ? _self.title : title // ignore: cast_nullable
 as String?,output: freezed == output ? _self.output : output // ignore: cast_nullable_to_non_nullable
 as String?,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
 as String?,
-  ));
-}
-
-
-}
-
-
-/// @nodoc
-mixin _$PartTime {
-
- int? get start; int? get end;
-/// Create a copy of PartTime
-/// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-$PartTimeCopyWith<PartTime> get copyWith => _$PartTimeCopyWithImpl<PartTime>(this as PartTime, _$identity);
-
-  /// Serializes this PartTime to a JSON map.
-  Map<String, dynamic> toJson();
-
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PartTime&&(identical(other.start, start) || other.start == start)&&(identical(other.end, end) || other.end == end));
-}
-
-@JsonKey(includeFromJson: false, includeToJson: false)
-@override
-int get hashCode => Object.hash(runtimeType,start,end);
-
-@override
-String toString() {
-  return 'PartTime(start: $start, end: $end)';
-}
-
-
-}
-
-/// @nodoc
-abstract mixin class $PartTimeCopyWith<$Res>  {
-  factory $PartTimeCopyWith(PartTime value, $Res Function(PartTime) _then) = _$PartTimeCopyWithImpl;
-@useResult
-$Res call({
- int? start, int? end
-});
-
-
-
-
-}
-/// @nodoc
-class _$PartTimeCopyWithImpl<$Res>
-    implements $PartTimeCopyWith<$Res> {
-  _$PartTimeCopyWithImpl(this._self, this._then);
-
-  final PartTime _self;
-  final $Res Function(PartTime) _then;
-
-/// Create a copy of PartTime
-/// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? start = freezed,Object? end = freezed,}) {
-  return _then(_self.copyWith(
-start: freezed == start ? _self.start : start // ignore: cast_nullable_to_non_nullable
-as int?,end: freezed == end ? _self.end : end // ignore: cast_nullable_to_non_nullable
-as int?,
-  ));
-}
-
-}
-
-
-
-/// @nodoc
-@JsonSerializable()
-
-class _PartTime implements PartTime {
-  const _PartTime({this.start, this.end});
-  factory _PartTime.fromJson(Map<String, dynamic> json) => _$PartTimeFromJson(json);
-
-@override final  int? start;
-@override final  int? end;
-
-/// Create a copy of PartTime
-/// with the given fields replaced by the non-null parameter values.
-@override @JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-_$PartTimeCopyWith<_PartTime> get copyWith => __$PartTimeCopyWithImpl<_PartTime>(this, _$identity);
-
-@override
-Map<String, dynamic> toJson() {
-  return _$PartTimeToJson(this, );
-}
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PartTime&&(identical(other.start, start) || other.start == start)&&(identical(other.end, end) || other.end == end));
-}
-
-@JsonKey(includeFromJson: false, includeToJson: false)
-@override
-int get hashCode => Object.hash(runtimeType,start,end);
-
-@override
-String toString() {
-  return 'PartTime(start: $start, end: $end)';
-}
-
-
-}
-
-/// @nodoc
-abstract mixin class _$PartTimeCopyWith<$Res> implements $PartTimeCopyWith<$Res> {
-  factory _$PartTimeCopyWith(_PartTime value, $Res Function(_PartTime) _then) = __$PartTimeCopyWithImpl;
-@override @useResult
-$Res call({
- int? start, int? end
-});
-
-
-
-
-}
-/// @nodoc
-class __$PartTimeCopyWithImpl<$Res>
-    implements _$PartTimeCopyWith<$Res> {
-  __$PartTimeCopyWithImpl(this._self, this._then);
-
-  final _PartTime _self;
-  final $Res Function(_PartTime) _then;
-
-/// Create a copy of PartTime
-/// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? start = freezed,Object? end = freezed,}) {
-  return _then(_PartTime(
-start: freezed == start ? _self.start : start // ignore: cast_nullable_to_non_nullable
-as int?,end: freezed == end ? _self.end : end // ignore: cast_nullable_to_non_nullable
-as int?,
   ));
 }
 

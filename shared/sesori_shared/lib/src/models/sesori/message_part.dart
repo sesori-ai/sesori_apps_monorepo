@@ -11,27 +11,12 @@ sealed class MessagePart with _$MessagePart {
     required String sessionID,
     required String messageID,
     required String type,
-    // text / reasoning
     String? text,
-    // tool
     String? tool,
-    String? callID,
     ToolState? state,
-    // file
-    String? mime,
-    String? url,
-    String? filename,
-    // step-finish
-    double? cost,
-    String? reason,
-    // subtask
     String? prompt,
     String? description,
     String? agent,
-    // snapshot / step-start
-    String? snapshot,
-    // time (for text, reasoning, tool)
-    PartTime? time,
   }) = _MessagePart;
 
   factory MessagePart.fromJson(Map<String, dynamic> json) => _$MessagePartFromJson(json);
@@ -47,14 +32,4 @@ sealed class ToolState with _$ToolState {
   }) = _ToolState;
 
   factory ToolState.fromJson(Map<String, dynamic> json) => _$ToolStateFromJson(json);
-}
-
-@Freezed(fromJson: true, toJson: true)
-sealed class PartTime with _$PartTime {
-  const factory PartTime({
-    int? start,
-    int? end,
-  }) = _PartTime;
-
-  factory PartTime.fromJson(Map<String, dynamic> json) => _$PartTimeFromJson(json);
 }

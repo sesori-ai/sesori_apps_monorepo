@@ -676,17 +676,10 @@ $SessionCopyWith<$Res> get info {
 @JsonSerializable()
 
 class SesoriSessionDiff implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriSessionDiff({required this.sessionID, required final  List<FileDiff> diff, final  String? $type}): _diff = diff,$type = $type ?? 'session.diff';
+  const SesoriSessionDiff({required this.sessionID, final  String? $type}): $type = $type ?? 'session.diff';
   factory SesoriSessionDiff.fromJson(Map<String, dynamic> json) => _$SesoriSessionDiffFromJson(json);
 
  final  String sessionID;
- final  List<FileDiff> _diff;
- List<FileDiff> get diff {
-  if (_diff is EqualUnmodifiableListView) return _diff;
-  // ignore: implicit_dynamic_type
-  return EqualUnmodifiableListView(_diff);
-}
-
 
 @JsonKey(name: 'type')
 final String $type;
@@ -705,16 +698,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionDiff&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&const DeepCollectionEquality().equals(other._diff, _diff));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionDiff&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionID,const DeepCollectionEquality().hash(_diff));
+int get hashCode => Object.hash(runtimeType,sessionID);
 
 @override
 String toString() {
-  return 'SesoriSseEvent.sessionDiff(sessionID: $sessionID, diff: $diff)';
+  return 'SesoriSseEvent.sessionDiff(sessionID: $sessionID)';
 }
 
 
@@ -725,7 +718,7 @@ abstract mixin class $SesoriSessionDiffCopyWith<$Res> implements $SesoriSseEvent
   factory $SesoriSessionDiffCopyWith(SesoriSessionDiff value, $Res Function(SesoriSessionDiff) _then) = _$SesoriSessionDiffCopyWithImpl;
 @useResult
 $Res call({
- String sessionID, List<FileDiff> diff
+ String sessionID
 });
 
 
@@ -742,11 +735,10 @@ class _$SesoriSessionDiffCopyWithImpl<$Res>
 
 /// Create a copy of SesoriSseEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? sessionID = null,Object? diff = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? sessionID = null,}) {
   return _then(SesoriSessionDiff(
 sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
-as String,diff: null == diff ? _self._diff : diff // ignore: cast_nullable_to_non_nullable
-as List<FileDiff>,
+as String,
   ));
 }
 
