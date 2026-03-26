@@ -14,6 +14,7 @@ import 'package:sesori_bridge/src/bridge/orchestrator.dart';
 import 'package:sesori_bridge/src/bridge/persistence/bridge_diagnostics.dart';
 import 'package:sesori_bridge/src/bridge/persistence/hidden_projects_store.dart';
 import 'package:sesori_bridge/src/bridge/relay_client.dart';
+import 'package:sesori_bridge/src/bridge/sse/sse_manager.dart';
 import 'package:sesori_bridge/src/push/completion_notifier.dart';
 import 'package:sesori_bridge/src/push/push_notification_client.dart';
 import 'package:sesori_bridge/src/push/push_notification_service.dart';
@@ -25,7 +26,6 @@ import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log, 
 const String _defaultRelayURL = 'wss://relay.sesori.com';
 const String _defaultAuthURL = 'https://api.sesori.com';
 const String _defaultTargetHost = 'http://127.0.0.1';
-const Duration _defaultSseReplayWindow = Duration(minutes: 5);
 
 Future<void> main(List<String> args) async {
   final parser = ArgParser()
@@ -149,7 +149,7 @@ Future<void> main(List<String> args) async {
     serverURL: serverURL,
     serverPassword: serverPasswordPtr,
     authBackendURL: authBackendURL,
-    sseReplayWindow: _defaultSseReplayWindow,
+    sseReplayWindow: SSEManager.defaultReplayWindow,
   );
   final plugin = OpenCodePlugin(
     serverUrl: serverURL,
