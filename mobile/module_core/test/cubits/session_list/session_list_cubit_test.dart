@@ -1,17 +1,17 @@
 import "dart:async";
 
 import "package:bloc_test/bloc_test.dart";
-import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
-import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/capabilities/sse/session_activity_info.dart";
 import "package:sesori_dart_core/src/cubits/session_list/session_list_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_list/session_list_state.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:test/test.dart";
 
 import "../../helpers/test_helpers.dart";
 
@@ -719,7 +719,7 @@ void main() {
         await Future<void>.delayed(Duration.zero);
         eventController.add(
           SseEvent(
-            data: SesoriSseEvent.sessionCreated(
+            data: const SesoriSseEvent.sessionCreated(
               info: Session(
                 id: "s2",
                 projectID: projectId,
@@ -813,7 +813,7 @@ void main() {
         await Future<void>.delayed(Duration.zero);
         eventController.add(
           SseEvent(
-            data: SesoriSseEvent.sessionCreated(
+            data: const SesoriSseEvent.sessionCreated(
               info: Session(
                 id: "child-1",
                 projectID: projectId,
