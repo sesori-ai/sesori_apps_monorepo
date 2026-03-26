@@ -23,23 +23,11 @@ sealed class PluginMessagePart with _$PluginMessagePart {
     required String? text,
     // tool
     required String? tool,
-    required String? callID,
     required PluginToolState? state,
-    // file
-    required String? mime,
-    required String? url,
-    required String? filename,
-    // step-finish
-    required double? cost,
-    required String? reason,
     // subtask
     required String? prompt,
     required String? description,
     required String? agent,
-    // snapshot / step-start
-    required String? snapshot,
-    // time (for text, reasoning, tool)
-    required PluginPartTime? time,
   }) = _PluginMessagePart;
 }
 
@@ -54,33 +42,13 @@ sealed class PluginToolState with _$PluginToolState {
 }
 
 @freezed
-sealed class PluginPartTime with _$PluginPartTime {
-  const factory PluginPartTime({
-    required int? start,
-    required int? end,
-  }) = _PluginPartTime;
-}
-
-@freezed
 sealed class PluginMessage with _$PluginMessage {
   const factory PluginMessage({
     required String role,
     required String id,
     required String sessionID,
-    required String? parentID,
     required String? agent,
     required String? modelID,
     required String? providerID,
-    required double? cost,
-    required PluginMessageTime? time,
-    required String? finish,
   }) = _PluginMessage;
-}
-
-@freezed
-sealed class PluginMessageTime with _$PluginMessageTime {
-  const factory PluginMessageTime({
-    required int created,
-    required int? completed,
-  }) = _PluginMessageTime;
 }

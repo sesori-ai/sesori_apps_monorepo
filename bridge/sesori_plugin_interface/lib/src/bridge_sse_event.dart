@@ -36,8 +36,7 @@ class BridgeSseSessionDeleted extends BridgeSseEvent {
 
 class BridgeSseSessionDiff extends BridgeSseEvent {
   final String sessionID;
-  final List<Map<String, dynamic>> diff;
-  const BridgeSseSessionDiff({required this.sessionID, required this.diff});
+  const BridgeSseSessionDiff({required this.sessionID});
 }
 
 class BridgeSseSessionError extends BridgeSseEvent {
