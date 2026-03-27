@@ -22,6 +22,14 @@ enum MessagePartType {
   file,
   @JsonValue("snapshot")
   snapshot,
+  @JsonValue("patch")
+  patch,
+  @JsonValue("agent")
+  agent,
+  @JsonValue("retry")
+  retry,
+  @JsonValue("compaction")
+  compaction,
 }
 
 @Freezed(fromJson: true, toJson: true)
@@ -37,6 +45,11 @@ sealed class MessagePart with _$MessagePart {
     String? prompt,
     String? description,
     String? agent,
+    // agent
+    String? agentName,
+    // retry
+    int? attempt,
+    String? retryError,
   }) = _MessagePart;
 
   factory MessagePart.fromJson(Map<String, dynamic> json) => _$MessagePartFromJson(json);

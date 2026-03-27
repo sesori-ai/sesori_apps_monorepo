@@ -28,6 +28,11 @@ sealed class MessagePart with _$MessagePart {
     String? prompt,
     String? description,
     String? agent,
+    // agent
+    String? name,
+    // retry
+    int? attempt,
+    Map<String, dynamic>? error,
     // snapshot / step-start
     String? snapshot,
     // time (for text, reasoning, tool)

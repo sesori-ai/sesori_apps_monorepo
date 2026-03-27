@@ -19,6 +19,9 @@ _MessagePart _$MessagePartFromJson(Map json) => _MessagePart(
   prompt: json['prompt'] as String?,
   description: json['description'] as String?,
   agent: json['agent'] as String?,
+  agentName: json['agentName'] as String?,
+  attempt: (json['attempt'] as num?)?.toInt(),
+  retryError: json['retryError'] as String?,
 );
 
 Map<String, dynamic> _$MessagePartToJson(_MessagePart instance) =>
@@ -33,6 +36,9 @@ Map<String, dynamic> _$MessagePartToJson(_MessagePart instance) =>
       'prompt': instance.prompt,
       'description': instance.description,
       'agent': instance.agent,
+      'agentName': instance.agentName,
+      'attempt': instance.attempt,
+      'retryError': instance.retryError,
     };
 
 const _$MessagePartTypeEnumMap = {
@@ -44,6 +50,10 @@ const _$MessagePartTypeEnumMap = {
   MessagePartType.stepFinish: 'step-finish',
   MessagePartType.file: 'file',
   MessagePartType.snapshot: 'snapshot',
+  MessagePartType.patch: 'patch',
+  MessagePartType.agent: 'agent',
+  MessagePartType.retry: 'retry',
+  MessagePartType.compaction: 'compaction',
 };
 
 _ToolState _$ToolStateFromJson(Map json) => _ToolState(
