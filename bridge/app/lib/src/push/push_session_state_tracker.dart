@@ -59,6 +59,8 @@ class PushSessionStateTracker {
             sessionState.hasPendingPermission = false;
           }
         }
+      case SesoriProjectsSummary(:final projects):
+        _applyProjectsSummaryChildLinks(projects);
       default:
         break;
     }
@@ -234,6 +236,28 @@ class PushSessionStateTracker {
 
   _SessionState _stateForWrite(String sessionId) {
     return _sessions.putIfAbsent(sessionId, _SessionState.new);
+  }
+
+  /// Learns parent-child relationships from a [SesoriProjectsSummary] event.
+  ///
+  /// The summary lists root sessions together with their [childSessionIds].
+  /// For any child whose parent is not yet known, this sets the link so that
+  /// [resolveRootSessionId] can walk up to the correct root. This is critical
+  /// after a bridge restart where [SesoriSessionCreated] events are not
+  /// replayed for already-existing sessions.
+  void _applyProjectsSummaryChildLinks(List<ProjectActivitySummary> projects) {
+    for (final project in projects) {
+      for (final activeSession in project.activeSessions) {
+        final parentId = activeSession.id;
+        for (final childId in activeSession.childSessionIds) {
+          final childState = _stateForWrite(childId);
+          if (childState.parentId == null) {
+            childState.parentId = parentId;
+            _stateForWrite(parentId).childIds.add(childId);
+          }
+        }
+      }
+    }
   }
 
   void _rebuildChildLinksForParent(String parentId) {

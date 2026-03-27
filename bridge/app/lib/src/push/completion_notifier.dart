@@ -104,6 +104,16 @@ class CompletionNotifier {
     _debounceTimers[rootSessionId]?.cancel();
     _debounceTimers[rootSessionId] = Timer(_debounceDuration, () {
       _debounceTimers.remove(rootSessionId);
+
+      // Re-resolve: parent links may have been established during the debounce
+      // window (e.g., from a SesoriProjectsSummary or late SesoriSessionCreated).
+      // If this session is now known to be a child, reschedule for the real root.
+      final currentRoot = _tracker.resolveRootSessionId(rootSessionId);
+      if (currentRoot != rootSessionId) {
+        _maybeScheduleCompletion(rootSessionId);
+        return;
+      }
+
       if (!_shouldTriggerCompletion(rootSessionId)) {
         return;
       }

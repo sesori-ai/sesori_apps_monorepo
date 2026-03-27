@@ -334,6 +334,198 @@ void main() {
       });
     });
 
+    test("projects summary during debounce redirects child completion to root", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+
+        // Status events arrive without sessionCreated (e.g., after bridge restart).
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+        );
+        // At this point, "child" has a debounce timer thinking it is a root.
+
+        // projects.summary arrives within debounce window and establishes link.
+        async.elapse(const Duration(milliseconds: 200));
+        async.flushMicrotasks();
+        harness.dispatch(
+          const SesoriSseEvent.projectsSummary(
+            projects: [
+              ProjectActivitySummary(
+                id: "project-a",
+                activeSessions: [
+                  ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"]),
+                ],
+              ),
+            ],
+          ),
+        );
+
+        // Allow both the original debounce and the rescheduled one to fire.
+        async.elapse(const Duration(milliseconds: 1000));
+        async.flushMicrotasks();
+
+        // Should emit "root", not "child".
+        expect(harness.completedRoots, equals(["root"]));
+      });
+    });
+
+    test("late summary after debounce fires does not prevent child notification", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+
+        // Status events arrive without parent links.
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+        );
+
+        // Debounce fires BEFORE summary arrives — child notifies as root.
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, contains("child"));
+
+        // Summary arrives too late to prevent the child notification.
+        harness.dispatch(
+          const SesoriSseEvent.projectsSummary(
+            projects: [
+              ProjectActivitySummary(
+                id: "project-a",
+                activeSessions: [
+                  ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"]),
+                ],
+              ),
+            ],
+          ),
+        );
+
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+
+        // Known tradeoff: both "root" and "child" emitted because the link
+        // was established after the child's debounce already fired.
+        expect(harness.completedRoots, containsAll(["root", "child"]));
+      });
+    });
+
+    test("multiple children redirecting to same root produce single notification", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+
+        // Three sessions known only via status events.
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "child-1", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "child-2", status: SessionStatus.busy()),
+        );
+
+        // All go idle — each schedules its own debounce as "root".
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "child-1", status: SessionStatus.idle()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "child-2", status: SessionStatus.idle()),
+        );
+
+        // Summary establishes links before debounce fires.
+        async.elapse(const Duration(milliseconds: 200));
+        async.flushMicrotasks();
+        harness.dispatch(
+          const SesoriSseEvent.projectsSummary(
+            projects: [
+              ProjectActivitySummary(
+                id: "project-a",
+                activeSessions: [
+                  ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child-1", "child-2"]),
+                ],
+              ),
+            ],
+          ),
+        );
+
+        // Allow all debounce timers + rescheduled timers to fire.
+        async.elapse(const Duration(seconds: 2));
+        async.flushMicrotasks();
+
+        // Only one notification for the true root.
+        expect(harness.completedRoots, equals(["root"]));
+      });
+    });
+
+    test("multi-level chain via summary redirects grandchild to root", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+
+        // Three-level hierarchy known only via status events.
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "grandchild", status: SessionStatus.busy()),
+        );
+
+        // All go idle.
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "grandchild", status: SessionStatus.idle()),
+        );
+
+        // Summary establishes both levels during debounce.
+        async.elapse(const Duration(milliseconds: 200));
+        async.flushMicrotasks();
+        harness.dispatch(
+          const SesoriSseEvent.projectsSummary(
+            projects: [
+              ProjectActivitySummary(
+                id: "project-a",
+                activeSessions: [
+                  ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"]),
+                  ActiveSession(id: "child", mainAgentRunning: false, childSessionIds: ["grandchild"]),
+                ],
+              ),
+            ],
+          ),
+        );
+
+        async.elapse(const Duration(seconds: 2));
+        async.flushMicrotasks();
+
+        // Only the top root emits, not child or grandchild.
+        expect(harness.completedRoots, equals(["root"]));
+      });
+    });
+
     test("completion stream emits root session ID for child events", () {
       fakeAsync((async) {
         final harness = _newHarness();

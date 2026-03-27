@@ -621,6 +621,56 @@ void main() {
       expect(harness.client.sentPayloads.single.data?.projectId, equals("project-y"));
     });
 
+    test("E9a: projects summary redirects child completion to root after restart", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+
+        // Simulate bridge restart: only status events, no sessionCreated.
+        harness.service.handleSseEvent(
+          SesoriSseEvent.sessionCreated(
+            info: _session(id: "root", title: "Root task"),
+          ),
+        );
+        harness.service.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+        );
+        harness.service.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+        );
+        harness.service.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
+        );
+        harness.service.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+        );
+
+        // projects.summary establishes the parent link during debounce.
+        harness.service.handleSseEvent(
+          const SesoriSseEvent.projectsSummary(
+            projects: [
+              ProjectActivitySummary(
+                id: "project-a",
+                activeSessions: [
+                  ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"]),
+                ],
+              ),
+            ],
+          ),
+        );
+
+        // Wait for debounce + re-resolve debounce.
+        async.elapse(const Duration(seconds: 2));
+        async.flushMicrotasks();
+
+        // Should get exactly one completion notification for the root, not the child.
+        final completions = harness.client.sentPayloads
+            .where((p) => p.data?.eventType == NotificationEventType.agentTurnCompleted)
+            .toList();
+        expect(completions.length, equals(1));
+        expect(completions.single.title, equals("Root task"));
+      });
+    });
+
     test("E9: question asked for untracked session still sends aiInteraction", () {
       final harness = _newHarness();
 
