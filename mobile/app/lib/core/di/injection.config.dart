@@ -9,6 +9,7 @@
 // coverage:ignore-file
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+import 'package:firebase_crashlytics/firebase_crashlytics.dart' as _i141;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart'
     as _i163;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart' as _i558;
@@ -29,6 +30,8 @@ import 'package:sesori_mobile/capabilities/voice/wake_lock_service.dart'
 import 'package:sesori_mobile/core/di/register_module.dart' as _i124;
 import 'package:sesori_mobile/core/platform/app_lifecycle_observer.dart'
     as _i875;
+import 'package:sesori_mobile/core/platform/crashlytics_failure_reporter.dart'
+    as _i534;
 import 'package:sesori_mobile/core/platform/flutter_secure_storage_adapter.dart'
     as _i816;
 import 'package:sesori_mobile/core/platform/flutter_url_launcher.dart' as _i10;
@@ -62,6 +65,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i558.FlutterSecureStorage>(
       () => registerModule.secureStorage,
     );
+    gh.lazySingleton<_i141.FirebaseCrashlytics>(
+      () => registerModule.firebaseCrashlytics,
+    );
     gh.singleton<_i948.LifecycleSource>(() => _i875.AppLifecycleObserver());
     gh.singleton<_i948.RouteSource>(() => _i597.GoRouterRouteSource());
     gh.lazySingleton<_i948.DeepLinkSource>(
@@ -85,6 +91,9 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i492.LocalNotificationManager(
         plugin: gh<_i163.FlutterLocalNotificationsPlugin>(),
       ),
+    );
+    gh.lazySingleton<_i553.FailureReporter>(
+      () => _i534.CrashlyticsFailureReporter(gh<_i141.FirebaseCrashlytics>()),
     );
     gh.lazySingleton<_i1038.VoiceTranscriptionService>(
       () => _i1038.VoiceTranscriptionService(
