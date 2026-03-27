@@ -148,7 +148,7 @@ class NotificationService {
   }
 
   Future<void> registerCurrentToken() async {
-    if (Platform.isIOS) {
+    if (Platform.isIOS || Platform.isMacOS) {
       for (var i = 0; i < 5; i++) {
         final apnsToken = await FirebaseMessaging.instance.getAPNSToken();
         if (apnsToken != null) break;
@@ -161,7 +161,11 @@ class NotificationService {
 
     final request = RegisterTokenRequest(
       token: token,
-      platform: Platform.isIOS ? shared.DevicePlatform.ios : shared.DevicePlatform.android,
+      platform: Platform.isIOS
+          ? shared.DevicePlatform.ios
+          : Platform.isMacOS
+          ? shared.DevicePlatform.macos
+          : shared.DevicePlatform.android,
     );
     logd("[FCM] Registering push token: ...${token.takeLast(6)}");
     await _apiClient.registerToken(request);
@@ -219,7 +223,11 @@ class NotificationService {
 
     final request = RegisterTokenRequest(
       token: newToken,
-      platform: Platform.isIOS ? shared.DevicePlatform.ios : shared.DevicePlatform.android,
+      platform: Platform.isIOS
+          ? shared.DevicePlatform.ios
+          : Platform.isMacOS
+          ? shared.DevicePlatform.macos
+          : shared.DevicePlatform.android,
     );
     await _apiClient.registerToken(request);
     _currentToken = newToken;

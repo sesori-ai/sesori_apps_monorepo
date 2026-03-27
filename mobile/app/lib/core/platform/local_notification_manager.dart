@@ -54,6 +54,7 @@ class LocalNotificationManager implements NotificationCanceller {
       settings: const InitializationSettings(
         android: AndroidInitializationSettings("@drawable/ic_notification"),
         iOS: DarwinInitializationSettings(),
+        macOS: DarwinInitializationSettings(),
       ),
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
@@ -108,6 +109,7 @@ class LocalNotificationManager implements NotificationCanceller {
           largeIcon: const DrawableResourceAndroidBitmap("@mipmap/ic_launcher"),
         ),
         iOS: const DarwinNotificationDetails(),
+        macOS: const DarwinNotificationDetails(),
       ),
       payload: payload,
     );

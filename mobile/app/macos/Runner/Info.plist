@@ -42,6 +42,8 @@
 		<false />
 		<key>GOOGLE_ANALYTICS_IDFV_COLLECTION_ENABLED</key>
 		<false />
+		<key>NSMicrophoneUsageDescription</key>
+		<string>Microphone access is needed for voice-to-text transcription</string>
 		<key>CFBundleURLTypes</key>
 		<array>
 			<dict>
