@@ -158,6 +158,20 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     }
   }
 
+  /// Renames the project with [projectId] to [name].
+  /// Returns `true` on success (and refreshes the project list), `false` on error.
+  Future<bool> renameProject({required String projectId, required String name}) async {
+    final response = await _projectService.renameProject(projectId: projectId, name: name);
+    if (isClosed) return false;
+    switch (response) {
+      case SuccessResponse():
+        await refreshProjects();
+        return true;
+      case ErrorResponse():
+        return false;
+    }
+  }
+
   /// Discovers an existing project at [path].
   /// Returns `true` on success, `false` on error.
   Future<bool> discoverProject({required String path}) async {

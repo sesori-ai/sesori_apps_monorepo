@@ -245,5 +245,15 @@
      "projectCreateFailed": "Failed to create project",
       "projectDiscoverFailed": "Failed to discover project",
       "questionReplyFailed": "Failed to send answer. Please try again.",
-      "questionRejectFailed": "Failed to reject question. Please try again."
+      "questionRejectFailed": "Failed to reject question. Please try again.",
+      "rename": "Rename",
+      "renameSessionTitle": "Rename Session",
+      "renameProjectTitle": "Rename Project",
+      "renameSessionHint": "Session title",
+      "renameProjectHint": "Project name",
+      "renameSave": "Save",
+      "renameSessionSuccess": "Session renamed",
+      "renameProjectSuccess": "Project renamed",
+      "renameSessionFailed": "Failed to rename session",
+      "renameProjectFailed": "Failed to rename project"
 }

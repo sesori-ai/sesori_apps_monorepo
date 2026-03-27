@@ -6,13 +6,11 @@ import "package:sesori_shared/sesori_shared.dart";
 import "plugin_session_mapper.dart";
 import "request_handler.dart";
 
-const _idParam = "id";
-
-/// Handles `PATCH /session/:id` — updates archive status for a session.
-class UpdateSessionArchiveStatusHandler extends RequestHandler {
+/// Handles `PATCH /session/title` — renames a session.
+class RenameSessionHandler extends RequestHandler {
   final BridgePlugin _plugin;
 
-  UpdateSessionArchiveStatusHandler(this._plugin) : super(HttpMethod.patch, "/session/:$_idParam");
+  RenameSessionHandler(this._plugin) : super(HttpMethod.patch, "/session/title");
 
   @override
   Future<RelayResponse> handle(
@@ -21,15 +19,14 @@ class UpdateSessionArchiveStatusHandler extends RequestHandler {
     required Map<String, String> queryParams,
     String? fragment,
   }) async {
-    final sessionId = pathParams[_idParam];
-    if (sessionId == null || sessionId.isEmpty) {
-      return buildErrorResponse(request, 400, "missing session id");
-    }
-
-    final UpdateSessionArchiveRequest archiveRequest;
+    final RenameSessionRequest renameRequest;
     try {
-      archiveRequest = UpdateSessionArchiveRequest.fromJson(
-        jsonDecode(request.body ?? "{}") as Map<String, dynamic>,
+      final decoded = jsonDecode(request.body ?? "{}");
+      renameRequest = RenameSessionRequest.fromJson(
+        switch (decoded) {
+          final Map<String, dynamic> map => map,
+          _ => throw const FormatException("invalid JSON body"),
+        },
       );
     } on FormatException {
       return buildErrorResponse(request, 400, "invalid JSON body");
@@ -37,9 +34,9 @@ class UpdateSessionArchiveStatusHandler extends RequestHandler {
       return buildErrorResponse(request, 400, "invalid JSON body");
     }
 
-    final updated = await _plugin.updateSessionArchiveStatus(
-      sessionId,
-      archived: archiveRequest.archived,
+    final updated = await _plugin.renameSession(
+      sessionId: renameRequest.sessionId,
+      title: renameRequest.title,
     );
 
     final session = updated.toSharedSession();

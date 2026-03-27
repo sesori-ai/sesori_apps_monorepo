@@ -356,6 +356,38 @@ void main() {
         );
       });
     });
+
+    group("renameSession", () {
+      test("sends PATCH with title body and returns updated session", () async {
+        final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+        await server.waitForSseConnection();
+        server.requestLog.clear();
+
+        final session = await plugin.renameSession(sessionId: "s-root", title: "New Title");
+
+        expect(session.id, equals("s-root"));
+        expect(session.title, equals("New Title"));
+        expect(server.requestLog, equals(["PATCH /session/s-root"]));
+      });
+    });
+
+    group("renameProject", () {
+      test("resolves worktree to project UUID then sends PATCH with name", () async {
+        final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+        await server.waitForSseConnection();
+        server.requestLog.clear();
+
+        final project = await plugin.renameProject(projectId: "/repo", name: "Renamed Repo");
+
+        // PluginProject.id is always the worktree path, not the OpenCode UUID
+        expect(project.id, equals("/repo"));
+        expect(project.name, equals("Renamed Repo"));
+        expect(
+          server.requestLog,
+          equals(["GET /project/current", "PATCH /project/p1"]),
+        );
+      });
+    });
   });
 }
 
@@ -462,6 +494,10 @@ class _FakeOpenCodeServer {
     },
   };
 
+  final Map<String, Map<String, dynamic>> _projects = {
+    "p1": {"id": "p1", "worktree": "/repo", "name": "Main Repo"},
+  };
+
   String get baseUrl => "http://${_server!.address.address}:${_server!.port}";
 
   Future<void> start() async {
@@ -471,9 +507,43 @@ class _FakeOpenCodeServer {
       requestLog.add("${request.method} $path");
 
       if (request.method == "GET" && path == "/project") {
-        await _sendJson(request.response, [
-          {"id": "p1", "worktree": "/repo", "name": "Main Repo"},
-        ]);
+        await _sendJson(request.response, _projects.values.toList());
+        return;
+      }
+
+      if (request.method == "GET" && path == "/project/current") {
+        final dir = request.headers.value("x-opencode-directory");
+        final project = _projects.values.where((p) => p["worktree"] == dir).firstOrNull;
+        if (project == null) {
+          request.response.statusCode = HttpStatus.notFound;
+          await request.response.close();
+          return;
+        }
+        await _sendJson(request.response, project);
+        return;
+      }
+
+      final projectMatch = RegExp(r"^/project/([^/]+)$").firstMatch(path);
+      if (projectMatch != null && request.method == "PATCH") {
+        final directoryHeader = request.headers.value("x-opencode-directory");
+        if (directoryHeader == null || directoryHeader.isEmpty) {
+          request.response.statusCode = HttpStatus.badRequest;
+          await request.response.close();
+          return;
+        }
+        final projectId = projectMatch.group(1)!;
+        final project = _projects[projectId];
+        if (project == null) {
+          request.response.statusCode = HttpStatus.notFound;
+          await request.response.close();
+          return;
+        }
+        final rawBody = await utf8.decoder.bind(request).join();
+        final body = (jsonDecode(rawBody) as Map).cast<String, dynamic>();
+        if (body.containsKey("name")) {
+          project["name"] = body["name"];
+        }
+        await _sendJson(request.response, project);
         return;
       }
 

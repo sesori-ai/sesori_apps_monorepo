@@ -260,6 +260,21 @@ class SessionListCubit extends Cubit<SessionListState> {
     _undoSnapshot = null;
   }
 
+  /// Renames a session. Returns `true` on success so the screen can show
+  /// a confirmation message.
+  Future<bool> renameSession({required String sessionId, required String title}) async {
+    final response = await _service.renameSession(sessionId: sessionId, title: title);
+    if (isClosed) return false;
+
+    switch (response) {
+      case SuccessResponse():
+        await refreshSessions();
+        return true;
+      case ErrorResponse():
+        return false;
+    }
+  }
+
   /// Deletes a session permanently.
   Future<bool> deleteSession(String sessionId) async {
     if (state is! SessionListLoaded) return false;

@@ -19,7 +19,6 @@ jobs:
 
       - name: Read Flutter version from .tool-versions
         shell: bash
-        working-directory: mobile
         run: |
           FLUTTER_VERSION=$(awk '$1 == "flutter" { print $2 }' .tool-versions | sed 's/-stable$//')
           if [ -z "$FLUTTER_VERSION" ]; then

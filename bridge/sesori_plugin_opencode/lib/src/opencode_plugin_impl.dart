@@ -475,6 +475,36 @@ class OpenCodePlugin implements BridgePlugin {
     return project.toPlugin();
   }
 
+  @override
+  Future<PluginSession> renameSession({required String sessionId, required String title}) async {
+    final directory = _service.tracker.getSessionDirectory(sessionId: sessionId);
+    final session = await _call(
+      () => _service.repository.api.updateSession(
+        sessionId: sessionId,
+        directory: directory,
+        body: {"title": title},
+      ),
+    );
+    return session.toPlugin();
+  }
+
+  @override
+  Future<PluginProject> renameProject({required String projectId, required String name}) async {
+    // CRITICAL: projectId is the worktree path (PluginProject.id = worktree, see project.dart:33)
+    // Must resolve the real OpenCode project UUID before calling PATCH
+    final project = await _call(
+      () => _service.repository.api.getProject(directory: projectId),
+    );
+    final updated = await _call(
+      () => _service.repository.api.updateProject(
+        projectId: project.id,
+        directory: projectId,
+        body: {"name": name},
+      ),
+    );
+    return updated.toPlugin();
+  }
+
   void _handleRawSseEvent(String rawData) {
     try {
       final parseResult = _parser.parse(rawData);

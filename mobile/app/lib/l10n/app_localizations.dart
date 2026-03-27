@@ -942,6 +942,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed to reject question. Please try again.'**
   String get questionRejectFailed;
+
+  /// No description provided for @rename.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get rename;
+
+  /// No description provided for @renameSessionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename Session'**
+  String get renameSessionTitle;
+
+  /// No description provided for @renameProjectTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename Project'**
+  String get renameProjectTitle;
+
+  /// No description provided for @renameSessionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Session title'**
+  String get renameSessionHint;
+
+  /// No description provided for @renameProjectHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Project name'**
+  String get renameProjectHint;
+
+  /// No description provided for @renameSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get renameSave;
+
+  /// No description provided for @renameSessionSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Session renamed'**
+  String get renameSessionSuccess;
+
+  /// No description provided for @renameProjectSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Project renamed'**
+  String get renameProjectSuccess;
+
+  /// No description provided for @renameSessionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to rename session'**
+  String get renameSessionFailed;
+
+  /// No description provided for @renameProjectFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to rename project'**
+  String get renameProjectFailed;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

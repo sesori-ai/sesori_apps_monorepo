@@ -9,6 +9,7 @@ import "../../core/extensions/build_context_x.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/widgets/app_modal_bottom_sheet.dart";
 import "../../l10n/app_localizations.dart";
+import "rename_session_dialog.dart";
 
 class SessionListScreen extends StatelessWidget {
   final String projectId;
@@ -60,6 +61,18 @@ class _SessionListBody extends StatelessWidget {
         return Column(
           mainAxisSize: .min,
           children: [
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: Text(loc.rename),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                showRenameSessionDialog(
+                  context: context,
+                  session: session,
+                  cubit: cubit,
+                );
+              },
+            ),
             ListTile(
               leading: Icon(isArchived ? Icons.unarchive_outlined : Icons.archive_outlined),
               title: Text(isArchived ? loc.sessionListUnarchive : loc.sessionListArchive),
