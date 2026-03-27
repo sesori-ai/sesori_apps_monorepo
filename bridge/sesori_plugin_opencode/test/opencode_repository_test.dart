@@ -451,4 +451,10 @@ class _FakeApi implements OpenCodeApi {
   @override
   Future<ProviderListResponse> listProviders() async =>
       const ProviderListResponse(all: [], defaults: {}, connected: []);
+
+  @override
+  Future<Project> updateProject({
+    required String projectId,
+    required Map<String, dynamic> body,
+  }) async => throw UnimplementedError();
 }

@@ -159,6 +159,27 @@ class OpenCodeApi {
     }
   }
 
+  Future<Project> updateProject({
+    required String projectId,
+    required Map<String, dynamic> body,
+  }) async {
+    final client = http.Client();
+    try {
+      final response = await client.patch(
+        Uri.parse("$serverURL/project/$projectId"),
+        headers: {
+          ..._authHeaders,
+          "content-type": "application/json",
+        },
+        body: jsonEncode(body),
+      );
+      _ensureSuccess(response, "PATCH /project/$projectId");
+      return Project.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    } finally {
+      client.close();
+    }
+  }
+
   Future<void> deleteSession({
     required String sessionId,
     required String? directory,

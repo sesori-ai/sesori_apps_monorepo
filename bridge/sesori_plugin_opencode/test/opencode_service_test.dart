@@ -374,6 +374,12 @@ class FakeOpenCodeApi implements OpenCodeApi {
   Future<Project> getProject({required String directory}) async => throw UnimplementedError();
 
   @override
+  Future<Project> updateProject({
+    required String projectId,
+    required Map<String, dynamic> body,
+  }) async => throw UnimplementedError();
+
+  @override
   Future<List<GlobalSession>> listAllSessions({
     required String? directory,
     required bool roots,
