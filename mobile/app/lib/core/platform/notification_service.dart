@@ -161,6 +161,7 @@ class NotificationService {
 
     final request = RegisterTokenRequest(
       token: token,
+      // TODO: we want to distinguish between iOS and macOS
       platform: _isApplePlatform ? shared.DevicePlatform.ios : shared.DevicePlatform.android,
     );
     logd("[FCM] Registering push token: ...${token.takeLast(6)}");
@@ -219,12 +220,14 @@ class NotificationService {
 
     final request = RegisterTokenRequest(
       token: newToken,
+      // TODO: we want to distinguish between iOS and macOS
       platform: _isApplePlatform ? shared.DevicePlatform.ios : shared.DevicePlatform.android,
     );
     await _apiClient.registerToken(request);
     _currentToken = newToken;
   }
 
+  // TODO: this should be moved somewhere common
   static bool get _isApplePlatform => Platform.isIOS || Platform.isMacOS;
 
   @visibleForTesting
