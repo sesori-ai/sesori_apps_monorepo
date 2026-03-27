@@ -5,4 +5,6 @@ enum DevicePlatform {
   ios,
   @JsonValue("android")
   android,
+  @JsonValue("macos")
+  macos,
 }
