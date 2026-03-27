@@ -23,7 +23,7 @@ sealed class SesoriSessionEvent {}
 ///
 /// Uses Freezed [unionKey] on the `"type"` field to auto-deserialize from JSON.
 /// Unknown event types cause [fromJson] to throw — callers should catch and
-/// report via [recordNonFatalError].
+/// report via [FailureReporter.recordFailure].
 @Freezed(unionKey: "type", fromJson: true, toJson: true)
 sealed class SesoriSseEvent with _$SesoriSseEvent {
   // ---------------------------------------------------------------------------

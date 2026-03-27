@@ -61,6 +61,7 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i442.AuthTokenProvider>(),
         gh<_i442.AuthSession>(),
         gh<_i903.LifecycleSource>(),
+        gh<_i553.FailureReporter>(),
       ),
     );
     gh.lazySingleton<_i857.RelayHttpApiClient>(

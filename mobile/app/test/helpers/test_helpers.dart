@@ -1,3 +1,4 @@
+import "package:firebase_crashlytics/firebase_crashlytics.dart";
 import "package:flutter_secure_storage/flutter_secure_storage.dart";
 import "package:http/http.dart" as http;
 import "package:mocktail/mocktail.dart";
@@ -116,6 +117,10 @@ class MockSseEventRepository extends Mock implements SseEventRepository {
 
   void emitSessionActivity(Map<String, Map<String, SessionActivityInfo>> activity) => _sessionActivity.add(activity);
 }
+
+class MockFailureReporter extends Mock implements FailureReporter {}
+
+class MockFirebaseCrashlytics extends Mock implements FirebaseCrashlytics {}
 
 // ---------------------------------------------------------------------------
 // Fake classes — for registerFallbackValue

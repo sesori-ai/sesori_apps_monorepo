@@ -42,3 +42,4 @@ export "src/protocol/close_codes.dart";
 export "src/protocol/constants.dart";
 export "src/protocol/framing.dart";
 export "src/protocol/messages.dart";
+export "src/reporting/failure_reporter.dart";

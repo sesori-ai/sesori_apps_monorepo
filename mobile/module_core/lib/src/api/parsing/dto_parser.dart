@@ -6,7 +6,6 @@ import "package:sesori_auth/sesori_auth.dart";
 import "../../concurrency/impl/isolate/isolate.dart";
 import "../../concurrency/worker.dart";
 import "../../logging/logging.dart";
-import "../../reporting/reporting.dart";
 
 /// Parser runs on dedicated isolate for VM to avoid blocking main thread
 ///
@@ -51,13 +50,8 @@ class JsonDtoParser {
       try {
         final parsed = await _parseJson<T>(jsonData, parseJsonTask);
         return ApiResponse.success(parsed);
-      } catch (e) {
-        loge("Failed to parse json", e);
-        recordNonFatalError(
-          err: e,
-          context: "failed to parse json: ${T.toString()}",
-          extraData: {"jsonData": jsonData},
-        );
+      } on Object catch (e, st) {
+        loge("Failed to parse json", e, st);
         return ApiResponse.error(ApiError.jsonParsing(jsonData));
       }
     } else {

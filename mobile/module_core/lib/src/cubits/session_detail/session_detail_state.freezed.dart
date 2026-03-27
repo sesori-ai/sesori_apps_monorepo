@@ -125,9 +125,9 @@ class SessionDetailLoaded implements SessionDetailState {
   return EqualUnmodifiableMapView(_childStatuses);
 }
 
-// Queued messages (waiting to be sent when session becomes idle).
+// Queued messages (waiting to be sent when connection is restored).
  final  List<String> _queuedMessages;
-// Queued messages (waiting to be sent when session becomes idle).
+// Queued messages (waiting to be sent when connection is restored).
 @JsonKey() List<String> get queuedMessages {
   if (_queuedMessages is EqualUnmodifiableListView) return _queuedMessages;
   // ignore: implicit_dynamic_type

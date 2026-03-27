@@ -1,3 +1,4 @@
+import "package:firebase_crashlytics/firebase_crashlytics.dart";
 import "package:flutter_local_notifications/flutter_local_notifications.dart";
 import "package:flutter_secure_storage/flutter_secure_storage.dart";
 import "package:http/http.dart" as http;
@@ -31,4 +32,7 @@ abstract class RegisterModule {
       accountName: "Sesori",
     ),
   );
+
+  @lazySingleton
+  FirebaseCrashlytics get firebaseCrashlytics => FirebaseCrashlytics.instance;
 }

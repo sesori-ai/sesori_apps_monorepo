@@ -10,7 +10,6 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../capabilities/relay/room_key_storage.dart";
 import "../../logging/logging.dart";
 import "../../platform/lifecycle_source.dart";
-import "../../reporting/reporting.dart";
 import "../relay/relay_client.dart";
 import "api_paths.dart";
 import "models/connection_status.dart";
@@ -24,6 +23,7 @@ class ConnectionService {
   final LifecycleSource _lifecycleSource;
   final AuthTokenProvider _authTokenProvider;
   final AuthSession _authSession;
+  final FailureReporter _failureReporter;
 
   final BehaviorSubject<ConnectionStatus> _status = BehaviorSubject.seeded(const ConnectionStatus.disconnected());
   final StreamController<SseEvent> _events = StreamController<SseEvent>.broadcast();
@@ -48,11 +48,13 @@ class ConnectionService {
     AuthTokenProvider authTokenProvider,
     AuthSession authSession,
     LifecycleSource lifecycleSource,
+    FailureReporter failureReporter,
   ) : _cryptoService = cryptoService,
       _roomKeyStorage = roomKeyStorage,
       _authTokenProvider = authTokenProvider,
       _authSession = authSession,
-      _lifecycleSource = lifecycleSource {
+      _lifecycleSource = lifecycleSource,
+      _failureReporter = failureReporter {
     _compositeSubscription.add(
       _lifecycleSource.lifecycleStateStream.listen((state) {
         switch (state) {
@@ -279,10 +281,13 @@ class ConnectionService {
         eventData = SesoriSseEvent.fromJson(merged);
       } catch (e, st) {
         loge("Failed to parse SSE event payload", e, st);
-        recordNonFatalError(
-          err: e,
-          context: "Unknown or malformed SSE event type: $type",
-          extraData: properties,
+        _failureReporter.recordFailure(
+          error: e,
+          stackTrace: st,
+          uniqueIdentifier: "sse_parse_failure:$type",
+          fatal: false,
+          reason: "Unknown or malformed SSE event type: $type",
+          information: properties.entries.map((e) => "${e.key}: ${e.value}").toList(),
         );
         return;
       }
