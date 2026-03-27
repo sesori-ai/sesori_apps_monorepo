@@ -50,8 +50,8 @@ class JsonDtoParser {
       try {
         final parsed = await _parseJson<T>(jsonData, parseJsonTask);
         return ApiResponse.success(parsed);
-      } catch (e) {
-        loge("Failed to parse json", e);
+      } on Object catch (e, st) {
+        loge("Failed to parse json", e, st);
         return ApiResponse.error(ApiError.jsonParsing(jsonData));
       }
     } else {
