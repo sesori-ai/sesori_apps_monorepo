@@ -57,6 +57,10 @@ class _RenameProjectDialogState extends State<RenameProjectDialog> {
     final name = _nameController.text.trim();
     if (name.isEmpty) return;
 
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final loc = context.loc;
+
     setState(() => _actionLoading = true);
 
     final success = await widget.cubit.renameProject(
@@ -67,14 +71,13 @@ class _RenameProjectDialogState extends State<RenameProjectDialog> {
     if (!mounted) return;
     setState(() => _actionLoading = false);
 
-    final loc = context.loc;
     if (success) {
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
+      navigator.pop();
+      messenger.showSnackBar(
         SnackBar(content: Text(loc.renameProjectSuccess)),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(content: Text(loc.renameProjectFailed)),
       );
     }

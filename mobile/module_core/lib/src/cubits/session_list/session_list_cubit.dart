@@ -263,12 +263,15 @@ class SessionListCubit extends Cubit<SessionListState> {
   /// Renames a session. Returns `true` on success so the screen can show
   /// a confirmation message.
   Future<bool> renameSession({required String sessionId, required String title}) async {
-    try {
-      await _service.renameSession(sessionId: sessionId, title: title);
-      await refreshSessions();
-      return true;
-    } catch (e) {
-      return false;
+    final response = await _service.renameSession(sessionId: sessionId, title: title);
+    if (isClosed) return false;
+
+    switch (response) {
+      case SuccessResponse():
+        await refreshSessions();
+        return true;
+      case ErrorResponse():
+        return false;
     }
   }
 

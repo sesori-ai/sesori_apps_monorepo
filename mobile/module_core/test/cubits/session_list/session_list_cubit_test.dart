@@ -1236,18 +1236,18 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // renameSession failure — service throws, returns false, state unchanged
+    // renameSession failure — service returns ErrorResponse, returns false
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
-      "renameSession: returns false and leaves state unchanged when service throws",
+      "renameSession: returns false and leaves state unchanged when service returns error",
       build: () {
         when(
           () => mockSessionService.listSessions(projectId: projectId),
         ).thenAnswer((_) async => ApiResponse.success([testSession(id: "s1", title: "Original")]));
         when(
           () => mockSessionService.renameSession(sessionId: "s1", title: "New Title"),
-        ).thenThrow(Exception("network error"));
+        ).thenAnswer((_) async => ApiResponse<Session>.error(ApiError.generic()));
         return buildCubit();
       },
       act: (cubit) async {
