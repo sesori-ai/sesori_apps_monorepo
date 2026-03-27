@@ -13,7 +13,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     env:
       PUB_CACHE: ${{ github.workspace }}/.pub-cache
     steps:
@@ -51,7 +51,7 @@ jobs:
         working-directory: bridge/sesori_plugin_opencode
 
   build-smoke:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     env:
       PUB_CACHE: ${{ github.workspace }}/.pub-cache
     steps:
