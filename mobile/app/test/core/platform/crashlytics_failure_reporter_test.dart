@@ -226,4 +226,125 @@ void main() {
       ).called(2);
     });
   });
+
+  group('Bounded dedup set', () {
+    test('evicts oldest entry when max capacity is exceeded', () async {
+      final error = Exception('test');
+      final stackTrace = StackTrace.current;
+
+      // Fill the dedup set to max capacity
+      for (var i = 0; i < CrashlyticsFailureReporter.maxNonFatalDedupEntries; i++) {
+        await reporter.recordFailure(
+          error: error,
+          stackTrace: stackTrace,
+          uniqueIdentifier: 'id-$i',
+          fatal: false,
+          reason: null,
+          information: const [],
+        );
+      }
+
+      // Add one more to trigger eviction of id-0
+      await reporter.recordFailure(
+        error: error,
+        stackTrace: stackTrace,
+        uniqueIdentifier: 'overflow-id',
+        fatal: false,
+        reason: null,
+        information: const [],
+      );
+
+      // Reset the mock call count
+      reset(mockCrashlytics);
+      when(
+        () => mockCrashlytics.recordError(
+          any<dynamic>(),
+          any<StackTrace?>(),
+          reason: any<dynamic>(named: 'reason'),
+          information: any<List<Object>>(named: 'information'),
+          fatal: any<bool>(named: 'fatal'),
+        ),
+      ).thenAnswer((_) async {});
+
+      // The oldest entry (id-0) should have been evicted,
+      // so reporting it again should succeed
+      await reporter.recordFailure(
+        error: error,
+        stackTrace: stackTrace,
+        uniqueIdentifier: 'id-0',
+        fatal: false,
+        reason: null,
+        information: const [],
+      );
+
+      verify(
+        () => mockCrashlytics.recordError(
+          any<dynamic>(),
+          any<StackTrace?>(),
+          reason: any<dynamic>(named: 'reason'),
+          information: any<List<Object>>(named: 'information'),
+          fatal: any<bool>(named: 'fatal'),
+        ),
+      ).called(1);
+    });
+
+    test('recent entries are retained when oldest is evicted', () async {
+      final error = Exception('test');
+      final stackTrace = StackTrace.current;
+
+      // Fill to capacity
+      for (var i = 0; i < CrashlyticsFailureReporter.maxNonFatalDedupEntries; i++) {
+        await reporter.recordFailure(
+          error: error,
+          stackTrace: stackTrace,
+          uniqueIdentifier: 'id-$i',
+          fatal: false,
+          reason: null,
+          information: const [],
+        );
+      }
+
+      // Add one more to trigger eviction of id-0
+      await reporter.recordFailure(
+        error: error,
+        stackTrace: stackTrace,
+        uniqueIdentifier: 'new-id',
+        fatal: false,
+        reason: null,
+        information: const [],
+      );
+
+      // Reset mock
+      reset(mockCrashlytics);
+      when(
+        () => mockCrashlytics.recordError(
+          any<dynamic>(),
+          any<StackTrace?>(),
+          reason: any<dynamic>(named: 'reason'),
+          information: any<List<Object>>(named: 'information'),
+          fatal: any<bool>(named: 'fatal'),
+        ),
+      ).thenAnswer((_) async {});
+
+      // id-1 should still be in the set (not evicted), so this should be skipped
+      await reporter.recordFailure(
+        error: error,
+        stackTrace: stackTrace,
+        uniqueIdentifier: 'id-1',
+        fatal: false,
+        reason: null,
+        information: const [],
+      );
+
+      verifyNever(
+        () => mockCrashlytics.recordError(
+          any<dynamic>(),
+          any<StackTrace?>(),
+          reason: any<dynamic>(named: 'reason'),
+          information: any<List<Object>>(named: 'information'),
+          fatal: any<bool>(named: 'fatal'),
+        ),
+      );
+    });
+  });
 }

@@ -4,8 +4,10 @@ import "package:sesori_shared/sesori_shared.dart";
 
 @LazySingleton(as: FailureReporter)
 class CrashlyticsFailureReporter implements FailureReporter {
+  static const int maxNonFatalDedupEntries = 128;
+
   final FirebaseCrashlytics _crashlytics;
-  final Set<String> _reportedNonFatalIds = {};
+  final Set<String> _reportedNonFatalIds = {}; // LinkedHashSet by default — insertion-ordered
 
   CrashlyticsFailureReporter(FirebaseCrashlytics crashlytics) : _crashlytics = crashlytics;
 
@@ -37,6 +39,9 @@ class CrashlyticsFailureReporter implements FailureReporter {
 
     if (_reportedNonFatalIds.contains(uniqueIdentifier)) {
       return;
+    }
+    if (_reportedNonFatalIds.length >= maxNonFatalDedupEntries) {
+      _reportedNonFatalIds.remove(_reportedNonFatalIds.first);
     }
     _reportedNonFatalIds.add(uniqueIdentifier);
     await _crashlytics.recordError(
