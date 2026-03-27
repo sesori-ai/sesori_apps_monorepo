@@ -480,4 +480,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get projectDiscoverFailed => 'Failed to discover project';
+
+  @override
+  String get questionReplyFailed => 'Failed to send answer. Please try again.';
+
+  @override
+  String get questionRejectFailed => 'Failed to reject question. Please try again.';
 }

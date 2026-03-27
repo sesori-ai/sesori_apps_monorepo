@@ -554,7 +554,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     emit(current.copyWith(pendingQuestions: pending));
   }
 
-  Future<void> replyToQuestion({
+  Future<bool> replyToQuestion({
     required String requestId,
     required String sessionId,
     required List<ReplyAnswer> answers,
@@ -567,16 +567,30 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       sessionId: sessionId,
       category: NotificationCategory.aiInteraction,
     );
-    await _service.replyToQuestion(requestId: requestId, sessionId: sessionId, answers: answers);
+    try {
+      await _service.replyToQuestion(requestId: requestId, sessionId: sessionId, answers: answers);
+      return true;
+    } on Object catch (e, st) {
+      loge("Failed to reply to question $requestId", e, st);
+      await _loadMessages();
+      return false;
+    }
   }
 
-  Future<void> rejectQuestion(String requestId) async {
+  Future<bool> rejectQuestion(String requestId) async {
     _onQuestionResolved(requestId);
     _notificationCanceller.cancelForSession(
       sessionId: _sessionId,
       category: NotificationCategory.aiInteraction,
     );
-    await _service.rejectQuestion(requestId);
+    try {
+      await _service.rejectQuestion(requestId);
+      return true;
+    } on Object catch (e, st) {
+      loge("Failed to reject question $requestId", e, st);
+      await _loadMessages();
+      return false;
+    }
   }
 
   // ---------------------------------------------------------------------------
