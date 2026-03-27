@@ -1,6 +1,8 @@
 import "package:flutter/material.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "agent_part_widget.dart";
 import "reasoning_part_widget.dart";
+import "retry_part_widget.dart";
 import "subtask_part_widget.dart";
 import "text_part_widget.dart";
 import "tool_part_widget.dart";
@@ -42,6 +44,8 @@ class AssistantMessageCard extends StatelessWidget {
       MessagePartType.subtask,
       MessagePartType.stepStart,
       MessagePartType.stepFinish,
+      MessagePartType.agent,
+      MessagePartType.retry,
     ].contains(part.type);
   }
 
@@ -65,6 +69,15 @@ class AssistantMessageCard extends StatelessWidget {
         part: part,
         children: children,
         childStatuses: childStatuses,
+      ),
+      MessagePartType.agent => AgentPartWidget(
+        key: ValueKey(part.id),
+        agentName: part.agentName,
+      ),
+      MessagePartType.retry => RetryPartWidget(
+        key: ValueKey(part.id),
+        attempt: part.attempt,
+        retryError: part.retryError,
       ),
       _ => const SizedBox.shrink(),
     };
