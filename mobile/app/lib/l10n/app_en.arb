@@ -243,5 +243,7 @@
      "projectCreated": "Project created",
      "projectDiscovered": "Project discovered",
      "projectCreateFailed": "Failed to create project",
-     "projectDiscoverFailed": "Failed to discover project"
+      "projectDiscoverFailed": "Failed to discover project",
+      "questionReplyFailed": "Failed to send answer. Please try again.",
+      "questionRejectFailed": "Failed to reject question. Please try again."
 }

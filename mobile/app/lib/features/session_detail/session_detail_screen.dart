@@ -110,15 +110,23 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
     QuestionModal.show(
       context,
       question: question,
-      onReply: (requestId, answers) {
-        context.read<SessionDetailCubit>().replyToQuestion(
+      onReply: (requestId, answers) async {
+        final success = await context.read<SessionDetailCubit>().replyToQuestion(
           requestId: requestId,
           sessionId: question.sessionID,
           answers: answers,
         );
 
-        // Auto-open the next pending question, if any.
         if (!mounted) return;
+
+        if (!success) {
+          ScaffoldMessenger.of(context)
+            ..clearSnackBars()
+            ..showSnackBar(SnackBar(content: Text(context.loc.questionReplyFailed)));
+          return;
+        }
+
+        // Auto-open the next pending question, if any.
         final current = context.read<SessionDetailCubit>().state;
         if (current case SessionDetailLoaded(:final pendingQuestions) when pendingQuestions.isNotEmpty) {
           // Schedule after the current modal finishes closing.
@@ -128,10 +136,18 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
           });
         }
       },
-      onReject: (requestId) {
-        context.read<SessionDetailCubit>().rejectQuestion(requestId);
+      onReject: (requestId) async {
+        final success = await context.read<SessionDetailCubit>().rejectQuestion(requestId);
 
         if (!mounted) return;
+
+        if (!success) {
+          ScaffoldMessenger.of(context)
+            ..clearSnackBars()
+            ..showSnackBar(SnackBar(content: Text(context.loc.questionRejectFailed)));
+          return;
+        }
+
         final current = context.read<SessionDetailCubit>().state;
         if (current case SessionDetailLoaded(:final pendingQuestions) when pendingQuestions.isNotEmpty) {
           Future.delayed(const Duration(milliseconds: 200), () {

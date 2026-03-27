@@ -930,6 +930,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed to discover project'**
   String get projectDiscoverFailed;
+
+  /// No description provided for @questionReplyFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to send answer. Please try again.'**
+  String get questionReplyFailed;
+
+  /// No description provided for @questionRejectFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to reject question. Please try again.'**
+  String get questionRejectFailed;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
