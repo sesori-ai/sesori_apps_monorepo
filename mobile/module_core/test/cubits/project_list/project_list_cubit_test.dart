@@ -258,6 +258,70 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
+    // Test 4e: renameProject success
+    // -------------------------------------------------------------------------
+
+    blocTest<ProjectListCubit, ProjectListState>(
+      "renameProject: calls service, refreshes project list, and returns true on success",
+      build: () {
+        when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.success([projectA]));
+        when(
+          () => mockProjectService.renameProject(
+            projectId: any(named: "projectId"),
+            name: any(named: "name"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(projectA));
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        when(() => mockProjectService.listProjects()).thenAnswer(
+          (_) async => ApiResponse.success([projectA, projectB]),
+        );
+        final result = await cubit.renameProject(projectId: "A", name: "New Name");
+        expect(result, isTrue);
+      },
+      skip: 1,
+      expect: () => [
+        isA<ProjectListLoaded>().having(
+          (s) => s.projects.length,
+          "projects count after rename",
+          2,
+        ),
+      ],
+      verify: (_) {
+        verify(
+          () => mockProjectService.renameProject(projectId: "A", name: "New Name"),
+        ).called(1);
+      },
+    );
+
+    // -------------------------------------------------------------------------
+    // Test 4f: renameProject failure
+    // -------------------------------------------------------------------------
+
+    blocTest<ProjectListCubit, ProjectListState>(
+      "renameProject: returns false and emits no state on API error",
+      build: () {
+        when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.success([projectA]));
+        when(
+          () => mockProjectService.renameProject(
+            projectId: any(named: "projectId"),
+            name: any(named: "name"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        final result = await cubit.renameProject(projectId: "A", name: "New Name");
+        expect(result, isFalse);
+      },
+      skip: 1,
+      expect: () => <ProjectListState>[],
+    );
+
+    // -------------------------------------------------------------------------
     // Test 5: setActiveProject — calls connectionService.setActiveDirectory
     // -------------------------------------------------------------------------
 
