@@ -1,5 +1,6 @@
 // ignore_for_file: unnecessary_lambdas
 
+import "package:firebase_crashlytics/firebase_crashlytics.dart";
 import "package:flutter_secure_storage/flutter_secure_storage.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
@@ -22,6 +23,8 @@ void main() {
     configureDependencies();
     getIt.unregister<FlutterSecureStorage>();
     getIt.registerLazySingleton<FlutterSecureStorage>(() => mockStorage);
+    getIt.unregister<FirebaseCrashlytics>();
+    getIt.registerLazySingleton<FirebaseCrashlytics>(() => MockFirebaseCrashlytics());
   });
 
   tearDown(() async {
