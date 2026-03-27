@@ -52,6 +52,10 @@ class FakeBridgePlugin implements BridgePlugin {
   String? lastCreateSessionParentId;
   String? lastUpdateSessionId;
   bool? lastUpdateSessionArchived;
+  String? lastRenameSessionId;
+  String? lastRenameSessionTitle;
+  String? lastRenameProjectId;
+  String? lastRenameProjectName;
   String? lastDeleteSessionId;
   String? lastGetChildSessionsSessionId;
   String? lastSendPromptSessionId;
@@ -143,6 +147,35 @@ class FakeBridgePlugin implements BridgePlugin {
           time: null,
           summary: null,
         );
+  }
+
+  @override
+  Future<PluginSession> renameSession(
+    String sessionId, {
+    required String title,
+  }) async {
+    lastRenameSessionId = sessionId;
+    lastRenameSessionTitle = title;
+    return renameSessionResult ??
+        const PluginSession(
+          id: "",
+          projectID: "",
+          directory: "",
+          parentID: null,
+          title: null,
+          time: null,
+          summary: null,
+        );
+  }
+
+  @override
+  Future<PluginProject> renameProject(
+    String projectId, {
+    required String name,
+  }) async {
+    lastRenameProjectId = projectId;
+    lastRenameProjectName = name;
+    return renameProjectResult ?? const PluginProject(id: "");
   }
 
   @override

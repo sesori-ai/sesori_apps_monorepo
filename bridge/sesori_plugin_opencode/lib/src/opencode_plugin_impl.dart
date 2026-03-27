@@ -475,6 +475,16 @@ class OpenCodePlugin implements BridgePlugin {
     return project.toPlugin();
   }
 
+  @override
+  Future<PluginSession> renameSession(String sessionId, {required String title}) {
+    throw UnimplementedError("renameSession not yet implemented");
+  }
+
+  @override
+  Future<PluginProject> renameProject(String projectId, {required String name}) {
+    throw UnimplementedError("renameProject not yet implemented");
+  }
+
   void _handleRawSseEvent(String rawData) {
     try {
       final parseResult = _parser.parse(rawData);

@@ -277,6 +277,20 @@ class _FakeBridgePlugin implements BridgePlugin {
   );
 
   @override
+  Future<PluginSession> renameSession(String sessionId, {required String title}) async => const PluginSession(
+    id: "",
+    projectID: "",
+    directory: "",
+    parentID: null,
+    title: null,
+    time: null,
+    summary: null,
+  );
+
+  @override
+  Future<PluginProject> renameProject(String projectId, {required String name}) async => const PluginProject(id: "");
+
+  @override
   Future<void> deleteSession(String sessionId) async {}
 
   @override
@@ -400,6 +414,20 @@ class _TrackingBridgePlugin implements BridgePlugin {
     time: null,
     summary: null,
   );
+
+  @override
+  Future<PluginSession> renameSession(String sessionId, {required String title}) async => const PluginSession(
+    id: "",
+    projectID: "",
+    directory: "",
+    parentID: null,
+    title: null,
+    time: null,
+    summary: null,
+  );
+
+  @override
+  Future<PluginProject> renameProject(String projectId, {required String name}) async => const PluginProject(id: "");
 
   @override
   Future<void> deleteSession(String sessionId) async {}
