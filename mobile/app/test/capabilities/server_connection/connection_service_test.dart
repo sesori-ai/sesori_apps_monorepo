@@ -20,6 +20,7 @@ void main() {
   late MockAuthTokenProvider authTokenProvider;
   late MockAuthSession authSession;
   late MockLifecycleSource lifecycleSource;
+  late MockFailureReporter failureReporter;
   late BehaviorSubject<AuthState> authStateController;
   late ConnectionService service;
 
@@ -29,6 +30,7 @@ void main() {
     authTokenProvider = MockAuthTokenProvider();
     authSession = MockAuthSession();
     lifecycleSource = MockLifecycleSource();
+    failureReporter = MockFailureReporter();
     authStateController = BehaviorSubject<AuthState>.seeded(const AuthState.initial());
 
     when(() => authSession.authStateStream).thenAnswer((_) => authStateController.stream);
@@ -41,6 +43,7 @@ void main() {
       authTokenProvider,
       authSession,
       lifecycleSource,
+      failureReporter,
     );
   });
 

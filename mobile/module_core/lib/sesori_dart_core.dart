@@ -48,8 +48,6 @@ export "src/platform/lifecycle_source.dart";
 export "src/platform/notification_canceller.dart";
 export "src/platform/route_source.dart";
 export "src/platform/url_launcher.dart";
-// Reporting
-export "src/reporting/reporting.dart";
 // Routing
 export "src/routing/app_routes.dart";
 export "src/routing/auth_redirect_service.dart";

@@ -117,6 +117,8 @@ class MockSseEventRepository extends Mock implements SseEventRepository {
   void emitSessionActivity(Map<String, Map<String, SessionActivityInfo>> activity) => _sessionActivity.add(activity);
 }
 
+class MockFailureReporter extends Mock implements FailureReporter {}
+
 // ---------------------------------------------------------------------------
 // Fake classes — for registerFallbackValue
 // ---------------------------------------------------------------------------
