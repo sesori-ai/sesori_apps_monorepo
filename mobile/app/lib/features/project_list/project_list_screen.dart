@@ -9,6 +9,7 @@ import "../../core/extensions/build_context_x.dart";
 import "../../core/routing/app_router.dart";
 import "../../l10n/app_localizations.dart";
 import "add_project_dialog.dart";
+import "rename_project_dialog.dart";
 
 class ProjectListScreen extends StatelessWidget {
   const ProjectListScreen({super.key});
@@ -65,6 +66,18 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: Text(loc.rename),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                showRenameProjectDialog(
+                  context: context,
+                  project: project,
+                  cubit: cubit,
+                );
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.visibility_off_outlined),
               title: Text(loc.hideProject),
