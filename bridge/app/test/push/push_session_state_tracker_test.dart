@@ -668,6 +668,137 @@ void main() {
       // Root was never busy itself, but its descendant was.
       expect(tracker.wasPreviouslyBusy("root"), isTrue);
     });
+
+    test("projectsSummary establishes parent-child links for status-only sessions", () {
+      final tracker = PushSessionStateTracker();
+
+      // Sessions created implicitly via status events (e.g., after bridge restart).
+      tracker.handleEvent(
+        const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+      );
+
+      // Without a projects.summary, the child appears to be a root.
+      expect(tracker.resolveRootSessionId("child"), equals("child"));
+
+      // projects.summary arrives and establishes the parent link.
+      tracker.handleEvent(
+        const SesoriSseEvent.projectsSummary(
+          projects: [
+            ProjectActivitySummary(
+              id: "project-a",
+              activeSessions: [
+                ActiveSession(id: "root", mainAgentRunning: true, childSessionIds: ["child"]),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      expect(tracker.resolveRootSessionId("child"), equals("root"));
+      expect(tracker.isSessionGroupFullyIdle("root"), isFalse);
+    });
+
+    test("projectsSummary does not overwrite parent links from sessionCreated", () {
+      final tracker = PushSessionStateTracker();
+
+      // Proper creation events establish parent link.
+      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
+      tracker.handleEvent(
+        SesoriSseEvent.sessionCreated(
+          info: _session(id: "child", parentID: "root"),
+        ),
+      );
+
+      // A summary with stale or different data should not overwrite.
+      tracker.handleEvent(
+        const SesoriSseEvent.projectsSummary(
+          projects: [
+            ProjectActivitySummary(
+              id: "project-a",
+              activeSessions: [
+                ActiveSession(id: "other-root", mainAgentRunning: true, childSessionIds: ["child"]),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      // Parent link from sessionCreated is preserved.
+      expect(tracker.resolveRootSessionId("child"), equals("root"));
+    });
+
+    test("projectsSummary establishes multi-level hierarchy for status-only sessions", () {
+      final tracker = PushSessionStateTracker();
+
+      // Three sessions known only via status events.
+      tracker.handleEvent(
+        const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.sessionStatus(sessionID: "grandchild", status: SessionStatus.busy()),
+      );
+
+      // Two summaries establish root→child and child→grandchild.
+      tracker.handleEvent(
+        const SesoriSseEvent.projectsSummary(
+          projects: [
+            ProjectActivitySummary(
+              id: "project-a",
+              activeSessions: [
+                ActiveSession(id: "root", mainAgentRunning: true, childSessionIds: ["child"]),
+                ActiveSession(id: "child", mainAgentRunning: true, childSessionIds: ["grandchild"]),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      expect(tracker.resolveRootSessionId("grandchild"), equals("root"));
+      expect(tracker.resolveRootSessionId("child"), equals("root"));
+
+      // Grandchild busy keeps entire group non-idle.
+      tracker.handleEvent(
+        const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+      );
+      expect(tracker.isSessionGroupFullyIdle("root"), isFalse);
+
+      tracker.handleEvent(
+        const SesoriSseEvent.sessionStatus(sessionID: "grandchild", status: SessionStatus.idle()),
+      );
+      expect(tracker.isSessionGroupFullyIdle("root"), isTrue);
+    });
+
+    test("resolveRootSessionId stops at child when parent entry is missing", () {
+      final tracker = PushSessionStateTracker();
+
+      // Child has parentId set via sessionCreated, but parent was never seen.
+      tracker.handleEvent(
+        SesoriSseEvent.sessionCreated(
+          info: _session(id: "child", parentID: "unknown-parent"),
+        ),
+      );
+
+      // Cannot walk up because parent is not in _sessions.
+      expect(tracker.resolveRootSessionId("child"), equals("child"));
+
+      // Once the parent appears (e.g., via a summary), the link works.
+      tracker.handleEvent(
+        const SesoriSseEvent.sessionStatus(
+          sessionID: "unknown-parent",
+          status: SessionStatus.busy(),
+        ),
+      );
+      expect(tracker.resolveRootSessionId("child"), equals("unknown-parent"));
+    });
   });
 }
 
