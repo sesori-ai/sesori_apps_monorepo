@@ -17,6 +17,7 @@ Future<void> showRenameSessionDialog({
 }) {
   return showAppModalBottomSheet<void>(
     context: context,
+    isScrollControlled: true,
     builder: (_) => _RenameSessionDialog(session: session, cubit: cubit),
   );
 }
