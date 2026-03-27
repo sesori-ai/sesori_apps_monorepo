@@ -1199,6 +1199,68 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
+    // renameSession success — calls service, refreshes list, returns true
+    // -------------------------------------------------------------------------
+
+    blocTest<SessionListCubit, SessionListState>(
+      "renameSession: calls service with correct args, refreshes sessions, and returns true on success",
+      build: () {
+        when(
+          () => mockSessionService.listSessions(projectId: projectId),
+        ).thenAnswer((_) async => ApiResponse.success([testSession(id: "s1", title: "Original")]));
+        when(
+          () => mockSessionService.renameSession(sessionId: "s1", title: "New Title"),
+        ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s1", title: "New Title")));
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        // Switch mock to return renamed session on refresh.
+        when(
+          () => mockSessionService.listSessions(projectId: projectId),
+        ).thenAnswer((_) async => ApiResponse.success([testSession(id: "s1", title: "New Title")]));
+        final result = await cubit.renameSession(sessionId: "s1", title: "New Title");
+        expect(result, isTrue);
+      },
+      skip: 1,
+      expect: () => [
+        isA<SessionListLoaded>().having(
+          (s) => s.sessions.first.title,
+          "session title after rename",
+          "New Title",
+        ),
+      ],
+      verify: (_) {
+        verify(() => mockSessionService.renameSession(sessionId: "s1", title: "New Title")).called(1);
+      },
+    );
+
+    // -------------------------------------------------------------------------
+    // renameSession failure — service throws, returns false, state unchanged
+    // -------------------------------------------------------------------------
+
+    blocTest<SessionListCubit, SessionListState>(
+      "renameSession: returns false and leaves state unchanged when service throws",
+      build: () {
+        when(
+          () => mockSessionService.listSessions(projectId: projectId),
+        ).thenAnswer((_) async => ApiResponse.success([testSession(id: "s1", title: "Original")]));
+        when(
+          () => mockSessionService.renameSession(sessionId: "s1", title: "New Title"),
+        ).thenThrow(Exception("network error"));
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        final result = await cubit.renameSession(sessionId: "s1", title: "New Title");
+        expect(result, isFalse);
+      },
+      skip: 1,
+      // No state changes — current loaded state is preserved.
+      expect: () => <SessionListState>[],
+    );
+
+    // -------------------------------------------------------------------------
     // 22. activeSessionIds is empty when no activity for this project
     // -------------------------------------------------------------------------
 
