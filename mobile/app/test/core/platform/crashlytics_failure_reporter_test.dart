@@ -1,0 +1,229 @@
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:sesori_mobile/core/platform/crashlytics_failure_reporter.dart';
+
+class MockFirebaseCrashlytics extends Mock implements FirebaseCrashlytics {}
+
+void main() {
+  late MockFirebaseCrashlytics mockCrashlytics;
+  late CrashlyticsFailureReporter reporter;
+
+  setUp(() {
+    mockCrashlytics = MockFirebaseCrashlytics();
+    reporter = CrashlyticsFailureReporter(mockCrashlytics);
+
+    // Stub the methods that will be called
+    when(
+      () => mockCrashlytics.recordError(
+        any(),
+        any(),
+        reason: any(named: 'reason'),
+        information: any(named: 'information'),
+        fatal: any(named: 'fatal'),
+      ),
+    ).thenAnswer((_) async {});
+
+    when(() => mockCrashlytics.setCustomKey(any(), any())).thenAnswer((_) async {});
+    when(() => mockCrashlytics.log(any())).thenAnswer((_) async {});
+  });
+
+  group('Delegation tests', () {
+    test('setGlobalKey delegates to setCustomKey', () {
+      reporter.setGlobalKey(key: 'endpoint', value: '/api/orders');
+
+      verify(() => mockCrashlytics.setCustomKey('endpoint', '/api/orders')).called(1);
+    });
+
+    test('log delegates to Crashlytics log', () {
+      reporter.log(message: 'test');
+
+      verify(() => mockCrashlytics.log('test')).called(1);
+    });
+
+    test('recordFailure non-fatal records to Crashlytics', () async {
+      await reporter.recordFailure(
+        error: Exception('test error'),
+        stackTrace: StackTrace.current,
+        uniqueIdentifier: 'test-1',
+        fatal: false,
+        reason: null,
+        information: const [],
+      );
+
+      verify(
+        () => mockCrashlytics.recordError(
+          any(),
+          any(),
+          reason: null,
+          information: [],
+          fatal: false,
+        ),
+      ).called(1);
+    });
+  });
+
+  group('Deduplication tests', () {
+    test('recordFailure non-fatal duplicate is skipped', () async {
+      final error = Exception('test error');
+      final stackTrace = StackTrace.current;
+
+      // First call should record
+      await reporter.recordFailure(
+        error: error,
+        stackTrace: stackTrace,
+        uniqueIdentifier: 'test-1',
+        fatal: false,
+        reason: null,
+        information: const [],
+      );
+
+      // Second call with same ID should be skipped
+      await reporter.recordFailure(
+        error: error,
+        stackTrace: stackTrace,
+        uniqueIdentifier: 'test-1',
+        fatal: false,
+        reason: null,
+        information: const [],
+      );
+
+      verify(
+        () => mockCrashlytics.recordError(
+          any(),
+          any(),
+          reason: any(named: 'reason'),
+          information: any(named: 'information'),
+          fatal: any(named: 'fatal'),
+        ),
+      ).called(1);
+    });
+
+    test('recordFailure non-fatal different IDs both recorded', () async {
+      final error = Exception('test error');
+      final stackTrace = StackTrace.current;
+
+      await reporter.recordFailure(
+        error: error,
+        stackTrace: stackTrace,
+        uniqueIdentifier: 'test-1',
+        fatal: false,
+        reason: null,
+        information: const [],
+      );
+
+      await reporter.recordFailure(
+        error: error,
+        stackTrace: stackTrace,
+        uniqueIdentifier: 'test-2',
+        fatal: false,
+        reason: null,
+        information: const [],
+      );
+
+      verify(
+        () => mockCrashlytics.recordError(
+          any(),
+          any(),
+          reason: any(named: 'reason'),
+          information: any(named: 'information'),
+          fatal: any(named: 'fatal'),
+        ),
+      ).called(2);
+    });
+  });
+
+  group('Fatal error tests', () {
+    test('recordFailure fatal always records', () async {
+      await reporter.recordFailure(
+        error: Exception('fatal error'),
+        stackTrace: StackTrace.current,
+        uniqueIdentifier: 'fatal-1',
+        fatal: true,
+        reason: null,
+        information: const [],
+      );
+
+      verify(
+        () => mockCrashlytics.recordError(
+          any(),
+          any(),
+          reason: null,
+          information: [],
+          fatal: true,
+        ),
+      ).called(1);
+    });
+
+    test('recordFailure fatal bypasses dedup', () async {
+      final error = Exception('fatal error');
+      final stackTrace = StackTrace.current;
+
+      // First fatal call
+      await reporter.recordFailure(
+        error: error,
+        stackTrace: stackTrace,
+        uniqueIdentifier: 'same-id',
+        fatal: true,
+        reason: null,
+        information: const [],
+      );
+
+      // Second fatal call with same ID should still record
+      await reporter.recordFailure(
+        error: error,
+        stackTrace: stackTrace,
+        uniqueIdentifier: 'same-id',
+        fatal: true,
+        reason: null,
+        information: const [],
+      );
+
+      verify(
+        () => mockCrashlytics.recordError(
+          any(),
+          any(),
+          reason: any(named: 'reason'),
+          information: any(named: 'information'),
+          fatal: true,
+        ),
+      ).called(2);
+    });
+
+    test('recordFailure fatal does not pollute non-fatal dedup set', () async {
+      final error = Exception('test error');
+      final stackTrace = StackTrace.current;
+
+      // First: fatal with ID 'test-id'
+      await reporter.recordFailure(
+        error: error,
+        stackTrace: stackTrace,
+        uniqueIdentifier: 'test-id',
+        fatal: true,
+        reason: null,
+        information: const [],
+      );
+
+      // Second: non-fatal with same ID 'test-id' should still record
+      // because fatal errors don't add to the non-fatal dedup set
+      await reporter.recordFailure(
+        error: error,
+        stackTrace: stackTrace,
+        uniqueIdentifier: 'test-id',
+        fatal: false,
+        reason: null,
+        information: const [],
+      );
+
+      verify(
+        () => mockCrashlytics.recordError(
+          any(),
+          any(),
+          reason: any(named: 'reason'),
+          information: any(named: 'information'),
+          fatal: any(named: 'fatal'),
+        ),
+      ).called(2);
+    });
+  });
+}
