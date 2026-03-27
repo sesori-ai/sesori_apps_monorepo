@@ -527,6 +527,10 @@ class OpenCodePlugin implements BridgePlugin {
     "step-finish" => PluginMessagePartType.stepFinish,
     "file" => PluginMessagePartType.file,
     "snapshot" => PluginMessagePartType.snapshot,
+    "patch" => PluginMessagePartType.patch,
+    "agent" => PluginMessagePartType.agent,
+    "retry" => PluginMessagePartType.retry,
+    "compaction" => PluginMessagePartType.compaction,
     _ => () {
       Log.w("Unknown message part type: '$type' — filtering out");
       return PluginMessagePartType.unknown;
@@ -555,6 +559,9 @@ class OpenCodePlugin implements BridgePlugin {
       prompt: raw.prompt,
       description: raw.description,
       agent: raw.agent,
+      agentName: raw.name,
+      attempt: raw.attempt,
+      retryError: (raw.error?['data'] as Map<String, dynamic>?)?['message']?.toString(),
     );
   }
 

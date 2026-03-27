@@ -26,12 +26,20 @@ enum PluginMessagePartType {
   file,
   @JsonValue("snapshot")
   snapshot,
+  @JsonValue("patch")
+  patch,
+  @JsonValue("agent")
+  agent,
+  @JsonValue("retry")
+  retry,
+  @JsonValue("compaction")
+  compaction,
   @JsonValue("unknown")
   unknown
   ;
 
   /// Whether this part type is visible to mobile (rendered in the UI).
-  bool get isVisible => this != file && this != snapshot && this != unknown;
+  bool get isVisible => this != file && this != snapshot && this != patch && this != compaction && this != unknown;
 }
 
 @freezed
@@ -58,6 +66,11 @@ sealed class PluginMessagePart with _$PluginMessagePart {
     required String? prompt,
     required String? description,
     required String? agent,
+    // agent
+    required String? agentName,
+    // retry
+    required int? attempt,
+    required String? retryError,
   }) = _PluginMessagePart;
 }
 

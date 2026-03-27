@@ -14,6 +14,10 @@ extension PluginMessagePartTypeMapping on PluginMessagePartType {
     PluginMessagePartType.stepFinish => MessagePartType.stepFinish,
     PluginMessagePartType.file => MessagePartType.file,
     PluginMessagePartType.snapshot => MessagePartType.snapshot,
+    PluginMessagePartType.patch => MessagePartType.patch,
+    PluginMessagePartType.agent => MessagePartType.agent,
+    PluginMessagePartType.retry => MessagePartType.retry,
+    PluginMessagePartType.compaction => MessagePartType.compaction,
     PluginMessagePartType.unknown => throw StateError(
       "PluginMessagePartType.unknown must be filtered out before mapping to shared model",
     ),
@@ -43,5 +47,8 @@ extension PluginMessagePartMapping on PluginMessagePart {
     prompt: prompt,
     description: description,
     agent: agent,
+    agentName: agentName,
+    attempt: attempt,
+    retryError: retryError,
   );
 }

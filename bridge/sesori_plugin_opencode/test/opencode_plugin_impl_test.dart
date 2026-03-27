@@ -85,6 +85,42 @@ void main() {
       );
     });
 
+    test("getSessionMessages filters patch and compaction parts", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+
+      final messages = await plugin.getSessionMessages("ses-new-parts-filter");
+
+      expect(messages, hasLength(2));
+      final parts = messages.last.parts;
+      expect(
+        parts.map((part) => part.type).toList(),
+        equals([PluginMessagePartType.text]),
+      );
+    });
+
+    test("getSessionMessages agent part carries agentName", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+
+      final messages = await plugin.getSessionMessages("ses-agent-part");
+
+      expect(messages, hasLength(2));
+      final part = messages.last.parts.single;
+      expect(part.type, equals(PluginMessagePartType.agent));
+      expect(part.agentName, equals("explore"));
+    });
+
+    test("getSessionMessages retry part carries attempt and retryError", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+
+      final messages = await plugin.getSessionMessages("ses-retry-part");
+
+      expect(messages, hasLength(2));
+      final part = messages.last.parts.single;
+      expect(part.type, equals(PluginMessagePartType.retry));
+      expect(part.attempt, equals(2));
+      expect(part.retryError, equals("Rate limited"));
+    });
+
     test("getSessionMessages truncates tool output to 500 chars", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
 
@@ -827,6 +863,103 @@ class _FakeOpenCodeServer {
                   "output": "short",
                   "error": null,
                 },
+              },
+            ],
+          },
+        ]);
+        return;
+      }
+
+      if (request.method == "GET" && path == "/session/ses-new-parts-filter/message") {
+        await _sendJson(request.response, [
+          {
+            "info": {"role": "user", "id": "m-npf-user", "sessionID": "ses-new-parts-filter"},
+            "parts": [
+              {
+                "id": "p-npf-user",
+                "sessionID": "ses-new-parts-filter",
+                "messageID": "m-npf-user",
+                "type": "text",
+                "text": "go",
+              },
+            ],
+          },
+          {
+            "info": {"role": "assistant", "id": "m-npf", "sessionID": "ses-new-parts-filter"},
+            "parts": [
+              {"id": "p-patch", "sessionID": "ses-new-parts-filter", "messageID": "m-npf", "type": "patch"},
+              {"id": "p-compaction", "sessionID": "ses-new-parts-filter", "messageID": "m-npf", "type": "compaction"},
+              {
+                "id": "p-text",
+                "sessionID": "ses-new-parts-filter",
+                "messageID": "m-npf",
+                "type": "text",
+                "text": "done",
+              },
+            ],
+          },
+        ]);
+        return;
+      }
+
+      if (request.method == "GET" && path == "/session/ses-agent-part/message") {
+        await _sendJson(request.response, [
+          {
+            "info": {"role": "user", "id": "m-agent-user", "sessionID": "ses-agent-part"},
+            "parts": [
+              {
+                "id": "p-agent-user",
+                "sessionID": "ses-agent-part",
+                "messageID": "m-agent-user",
+                "type": "text",
+                "text": "go",
+              },
+            ],
+          },
+          {
+            "info": {"role": "assistant", "id": "m-agent", "sessionID": "ses-agent-part"},
+            "parts": [
+              {
+                "id": "p-agent",
+                "sessionID": "ses-agent-part",
+                "messageID": "m-agent",
+                "type": "agent",
+                "name": "explore",
+              },
+            ],
+          },
+        ]);
+        return;
+      }
+
+      if (request.method == "GET" && path == "/session/ses-retry-part/message") {
+        await _sendJson(request.response, [
+          {
+            "info": {"role": "user", "id": "m-retry-user", "sessionID": "ses-retry-part"},
+            "parts": [
+              {
+                "id": "p-retry-user",
+                "sessionID": "ses-retry-part",
+                "messageID": "m-retry-user",
+                "type": "text",
+                "text": "go",
+              },
+            ],
+          },
+          {
+            "info": {"role": "assistant", "id": "m-retry", "sessionID": "ses-retry-part"},
+            "parts": [
+              {
+                "id": "p-retry",
+                "sessionID": "ses-retry-part",
+                "messageID": "m-retry",
+                "type": "retry",
+                "attempt": 2,
+                "error": {
+                  "name": "APIError",
+                  "data": {"message": "Rate limited", "isRetryable": true},
+                },
+                "time": {"created": 1234},
               },
             ],
           },

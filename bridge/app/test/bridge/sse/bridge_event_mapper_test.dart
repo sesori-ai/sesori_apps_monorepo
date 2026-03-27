@@ -40,6 +40,9 @@ void main() {
             prompt: null,
             description: null,
             agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
           ),
         ),
       );
@@ -61,11 +64,112 @@ void main() {
             prompt: null,
             description: null,
             agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
           ),
         ),
       );
 
       expect(result, isNull);
+    });
+
+    test("filters patch message part updates", () {
+      final result = mapper.map(
+        const BridgeSseMessagePartUpdated(
+          part: PluginMessagePart(
+            id: "p1",
+            sessionID: "s1",
+            messageID: "m1",
+            type: PluginMessagePartType.patch,
+            text: null,
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
+          ),
+        ),
+      );
+
+      expect(result, isNull);
+    });
+
+    test("filters compaction message part updates", () {
+      final result = mapper.map(
+        const BridgeSseMessagePartUpdated(
+          part: PluginMessagePart(
+            id: "p1",
+            sessionID: "s1",
+            messageID: "m1",
+            type: PluginMessagePartType.compaction,
+            text: null,
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
+          ),
+        ),
+      );
+
+      expect(result, isNull);
+    });
+
+    test("passes agent message part updates", () {
+      final result = mapper.map(
+        const BridgeSseMessagePartUpdated(
+          part: PluginMessagePart(
+            id: "p1",
+            sessionID: "s1",
+            messageID: "m1",
+            type: PluginMessagePartType.agent,
+            text: null,
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: "test-agent",
+            attempt: null,
+            retryError: null,
+          ),
+        ),
+      );
+
+      expect(result, isNotNull);
+      expect(result, isA<SesoriMessagePartUpdated>());
+    });
+
+    test("passes retry message part updates", () {
+      final result = mapper.map(
+        const BridgeSseMessagePartUpdated(
+          part: PluginMessagePart(
+            id: "p1",
+            sessionID: "s1",
+            messageID: "m1",
+            type: PluginMessagePartType.retry,
+            text: null,
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: 2,
+            retryError: "timeout",
+          ),
+        ),
+      );
+
+      expect(result, isNotNull);
+      expect(result, isA<SesoriMessagePartUpdated>());
     });
 
     test("truncates tool output to 500 characters", () {
@@ -88,6 +192,9 @@ void main() {
             prompt: null,
             description: null,
             agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
           ),
         ),
       );
@@ -112,6 +219,9 @@ void main() {
             prompt: null,
             description: null,
             agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
           ),
         ),
       );
@@ -141,6 +251,9 @@ void main() {
             prompt: null,
             description: null,
             agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
           ),
         ),
       );

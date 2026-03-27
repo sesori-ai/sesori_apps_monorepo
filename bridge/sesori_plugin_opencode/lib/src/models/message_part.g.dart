@@ -25,6 +25,9 @@ _MessagePart _$MessagePartFromJson(Map json) => _MessagePart(
   prompt: json['prompt'] as String?,
   description: json['description'] as String?,
   agent: json['agent'] as String?,
+  name: json['name'] as String?,
+  attempt: (json['attempt'] as num?)?.toInt(),
+  error: (json['error'] as Map?)?.map((k, e) => MapEntry(k as String, e)),
   snapshot: json['snapshot'] as String?,
   time: json['time'] == null
       ? null
@@ -49,6 +52,9 @@ Map<String, dynamic> _$MessagePartToJson(_MessagePart instance) =>
       'prompt': instance.prompt,
       'description': instance.description,
       'agent': instance.agent,
+      'name': instance.name,
+      'attempt': instance.attempt,
+      'error': instance.error,
       'snapshot': instance.snapshot,
       'time': instance.time?.toJson(),
     };

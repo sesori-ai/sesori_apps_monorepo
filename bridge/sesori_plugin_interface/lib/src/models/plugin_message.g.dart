@@ -25,6 +25,9 @@ Map<String, dynamic> _$PluginMessagePartToJson(_PluginMessagePart instance) =>
       'prompt': instance.prompt,
       'description': instance.description,
       'agent': instance.agent,
+      'agentName': instance.agentName,
+      'attempt': instance.attempt,
+      'retryError': instance.retryError,
     };
 
 const _$PluginMessagePartTypeEnumMap = {
@@ -36,6 +39,10 @@ const _$PluginMessagePartTypeEnumMap = {
   PluginMessagePartType.stepFinish: 'step-finish',
   PluginMessagePartType.file: 'file',
   PluginMessagePartType.snapshot: 'snapshot',
+  PluginMessagePartType.patch: 'patch',
+  PluginMessagePartType.agent: 'agent',
+  PluginMessagePartType.retry: 'retry',
+  PluginMessagePartType.compaction: 'compaction',
   PluginMessagePartType.unknown: 'unknown',
 };
 

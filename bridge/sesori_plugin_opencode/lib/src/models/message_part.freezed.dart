@@ -20,7 +20,9 @@ mixin _$MessagePart {
  String? get tool; String? get callID; ToolState? get state;// file
  String? get mime; String? get url; String? get filename;// step-finish
  double? get cost; String? get reason;// subtask
- String? get prompt; String? get description; String? get agent;// snapshot / step-start
+ String? get prompt; String? get description; String? get agent;// agent
+ String? get name;// retry
+ int? get attempt; Map<String, dynamic>? get error;// snapshot / step-start
  String? get snapshot;// time (for text, reasoning, tool)
  PartTime? get time;
 /// Create a copy of MessagePart
@@ -35,16 +37,16 @@ $MessagePartCopyWith<MessagePart> get copyWith => _$MessagePartCopyWithImpl<Mess
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.type, type) || other.type == type)&&(identical(other.text, text) || other.text == text)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.callID, callID) || other.callID == callID)&&(identical(other.state, state) || other.state == state)&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.url, url) || other.url == url)&&(identical(other.filename, filename) || other.filename == filename)&&(identical(other.cost, cost) || other.cost == cost)&&(identical(other.reason, reason) || other.reason == reason)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.snapshot, snapshot) || other.snapshot == snapshot)&&(identical(other.time, time) || other.time == time));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.type, type) || other.type == type)&&(identical(other.text, text) || other.text == text)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.callID, callID) || other.callID == callID)&&(identical(other.state, state) || other.state == state)&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.url, url) || other.url == url)&&(identical(other.filename, filename) || other.filename == filename)&&(identical(other.cost, cost) || other.cost == cost)&&(identical(other.reason, reason) || other.reason == reason)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.name, name) || other.name == name)&&(identical(other.attempt, attempt) || other.attempt == attempt)&&const DeepCollectionEquality().equals(other.error, error)&&(identical(other.snapshot, snapshot) || other.snapshot == snapshot)&&(identical(other.time, time) || other.time == time));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,type,text,tool,callID,state,mime,url,filename,cost,reason,prompt,description,agent,snapshot,time);
+int get hashCode => Object.hashAll([runtimeType,id,sessionID,messageID,type,text,tool,callID,state,mime,url,filename,cost,reason,prompt,description,agent,name,attempt,const DeepCollectionEquality().hash(error),snapshot,time]);
 
 @override
 String toString() {
-  return 'MessagePart(id: $id, sessionID: $sessionID, messageID: $messageID, type: $type, text: $text, tool: $tool, callID: $callID, state: $state, mime: $mime, url: $url, filename: $filename, cost: $cost, reason: $reason, prompt: $prompt, description: $description, agent: $agent, snapshot: $snapshot, time: $time)';
+  return 'MessagePart(id: $id, sessionID: $sessionID, messageID: $messageID, type: $type, text: $text, tool: $tool, callID: $callID, state: $state, mime: $mime, url: $url, filename: $filename, cost: $cost, reason: $reason, prompt: $prompt, description: $description, agent: $agent, name: $name, attempt: $attempt, error: $error, snapshot: $snapshot, time: $time)';
 }
 
 
@@ -55,7 +57,7 @@ abstract mixin class $MessagePartCopyWith<$Res>  {
   factory $MessagePartCopyWith(MessagePart value, $Res Function(MessagePart) _then) = _$MessagePartCopyWithImpl;
 @useResult
 $Res call({
- String id, String sessionID, String messageID, String type, String? text, String? tool, String? callID, ToolState? state, String? mime, String? url, String? filename, double? cost, String? reason, String? prompt, String? description, String? agent, String? snapshot, PartTime? time
+ String id, String sessionID, String messageID, String type, String? text, String? tool, String? callID, ToolState? state, String? mime, String? url, String? filename, double? cost, String? reason, String? prompt, String? description, String? agent, String? name, int? attempt, Map<String, dynamic>? error, String? snapshot, PartTime? time
 });
 
 
@@ -72,7 +74,7 @@ class _$MessagePartCopyWithImpl<$Res>
 
 /// Create a copy of MessagePart
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? type = null,Object? text = freezed,Object? tool = freezed,Object? callID = freezed,Object? state = freezed,Object? mime = freezed,Object? url = freezed,Object? filename = freezed,Object? cost = freezed,Object? reason = freezed,Object? prompt = freezed,Object? description = freezed,Object? agent = freezed,Object? snapshot = freezed,Object? time = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? type = null,Object? text = freezed,Object? tool = freezed,Object? callID = freezed,Object? state = freezed,Object? mime = freezed,Object? url = freezed,Object? filename = freezed,Object? cost = freezed,Object? reason = freezed,Object? prompt = freezed,Object? description = freezed,Object? agent = freezed,Object? name = freezed,Object? attempt = freezed,Object? error = freezed,Object? snapshot = freezed,Object? time = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
@@ -90,7 +92,10 @@ as double?,reason: freezed == reason ? _self.reason : reason // ignore: cast_nul
 as String?,prompt: freezed == prompt ? _self.prompt : prompt // ignore: cast_nullable_to_non_nullable
 as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
-as String?,snapshot: freezed == snapshot ? _self.snapshot : snapshot // ignore: cast_nullable_to_non_nullable
+as String?,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String?,attempt: freezed == attempt ? _self.attempt : attempt // ignore: cast_nullable_to_non_nullable
+as int?,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
+as Map<String, dynamic>?,snapshot: freezed == snapshot ? _self.snapshot : snapshot // ignore: cast_nullable_to_non_nullable
 as String?,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
 as PartTime?,
   ));
@@ -128,7 +133,7 @@ $PartTimeCopyWith<$Res>? get time {
 @JsonSerializable()
 
 class _MessagePart implements MessagePart {
-  const _MessagePart({required this.id, required this.sessionID, required this.messageID, required this.type, this.text, this.tool, this.callID, this.state, this.mime, this.url, this.filename, this.cost, this.reason, this.prompt, this.description, this.agent, this.snapshot, this.time});
+  const _MessagePart({required this.id, required this.sessionID, required this.messageID, required this.type, this.text, this.tool, this.callID, this.state, this.mime, this.url, this.filename, this.cost, this.reason, this.prompt, this.description, this.agent, this.name, this.attempt, final  Map<String, dynamic>? error, this.snapshot, this.time}): _error = error;
   factory _MessagePart.fromJson(Map<String, dynamic> json) => _$MessagePartFromJson(json);
 
 @override final  String id;
@@ -152,6 +157,19 @@ class _MessagePart implements MessagePart {
 @override final  String? prompt;
 @override final  String? description;
 @override final  String? agent;
+// agent
+@override final  String? name;
+// retry
+@override final  int? attempt;
+ final  Map<String, dynamic>? _error;
+@override Map<String, dynamic>? get error {
+  final value = _error;
+  if (value == null) return null;
+  if (_error is EqualUnmodifiableMapView) return _error;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableMapView(value);
+}
+
 // snapshot / step-start
 @override final  String? snapshot;
 // time (for text, reasoning, tool)
@@ -170,16 +188,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MessagePart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.type, type) || other.type == type)&&(identical(other.text, text) || other.text == text)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.callID, callID) || other.callID == callID)&&(identical(other.state, state) || other.state == state)&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.url, url) || other.url == url)&&(identical(other.filename, filename) || other.filename == filename)&&(identical(other.cost, cost) || other.cost == cost)&&(identical(other.reason, reason) || other.reason == reason)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.snapshot, snapshot) || other.snapshot == snapshot)&&(identical(other.time, time) || other.time == time));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MessagePart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.type, type) || other.type == type)&&(identical(other.text, text) || other.text == text)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.callID, callID) || other.callID == callID)&&(identical(other.state, state) || other.state == state)&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.url, url) || other.url == url)&&(identical(other.filename, filename) || other.filename == filename)&&(identical(other.cost, cost) || other.cost == cost)&&(identical(other.reason, reason) || other.reason == reason)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.name, name) || other.name == name)&&(identical(other.attempt, attempt) || other.attempt == attempt)&&const DeepCollectionEquality().equals(other._error, _error)&&(identical(other.snapshot, snapshot) || other.snapshot == snapshot)&&(identical(other.time, time) || other.time == time));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,type,text,tool,callID,state,mime,url,filename,cost,reason,prompt,description,agent,snapshot,time);
+int get hashCode => Object.hashAll([runtimeType,id,sessionID,messageID,type,text,tool,callID,state,mime,url,filename,cost,reason,prompt,description,agent,name,attempt,const DeepCollectionEquality().hash(_error),snapshot,time]);
 
 @override
 String toString() {
-  return 'MessagePart(id: $id, sessionID: $sessionID, messageID: $messageID, type: $type, text: $text, tool: $tool, callID: $callID, state: $state, mime: $mime, url: $url, filename: $filename, cost: $cost, reason: $reason, prompt: $prompt, description: $description, agent: $agent, snapshot: $snapshot, time: $time)';
+  return 'MessagePart(id: $id, sessionID: $sessionID, messageID: $messageID, type: $type, text: $text, tool: $tool, callID: $callID, state: $state, mime: $mime, url: $url, filename: $filename, cost: $cost, reason: $reason, prompt: $prompt, description: $description, agent: $agent, name: $name, attempt: $attempt, error: $error, snapshot: $snapshot, time: $time)';
 }
 
 
@@ -190,7 +208,7 @@ abstract mixin class _$MessagePartCopyWith<$Res> implements $MessagePartCopyWith
   factory _$MessagePartCopyWith(_MessagePart value, $Res Function(_MessagePart) _then) = __$MessagePartCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String messageID, String type, String? text, String? tool, String? callID, ToolState? state, String? mime, String? url, String? filename, double? cost, String? reason, String? prompt, String? description, String? agent, String? snapshot, PartTime? time
+ String id, String sessionID, String messageID, String type, String? text, String? tool, String? callID, ToolState? state, String? mime, String? url, String? filename, double? cost, String? reason, String? prompt, String? description, String? agent, String? name, int? attempt, Map<String, dynamic>? error, String? snapshot, PartTime? time
 });
 
 
@@ -207,7 +225,7 @@ class __$MessagePartCopyWithImpl<$Res>
 
 /// Create a copy of MessagePart
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? type = null,Object? text = freezed,Object? tool = freezed,Object? callID = freezed,Object? state = freezed,Object? mime = freezed,Object? url = freezed,Object? filename = freezed,Object? cost = freezed,Object? reason = freezed,Object? prompt = freezed,Object? description = freezed,Object? agent = freezed,Object? snapshot = freezed,Object? time = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? type = null,Object? text = freezed,Object? tool = freezed,Object? callID = freezed,Object? state = freezed,Object? mime = freezed,Object? url = freezed,Object? filename = freezed,Object? cost = freezed,Object? reason = freezed,Object? prompt = freezed,Object? description = freezed,Object? agent = freezed,Object? name = freezed,Object? attempt = freezed,Object? error = freezed,Object? snapshot = freezed,Object? time = freezed,}) {
   return _then(_MessagePart(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
@@ -225,7 +243,10 @@ as double?,reason: freezed == reason ? _self.reason : reason // ignore: cast_nul
 as String?,prompt: freezed == prompt ? _self.prompt : prompt // ignore: cast_nullable_to_non_nullable
 as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
-as String?,snapshot: freezed == snapshot ? _self.snapshot : snapshot // ignore: cast_nullable_to_non_nullable
+as String?,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String?,attempt: freezed == attempt ? _self.attempt : attempt // ignore: cast_nullable_to_non_nullable
+as int?,error: freezed == error ? _self._error : error // ignore: cast_nullable_to_non_nullable
+as Map<String, dynamic>?,snapshot: freezed == snapshot ? _self.snapshot : snapshot // ignore: cast_nullable_to_non_nullable
 as String?,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
 as PartTime?,
   ));
