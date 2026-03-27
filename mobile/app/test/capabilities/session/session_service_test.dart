@@ -380,6 +380,73 @@ void main() {
       });
     });
 
+    group("renameSession", () {
+      const sessionId = "session-rename";
+
+      test("success: returns Session from PATCH /session/:id/title", () async {
+        final session = testSession(id: sessionId);
+        when(
+          () => mockClient.patch<Session>(
+            "/session/$sessionId/title",
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(session));
+
+        final result = await sessionService.renameSession(sessionId: sessionId, title: "New Title");
+
+        expect(result, isA<SuccessResponse<Session>>());
+        expect((result as SuccessResponse<Session>).data, equals(session));
+        verify(
+          () => mockClient.patch<Session>(
+            "/session/$sessionId/title",
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).called(1);
+      });
+
+      test("error: propagates API error from PATCH /session/:id/title", () async {
+        final error = ApiError.generic();
+        when(
+          () => mockClient.patch<Session>(
+            "/session/$sessionId/title",
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.error(error));
+
+        final result = await sessionService.renameSession(sessionId: sessionId, title: "New Title");
+
+        expect(result, isA<ErrorResponse<Session>>());
+        expect((result as ErrorResponse<Session>).error, equals(error));
+      });
+
+      test("sends title in body to PATCH /session/:id/title", () async {
+        when(
+          () => mockClient.patch<Session>(
+            "/session/$sessionId/title",
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(testSession()));
+
+        await sessionService.renameSession(sessionId: sessionId, title: "Updated Title");
+
+        final captured =
+            verify(
+                  () => mockClient.patch<Session>(
+                    "/session/$sessionId/title",
+                    fromJson: any(named: "fromJson"),
+                    body: captureAny(named: "body"),
+                  ),
+                ).captured.last
+                as Map<String, dynamic>;
+
+        expect(captured["title"], equals("Updated Title"));
+      });
+    });
+
     group("deleteSession", () {
       const sessionId = "session-del";
 

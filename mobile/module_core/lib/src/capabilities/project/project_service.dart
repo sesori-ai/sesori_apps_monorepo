@@ -97,4 +97,19 @@ class ProjectService {
       },
     );
   }
+
+  /// Renames the project with the given [projectId] to [name].
+  Future<ApiResponse<Project>> renameProject({
+    required String projectId,
+    required String name,
+  }) {
+    return _client.patch(
+      "/project/$projectId/name",
+      body: RenameProjectRequest(name: name).toJson(),
+      fromJson: (json) => switch (json) {
+        final Map<String, dynamic> map => Project.fromJson(map),
+        _ => throw FormatException("expected map, got ${json.runtimeType}"),
+      },
+    );
+  }
 }

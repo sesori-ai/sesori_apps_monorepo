@@ -225,5 +225,54 @@ void main() {
       expect(result, isA<ErrorResponse<List<FilesystemSuggestion>>>());
       expect((result as ErrorResponse<List<FilesystemSuggestion>>).error, equals(error));
     });
+
+    // -------------------------------------------------------------------------
+    // 7. renameProject sends PATCH /project/{id}/name with correct body
+    // -------------------------------------------------------------------------
+
+    test("renameProject sends PATCH /project/{id}/name with correct body", () async {
+      const mockProject = Project(
+        id: "proj-1",
+        name: "New Name",
+        time: ProjectTime(created: 1000, updated: 2000),
+      );
+
+      when(
+        () => mockClient.patch<Project>(
+          "/project/proj-1/name",
+          fromJson: any(named: "fromJson"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(mockProject));
+
+      final result = await service.renameProject(projectId: "proj-1", name: "New Name");
+
+      expect(result, isA<SuccessResponse<Project>>());
+      expect((result as SuccessResponse<Project>).data, equals(mockProject));
+
+      verify(
+        () => mockClient.patch<Project>(
+          "/project/proj-1/name",
+          fromJson: any(named: "fromJson"),
+          body: RenameProjectRequest(name: "New Name").toJson(),
+        ),
+      ).called(1);
+    });
+
+    test("renameProject error response maps to ErrorResponse", () async {
+      final error = ApiError.generic();
+      when(
+        () => mockClient.patch<Project>(
+          any(),
+          fromJson: any(named: "fromJson"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.error(error));
+
+      final result = await service.renameProject(projectId: "proj-1", name: "New Name");
+
+      expect(result, isA<ErrorResponse<Project>>());
+      expect((result as ErrorResponse<Project>).error, equals(error));
+    });
   });
 }
