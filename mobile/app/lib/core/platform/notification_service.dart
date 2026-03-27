@@ -148,7 +148,7 @@ class NotificationService {
   }
 
   Future<void> registerCurrentToken() async {
-    if (_isApplePlatform) {
+    if (Platform.isIOS || Platform.isMacOS) {
       for (var i = 0; i < 5; i++) {
         final apnsToken = await FirebaseMessaging.instance.getAPNSToken();
         if (apnsToken != null) break;
