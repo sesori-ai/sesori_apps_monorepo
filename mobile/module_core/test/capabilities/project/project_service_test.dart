@@ -227,10 +227,10 @@ void main() {
     });
 
     // -------------------------------------------------------------------------
-    // 7. renameProject sends PATCH /project/{id}/name with correct body
+    // 7. renameProject sends PATCH /project/name with correct body
     // -------------------------------------------------------------------------
 
-    test("renameProject sends PATCH /project/{id}/name with correct body", () async {
+    test("renameProject sends PATCH /project/name with correct body", () async {
       const mockProject = Project(
         id: "proj-1",
         name: "New Name",
@@ -239,7 +239,7 @@ void main() {
 
       when(
         () => mockClient.patch<Project>(
-          "/project/proj-1/name",
+          "/project/name",
           fromJson: any(named: "fromJson"),
           body: any(named: "body"),
         ),
@@ -252,9 +252,9 @@ void main() {
 
       verify(
         () => mockClient.patch<Project>(
-          "/project/proj-1/name",
+          "/project/name",
           fromJson: any(named: "fromJson"),
-          body: RenameProjectRequest(name: "New Name").toJson(),
+          body: RenameProjectRequest(projectId: "proj-1", name: "New Name").toJson(),
         ),
       ).called(1);
     });

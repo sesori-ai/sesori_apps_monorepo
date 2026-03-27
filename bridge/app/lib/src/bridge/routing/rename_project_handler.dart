@@ -3,15 +3,14 @@ import "dart:convert";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "plugin_project_mapper.dart";
 import "request_handler.dart";
 
-const _idParam = "id";
-
-/// Handles `PATCH /project/:id/name` — renames a project.
+/// Handles `PATCH /project/name` — renames a project.
 class RenameProjectHandler extends RequestHandler {
   final BridgePlugin _plugin;
 
-  RenameProjectHandler(this._plugin) : super(HttpMethod.patch, "/project/:$_idParam/name");
+  RenameProjectHandler(this._plugin) : super(HttpMethod.patch, "/project/name");
 
   @override
   Future<RelayResponse> handle(
@@ -20,11 +19,6 @@ class RenameProjectHandler extends RequestHandler {
     required Map<String, String> queryParams,
     String? fragment,
   }) async {
-    final projectId = pathParams[_idParam];
-    if (projectId == null || projectId.isEmpty) {
-      return buildErrorResponse(request, 400, "missing project id");
-    }
-
     final RenameProjectRequest renameRequest;
     try {
       final decoded = jsonDecode(request.body ?? "{}");
@@ -41,21 +35,11 @@ class RenameProjectHandler extends RequestHandler {
     }
 
     final updated = await _plugin.renameProject(
-      projectId,
+      projectId: renameRequest.projectId,
       name: renameRequest.name,
     );
 
-    final project = Project(
-      id: updated.id,
-      name: updated.name,
-      time: switch (updated.time) {
-        PluginProjectTime(:final created, :final updated) => ProjectTime(
-          created: created,
-          updated: updated,
-        ),
-        null => null,
-      },
-    );
+    final project = updated.toSharedProject();
 
     return buildOkJsonResponse(request, jsonEncode(project.toJson()));
   }

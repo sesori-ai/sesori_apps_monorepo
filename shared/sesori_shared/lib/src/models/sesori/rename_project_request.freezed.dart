@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$RenameProjectRequest {
 
- String get name;
+ String get projectId; String get name;
 /// Create a copy of RenameProjectRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $RenameProjectRequestCopyWith<RenameProjectRequest> get copyWith => _$RenameProj
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RenameProjectRequest&&(identical(other.name, name) || other.name == name));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is RenameProjectRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.name, name) || other.name == name));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name);
+int get hashCode => Object.hash(runtimeType,projectId,name);
 
 @override
 String toString() {
-  return 'RenameProjectRequest(name: $name)';
+  return 'RenameProjectRequest(projectId: $projectId, name: $name)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $RenameProjectRequestCopyWith<$Res>  {
   factory $RenameProjectRequestCopyWith(RenameProjectRequest value, $Res Function(RenameProjectRequest) _then) = _$RenameProjectRequestCopyWithImpl;
 @useResult
 $Res call({
- String name
+ String projectId, String name
 });
 
 
@@ -65,9 +65,10 @@ class _$RenameProjectRequestCopyWithImpl<$Res>
 
 /// Create a copy of RenameProjectRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? name = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? projectId = null,Object? name = null,}) {
   return _then(_self.copyWith(
-name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
+as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }
@@ -80,9 +81,10 @@ as String,
 @JsonSerializable()
 
 class _RenameProjectRequest implements RenameProjectRequest {
-  const _RenameProjectRequest({required this.name});
+  const _RenameProjectRequest({required this.projectId, required this.name});
   factory _RenameProjectRequest.fromJson(Map<String, dynamic> json) => _$RenameProjectRequestFromJson(json);
 
+@override final  String projectId;
 @override final  String name;
 
 /// Create a copy of RenameProjectRequest
@@ -98,16 +100,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _RenameProjectRequest&&(identical(other.name, name) || other.name == name));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _RenameProjectRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.name, name) || other.name == name));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name);
+int get hashCode => Object.hash(runtimeType,projectId,name);
 
 @override
 String toString() {
-  return 'RenameProjectRequest(name: $name)';
+  return 'RenameProjectRequest(projectId: $projectId, name: $name)';
 }
 
 
@@ -118,7 +120,7 @@ abstract mixin class _$RenameProjectRequestCopyWith<$Res> implements $RenameProj
   factory _$RenameProjectRequestCopyWith(_RenameProjectRequest value, $Res Function(_RenameProjectRequest) _then) = __$RenameProjectRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String name
+ String projectId, String name
 });
 
 
@@ -135,9 +137,10 @@ class __$RenameProjectRequestCopyWithImpl<$Res>
 
 /// Create a copy of RenameProjectRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? name = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? projectId = null,Object? name = null,}) {
   return _then(_RenameProjectRequest(
-name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
+as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }

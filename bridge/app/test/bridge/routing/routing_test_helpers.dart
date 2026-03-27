@@ -150,8 +150,8 @@ class FakeBridgePlugin implements BridgePlugin {
   }
 
   @override
-  Future<PluginSession> renameSession(
-    String sessionId, {
+  Future<PluginSession> renameSession({
+    required String sessionId,
     required String title,
   }) async {
     lastRenameSessionId = sessionId;
@@ -169,8 +169,8 @@ class FakeBridgePlugin implements BridgePlugin {
   }
 
   @override
-  Future<PluginProject> renameProject(
-    String projectId, {
+  Future<PluginProject> renameProject({
+    required String projectId,
     required String name,
   }) async {
     lastRenameProjectId = projectId;

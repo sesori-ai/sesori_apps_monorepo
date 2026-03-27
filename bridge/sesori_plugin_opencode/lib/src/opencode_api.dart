@@ -159,8 +159,11 @@ class OpenCodeApi {
     }
   }
 
+  /// Updates a project by its OpenCode-assigned ID (NOT the worktree path
+  /// that Sesori uses as the project identifier).
   Future<Project> updateProject({
     required String projectId,
+    required String directory,
     required Map<String, dynamic> body,
   }) async {
     final client = http.Client();
@@ -170,6 +173,7 @@ class OpenCodeApi {
         headers: {
           ..._authHeaders,
           "content-type": "application/json",
+          _directoryOpenCodeHeader: directory,
         },
         body: jsonEncode(body),
       );

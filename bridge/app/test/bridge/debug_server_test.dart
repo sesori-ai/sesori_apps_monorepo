@@ -277,7 +277,7 @@ class _FakeBridgePlugin implements BridgePlugin {
   );
 
   @override
-  Future<PluginSession> renameSession(String sessionId, {required String title}) async => const PluginSession(
+  Future<PluginSession> renameSession({required String sessionId, required String title}) async => const PluginSession(
     id: "",
     projectID: "",
     directory: "",
@@ -288,7 +288,8 @@ class _FakeBridgePlugin implements BridgePlugin {
   );
 
   @override
-  Future<PluginProject> renameProject(String projectId, {required String name}) async => const PluginProject(id: "");
+  Future<PluginProject> renameProject({required String projectId, required String name}) async =>
+      const PluginProject(id: "");
 
   @override
   Future<void> deleteSession(String sessionId) async {}
@@ -416,7 +417,7 @@ class _TrackingBridgePlugin implements BridgePlugin {
   );
 
   @override
-  Future<PluginSession> renameSession(String sessionId, {required String title}) async => const PluginSession(
+  Future<PluginSession> renameSession({required String sessionId, required String title}) async => const PluginSession(
     id: "",
     projectID: "",
     directory: "",
@@ -427,7 +428,8 @@ class _TrackingBridgePlugin implements BridgePlugin {
   );
 
   @override
-  Future<PluginProject> renameProject(String projectId, {required String name}) async => const PluginProject(id: "");
+  Future<PluginProject> renameProject({required String projectId, required String name}) async =>
+      const PluginProject(id: "");
 
   @override
   Future<void> deleteSession(String sessionId) async {}

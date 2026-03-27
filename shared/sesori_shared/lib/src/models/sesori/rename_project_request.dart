@@ -7,6 +7,7 @@ part "rename_project_request.g.dart";
 @Freezed(fromJson: true, toJson: true)
 sealed class RenameProjectRequest with _$RenameProjectRequest {
   const factory RenameProjectRequest({
+    required String projectId,
     required String name,
   }) = _RenameProjectRequest;
 

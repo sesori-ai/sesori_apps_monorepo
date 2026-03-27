@@ -7,8 +7,14 @@ part of 'rename_session_request.dart';
 // **************************************************************************
 
 _RenameSessionRequest _$RenameSessionRequestFromJson(Map json) =>
-    _RenameSessionRequest(title: json['title'] as String);
+    _RenameSessionRequest(
+      sessionId: json['sessionId'] as String,
+      title: json['title'] as String,
+    );
 
 Map<String, dynamic> _$RenameSessionRequestToJson(
   _RenameSessionRequest instance,
-) => <String, dynamic>{'title': instance.title};
+) => <String, dynamic>{
+  'sessionId': instance.sessionId,
+  'title': instance.title,
+};

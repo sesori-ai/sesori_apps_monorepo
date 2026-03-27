@@ -363,7 +363,7 @@ void main() {
         await server.waitForSseConnection();
         server.requestLog.clear();
 
-        final session = await plugin.renameSession("s-root", title: "New Title");
+        final session = await plugin.renameSession(sessionId: "s-root", title: "New Title");
 
         expect(session.id, equals("s-root"));
         expect(session.title, equals("New Title"));
@@ -377,7 +377,7 @@ void main() {
         await server.waitForSseConnection();
         server.requestLog.clear();
 
-        final project = await plugin.renameProject("/repo", name: "Renamed Repo");
+        final project = await plugin.renameProject(projectId: "/repo", name: "Renamed Repo");
 
         // PluginProject.id is always the worktree path, not the OpenCode UUID
         expect(project.id, equals("/repo"));
@@ -525,6 +525,12 @@ class _FakeOpenCodeServer {
 
       final projectMatch = RegExp(r"^/project/([^/]+)$").firstMatch(path);
       if (projectMatch != null && request.method == "PATCH") {
+        final directoryHeader = request.headers.value("x-opencode-directory");
+        if (directoryHeader == null || directoryHeader.isEmpty) {
+          request.response.statusCode = HttpStatus.badRequest;
+          await request.response.close();
+          return;
+        }
         final projectId = projectMatch.group(1)!;
         final project = _projects[projectId];
         if (project == null) {

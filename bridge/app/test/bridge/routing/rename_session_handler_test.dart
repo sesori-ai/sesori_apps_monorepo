@@ -19,19 +19,23 @@ void main() {
 
     tearDown(() => plugin.close());
 
-    test("canHandle PATCH /session/:id/title", () {
-      expect(handler.canHandle(makeRequest("PATCH", "/session/s1/title")), isTrue);
+    test("canHandle PATCH /session/title", () {
+      expect(handler.canHandle(makeRequest("PATCH", "/session/title")), isTrue);
     });
 
-    test("does not handle GET /session/:id/title", () {
-      expect(handler.canHandle(makeRequest("GET", "/session/s1/title")), isFalse);
+    test("does not handle GET /session/title", () {
+      expect(handler.canHandle(makeRequest("GET", "/session/title")), isFalse);
+    });
+
+    test("does not handle PATCH /session/:id/title", () {
+      expect(handler.canHandle(makeRequest("PATCH", "/session/s1/title")), isFalse);
     });
 
     test("does not handle PATCH /session/:id", () {
       expect(handler.canHandle(makeRequest("PATCH", "/session/s1")), isFalse);
     });
 
-    test("extracts id and parses title from body", () async {
+    test("extracts sessionId and parses title from body", () async {
       plugin.renameSessionResult = const PluginSession(
         id: "s1",
         projectID: "p1",
@@ -45,10 +49,10 @@ void main() {
       await handler.handle(
         makeRequest(
           "PATCH",
-          "/session/s1/title",
-          body: jsonEncode(const RenameSessionRequest(title: "New Title").toJson()),
+          "/session/title",
+          body: jsonEncode(const RenameSessionRequest(sessionId: "s1", title: "New Title").toJson()),
         ),
-        pathParams: {"id": "s1"},
+        pathParams: {},
         queryParams: {},
       );
 
@@ -58,8 +62,8 @@ void main() {
 
     test("returns 400 when body has no title key", () async {
       final response = await handler.handle(
-        makeRequest("PATCH", "/session/s1/title", body: "{}"),
-        pathParams: {"id": "s1"},
+        makeRequest("PATCH", "/session/title", body: "{}"),
+        pathParams: {},
         queryParams: {},
       );
 
@@ -67,19 +71,19 @@ void main() {
       expect(response.body, contains("invalid JSON body"));
     });
 
-    test("returns 400 when path param id is missing", () async {
+    test("returns 400 when body has no sessionId key", () async {
       final response = await handler.handle(
         makeRequest(
           "PATCH",
-          "/session/s1/title",
-          body: jsonEncode(const RenameSessionRequest(title: "New Title").toJson()),
+          "/session/title",
+          body: jsonEncode({"title": "New Title"}),
         ),
         pathParams: {},
         queryParams: {},
       );
 
       expect(response.status, equals(400));
-      expect(response.body, contains("missing session id"));
+      expect(response.body, contains("invalid JSON body"));
     });
 
     test("returns 200 with mapped Session JSON", () async {
@@ -96,10 +100,10 @@ void main() {
       final response = await handler.handle(
         makeRequest(
           "PATCH",
-          "/session/s1/title",
-          body: jsonEncode(const RenameSessionRequest(title: "Renamed Session").toJson()),
+          "/session/title",
+          body: jsonEncode(const RenameSessionRequest(sessionId: "s1", title: "Renamed Session").toJson()),
         ),
-        pathParams: {"id": "s1"},
+        pathParams: {},
         queryParams: {},
       );
 
@@ -115,8 +119,8 @@ void main() {
 
     test("returns 400 on malformed body", () async {
       final response = await handler.handle(
-        makeRequest("PATCH", "/session/s1/title", body: "not-json"),
-        pathParams: {"id": "s1"},
+        makeRequest("PATCH", "/session/title", body: "not-json"),
+        pathParams: {},
         queryParams: {},
       );
 

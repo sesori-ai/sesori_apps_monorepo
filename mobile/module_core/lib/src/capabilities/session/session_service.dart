@@ -95,12 +95,12 @@ class SessionService {
 
   Future<ApiResponse<Session>> renameSession({required String sessionId, required String title}) {
     return _client.patch(
-      "/session/$sessionId/title",
+      "/session/title",
       fromJson: (json) => switch (json) {
         final Map<String, dynamic> map => Session.fromJson(map),
         _ => throw FormatException("expected map, got ${json.runtimeType}"),
       },
-      body: RenameSessionRequest(title: title).toJson(),
+      body: RenameSessionRequest(sessionId: sessionId, title: title).toJson(),
     );
   }
 

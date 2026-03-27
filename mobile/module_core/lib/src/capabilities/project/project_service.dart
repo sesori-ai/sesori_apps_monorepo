@@ -104,8 +104,8 @@ class ProjectService {
     required String name,
   }) {
     return _client.patch(
-      "/project/$projectId/name",
-      body: RenameProjectRequest(name: name).toJson(),
+      "/project/name",
+      body: RenameProjectRequest(projectId: projectId, name: name).toJson(),
       fromJson: (json) => switch (json) {
         final Map<String, dynamic> map => Project.fromJson(map),
         _ => throw FormatException("expected map, got ${json.runtimeType}"),

@@ -476,7 +476,7 @@ class OpenCodePlugin implements BridgePlugin {
   }
 
   @override
-  Future<PluginSession> renameSession(String sessionId, {required String title}) async {
+  Future<PluginSession> renameSession({required String sessionId, required String title}) async {
     final directory = _service.tracker.getSessionDirectory(sessionId: sessionId);
     final session = await _call(
       () => _service.repository.api.updateSession(
@@ -489,7 +489,7 @@ class OpenCodePlugin implements BridgePlugin {
   }
 
   @override
-  Future<PluginProject> renameProject(String projectId, {required String name}) async {
+  Future<PluginProject> renameProject({required String projectId, required String name}) async {
     // CRITICAL: projectId is the worktree path (PluginProject.id = worktree, see project.dart:33)
     // Must resolve the real OpenCode project UUID before calling PATCH
     final project = await _call(
@@ -498,6 +498,7 @@ class OpenCodePlugin implements BridgePlugin {
     final updated = await _call(
       () => _service.repository.api.updateProject(
         projectId: project.id,
+        directory: projectId,
         body: {"name": name},
       ),
     );

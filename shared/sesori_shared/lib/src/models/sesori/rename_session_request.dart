@@ -7,6 +7,7 @@ part "rename_session_request.g.dart";
 @Freezed(fromJson: true, toJson: true)
 sealed class RenameSessionRequest with _$RenameSessionRequest {
   const factory RenameSessionRequest({
+    required String sessionId,
     required String title,
   }) = _RenameSessionRequest;
 

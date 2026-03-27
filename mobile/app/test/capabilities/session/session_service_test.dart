@@ -383,11 +383,11 @@ void main() {
     group("renameSession", () {
       const sessionId = "session-rename";
 
-      test("success: returns Session from PATCH /session/:id/title", () async {
+      test("success: returns Session from PATCH /session/title", () async {
         final session = testSession(id: sessionId);
         when(
           () => mockClient.patch<Session>(
-            "/session/$sessionId/title",
+            "/session/title",
             fromJson: any(named: "fromJson"),
             body: any(named: "body"),
           ),
@@ -399,18 +399,18 @@ void main() {
         expect((result as SuccessResponse<Session>).data, equals(session));
         verify(
           () => mockClient.patch<Session>(
-            "/session/$sessionId/title",
+            "/session/title",
             fromJson: any(named: "fromJson"),
             body: any(named: "body"),
           ),
         ).called(1);
       });
 
-      test("error: propagates API error from PATCH /session/:id/title", () async {
+      test("error: propagates API error from PATCH /session/title", () async {
         final error = ApiError.generic();
         when(
           () => mockClient.patch<Session>(
-            "/session/$sessionId/title",
+            "/session/title",
             fromJson: any(named: "fromJson"),
             body: any(named: "body"),
           ),
@@ -422,10 +422,10 @@ void main() {
         expect((result as ErrorResponse<Session>).error, equals(error));
       });
 
-      test("sends title in body to PATCH /session/:id/title", () async {
+      test("sends sessionId and title in body to PATCH /session/title", () async {
         when(
           () => mockClient.patch<Session>(
-            "/session/$sessionId/title",
+            "/session/title",
             fromJson: any(named: "fromJson"),
             body: any(named: "body"),
           ),
@@ -436,13 +436,14 @@ void main() {
         final captured =
             verify(
                   () => mockClient.patch<Session>(
-                    "/session/$sessionId/title",
+                    "/session/title",
                     fromJson: any(named: "fromJson"),
                     body: captureAny(named: "body"),
                   ),
                 ).captured.last
                 as Map<String, dynamic>;
 
+        expect(captured["sessionId"], equals(sessionId));
         expect(captured["title"], equals("Updated Title"));
       });
     });

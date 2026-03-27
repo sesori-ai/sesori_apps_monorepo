@@ -7,8 +7,11 @@ part of 'rename_project_request.dart';
 // **************************************************************************
 
 _RenameProjectRequest _$RenameProjectRequestFromJson(Map json) =>
-    _RenameProjectRequest(name: json['name'] as String);
+    _RenameProjectRequest(
+      projectId: json['projectId'] as String,
+      name: json['name'] as String,
+    );
 
 Map<String, dynamic> _$RenameProjectRequestToJson(
   _RenameProjectRequest instance,
-) => <String, dynamic>{'name': instance.name};
+) => <String, dynamic>{'projectId': instance.projectId, 'name': instance.name};

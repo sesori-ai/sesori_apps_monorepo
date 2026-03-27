@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$RenameSessionRequest {
 
- String get title;
+ String get sessionId; String get title;
 /// Create a copy of RenameSessionRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $RenameSessionRequestCopyWith<RenameSessionRequest> get copyWith => _$RenameSess
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RenameSessionRequest&&(identical(other.title, title) || other.title == title));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is RenameSessionRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.title, title) || other.title == title));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,title);
+int get hashCode => Object.hash(runtimeType,sessionId,title);
 
 @override
 String toString() {
-  return 'RenameSessionRequest(title: $title)';
+  return 'RenameSessionRequest(sessionId: $sessionId, title: $title)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $RenameSessionRequestCopyWith<$Res>  {
   factory $RenameSessionRequestCopyWith(RenameSessionRequest value, $Res Function(RenameSessionRequest) _then) = _$RenameSessionRequestCopyWithImpl;
 @useResult
 $Res call({
- String title
+ String sessionId, String title
 });
 
 
@@ -65,9 +65,10 @@ class _$RenameSessionRequestCopyWithImpl<$Res>
 
 /// Create a copy of RenameSessionRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? title = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? title = null,}) {
   return _then(_self.copyWith(
-title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
+sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
+as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }
@@ -80,9 +81,10 @@ as String,
 @JsonSerializable()
 
 class _RenameSessionRequest implements RenameSessionRequest {
-  const _RenameSessionRequest({required this.title});
+  const _RenameSessionRequest({required this.sessionId, required this.title});
   factory _RenameSessionRequest.fromJson(Map<String, dynamic> json) => _$RenameSessionRequestFromJson(json);
 
+@override final  String sessionId;
 @override final  String title;
 
 /// Create a copy of RenameSessionRequest
@@ -98,16 +100,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _RenameSessionRequest&&(identical(other.title, title) || other.title == title));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _RenameSessionRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.title, title) || other.title == title));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,title);
+int get hashCode => Object.hash(runtimeType,sessionId,title);
 
 @override
 String toString() {
-  return 'RenameSessionRequest(title: $title)';
+  return 'RenameSessionRequest(sessionId: $sessionId, title: $title)';
 }
 
 
@@ -118,7 +120,7 @@ abstract mixin class _$RenameSessionRequestCopyWith<$Res> implements $RenameSess
   factory _$RenameSessionRequestCopyWith(_RenameSessionRequest value, $Res Function(_RenameSessionRequest) _then) = __$RenameSessionRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String title
+ String sessionId, String title
 });
 
 
@@ -135,9 +137,10 @@ class __$RenameSessionRequestCopyWithImpl<$Res>
 
 /// Create a copy of RenameSessionRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? title = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? title = null,}) {
   return _then(_RenameSessionRequest(
-title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
+sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
+as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }

@@ -3,6 +3,7 @@ import "dart:convert";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "plugin_session_mapper.dart";
 import "request_handler.dart";
 
 const _idParam = "id";
@@ -41,29 +42,7 @@ class UpdateSessionArchiveStatusHandler extends RequestHandler {
       archived: archiveRequest.archived,
     );
 
-    final session = Session(
-      id: updated.id,
-      projectID: updated.projectID,
-      directory: updated.directory,
-      parentID: updated.parentID,
-      title: updated.title,
-      time: switch (updated.time) {
-        PluginSessionTime(:final created, :final updated, :final archived) => SessionTime(
-          created: created,
-          updated: updated,
-          archived: archived,
-        ),
-        null => null,
-      },
-      summary: switch (updated.summary) {
-        PluginSessionSummary(:final additions, :final deletions, :final files) => SessionSummary(
-          additions: additions,
-          deletions: deletions,
-          files: files,
-        ),
-        null => null,
-      },
-    );
+    final session = updated.toSharedSession();
 
     return buildOkJsonResponse(request, jsonEncode(session.toJson()));
   }
