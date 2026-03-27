@@ -410,6 +410,16 @@ class _MessageListState extends State<_MessageList> {
                   _following = true;
                 });
               }
+            } else if (notification is ScrollEndNotification) {
+              // Re-check once the scroll settles (after fling/ballistic animation).
+              // Without this, flinging to the bottom never reattaches because
+              // dragDetails is null during momentum scrolling.
+              final pixels = _scrollController.position.pixels;
+              if (!_following && pixels <= _kNearBottomThreshold) {
+                setState(() {
+                  _following = true;
+                });
+              }
             }
             return false;
           },
