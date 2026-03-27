@@ -30,6 +30,12 @@ abstract class BridgePlugin {
 
   Future<PluginSession> updateSessionArchiveStatus(String sessionId, {required bool archived});
 
+  /// Rename a session's title.
+  Future<PluginSession> renameSession(String sessionId, {required String title});
+
+  /// Rename a project.
+  Future<PluginProject> renameProject(String projectId, {required String name});
+
   Future<void> deleteSession(String sessionId);
 
   Future<List<PluginSession>> getChildSessions(String sessionId);

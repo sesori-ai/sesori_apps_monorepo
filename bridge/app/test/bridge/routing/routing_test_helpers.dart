@@ -31,6 +31,8 @@ class FakeBridgePlugin implements BridgePlugin {
   PluginProvidersResult providersResult = const PluginProvidersResult(providers: []);
   PluginSession? createSessionResult;
   PluginSession? updateSessionResult;
+  PluginSession? renameSessionResult;
+  PluginProject? renameProjectResult;
   List<PluginSession> childSessionsResult = [];
   Map<String, PluginSessionStatus> sessionStatusesResult = {};
   List<PluginAgent> agentsResult = [];
