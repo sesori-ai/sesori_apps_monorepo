@@ -16,16 +16,16 @@ void main() {
     // Stub the methods that will be called
     when(
       () => mockCrashlytics.recordError(
-        any(),
-        any(),
-        reason: any(named: 'reason'),
-        information: any(named: 'information'),
-        fatal: any(named: 'fatal'),
+        any<dynamic>(),
+        any<StackTrace?>(),
+        reason: any<dynamic>(named: 'reason'),
+        information: any<List<Object>>(named: 'information'),
+        fatal: any<bool>(named: 'fatal'),
       ),
     ).thenAnswer((_) async {});
 
-    when(() => mockCrashlytics.setCustomKey(any(), any())).thenAnswer((_) async {});
-    when(() => mockCrashlytics.log(any())).thenAnswer((_) async {});
+    when(() => mockCrashlytics.setCustomKey(any<String>(), any<Object>())).thenAnswer((_) async {});
+    when(() => mockCrashlytics.log(any<String>())).thenAnswer((_) async {});
   });
 
   group('Delegation tests', () {
@@ -53,8 +53,8 @@ void main() {
 
       verify(
         () => mockCrashlytics.recordError(
-          any(),
-          any(),
+          any<dynamic>(),
+          any<StackTrace?>(),
           reason: null,
           information: [],
           fatal: false,
@@ -90,11 +90,11 @@ void main() {
 
       verify(
         () => mockCrashlytics.recordError(
-          any(),
-          any(),
-          reason: any(named: 'reason'),
-          information: any(named: 'information'),
-          fatal: any(named: 'fatal'),
+          any<dynamic>(),
+          any<StackTrace?>(),
+          reason: any<dynamic>(named: 'reason'),
+          information: any<List<Object>>(named: 'information'),
+          fatal: any<bool>(named: 'fatal'),
         ),
       ).called(1);
     });
@@ -123,11 +123,11 @@ void main() {
 
       verify(
         () => mockCrashlytics.recordError(
-          any(),
-          any(),
-          reason: any(named: 'reason'),
-          information: any(named: 'information'),
-          fatal: any(named: 'fatal'),
+          any<dynamic>(),
+          any<StackTrace?>(),
+          reason: any<dynamic>(named: 'reason'),
+          information: any<List<Object>>(named: 'information'),
+          fatal: any<bool>(named: 'fatal'),
         ),
       ).called(2);
     });
@@ -146,8 +146,8 @@ void main() {
 
       verify(
         () => mockCrashlytics.recordError(
-          any(),
-          any(),
+          any<dynamic>(),
+          any<StackTrace?>(),
           reason: null,
           information: [],
           fatal: true,
@@ -181,10 +181,10 @@ void main() {
 
       verify(
         () => mockCrashlytics.recordError(
-          any(),
-          any(),
-          reason: any(named: 'reason'),
-          information: any(named: 'information'),
+          any<dynamic>(),
+          any<StackTrace?>(),
+          reason: any<dynamic>(named: 'reason'),
+          information: any<List<Object>>(named: 'information'),
           fatal: true,
         ),
       ).called(2);
@@ -217,11 +217,11 @@ void main() {
 
       verify(
         () => mockCrashlytics.recordError(
-          any(),
-          any(),
-          reason: any(named: 'reason'),
-          information: any(named: 'information'),
-          fatal: any(named: 'fatal'),
+          any<dynamic>(),
+          any<StackTrace?>(),
+          reason: any<dynamic>(named: 'reason'),
+          information: any<List<Object>>(named: 'information'),
+          fatal: any<bool>(named: 'fatal'),
         ),
       ).called(2);
     });
