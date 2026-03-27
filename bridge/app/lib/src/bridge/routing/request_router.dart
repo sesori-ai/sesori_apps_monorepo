@@ -21,6 +21,8 @@ import "health_check_handler.dart";
 import "hide_project_handler.dart";
 import "open_project_handler.dart";
 import "reject_question_handler.dart";
+import "rename_project_handler.dart";
+import "rename_session_handler.dart";
 import "reply_to_question_handler.dart";
 import "request_handler.dart";
 import "send_prompt_handler.dart";
@@ -53,6 +55,7 @@ class RequestRouter {
       GetSessionMessagesHandler(plugin),
       GetSessionsHandler(plugin),
       CreateSessionHandler(plugin),
+      RenameSessionHandler(plugin),
       UpdateSessionArchiveStatusHandler(plugin),
       DeleteSessionHandler(plugin),
       SendPromptHandler(plugin),
@@ -63,6 +66,7 @@ class RequestRouter {
       GetProjectQuestionsHandler(plugin),
       ReplyToQuestionHandler(plugin),
       RejectQuestionHandler(plugin),
+      RenameProjectHandler(plugin),
       CreateProjectHandler(plugin),
       OpenProjectHandler(plugin, hiddenStore),
       HideProjectHandler(hiddenStore),

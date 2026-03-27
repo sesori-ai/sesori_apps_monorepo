@@ -1,0 +1,74 @@
+import "dart:convert";
+
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart";
+
+import "request_handler.dart";
+
+const _idParam = "id";
+
+/// Handles `PATCH /session/:id/title` — renames a session.
+class RenameSessionHandler extends RequestHandler {
+  final BridgePlugin _plugin;
+
+  RenameSessionHandler(this._plugin) : super(HttpMethod.patch, "/session/:$_idParam/title");
+
+  @override
+  Future<RelayResponse> handle(
+    RelayRequest request, {
+    required Map<String, String> pathParams,
+    required Map<String, String> queryParams,
+    String? fragment,
+  }) async {
+    final sessionId = pathParams[_idParam];
+    if (sessionId == null || sessionId.isEmpty) {
+      return buildErrorResponse(request, 400, "missing session id");
+    }
+
+    final RenameSessionRequest renameRequest;
+    try {
+      final decoded = jsonDecode(request.body ?? "{}");
+      renameRequest = RenameSessionRequest.fromJson(
+        switch (decoded) {
+          final Map<String, dynamic> map => map,
+          _ => throw const FormatException("invalid JSON body"),
+        },
+      );
+    } on FormatException {
+      return buildErrorResponse(request, 400, "invalid JSON body");
+    } on Object {
+      return buildErrorResponse(request, 400, "invalid JSON body");
+    }
+
+    final updated = await _plugin.renameSession(
+      sessionId,
+      title: renameRequest.title,
+    );
+
+    final session = Session(
+      id: updated.id,
+      projectID: updated.projectID,
+      directory: updated.directory,
+      parentID: updated.parentID,
+      title: updated.title,
+      time: switch (updated.time) {
+        PluginSessionTime(:final created, :final updated, :final archived) => SessionTime(
+          created: created,
+          updated: updated,
+          archived: archived,
+        ),
+        null => null,
+      },
+      summary: switch (updated.summary) {
+        PluginSessionSummary(:final additions, :final deletions, :final files) => SessionSummary(
+          additions: additions,
+          deletions: deletions,
+          files: files,
+        ),
+        null => null,
+      },
+    );
+
+    return buildOkJsonResponse(request, jsonEncode(session.toJson()));
+  }
+}
