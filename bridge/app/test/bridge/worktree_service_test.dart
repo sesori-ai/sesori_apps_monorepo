@@ -67,17 +67,46 @@ void main() {
       expect(worktreeAddCall.arguments, contains("session-001"));
     });
 
-    test("parent session: always falls back to original project path", () async {
+    test("parent session: reuses parent worktree when mapping exists", () async {
+      // Insert a mapping for the parent session.
+      await sessionDao.insertMapping(
+        sessionId: "parent-001",
+        projectId: _projectId,
+        worktreePath: "$_projectId/.worktrees/session-001",
+        branchName: "session-001",
+      );
+
       final result = await service.prepareWorktreeForSession(
         projectId: _projectId,
         parentSessionId: "parent-001",
       );
 
-      expect(result, isA<WorktreeFallback>());
-      final fallback = result as WorktreeFallback;
-      expect(fallback.originalPath, equals(_projectId));
-      expect(fallback.reason, equals("parent session uses original path"));
+      expect(result, isA<WorktreeSuccess>());
+      final success = result as WorktreeSuccess;
+      expect(success.path, equals("$_projectId/.worktrees/session-001"));
+      expect(success.branchName, equals("session-001"));
+      // No git commands should have been called — worktree already exists.
       expect(processRunner.invocations, isEmpty);
+    });
+
+    test("parent session: falls through to create new when parent has no mapping", () async {
+      // git rev-parse HEAD → success
+      processRunner.enqueue(result: _ok());
+      // git symbolic-ref refs/remotes/origin/HEAD → "refs/remotes/origin/main"
+      processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // git branch --list session-001 → empty
+      processRunner.enqueue(result: _ok(stdout: ""));
+      // git worktree add → success
+      processRunner.enqueue(result: _ok());
+
+      final result = await service.prepareWorktreeForSession(
+        projectId: _projectId,
+        parentSessionId: "nonexistent-parent",
+      );
+
+      expect(result, isA<WorktreeSuccess>());
+      final success = result as WorktreeSuccess;
+      expect(success.path, contains("session-001"));
     });
 
     // -----------------------------------------------------------------------

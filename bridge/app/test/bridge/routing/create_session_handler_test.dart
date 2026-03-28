@@ -124,7 +124,7 @@ void main() {
       expect(response.status, equals(200));
     });
 
-    test("parent session uses original path and skips worktree service", () async {
+    test("parent session calls worktree service and passes result to plugin", () async {
       plugin.createSessionResult = const PluginSession(
         id: "s-child",
         projectID: "p1",
@@ -147,12 +147,11 @@ void main() {
         queryParams: {},
       );
 
-      expect(worktreeService.prepareCallCount, equals(0));
-      expect(worktreeService.lastPrepareProjectId, isNull);
+      // Worktree service IS called for parent sessions (it handles reuse logic).
+      expect(worktreeService.prepareCallCount, equals(1));
+      expect(worktreeService.lastPrepareProjectId, equals("/repo"));
       expect(plugin.lastCreateSessionProjectId, equals("/repo"));
-      expect(plugin.lastCreateSessionDirectory, isNull);
       expect(plugin.lastCreateSessionParentId, equals("parent-1"));
-      expect(worktreeService.recordCalls, isEmpty);
       expect(response.status, equals(200));
     });
 

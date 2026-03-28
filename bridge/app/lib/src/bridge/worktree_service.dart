@@ -135,23 +135,28 @@ class WorktreeService {
   // Orchestration
   // -------------------------------------------------------------------------
 
-  /// Prepares a worktree for a new session.
+  /// Prepares a worktree for a new or child session.
   ///
   /// Returns [WorktreeSuccess] with the path and branch when a worktree is
-  /// ready (freshly created).
-  /// Returns [WorktreeFallback] when this session should stay on the original
-  /// project path, the project is not git-initialised, has no commits, or
-  /// every creation attempt fails.
+  /// ready (either reused from a parent session or freshly created).
+  /// Returns [WorktreeFallback] when the project is not git-initialised, has
+  /// no commits, or every creation attempt fails.
   Future<WorktreeResult> prepareWorktreeForSession({
     required String projectId,
     required String? parentSessionId,
   }) async {
-    // 1. Parent sessions never use a worktree.
+    // 1. If a parent session exists, reuse its worktree.
     if (parentSessionId != null) {
-      return WorktreeFallback(
-        originalPath: projectId,
-        reason: "parent session uses original path",
+      final parentWorktree = await _sessionDao.getWorktreeForSession(
+        sessionId: parentSessionId,
       );
+      if (parentWorktree != null) {
+        return WorktreeSuccess(
+          path: parentWorktree.worktreePath,
+          branchName: parentWorktree.branchName,
+        );
+      }
+      // Parent not found (pre-feature session) — fall through to create new.
     }
 
     // 2. Guard: must be a git repository.
