@@ -520,8 +520,8 @@ class OpenCodePlugin implements BridgePlugin {
       if (bridgeEvent != null) {
         _eventBuffer.add(bridgeEvent);
       }
-    } catch (_) {
-      // processSseEvent must never throw.
+    } catch (e, st) {
+      Log.e("[opencode] SSE event processing error: $e\n$st");
     }
   }
 
