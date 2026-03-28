@@ -27,7 +27,9 @@ class LogFailureReporter implements FailureReporter {
     required Iterable<Object> information,
   }) {
     final severity = fatal ? 'FATAL' : 'non-fatal';
-    Log.e('[reporter:$uniqueIdentifier] $severity: $reason — $error\n$stackTrace');
+    Log.e(
+      '[reporter:$uniqueIdentifier] $severity: $reason — $error\n$stackTrace${information.isNotEmpty ? '\nInformation: $information' : ''}',
+    );
     return Future<void>.value();
   }
 }

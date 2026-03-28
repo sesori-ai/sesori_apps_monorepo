@@ -110,7 +110,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
               uniqueIdentifier: "project_list_activity",
               fatal: false,
               reason: "Failed to handle project activity update",
-              information: [],
+              information: [activityById.toString()],
             )
             .catchError((_) {}),
       );
