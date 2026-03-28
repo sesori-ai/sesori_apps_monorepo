@@ -8,6 +8,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 import "../helpers/test_database.dart";
+import "../helpers/test_helpers.dart";
 
 void main() {
   group("DebugServer SSE multi-client", () {
@@ -18,7 +19,12 @@ void main() {
     setUp(() async {
       plugin = _FakeBridgePlugin();
       db = createTestDatabase();
-      debugServer = DebugServer(plugin: plugin, projectsDao: db.projectsDao, port: 0);
+      debugServer = DebugServer(
+        plugin: plugin,
+        projectsDao: db.projectsDao,
+        port: 0,
+        failureReporter: FakeFailureReporter(),
+      );
       await debugServer.start();
     });
 
@@ -67,6 +73,7 @@ void main() {
         plugin: trackingPlugin,
         projectsDao: trackingDb.projectsDao,
         port: 0,
+        failureReporter: FakeFailureReporter(),
       );
       await trackingServer.start();
       addTearDown(trackingServer.stop);
@@ -97,7 +104,12 @@ void main() {
     setUp(() async {
       plugin = _FakeBridgePlugin();
       db = createTestDatabase();
-      debugServer = DebugServer(plugin: plugin, projectsDao: db.projectsDao, port: 0);
+      debugServer = DebugServer(
+        plugin: plugin,
+        projectsDao: db.projectsDao,
+        port: 0,
+        failureReporter: FakeFailureReporter(),
+      );
       await debugServer.start();
     });
 

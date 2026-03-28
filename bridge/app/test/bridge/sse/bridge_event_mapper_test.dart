@@ -3,6 +3,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/test_helpers.dart";
 import "../routing/routing_test_helpers.dart";
 
 void main() {
@@ -10,7 +11,10 @@ void main() {
     late BridgeEventMapper mapper;
 
     setUp(() {
-      mapper = BridgeEventMapper(FakeBridgePlugin());
+      mapper = BridgeEventMapper(
+        plugin: FakeBridgePlugin(),
+        failureReporter: FakeFailureReporter(),
+      );
     });
 
     test("filters heartbeat events", () {
@@ -262,5 +266,38 @@ void main() {
       final event = result! as SesoriMessagePartUpdated;
       expect(event.part.state?.output, equals("short"));
     });
+
+    test("map() returns null and reports failure when buildProjectsSummaryEvent() throws", () {
+      final capturingReporter = CapturingFailureReporter();
+      final throwingMapper = BridgeEventMapper(
+        plugin: _ThrowingActiveSessionsPlugin(),
+        failureReporter: capturingReporter,
+      );
+
+      final result = throwingMapper.map(const BridgeSseProjectUpdated());
+
+      expect(result, isNull);
+      expect(capturingReporter.recordedIdentifiers, contains("sse_projects_summary"));
+    });
+
+    test("buildProjectsSummaryEvent() returns null and reports failure when plugin throws", () {
+      final capturingReporter = CapturingFailureReporter();
+      final throwingMapper = BridgeEventMapper(
+        plugin: _ThrowingActiveSessionsPlugin(),
+        failureReporter: capturingReporter,
+      );
+
+      final result = throwingMapper.buildProjectsSummaryEvent();
+
+      expect(result, isNull);
+      expect(capturingReporter.recordedIdentifiers, contains("sse_projects_summary"));
+    });
   });
+}
+
+class _ThrowingActiveSessionsPlugin extends FakeBridgePlugin {
+  @override
+  List<PluginProjectActivitySummary> getActiveSessionsSummary() {
+    throw StateError("summary mapping failed");
+  }
 }

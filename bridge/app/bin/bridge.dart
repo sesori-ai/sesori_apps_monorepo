@@ -10,6 +10,7 @@ import 'package:sesori_bridge/src/auth/token_manager.dart';
 import 'package:sesori_bridge/src/auth/validate.dart';
 import 'package:sesori_bridge/src/bridge/bandwidth_tracker.dart';
 import 'package:sesori_bridge/src/bridge/debug_server.dart';
+import 'package:sesori_bridge/src/bridge/log_failure_reporter.dart';
 import 'package:sesori_bridge/src/bridge/models/bridge_config.dart';
 import 'package:sesori_bridge/src/bridge/orchestrator.dart';
 import 'package:sesori_bridge/src/bridge/persistence/bridge_diagnostics.dart';
@@ -186,6 +187,8 @@ Future<void> main(List<String> args) async {
   // Run startup diagnostics (non-blocking — logs warnings only)
   await BridgeDiagnostics().runAll();
 
+  final failureReporter = LogFailureReporter();
+
   final orchestrator = Orchestrator(
     config: bridgeConfig,
     client: relayClient,
@@ -193,6 +196,7 @@ Future<void> main(List<String> args) async {
     pushNotificationService: pushNotificationService,
     tokenRefresher: tokenManager,
     projectsDao: db.projectsDao,
+    failureReporter: failureReporter,
   );
   final session = orchestrator.create();
 
@@ -202,7 +206,12 @@ Future<void> main(List<String> args) async {
   // Create and start debug server if requested
   DebugServer? debugServer;
   if (debugPort != null) {
-    debugServer = DebugServer(plugin: plugin, projectsDao: db.projectsDao, port: debugPort);
+    debugServer = DebugServer(
+      plugin: plugin,
+      projectsDao: db.projectsDao,
+      port: debugPort,
+      failureReporter: failureReporter,
+    );
     try {
       await debugServer.start();
     } catch (e) {
