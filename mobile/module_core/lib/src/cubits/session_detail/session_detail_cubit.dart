@@ -19,6 +19,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   final ConnectionService _connectionService;
   final String _sessionId;
   final NotificationCanceller _notificationCanceller;
+  final FailureReporter _failureReporter;
   final PromptSendQueue _promptQueue = PromptSendQueue();
   bool _isSending = false;
 
@@ -37,10 +38,12 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     ConnectionService connectionService, {
     required String sessionId,
     required NotificationCanceller notificationCanceller,
+    required FailureReporter failureReporter,
   }) : _service = service,
        _connectionService = connectionService,
        _sessionId = sessionId,
        _notificationCanceller = notificationCanceller,
+       _failureReporter = failureReporter,
        super(const SessionDetailState.loading()) {
     _streamingBuffer = StreamingTextBuffer(onFlush: _emitStreamingSnapshot);
     _eventSubscription = _connectionService.sessionEvents(_sessionId).listen(_handleEvent);
@@ -194,51 +197,83 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   // ---------------------------------------------------------------------------
 
   void _handleEvent(SesoriSessionEvent event) {
-    switch (event) {
-      case SesoriMessageUpdated(:final info):
-        _onMessageUpdated(info);
-      case SesoriMessageRemoved(:final messageID):
-        _onMessageRemoved(messageID);
-      case SesoriMessagePartDelta(:final partID, :final delta):
-        _onPartDelta(partID, delta);
-      case SesoriMessagePartUpdated(:final part):
-        _onPartUpdated(part);
-      case SesoriMessagePartRemoved(:final messageID, :final partID):
-        _onPartRemoved(messageID, partID);
-      case SesoriSessionStatus(:final status):
-        _onSessionStatus(status);
-      case SesoriQuestionAsked():
-        _onQuestionAsked(event);
-      case SesoriQuestionReplied(:final requestID):
-        _onQuestionResolved(requestID);
-      case SesoriQuestionRejected(:final requestID):
-        _onQuestionResolved(requestID);
-      case SesoriSessionUpdated(:final info):
-        _onSessionUpdated(info);
-      case SesoriSessionCreated() ||
-          SesoriSessionDeleted() ||
-          SesoriSessionDiff() ||
-          SesoriSessionError() ||
-          SesoriSessionCompacted() ||
-          // ignore: deprecated_member_use
-          SesoriSessionIdle() ||
-          SesoriPermissionAsked() ||
-          SesoriTodoUpdated():
-        break;
+    try {
+      switch (event) {
+        case SesoriMessageUpdated(:final info):
+          _onMessageUpdated(info);
+        case SesoriMessageRemoved(:final messageID):
+          _onMessageRemoved(messageID);
+        case SesoriMessagePartDelta(:final partID, :final delta):
+          _onPartDelta(partID, delta);
+        case SesoriMessagePartUpdated(:final part):
+          _onPartUpdated(part);
+        case SesoriMessagePartRemoved(:final messageID, :final partID):
+          _onPartRemoved(messageID, partID);
+        case SesoriSessionStatus(:final status):
+          _onSessionStatus(status);
+        case SesoriQuestionAsked():
+          _onQuestionAsked(event);
+        case SesoriQuestionReplied(:final requestID):
+          _onQuestionResolved(requestID);
+        case SesoriQuestionRejected(:final requestID):
+          _onQuestionResolved(requestID);
+        case SesoriSessionUpdated(:final info):
+          _onSessionUpdated(info);
+        case SesoriSessionCreated() ||
+            SesoriSessionDeleted() ||
+            SesoriSessionDiff() ||
+            SesoriSessionError() ||
+            SesoriSessionCompacted() ||
+            // ignore: deprecated_member_use
+            SesoriSessionIdle() ||
+            SesoriPermissionAsked() ||
+            SesoriTodoUpdated():
+          break;
+      }
+    } catch (e, st) {
+      loge("SSE event handler error", e, st);
+      unawaited(
+        _failureReporter
+            .recordFailure(
+              error: e,
+              stackTrace: st,
+              uniqueIdentifier: "session_detail_event:${event.runtimeType}",
+              fatal: false,
+              reason: "Failed to handle session event",
+              information: [event.runtimeType.toString()],
+            )
+            .catchError((_) {}),
+      );
     }
   }
 
   void _handleGlobalEvent(SseEvent event) {
     final data = event.data;
-    switch (data) {
-      case SesoriSessionCreated(:final info) when info.parentID == _sessionId:
-        _onChildSessionCreated(info);
-      case SesoriSessionStatus(:final sessionID, :final status):
-        _onChildSessionStatus(sessionID, status);
-      case SesoriSessionUpdated(:final info):
-        _onChildSessionUpdated(info);
-      default:
-        break;
+    try {
+      switch (data) {
+        case SesoriSessionCreated(:final info) when info.parentID == _sessionId:
+          _onChildSessionCreated(info);
+        case SesoriSessionStatus(:final sessionID, :final status):
+          _onChildSessionStatus(sessionID, status);
+        case SesoriSessionUpdated(:final info):
+          _onChildSessionUpdated(info);
+        default:
+          break;
+      }
+    } catch (e, st) {
+      loge("SSE global event handler error", e, st);
+      unawaited(
+        _failureReporter
+            .recordFailure(
+              error: e,
+              stackTrace: st,
+              uniqueIdentifier: "session_detail_global_event:${data.runtimeType}",
+              fatal: false,
+              reason: "Failed to handle global session event",
+              information: [data.runtimeType.toString()],
+            )
+            .catchError((_) {}),
+      );
     }
   }
 

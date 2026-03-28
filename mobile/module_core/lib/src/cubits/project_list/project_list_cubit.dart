@@ -24,17 +24,20 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   final ProjectService _projectService;
   final ConnectionService _connectionService;
   final SseEventRepository _sseEventRepository;
+  final FailureReporter _failureReporter;
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
   ProjectListCubit(
     ProjectService projectService,
     ConnectionService connectionService,
     SseEventRepository sseEventRepository,
-    RouteSource routeSource,
-  ) : _projectService = projectService,
-      _connectionService = connectionService,
-      _sseEventRepository = sseEventRepository,
-      super(const ProjectListState.loading()) {
+    RouteSource routeSource, {
+    required FailureReporter failureReporter,
+  }) : _projectService = projectService,
+       _connectionService = connectionService,
+       _sseEventRepository = sseEventRepository,
+       _failureReporter = failureReporter,
+       super(const ProjectListState.loading()) {
     loadProjects();
 
     // 1. Immediate activity badge updates (no API call).
@@ -88,14 +91,30 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   }
 
   void _onActivityUpdated(Map<String, int> activityById) {
-    if (state is! ProjectListLoaded) return;
-    if (isClosed) return;
-    emit(
-      ProjectListState.loaded(
-        projects: (state as ProjectListLoaded).projects,
-        activityById: activityById,
-      ),
-    );
+    try {
+      if (state is! ProjectListLoaded) return;
+      if (isClosed) return;
+      emit(
+        ProjectListState.loaded(
+          projects: (state as ProjectListLoaded).projects,
+          activityById: activityById,
+        ),
+      );
+    } catch (e, st) {
+      loge("Activity update handler error", e, st);
+      unawaited(
+        _failureReporter
+            .recordFailure(
+              error: e,
+              stackTrace: st,
+              uniqueIdentifier: "project_list_activity",
+              fatal: false,
+              reason: "Failed to handle project activity update",
+              information: [],
+            )
+            .catchError((_) {}),
+      );
+    }
   }
 
   void _onConnectionStatusChanged(ConnectionStatus status) {

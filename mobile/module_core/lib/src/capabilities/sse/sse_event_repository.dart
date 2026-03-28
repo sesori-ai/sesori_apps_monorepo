@@ -5,6 +5,7 @@ import "package:injectable/injectable.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../logging/logging.dart";
 import "../server_connection/connection_service.dart";
 import "../server_connection/models/sse_event.dart";
 import "session_activity_info.dart";
@@ -12,6 +13,7 @@ import "session_activity_info.dart";
 @lazySingleton
 class SseEventRepository with Disposable {
   final ConnectionService _connectionService;
+  final FailureReporter _failureReporter;
   late final StreamSubscription<SseEvent> _subscription;
 
   final BehaviorSubject<Map<String, int>> _projectActivity = BehaviorSubject.seeded(const {});
@@ -21,7 +23,11 @@ class SseEventRepository with Disposable {
     const {},
   );
 
-  SseEventRepository(ConnectionService connectionService) : _connectionService = connectionService {
+  SseEventRepository(
+    ConnectionService connectionService, {
+    required FailureReporter failureReporter,
+  }) : _connectionService = connectionService,
+       _failureReporter = failureReporter {
     _subscription = _connectionService.events.listen(_handleEvent);
   }
 
@@ -46,24 +52,40 @@ class SseEventRepository with Disposable {
   Map<String, Map<String, SessionActivityInfo>> get currentSessionActivity => _sessionActivity.value;
 
   void _handleEvent(SseEvent event) {
-    if (event.data case SesoriProjectsSummary(:final projects)) {
-      final projectMap = <String, int>{};
-      final sessionMap = <String, Map<String, SessionActivityInfo>>{};
-      for (final summary in projects) {
-        if (summary.activeSessions.isNotEmpty) {
-          projectMap[summary.id] = summary.activeSessions.length;
-          final infoMap = <String, SessionActivityInfo>{};
-          for (final session in summary.activeSessions) {
-            infoMap[session.id] = SessionActivityInfo(
-              mainAgentRunning: session.mainAgentRunning,
-              backgroundTaskCount: session.childSessionIds.length,
-            );
+    try {
+      if (event.data case SesoriProjectsSummary(:final projects)) {
+        final projectMap = <String, int>{};
+        final sessionMap = <String, Map<String, SessionActivityInfo>>{};
+        for (final summary in projects) {
+          if (summary.activeSessions.isNotEmpty) {
+            projectMap[summary.id] = summary.activeSessions.length;
+            final infoMap = <String, SessionActivityInfo>{};
+            for (final session in summary.activeSessions) {
+              infoMap[session.id] = SessionActivityInfo(
+                mainAgentRunning: session.mainAgentRunning,
+                backgroundTaskCount: session.childSessionIds.length,
+              );
+            }
+            sessionMap[summary.id] = infoMap;
           }
-          sessionMap[summary.id] = infoMap;
         }
+        _projectActivity.add(projectMap);
+        _sessionActivity.add(sessionMap);
       }
-      _projectActivity.add(projectMap);
-      _sessionActivity.add(sessionMap);
+    } catch (e, st) {
+      loge("SSE event handler error", e, st);
+      unawaited(
+        _failureReporter
+            .recordFailure(
+              error: e,
+              stackTrace: st,
+              uniqueIdentifier: "sse_event_repository",
+              fatal: false,
+              reason: "Failed to handle SSE event in repository",
+              information: [event.data.runtimeType.toString()],
+            )
+            .catchError((_) {}),
+      );
     }
   }
 
