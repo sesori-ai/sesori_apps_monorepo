@@ -12,7 +12,7 @@ import "../relay_client.dart";
 class SSEManager {
   /// Default duration for which orphan queues remain valid after a phone
   /// disconnects. Referenced by the CLI entry point and tests.
-  static const Duration defaultReplayWindow = Duration(minutes: 5);
+  static const Duration defaultReplayWindow = sseReplayWindow;
 
   /// How long a disconnected subscriber's orphan queue stays valid.
   final Duration replayWindow;
