@@ -20,6 +20,9 @@ sealed class SessionListState with _$SessionListState {
     /// child tasks are running.
     @Default({}) Map<String, SessionActivityInfo> activeSessionIds,
     @Default(false) bool isRefreshing,
+
+    /// The base branch of the project (e.g. "main", "develop"), if available.
+    String? baseBranch,
   }) = SessionListLoaded;
 
   /// The requested project ID no longer resolves to the expected project on

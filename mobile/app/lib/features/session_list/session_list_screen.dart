@@ -26,6 +26,7 @@ class SessionListScreen extends StatelessWidget {
     return BlocProvider(
       create: (_) => SessionListCubit(
         getIt<SessionService>(),
+        getIt<ProjectService>(),
         getIt<ConnectionService>(),
         getIt<SseEventRepository>(),
         projectId: projectId,
@@ -212,10 +213,23 @@ class _SessionListBody extends StatelessWidget {
     final title = projectName != null ? loc.sessionListTitleWithName(projectName!) : loc.sessionListTitle;
 
     final showArchived = state is SessionListLoaded && state.showArchived;
+    final baseBranch = state is SessionListLoaded ? state.baseBranch : null;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(title),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title),
+            if (baseBranch != null)
+              Text(
+                baseBranch,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: Icon(showArchived ? Icons.archive : Icons.archive_outlined),
