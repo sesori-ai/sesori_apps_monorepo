@@ -22,6 +22,9 @@ void main() {
     config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token"),
     health: HealthResponse(healthy: true, version: "0.1.200"),
   );
+  const connectionLostStatus = ConnectionStatus.connectionLost(
+    config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token"),
+  );
 
   setUpAll(() {
     registerAllFallbackValues();
@@ -47,7 +50,7 @@ void main() {
       when(() => mockConnectionService.sessionEvents(sessionId)).thenAnswer((_) => sessionEvents.stream);
       when(() => mockConnectionService.events).thenAnswer((_) => globalEvents.stream);
       when(() => mockConnectionService.status).thenAnswer((_) => connectionStatus.stream);
-      when(() => mockConnectionService.currentStatus).thenReturn(connectedStatus);
+      when(() => mockConnectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
       when(
         () => mockNotificationCanceller.cancelForSession(
           sessionId: any(named: "sessionId"),
@@ -65,7 +68,7 @@ void main() {
     });
 
     test(
-      "stale signal triggers silent refresh — emits isRefreshing=true then updated data with isRefreshing=false",
+      "deferred refresh: stale while disconnected waits for ConnectionConnected before refreshing",
       () async {
         final cubit = SessionDetailCubit(
           mockSessionService,
@@ -76,6 +79,10 @@ void main() {
         addTearDown(cubit.close);
 
         await _awaitLoaded(cubit);
+        clearInteractions(mockSessionService);
+
+        connectionStatus.add(connectionLostStatus);
+        await Future<void>.delayed(const Duration(milliseconds: 10));
 
         when(() => mockSessionService.getMessages(sessionId)).thenAnswer(
           (_) async => ApiResponse.success([_messageWithParts(messageId: "msg-refreshed")]),
@@ -88,6 +95,16 @@ void main() {
         mockConnectionService.emitDataMayBeStale();
         await Future<void>.delayed(const Duration(milliseconds: 20));
 
+        verifyNever(() => mockSessionService.getMessages(sessionId));
+        verifyNever(() => mockSessionService.getPendingQuestions(sessionId));
+        verifyNever(() => mockSessionService.getChildren(sessionId));
+        verifyNever(() => mockSessionService.getSessionStatuses());
+        verifyNever(() => mockSessionService.listAgents());
+        verifyNever(() => mockSessionService.listProviders());
+
+        connectionStatus.add(connectedStatus);
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+
         expect(emitted.length, 2);
         expect(emitted.first, isA<SessionDetailLoaded>().having((s) => s.isRefreshing, "isRefreshing", isTrue));
         expect(
@@ -98,6 +115,45 @@ void main() {
         );
       },
     );
+
+    test("deferred refresh: stale when connected triggers immediate refresh", () async {
+      final cubit = SessionDetailCubit(
+        mockSessionService,
+        mockConnectionService,
+        sessionId: sessionId,
+        notificationCanceller: mockNotificationCanceller,
+      );
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+      clearInteractions(mockSessionService);
+
+      when(() => mockSessionService.getMessages(sessionId)).thenAnswer(
+        (_) async => ApiResponse.success([_messageWithParts(messageId: "msg-immediate")]),
+      );
+
+      final emitted = <SessionDetailState>[];
+      final sub = cubit.stream.listen(emitted.add);
+      addTearDown(sub.cancel);
+
+      mockConnectionService.emitDataMayBeStale();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      verify(() => mockSessionService.getMessages(sessionId)).called(1);
+      verify(() => mockSessionService.getPendingQuestions(sessionId)).called(1);
+      verify(() => mockSessionService.getChildren(sessionId)).called(1);
+      verify(() => mockSessionService.getSessionStatuses()).called(1);
+      verify(() => mockSessionService.listAgents()).called(1);
+      verify(() => mockSessionService.listProviders()).called(1);
+
+      expect(emitted.first, isA<SessionDetailLoaded>().having((s) => s.isRefreshing, "isRefreshing", isTrue));
+      expect(
+        emitted.last,
+        isA<SessionDetailLoaded>()
+            .having((s) => s.isRefreshing, "isRefreshing", isFalse)
+            .having((s) => s.messages.first.info.id, "updated message id", "msg-immediate"),
+      );
+    });
 
     test("silent refresh preserves selectedAgent, selectedProviderID, selectedModelID from current state", () async {
       final cubit = SessionDetailCubit(
@@ -149,7 +205,58 @@ void main() {
       expect(loaded.isRefreshing, isFalse);
     });
 
-    test("silent refresh clears streaming text buffer", () async {
+    test("delta race: streaming deltas arriving during refresh are preserved", () async {
+      final cubit = SessionDetailCubit(
+        mockSessionService,
+        mockConnectionService,
+        sessionId: sessionId,
+        notificationCanceller: mockNotificationCanceller,
+      );
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+      clearInteractions(mockSessionService);
+
+      final messagesCompleter = Completer<ApiResponse<List<MessageWithParts>>>();
+      when(() => mockSessionService.getMessages(sessionId)).thenAnswer((_) => messagesCompleter.future);
+      when(
+        () => mockSessionService.getPendingQuestions(sessionId),
+      ).thenAnswer((_) async => ApiResponse.success(<PendingQuestion>[]));
+      when(() => mockSessionService.getChildren(sessionId)).thenAnswer((_) async => ApiResponse.success(<Session>[]));
+      when(
+        () => mockSessionService.getSessionStatuses(),
+      ).thenAnswer((_) async => ApiResponse.success(<String, SessionStatus>{}));
+      when(() => mockSessionService.listAgents()).thenAnswer((_) async => ApiResponse.success(_agents()));
+      when(() => mockSessionService.listProviders()).thenAnswer((_) async => ApiResponse.success(_providers()));
+
+      final emitted = <SessionDetailState>[];
+      final sub = cubit.stream.listen(emitted.add);
+      addTearDown(sub.cancel);
+
+      mockConnectionService.emitDataMayBeStale();
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      sessionEvents.add(
+        const SesoriMessagePartDelta(
+          sessionID: sessionId,
+          messageID: "msg-1",
+          partID: "part-race",
+          field: "text",
+          delta: "delta-during-refresh",
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+
+      messagesCompleter.complete(ApiResponse.success([_messageWithParts(messageId: "msg-race")]));
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+
+      final refreshed = emitted.last as SessionDetailLoaded;
+      expect(refreshed.isRefreshing, isFalse);
+      expect(refreshed.messages.first.info.id, "msg-race");
+      expect(refreshed.streamingText, {"part-race": "delta-during-refresh"});
+    });
+
+    test("partial API failure: providers fail and refresh still succeeds with empty providers", () async {
       final cubit = SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
@@ -160,31 +267,18 @@ void main() {
 
       await _awaitLoaded(cubit);
 
-      sessionEvents.add(
-        const SesoriMessagePartDelta(
-          sessionID: sessionId,
-          messageID: "msg-1",
-          partID: "part-1",
-          field: "text",
-          delta: "stale-streaming",
-        ),
+      when(() => mockSessionService.getMessages(sessionId)).thenAnswer(
+        (_) async => ApiResponse.success([_messageWithParts(messageId: "msg-provider-fallback")]),
       );
-      await Future<void>.delayed(const Duration(milliseconds: 80));
-
-      final beforeRefresh = cubit.state as SessionDetailLoaded;
-      expect(beforeRefresh.streamingText, {"part-1": "stale-streaming"});
-
-      final emitted = <SessionDetailState>[];
-      final sub = cubit.stream.listen(emitted.add);
-      addTearDown(sub.cancel);
+      when(() => mockSessionService.listProviders()).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
 
       mockConnectionService.emitDataMayBeStale();
       await Future<void>.delayed(const Duration(milliseconds: 20));
 
-      final refreshing = emitted.first as SessionDetailLoaded;
-      final refreshed = emitted.last as SessionDetailLoaded;
-      expect(refreshing.streamingText, isEmpty);
-      expect(refreshed.streamingText, isEmpty);
+      final loaded = cubit.state as SessionDetailLoaded;
+      expect(loaded.isRefreshing, isFalse);
+      expect(loaded.messages.first.info.id, "msg-provider-fallback");
+      expect(loaded.availableProviders, isEmpty);
     });
 
     test("stale signal is ignored when state is SessionDetailLoading", () async {
