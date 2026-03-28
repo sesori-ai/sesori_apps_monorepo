@@ -35,8 +35,8 @@ void main() {
       expect(real.id, equals("/repo"));
       expect(real.name, equals("Main Repo"));
 
-      final virtual = projects.firstWhere((p) => p.name == null);
-      expect(virtual.id, isNotEmpty);
+      final virtual = projects.firstWhere((p) => p.id == "/virtual");
+      expect(virtual.name, equals("virtual"));
     });
 
     test("getSessions maps internal sessions to plugin sessions", () async {

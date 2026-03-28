@@ -31,7 +31,7 @@ sealed class ProjectTime with _$ProjectTime {
 extension ProjectToPluginExtension on Project {
   PluginProject toPlugin() => PluginProject(
     id: worktree, // worktree is the most reliable UID with opencode
-    name: name,
+    name: _effectiveName,
     time: switch (time) {
       ProjectTime(:final created, :final updated) => PluginProjectTime(
         created: created,
@@ -40,4 +40,16 @@ extension ProjectToPluginExtension on Project {
       null => null,
     },
   );
+
+  /// Returns [name] when present and non-empty, otherwise extracts the
+  /// directory name from [worktree] as a fallback. OpenCode can return an
+  /// empty name after project metadata is edited through its web UI.
+  String? get _effectiveName {
+    final n = name;
+    if (n != null && n.isNotEmpty) return n;
+    if (worktree.isEmpty) return null;
+    final normalized = worktree.replaceAll(r"\", "/");
+    final segments = normalized.split("/").where((s) => s.isNotEmpty);
+    return segments.isEmpty ? null : segments.last;
+  }
 }
