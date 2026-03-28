@@ -87,7 +87,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
 
     // 5. Stale reconnect: refresh when the relay detects stale state.
     _subscriptions.add(
-      _connectionService.staleReconnect.listen((_) => _onStaleReconnect()),
+      _connectionService.dataMayBeStale.listen((_) => _onStaleReconnect()),
     );
   }
 

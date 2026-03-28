@@ -29,7 +29,7 @@ class ConnectionService {
 
   final BehaviorSubject<ConnectionStatus> _status = BehaviorSubject.seeded(const ConnectionStatus.disconnected());
   final StreamController<SseEvent> _events = StreamController<SseEvent>.broadcast();
-  final StreamController<void> _staleReconnect = StreamController<void>.broadcast();
+  final StreamController<void> _dataMayBeStale = StreamController<void>.broadcast();
 
   final _compositeSubscription = CompositeSubscription();
 
@@ -45,7 +45,12 @@ class ConnectionService {
   DateTime? _backgroundedAt;
 
   static const _maxRelayReconnectBackoff = Duration(seconds: 30);
-  static const sseBufferWindow = Duration(minutes: 5);
+
+  /// 90% of the bridge's SSE replay window, providing a safety margin
+  /// to ensure we detect staleness before events are actually lost.
+  static final Duration staleThreshold = Duration(
+    milliseconds: (sseReplayWindow.inMilliseconds * 0.9).round(),
+  );
 
   ConnectionService(
     RelayCryptoService cryptoService,
@@ -108,7 +113,7 @@ class ConnectionService {
   /// Push-based SSE event stream for all typed events.
   Stream<SseEvent> get events => _events.stream;
 
-  Stream<void> get staleReconnect => _staleReconnect.stream;
+  Stream<void> get dataMayBeStale => _dataMayBeStale.stream;
 
   /// Filtered stream of events scoped to [sessionId], already typed as
   /// [SesoriSessionEvent]. Enables exhaustive switching in session cubits
@@ -348,9 +353,9 @@ class ConnectionService {
     _backgroundedAt = null;
     if (backgroundedAt != null) {
       final elapsed = _clock().difference(backgroundedAt);
-      if (elapsed >= sseBufferWindow && activeConfig != null) {
+      if (elapsed >= staleThreshold && activeConfig != null) {
         logd("App was backgrounded for $elapsed — emitting stale reconnect signal");
-        _staleReconnect.add(null);
+        _dataMayBeStale.add(null);
       }
     }
 
@@ -492,7 +497,7 @@ class ConnectionService {
     _reconnectTimer?.cancel();
     unawaited(_disconnectRelayClient());
     _compositeSubscription.dispose();
-    _staleReconnect.close();
+    _dataMayBeStale.close();
     _events.close();
     _status.close();
   }

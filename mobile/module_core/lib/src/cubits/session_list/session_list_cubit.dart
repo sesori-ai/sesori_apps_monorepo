@@ -48,7 +48,7 @@ class SessionListCubit extends Cubit<SessionListState> {
       _sseEventRepository.sessionActivity.listen(_onSessionActivityUpdated),
     );
     _subscriptions.add(
-      _connectionService.staleReconnect.listen((_) => _onStaleReconnect()),
+      _connectionService.dataMayBeStale.listen((_) => _onStaleReconnect()),
     );
   }
 

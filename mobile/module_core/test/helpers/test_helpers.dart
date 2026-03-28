@@ -19,12 +19,12 @@ class MockSessionService extends Mock implements SessionService {}
 class MockFailureReporter extends Mock implements FailureReporter {}
 
 class MockConnectionService extends Mock implements ConnectionService {
-  final StreamController<void> _staleReconnect = StreamController<void>.broadcast();
+  final StreamController<void> _dataMayBeStale = StreamController<void>.broadcast();
 
   @override
-  Stream<void> get staleReconnect => _staleReconnect.stream;
+  Stream<void> get dataMayBeStale => _dataMayBeStale.stream;
 
-  void emitStaleReconnect() => _staleReconnect.add(null);
+  void emitDataMayBeStale() => _dataMayBeStale.add(null);
 }
 
 class MockRouteSource extends Mock implements RouteSource {

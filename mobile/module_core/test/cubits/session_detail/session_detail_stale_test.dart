@@ -85,7 +85,7 @@ void main() {
         final sub = cubit.stream.listen(emitted.add);
         addTearDown(sub.cancel);
 
-        mockConnectionService.emitStaleReconnect();
+        mockConnectionService.emitDataMayBeStale();
         await Future<void>.delayed(const Duration(milliseconds: 20));
 
         expect(emitted.length, 2);
@@ -139,7 +139,7 @@ void main() {
         ),
       );
 
-      mockConnectionService.emitStaleReconnect();
+      mockConnectionService.emitDataMayBeStale();
       await Future<void>.delayed(const Duration(milliseconds: 20));
 
       final loaded = cubit.state as SessionDetailLoaded;
@@ -178,7 +178,7 @@ void main() {
       final sub = cubit.stream.listen(emitted.add);
       addTearDown(sub.cancel);
 
-      mockConnectionService.emitStaleReconnect();
+      mockConnectionService.emitDataMayBeStale();
       await Future<void>.delayed(const Duration(milliseconds: 20));
 
       final refreshing = emitted.first as SessionDetailLoaded;
@@ -198,7 +198,7 @@ void main() {
         notificationCanceller: mockNotificationCanceller,
       );
 
-      mockConnectionService.emitStaleReconnect();
+      mockConnectionService.emitDataMayBeStale();
       await Future<void>.delayed(const Duration(milliseconds: 10));
 
       verify(() => mockSessionService.getMessages(sessionId)).called(1);
@@ -227,7 +227,7 @@ void main() {
       addTearDown(cubit.close);
 
       await _awaitFailed(cubit);
-      mockConnectionService.emitStaleReconnect();
+      mockConnectionService.emitDataMayBeStale();
       await Future<void>.delayed(const Duration(milliseconds: 10));
 
       verify(() => mockSessionService.getMessages(sessionId)).called(1);
@@ -256,7 +256,7 @@ void main() {
         final sub = cubit.stream.listen(emitted.add);
         addTearDown(sub.cancel);
 
-        mockConnectionService.emitStaleReconnect();
+        mockConnectionService.emitDataMayBeStale();
         await Future<void>.delayed(const Duration(milliseconds: 20));
 
         expect(emitted.length, 2);
@@ -294,8 +294,8 @@ void main() {
       when(() => mockSessionService.listAgents()).thenAnswer((_) async => ApiResponse.success(_agents()));
       when(() => mockSessionService.listProviders()).thenAnswer((_) async => ApiResponse.success(_providers()));
 
-      mockConnectionService.emitStaleReconnect();
-      mockConnectionService.emitStaleReconnect();
+      mockConnectionService.emitDataMayBeStale();
+      mockConnectionService.emitDataMayBeStale();
       await Future<void>.delayed(const Duration(milliseconds: 10));
 
       messagesCompleter.complete(ApiResponse.success([_messageWithParts(messageId: "msg-coalesced")]));

@@ -815,7 +815,7 @@ void main() {
         },
         act: (cubit) async {
           await Future<void>.delayed(Duration.zero);
-          mockConnectionService.emitStaleReconnect();
+          mockConnectionService.emitDataMayBeStale();
           await Future<void>.delayed(Duration.zero);
         },
         skip: 1,
@@ -859,7 +859,7 @@ void main() {
         },
         act: (cubit) async {
           await Future<void>.delayed(Duration.zero);
-          mockConnectionService.emitStaleReconnect();
+          mockConnectionService.emitDataMayBeStale();
           await Future<void>.delayed(Duration.zero);
         },
         skip: 1,
@@ -881,7 +881,7 @@ void main() {
         act: (cubit) async {
           await Future<void>.delayed(Duration.zero);
           // Emit both stale and connection connected simultaneously
-          mockConnectionService.emitStaleReconnect();
+          mockConnectionService.emitDataMayBeStale();
           const config = ServerConnectionConfig(
             relayHost: "relay.example.com",
             authToken: "test-token",

@@ -74,11 +74,11 @@ void main() {
       await authStateController.close();
     });
 
-    test("staleReconnect emits when app resumes after >= 5 minutes pause", () async {
+    test("dataMayBeStale emits when app resumes after >= 5 minutes pause", () async {
       service.emitStatusForTesting(const ConnectionStatus.connected(config: config, health: health));
 
       var staleEmissions = 0;
-      final sub = service.staleReconnect.listen((_) => staleEmissions++);
+      final sub = service.dataMayBeStale.listen((_) => staleEmissions++);
 
       lifecycleController.add(LifecycleState.hidden);
       await flush();
@@ -90,15 +90,16 @@ void main() {
       await sub.cancel();
     });
 
-    test("staleReconnect does NOT emit when app resumes after < 5 minutes pause", () async {
+    test("dataMayBeStale does NOT emit when app resumes after < staleThreshold pause", () async {
       service.emitStatusForTesting(const ConnectionStatus.connected(config: config, health: health));
 
       var staleEmissions = 0;
-      final sub = service.staleReconnect.listen((_) => staleEmissions++);
+      final sub = service.dataMayBeStale.listen((_) => staleEmissions++);
 
       lifecycleController.add(LifecycleState.hidden);
       await flush();
-      now = now.add(const Duration(minutes: 4, seconds: 59));
+      // 4 minutes is safely under the 4:30 stale threshold (90% of 5 min)
+      now = now.add(const Duration(minutes: 4));
       lifecycleController.add(LifecycleState.resumed);
       await flush();
 
@@ -106,11 +107,11 @@ void main() {
       await sub.cancel();
     });
 
-    test("staleReconnect emits when connection was dropped AND pause >= 5 minutes", () async {
+    test("dataMayBeStale emits when connection was dropped AND pause >= 5 minutes", () async {
       service.emitStatusForTesting(const ConnectionStatus.connectionLost(config: config));
 
       var staleEmissions = 0;
-      final sub = service.staleReconnect.listen((_) => staleEmissions++);
+      final sub = service.dataMayBeStale.listen((_) => staleEmissions++);
 
       lifecycleController.add(LifecycleState.hidden);
       await flush();
@@ -122,11 +123,11 @@ void main() {
       await sub.cancel();
     });
 
-    test("staleReconnect does NOT emit when app was never connected (disconnected status)", () async {
+    test("dataMayBeStale does NOT emit when app was never connected (disconnected status)", () async {
       service.emitStatusForTesting(const ConnectionStatus.disconnected());
 
       var staleEmissions = 0;
-      final sub = service.staleReconnect.listen((_) => staleEmissions++);
+      final sub = service.dataMayBeStale.listen((_) => staleEmissions++);
 
       lifecycleController.add(LifecycleState.hidden);
       await flush();
@@ -142,7 +143,7 @@ void main() {
       service.emitStatusForTesting(const ConnectionStatus.connected(config: config, health: health));
 
       var staleEmissions = 0;
-      final sub = service.staleReconnect.listen((_) => staleEmissions++);
+      final sub = service.dataMayBeStale.listen((_) => staleEmissions++);
 
       lifecycleController.add(LifecycleState.hidden);
       await flush();
@@ -161,11 +162,11 @@ void main() {
       await sub.cancel();
     });
 
-    test("staleReconnect does NOT emit on repeated resume without intervening background", () async {
+    test("dataMayBeStale does NOT emit on repeated resume without intervening background", () async {
       service.emitStatusForTesting(const ConnectionStatus.connected(config: config, health: health));
 
       var staleEmissions = 0;
-      final sub = service.staleReconnect.listen((_) => staleEmissions++);
+      final sub = service.dataMayBeStale.listen((_) => staleEmissions++);
 
       lifecycleController.add(LifecycleState.hidden);
       await flush();

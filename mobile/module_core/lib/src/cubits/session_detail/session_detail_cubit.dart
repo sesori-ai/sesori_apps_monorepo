@@ -51,7 +51,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     _eventSubscription = _connectionService.sessionEvents(_sessionId).listen(_handleEvent);
     _globalEventSubscription = _connectionService.events.listen(_handleGlobalEvent);
     _connectionStatusSubscription = _connectionService.status.listen(_onConnectionStatusChanged);
-    _staleSubscription = _connectionService.staleReconnect.listen((_) => _silentRefresh());
+    _staleSubscription = _connectionService.dataMayBeStale.listen((_) => _silentRefresh());
     _loadMessages();
   }
 
