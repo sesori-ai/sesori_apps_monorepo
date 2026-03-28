@@ -225,9 +225,11 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
           :final selectedAgent,
           :final selectedProviderID,
           :final selectedModelID,
+          :final isRefreshing,
         ) =>
           Column(
             children: [
+              if (isRefreshing) const LinearProgressIndicator(),
               // Pending-questions banner
               if (pendingQuestions.isNotEmpty)
                 _PendingQuestionsBanner(

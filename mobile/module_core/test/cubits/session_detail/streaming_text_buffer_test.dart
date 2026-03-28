@@ -116,5 +116,56 @@ void main() {
         expect(flushCount, 0);
       });
     });
+
+    test("clear() removes all buffered parts and cancels pending timer", () {
+      fakeAsync((async) {
+        var flushCount = 0;
+        final buffer = StreamingTextBuffer(
+          onFlush: () => flushCount++,
+          throttle: const Duration(milliseconds: 50),
+        );
+
+        buffer.appendDelta("p1", "data");
+        buffer.appendDelta("p2", "more");
+        expect(buffer.snapshot(), {"p1": "data", "p2": "more"});
+
+        buffer.clear();
+        expect(buffer.snapshot(), isEmpty);
+
+        async.elapse(const Duration(milliseconds: 100));
+        expect(flushCount, 0);
+      });
+    });
+
+    test("clear() followed by snapshot() returns empty map", () {
+      final buffer = StreamingTextBuffer(onFlush: () {});
+      buffer.appendDelta("p1", "text");
+      buffer.appendDelta("p2", "more");
+      buffer.clear();
+      expect(buffer.snapshot(), isEmpty);
+      buffer.dispose();
+    });
+
+    test("appendDelta() after clear() works normally (buffer is reusable)", () {
+      fakeAsync((async) {
+        var flushCount = 0;
+        final buffer = StreamingTextBuffer(
+          onFlush: () => flushCount++,
+          throttle: const Duration(milliseconds: 50),
+        );
+
+        buffer.appendDelta("p1", "first");
+        buffer.clear();
+        expect(buffer.snapshot(), isEmpty);
+
+        buffer.appendDelta("p2", "second");
+        expect(buffer.snapshot(), {"p2": "second"});
+
+        async.elapse(const Duration(milliseconds: 50));
+        expect(flushCount, 1);
+
+        buffer.dispose();
+      });
+    });
   });
 }

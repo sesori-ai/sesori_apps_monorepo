@@ -19,6 +19,17 @@ Future<(A, B, C, D, E)> wait5<A, B, C, D, E>(Future<A> a, Future<B> b, Future<C>
       (value) => (value[0] as A, value[1] as B, value[2] as C, value[3] as D, value[4] as E),
     );
 
+Future<(A, B, C, D, E, F)> wait6<A, B, C, D, E, F>(
+  Future<A> a,
+  Future<B> b,
+  Future<C> c,
+  Future<D> d,
+  Future<E> e,
+  Future<F> f,
+) => Future.wait([a, b, c, d, e, f]).then(
+  (value) => (value[0] as A, value[1] as B, value[2] as C, value[3] as D, value[4] as E, value[5] as F),
+);
+
 extension FutureX<T> on Future<T> {
   Future<OUT> requireType<OUT extends T>() {
     return then(

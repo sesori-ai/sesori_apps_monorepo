@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/src/capabilities/project/project_service.dart";
@@ -16,7 +18,14 @@ class MockSessionService extends Mock implements SessionService {}
 
 class MockFailureReporter extends Mock implements FailureReporter {}
 
-class MockConnectionService extends Mock implements ConnectionService {}
+class MockConnectionService extends Mock implements ConnectionService {
+  final StreamController<void> _dataMayBeStale = StreamController<void>.broadcast();
+
+  @override
+  Stream<void> get dataMayBeStale => _dataMayBeStale.stream;
+
+  void emitDataMayBeStale() => _dataMayBeStale.add(null);
+}
 
 class MockRouteSource extends Mock implements RouteSource {
   final BehaviorSubject<AppRoute?> _currentRoute;

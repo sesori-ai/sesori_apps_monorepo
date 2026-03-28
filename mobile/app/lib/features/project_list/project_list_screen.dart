@@ -121,62 +121,69 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
         ProjectListLoading() => const Center(
           child: CircularProgressIndicator(),
         ),
-        ProjectListLoaded(:final projects, :final activityById) => RefreshIndicator(
-          onRefresh: () async {
-            final success = await context.read<ProjectListCubit>().refreshProjects();
-            if (!context.mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(success ? loc.projectListRefreshSuccess : loc.projectListRefreshFailed)),
-            );
-          },
-          child: projects.isEmpty
-              ? CustomScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  slivers: [
-                    SliverFillRemaining(
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.folder_off_outlined,
-                              size: 48,
-                              color: Theme.of(context).colorScheme.outline,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(loc.noProjects, style: Theme.of(context).textTheme.titleMedium),
-                            const SizedBox(height: 8),
-                            Text(
-                              loc.addProjectPrompt,
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Theme.of(context).colorScheme.outline,
+        ProjectListLoaded(:final projects, :final activityById, :final isRefreshing) => Column(
+          children: [
+            if (isRefreshing) const LinearProgressIndicator(),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  final success = await context.read<ProjectListCubit>().refreshProjects();
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(success ? loc.projectListRefreshSuccess : loc.projectListRefreshFailed)),
+                  );
+                },
+                child: projects.isEmpty
+                    ? CustomScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        slivers: [
+                          SliverFillRemaining(
+                            child: Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.folder_off_outlined,
+                                    size: 48,
+                                    color: Theme.of(context).colorScheme.outline,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(loc.noProjects, style: Theme.of(context).textTheme.titleMedium),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    loc.addProjectPrompt,
+                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                      color: Theme.of(context).colorScheme.outline,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  FilledButton.icon(
+                                    onPressed: () => showAddProjectDialog(context, context.read<ProjectListCubit>()),
+                                    icon: const Icon(Icons.add),
+                                    label: Text(loc.addProject),
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 24),
-                            FilledButton.icon(
-                              onPressed: () => showAddProjectDialog(context, context.read<ProjectListCubit>()),
-                              icon: const Icon(Icons.add),
-                              label: Text(loc.addProject),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
+                      )
+                    : ListView.builder(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        itemCount: projects.length,
+                        itemBuilder: (context, index) {
+                          final project = projects[index];
+                          return _ProjectTile(
+                            project: project,
+                            activeSessions: activityById[project.id] ?? 0,
+                            onLongPress: () => _showProjectMenu(context, project),
+                          );
+                        },
                       ),
-                    ),
-                  ],
-                )
-              : ListView.builder(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: projects.length,
-                  itemBuilder: (context, index) {
-                    final project = projects[index];
-                    return _ProjectTile(
-                      project: project,
-                      activeSessions: activityById[project.id] ?? 0,
-                      onLongPress: () => _showProjectMenu(context, project),
-                    );
-                  },
-                ),
+              ),
+            ),
+          ],
         ),
         ProjectListFailed(:final error) => _ErrorView(
           error: error,

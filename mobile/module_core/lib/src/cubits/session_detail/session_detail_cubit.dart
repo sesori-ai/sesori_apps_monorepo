@@ -26,7 +26,10 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   late final StreamSubscription<SesoriSessionEvent> _eventSubscription;
   late final StreamSubscription<SseEvent> _globalEventSubscription;
   late final StreamSubscription<ConnectionStatus> _connectionStatusSubscription;
+  late final StreamSubscription<void> _staleSubscription;
   late final StreamingTextBuffer _streamingBuffer;
+  Future<void>? _activeRefresh;
+  bool _needsStaleRefresh = false;
 
   /// Fires the [SesoriQuestionAsked] whenever a new question arrives, so the
   /// screen can auto-open the question modal.
@@ -49,6 +52,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     _eventSubscription = _connectionService.sessionEvents(_sessionId).listen(_handleEvent);
     _globalEventSubscription = _connectionService.events.listen(_handleGlobalEvent);
     _connectionStatusSubscription = _connectionService.status.listen(_onConnectionStatusChanged);
+    _staleSubscription = _connectionService.dataMayBeStale.listen((_) => _onDataMayBeStale());
     _loadMessages();
   }
 
@@ -58,131 +62,224 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
   Future<void> _loadMessages() async {
     emit(const SessionDetailState.loading());
+    try {
+      final snapshot = await _fetchSessionSnapshot();
+      if (isClosed) return;
 
-    // Fire all requests in parallel.
-    final messagesFuture = _service.getMessages(_sessionId);
-    final questionsFuture = _service.getPendingQuestions(_sessionId);
-    final childrenFuture = _service.getChildren(_sessionId);
-    final statusesFuture = _service.getSessionStatuses();
-    final agentsFuture = _service.listAgents();
-    final providersFuture = _service.listProviders();
+      final latestAssistant = _latestAssistantMessage(snapshot.messages);
+      final childSessions = snapshot.childSessions
+        ..sort((a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0));
 
-    final messagesResponse = await messagesFuture;
-    if (isClosed) return;
+      // Filter statuses to only include child session IDs.
+      final childIds = childSessions.map((c) => c.id).toSet();
+      final childStatuses = Map<String, SessionStatus>.fromEntries(
+        snapshot.statuses.entries.where((e) => childIds.contains(e.key)),
+      );
 
-    final questionsResponse = await questionsFuture;
-    if (isClosed) return;
+      // Filter agents: only show visible, non-subagent agents for user selection.
+      final agents = snapshot.agents.where((a) => !a.hidden && a.mode != AgentMode.subagent).toList();
 
-    final childrenResponse = await childrenFuture;
-    if (isClosed) return;
+      // Only connected providers with active models.
+      final providers = snapshot.providerData?.items ?? <ProviderInfo>[];
 
-    final statusesResponse = await statusesFuture;
-    if (isClosed) return;
+      // Resolve default agent: first in list (server sorts default first).
+      final defaultAgent = agents.isNotEmpty ? agents.first.name : "build";
 
-    final agentsResponse = await agentsFuture;
-    if (isClosed) return;
+      // Resolve default model:
+      // 1. If the default agent has an explicit model preference, use it.
+      // 2. Otherwise, pick the first connected provider's default model.
+      final agentModel = agents.isNotEmpty ? agents.first.model : null;
+      final String defaultProviderID;
+      final String defaultModelID;
+      if (agentModel != null) {
+        defaultProviderID = agentModel.providerID;
+        defaultModelID = agentModel.modelID;
+      } else if (providers.isNotEmpty) {
+        defaultProviderID = providers.first.id;
+        final firstProviderDefaultModelId = providers.first.defaultModelID;
 
-    final providersResponse = await providersFuture;
-    if (isClosed) return;
+        defaultModelID =
+            firstProviderDefaultModelId != null && providers.first.models.containsKey(firstProviderDefaultModelId)
+            ? firstProviderDefaultModelId
+            : providers.first.models.values.first.id;
+      } else {
+        defaultProviderID = "";
+        defaultModelID = "";
+      }
 
-    switch (messagesResponse) {
-      case SuccessResponse(:final data):
-        final latestAssistant = _latestAssistantMessage(data);
-        final allStatuses = switch (statusesResponse) {
-          SuccessResponse(:final data) => data,
-          ErrorResponse() => <String, SessionStatus>{},
-        };
-        final childSessions = switch (childrenResponse) {
-          SuccessResponse(:final data) => data,
-          ErrorResponse() => <Session>[],
-        }..sort((a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0));
-        // Filter statuses to only include child session IDs.
-        final childIds = childSessions.map((c) => c.id).toSet();
-        final childStatuses = Map<String, SessionStatus>.fromEntries(
-          allStatuses.entries.where((e) => childIds.contains(e.key)),
-        );
-        // Filter agents: only show visible, non-subagent agents for user selection.
-        final agents = switch (agentsResponse) {
-          SuccessResponse(:final data) => data.where((a) => !a.hidden && a.mode != AgentMode.subagent).toList(),
-          ErrorResponse(:final error) => () {
-            loge("Failed to load agents: $error");
-            return <AgentInfo>[];
-          }(),
-        };
-        // Only connected providers with active models.
-        final providerData = switch (providersResponse) {
-          SuccessResponse(:final data) => data,
-          ErrorResponse(:final error) => () {
-            loge("Failed to load providers: $error");
-            return null;
-          }(),
-        };
-        final providers = providerData != null ? providerData.items : <ProviderInfo>[];
+      emit(
+        SessionDetailState.loaded(
+          messages: snapshot.messages,
+          streamingText: const {},
+          sessionStatus: snapshot.statuses[_sessionId] ?? const SessionStatus.idle(),
+          pendingQuestions: snapshot.pendingQuestions
+              .where((q) => q.sessionID == _sessionId)
+              .map(
+                (q) => SesoriQuestionAsked(
+                  id: q.id,
+                  sessionID: q.sessionID,
+                  questions: q.questions,
+                ),
+              )
+              .toList(),
+          agent: latestAssistant?.agent,
+          modelID: latestAssistant?.modelID,
+          providerID: latestAssistant?.providerID,
+          children: childSessions,
+          childStatuses: childStatuses,
+          availableAgents: agents,
+          availableProviders: providers,
+          selectedAgent: defaultAgent,
+          selectedProviderID: defaultProviderID,
+          selectedModelID: defaultModelID,
+        ),
+      );
 
-        // Resolve default agent: first in list (server sorts default first).
-        final defaultAgent = agents.isNotEmpty ? agents.first.name : "build";
-
-        // Resolve default model:
-        // 1. If the default agent has an explicit model preference, use it.
-        // 2. Otherwise, pick the first connected provider's default model.
-        final agentModel = agents.isNotEmpty ? agents.first.model : null;
-        final String defaultProviderID;
-        final String defaultModelID;
-        if (agentModel != null) {
-          defaultProviderID = agentModel.providerID;
-          defaultModelID = agentModel.modelID;
-        } else if (providers.isNotEmpty) {
-          defaultProviderID = providers.first.id;
-          final firstProviderDefaultModelId = providers.first.defaultModelID;
-
-          defaultModelID =
-              firstProviderDefaultModelId != null && providers.first.models.containsKey(firstProviderDefaultModelId)
-              ? firstProviderDefaultModelId
-              : providers.first.models.values.first.id;
-        } else {
-          defaultProviderID = "";
-          defaultModelID = "";
-        }
-
-        emit(
-          SessionDetailState.loaded(
-            messages: data,
-            streamingText: const {},
-            sessionStatus: allStatuses[_sessionId] ?? const SessionStatus.idle(),
-            pendingQuestions: switch (questionsResponse) {
-              SuccessResponse(:final data) =>
-                data
-                    .where((q) => q.sessionID == _sessionId)
-                    .map(
-                      (q) => SesoriQuestionAsked(
-                        id: q.id,
-                        sessionID: q.sessionID,
-                        questions: q.questions,
-                      ),
-                    )
-                    .toList(),
-              ErrorResponse() => const [],
-            },
-            agent: latestAssistant?.agent,
-            modelID: latestAssistant?.modelID,
-            providerID: latestAssistant?.providerID,
-            children: childSessions,
-            childStatuses: childStatuses,
-            availableAgents: agents,
-            availableProviders: providers,
-            selectedAgent: defaultAgent,
-            selectedProviderID: defaultProviderID,
-            selectedModelID: defaultModelID,
-          ),
-        );
-        // Drain any messages that were queued before load completed.
-        _tryDrainQueue();
-      case ErrorResponse(:final error):
-        emit(SessionDetailState.failed(error: error));
+      // Drain any messages that were queued before load completed.
+      _tryDrainQueue();
+    } catch (error) {
+      if (isClosed) return;
+      emit(SessionDetailState.failed(error: error is ApiError ? error : ApiError.generic()));
     }
   }
 
   Future<void> reload() => _loadMessages();
+
+  void _silentRefresh() {
+    if (state is! SessionDetailLoaded) return;
+    _activeRefresh ??= _doSilentRefresh().whenComplete(() => _activeRefresh = null);
+  }
+
+  Future<void> _doSilentRefresh() async {
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
+
+    final preservedSelectedAgent = current.selectedAgent;
+    final preservedSelectedProviderID = current.selectedProviderID;
+    final preservedSelectedModelID = current.selectedModelID;
+
+    emit(current.copyWith(isRefreshing: true));
+
+    try {
+      final snapshot = await _fetchSessionSnapshot();
+      if (isClosed) return;
+
+      final latestAssistant = _latestAssistantMessage(snapshot.messages);
+      final childIds = snapshot.childSessions.map((c) => c.id).toSet();
+      final childStatuses = Map<String, SessionStatus>.fromEntries(
+        snapshot.statuses.entries.where((e) => childIds.contains(e.key)),
+      );
+      final availableAgents = snapshot.agents.where((a) => !a.hidden && a.mode != AgentMode.subagent).toList();
+      final availableProviders = snapshot.providerData?.items ?? <ProviderInfo>[];
+
+      final streamingText = _streamingBuffer.snapshot();
+      _streamingBuffer.clear();
+
+      emit(
+        current.copyWith(
+          messages: snapshot.messages,
+          streamingText: streamingText,
+          sessionStatus: snapshot.statuses[_sessionId] ?? const SessionStatus.idle(),
+          pendingQuestions: snapshot.pendingQuestions
+              .where((q) => q.sessionID == _sessionId)
+              .map(
+                (q) => SesoriQuestionAsked(
+                  id: q.id,
+                  sessionID: q.sessionID,
+                  questions: q.questions,
+                ),
+              )
+              .toList(),
+          agent: latestAssistant?.agent,
+          modelID: latestAssistant?.modelID,
+          providerID: latestAssistant?.providerID,
+          children: snapshot.childSessions,
+          childStatuses: childStatuses,
+          availableAgents: availableAgents,
+          availableProviders: availableProviders,
+          selectedAgent: preservedSelectedAgent,
+          selectedProviderID: preservedSelectedProviderID,
+          selectedModelID: preservedSelectedModelID,
+          isRefreshing: false,
+        ),
+      );
+    } catch (error) {
+      logw("Silent refresh failed: $error");
+      if (isClosed) return;
+      emit(current.copyWith(isRefreshing: false));
+    }
+  }
+
+  /// Fetches a complete snapshot of session data from the API.
+  /// Messages are required (throws on error). All other fields fall back to defaults.
+  Future<
+    ({
+      List<MessageWithParts> messages,
+      List<PendingQuestion> pendingQuestions,
+      List<Session> childSessions,
+      Map<String, SessionStatus> statuses,
+      List<AgentInfo> agents,
+      ProviderListResponse? providerData,
+    })
+  >
+  _fetchSessionSnapshot() async {
+    final (
+      messagesResponse,
+      questionsResponse,
+      childrenResponse,
+      statusesResponse,
+      agentsResponse,
+      providersResponse,
+    ) = await wait6(
+      _service.getMessages(_sessionId),
+      _service.getPendingQuestions(_sessionId),
+      _service.getChildren(_sessionId),
+      _service.getSessionStatuses(),
+      _service.listAgents(),
+      _service.listProviders(),
+    );
+
+    final messages = switch (messagesResponse) {
+      SuccessResponse(:final data) => data,
+      ErrorResponse(:final error) => throw error,
+    };
+
+    final pendingQuestions = switch (questionsResponse) {
+      SuccessResponse(:final data) => data,
+      ErrorResponse() => <PendingQuestion>[],
+    };
+    final childSessions = switch (childrenResponse) {
+      SuccessResponse(:final data) => data,
+      ErrorResponse() => <Session>[],
+    };
+    final statuses = switch (statusesResponse) {
+      SuccessResponse(:final data) => data,
+      ErrorResponse() => <String, SessionStatus>{},
+    };
+    final agents = switch (agentsResponse) {
+      SuccessResponse(:final data) => data,
+      ErrorResponse(:final error) => () {
+        loge("Failed to load agents: $error");
+        return <AgentInfo>[];
+      }(),
+    };
+    final providerData = switch (providersResponse) {
+      SuccessResponse(:final data) => data,
+      ErrorResponse(:final error) => () {
+        loge("Failed to load providers: $error");
+        return null;
+      }(),
+    };
+
+    return (
+      messages: messages,
+      pendingQuestions: pendingQuestions,
+      childSessions: childSessions,
+      statuses: statuses,
+      agents: agents,
+      providerData: providerData,
+    );
+  }
 
   /// Returns the latest assistant [Message] from the list, or null if none.
   Message? _latestAssistantMessage(List<MessageWithParts> messages) {
@@ -451,10 +548,24 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
   bool get _isConnected => _connectionService.currentStatus is ConnectionConnected;
 
+  void _onDataMayBeStale() {
+    if (state is! SessionDetailLoaded) return;
+    final status = _connectionService.status.value;
+    if (status is ConnectionConnected) {
+      _silentRefresh();
+    } else {
+      _needsStaleRefresh = true;
+    }
+  }
+
   void _onConnectionStatusChanged(ConnectionStatus status) {
     if (isClosed) return;
     if (status is ConnectionConnected) {
       _tryDrainQueue();
+      if (_needsStaleRefresh) {
+        _needsStaleRefresh = false;
+        _silentRefresh();
+      }
     }
   }
 
@@ -661,6 +772,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     _eventSubscription.cancel();
     _globalEventSubscription.cancel();
     _connectionStatusSubscription.cancel();
+    _staleSubscription.cancel();
     _streamingBuffer.dispose();
     _questionStream.close();
     return super.close();

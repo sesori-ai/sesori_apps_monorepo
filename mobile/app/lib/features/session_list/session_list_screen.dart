@@ -233,48 +233,55 @@ class _SessionListBody extends StatelessWidget {
         SessionListLoading() => const Center(
           child: CircularProgressIndicator(),
         ),
-        SessionListLoaded(:final sessions) => RefreshIndicator(
-          onRefresh: () async {
-            final success = await context.read<SessionListCubit>().refreshSessions();
-            if (!context.mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(success ? loc.sessionListRefreshSuccess : loc.sessionListRefreshFailed)),
-            );
-          },
-          child: sessions.isEmpty
-              ? CustomScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  slivers: [
-                    SliverFillRemaining(
-                      child: Center(
-                        child: Text(
-                          showArchived ? loc.sessionListEmptyArchived : loc.sessionListEmpty,
-                        ),
+        SessionListLoaded(:final sessions, :final isRefreshing) => Column(
+          children: [
+            if (isRefreshing) const LinearProgressIndicator(),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  final success = await context.read<SessionListCubit>().refreshSessions();
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(success ? loc.sessionListRefreshSuccess : loc.sessionListRefreshFailed)),
+                  );
+                },
+                child: sessions.isEmpty
+                    ? CustomScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        slivers: [
+                          SliverFillRemaining(
+                            child: Center(
+                              child: Text(
+                                showArchived ? loc.sessionListEmptyArchived : loc.sessionListEmpty,
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : ListView.builder(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        itemCount: sessions.length,
+                        itemBuilder: (context, index) {
+                          final session = sessions[index];
+                          final cubit = context.read<SessionListCubit>();
+                          final isArchived = session.time?.archived != null;
+                          final activityInfo = state.activeSessionIds[session.id];
+                          return _SessionTile(
+                            session: session,
+                            isArchived: isArchived,
+                            isActive: activityInfo != null,
+                            backgroundTaskCount: activityInfo?.backgroundTaskCount ?? 0,
+                            onLongPress: () => _showSessionActions(context, session),
+                            onSwipe: () => isArchived
+                                ? _unarchiveSession(context, cubit, session.id)
+                                : _archiveSession(context, cubit, session.id),
+                          );
+                        },
                       ),
-                    ),
-                  ],
-                )
-              : ListView.builder(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: sessions.length,
-                  itemBuilder: (context, index) {
-                    final session = sessions[index];
-                    final cubit = context.read<SessionListCubit>();
-                    final isArchived = session.time?.archived != null;
-                    final activityInfo = state.activeSessionIds[session.id];
-                    return _SessionTile(
-                      session: session,
-                      isArchived: isArchived,
-                      isActive: activityInfo != null,
-                      backgroundTaskCount: activityInfo?.backgroundTaskCount ?? 0,
-                      onLongPress: () => _showSessionActions(context, session),
-                      onSwipe: () => isArchived
-                          ? _unarchiveSession(context, cubit, session.id)
-                          : _archiveSession(context, cubit, session.id),
-                    );
-                  },
-                ),
+              ),
+            ),
+          ],
         ),
         SessionListStaleProject() => _StaleProjectView(
           onBack: () => context.pop(),

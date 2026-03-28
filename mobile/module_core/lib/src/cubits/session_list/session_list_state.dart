@@ -19,6 +19,7 @@ sealed class SessionListState with _$SessionListState {
     /// A session is "active" when either its main agent or any of its direct
     /// child tasks are running.
     @Default({}) Map<String, SessionActivityInfo> activeSessionIds,
+    @Default(false) bool isRefreshing,
   }) = SessionListLoaded;
 
   /// The requested project ID no longer resolves to the expected project on

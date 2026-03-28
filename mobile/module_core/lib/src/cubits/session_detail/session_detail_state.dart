@@ -32,6 +32,7 @@ sealed class SessionDetailState with _$SessionDetailState {
     required String selectedAgent,
     required String selectedProviderID,
     required String selectedModelID,
+    @Default(false) bool isRefreshing,
   }) = SessionDetailLoaded;
 
   const factory SessionDetailState.failed({required ApiError error}) = SessionDetailFailed;
