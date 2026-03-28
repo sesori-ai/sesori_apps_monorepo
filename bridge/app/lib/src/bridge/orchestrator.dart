@@ -118,7 +118,7 @@ class OrchestratorSession {
        _router = RequestRouter(
          plugin: plugin,
          projectsDao: projectsDao,
-         sessionWorktreesDao: projectsDao.attachedDatabase.sessionWorktreesDao,
+         sessionDao: projectsDao.attachedDatabase.sessionDao,
        ),
        _mapper = BridgeEventMapper(plugin: plugin, failureReporter: failureReporter);
 

@@ -1,7 +1,7 @@
 import "dart:io";
 
 import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
-import "package:sesori_bridge/src/bridge/persistence/daos/session_worktrees_dao.dart";
+import "package:sesori_bridge/src/bridge/persistence/daos/session_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/worktree_service.dart";
 import "package:test/test.dart";
@@ -16,20 +16,20 @@ void main() {
     late bool gitDirectoryExists;
     late AppDatabase db;
     late ProjectsDao projectsDao;
-    late SessionWorktreesDao sessionWorktreesDao;
+    late SessionDao sessionDao;
     late WorktreeService service;
 
     setUp(() {
       db = createTestDatabase();
       projectsDao = db.projectsDao;
-      sessionWorktreesDao = db.sessionWorktreesDao;
+      sessionDao = db.sessionDao;
       processRunner = _FakeProcessRunner();
       gitDirectoryExists = true;
       service = WorktreeService(
         projectsDao: projectsDao,
-        sessionWorktreesDao: sessionWorktreesDao,
+        sessionDao: sessionDao,
         processRunner: processRunner.call,
-        gitDirectoryExists: ({required String gitDirectoryPath}) => gitDirectoryExists,
+        gitPathExists: ({required String gitPath}) => gitDirectoryExists,
       );
     });
 
@@ -67,55 +67,17 @@ void main() {
       expect(worktreeAddCall.arguments, contains("session-001"));
     });
 
-    // -----------------------------------------------------------------------
-    // Parent reuse
-    // -----------------------------------------------------------------------
-
-    test("parent reuse: returns parent worktree, no git calls, no counter increment", () async {
-      await sessionWorktreesDao.insertMapping(
-        sessionId: "parent-001",
-        projectId: _projectId,
-        worktreePath: "$_projectId/.worktrees/session-007",
-        branchName: "session-007",
-      );
-
+    test("parent session: always falls back to original project path", () async {
       final result = await service.prepareWorktreeForSession(
         projectId: _projectId,
         parentSessionId: "parent-001",
       );
 
-      expect(result, isA<WorktreeSuccess>());
-      final success = result as WorktreeSuccess;
-      expect(success.path, equals("$_projectId/.worktrees/session-007"));
-      expect(success.branchName, equals("session-007"));
-
-      // No git commands should have been run
+      expect(result, isA<WorktreeFallback>());
+      final fallback = result as WorktreeFallback;
+      expect(fallback.originalPath, equals(_projectId));
+      expect(fallback.reason, equals("parent session uses original path"));
       expect(processRunner.invocations, isEmpty);
-
-      // Counter must not have been incremented
-      final counter = await projectsDao.incrementAndGetWorktreeCounter(
-        projectId: _projectId,
-      );
-      expect(counter, equals(1)); // first ever increment → 1, not 2+
-    });
-
-    // -----------------------------------------------------------------------
-    // Parent not found (pre-feature session)
-    // -----------------------------------------------------------------------
-
-    test("parent not found: falls through and creates new worktree", () async {
-      // No mapping in DB for "unknown-parent"
-      processRunner.enqueue(result: _ok());
-      processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
-      processRunner.enqueue(result: _ok(stdout: ""));
-      processRunner.enqueue(result: _ok());
-
-      final result = await service.prepareWorktreeForSession(
-        projectId: _projectId,
-        parentSessionId: "unknown-parent",
-      );
-
-      expect(result, isA<WorktreeSuccess>());
     });
 
     // -----------------------------------------------------------------------
@@ -298,7 +260,7 @@ void main() {
       db = createTestDatabase();
       service = WorktreeService(
         projectsDao: db.projectsDao,
-        sessionWorktreesDao: db.sessionWorktreesDao,
+        sessionDao: db.sessionDao,
         processRunner: _FakeProcessRunner().call,
       );
     });
@@ -315,7 +277,7 @@ void main() {
         branchName: "session-042",
       );
 
-      final stored = await db.sessionWorktreesDao.getWorktreeForSession(
+      final stored = await db.sessionDao.getWorktreeForSession(
         sessionId: "ses-42",
       );
 

@@ -2,7 +2,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../persistence/daos/projects_dao.dart";
-import "../persistence/daos/session_worktrees_dao.dart";
+import "../persistence/daos/session_dao.dart";
 import "../worktree_service.dart";
 import "abort_session_handler.dart";
 import "create_project_handler.dart";
@@ -45,22 +45,22 @@ class RequestRouter {
   RequestRouter({
     required BridgePlugin plugin,
     required ProjectsDao projectsDao,
-    required SessionWorktreesDao sessionWorktreesDao,
+    required SessionDao sessionDao,
   }) : _handlers = _buildHandlers(
          plugin: plugin,
          projectsDao: projectsDao,
-         sessionWorktreesDao: sessionWorktreesDao,
+         sessionDao: sessionDao,
        );
 
   static List<RequestHandler> _buildHandlers({
     required BridgePlugin plugin,
     required ProjectsDao projectsDao,
-    required SessionWorktreesDao sessionWorktreesDao,
+    required SessionDao sessionDao,
   }) {
     final hiddenStore = projectsDao;
     final worktreeService = WorktreeService(
       projectsDao: projectsDao,
-      sessionWorktreesDao: sessionWorktreesDao,
+      sessionDao: sessionDao,
     );
     return [
       HealthCheckHandler(plugin),

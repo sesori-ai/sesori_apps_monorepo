@@ -19,9 +19,9 @@ void main() {
       gitDirectoryExists = false;
       service = WorktreeService(
         projectsDao: db.projectsDao,
-        sessionWorktreesDao: db.sessionWorktreesDao,
+        sessionDao: db.sessionDao,
         processRunner: processRunner.call,
-        gitDirectoryExists: ({required String gitDirectoryPath}) => gitDirectoryExists,
+        gitPathExists: ({required String gitPath}) => gitDirectoryExists,
       );
     });
 

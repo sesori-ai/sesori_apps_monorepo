@@ -43,18 +43,51 @@ class CreateSessionHandler extends RequestHandler {
     final projectId = createRequest.projectId;
     final parentSessionId = createRequest.parentSessionId;
 
+    if (parentSessionId != null) {
+      final created = await _plugin.createSession(
+        projectId: projectId,
+        directory: null,
+        parentSessionId: parentSessionId,
+      );
+
+      final session = Session(
+        id: created.id,
+        projectID: created.projectID,
+        directory: created.directory,
+        parentID: created.parentID,
+        title: created.title,
+        time: switch (created.time) {
+          PluginSessionTime(:final created, :final updated, :final archived) => SessionTime(
+            created: created,
+            updated: updated,
+            archived: archived,
+          ),
+          null => null,
+        },
+        summary: switch (created.summary) {
+          PluginSessionSummary(:final additions, :final deletions, :final files) => SessionSummary(
+            additions: additions,
+            deletions: deletions,
+            files: files,
+          ),
+          null => null,
+        },
+      );
+
+      return buildOkJsonResponse(request, jsonEncode(session.toJson()));
+    }
+
     final worktreeResult = await _worktreeService.prepareWorktreeForSession(
       projectId: projectId,
       parentSessionId: parentSessionId,
     );
 
-    final effectiveDirectory = switch (worktreeResult) {
-      WorktreeSuccess(:final path) => path,
-      WorktreeFallback(:final originalPath) => originalPath,
-    };
-
     final created = await _plugin.createSession(
-      projectId: effectiveDirectory,
+      projectId: projectId,
+      directory: switch (worktreeResult) {
+        WorktreeSuccess(:final path) => path,
+        WorktreeFallback() => null,
+      },
       parentSessionId: parentSessionId,
     );
 

@@ -4,17 +4,17 @@ import "package:drift/drift.dart";
 import "package:drift/native.dart";
 
 import "daos/projects_dao.dart";
-import "daos/session_worktrees_dao.dart";
+import "daos/session_dao.dart";
 import "database.steps.dart";
 import "tables/projects_table.dart";
-import "tables/session_worktrees_table.dart";
+import "tables/session_table.dart";
 
 part "database.g.dart";
 
 /// Central Drift database for the bridge CLI.
 ///
 /// New tables and DAOs should be registered here as the persistence layer grows.
-@DriftDatabase(tables: [ProjectsTable, SessionWorktreesTable], daos: [ProjectsDao, SessionWorktreesDao])
+@DriftDatabase(tables: [ProjectsTable, SessionTable], daos: [ProjectsDao, SessionDao])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 

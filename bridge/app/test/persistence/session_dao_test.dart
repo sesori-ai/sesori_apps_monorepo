@@ -1,17 +1,17 @@
-import "package:sesori_bridge/src/bridge/persistence/daos/session_worktrees_dao.dart";
+import "package:sesori_bridge/src/bridge/persistence/daos/session_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:test/test.dart";
 
 import "../helpers/test_database.dart";
 
 void main() {
-  group("SessionWorktreesDao", () {
+  group("SessionDao", () {
     late AppDatabase db;
-    late SessionWorktreesDao dao;
+    late SessionDao dao;
 
     setUp(() {
       db = createTestDatabase();
-      dao = db.sessionWorktreesDao;
+      dao = db.sessionDao;
     });
 
     tearDown(() async {
@@ -49,13 +49,13 @@ void main() {
         branchName: "main",
       );
 
-      await dao.deleteMapping(sessionId: "ses-2");
+      await dao.deleteSession(sessionId: "ses-2");
 
       final result = await dao.getWorktreeForSession(sessionId: "ses-2");
       expect(result, isNull);
     });
 
-    test("deleteMapping is no-op for unknown sessionId", () async {
+    test("deleteSession is no-op for unknown sessionId", () async {
       await dao.insertMapping(
         sessionId: "ses-3",
         projectId: "proj-3",
@@ -63,7 +63,7 @@ void main() {
         branchName: "develop",
       );
 
-      await dao.deleteMapping(sessionId: "does-not-exist");
+      await dao.deleteSession(sessionId: "does-not-exist");
 
       final result = await dao.getWorktreeForSession(sessionId: "ses-3");
       expect(result, isNotNull);

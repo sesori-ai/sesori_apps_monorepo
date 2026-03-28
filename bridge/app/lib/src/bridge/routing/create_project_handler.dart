@@ -77,6 +77,20 @@ class CreateProjectHandler extends RequestHandler {
       return buildErrorResponse(request, 500, "failed to write .gitignore: $error");
     }
 
+    final addResult = await Process.run("git", ["add", "."], workingDirectory: path);
+    if (addResult.exitCode != 0) {
+      Log.w("CreateProjectHandler: git add failed for $path: ${addResult.stderr}");
+    } else {
+      final commitResult = await Process.run(
+        "git",
+        ["commit", "-m", "Initial commit"],
+        workingDirectory: path,
+      );
+      if (commitResult.exitCode != 0) {
+        Log.w("CreateProjectHandler: initial commit failed for $path: ${commitResult.stderr}");
+      }
+    }
+
     final pluginProject = await _plugin.getProject(path);
     final project = pluginProject.toSharedProject();
 

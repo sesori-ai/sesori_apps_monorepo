@@ -17,7 +17,26 @@ class BridgeDiagnostics {
       allPassed = false;
     }
 
+    if (!await checkGitAvailable()) {
+      allPassed = false;
+    }
+
     return allPassed;
+  }
+
+  Future<bool> checkGitAvailable() async {
+    try {
+      final result = await Process.run("git", ["--version"]);
+      if (result.exitCode != 0) {
+        Log.w("[diagnostics] git is not available - worktree creation will be skipped.");
+        return false;
+      }
+      Log.d("[diagnostics] Git available: ${result.stdout.toString().trim()}");
+      return true;
+    } on Object {
+      Log.w("[diagnostics] git is not installed - worktree creation will be skipped.");
+      return false;
+    }
   }
 
   /// Checks that the bridge can list directories the user is likely to browse.

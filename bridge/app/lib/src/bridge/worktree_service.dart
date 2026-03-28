@@ -3,7 +3,7 @@ import "dart:io";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "persistence/daos/projects_dao.dart";
-import "persistence/daos/session_worktrees_dao.dart";
+import "persistence/daos/session_dao.dart";
 
 typedef ProcessRunner =
     Future<ProcessResult> Function(
@@ -12,7 +12,7 @@ typedef ProcessRunner =
       String? workingDirectory,
     });
 
-typedef GitDirectoryExistsChecker = bool Function({required String gitDirectoryPath});
+typedef GitPathExistsChecker = bool Function({required String gitPath});
 
 // ---------------------------------------------------------------------------
 // Result types
@@ -44,26 +44,26 @@ class WorktreeService {
   static const _worktreeDir = ".worktrees";
 
   final ProcessRunner _processRunner;
-  final GitDirectoryExistsChecker _gitDirectoryExists;
+  final GitPathExistsChecker _gitPathExists;
   final ProjectsDao _projectsDao;
-  final SessionWorktreesDao _sessionWorktreesDao;
+  final SessionDao _sessionDao;
 
   WorktreeService({
     required ProjectsDao projectsDao,
-    required SessionWorktreesDao sessionWorktreesDao,
+    required SessionDao sessionDao,
     ProcessRunner processRunner = Process.run,
-    GitDirectoryExistsChecker? gitDirectoryExists,
+    GitPathExistsChecker? gitPathExists,
   }) : _processRunner = processRunner,
-       _gitDirectoryExists = gitDirectoryExists ?? _defaultGitDirectoryExistsChecker,
+       _gitPathExists = gitPathExists ?? _defaultGitPathExistsChecker,
        _projectsDao = projectsDao,
-       _sessionWorktreesDao = sessionWorktreesDao;
+       _sessionDao = sessionDao;
 
   // -------------------------------------------------------------------------
   // Git primitives
   // -------------------------------------------------------------------------
 
   Future<bool> isGitInitialized({required String projectPath}) async {
-    return _gitDirectoryExists(gitDirectoryPath: "$projectPath/.git");
+    return _gitPathExists(gitPath: "$projectPath/.git");
   }
 
   Future<bool> hasAtLeastOneCommit({required String projectPath}) async {
@@ -135,28 +135,23 @@ class WorktreeService {
   // Orchestration
   // -------------------------------------------------------------------------
 
-  /// Prepares a worktree for a new or child session.
+  /// Prepares a worktree for a new session.
   ///
   /// Returns [WorktreeSuccess] with the path and branch when a worktree is
-  /// ready (either reused from a parent session or freshly created).
-  /// Returns [WorktreeFallback] when the project is not git-initialised, has
-  /// no commits, or every creation attempt fails.
+  /// ready (freshly created).
+  /// Returns [WorktreeFallback] when this session should stay on the original
+  /// project path, the project is not git-initialised, has no commits, or
+  /// every creation attempt fails.
   Future<WorktreeResult> prepareWorktreeForSession({
     required String projectId,
     required String? parentSessionId,
   }) async {
-    // 1. If a parent session exists, reuse its worktree.
+    // 1. Parent sessions never use a worktree.
     if (parentSessionId != null) {
-      final parentWorktree = await _sessionWorktreesDao.getWorktreeForSession(
-        sessionId: parentSessionId,
+      return WorktreeFallback(
+        originalPath: projectId,
+        reason: "parent session uses original path",
       );
-      if (parentWorktree != null) {
-        return WorktreeSuccess(
-          path: parentWorktree.worktreePath,
-          branchName: parentWorktree.branchName,
-        );
-      }
-      // Parent not found (pre-feature session) — fall through to create new.
     }
 
     // 2. Guard: must be a git repository.
@@ -226,7 +221,7 @@ class WorktreeService {
     required String worktreePath,
     required String branchName,
   }) async {
-    await _sessionWorktreesDao.insertMapping(
+    await _sessionDao.insertMapping(
       sessionId: sessionId,
       projectId: projectId,
       worktreePath: worktreePath,
@@ -258,6 +253,6 @@ class WorktreeService {
   }
 }
 
-bool _defaultGitDirectoryExistsChecker({required String gitDirectoryPath}) {
-  return Directory(gitDirectoryPath).existsSync();
+bool _defaultGitPathExistsChecker({required String gitPath}) {
+  return FileSystemEntity.typeSync(gitPath) != FileSystemEntityType.notFound;
 }

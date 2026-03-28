@@ -13,6 +13,7 @@ analyzer:
       "**.freezed.dart",
       "**.config.dart",
       "**.g.dart",
+      "**.steps.dart",
       "**.g.edited.dart",
       "lib/generated/**",
     ]

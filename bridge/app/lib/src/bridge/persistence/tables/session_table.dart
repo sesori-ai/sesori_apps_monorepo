@@ -3,10 +3,13 @@ import "package:freezed_annotation/freezed_annotation.dart";
 
 import "../database.dart";
 
-part "session_worktrees_table.freezed.dart";
+part "session_table.freezed.dart";
 
-@UseRowClass(SessionWorktree)
-class SessionWorktreesTable extends Table {
+@UseRowClass(SessionDto)
+class SessionTable extends Table {
+  @override
+  String get tableName => "session_worktrees_table";
+
   TextColumn get sessionId => text()();
   TextColumn get projectId => text()();
   TextColumn get worktreePath => text()();
@@ -20,13 +23,13 @@ class SessionWorktreesTable extends Table {
 }
 
 @freezed
-sealed class SessionWorktree with _$SessionWorktree, $SessionWorktreesTableTableToColumns {
-  const factory SessionWorktree({
+sealed class SessionDto with _$SessionDto, $SessionTableTableToColumns {
+  const factory SessionDto({
     required String sessionId,
     required String projectId,
     required String worktreePath,
     required String branchName,
-  }) = _SessionWorktree;
+  }) = _SessionDto;
 
-  const SessionWorktree._();
+  const SessionDto._();
 }

@@ -49,6 +49,7 @@ class FakeBridgePlugin implements BridgePlugin {
 
   bool? lastGetProvidersConnectedOnly;
   String? lastCreateSessionProjectId;
+  String? lastCreateSessionDirectory;
   String? lastCreateSessionParentId;
   String? lastUpdateSessionId;
   bool? lastUpdateSessionArchived;
@@ -115,8 +116,13 @@ class FakeBridgePlugin implements BridgePlugin {
   }
 
   @override
-  Future<PluginSession> createSession({required String projectId, String? parentSessionId}) async {
+  Future<PluginSession> createSession({
+    required String projectId,
+    String? directory,
+    String? parentSessionId,
+  }) async {
     lastCreateSessionProjectId = projectId;
+    lastCreateSessionDirectory = directory;
     lastCreateSessionParentId = parentSessionId;
     return createSessionResult ??
         const PluginSession(

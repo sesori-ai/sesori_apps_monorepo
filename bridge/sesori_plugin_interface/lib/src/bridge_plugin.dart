@@ -26,7 +26,11 @@ abstract class BridgePlugin {
   ///
   /// If [parentSessionId] is provided, the new session is created as a
   /// child (sub-session) of the specified parent.
-  Future<PluginSession> createSession({required String projectId, String? parentSessionId});
+  Future<PluginSession> createSession({
+    required String projectId,
+    String? directory,
+    String? parentSessionId,
+  });
 
   Future<PluginSession> updateSessionArchiveStatus(String sessionId, {required bool archived});
 

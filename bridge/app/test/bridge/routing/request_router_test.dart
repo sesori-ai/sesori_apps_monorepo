@@ -21,7 +21,7 @@ void main() {
       router = RequestRouter(
         plugin: plugin,
         projectsDao: db.projectsDao,
-        sessionWorktreesDao: db.sessionWorktreesDao,
+        sessionDao: db.sessionDao,
       );
     });
 
@@ -110,6 +110,7 @@ void main() {
 
       expect(response.status, equals(200));
       expect(plugin.lastCreateSessionProjectId, equals("/tmp"));
+      expect(plugin.lastCreateSessionDirectory, isNull);
       expect(plugin.lastCreateSessionParentId, equals("parent-1"));
     });
 

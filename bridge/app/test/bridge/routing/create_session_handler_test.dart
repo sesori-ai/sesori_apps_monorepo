@@ -70,7 +70,7 @@ void main() {
           "POST",
           "/session",
           body: jsonEncode(
-            const CreateSessionRequest(projectId: "/repo", parentSessionId: "parent-1").toJson(),
+            const CreateSessionRequest(projectId: "/repo", parentSessionId: null).toJson(),
           ),
         ),
         pathParams: {},
@@ -78,9 +78,10 @@ void main() {
       );
 
       expect(worktreeService.lastPrepareProjectId, equals("/repo"));
-      expect(worktreeService.lastPrepareParentSessionId, equals("parent-1"));
-      expect(plugin.lastCreateSessionProjectId, equals("/repo/.worktrees/session-001"));
-      expect(plugin.lastCreateSessionParentId, equals("parent-1"));
+      expect(worktreeService.lastPrepareParentSessionId, isNull);
+      expect(plugin.lastCreateSessionProjectId, equals("/repo"));
+      expect(plugin.lastCreateSessionDirectory, equals("/repo/.worktrees/session-001"));
+      expect(plugin.lastCreateSessionParentId, isNull);
       expect(worktreeService.recordCalls, hasLength(1));
       expect(worktreeService.recordCalls.first.sessionId, equals("s1"));
       expect(worktreeService.recordCalls.first.projectId, equals("/repo"));
@@ -117,24 +118,21 @@ void main() {
       );
 
       expect(plugin.lastCreateSessionProjectId, equals("/repo"));
+      expect(plugin.lastCreateSessionDirectory, isNull);
       expect(plugin.lastCreateSessionParentId, isNull);
       expect(worktreeService.recordCalls, isEmpty);
       expect(response.status, equals(200));
     });
 
-    test("child session reuse uses parent worktree path", () async {
+    test("parent session uses original path and skips worktree service", () async {
       plugin.createSessionResult = const PluginSession(
         id: "s-child",
         projectID: "p1",
-        directory: "/repo/.worktrees/session-001",
+        directory: "/repo",
         parentID: "parent-1",
         title: "Child",
         time: null,
         summary: null,
-      );
-      worktreeService.prepareResult = WorktreeSuccess(
-        path: "/repo/.worktrees/session-001",
-        branchName: "session-001",
       );
 
       final response = await handler.handle(
@@ -149,9 +147,12 @@ void main() {
         queryParams: {},
       );
 
-      expect(plugin.lastCreateSessionProjectId, equals("/repo/.worktrees/session-001"));
+      expect(worktreeService.prepareCallCount, equals(0));
+      expect(worktreeService.lastPrepareProjectId, isNull);
+      expect(plugin.lastCreateSessionProjectId, equals("/repo"));
+      expect(plugin.lastCreateSessionDirectory, isNull);
       expect(plugin.lastCreateSessionParentId, equals("parent-1"));
-      expect(worktreeService.recordCalls, hasLength(1));
+      expect(worktreeService.recordCalls, isEmpty);
       expect(response.status, equals(200));
     });
 
@@ -244,6 +245,7 @@ void main() {
 class _FakeWorktreeService extends WorktreeService {
   String? lastPrepareProjectId;
   String? lastPrepareParentSessionId;
+  int prepareCallCount = 0;
   WorktreeResult prepareResult = WorktreeFallback(
     originalPath: "/repo",
     reason: "default",
@@ -261,7 +263,7 @@ class _FakeWorktreeService extends WorktreeService {
   _FakeWorktreeService({required AppDatabase database})
     : super(
         projectsDao: database.projectsDao,
-        sessionWorktreesDao: database.sessionWorktreesDao,
+        sessionDao: database.sessionDao,
       );
 
   @override
@@ -269,6 +271,7 @@ class _FakeWorktreeService extends WorktreeService {
     required String projectId,
     required String? parentSessionId,
   }) async {
+    prepareCallCount++;
     lastPrepareProjectId = projectId;
     lastPrepareParentSessionId = parentSessionId;
     return prepareResult;
@@ -292,7 +295,11 @@ class _FakeWorktreeService extends WorktreeService {
 
 class _ThrowingCreateSessionPlugin extends FakeBridgePlugin {
   @override
-  Future<PluginSession> createSession({required String projectId, String? parentSessionId}) {
+  Future<PluginSession> createSession({
+    required String projectId,
+    String? directory,
+    String? parentSessionId,
+  }) {
     throw StateError("createSession failed");
   }
 }

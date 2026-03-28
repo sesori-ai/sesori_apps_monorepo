@@ -3,7 +3,7 @@
 part of 'database.dart';
 
 // ignore_for_file: type=lint
-mixin $ProjectsTableTableToColumns implements Insertable<Project> {
+mixin $ProjectsTableTableToColumns implements Insertable<ProjectDto> {
   String get projectId;
   bool get hidden;
   String? get baseBranch;
@@ -22,7 +22,7 @@ mixin $ProjectsTableTableToColumns implements Insertable<Project> {
 }
 
 class $ProjectsTableTable extends ProjectsTable
-    with TableInfo<$ProjectsTableTable, Project> {
+    with TableInfo<$ProjectsTableTable, ProjectDto> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -88,7 +88,7 @@ class $ProjectsTableTable extends ProjectsTable
   static const String $name = 'projects_table';
   @override
   VerificationContext validateIntegrity(
-    Insertable<Project> instance, {
+    Insertable<ProjectDto> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
@@ -128,9 +128,9 @@ class $ProjectsTableTable extends ProjectsTable
   @override
   Set<GeneratedColumn> get $primaryKey => {projectId};
   @override
-  Project map(Map<String, dynamic> data, {String? tablePrefix}) {
+  ProjectDto map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return Project(
+    return ProjectDto(
       projectId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}project_id'],
@@ -159,7 +159,7 @@ class $ProjectsTableTable extends ProjectsTable
   bool get withoutRowId => true;
 }
 
-class ProjectsTableCompanion extends UpdateCompanion<Project> {
+class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
   final Value<String> projectId;
   final Value<bool> hidden;
   final Value<String?> baseBranch;
@@ -176,7 +176,7 @@ class ProjectsTableCompanion extends UpdateCompanion<Project> {
     this.baseBranch = const Value.absent(),
     this.worktreeCounter = const Value.absent(),
   }) : projectId = Value(projectId);
-  static Insertable<Project> custom({
+  static Insertable<ProjectDto> custom({
     Expression<String>? projectId,
     Expression<bool>? hidden,
     Expression<String>? baseBranch,
@@ -234,8 +234,7 @@ class ProjectsTableCompanion extends UpdateCompanion<Project> {
   }
 }
 
-mixin $SessionWorktreesTableTableToColumns
-    implements Insertable<SessionWorktree> {
+mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
   String get sessionId;
   String get projectId;
   String get worktreePath;
@@ -251,12 +250,12 @@ mixin $SessionWorktreesTableTableToColumns
   }
 }
 
-class $SessionWorktreesTableTable extends SessionWorktreesTable
-    with TableInfo<$SessionWorktreesTableTable, SessionWorktree> {
+class $SessionTableTable extends SessionTable
+    with TableInfo<$SessionTableTable, SessionDto> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
-  $SessionWorktreesTableTable(this.attachedDatabase, [this._alias]);
+  $SessionTableTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _sessionIdMeta = const VerificationMeta(
     'sessionId',
   );
@@ -315,7 +314,7 @@ class $SessionWorktreesTableTable extends SessionWorktreesTable
   static const String $name = 'session_worktrees_table';
   @override
   VerificationContext validateIntegrity(
-    Insertable<SessionWorktree> instance, {
+    Insertable<SessionDto> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
@@ -361,9 +360,9 @@ class $SessionWorktreesTableTable extends SessionWorktreesTable
   @override
   Set<GeneratedColumn> get $primaryKey => {sessionId};
   @override
-  SessionWorktree map(Map<String, dynamic> data, {String? tablePrefix}) {
+  SessionDto map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return SessionWorktree(
+    return SessionDto(
       sessionId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}session_id'],
@@ -384,26 +383,26 @@ class $SessionWorktreesTableTable extends SessionWorktreesTable
   }
 
   @override
-  $SessionWorktreesTableTable createAlias(String alias) {
-    return $SessionWorktreesTableTable(attachedDatabase, alias);
+  $SessionTableTable createAlias(String alias) {
+    return $SessionTableTable(attachedDatabase, alias);
   }
 
   @override
   bool get withoutRowId => true;
 }
 
-class SessionWorktreesTableCompanion extends UpdateCompanion<SessionWorktree> {
+class SessionTableCompanion extends UpdateCompanion<SessionDto> {
   final Value<String> sessionId;
   final Value<String> projectId;
   final Value<String> worktreePath;
   final Value<String> branchName;
-  const SessionWorktreesTableCompanion({
+  const SessionTableCompanion({
     this.sessionId = const Value.absent(),
     this.projectId = const Value.absent(),
     this.worktreePath = const Value.absent(),
     this.branchName = const Value.absent(),
   });
-  SessionWorktreesTableCompanion.insert({
+  SessionTableCompanion.insert({
     required String sessionId,
     required String projectId,
     required String worktreePath,
@@ -412,7 +411,7 @@ class SessionWorktreesTableCompanion extends UpdateCompanion<SessionWorktree> {
        projectId = Value(projectId),
        worktreePath = Value(worktreePath),
        branchName = Value(branchName);
-  static Insertable<SessionWorktree> custom({
+  static Insertable<SessionDto> custom({
     Expression<String>? sessionId,
     Expression<String>? projectId,
     Expression<String>? worktreePath,
@@ -426,13 +425,13 @@ class SessionWorktreesTableCompanion extends UpdateCompanion<SessionWorktree> {
     });
   }
 
-  SessionWorktreesTableCompanion copyWith({
+  SessionTableCompanion copyWith({
     Value<String>? sessionId,
     Value<String>? projectId,
     Value<String>? worktreePath,
     Value<String>? branchName,
   }) {
-    return SessionWorktreesTableCompanion(
+    return SessionTableCompanion(
       sessionId: sessionId ?? this.sessionId,
       projectId: projectId ?? this.projectId,
       worktreePath: worktreePath ?? this.worktreePath,
@@ -460,7 +459,7 @@ class SessionWorktreesTableCompanion extends UpdateCompanion<SessionWorktree> {
 
   @override
   String toString() {
-    return (StringBuffer('SessionWorktreesTableCompanion(')
+    return (StringBuffer('SessionTableCompanion(')
           ..write('sessionId: $sessionId, ')
           ..write('projectId: $projectId, ')
           ..write('worktreePath: $worktreePath, ')
@@ -474,19 +473,16 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $ProjectsTableTable projectsTable = $ProjectsTableTable(this);
-  late final $SessionWorktreesTableTable sessionWorktreesTable =
-      $SessionWorktreesTableTable(this);
+  late final $SessionTableTable sessionTable = $SessionTableTable(this);
   late final ProjectsDao projectsDao = ProjectsDao(this as AppDatabase);
-  late final SessionWorktreesDao sessionWorktreesDao = SessionWorktreesDao(
-    this as AppDatabase,
-  );
+  late final SessionDao sessionDao = SessionDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     projectsTable,
-    sessionWorktreesTable,
+    sessionTable,
   ];
 }
 
@@ -596,17 +592,17 @@ class $$ProjectsTableTableTableManager
         RootTableManager<
           _$AppDatabase,
           $ProjectsTableTable,
-          Project,
+          ProjectDto,
           $$ProjectsTableTableFilterComposer,
           $$ProjectsTableTableOrderingComposer,
           $$ProjectsTableTableAnnotationComposer,
           $$ProjectsTableTableCreateCompanionBuilder,
           $$ProjectsTableTableUpdateCompanionBuilder,
           (
-            Project,
-            BaseReferences<_$AppDatabase, $ProjectsTableTable, Project>,
+            ProjectDto,
+            BaseReferences<_$AppDatabase, $ProjectsTableTable, ProjectDto>,
           ),
-          Project,
+          ProjectDto,
           PrefetchHooks Function()
         > {
   $$ProjectsTableTableTableManager(_$AppDatabase db, $ProjectsTableTable table)
@@ -656,34 +652,37 @@ typedef $$ProjectsTableTableProcessedTableManager =
     ProcessedTableManager<
       _$AppDatabase,
       $ProjectsTableTable,
-      Project,
+      ProjectDto,
       $$ProjectsTableTableFilterComposer,
       $$ProjectsTableTableOrderingComposer,
       $$ProjectsTableTableAnnotationComposer,
       $$ProjectsTableTableCreateCompanionBuilder,
       $$ProjectsTableTableUpdateCompanionBuilder,
-      (Project, BaseReferences<_$AppDatabase, $ProjectsTableTable, Project>),
-      Project,
+      (
+        ProjectDto,
+        BaseReferences<_$AppDatabase, $ProjectsTableTable, ProjectDto>,
+      ),
+      ProjectDto,
       PrefetchHooks Function()
     >;
-typedef $$SessionWorktreesTableTableCreateCompanionBuilder =
-    SessionWorktreesTableCompanion Function({
+typedef $$SessionTableTableCreateCompanionBuilder =
+    SessionTableCompanion Function({
       required String sessionId,
       required String projectId,
       required String worktreePath,
       required String branchName,
     });
-typedef $$SessionWorktreesTableTableUpdateCompanionBuilder =
-    SessionWorktreesTableCompanion Function({
+typedef $$SessionTableTableUpdateCompanionBuilder =
+    SessionTableCompanion Function({
       Value<String> sessionId,
       Value<String> projectId,
       Value<String> worktreePath,
       Value<String> branchName,
     });
 
-class $$SessionWorktreesTableTableFilterComposer
-    extends Composer<_$AppDatabase, $SessionWorktreesTableTable> {
-  $$SessionWorktreesTableTableFilterComposer({
+class $$SessionTableTableFilterComposer
+    extends Composer<_$AppDatabase, $SessionTableTable> {
+  $$SessionTableTableFilterComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -711,9 +710,9 @@ class $$SessionWorktreesTableTableFilterComposer
   );
 }
 
-class $$SessionWorktreesTableTableOrderingComposer
-    extends Composer<_$AppDatabase, $SessionWorktreesTableTable> {
-  $$SessionWorktreesTableTableOrderingComposer({
+class $$SessionTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $SessionTableTable> {
+  $$SessionTableTableOrderingComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -741,9 +740,9 @@ class $$SessionWorktreesTableTableOrderingComposer
   );
 }
 
-class $$SessionWorktreesTableTableAnnotationComposer
-    extends Composer<_$AppDatabase, $SessionWorktreesTableTable> {
-  $$SessionWorktreesTableTableAnnotationComposer({
+class $$SessionTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SessionTableTable> {
+  $$SessionTableTableAnnotationComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -767,57 +766,42 @@ class $$SessionWorktreesTableTableAnnotationComposer
   );
 }
 
-class $$SessionWorktreesTableTableTableManager
+class $$SessionTableTableTableManager
     extends
         RootTableManager<
           _$AppDatabase,
-          $SessionWorktreesTableTable,
-          SessionWorktree,
-          $$SessionWorktreesTableTableFilterComposer,
-          $$SessionWorktreesTableTableOrderingComposer,
-          $$SessionWorktreesTableTableAnnotationComposer,
-          $$SessionWorktreesTableTableCreateCompanionBuilder,
-          $$SessionWorktreesTableTableUpdateCompanionBuilder,
+          $SessionTableTable,
+          SessionDto,
+          $$SessionTableTableFilterComposer,
+          $$SessionTableTableOrderingComposer,
+          $$SessionTableTableAnnotationComposer,
+          $$SessionTableTableCreateCompanionBuilder,
+          $$SessionTableTableUpdateCompanionBuilder,
           (
-            SessionWorktree,
-            BaseReferences<
-              _$AppDatabase,
-              $SessionWorktreesTableTable,
-              SessionWorktree
-            >,
+            SessionDto,
+            BaseReferences<_$AppDatabase, $SessionTableTable, SessionDto>,
           ),
-          SessionWorktree,
+          SessionDto,
           PrefetchHooks Function()
         > {
-  $$SessionWorktreesTableTableTableManager(
-    _$AppDatabase db,
-    $SessionWorktreesTableTable table,
-  ) : super(
+  $$SessionTableTableTableManager(_$AppDatabase db, $SessionTableTable table)
+    : super(
         TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
-              $$SessionWorktreesTableTableFilterComposer(
-                $db: db,
-                $table: table,
-              ),
+              $$SessionTableTableFilterComposer($db: db, $table: table),
           createOrderingComposer: () =>
-              $$SessionWorktreesTableTableOrderingComposer(
-                $db: db,
-                $table: table,
-              ),
+              $$SessionTableTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
-              $$SessionWorktreesTableTableAnnotationComposer(
-                $db: db,
-                $table: table,
-              ),
+              $$SessionTableTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
                 Value<String> sessionId = const Value.absent(),
                 Value<String> projectId = const Value.absent(),
                 Value<String> worktreePath = const Value.absent(),
                 Value<String> branchName = const Value.absent(),
-              }) => SessionWorktreesTableCompanion(
+              }) => SessionTableCompanion(
                 sessionId: sessionId,
                 projectId: projectId,
                 worktreePath: worktreePath,
@@ -829,7 +813,7 @@ class $$SessionWorktreesTableTableTableManager
                 required String projectId,
                 required String worktreePath,
                 required String branchName,
-              }) => SessionWorktreesTableCompanion.insert(
+              }) => SessionTableCompanion.insert(
                 sessionId: sessionId,
                 projectId: projectId,
                 worktreePath: worktreePath,
@@ -843,25 +827,21 @@ class $$SessionWorktreesTableTableTableManager
       );
 }
 
-typedef $$SessionWorktreesTableTableProcessedTableManager =
+typedef $$SessionTableTableProcessedTableManager =
     ProcessedTableManager<
       _$AppDatabase,
-      $SessionWorktreesTableTable,
-      SessionWorktree,
-      $$SessionWorktreesTableTableFilterComposer,
-      $$SessionWorktreesTableTableOrderingComposer,
-      $$SessionWorktreesTableTableAnnotationComposer,
-      $$SessionWorktreesTableTableCreateCompanionBuilder,
-      $$SessionWorktreesTableTableUpdateCompanionBuilder,
+      $SessionTableTable,
+      SessionDto,
+      $$SessionTableTableFilterComposer,
+      $$SessionTableTableOrderingComposer,
+      $$SessionTableTableAnnotationComposer,
+      $$SessionTableTableCreateCompanionBuilder,
+      $$SessionTableTableUpdateCompanionBuilder,
       (
-        SessionWorktree,
-        BaseReferences<
-          _$AppDatabase,
-          $SessionWorktreesTableTable,
-          SessionWorktree
-        >,
+        SessionDto,
+        BaseReferences<_$AppDatabase, $SessionTableTable, SessionDto>,
       ),
-      SessionWorktree,
+      SessionDto,
       PrefetchHooks Function()
     >;
 
@@ -870,6 +850,6 @@ class $AppDatabaseManager {
   $AppDatabaseManager(this._db);
   $$ProjectsTableTableTableManager get projectsTable =>
       $$ProjectsTableTableTableManager(_db, _db.projectsTable);
-  $$SessionWorktreesTableTableTableManager get sessionWorktreesTable =>
-      $$SessionWorktreesTableTableTableManager(_db, _db.sessionWorktreesTable);
+  $$SessionTableTableTableManager get sessionTable =>
+      $$SessionTableTableTableManager(_db, _db.sessionTable);
 }
