@@ -39,6 +39,10 @@ class WorktreeFallback extends WorktreeResult {
 // ---------------------------------------------------------------------------
 
 class WorktreeService {
+  static const _maxWorktreeCreationAttempts = 3;
+  static const _branchPrefix = "session-";
+  static const _worktreeDir = ".worktrees";
+
   final ProcessRunner _processRunner;
   final GitDirectoryExistsChecker _gitDirectoryExists;
   final ProjectsDao _projectsDao;
@@ -182,13 +186,13 @@ class WorktreeService {
       baseBranch = await resolveDefaultBranch(projectPath: projectId);
     }
 
-    // 5. Try to create a worktree, retrying up to 3 times on branch collision.
-    for (var attempt = 0; attempt < 3; attempt++) {
+    // 5. Try to create a worktree, retrying on branch collision.
+    for (var attempt = 0; attempt < _maxWorktreeCreationAttempts; attempt++) {
       final counter = await _projectsDao.incrementAndGetWorktreeCounter(
         projectId: projectId,
       );
-      final branchName = "session-${counter.toString().padLeft(3, '0')}";
-      final worktreePath = "$projectId/.worktrees/$branchName";
+      final branchName = "$_branchPrefix${counter.toString().padLeft(3, '0')}";
+      final worktreePath = "$projectId/$_worktreeDir/$branchName";
 
       // Skip if branch already exists (counter collision).
       if (await branchExists(projectPath: projectId, branchName: branchName)) {

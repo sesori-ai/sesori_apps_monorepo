@@ -66,15 +66,12 @@ class CreateProjectHandler extends RequestHandler {
       return buildErrorResponse(request, 500, "git init failed: ${gitResult.stderr}");
     }
 
-    // Write .gitignore with .worktrees/ entry
+    // Write .gitignore with .worktrees/ entry (idempotent)
     final gitignoreFile = File("$path/.gitignore");
     try {
-      if (gitignoreFile.existsSync()) {
-        // Append to existing .gitignore
+      final content = gitignoreFile.existsSync() ? await gitignoreFile.readAsString() : "";
+      if (!content.contains(".worktrees/")) {
         await gitignoreFile.writeAsString(".worktrees/\n", mode: FileMode.append);
-      } else {
-        // Create new .gitignore
-        await gitignoreFile.writeAsString(".worktrees/\n");
       }
     } on FileSystemException catch (error) {
       return buildErrorResponse(request, 500, "failed to write .gitignore: $error");
