@@ -75,6 +75,7 @@ void main() {
           mockConnectionService,
           sessionId: sessionId,
           notificationCanceller: mockNotificationCanceller,
+          failureReporter: MockFailureReporter(),
         );
         addTearDown(cubit.close);
 
@@ -122,6 +123,7 @@ void main() {
         mockConnectionService,
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
       );
       addTearDown(cubit.close);
 
@@ -161,6 +163,7 @@ void main() {
         mockConnectionService,
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
       );
       addTearDown(cubit.close);
 
@@ -211,6 +214,7 @@ void main() {
         mockConnectionService,
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
       );
       addTearDown(cubit.close);
 
@@ -262,6 +266,7 @@ void main() {
         mockConnectionService,
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
       );
       addTearDown(cubit.close);
 
@@ -290,6 +295,7 @@ void main() {
         mockConnectionService,
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
       );
 
       mockConnectionService.emitDataMayBeStale();
@@ -317,6 +323,7 @@ void main() {
         mockConnectionService,
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
       );
       addTearDown(cubit.close);
 
@@ -336,6 +343,7 @@ void main() {
           mockConnectionService,
           sessionId: sessionId,
           notificationCanceller: mockNotificationCanceller,
+          failureReporter: MockFailureReporter(),
         );
         addTearDown(cubit.close);
 
@@ -370,6 +378,7 @@ void main() {
         mockConnectionService,
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
       );
       addTearDown(cubit.close);
 
