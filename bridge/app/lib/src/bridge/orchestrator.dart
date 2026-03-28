@@ -26,6 +26,7 @@ class Orchestrator {
   final PushNotificationService _pushNotificationService;
   final TokenRefresher _tokenRefresher;
   final ProjectsDao _projectsDao;
+  final FailureReporter _failureReporter;
 
   Orchestrator({
     required this.config,
@@ -34,11 +35,13 @@ class Orchestrator {
     required PushNotificationService pushNotificationService,
     required TokenRefresher tokenRefresher,
     required ProjectsDao projectsDao,
+    required FailureReporter failureReporter,
   }) : _client = client,
        _plugin = plugin,
        _pushNotificationService = pushNotificationService,
        _tokenRefresher = tokenRefresher,
-       _projectsDao = projectsDao;
+       _projectsDao = projectsDao,
+       _failureReporter = failureReporter;
 
   /// Creates a new session with a fresh room key and SSE manager.
   OrchestratorSession create() {
@@ -47,6 +50,7 @@ class Orchestrator {
     final sseManager = SSEManager(
       replayWindow: config.sseReplayWindow,
       onBytesSent: bytesSentController.add,
+      failureReporter: _failureReporter,
     );
     sseManager.setRoomKey(roomKey);
 
@@ -60,6 +64,7 @@ class Orchestrator {
       roomKey: roomKey,
       sseManager: sseManager,
       bytesSentController: bytesSentController,
+      failureReporter: _failureReporter,
     );
   }
 
@@ -86,6 +91,7 @@ class OrchestratorSession {
   final PushNotificationService _pushNotificationService;
   final TokenRefresher _tokenRefresher;
   final StreamController<int> _bytesSentController;
+  final FailureReporter _failureReporter;
   StreamSubscription<BridgeSseEvent>? _eventSubscription;
 
   bool _cancelled = false;
@@ -100,6 +106,7 @@ class OrchestratorSession {
     required List<int> roomKey,
     required SSEManager sseManager,
     required StreamController<int> bytesSentController,
+    required FailureReporter failureReporter,
   }) : _client = client,
        _plugin = plugin,
        _pushNotificationService = pushNotificationService,
@@ -107,8 +114,9 @@ class OrchestratorSession {
        _roomKey = roomKey,
        _sseManager = sseManager,
        _bytesSentController = bytesSentController,
+       _failureReporter = failureReporter,
        _router = RequestRouter(plugin: plugin, projectsDao: projectsDao),
-       _mapper = BridgeEventMapper(plugin);
+       _mapper = BridgeEventMapper(plugin: plugin, failureReporter: failureReporter);
 
   /// Broadcast stream of byte counts emitted each time data is sent to a phone.
   ///
@@ -123,16 +131,32 @@ class OrchestratorSession {
     Log.d("[dbg] subscribing to plugin event stream...");
     _eventSubscription = _plugin.events.listen(
       (BridgeSseEvent event) {
-        Log.v("[sse] plugin event arrived: ${event.runtimeType}");
-        final sesoriEvent = _mapper.map(event);
-        if (sesoriEvent != null) {
-          Log.v(
-            "[sse] mapped to: ${sesoriEvent.runtimeType} — enqueuing (subscribers: ${_sseManager.subscriberCount})",
+        try {
+          Log.v("[sse] plugin event arrived: ${event.runtimeType}");
+          final sesoriEvent = _mapper.map(event);
+          if (sesoriEvent != null) {
+            Log.v(
+              "[sse] mapped to: ${sesoriEvent.runtimeType} — enqueuing (subscribers: ${_sseManager.subscriberCount})",
+            );
+            _pushNotificationService.handleSseEvent(sesoriEvent);
+            _sseManager.enqueueEvent(sesoriEvent);
+          } else {
+            Log.v("[sse] mapping returned null — event dropped");
+          }
+        } catch (e, st) {
+          Log.e("[sse] error processing event ${event.runtimeType}: $e\n$st");
+          unawaited(
+            _failureReporter
+                .recordFailure(
+                  error: e,
+                  stackTrace: st,
+                  uniqueIdentifier: "sse_event_processing:${event.runtimeType}",
+                  fatal: false,
+                  reason: "Failed to process SSE event",
+                  information: [event.runtimeType.toString()],
+                )
+                .catchError((_) {}),
           );
-          _pushNotificationService.handleSseEvent(sesoriEvent);
-          _sseManager.enqueueEvent(sesoriEvent);
-        } else {
-          Log.v("[sse] mapping returned null — event dropped");
         }
       },
       onError: (Object e) {
@@ -446,7 +470,10 @@ class OrchestratorSession {
         Log.v("[dbg] SseSubscribe: path=${subscribe.path}");
         try {
           _sseManager.subscribePath(connID, subscribe.path, _client);
-          _sseManager.enqueueEvent(_mapper.buildProjectsSummaryEvent());
+          final projSummary = _mapper.buildProjectsSummaryEvent();
+          if (projSummary != null) {
+            _sseManager.enqueueEvent(projSummary);
+          }
           Log.v("[dbg] initial projectsSummary enqueued");
         } catch (e) {
           Log.e("sse subscribe failed for connId $connID: $e");

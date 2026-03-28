@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:convert";
 
 import "package:http/http.dart" as http;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 class SseConnection {
   final String _targetUrl;
@@ -70,7 +71,8 @@ class SseConnection {
         isFirstConnect = false;
         reconnectDelay = const Duration(seconds: 1);
         await _readStream(response, generation);
-      } catch (_) {
+      } catch (e, st) {
+        Log.e("[sse-conn] stream loop error: $e\n$st");
         if (!_active || _generation != generation) return;
       } finally {
         client.close();
@@ -105,7 +107,11 @@ class SseConnection {
 
         if (line.isEmpty) {
           if (dataLines.isNotEmpty) {
-            _onEvent(dataLines.join("\n"));
+            try {
+              _onEvent(dataLines.join("\n"));
+            } catch (e, st) {
+              Log.e("[sse-conn] onEvent callback error: $e\n$st");
+            }
             dataLines.clear();
           }
           continue;
@@ -120,7 +126,11 @@ class SseConnection {
     }
 
     if (dataLines.isNotEmpty) {
-      _onEvent(dataLines.join("\n"));
+      try {
+        _onEvent(dataLines.join("\n"));
+      } catch (e, st) {
+        Log.e("[sse-conn] onEvent callback error: $e\n$st");
+      }
       dataLines.clear();
     }
   }

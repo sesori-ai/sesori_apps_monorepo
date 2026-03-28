@@ -22,6 +22,7 @@ void main() {
     late MockSessionService mockSessionService;
     late MockConnectionService mockConnectionService;
     late MockSseEventRepository mockSseEventRepository;
+    late MockFailureReporter mockFailureReporter;
     late StreamController<SseEvent> eventController;
     late BehaviorSubject<ConnectionStatus> statusController;
 
@@ -31,6 +32,7 @@ void main() {
       mockSessionService = MockSessionService();
       mockConnectionService = MockConnectionService();
       mockSseEventRepository = MockSseEventRepository();
+      mockFailureReporter = MockFailureReporter();
       eventController = StreamController<SseEvent>.broadcast();
       statusController = BehaviorSubject<ConnectionStatus>.seeded(
         const ConnectionStatus.disconnected(),
@@ -39,6 +41,16 @@ void main() {
       // Must be stubbed before any cubit is built — constructor subscribes immediately.
       when(() => mockConnectionService.events).thenAnswer((_) => eventController.stream);
       when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
+      when(
+        () => mockFailureReporter.recordFailure(
+          error: any(named: "error"),
+          stackTrace: any(named: "stackTrace"),
+          uniqueIdentifier: any(named: "uniqueIdentifier"),
+          fatal: any(named: "fatal"),
+          reason: any(named: "reason"),
+          information: any(named: "information"),
+        ),
+      ).thenAnswer((_) async {});
     });
 
     tearDown(() async {
@@ -52,6 +64,7 @@ void main() {
       mockConnectionService,
       mockSseEventRepository,
       projectId: projectId,
+      failureReporter: mockFailureReporter,
     );
 
     // -------------------------------------------------------------------------
@@ -1062,6 +1075,7 @@ void main() {
           mockConnectionService,
           mockSseEventRepository,
           projectId: "global",
+          failureReporter: mockFailureReporter,
         );
       },
       expect: () => [

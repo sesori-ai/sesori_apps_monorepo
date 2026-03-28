@@ -67,9 +67,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i857.RelayHttpApiClient>(
       () => _i857.RelayHttpApiClient(gh<_i369.ConnectionService>()),
     );
-    gh.lazySingleton<_i569.SseEventRepository>(
-      () => _i569.SseEventRepository(gh<_i369.ConnectionService>()),
-    );
     gh.lazySingleton<_i436.AuthRedirectService>(
       () => _i436.AuthRedirectService(
         gh<_i442.OAuthFlowProvider>(),
@@ -83,6 +80,12 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i12.SessionService>(
       () => _i12.SessionService(gh<_i857.RelayHttpApiClient>()),
+    );
+    gh.lazySingleton<_i569.SseEventRepository>(
+      () => _i569.SseEventRepository(
+        gh<_i369.ConnectionService>(),
+        failureReporter: gh<_i553.FailureReporter>(),
+      ),
     );
     return this;
   }

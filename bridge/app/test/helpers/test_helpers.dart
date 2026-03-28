@@ -6,6 +6,7 @@ import "dart:math";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge/src/auth/access_token_provider.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 class FakeAccessTokenProvider implements AccessTokenProvider {
   final BehaviorSubject<String> _subject;
@@ -17,6 +18,49 @@ class FakeAccessTokenProvider implements AccessTokenProvider {
 
   @override
   ValueStream<String> get tokenStream => _subject.stream;
+}
+
+class FakeFailureReporter implements FailureReporter {
+  @override
+  void setGlobalKey({required String key, required Object value}) {}
+
+  @override
+  void log({required String message}) {}
+
+  @override
+  Future<void> recordFailure({
+    required Object error,
+    required StackTrace stackTrace,
+    required String uniqueIdentifier,
+    required bool fatal,
+    required String? reason,
+    required Iterable<Object> information,
+  }) => Future<void>.value();
+}
+
+/// A [FailureReporter] that captures recorded failure identifiers for assertions.
+class CapturingFailureReporter extends FakeFailureReporter {
+  final List<String> recordedIdentifiers = [];
+
+  @override
+  Future<void> recordFailure({
+    required Object error,
+    required StackTrace stackTrace,
+    required String uniqueIdentifier,
+    required bool fatal,
+    required String? reason,
+    required Iterable<Object> information,
+  }) async {
+    recordedIdentifiers.add(uniqueIdentifier);
+    await super.recordFailure(
+      error: error,
+      stackTrace: stackTrace,
+      uniqueIdentifier: uniqueIdentifier,
+      fatal: fatal,
+      reason: reason,
+      information: information,
+    );
+  }
 }
 
 List<int> makeRoomKey() {

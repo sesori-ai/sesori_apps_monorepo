@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -8,185 +10,196 @@ import "../plugin_to_shared_mapping.dart";
 /// Handles all event type conversions and builds the projects summary event.
 class BridgeEventMapper {
   final BridgePlugin _plugin;
+  final FailureReporter _failureReporter;
 
-  BridgeEventMapper(this._plugin);
+  BridgeEventMapper({
+    required BridgePlugin plugin,
+    required FailureReporter failureReporter,
+  }) : _plugin = plugin,
+       _failureReporter = failureReporter;
 
   /// Maps a [BridgeSseEvent] to a [SesoriSseEvent], or null if unmappable.
   SesoriSseEvent? map(BridgeSseEvent event) {
-    switch (event) {
-      case BridgeSseServerConnected():
-        return const SesoriSseEvent.serverConnected();
-      case BridgeSseServerHeartbeat():
-        return null;
-      case BridgeSseServerInstanceDisposed(:final directory):
-        return SesoriSseEvent.serverInstanceDisposed(directory: directory);
-      case BridgeSseGlobalDisposed():
-        return const SesoriSseEvent.globalDisposed();
-      case BridgeSseSessionCreated(:final info):
-        return _tryParseSseEvent({"type": "session.created", "info": info});
-      case BridgeSseSessionUpdated(:final info):
-        return _tryParseSseEvent({"type": "session.updated", "info": info});
-      case BridgeSseSessionDeleted(:final info):
-        return _tryParseSseEvent({"type": "session.deleted", "info": info});
-      case BridgeSseSessionDiff(:final sessionID):
-        return SesoriSseEvent.sessionDiff(sessionID: sessionID);
-      case BridgeSseSessionError(:final sessionID):
-        return SesoriSseEvent.sessionError(sessionID: sessionID);
-      case BridgeSseSessionCompacted(:final sessionID):
-        return SesoriSseEvent.sessionCompacted(sessionID: sessionID);
-      case BridgeSseSessionStatus(:final sessionID, :final status):
-        return _tryParseSseEvent({
+    try {
+      return switch (event) {
+        BridgeSseServerConnected() => const SesoriSseEvent.serverConnected(),
+        BridgeSseServerHeartbeat() => null,
+        BridgeSseServerInstanceDisposed(:final directory) => SesoriSseEvent.serverInstanceDisposed(
+          directory: directory,
+        ),
+        BridgeSseGlobalDisposed() => const SesoriSseEvent.globalDisposed(),
+        BridgeSseSessionCreated(:final info) => _tryParseSseEvent({"type": "session.created", "info": info}),
+        BridgeSseSessionUpdated(:final info) => _tryParseSseEvent({"type": "session.updated", "info": info}),
+        BridgeSseSessionDeleted(:final info) => _tryParseSseEvent({"type": "session.deleted", "info": info}),
+        BridgeSseSessionDiff(:final sessionID) => SesoriSseEvent.sessionDiff(sessionID: sessionID),
+        BridgeSseSessionError(:final sessionID) => SesoriSseEvent.sessionError(sessionID: sessionID),
+        BridgeSseSessionCompacted(:final sessionID) => SesoriSseEvent.sessionCompacted(sessionID: sessionID),
+        BridgeSseSessionStatus(:final sessionID, :final status) => _tryParseSseEvent({
           "type": "session.status",
           "sessionID": sessionID,
           "status": status,
-        });
-      case BridgeSseSessionIdle(:final sessionID):
-        return SesoriSseEvent.sessionStatus(
+        }),
+        BridgeSseSessionIdle(:final sessionID) => SesoriSseEvent.sessionStatus(
           sessionID: sessionID,
           status: const SessionStatus.idle(),
-        );
-      case BridgeSseMessageUpdated(:final info):
-        return _tryParseSseEvent({"type": "message.updated", "info": info});
-      case BridgeSseMessageRemoved(:final sessionID, :final messageID):
-        return SesoriSseEvent.messageRemoved(
+        ),
+        BridgeSseMessageUpdated(:final info) => _tryParseSseEvent({"type": "message.updated", "info": info}),
+        BridgeSseMessageRemoved(:final sessionID, :final messageID) => SesoriSseEvent.messageRemoved(
           sessionID: sessionID,
           messageID: messageID,
-        );
-      case BridgeSseMessagePartUpdated(:final part):
-        if (!part.type.isVisible) return null;
-        final truncated = _truncateToolOutput(part);
-        return SesoriSseEvent.messagePartUpdated(part: truncated.toShared());
-      case BridgeSseMessagePartDelta(
-        :final sessionID,
-        :final messageID,
-        :final partID,
-        :final field,
-        :final delta,
-      ):
-        return SesoriSseEvent.messagePartDelta(
-          sessionID: sessionID,
-          messageID: messageID,
-          partID: partID,
-          field: field,
-          delta: delta,
-        );
-      case BridgeSseMessagePartRemoved(
-        :final sessionID,
-        :final messageID,
-        :final partID,
-      ):
-        return SesoriSseEvent.messagePartRemoved(
-          sessionID: sessionID,
-          messageID: messageID,
-          partID: partID,
-        );
-      case BridgeSsePtyCreated():
-        return const SesoriSseEvent.ptyCreated();
-      case BridgeSsePtyUpdated():
-        return const SesoriSseEvent.ptyUpdated();
-      case BridgeSsePtyExited(:final id, :final exitCode):
-        return SesoriSseEvent.ptyExited(id: id, exitCode: exitCode);
-      case BridgeSsePtyDeleted(:final id):
-        return SesoriSseEvent.ptyDeleted(id: id);
-      case BridgeSsePermissionAsked(
-        :final requestID,
-        :final sessionID,
-        :final tool,
-        :final description,
-      ):
-        return SesoriSseEvent.permissionAsked(
-          requestID: requestID,
-          sessionID: sessionID,
-          tool: tool,
-          description: description,
-        );
-      case BridgeSsePermissionReplied(:final requestID, :final reply):
-        return SesoriSseEvent.permissionReplied(
+        ),
+        BridgeSseMessagePartUpdated(:final part) => () {
+          if (!part.type.isVisible) return null;
+          final truncated = _truncateToolOutput(part);
+          return SesoriSseEvent.messagePartUpdated(part: truncated.toShared());
+        }(),
+        BridgeSseMessagePartDelta(
+          :final sessionID,
+          :final messageID,
+          :final partID,
+          :final field,
+          :final delta,
+        ) =>
+          SesoriSseEvent.messagePartDelta(
+            sessionID: sessionID,
+            messageID: messageID,
+            partID: partID,
+            field: field,
+            delta: delta,
+          ),
+        BridgeSseMessagePartRemoved(
+          :final sessionID,
+          :final messageID,
+          :final partID,
+        ) =>
+          SesoriSseEvent.messagePartRemoved(
+            sessionID: sessionID,
+            messageID: messageID,
+            partID: partID,
+          ),
+        BridgeSsePtyCreated() => const SesoriSseEvent.ptyCreated(),
+        BridgeSsePtyUpdated() => const SesoriSseEvent.ptyUpdated(),
+        BridgeSsePtyExited(:final id, :final exitCode) => SesoriSseEvent.ptyExited(id: id, exitCode: exitCode),
+        BridgeSsePtyDeleted(:final id) => SesoriSseEvent.ptyDeleted(id: id),
+        BridgeSsePermissionAsked(
+          :final requestID,
+          :final sessionID,
+          :final tool,
+          :final description,
+        ) =>
+          SesoriSseEvent.permissionAsked(
+            requestID: requestID,
+            sessionID: sessionID,
+            tool: tool,
+            description: description,
+          ),
+        BridgeSsePermissionReplied(:final requestID, :final reply) => SesoriSseEvent.permissionReplied(
           requestID: requestID,
           reply: reply,
-        );
-      case BridgeSsePermissionUpdated():
-        return const SesoriSseEvent.permissionUpdated();
-      case BridgeSseQuestionAsked(:final id, :final sessionID, :final questions):
-        return _tryParseSseEvent({
+        ),
+        BridgeSsePermissionUpdated() => const SesoriSseEvent.permissionUpdated(),
+        BridgeSseQuestionAsked(:final id, :final sessionID, :final questions) => _tryParseSseEvent({
           "type": "question.asked",
           "id": id,
           "sessionID": sessionID,
           "questions": questions,
-        });
-      case BridgeSseQuestionReplied(:final requestID, :final sessionID):
-        return SesoriSseEvent.questionReplied(
+        }),
+        BridgeSseQuestionReplied(:final requestID, :final sessionID) => SesoriSseEvent.questionReplied(
           requestID: requestID,
           sessionID: sessionID,
-        );
-      case BridgeSseQuestionRejected(:final requestID, :final sessionID):
-        return SesoriSseEvent.questionRejected(
+        ),
+        BridgeSseQuestionRejected(:final requestID, :final sessionID) => SesoriSseEvent.questionRejected(
           requestID: requestID,
           sessionID: sessionID,
-        );
-      case BridgeSseTodoUpdated(:final sessionID):
-        return SesoriSseEvent.todoUpdated(sessionID: sessionID);
-      // BridgeSseProjectUpdated is emitted on both activity changes and project
-      // metadata changes. We always send the full projectsSummary so the mobile
-      // client receives updated activity data in real time.
-      case BridgeSseProjectUpdated():
-        return buildProjectsSummaryEvent();
-      case BridgeSseVcsBranchUpdated():
-        return const SesoriSseEvent.vcsBranchUpdated();
-      case BridgeSseFileEdited(:final file):
-        return SesoriSseEvent.fileEdited(file: file);
-      case BridgeSseFileWatcherUpdated(:final file, :final event):
-        return SesoriSseEvent.fileWatcherUpdated(file: file, event: event);
-      case BridgeSseLspUpdated():
-        return const SesoriSseEvent.lspUpdated();
-      case BridgeSseLspClientDiagnostics(:final serverID, :final path):
-        return SesoriSseEvent.lspClientDiagnostics(serverID: serverID, path: path);
-      case BridgeSseMcpToolsChanged():
-        return const SesoriSseEvent.mcpToolsChanged();
-      case BridgeSseMcpBrowserOpenFailed():
-        return const SesoriSseEvent.mcpBrowserOpenFailed();
-      case BridgeSseInstallationUpdated(:final version):
-        return SesoriSseEvent.installationUpdated(version: version);
-      case BridgeSseInstallationUpdateAvailable(:final version):
-        return SesoriSseEvent.installationUpdateAvailable(version: version);
-      case BridgeSseWorkspaceReady(:final name):
-        return SesoriSseEvent.workspaceReady(name: name);
-      case BridgeSseWorkspaceFailed(:final message):
-        return SesoriSseEvent.workspaceFailed(message: message);
-      case BridgeSseTuiToastShow(:final title, :final message, :final variant):
-        return SesoriSseEvent.tuiToastShow(
+        ),
+        BridgeSseTodoUpdated(:final sessionID) => SesoriSseEvent.todoUpdated(sessionID: sessionID),
+        // BridgeSseProjectUpdated is emitted on both activity changes and project
+        // metadata changes. We always send the full projectsSummary so the mobile
+        // client receives updated activity data in real time.
+        BridgeSseProjectUpdated() => buildProjectsSummaryEvent(),
+        BridgeSseVcsBranchUpdated() => const SesoriSseEvent.vcsBranchUpdated(),
+        BridgeSseFileEdited(:final file) => SesoriSseEvent.fileEdited(file: file),
+        BridgeSseFileWatcherUpdated(:final file, :final event) => SesoriSseEvent.fileWatcherUpdated(
+          file: file,
+          event: event,
+        ),
+        BridgeSseLspUpdated() => const SesoriSseEvent.lspUpdated(),
+        BridgeSseLspClientDiagnostics(:final serverID, :final path) => SesoriSseEvent.lspClientDiagnostics(
+          serverID: serverID,
+          path: path,
+        ),
+        BridgeSseMcpToolsChanged() => const SesoriSseEvent.mcpToolsChanged(),
+        BridgeSseMcpBrowserOpenFailed() => const SesoriSseEvent.mcpBrowserOpenFailed(),
+        BridgeSseInstallationUpdated(:final version) => SesoriSseEvent.installationUpdated(version: version),
+        BridgeSseInstallationUpdateAvailable(:final version) => SesoriSseEvent.installationUpdateAvailable(
+          version: version,
+        ),
+        BridgeSseWorkspaceReady(:final name) => SesoriSseEvent.workspaceReady(name: name),
+        BridgeSseWorkspaceFailed(:final message) => SesoriSseEvent.workspaceFailed(message: message),
+        BridgeSseTuiToastShow(:final title, :final message, :final variant) => SesoriSseEvent.tuiToastShow(
           title: title,
           message: message,
           variant: variant,
-        );
-      case BridgeSseWorktreeReady():
-        return const SesoriSseEvent.worktreeReady();
-      case BridgeSseWorktreeFailed():
-        return const SesoriSseEvent.worktreeFailed();
+        ),
+        BridgeSseWorktreeReady() => const SesoriSseEvent.worktreeReady(),
+        BridgeSseWorktreeFailed() => const SesoriSseEvent.worktreeFailed(),
+      };
+    } catch (e, st) {
+      Log.e("[sse-mapper] error mapping event ${event.runtimeType}: $e\n$st");
+      unawaited(
+        _failureReporter
+            .recordFailure(
+              error: e,
+              stackTrace: st,
+              uniqueIdentifier: "sse_event_mapping:${event.runtimeType}",
+              fatal: false,
+              reason: "Failed to map SSE event",
+              information: [event.runtimeType.toString()],
+            )
+            .catchError((_) {}),
+      );
+      return null;
     }
   }
 
   /// Builds a projects summary event from the current active sessions.
-  SesoriSseEvent buildProjectsSummaryEvent() {
-    final summary = _plugin.getActiveSessionsSummary();
-    return SesoriSseEvent.projectsSummary(
-      projects: summary
-          .map(
-            (e) => ProjectActivitySummary(
-              id: e.id,
-              activeSessions: e.activeSessions
-                  .map(
-                    (a) => ActiveSession(
-                      id: a.id,
-                      mainAgentRunning: a.mainAgentRunning,
-                      childSessionIds: a.childSessionIds,
-                    ),
-                  )
-                  .toList(),
-            ),
-          )
-          .toList(),
-    );
+  SesoriSseEvent? buildProjectsSummaryEvent() {
+    try {
+      final summary = _plugin.getActiveSessionsSummary();
+      return SesoriSseEvent.projectsSummary(
+        projects: summary
+            .map(
+              (e) => ProjectActivitySummary(
+                id: e.id,
+                activeSessions: e.activeSessions
+                    .map(
+                      (a) => ActiveSession(
+                        id: a.id,
+                        mainAgentRunning: a.mainAgentRunning,
+                        childSessionIds: a.childSessionIds,
+                      ),
+                    )
+                    .toList(),
+              ),
+            )
+            .toList(),
+      );
+    } catch (e, st) {
+      Log.e("[sse-mapper] error building projects summary: $e\n$st");
+      unawaited(
+        _failureReporter
+            .recordFailure(
+              error: e,
+              stackTrace: st,
+              uniqueIdentifier: "sse_projects_summary",
+              fatal: false,
+              reason: "Failed to build projects summary event",
+              information: const [],
+            )
+            .catchError((_) {}),
+      );
+      return null;
+    }
   }
 
   /// Attempts to parse an SSE event from a JSON payload.

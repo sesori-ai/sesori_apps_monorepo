@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:collection";
 import "dart:convert";
 
@@ -17,6 +18,7 @@ class SSEManager {
   final Duration replayWindow;
 
   final void Function(int bytes) _onBytesSent;
+  final FailureReporter _failureReporter;
 
   /// Maximum number of events retained per subscriber queue.
   static const int maxQueueSize = 50000;
@@ -27,7 +29,12 @@ class SSEManager {
 
   List<int>? _roomKey;
 
-  SSEManager({required this.replayWindow, required void Function(int bytes) onBytesSent}) : _onBytesSent = onBytesSent;
+  SSEManager({
+    required this.replayWindow,
+    required void Function(int bytes) onBytesSent,
+    required FailureReporter failureReporter,
+  }) : _onBytesSent = onBytesSent,
+       _failureReporter = failureReporter;
 
   /// Stores a copy of the room key used to encrypt outgoing SSE events.
   void setRoomKey(List<int> roomKey) {
@@ -43,6 +50,21 @@ class SSEManager {
 
     if (orphan != null) {
       orphan.onDequeue = _createSendFunction(connID, client);
+      orphan.onError = (event, error) {
+        Log.w("[sse] failed to send event ${event.runtimeType} to connID=$connID: $error");
+        unawaited(
+          _failureReporter
+              .recordFailure(
+                error: error,
+                stackTrace: StackTrace.current,
+                uniqueIdentifier: "sse_send_failure:$connID",
+                fatal: false,
+                reason: "Failed to send SSE event to phone",
+                information: [event.runtimeType.toString(), "connID=$connID"],
+              )
+              .catchError((_) {}),
+        );
+      };
       orphan.resume();
       _subscribers[connID] = orphan;
       return;
@@ -51,6 +73,21 @@ class SSEManager {
     _subscribers[connID] = EventQueue<SesoriSseEvent>(
       onDequeue: _createSendFunction(connID, client),
       maxSize: maxQueueSize,
+      onError: (event, error) {
+        Log.w("[sse] failed to send event ${event.runtimeType} to connID=$connID: $error");
+        unawaited(
+          _failureReporter
+              .recordFailure(
+                error: error,
+                stackTrace: StackTrace.current,
+                uniqueIdentifier: "sse_send_failure:$connID",
+                fatal: false,
+                reason: "Failed to send SSE event to phone",
+                information: [event.runtimeType.toString(), "connID=$connID"],
+              )
+              .catchError((_) {}),
+        );
+      },
     );
   }
 

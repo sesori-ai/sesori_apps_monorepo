@@ -22,4 +22,5 @@ Map<String, dynamic> _$RegisterTokenRequestToJson(
 const _$DevicePlatformEnumMap = {
   DevicePlatform.ios: 'ios',
   DevicePlatform.android: 'android',
+  DevicePlatform.macos: 'macos',
 };

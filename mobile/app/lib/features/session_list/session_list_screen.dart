@@ -29,6 +29,7 @@ class SessionListScreen extends StatelessWidget {
         getIt<ConnectionService>(),
         getIt<SseEventRepository>(),
         projectId: projectId,
+        failureReporter: getIt<FailureReporter>(),
       ),
       child: _SessionListBody(projectName: projectName),
     );

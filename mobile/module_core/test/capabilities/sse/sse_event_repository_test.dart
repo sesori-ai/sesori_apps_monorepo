@@ -7,15 +7,33 @@ import "package:test/test.dart";
 
 class MockConnectionService extends Mock implements ConnectionService {}
 
+class MockFailureReporter extends Mock implements FailureReporter {}
+
 void main() {
+  setUpAll(() {
+    registerFallbackValue(StackTrace.empty);
+  });
+
   group("SseEventRepository", () {
     late MockConnectionService mockConnectionService;
+    late MockFailureReporter mockFailureReporter;
     late StreamController<SseEvent> eventController;
 
     setUp(() {
       mockConnectionService = MockConnectionService();
+      mockFailureReporter = MockFailureReporter();
       eventController = StreamController<SseEvent>.broadcast();
       when(() => mockConnectionService.events).thenAnswer((_) => eventController.stream);
+      when(
+        () => mockFailureReporter.recordFailure(
+          error: any(named: "error"),
+          stackTrace: any(named: "stackTrace"),
+          uniqueIdentifier: any(named: "uniqueIdentifier"),
+          fatal: any(named: "fatal"),
+          reason: any(named: "reason"),
+          information: any(named: "information"),
+        ),
+      ).thenAnswer((_) async {});
     });
 
     tearDown(() async {
@@ -27,7 +45,7 @@ void main() {
     // -------------------------------------------------------------------------
 
     test("sessionActivity defaults to empty map", () {
-      final repo = SseEventRepository(mockConnectionService);
+      final repo = SseEventRepository(mockConnectionService, failureReporter: mockFailureReporter);
       expect(repo.currentSessionActivity, isEmpty);
       repo.onDispose();
     });
@@ -37,7 +55,7 @@ void main() {
     // -------------------------------------------------------------------------
 
     test("sessionActivity emits active session info from projectsSummary event", () async {
-      final repo = SseEventRepository(mockConnectionService);
+      final repo = SseEventRepository(mockConnectionService, failureReporter: mockFailureReporter);
 
       final completer = Completer<Map<String, Map<String, SessionActivityInfo>>>();
       final subscription = repo.sessionActivity.listen((activity) {
@@ -77,7 +95,7 @@ void main() {
     // -------------------------------------------------------------------------
 
     test("sessionActivity excludes projects with no active sessions", () async {
-      final repo = SseEventRepository(mockConnectionService);
+      final repo = SseEventRepository(mockConnectionService, failureReporter: mockFailureReporter);
 
       final completer = Completer<Map<String, Map<String, SessionActivityInfo>>>();
       final subscription = repo.sessionActivity.listen((activity) {
@@ -111,7 +129,7 @@ void main() {
     // -------------------------------------------------------------------------
 
     test("sessionActivity handles multiple projects", () async {
-      final repo = SseEventRepository(mockConnectionService);
+      final repo = SseEventRepository(mockConnectionService, failureReporter: mockFailureReporter);
 
       final completer = Completer<Map<String, Map<String, SessionActivityInfo>>>();
       final subscription = repo.sessionActivity.listen((activity) {
@@ -156,7 +174,7 @@ void main() {
     // -------------------------------------------------------------------------
 
     test("sessionActivity updates when new event arrives", () async {
-      final repo = SseEventRepository(mockConnectionService);
+      final repo = SseEventRepository(mockConnectionService, failureReporter: mockFailureReporter);
 
       final activities = <Map<String, Map<String, SessionActivityInfo>>>[];
       final subscription = repo.sessionActivity.listen((activity) {
@@ -219,7 +237,7 @@ void main() {
     // -------------------------------------------------------------------------
 
     test("projectActivity defaults to empty map", () {
-      final repo = SseEventRepository(mockConnectionService);
+      final repo = SseEventRepository(mockConnectionService, failureReporter: mockFailureReporter);
       expect(repo.currentProjectActivity, isEmpty);
       repo.onDispose();
     });
@@ -229,7 +247,7 @@ void main() {
     // -------------------------------------------------------------------------
 
     test("projectActivity emits active session counts from projectsSummary event", () async {
-      final repo = SseEventRepository(mockConnectionService);
+      final repo = SseEventRepository(mockConnectionService, failureReporter: mockFailureReporter);
 
       final completer = Completer<Map<String, int>>();
       final subscription = repo.projectActivity.listen((activity) {
@@ -267,7 +285,7 @@ void main() {
     // -------------------------------------------------------------------------
 
     test("projectActivity excludes projects with no active sessions", () async {
-      final repo = SseEventRepository(mockConnectionService);
+      final repo = SseEventRepository(mockConnectionService, failureReporter: mockFailureReporter);
 
       final completer = Completer<Map<String, int>>();
       final subscription = repo.projectActivity.listen((activity) {
@@ -301,7 +319,7 @@ void main() {
     // -------------------------------------------------------------------------
 
     test("non-projectsSummary events are ignored", () async {
-      final repo = SseEventRepository(mockConnectionService);
+      final repo = SseEventRepository(mockConnectionService, failureReporter: mockFailureReporter);
 
       var emissionCount = 0;
       final subscription = repo.sessionActivity.listen((_) => emissionCount++);

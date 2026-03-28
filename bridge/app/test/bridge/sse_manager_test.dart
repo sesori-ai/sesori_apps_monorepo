@@ -13,7 +13,11 @@ import "../helpers/test_helpers.dart";
 void main() {
   group("SSEManager", () {
     test("subscribe registers subscribers", () {
-      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow, onBytesSent: (_) {});
+      final manager = SSEManager(
+        replayWindow: SSEManager.defaultReplayWindow,
+        onBytesSent: (_) {},
+        failureReporter: FakeFailureReporter(),
+      );
       final relayClient = RelayClient(
         relayURL: "ws://127.0.0.1:1",
         accessTokenProvider: FakeAccessTokenProvider(""),
@@ -27,7 +31,11 @@ void main() {
     });
 
     test("enqueueEvent with no subscribers does nothing", () async {
-      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow, onBytesSent: (_) {});
+      final manager = SSEManager(
+        replayWindow: SSEManager.defaultReplayWindow,
+        onBytesSent: (_) {},
+        failureReporter: FakeFailureReporter(),
+      );
       final client = _RecordingRelayClient();
       manager.setRoomKey(makeRoomKey());
 
@@ -40,7 +48,11 @@ void main() {
     test("enqueueEvent delivers typed payload envelope to all subscribers", () async {
       final roomKey = makeRoomKey();
       final client = _RecordingRelayClient();
-      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow, onBytesSent: (_) {});
+      final manager = SSEManager(
+        replayWindow: SSEManager.defaultReplayWindow,
+        onBytesSent: (_) {},
+        failureReporter: FakeFailureReporter(),
+      );
       manager.setRoomKey(roomKey);
       addTearDown(manager.stop);
 
@@ -78,7 +90,11 @@ void main() {
 
     test("without room key events are not sent", () async {
       final client = _RecordingRelayClient();
-      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow, onBytesSent: (_) {});
+      final manager = SSEManager(
+        replayWindow: SSEManager.defaultReplayWindow,
+        onBytesSent: (_) {},
+        failureReporter: FakeFailureReporter(),
+      );
       addTearDown(manager.stop);
 
       manager.subscribePath(7, "/global/event", client);
@@ -89,7 +105,11 @@ void main() {
     });
 
     test("non-last unsubscribe creates orphan queue", () {
-      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow, onBytesSent: (_) {});
+      final manager = SSEManager(
+        replayWindow: SSEManager.defaultReplayWindow,
+        onBytesSent: (_) {},
+        failureReporter: FakeFailureReporter(),
+      );
       final relayClient = RelayClient(
         relayURL: "ws://127.0.0.1:1",
         accessTokenProvider: FakeAccessTokenProvider(""),
@@ -105,7 +125,11 @@ void main() {
     });
 
     test("last unsubscribe creates orphan queue", () {
-      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow, onBytesSent: (_) {});
+      final manager = SSEManager(
+        replayWindow: SSEManager.defaultReplayWindow,
+        onBytesSent: (_) {},
+        failureReporter: FakeFailureReporter(),
+      );
       final relayClient = RelayClient(
         relayURL: "ws://127.0.0.1:1",
         accessTokenProvider: FakeAccessTokenProvider(""),
@@ -122,7 +146,11 @@ void main() {
     test("single subscriber reconnect replays buffered events", () async {
       final roomKey = makeRoomKey();
       final client = _RecordingRelayClient();
-      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow, onBytesSent: (_) {});
+      final manager = SSEManager(
+        replayWindow: SSEManager.defaultReplayWindow,
+        onBytesSent: (_) {},
+        failureReporter: FakeFailureReporter(),
+      );
       manager.setRoomKey(roomKey);
       addTearDown(manager.stop);
 
@@ -153,7 +181,11 @@ void main() {
     test("orphan queue replays to next subscriber within replay window", () async {
       final roomKey = makeRoomKey();
       final client = _RecordingRelayClient();
-      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow, onBytesSent: (_) {});
+      final manager = SSEManager(
+        replayWindow: SSEManager.defaultReplayWindow,
+        onBytesSent: (_) {},
+        failureReporter: FakeFailureReporter(),
+      );
       manager.setRoomKey(roomKey);
       addTearDown(manager.stop);
 
@@ -181,7 +213,11 @@ void main() {
       await withClock(fakeClock, () async {
         final roomKey = makeRoomKey();
         final client = _RecordingRelayClient();
-        final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow, onBytesSent: (_) {});
+        final manager = SSEManager(
+          replayWindow: SSEManager.defaultReplayWindow,
+          onBytesSent: (_) {},
+          failureReporter: FakeFailureReporter(),
+        );
         manager.setRoomKey(roomKey);
         addTearDown(manager.stop);
 
@@ -206,7 +242,11 @@ void main() {
     test("orphanAll moves all subscribers to orphan state", () async {
       final roomKey = makeRoomKey();
       final client = _RecordingRelayClient();
-      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow, onBytesSent: (_) {});
+      final manager = SSEManager(
+        replayWindow: SSEManager.defaultReplayWindow,
+        onBytesSent: (_) {},
+        failureReporter: FakeFailureReporter(),
+      );
       manager.setRoomKey(roomKey);
       addTearDown(manager.stop);
 
@@ -238,7 +278,11 @@ void main() {
     });
 
     test("stop clears subscribers and orphan queues", () {
-      final manager = SSEManager(replayWindow: SSEManager.defaultReplayWindow, onBytesSent: (_) {});
+      final manager = SSEManager(
+        replayWindow: SSEManager.defaultReplayWindow,
+        onBytesSent: (_) {},
+        failureReporter: FakeFailureReporter(),
+      );
       final relayClient = RelayClient(
         relayURL: "ws://127.0.0.1:1",
         accessTokenProvider: FakeAccessTokenProvider(""),
@@ -252,6 +296,36 @@ void main() {
 
       expect(manager.subscriberCount, equals(0));
       expect(manager.pendingReplayCount, equals(0));
+    });
+
+    test("EventQueue onError callback reports failure when send function throws", () async {
+      final roomKey = makeRoomKey();
+      final throwingClient = _ThrowingRelayClient();
+      final capturingReporter = CapturingFailureReporter();
+      final manager = SSEManager(
+        replayWindow: SSEManager.defaultReplayWindow,
+        onBytesSent: (_) {},
+        failureReporter: capturingReporter,
+      );
+      manager.setRoomKey(roomKey);
+      addTearDown(manager.stop);
+
+      manager.subscribePath(42, "/global/event", throwingClient);
+      manager.enqueueEvent(_event("repo-err"));
+
+      // Wait for the send function to throw and the onError callback to fire.
+      final deadline = DateTime.now().add(const Duration(seconds: 5));
+      while (capturingReporter.recordedIdentifiers.isEmpty) {
+        if (DateTime.now().isAfter(deadline)) {
+          fail("Timed out waiting for failure report from onError callback");
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+      }
+
+      expect(
+        capturingReporter.recordedIdentifiers,
+        contains("sse_send_failure:42"),
+      );
     });
   });
 }
@@ -304,5 +378,18 @@ class _RecordingRelayClient extends RelayClient {
   void send(int connID, List<int> payload) {
     sentConnIDs.add(connID);
     sentPayloads.add(List<int>.from(payload));
+  }
+}
+
+class _ThrowingRelayClient extends RelayClient {
+  _ThrowingRelayClient()
+    : super(
+        relayURL: "ws://127.0.0.1:1",
+        accessTokenProvider: FakeAccessTokenProvider(""),
+      );
+
+  @override
+  void send(int connID, List<int> payload) {
+    throw Exception("send failed intentionally");
   }
 }

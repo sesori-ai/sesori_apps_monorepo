@@ -21,6 +21,7 @@ class SessionListCubit extends Cubit<SessionListState> {
   final ConnectionService _connectionService;
   final SseEventRepository _sseEventRepository;
   final String _projectId;
+  final FailureReporter _failureReporter;
 
   /// Tracks the session state before the last archive/unarchive action
   /// so the screen can offer an undo toast.
@@ -31,10 +32,12 @@ class SessionListCubit extends Cubit<SessionListState> {
     ConnectionService connectionService,
     SseEventRepository sseEventRepository, {
     required String projectId,
+    required FailureReporter failureReporter,
   }) : _service = service,
        _connectionService = connectionService,
        _sseEventRepository = sseEventRepository,
        _projectId = projectId,
+       _failureReporter = failureReporter,
        super(const SessionListState.loading()) {
     loadSessions();
     _subscriptions.add(_connectionService.events.listen(_handleEvent));
@@ -47,17 +50,33 @@ class SessionListCubit extends Cubit<SessionListState> {
   }
 
   void _handleEvent(SseEvent event) {
-    if (isClosed) return;
-    logd("[SessionList] event received: ${event.data.runtimeType}");
-    switch (event.data) {
-      case SesoriSessionCreated(:final info):
-        _onSessionCreated(info);
-      case SesoriSessionUpdated(:final info):
-        _onSessionUpdated(info);
-      case SesoriSessionDeleted(:final info):
-        _onSessionDeleted(info);
-      default:
-        break;
+    try {
+      if (isClosed) return;
+      logd("[SessionList] event received: ${event.data.runtimeType}");
+      switch (event.data) {
+        case SesoriSessionCreated(:final info):
+          _onSessionCreated(info);
+        case SesoriSessionUpdated(:final info):
+          _onSessionUpdated(info);
+        case SesoriSessionDeleted(:final info):
+          _onSessionDeleted(info);
+        default:
+          break;
+      }
+    } catch (e, st) {
+      loge("SSE event handler error", e, st);
+      unawaited(
+        _failureReporter
+            .recordFailure(
+              error: e,
+              stackTrace: st,
+              uniqueIdentifier: "session_list_event:${event.data.runtimeType}",
+              fatal: false,
+              reason: "Failed to handle session list event",
+              information: [event.data.runtimeType.toString()],
+            )
+            .catchError((_) {}),
+      );
     }
   }
 

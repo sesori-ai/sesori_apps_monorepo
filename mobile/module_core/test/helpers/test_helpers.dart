@@ -14,6 +14,8 @@ class MockProjectService extends Mock implements ProjectService {}
 
 class MockSessionService extends Mock implements SessionService {}
 
+class MockFailureReporter extends Mock implements FailureReporter {}
+
 class MockConnectionService extends Mock implements ConnectionService {}
 
 class MockRouteSource extends Mock implements RouteSource {
@@ -57,6 +59,7 @@ class FakeUri extends Fake implements Uri {}
 void registerAllFallbackValues() {
   registerFallbackValue(const ServerConnectionConfig(relayHost: "fake.example.com"));
   registerFallbackValue(FakeUri());
+  registerFallbackValue(StackTrace.empty);
 }
 
 Project testProject({String? id, String? path, String? name}) {

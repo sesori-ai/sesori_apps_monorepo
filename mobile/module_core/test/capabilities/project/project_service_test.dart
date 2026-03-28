@@ -254,7 +254,7 @@ void main() {
         () => mockClient.patch<Project>(
           "/project/name",
           fromJson: any(named: "fromJson"),
-          body: RenameProjectRequest(projectId: "proj-1", name: "New Name").toJson(),
+          body: const RenameProjectRequest(projectId: "proj-1", name: "New Name").toJson(),
         ),
       ).called(1);
     });

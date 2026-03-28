@@ -24,6 +24,7 @@ void main() {
     late MockSessionService mockSessionService;
     late MockConnectionService mockConnectionService;
     late MockNotificationCanceller mockNotificationCanceller;
+    late MockFailureReporter mockFailureReporter;
     late BehaviorSubject<SesoriSessionEvent> sessionEvents;
     late BehaviorSubject<SseEvent> globalEvents;
     late BehaviorSubject<ConnectionStatus> connectionStatus;
@@ -32,9 +33,21 @@ void main() {
       mockSessionService = MockSessionService();
       mockConnectionService = MockConnectionService();
       mockNotificationCanceller = MockNotificationCanceller();
+      mockFailureReporter = MockFailureReporter();
       sessionEvents = BehaviorSubject<SesoriSessionEvent>();
       globalEvents = BehaviorSubject<SseEvent>();
       connectionStatus = BehaviorSubject<ConnectionStatus>();
+
+      when(
+        () => mockFailureReporter.recordFailure(
+          error: any(named: "error"),
+          stackTrace: any(named: "stackTrace"),
+          uniqueIdentifier: any(named: "uniqueIdentifier"),
+          fatal: any(named: "fatal"),
+          reason: any(named: "reason"),
+          information: any(named: "information"),
+        ),
+      ).thenAnswer((_) async {});
 
       _stubAllDefaults(
         mockSessionService,
@@ -60,6 +73,7 @@ void main() {
         mockConnectionService,
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
+        failureReporter: mockFailureReporter,
       ),
       expect: () => [
         isA<SessionDetailLoaded>(),
@@ -88,6 +102,7 @@ void main() {
           mockConnectionService,
           sessionId: sessionId,
           notificationCanceller: mockNotificationCanceller,
+          failureReporter: mockFailureReporter,
         );
       },
       expect: () => [
@@ -102,6 +117,7 @@ void main() {
         mockConnectionService,
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
+        failureReporter: mockFailureReporter,
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
@@ -129,6 +145,7 @@ void main() {
         mockConnectionService,
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
+        failureReporter: mockFailureReporter,
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
@@ -157,6 +174,7 @@ void main() {
         mockConnectionService,
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
+        failureReporter: mockFailureReporter,
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
@@ -200,6 +218,7 @@ void main() {
         mockConnectionService,
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
+        failureReporter: mockFailureReporter,
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
@@ -222,6 +241,7 @@ void main() {
         mockConnectionService,
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
+        failureReporter: mockFailureReporter,
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
@@ -242,6 +262,7 @@ void main() {
         mockConnectionService,
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
+        failureReporter: mockFailureReporter,
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
@@ -267,6 +288,7 @@ void main() {
           mockConnectionService,
           sessionId: sessionId,
           notificationCanceller: mockNotificationCanceller,
+          failureReporter: mockFailureReporter,
         );
       },
       act: (cubit) async {
@@ -314,6 +336,7 @@ void main() {
           mockConnectionService,
           sessionId: sessionId,
           notificationCanceller: mockNotificationCanceller,
+          failureReporter: mockFailureReporter,
         );
       },
       act: (cubit) async {
@@ -347,6 +370,7 @@ void main() {
           mockConnectionService,
           sessionId: sessionId,
           notificationCanceller: mockNotificationCanceller,
+          failureReporter: mockFailureReporter,
         );
       },
       act: (cubit) async {
@@ -373,6 +397,7 @@ void main() {
         mockConnectionService,
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
+        failureReporter: mockFailureReporter,
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
@@ -400,6 +425,7 @@ void main() {
         mockConnectionService,
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
+        failureReporter: mockFailureReporter,
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
@@ -425,6 +451,7 @@ void main() {
           mockConnectionService,
           sessionId: sessionId,
           notificationCanceller: mockNotificationCanceller,
+          failureReporter: mockFailureReporter,
         );
       },
       act: (cubit) async {
@@ -449,6 +476,7 @@ void main() {
         mockConnectionService,
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
+        failureReporter: mockFailureReporter,
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
@@ -488,6 +516,7 @@ void main() {
           mockConnectionService,
           sessionId: sessionId,
           notificationCanceller: mockNotificationCanceller,
+          failureReporter: mockFailureReporter,
         );
       },
       expect: () => [
@@ -513,6 +542,7 @@ void main() {
           mockConnectionService,
           sessionId: sessionId,
           notificationCanceller: mockNotificationCanceller,
+          failureReporter: mockFailureReporter,
         );
       },
       act: (cubit) async {
@@ -546,6 +576,7 @@ void main() {
         mockConnectionService,
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
+        failureReporter: mockFailureReporter,
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
@@ -574,6 +605,7 @@ void main() {
           mockConnectionService,
           sessionId: sessionId,
           notificationCanceller: mockNotificationCanceller,
+          failureReporter: mockFailureReporter,
         );
       },
       act: (cubit) async {
@@ -614,6 +646,7 @@ void main() {
           mockConnectionService,
           sessionId: sessionId,
           notificationCanceller: mockNotificationCanceller,
+          failureReporter: mockFailureReporter,
         );
       },
       act: (cubit) async {
@@ -659,6 +692,7 @@ void main() {
           mockConnectionService,
           sessionId: sessionId,
           notificationCanceller: mockNotificationCanceller,
+          failureReporter: mockFailureReporter,
         );
       },
       act: (cubit) async {
@@ -703,6 +737,7 @@ void main() {
           mockConnectionService,
           sessionId: sessionId,
           notificationCanceller: mockNotificationCanceller,
+          failureReporter: mockFailureReporter,
         );
       },
       act: (cubit) async {
@@ -758,6 +793,7 @@ void main() {
         mockConnectionService,
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
+        failureReporter: mockFailureReporter,
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
@@ -823,6 +859,7 @@ void main() {
         mockConnectionService,
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
+        failureReporter: mockFailureReporter,
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
@@ -897,6 +934,7 @@ void main() {
           mockConnectionService,
           sessionId: sessionId,
           notificationCanceller: mockNotificationCanceller,
+          failureReporter: mockFailureReporter,
         );
       },
       act: (cubit) async {
