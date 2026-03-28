@@ -79,5 +79,98 @@ void main() {
 
       await expectation;
     });
+
+    group("incrementAndGetWorktreeCounter", () {
+      test("returns 1 for a project with no existing row", () async {
+        final counter = await dao.incrementAndGetWorktreeCounter(projectId: "proj-1");
+        expect(counter, equals(1));
+      });
+
+      test("returns 2 on second increment", () async {
+        await dao.incrementAndGetWorktreeCounter(projectId: "proj-1");
+        final counter = await dao.incrementAndGetWorktreeCounter(projectId: "proj-1");
+        expect(counter, equals(2));
+      });
+
+      test("preserves existing hidden=true flag when incrementing", () async {
+        await dao.hideProject(projectId: "proj-hidden");
+
+        await dao.incrementAndGetWorktreeCounter(projectId: "proj-hidden");
+
+        final hiddenIds = await dao.getHiddenProjectIds();
+        expect(hiddenIds, contains("proj-hidden"));
+      });
+
+      test("independent increments for different projects", () async {
+        final a = await dao.incrementAndGetWorktreeCounter(projectId: "proj-a");
+        final b = await dao.incrementAndGetWorktreeCounter(projectId: "proj-b");
+        final a2 = await dao.incrementAndGetWorktreeCounter(projectId: "proj-a");
+
+        expect(a, equals(1));
+        expect(b, equals(1));
+        expect(a2, equals(2));
+      });
+    });
+
+    group("getBaseBranch", () {
+      test("returns null for unknown project", () async {
+        final result = await dao.getBaseBranch(projectId: "unknown");
+        expect(result, isNull);
+      });
+
+      test("returns set value after setBaseBranch", () async {
+        await dao.setBaseBranch(projectId: "proj-1", baseBranch: "main");
+
+        final result = await dao.getBaseBranch(projectId: "proj-1");
+        expect(result, equals("main"));
+      });
+    });
+
+    group("setBaseBranch", () {
+      test("sets base branch for a new project row", () async {
+        await dao.setBaseBranch(projectId: "proj-new", baseBranch: "develop");
+
+        final result = await dao.getBaseBranch(projectId: "proj-new");
+        expect(result, equals("develop"));
+      });
+
+      test("updates base branch for an existing row", () async {
+        await dao.setBaseBranch(projectId: "proj-1", baseBranch: "main");
+        await dao.setBaseBranch(projectId: "proj-1", baseBranch: "develop");
+
+        final result = await dao.getBaseBranch(projectId: "proj-1");
+        expect(result, equals("develop"));
+      });
+
+      test("sets base branch to null (resets)", () async {
+        await dao.setBaseBranch(projectId: "proj-1", baseBranch: "main");
+        await dao.setBaseBranch(projectId: "proj-1", baseBranch: null);
+
+        final result = await dao.getBaseBranch(projectId: "proj-1");
+        expect(result, isNull);
+      });
+
+      test("preserves existing hidden flag", () async {
+        await dao.hideProject(projectId: "proj-hidden");
+        await dao.setBaseBranch(projectId: "proj-hidden", baseBranch: "feature");
+
+        final hiddenIds = await dao.getHiddenProjectIds();
+        expect(hiddenIds, contains("proj-hidden"));
+
+        final branch = await dao.getBaseBranch(projectId: "proj-hidden");
+        expect(branch, equals("feature"));
+      });
+
+      test("preserves existing worktreeCounter", () async {
+        await dao.incrementAndGetWorktreeCounter(projectId: "proj-1");
+        await dao.incrementAndGetWorktreeCounter(projectId: "proj-1");
+
+        await dao.setBaseBranch(projectId: "proj-1", baseBranch: "main");
+
+        // increment again and expect it continues from 2 → 3
+        final counter = await dao.incrementAndGetWorktreeCounter(projectId: "proj-1");
+        expect(counter, equals(3));
+      });
+    });
   });
 }

@@ -179,7 +179,7 @@ class _ThrowingSummaryPlugin implements BridgePlugin {
         onError: controller.addError,
         onDone: controller.close,
       );
-      controller.onCancel = () => sub.cancel();
+      controller.onCancel = sub.cancel;
     });
   }
 

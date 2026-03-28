@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Project {
 
- String get projectId; bool get hidden;
+ String get projectId; bool get hidden; String? get baseBranch; int get worktreeCounter;
 /// Create a copy of Project
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $ProjectCopyWith<Project> get copyWith => _$ProjectCopyWithImpl<Project>(this as
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Project&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.hidden, hidden) || other.hidden == hidden));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Project&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.hidden, hidden) || other.hidden == hidden)&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch)&&(identical(other.worktreeCounter, worktreeCounter) || other.worktreeCounter == worktreeCounter));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,projectId,hidden);
+int get hashCode => Object.hash(runtimeType,projectId,hidden,baseBranch,worktreeCounter);
 
 @override
 String toString() {
-  return 'Project(projectId: $projectId, hidden: $hidden)';
+  return 'Project(projectId: $projectId, hidden: $hidden, baseBranch: $baseBranch, worktreeCounter: $worktreeCounter)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $ProjectCopyWith<$Res>  {
   factory $ProjectCopyWith(Project value, $Res Function(Project) _then) = _$ProjectCopyWithImpl;
 @useResult
 $Res call({
- String projectId, bool hidden
+ String projectId, bool hidden, String? baseBranch, int worktreeCounter
 });
 
 
@@ -62,11 +62,13 @@ class _$ProjectCopyWithImpl<$Res>
 
 /// Create a copy of Project
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? projectId = null,Object? hidden = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? projectId = null,Object? hidden = null,Object? baseBranch = freezed,Object? worktreeCounter = null,}) {
   return _then(_self.copyWith(
 projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
 as String,hidden: null == hidden ? _self.hidden : hidden // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,baseBranch: freezed == baseBranch ? _self.baseBranch : baseBranch // ignore: cast_nullable_to_non_nullable
+as String?,worktreeCounter: null == worktreeCounter ? _self.worktreeCounter : worktreeCounter // ignore: cast_nullable_to_non_nullable
+as int,
   ));
 }
 
@@ -78,11 +80,13 @@ as bool,
 
 
 class _Project extends Project {
-  const _Project({required this.projectId, this.hidden = false}): super._();
+  const _Project({required this.projectId, this.hidden = false, this.baseBranch, this.worktreeCounter = 0}): super._();
   
 
 @override final  String projectId;
 @override@JsonKey() final  bool hidden;
+@override final  String? baseBranch;
+@override@JsonKey() final  int worktreeCounter;
 
 /// Create a copy of Project
 /// with the given fields replaced by the non-null parameter values.
@@ -94,16 +98,16 @@ _$ProjectCopyWith<_Project> get copyWith => __$ProjectCopyWithImpl<_Project>(thi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Project&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.hidden, hidden) || other.hidden == hidden));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Project&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.hidden, hidden) || other.hidden == hidden)&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch)&&(identical(other.worktreeCounter, worktreeCounter) || other.worktreeCounter == worktreeCounter));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,projectId,hidden);
+int get hashCode => Object.hash(runtimeType,projectId,hidden,baseBranch,worktreeCounter);
 
 @override
 String toString() {
-  return 'Project(projectId: $projectId, hidden: $hidden)';
+  return 'Project(projectId: $projectId, hidden: $hidden, baseBranch: $baseBranch, worktreeCounter: $worktreeCounter)';
 }
 
 
@@ -114,7 +118,7 @@ abstract mixin class _$ProjectCopyWith<$Res> implements $ProjectCopyWith<$Res> {
   factory _$ProjectCopyWith(_Project value, $Res Function(_Project) _then) = __$ProjectCopyWithImpl;
 @override @useResult
 $Res call({
- String projectId, bool hidden
+ String projectId, bool hidden, String? baseBranch, int worktreeCounter
 });
 
 
@@ -131,11 +135,13 @@ class __$ProjectCopyWithImpl<$Res>
 
 /// Create a copy of Project
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? projectId = null,Object? hidden = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? projectId = null,Object? hidden = null,Object? baseBranch = freezed,Object? worktreeCounter = null,}) {
   return _then(_Project(
 projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
 as String,hidden: null == hidden ? _self.hidden : hidden // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,baseBranch: freezed == baseBranch ? _self.baseBranch : baseBranch // ignore: cast_nullable_to_non_nullable
+as String?,worktreeCounter: null == worktreeCounter ? _self.worktreeCounter : worktreeCounter // ignore: cast_nullable_to_non_nullable
+as int,
   ));
 }
 

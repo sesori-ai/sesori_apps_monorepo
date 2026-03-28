@@ -35,6 +35,7 @@ export "src/models/sesori/question.dart";
 export "src/models/sesori/rename_project_request.dart";
 export "src/models/sesori/rename_session_request.dart";
 export "src/models/sesori/reply_to_question_request.dart";
+export "src/models/sesori/set_base_branch_request.dart";
 export "src/models/sesori/send_notification_payload.dart";
 export "src/models/sesori/send_prompt_request.dart";
 export "src/models/sesori/sesori_sse_event.dart";

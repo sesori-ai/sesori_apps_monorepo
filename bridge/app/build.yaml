@@ -12,4 +12,6 @@ targets:
           when: false
       drift_dev:
         options:
+          databases:
+            default: lib/src/bridge/persistence/database.dart
           write_to_columns_mixins: true

@@ -3,13 +3,20 @@ import "dart:convert";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../worktree_service.dart";
 import "request_handler.dart";
 
 /// Handles `POST /session` — creates a session for a given project.
 class CreateSessionHandler extends RequestHandler {
   final BridgePlugin _plugin;
+  final WorktreeService _worktreeService;
 
-  CreateSessionHandler(this._plugin) : super(HttpMethod.post, "/session");
+  CreateSessionHandler({
+    required BridgePlugin plugin,
+    required WorktreeService worktreeService,
+  }) : _plugin = plugin,
+       _worktreeService = worktreeService,
+       super(HttpMethod.post, "/session");
 
   @override
   Future<RelayResponse> handle(
@@ -33,10 +40,32 @@ class CreateSessionHandler extends RequestHandler {
       return buildErrorResponse(request, 400, "invalid JSON body");
     }
 
-    final created = await _plugin.createSession(
-      projectId: createRequest.projectId,
-      parentSessionId: createRequest.parentSessionId,
+    final projectId = createRequest.projectId;
+    final parentSessionId = createRequest.parentSessionId;
+
+    final worktreeResult = await _worktreeService.prepareWorktreeForSession(
+      projectId: projectId,
+      parentSessionId: parentSessionId,
     );
+
+    final effectiveDirectory = switch (worktreeResult) {
+      WorktreeSuccess(:final path) => path,
+      WorktreeFallback(:final originalPath) => originalPath,
+    };
+
+    final created = await _plugin.createSession(
+      projectId: effectiveDirectory,
+      parentSessionId: parentSessionId,
+    );
+
+    if (worktreeResult case WorktreeSuccess(:final path, :final branchName)) {
+      await _worktreeService.recordSessionWorktree(
+        sessionId: created.id,
+        projectId: projectId,
+        worktreePath: path,
+        branchName: branchName,
+      );
+    }
 
     final session = Session(
       id: created.id,

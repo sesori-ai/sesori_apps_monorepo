@@ -18,7 +18,11 @@ void main() {
     setUp(() {
       plugin = FakeBridgePlugin();
       db = createTestDatabase();
-      router = RequestRouter(plugin: plugin, projectsDao: db.projectsDao);
+      router = RequestRouter(
+        plugin: plugin,
+        projectsDao: db.projectsDao,
+        sessionWorktreesDao: db.sessionWorktreesDao,
+      );
     });
 
     tearDown(() async {
