@@ -12,8 +12,8 @@ class BridgeDiagnostics {
   /// Returns `true` if all checks passed, `false` if any warnings were logged.
   Future<bool> runAll() async {
     try {
-      final results = await (checkFilesystemAccess(), checkGitAvailable()).wait;
-      return results.$1 && results.$2;
+      final (hasFileSystemAccess, hasGitAvailable) = await (checkFilesystemAccess(), checkGitAvailable()).wait;
+      return hasFileSystemAccess && hasGitAvailable;
     } on Object catch (error, stackTrace) {
       Log.w("[diagnostics] Unexpected error during diagnostics: $error\n$stackTrace");
       return false;
