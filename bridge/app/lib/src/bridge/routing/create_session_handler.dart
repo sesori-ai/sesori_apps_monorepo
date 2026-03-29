@@ -42,7 +42,7 @@ class CreateSessionHandler extends RequestHandler {
     }
 
     final projectId = createRequest.projectId;
-    final String? parentSessionId = null;
+    const String? parentSessionId = null;
 
     final worktreeResult = await _worktreeService.prepareWorktreeForSession(
       projectId: projectId,

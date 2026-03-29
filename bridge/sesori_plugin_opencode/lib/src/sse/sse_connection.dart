@@ -72,8 +72,8 @@ class SseConnection {
         reconnectDelay = const Duration(seconds: 1);
         await _readStream(response, generation);
       } catch (e, st) {
-        Log.e("[sse-conn] stream loop error: $e\n$st");
         if (!_active || _generation != generation) return;
+        Log.e("[sse-conn] stream loop error: $e\n$st");
       } finally {
         client.close();
         if (_currentClient == client) _currentClient = null;
