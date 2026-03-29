@@ -146,13 +146,23 @@ class _PromptInputState extends State<PromptInput> {
   void _showVoiceError(String message) {
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
-      ..showSnackBar(SnackBar(content: Text(message)));
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          duration: const Duration(seconds: 4),
+        ),
+      );
   }
 
   void _showRecordingLimitReached() {
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
-      ..showSnackBar(SnackBar(content: Text(context.loc.voiceRecordingLimitReached)));
+      ..showSnackBar(
+        SnackBar(
+          content: Text(context.loc.voiceRecordingLimitReached),
+          duration: const Duration(seconds: 4),
+        ),
+      );
   }
 
   @override

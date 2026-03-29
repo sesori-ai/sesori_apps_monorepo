@@ -69,11 +69,17 @@ class _RenameSessionDialogState extends State<_RenameSessionDialog> {
     if (success) {
       navigator.pop();
       messenger.showSnackBar(
-        SnackBar(content: Text(loc.renameSessionSuccess)),
+        SnackBar(
+          content: Text(loc.renameSessionSuccess),
+          duration: const Duration(seconds: 4),
+        ),
       );
     } else {
       messenger.showSnackBar(
-        SnackBar(content: Text(loc.renameSessionFailed)),
+        SnackBar(
+          content: Text(loc.renameSessionFailed),
+          duration: const Duration(seconds: 4),
+        ),
       );
     }
   }

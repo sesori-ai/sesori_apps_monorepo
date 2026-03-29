@@ -127,7 +127,12 @@ class _SessionListBody extends StatelessWidget {
     // (via fork + delete), so the original cannot be restored.
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
-      ..showSnackBar(SnackBar(content: Text(loc.sessionListUnarchived)));
+      ..showSnackBar(
+        SnackBar(
+          content: Text(loc.sessionListUnarchived),
+          duration: const Duration(seconds: 4),
+        ),
+      );
   }
 
   void _showUndoSnackBar(BuildContext context, SessionListCubit cubit, String message) {
@@ -200,7 +205,10 @@ class _SessionListBody extends StatelessWidget {
 
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(loc.sessionListDeleted)),
+      SnackBar(
+        content: Text(loc.sessionListDeleted),
+        duration: const Duration(seconds: 4),
+      ),
     );
   }
 
@@ -254,7 +262,10 @@ class _SessionListBody extends StatelessWidget {
                   final success = await context.read<SessionListCubit>().refreshSessions();
                   if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(success ? loc.sessionListRefreshSuccess : loc.sessionListRefreshFailed)),
+                    SnackBar(
+                      content: Text(success ? loc.sessionListRefreshSuccess : loc.sessionListRefreshFailed),
+                      duration: const Duration(seconds: 4),
+                    ),
                   );
                 },
                 child: sessions.isEmpty

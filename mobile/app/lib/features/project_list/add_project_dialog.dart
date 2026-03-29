@@ -57,11 +57,17 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
     if (success) {
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(loc.projectDiscovered)),
+        SnackBar(
+          content: Text(loc.projectDiscovered),
+          duration: const Duration(seconds: 4),
+        ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(loc.projectDiscoverFailed)),
+        SnackBar(
+          content: Text(loc.projectDiscoverFailed),
+          duration: const Duration(seconds: 4),
+        ),
       );
     }
   }
@@ -82,11 +88,17 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
     if (success) {
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(loc.projectCreated)),
+        SnackBar(
+          content: Text(loc.projectCreated),
+          duration: const Duration(seconds: 4),
+        ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(loc.projectCreateFailed)),
+        SnackBar(
+          content: Text(loc.projectCreateFailed),
+          duration: const Duration(seconds: 4),
+        ),
       );
     }
   }

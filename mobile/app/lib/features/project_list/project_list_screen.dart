@@ -86,7 +86,10 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
                 Navigator.of(sheetContext).pop();
                 cubit.hideProject(project.id);
                 scaffoldMessenger.showSnackBar(
-                  SnackBar(content: Text(loc.projectHidden)),
+                  SnackBar(
+                    content: Text(loc.projectHidden),
+                    duration: const Duration(seconds: 4),
+                  ),
                 );
               },
             ),
@@ -130,7 +133,10 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
                   final success = await context.read<ProjectListCubit>().refreshProjects();
                   if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(success ? loc.projectListRefreshSuccess : loc.projectListRefreshFailed)),
+                    SnackBar(
+                      content: Text(success ? loc.projectListRefreshSuccess : loc.projectListRefreshFailed),
+                      duration: const Duration(seconds: 4),
+                    ),
                   );
                 },
                 child: projects.isEmpty

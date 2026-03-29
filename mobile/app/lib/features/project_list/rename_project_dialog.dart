@@ -74,11 +74,17 @@ class _RenameProjectDialogState extends State<RenameProjectDialog> {
     if (success) {
       navigator.pop();
       messenger.showSnackBar(
-        SnackBar(content: Text(loc.renameProjectSuccess)),
+        SnackBar(
+          content: Text(loc.renameProjectSuccess),
+          duration: const Duration(seconds: 4),
+        ),
       );
     } else {
       messenger.showSnackBar(
-        SnackBar(content: Text(loc.renameProjectFailed)),
+        SnackBar(
+          content: Text(loc.renameProjectFailed),
+          duration: const Duration(seconds: 4),
+        ),
       );
     }
   }

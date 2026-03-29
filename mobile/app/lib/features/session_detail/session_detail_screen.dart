@@ -123,7 +123,12 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
         if (!success) {
           ScaffoldMessenger.of(context)
             ..clearSnackBars()
-            ..showSnackBar(SnackBar(content: Text(context.loc.questionReplyFailed)));
+            ..showSnackBar(
+              SnackBar(
+                content: Text(context.loc.questionReplyFailed),
+                duration: const Duration(seconds: 4),
+              ),
+            );
           return;
         }
 
@@ -145,7 +150,12 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
         if (!success) {
           ScaffoldMessenger.of(context)
             ..clearSnackBars()
-            ..showSnackBar(SnackBar(content: Text(context.loc.questionRejectFailed)));
+            ..showSnackBar(
+              SnackBar(
+                content: Text(context.loc.questionRejectFailed),
+                duration: const Duration(seconds: 4),
+              ),
+            );
           return;
         }
 
