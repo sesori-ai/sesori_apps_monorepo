@@ -98,6 +98,19 @@ class ProjectService {
     );
   }
 
+  /// Returns the base branch name for the given project, or `null` if
+  /// the project has no base branch configured.
+  Future<ApiResponse<String?>> getBaseBranch({required String projectId}) {
+    return _client.get(
+      "/project/base-branch",
+      fromJson: (json) => switch (json) {
+        final Map<String, dynamic> map => map["baseBranch"] as String?,
+        _ => throw FormatException("expected map, got ${json.runtimeType}"),
+      },
+      headers: {"x-project-id": projectId},
+    );
+  }
+
   /// Renames the project with the given [projectId] to [name].
   Future<ApiResponse<Project>> renameProject({
     required String projectId,

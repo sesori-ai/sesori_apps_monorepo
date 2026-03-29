@@ -66,6 +66,33 @@ void main() {
       expect(time["updated"], equals(20));
     });
 
+    test(".gitignore is created with .worktrees/ entry after git init", () async {
+      final path = "${tempDir.path}/new-project-with-gitignore";
+      plugin.currentProjectResult = const PluginProject(
+        id: "p-2",
+        name: "Project With Gitignore",
+        time: PluginProjectTime(created: 30, updated: 40),
+      );
+
+      final response = await handler.handle(
+        makeRequest(
+          "POST",
+          "/project",
+          body: jsonEncode(CreateProjectRequest(path: path).toJson()),
+        ),
+        pathParams: {},
+        queryParams: {},
+      );
+
+      expect(response.status, equals(201));
+
+      final gitignoreFile = File("$path/.gitignore");
+      expect(gitignoreFile.existsSync(), isTrue);
+
+      final gitignoreContent = await gitignoreFile.readAsString();
+      expect(gitignoreContent, contains(".worktrees/"));
+    });
+
     test("path that already exists as directory returns 409", () async {
       final existing = Directory("${tempDir.path}/existing")..createSync();
 

@@ -115,7 +115,11 @@ class OrchestratorSession {
        _sseManager = sseManager,
        _bytesSentController = bytesSentController,
        _failureReporter = failureReporter,
-       _router = RequestRouter(plugin: plugin, projectsDao: projectsDao),
+       _router = RequestRouter(
+         plugin: plugin,
+         projectsDao: projectsDao,
+         sessionDao: projectsDao.attachedDatabase.sessionDao,
+       ),
        _mapper = BridgeEventMapper(plugin: plugin, failureReporter: failureReporter);
 
   /// Broadcast stream of byte counts emitted each time data is sent to a phone.

@@ -1,9 +1,9 @@
 export "src/auth/jwt_expiry.dart";
 export "src/concurrency/concurrent_cache.dart";
-export "src/constants/sse_constants.dart";
 export "src/concurrency/event_queue.dart";
 export "src/concurrency/future_x.dart";
 export "src/concurrency/isolate/isolate.dart";
+export "src/constants/sse_constants.dart";
 export "src/crypto/crypto_service.dart";
 export "src/crypto/session_encryptor.dart";
 export "src/extensions/iterable_x.dart";
@@ -40,6 +40,7 @@ export "src/models/sesori/send_prompt_request.dart";
 export "src/models/sesori/sesori_sse_event.dart";
 export "src/models/sesori/session.dart";
 export "src/models/sesori/session_status.dart";
+export "src/models/sesori/set_base_branch_request.dart";
 export "src/models/sesori/update_session_archive_request.dart";
 export "src/protocol/close_codes.dart";
 export "src/protocol/constants.dart";

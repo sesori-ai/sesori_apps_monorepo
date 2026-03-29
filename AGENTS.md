@@ -58,13 +58,40 @@ make analyze   # runs dart analyze across all bridge modules
 
 ## Generated Files
 
-Never edit `*.freezed.dart`, `*.g.dart`, or `*.config.dart` by hand.
+Never edit `*.freezed.dart`, `*.g.dart`, `*.config.dart`, or `*.steps.dart` by hand.
 
 After modifying a `@freezed` class, regenerate from the module dir:
 
 ```sh
 dart run build_runner build --delete-conflicting-outputs
 ```
+
+## Database Migrations (Bridge)
+
+The bridge uses Drift (SQLite) for local persistence. Schema changes require a strict migration workflow.
+
+### Migration Workflow
+
+1. **Before modifying tables**: Run `dart run drift_dev make-migrations` from `bridge/app/` to export the current schema version.
+2. **Make schema changes**: Modify table definitions in `bridge/app/lib/src/bridge/persistence/tables/`, add new tables, register in `database.dart`.
+3. **Bump `schemaVersion`**: Increment the version number in `database.dart`.
+4. **Generate migration code**: Run `dart run drift_dev make-migrations` again. This generates:
+   - Schema export in `bridge/app/drift_schemas/`
+   - Step-by-step migration helper in `database.steps.dart`
+   - Test scaffolding in `bridge/app/test/drift/`
+5. **Write migration logic**: Implement the `fromNToN+1` callback in `database.steps.dart`.
+6. **Run `make codegen`**: Regenerate Drift + Freezed files from `bridge/`.
+7. **Write migration tests**: Every schema migration MUST have tests using `SchemaVerifier`:
+   - Structural test: `verifier.migrateAndValidate(db, targetVersion)`
+   - Data integrity test: insert data at old version, migrate, verify data at new version
+8. **Verify**: `make test && make analyze` from `bridge/`.
+
+### Important Rules
+
+- Never edit `*.steps.dart` beyond the migration callback bodies.
+- Never edit `drift_schemas/*.json` files — these are generated snapshots.
+- Every schema migration MUST have corresponding migration tests. No exceptions.
+- The `databases:` key in `bridge/app/build.yaml` must point to the database class.
 
 ## Git
 

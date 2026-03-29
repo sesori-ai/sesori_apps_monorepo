@@ -18,7 +18,11 @@ void main() {
     setUp(() {
       plugin = FakeBridgePlugin();
       db = createTestDatabase();
-      router = RequestRouter(plugin: plugin, projectsDao: db.projectsDao);
+      router = RequestRouter(
+        plugin: plugin,
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+      );
     });
 
     tearDown(() async {
@@ -105,7 +109,7 @@ void main() {
       );
 
       expect(response.status, equals(200));
-      expect(plugin.lastCreateSessionProjectId, equals("/tmp"));
+      expect(plugin.lastCreateSessionDirectory, equals("/tmp"));
       expect(plugin.lastCreateSessionParentId, equals("parent-1"));
     });
 

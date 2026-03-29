@@ -20,6 +20,7 @@ void main() {
 
   group("SessionListCubit", () {
     late MockSessionService mockSessionService;
+    late MockProjectService mockProjectService;
     late MockConnectionService mockConnectionService;
     late MockSseEventRepository mockSseEventRepository;
     late MockFailureReporter mockFailureReporter;
@@ -30,6 +31,7 @@ void main() {
 
     setUp(() {
       mockSessionService = MockSessionService();
+      mockProjectService = MockProjectService();
       mockConnectionService = MockConnectionService();
       mockSseEventRepository = MockSseEventRepository();
       mockFailureReporter = MockFailureReporter();
@@ -41,6 +43,9 @@ void main() {
       // Must be stubbed before any cubit is built — constructor subscribes immediately.
       when(() => mockConnectionService.events).thenAnswer((_) => eventController.stream);
       when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
+      when(
+        () => mockProjectService.getBaseBranch(projectId: any(named: "projectId")),
+      ).thenAnswer((_) async => ApiResponse.success(null));
       when(
         () => mockFailureReporter.recordFailure(
           error: any(named: "error"),
@@ -61,6 +66,7 @@ void main() {
     /// Convenience factory — stubs must be set up before calling this.
     SessionListCubit buildCubit() => SessionListCubit(
       mockSessionService,
+      mockProjectService,
       mockConnectionService,
       mockSseEventRepository,
       projectId: projectId,
@@ -1072,6 +1078,7 @@ void main() {
         );
         return SessionListCubit(
           mockSessionService,
+          mockProjectService,
           mockConnectionService,
           mockSseEventRepository,
           projectId: "global",

@@ -263,16 +263,18 @@ class _FakeBridgePlugin implements BridgePlugin {
   }) async => sessionsResult;
 
   @override
-  Future<PluginSession> createSession({required String projectId, String? parentSessionId}) async =>
-      const PluginSession(
-        id: "",
-        projectID: "",
-        directory: "",
-        parentID: null,
-        title: null,
-        time: null,
-        summary: null,
-      );
+  Future<PluginSession> createSession({
+    required String directory,
+    String? parentSessionId,
+  }) async => const PluginSession(
+    id: "",
+    projectID: "",
+    directory: "",
+    parentID: null,
+    title: null,
+    time: null,
+    summary: null,
+  );
 
   @override
   Future<PluginSession> updateSessionArchiveStatus(
@@ -403,16 +405,18 @@ class _TrackingBridgePlugin implements BridgePlugin {
   }) async => [];
 
   @override
-  Future<PluginSession> createSession({required String projectId, String? parentSessionId}) async =>
-      const PluginSession(
-        id: "",
-        projectID: "",
-        directory: "",
-        parentID: null,
-        title: null,
-        time: null,
-        summary: null,
-      );
+  Future<PluginSession> createSession({
+    required String directory,
+    String? parentSessionId,
+  }) async => const PluginSession(
+    id: "",
+    projectID: "",
+    directory: "",
+    parentID: null,
+    title: null,
+    time: null,
+    summary: null,
+  );
 
   @override
   Future<PluginSession> updateSessionArchiveStatus(

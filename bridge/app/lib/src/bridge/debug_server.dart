@@ -26,7 +26,11 @@ class DebugServer {
     required this.port,
     required FailureReporter failureReporter,
   }) : _plugin = plugin,
-       _router = RequestRouter(plugin: plugin, projectsDao: projectsDao),
+       _router = RequestRouter(
+         plugin: plugin,
+         projectsDao: projectsDao,
+         sessionDao: projectsDao.attachedDatabase.sessionDao,
+       ),
        _mapper = BridgeEventMapper(plugin: plugin, failureReporter: failureReporter);
 
   int? get boundPort => _server?.port;

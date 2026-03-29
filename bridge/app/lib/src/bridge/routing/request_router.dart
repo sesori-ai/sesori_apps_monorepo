@@ -2,12 +2,15 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../persistence/daos/projects_dao.dart";
+import "../persistence/daos/session_dao.dart";
+import "../worktree_service.dart";
 import "abort_session_handler.dart";
 import "create_project_handler.dart";
 import "create_session_handler.dart";
 import "delete_session_handler.dart";
 import "filesystem_suggestions_handler.dart";
 import "get_agents_handler.dart";
+import "get_base_branch_handler.dart";
 import "get_child_sessions_handler.dart";
 import "get_current_project_handler.dart";
 import "get_project_questions_handler.dart";
@@ -26,6 +29,7 @@ import "rename_session_handler.dart";
 import "reply_to_question_handler.dart";
 import "request_handler.dart";
 import "send_prompt_handler.dart";
+import "set_base_branch_handler.dart";
 import "update_session_archive_status_handler.dart";
 
 /// Routes incoming [RelayRequest]s to the first matching [RequestHandler].
@@ -38,14 +42,26 @@ import "update_session_archive_status_handler.dart";
 class RequestRouter {
   final List<RequestHandler> _handlers;
 
-  RequestRouter({required BridgePlugin plugin, required ProjectsDao projectsDao})
-    : _handlers = _buildHandlers(plugin: plugin, projectsDao: projectsDao);
+  RequestRouter({
+    required BridgePlugin plugin,
+    required ProjectsDao projectsDao,
+    required SessionDao sessionDao,
+  }) : _handlers = _buildHandlers(
+         plugin: plugin,
+         projectsDao: projectsDao,
+         sessionDao: sessionDao,
+       );
 
   static List<RequestHandler> _buildHandlers({
     required BridgePlugin plugin,
     required ProjectsDao projectsDao,
+    required SessionDao sessionDao,
   }) {
     final hiddenStore = projectsDao;
+    final worktreeService = WorktreeService(
+      projectsDao: projectsDao,
+      sessionDao: sessionDao,
+    );
     return [
       HealthCheckHandler(plugin),
       GetCurrentProjectHandler(plugin),
@@ -54,7 +70,10 @@ class RequestRouter {
       GetChildSessionsHandler(plugin),
       GetSessionMessagesHandler(plugin),
       GetSessionsHandler(plugin),
-      CreateSessionHandler(plugin),
+      CreateSessionHandler(
+        plugin: plugin,
+        worktreeService: worktreeService,
+      ),
       RenameSessionHandler(plugin),
       UpdateSessionArchiveStatusHandler(plugin),
       DeleteSessionHandler(plugin),
@@ -70,6 +89,8 @@ class RequestRouter {
       CreateProjectHandler(plugin),
       OpenProjectHandler(plugin, hiddenStore),
       HideProjectHandler(hiddenStore),
+      GetBaseBranchHandler(projectsDao),
+      SetBaseBranchHandler(projectsDao),
       FilesystemSuggestionsHandler(),
     ];
   }

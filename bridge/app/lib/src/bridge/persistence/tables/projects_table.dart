@@ -5,10 +5,12 @@ import "../database.dart";
 
 part "projects_table.freezed.dart";
 
-@UseRowClass(Project)
+@UseRowClass(ProjectDto)
 class ProjectsTable extends Table {
   TextColumn get projectId => text()();
   BoolColumn get hidden => boolean().withDefault(const Constant(false))();
+  TextColumn get baseBranch => text().nullable()();
+  IntColumn get worktreeCounter => integer().withDefault(const Constant(0))();
 
   @override
   bool get withoutRowId => true;
@@ -18,11 +20,13 @@ class ProjectsTable extends Table {
 }
 
 @freezed
-sealed class Project with _$Project, $ProjectsTableTableToColumns {
-  const factory Project({
+sealed class ProjectDto with _$ProjectDto, $ProjectsTableTableToColumns {
+  const factory ProjectDto({
     required String projectId,
     @Default(false) bool hidden,
-  }) = _Project;
+    String? baseBranch,
+    @Default(0) int worktreeCounter,
+  }) = _ProjectDto;
 
-  const Project._();
+  const ProjectDto._();
 }

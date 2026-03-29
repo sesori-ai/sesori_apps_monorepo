@@ -179,7 +179,7 @@ class _ThrowingSummaryPlugin implements BridgePlugin {
         onError: controller.addError,
         onDone: controller.close,
       );
-      controller.onCancel = () => sub.cancel();
+      controller.onCancel = sub.cancel;
     });
   }
 
@@ -199,7 +199,7 @@ class _ThrowingSummaryPlugin implements BridgePlugin {
 
   @override
   Future<PluginSession> createSession({
-    required String projectId,
+    required String directory,
     String? parentSessionId,
   }) async => const PluginSession(
     id: "",

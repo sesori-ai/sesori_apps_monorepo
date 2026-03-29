@@ -5,6 +5,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../capabilities/project/project_service.dart";
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/server_connection/models/sse_event.dart";
@@ -18,6 +19,7 @@ class SessionListCubit extends Cubit<SessionListState> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
   final SessionService _service;
+  final ProjectService _projectService;
   final ConnectionService _connectionService;
   final SseEventRepository _sseEventRepository;
   final String _projectId;
@@ -27,13 +29,18 @@ class SessionListCubit extends Cubit<SessionListState> {
   /// so the screen can offer an undo toast.
   Session? _undoSnapshot;
 
+  /// Cached base branch name, fetched alongside sessions.
+  String? _baseBranch;
+
   SessionListCubit(
     SessionService service,
+    ProjectService projectService,
     ConnectionService connectionService,
     SseEventRepository sseEventRepository, {
     required String projectId,
     required FailureReporter failureReporter,
   }) : _service = service,
+       _projectService = projectService,
        _connectionService = connectionService,
        _sseEventRepository = sseEventRepository,
        _projectId = projectId,
@@ -403,6 +410,7 @@ class SessionListCubit extends Cubit<SessionListState> {
         showArchived: _showArchived,
         activeSessionIds: projectActivity,
         isRefreshing: isRefreshing,
+        baseBranch: _baseBranch,
       ),
     );
   }
@@ -423,10 +431,19 @@ class SessionListCubit extends Cubit<SessionListState> {
   }
 
   Future<bool> _fetchSessions({bool silent = false}) async {
-    final response = await _service.listSessions(projectId: _projectId);
+    final (sessionsResponse, baseBranchResponse) = await (
+      _service.listSessions(projectId: _projectId),
+      _projectService.getBaseBranch(projectId: _projectId),
+    ).wait;
     if (isClosed) return false;
 
-    switch (response) {
+    // Update cached base branch on success; silently ignore errors so
+    // the session list still loads even if the endpoint is unavailable.
+    if (baseBranchResponse case SuccessResponse(:final data)) {
+      _baseBranch = data;
+    }
+
+    switch (sessionsResponse) {
       case SuccessResponse(:final data):
         _allSessions = data;
         _emitFiltered();

@@ -35,4 +35,43 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
       const ProjectsTableCompanion(hidden: Value(false)),
     );
   }
+
+  /// Atomically increments the worktree counter for a project and returns the new value.
+  ///
+  /// If no row exists for [projectId], inserts one with counter=1.
+  /// If a row exists, increments its counter by 1.
+  /// Preserves existing [hidden] and [baseBranch] values.
+  Future<int> incrementAndGetWorktreeCounter({required String projectId}) async {
+    return transaction(() async {
+      final existing = await (select(projectsTable)..where((t) => t.projectId.equals(projectId))).getSingleOrNull();
+      if (existing != null) {
+        final newCounter = existing.worktreeCounter + 1;
+        await (update(projectsTable)..where((t) => t.projectId.equals(projectId))).write(
+          ProjectsTableCompanion(worktreeCounter: Value(newCounter)),
+        );
+        return newCounter;
+      } else {
+        await into(projectsTable).insert(
+          ProjectsTableCompanion.insert(projectId: projectId, worktreeCounter: const Value(1)),
+        );
+        return 1;
+      }
+    });
+  }
+
+  /// Returns the base branch for the given project, or null if no row exists.
+  Future<String?> getBaseBranch({required String projectId}) async {
+    final row = await (select(projectsTable)..where((t) => t.projectId.equals(projectId))).getSingleOrNull();
+    return row?.baseBranch;
+  }
+
+  /// Sets the base branch for the given project.
+  ///
+  /// If no row exists, inserts one with the given [baseBranch].
+  /// If a row exists, updates only [baseBranch], preserving [hidden] and [worktreeCounter].
+  Future<void> setBaseBranch({required String projectId, required String? baseBranch}) async {
+    await into(projectsTable).insertOnConflictUpdate(
+      ProjectsTableCompanion.insert(projectId: projectId, baseBranch: Value(baseBranch)),
+    );
+  }
 }
