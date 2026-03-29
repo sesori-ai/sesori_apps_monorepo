@@ -64,8 +64,7 @@ class SessionService {
     required String projectId,
     required String text,
     required String? agent,
-    required String? providerID,
-    required String? modelID,
+    required PromptModel? model,
   }) {
     return _client.post(
       "/session",
@@ -77,7 +76,7 @@ class SessionService {
         projectId: projectId,
         parts: [PromptPart.text(text: text)],
         agent: agent,
-        model: providerID != null && modelID != null ? PromptModel(providerID: providerID, modelID: modelID) : null,
+        model: model,
       ).toJson(),
     );
   }

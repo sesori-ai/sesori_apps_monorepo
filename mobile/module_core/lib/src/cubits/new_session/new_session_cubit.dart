@@ -1,5 +1,6 @@
 import "package:bloc/bloc.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "../../capabilities/session/session_service.dart";
 import "new_session_state.dart";
@@ -18,8 +19,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   Future<void> createSessionWithMessage({
     required String text,
     required String? agent,
-    required String? providerID,
-    required String? modelID,
+    required PromptModel? model,
   }) async {
     if (state is NewSessionSending) return;
 
@@ -32,8 +32,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       projectId: _projectId,
       text: trimmed,
       agent: agent,
-      providerID: providerID,
-      modelID: modelID,
+      model: model,
     );
 
     if (isClosed) return;

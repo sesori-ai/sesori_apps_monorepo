@@ -39,7 +39,8 @@ class _NewSessionBody extends StatelessWidget {
       listenWhen: (_, current) => current is NewSessionCreated,
       listener: (context, state) {
         if (state case NewSessionCreated(:final session)) {
-          context.goRoute(
+          Navigator.of(context).pop();
+          context.pushRoute(
             AppRoute.sessionDetail,
             pathParams: {"projectId": session.projectID, "sessionId": session.id},
             queryParams: {"title": session.title ?? ""},
@@ -59,11 +60,10 @@ class _NewSessionBody extends StatelessWidget {
                 context.read<NewSessionCubit>().createSessionWithMessage(
                   text: text,
                   agent: null,
-                  providerID: null,
-                  modelID: null,
+                  model: null,
                 );
               },
-              onAbort: () {},
+              onAbort: () => Navigator.of(context).pop(),
               header: switch (state) {
                 NewSessionError(:final message) => Padding(
                   padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),

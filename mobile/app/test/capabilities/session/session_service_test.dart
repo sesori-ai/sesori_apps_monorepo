@@ -190,8 +190,7 @@ void main() {
           projectId: "/tmp/project",
           text: "hello",
           agent: null,
-          providerID: null,
-          modelID: null,
+          model: null,
         );
 
         expect(result, isA<SuccessResponse<Session>>());
@@ -219,8 +218,7 @@ void main() {
           projectId: "/tmp/project",
           text: "hello",
           agent: null,
-          providerID: null,
-          modelID: null,
+          model: null,
         );
 
         expect(result, isA<ErrorResponse<Session>>());
@@ -247,8 +245,7 @@ void main() {
           projectId: "/tmp/project",
           text: "first prompt",
           agent: null,
-          providerID: null,
-          modelID: null,
+          model: null,
         );
 
         final captured =
@@ -265,7 +262,7 @@ void main() {
           equals({
             "projectId": "/tmp/project",
             "parts": [
-              {"type": "text", "text": "first prompt"},
+              {"text": "first prompt"},
             ],
             "agent": null,
             "model": null,

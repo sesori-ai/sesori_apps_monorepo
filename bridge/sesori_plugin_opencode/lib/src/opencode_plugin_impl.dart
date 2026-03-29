@@ -238,22 +238,7 @@ class OpenCodePlugin implements BridgePlugin {
       directory: session.directory,
     );
 
-    final body = <String, dynamic>{
-      "parts": parts.map((part) {
-        return switch (part) {
-          PluginPromptPartText(:final text) => <String, dynamic>{
-            "type": "text",
-            "text": text,
-          },
-        };
-      }).toList(),
-      "agent": ?agent,
-      if (model != null)
-        "model": {
-          "providerID": model.providerID,
-          "modelID": model.modelID,
-        },
-    };
+    final body = SendPromptBody(parts: parts, agent: agent, model: model);
 
     await _call(
       () => _service.repository.api.sendPrompt(
@@ -397,22 +382,7 @@ class OpenCodePlugin implements BridgePlugin {
       Log.w("directory missing for session $sessionId. Defaulting to bridge CWD as directory.");
     }
 
-    final body = <String, dynamic>{
-      "parts": parts.map((part) {
-        return switch (part) {
-          PluginPromptPartText(:final text) => <String, dynamic>{
-            "type": "text",
-            "text": text,
-          },
-        };
-      }).toList(),
-      "agent": ?agent,
-      if (model != null)
-        "model": {
-          "providerID": model.providerID,
-          "modelID": model.modelID,
-        },
-    };
+    final body = SendPromptBody(parts: parts, agent: agent, model: model);
 
     return _call(
       () => _service.repository.api.sendPrompt(

@@ -8,6 +8,7 @@ import "models/message_with_parts.dart";
 import "models/pending_question.dart";
 import "models/project.dart";
 import "models/provider_info.dart";
+import "models/send_prompt_body.dart";
 import "models/session.dart";
 import "models/session_status.dart";
 
@@ -242,7 +243,7 @@ class OpenCodeApi {
 
   Future<void> sendPrompt({
     required String sessionId,
-    required Map<String, dynamic> body,
+    required SendPromptBody body,
     // 100% required for this endpoint
     // because otherwise it picks the CWD of where bridge is running
     required String? directory,
@@ -256,7 +257,7 @@ class OpenCodeApi {
           "content-type": "application/json",
           _directoryOpenCodeHeader: ?directory,
         },
-        body: jsonEncode(body),
+        body: jsonEncode(body.toJson()),
       );
       _ensureSuccess(response, "POST /session/$sessionId/prompt_async");
     } finally {
