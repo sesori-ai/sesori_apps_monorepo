@@ -116,7 +116,7 @@ void main() {
       expect(dbSession.createdAt, greaterThan(0));
     });
 
-    test("dedicated=false skips worktree prep and stores simple session with null worktree fields", () async {
+    test("dedicated=false skips worktree prep and stores resolved base branch metadata", () async {
       plugin.createSessionResult = const PluginSession(
         id: "simple-1",
         projectID: "p1",
@@ -126,9 +126,7 @@ void main() {
         time: null,
         summary: null,
       );
-      worktreeService.prepareResult = WorktreeSuccess(
-        path: "/repo/.worktrees/session-001",
-        branchName: "session-001",
+      worktreeService.resolveBaseBranchAndCommitResult = (
         baseBranch: "main",
         baseCommit: "abc123def456",
       );
@@ -153,6 +151,8 @@ void main() {
 
       expect(response.status, equals(200));
       expect(worktreeService.prepareCallCount, equals(0));
+      expect(worktreeService.resolveBaseBranchAndCommitCallCount, equals(1));
+      expect(worktreeService.lastResolveBaseBranchProjectPath, equals("/repo"));
       expect(plugin.lastCreateSessionDirectory, equals("/repo"));
       expect(plugin.lastCreateSessionParts, equals(const [PluginPromptPart.text(text: "Start")]));
 
@@ -162,8 +162,8 @@ void main() {
       expect(dbSession.isDedicated, isFalse);
       expect(dbSession.worktreePath, isNull);
       expect(dbSession.branchName, isNull);
-      expect(dbSession.baseBranch, isNull);
-      expect(dbSession.baseCommit, isNull);
+      expect(dbSession.baseBranch, equals("main"));
+      expect(dbSession.baseCommit, equals("abc123def456"));
       expect(dbSession.createdAt, greaterThan(0));
     });
 
@@ -375,11 +375,14 @@ void main() {
 class _FakeWorktreeService extends WorktreeService {
   String? lastPrepareProjectId;
   String? lastPrepareParentSessionId;
+  String? lastResolveBaseBranchProjectPath;
   int prepareCallCount = 0;
+  int resolveBaseBranchAndCommitCallCount = 0;
   WorktreeResult prepareResult = WorktreeFallback(
     originalPath: "/repo",
     reason: "default",
   );
+  ({String baseBranch, String baseCommit})? resolveBaseBranchAndCommitResult;
 
   _FakeWorktreeService({required AppDatabase database})
     : super(
@@ -396,6 +399,15 @@ class _FakeWorktreeService extends WorktreeService {
     lastPrepareProjectId = projectId;
     lastPrepareParentSessionId = parentSessionId;
     return prepareResult;
+  }
+
+  @override
+  Future<({String baseBranch, String baseCommit})?> resolveBaseBranchAndCommit({
+    required String projectPath,
+  }) async {
+    resolveBaseBranchAndCommitCallCount++;
+    lastResolveBaseBranchProjectPath = projectPath;
+    return resolveBaseBranchAndCommitResult;
   }
 }
 

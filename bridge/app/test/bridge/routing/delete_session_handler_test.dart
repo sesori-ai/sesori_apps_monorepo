@@ -308,47 +308,6 @@ void main() {
       expect(operationLog, equals(["pluginDelete"]));
     });
 
-    test("8) shared worktree: skips worktree removal", () async {
-      await _insertSession(
-        db: db,
-        sessionId: "s8-primary",
-        projectId: "/repo",
-        worktreePath: "/repo/.worktrees/session-shared",
-        branchName: "session-shared",
-      );
-      await _insertSession(
-        db: db,
-        sessionId: "s8-secondary",
-        projectId: "/repo",
-        worktreePath: "/repo/.worktrees/session-shared",
-        branchName: "session-shared",
-      );
-
-      final response = await handler.handle(
-        makeRequest(
-          "DELETE",
-          "/session/s8-primary",
-          body: jsonEncode(
-            const DeleteSessionRequest(
-              deleteWorktree: true,
-              deleteBranch: false,
-              force: false,
-            ).toJson(),
-          ),
-        ),
-        pathParams: {"id": "s8-primary"},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(200));
-      expect(worktreeService.checkCallCount, equals(0));
-      expect(worktreeService.removeCallCount, equals(0));
-      expect(worktreeService.deleteBranchCallCount, equals(0));
-      expect(await db.sessionDao.getSession(sessionId: "s8-primary"), isNull);
-      expect(await db.sessionDao.getSession(sessionId: "s8-secondary"), isNotNull);
-      expect(operationLog, equals(["pluginDelete"]));
-    });
-
     test("9) missing DB session: plugin delete only", () async {
       final response = await handler.handle(
         makeRequest(

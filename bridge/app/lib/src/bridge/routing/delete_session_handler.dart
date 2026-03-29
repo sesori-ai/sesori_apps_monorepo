@@ -4,6 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../persistence/daos/session_dao.dart";
+import "../persistence/tables/session_table.dart";
 import "../worktree_service.dart";
 import "request_handler.dart";
 
@@ -52,34 +53,37 @@ class DeleteSessionHandler extends RequestHandler {
     }
 
     final sessionDto = await _sessionDao.getSession(sessionId: sessionId);
-    final worktreePath = sessionDto?.worktreePath;
-    final shouldCleanupGit =
-        sessionDto != null && worktreePath != null && (deleteRequest.deleteWorktree || deleteRequest.deleteBranch);
-    final cleanupSession = shouldCleanupGit ? sessionDto! : null;
-    final cleanupWorktreePath = shouldCleanupGit ? worktreePath! : null;
+    final wantsGitCleanup = deleteRequest.deleteWorktree || deleteRequest.deleteBranch;
+    ({String projectId, String worktreePath, String branchName})? cleanupTarget;
 
-    var isSharedWorktree = false;
-    if (shouldCleanupGit && deleteRequest.deleteWorktree) {
-      isSharedWorktree = (await _sessionDao.getSessionsByProject(projectId: cleanupSession!.projectId)).any(
-        (session) => session.sessionId != sessionId && session.worktreePath == cleanupWorktreePath,
-      );
-    }
-
-    if (shouldCleanupGit && deleteRequest.deleteWorktree && !isSharedWorktree && !deleteRequest.force) {
-      final safety = await _worktreeService.checkWorktreeSafety(
-        worktreePath: cleanupWorktreePath!,
-        expectedBranch: cleanupSession!.branchName!,
-      );
-      if (safety case WorktreeUnsafe(:final issues)) {
-        final rejection = SessionCleanupRejection(
-          issues: _mapCleanupIssues(issues: issues),
+    if (wantsGitCleanup) {
+      if (sessionDto case SessionDto(
+        :final projectId,
+        worktreePath: final worktreePath?,
+        branchName: final branchName?,
+      )) {
+        cleanupTarget = (
+          projectId: projectId,
+          worktreePath: worktreePath,
+          branchName: branchName,
         );
-        return RelayResponse(
-          id: request.id,
-          status: 409,
-          headers: {"content-type": "application/json"},
-          body: jsonEncode(rejection.toJson()),
-        );
+        if (deleteRequest.deleteWorktree && !deleteRequest.force) {
+          final safety = await _worktreeService.checkWorktreeSafety(
+            worktreePath: worktreePath,
+            expectedBranch: branchName,
+          );
+          if (safety case WorktreeUnsafe(:final issues)) {
+            final rejection = SessionCleanupRejection(
+              issues: _mapCleanupIssues(issues: issues),
+            );
+            return RelayResponse(
+              id: request.id,
+              status: 409,
+              headers: {"content-type": "application/json"},
+              body: jsonEncode(rejection.toJson()),
+            );
+          }
+        }
       }
     }
 
@@ -91,11 +95,15 @@ class DeleteSessionHandler extends RequestHandler {
       }
     }
 
-    if (shouldCleanupGit) {
-      if (deleteRequest.deleteWorktree && !isSharedWorktree) {
+    if (cleanupTarget case (
+      projectId: final projectId,
+      worktreePath: final worktreePath,
+      branchName: final branchName,
+    )) {
+      if (deleteRequest.deleteWorktree) {
         final removed = await _worktreeService.removeWorktree(
-          projectPath: cleanupSession!.projectId,
-          worktreePath: cleanupWorktreePath!,
+          projectPath: projectId,
+          worktreePath: worktreePath,
           force: deleteRequest.force,
         );
         if (!removed) {
@@ -104,15 +112,15 @@ class DeleteSessionHandler extends RequestHandler {
           );
         }
       }
-      if (deleteRequest.deleteBranch && sessionDto.branchName != null) {
+      if (deleteRequest.deleteBranch) {
         final deleted = await _worktreeService.deleteBranch(
-          projectPath: cleanupSession!.projectId,
-          branchName: cleanupSession.branchName!,
+          projectPath: projectId,
+          branchName: branchName,
           force: deleteRequest.deleteWorktree ? true : deleteRequest.force,
         );
         if (!deleted) {
           Log.w(
-            "DeleteSessionHandler: failed to delete branch ${cleanupSession.branchName} for session $sessionId",
+            "DeleteSessionHandler: failed to delete branch $branchName for session $sessionId",
           );
         }
       }

@@ -109,10 +109,10 @@ class CreateSessionHandler extends RequestHandler {
       model: model,
     );
 
-    final String? worktreePath;
-    final String? branchName;
-    final String? baseBranch;
-    final String? baseCommit;
+    String? worktreePath;
+    String? branchName;
+    String? baseBranch;
+    String? baseCommit;
     if (worktreeResult case WorktreeSuccess(
       :final path,
       branchName: final resolvedBranchName,
@@ -126,8 +126,14 @@ class CreateSessionHandler extends RequestHandler {
     } else {
       worktreePath = null;
       branchName = null;
-      baseBranch = null;
-      baseCommit = null;
+      if (!dedicatedWorktree) {
+        final baseBranchAndCommit = await _worktreeService.resolveBaseBranchAndCommit(projectPath: projectId);
+        baseBranch = baseBranchAndCommit?.baseBranch;
+        baseCommit = baseBranchAndCommit?.baseCommit;
+      } else {
+        baseBranch = null;
+        baseCommit = null;
+      }
     }
 
     await _sessionDao.insertSession(

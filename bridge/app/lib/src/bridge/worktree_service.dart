@@ -4,6 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "persistence/daos/projects_dao.dart";
 import "persistence/daos/session_dao.dart";
+import "persistence/tables/session_table.dart";
 
 typedef ProcessRunner =
     Future<ProcessResult> Function(
@@ -178,12 +179,17 @@ class WorktreeService {
       final parentWorktree = await _sessionDao.getSession(
         sessionId: parentSessionId,
       );
-      if (parentWorktree?.worktreePath != null && parentWorktree?.branchName != null) {
+      if (parentWorktree case SessionDto(
+        worktreePath: final worktreePath?,
+        branchName: final branchName?,
+        baseBranch: final parentBaseBranch,
+        baseCommit: final parentBaseCommit,
+      )) {
         return WorktreeSuccess(
-          path: parentWorktree!.worktreePath!,
-          branchName: parentWorktree.branchName!,
-          baseBranch: parentWorktree.baseBranch ?? "",
-          baseCommit: parentWorktree.baseCommit ?? "",
+          path: worktreePath,
+          branchName: branchName,
+          baseBranch: parentBaseBranch ?? "",
+          baseCommit: parentBaseCommit ?? "",
         );
       }
       // Parent not found (pre-feature session) — fall through to create new.
@@ -207,21 +213,19 @@ class WorktreeService {
       );
     }
 
-    // 4. Resolve the base branch to create the worktree from.
-    final storedBranch = await _projectsDao.getBaseBranch(projectId: projectId);
-    final String baseBranch;
-    if (storedBranch != null && await branchExists(projectPath: projectId, branchName: storedBranch)) {
-      baseBranch = storedBranch;
-    } else {
-      baseBranch = await resolveDefaultBranch(projectPath: projectId);
-    }
-
-    // 5. Capture the base commit SHA before creating the worktree.
-    final revParseResult = await _runGit(
+    // 4. Resolve base branch and commit before creating the worktree.
+    final baseBranchAndCommit = await resolveBaseBranchAndCommit(
       projectPath: projectId,
-      arguments: ["rev-parse", baseBranch],
     );
-    final baseCommit = revParseResult.stdout.toString().trim();
+    if (baseBranchAndCommit == null) {
+      Log.w("WorktreeService: failed to resolve base branch/commit for: $projectId");
+      return WorktreeFallback(
+        originalPath: projectId,
+        reason: "failed to resolve base branch/commit",
+      );
+    }
+    final baseBranch = baseBranchAndCommit.baseBranch;
+    final baseCommit = baseBranchAndCommit.baseCommit;
 
     // 6. Try to create a worktree, retrying on branch collision.
     for (var attempt = 0; attempt < _maxWorktreeCreationAttempts; attempt++) {
@@ -387,6 +391,37 @@ class WorktreeService {
       arguments: addArguments,
     );
     return addResult.exitCode == 0;
+  }
+
+  Future<({String baseBranch, String baseCommit})?> resolveBaseBranchAndCommit({
+    required String projectPath,
+  }) async {
+    try {
+      final storedBranch = await _projectsDao.getBaseBranch(projectId: projectPath);
+      final String baseBranch;
+      if (storedBranch != null && await branchExists(projectPath: projectPath, branchName: storedBranch)) {
+        baseBranch = storedBranch;
+      } else {
+        baseBranch = await resolveDefaultBranch(projectPath: projectPath);
+      }
+
+      final revParseResult = await _runGit(
+        projectPath: projectPath,
+        arguments: ["rev-parse", baseBranch],
+      );
+      if (revParseResult.exitCode != 0) {
+        return null;
+      }
+
+      final baseCommit = revParseResult.stdout.toString().trim();
+      if (baseCommit.isEmpty) {
+        return null;
+      }
+
+      return (baseBranch: baseBranch, baseCommit: baseCommit);
+    } on Object {
+      return null;
+    }
   }
 
   // -------------------------------------------------------------------------

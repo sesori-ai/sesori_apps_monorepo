@@ -112,14 +112,18 @@ class UpdateSessionArchiveStatusHandler extends RequestHandler {
 
     await _sessionDao.clearArchived(sessionId: sessionId);
 
-    if (sessionDto.isDedicated && sessionDto.worktreePath != null) {
-      final worktreePath = sessionDto.worktreePath!;
+    if (sessionDto case SessionDto(
+      isDedicated: true,
+      :final projectId,
+      worktreePath: final worktreePath?,
+      branchName: final branchName?,
+    )) {
       final hasWorktreeOnDisk = Directory(worktreePath).existsSync();
-      if (!hasWorktreeOnDisk && sessionDto.branchName != null) {
+      if (!hasWorktreeOnDisk) {
         await _worktreeService.restoreWorktree(
-          projectPath: sessionDto.projectId,
+          projectPath: projectId,
           worktreePath: worktreePath,
-          branchName: sessionDto.branchName!,
+          branchName: branchName,
           baseBranch: sessionDto.baseBranch ?? "main",
           baseCommit: sessionDto.baseCommit,
         );
@@ -149,26 +153,21 @@ class UpdateSessionArchiveStatusHandler extends RequestHandler {
     required bool deleteBranch,
     required bool force,
   }) async {
-    final worktreePath = sessionDto.worktreePath;
-    if (worktreePath == null) {
-      return null;
-    }
-
     final shouldCleanupGit = deleteWorktree || deleteBranch;
     if (!shouldCleanupGit) {
       return null;
     }
 
-    final isSharedWorktree = deleteWorktree
-        ? (await _sessionDao.getSessionsByProject(projectId: sessionDto.projectId)).any(
-            (session) => session.sessionId != sessionId && session.worktreePath == worktreePath,
-          )
-        : false;
+    final worktreePath = sessionDto.worktreePath;
+    final branchName = sessionDto.branchName;
+    if (worktreePath == null || branchName == null) {
+      return null;
+    }
 
-    if (deleteWorktree && !isSharedWorktree && !force) {
+    if (deleteWorktree && !force) {
       final safety = await _worktreeService.checkWorktreeSafety(
         worktreePath: worktreePath,
-        expectedBranch: sessionDto.branchName!,
+        expectedBranch: branchName,
       );
       if (safety case WorktreeUnsafe(:final issues)) {
         final rejection = SessionCleanupRejection(
@@ -183,7 +182,7 @@ class UpdateSessionArchiveStatusHandler extends RequestHandler {
       }
     }
 
-    if (deleteWorktree && !isSharedWorktree) {
+    if (deleteWorktree) {
       final removed = await _worktreeService.removeWorktree(
         projectPath: sessionDto.projectId,
         worktreePath: worktreePath,
@@ -195,15 +194,15 @@ class UpdateSessionArchiveStatusHandler extends RequestHandler {
         );
       }
     }
-    if (deleteBranch && sessionDto.branchName != null) {
+    if (deleteBranch) {
       final branchDeleted = await _worktreeService.deleteBranch(
         projectPath: sessionDto.projectId,
-        branchName: sessionDto.branchName!,
+        branchName: branchName,
         force: deleteWorktree ? true : force,
       );
       if (!branchDeleted) {
         Log.w(
-          "UpdateSessionArchiveStatusHandler: deleteBranch failed for session=$sessionId branch=${sessionDto.branchName}",
+          "UpdateSessionArchiveStatusHandler: deleteBranch failed for session=$sessionId branch=$branchName",
         );
       }
     }
