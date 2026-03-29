@@ -117,7 +117,7 @@ void main() {
       expect(plugin.lastCreateSessionDirectory, equals("/tmp"));
       expect(plugin.lastCreateSessionParentId, isNull);
       expect(plugin.lastCreateSessionProjectId, equals("/tmp"));
-      expect(plugin.lastCreateSessionParts, equals([PluginPromptPart.text(text: "Start")]));
+      expect(plugin.lastCreateSessionParts, equals([const PluginPromptPart.text(text: "Start")]));
       expect(plugin.lastCreateSessionAgent, equals("architect"));
       expect(plugin.lastCreateSessionModel, equals((providerID: "openai", modelID: "gpt-5")));
     });

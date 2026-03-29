@@ -86,7 +86,7 @@ void main() {
       expect(worktreeService.lastPrepareParentSessionId, isNull);
       expect(plugin.lastCreateSessionDirectory, equals("/repo/.worktrees/session-001"));
       expect(plugin.lastCreateSessionParentId, isNull);
-      expect(plugin.lastCreateSessionParts, equals([PluginPromptPart.text(text: "Start")]));
+      expect(plugin.lastCreateSessionParts, equals([const PluginPromptPart.text(text: "Start")]));
       expect(worktreeService.recordCalls, hasLength(1));
       expect(worktreeService.recordCalls.first.sessionId, equals("s1"));
       expect(worktreeService.recordCalls.first.projectId, equals("/repo"));
@@ -273,7 +273,7 @@ void main() {
 
       expect(plugin.lastCreateSessionProjectId, equals("/tmp"));
       expect(plugin.lastCreateSessionDirectory, equals("/tmp"));
-      expect(plugin.lastCreateSessionParts, equals([PluginPromptPart.text(text: "Hello")]));
+      expect(plugin.lastCreateSessionParts, equals([const PluginPromptPart.text(text: "Hello")]));
       expect(plugin.lastCreateSessionAgent, equals("architect"));
       expect(plugin.lastCreateSessionModel, equals((providerID: "openai", modelID: "gpt-5")));
     });
