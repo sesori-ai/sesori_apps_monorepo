@@ -340,7 +340,8 @@ class RelayClient {
       return;
     }
 
-    if (_sessionEncryptor == null) {
+    final encryptor = _sessionEncryptor;
+    if (encryptor == null) {
       if (_firstBinaryMessage != null && !_firstBinaryMessage!.isCompleted) {
         _firstBinaryMessage!.complete(bytes);
       } else {
@@ -350,7 +351,8 @@ class RelayClient {
     }
 
     try {
-      final relayMessage = await _decryptRelayMessage(bytes, _sessionEncryptor!);
+      final relayMessage = await _decryptRelayMessage(bytes, encryptor);
+      if (_disposed) return;
 
       switch (relayMessage) {
         case final RelayResponse response:
