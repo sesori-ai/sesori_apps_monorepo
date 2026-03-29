@@ -4,6 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../worktree_service.dart";
+import "prompt_part_mapper.dart";
 import "request_handler.dart";
 
 /// Handles `POST /session` — creates a session for a given project.
@@ -48,13 +49,7 @@ class CreateSessionHandler extends RequestHandler {
       parentSessionId: parentSessionId,
     );
 
-    final parts = createRequest.parts
-        .map(
-          (p) => switch (p) {
-            PromptPartText(:final text) => PluginPromptPart.text(text: text),
-          },
-        )
-        .toList();
+    final parts = createRequest.parts.map((p) => p.toPlugin()).toList();
 
     final model = switch (createRequest.model) {
       PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
