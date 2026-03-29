@@ -262,7 +262,7 @@ void main() {
           equals({
             "projectId": "/tmp/project",
             "parts": [
-              {"type": "text", "text": "first prompt"},
+              {"text": "first prompt"},
             ],
             "agent": null,
             "model": null,
