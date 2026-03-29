@@ -89,17 +89,22 @@ class NotificationService {
   }
 
   void _onNotificationTapped(RemoteMessage message) {
+    logd("[DIAG] _onNotificationTapped raw message.data: ${message.data}");
     shared.NotificationData notificationData;
     try {
       notificationData = shared.NotificationData.fromJson(message.data);
     } catch (error, stackTrace) {
-      logw("Failed to parse notification tap data", error, stackTrace);
+      logw("[DIAG] Failed to parse notification tap data", error, stackTrace);
       return;
     }
 
     final sessionId = notificationData.sessionId;
     final projectId = notificationData.projectId;
-    if (sessionId == null) return;
+    logd("[DIAG] _onNotificationTapped parsed -> sessionId=$sessionId, projectId=$projectId");
+    if (sessionId == null) {
+      logd("[DIAG] _onNotificationTapped: sessionId is null, aborting navigation");
+      return;
+    }
 
     _navigateToSession(sessionId: sessionId, projectId: projectId);
   }
@@ -108,8 +113,12 @@ class NotificationService {
   void onNotificationTappedForTesting(RemoteMessage message) => _onNotificationTapped(message);
 
   void _onLocalNotificationTapped(NotificationTapEvent event) {
+    logd("[DIAG] _onLocalNotificationTapped: sessionId=${event.sessionId}, projectId=${event.projectId}");
     final sessionId = event.sessionId;
-    if (sessionId == null) return;
+    if (sessionId == null) {
+      logd("[DIAG] _onLocalNotificationTapped: sessionId is null, aborting navigation");
+      return;
+    }
 
     _navigateToSession(sessionId: sessionId, projectId: event.projectId);
   }
@@ -128,7 +137,9 @@ class NotificationService {
   }
 
   void _pushSessionRoute({required String sessionId, required String? projectId}) {
+    logd("[DIAG] _pushSessionRoute: sessionId=$sessionId, projectId=$projectId");
     if (projectId == null) {
+      logd("[DIAG] _pushSessionRoute: projectId is NULL -> navigating to projects list only");
       goForTesting(AppRoute.projects.path);
       return;
     }
@@ -137,10 +148,13 @@ class NotificationService {
       pathParams: {"projectId": projectId, "sessionId": sessionId},
     );
 
-    if (currentPathProviderForTesting() == sessionDetailPath) {
+    final currentPath = currentPathProviderForTesting();
+    if (currentPath == sessionDetailPath) {
+      logd("[DIAG] _pushSessionRoute: already on target path ($currentPath), skipping navigation");
       return;
     }
 
+    logd("[DIAG] _pushSessionRoute: building full nav stack (currentPath=$currentPath, target=$sessionDetailPath)");
     final sessionPath = AppRoute.sessions.buildPath(pathParams: {"projectId": projectId});
     goForTesting(AppRoute.projects.path);
     unawaited(pushForTesting(sessionPath));
@@ -235,13 +249,19 @@ class NotificationService {
 
   @visibleForTesting
   Future<void> onForegroundMessage(RemoteMessage message) async {
+    logd("[DIAG] onForegroundMessage raw message.data: ${message.data}");
     shared.NotificationData notificationData;
     try {
       notificationData = shared.NotificationData.fromJson(message.data);
     } catch (error, stackTrace) {
-      logw("Failed to parse notification data", error, stackTrace);
+      logw("[DIAG] Failed to parse notification data", error, stackTrace);
       return;
     }
+
+    logd(
+      "[DIAG] onForegroundMessage parsed -> category=${notificationData.category}, "
+      "sessionId=${notificationData.sessionId}, projectId=${notificationData.projectId}",
+    );
 
     final category = notificationData.category;
 
