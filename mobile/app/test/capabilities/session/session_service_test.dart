@@ -725,7 +725,7 @@ void main() {
         expect(
           captured["parts"],
           equals([
-            {"text": "Hello, world!"},
+            {"type": "text", "text": "Hello, world!"},
           ]),
         );
         expect(captured["agent"], isNull);
