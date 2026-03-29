@@ -249,6 +249,11 @@ void main() {
     });
 
     test("passes parts, agent, and model to plugin", () async {
+      worktreeService.prepareResult = WorktreeFallback(
+        originalPath: "/tmp",
+        reason: "test",
+      );
+
       await handler.handle(
         makeRequest(
           "POST",
@@ -267,6 +272,7 @@ void main() {
       );
 
       expect(plugin.lastCreateSessionProjectId, equals("/tmp"));
+      expect(plugin.lastCreateSessionDirectory, equals("/tmp"));
       expect(plugin.lastCreateSessionParts, equals([PluginPromptPart.text(text: "Hello")]));
       expect(plugin.lastCreateSessionAgent, equals("architect"));
       expect(plugin.lastCreateSessionModel, equals((providerID: "openai", modelID: "gpt-5")));
