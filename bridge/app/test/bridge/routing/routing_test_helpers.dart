@@ -50,6 +50,10 @@ class FakeBridgePlugin implements BridgePlugin {
   bool? lastGetProvidersConnectedOnly;
   String? lastCreateSessionDirectory;
   String? lastCreateSessionParentId;
+  String? lastCreateSessionProjectId;
+  List<PluginPromptPart>? lastCreateSessionParts;
+  String? lastCreateSessionAgent;
+  ({String providerID, String modelID})? lastCreateSessionModel;
   String? lastUpdateSessionId;
   bool? lastUpdateSessionArchived;
   String? lastRenameSessionId;
@@ -117,10 +121,17 @@ class FakeBridgePlugin implements BridgePlugin {
   @override
   Future<PluginSession> createSession({
     required String directory,
-    String? parentSessionId,
+    required String? parentSessionId,
+    required List<PluginPromptPart> parts,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
   }) async {
     lastCreateSessionDirectory = directory;
     lastCreateSessionParentId = parentSessionId;
+    lastCreateSessionProjectId = directory;
+    lastCreateSessionParts = parts;
+    lastCreateSessionAgent = agent;
+    lastCreateSessionModel = model;
     return createSessionResult ??
         const PluginSession(
           id: "",

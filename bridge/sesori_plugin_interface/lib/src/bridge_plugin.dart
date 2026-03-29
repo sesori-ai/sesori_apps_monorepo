@@ -22,7 +22,7 @@ abstract class BridgePlugin {
   /// Get sessions for a project directory.
   Future<List<PluginSession>> getSessions(String projectId, {int? start, int? limit});
 
-  /// Create a new session in the given directory.
+  /// Create a new session in the given directory and send the first prompt.
   ///
   /// [directory] is the working directory for the session (may be a worktree
   /// path or the main project path).
@@ -31,7 +31,10 @@ abstract class BridgePlugin {
   /// child (sub-session) of the specified parent.
   Future<PluginSession> createSession({
     required String directory,
-    String? parentSessionId,
+    required String? parentSessionId,
+    required List<PluginPromptPart> parts,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
   });
 
   Future<PluginSession> updateSessionArchiveStatus(String sessionId, {required bool archived});

@@ -41,12 +41,25 @@ class CreateSessionHandler extends RequestHandler {
     }
 
     final projectId = createRequest.projectId;
-    final parentSessionId = createRequest.parentSessionId;
+    final String? parentSessionId = null;
 
     final worktreeResult = await _worktreeService.prepareWorktreeForSession(
       projectId: projectId,
       parentSessionId: parentSessionId,
     );
+
+    final parts = createRequest.parts
+        .map(
+          (p) => switch (p) {
+            PromptPartText(:final text) => PluginPromptPart.text(text: text),
+          },
+        )
+        .toList();
+
+    final model = switch (createRequest.model) {
+      PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
+      null => null,
+    };
 
     final created = await _plugin.createSession(
       directory: switch (worktreeResult) {
@@ -54,6 +67,9 @@ class CreateSessionHandler extends RequestHandler {
         WorktreeFallback(:final originalPath) => originalPath,
       },
       parentSessionId: parentSessionId,
+      parts: parts,
+      agent: createRequest.agent,
+      model: model,
     );
 
     if (worktreeResult case WorktreeSuccess(:final path, :final branchName)) {

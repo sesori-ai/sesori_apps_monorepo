@@ -222,7 +222,10 @@ class OpenCodePlugin implements BridgePlugin {
   @override
   Future<PluginSession> createSession({
     required String directory,
-    String? parentSessionId,
+    required String? parentSessionId,
+    required List<PluginPromptPart> parts,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
   }) async {
     final session = await _call(
       () => _service.repository.api.createSession(
@@ -234,6 +237,32 @@ class OpenCodePlugin implements BridgePlugin {
       sessionId: session.id,
       directory: session.directory,
     );
+
+    final body = <String, dynamic>{
+      "parts": parts.map((part) {
+        return switch (part) {
+          PluginPromptPartText(:final text) => <String, dynamic>{
+            "type": "text",
+            "text": text,
+          },
+        };
+      }).toList(),
+      "agent": ?agent,
+      if (model != null)
+        "model": {
+          "providerID": model.providerID,
+          "modelID": model.modelID,
+        },
+    };
+
+    await _call(
+      () => _service.repository.api.sendPrompt(
+        sessionId: session.id,
+        directory: session.directory,
+        body: body,
+      ),
+    );
+
     return session.toPlugin();
   }
 
