@@ -26,6 +26,13 @@ class ConnectionService {
   final AuthSession _authSession;
   final FailureReporter _failureReporter;
   final DateTime Function() _clock;
+  final RelayClient Function({
+    required String relayHost,
+    required RelayCryptoService cryptoService,
+    required RoomKeyStorage roomKeyStorage,
+    required String? authToken,
+  })?
+  _relayClientFactory;
 
   final BehaviorSubject<ConnectionStatus> _status = BehaviorSubject.seeded(const ConnectionStatus.disconnected());
   final StreamController<SseEvent> _events = StreamController<SseEvent>.broadcast();
@@ -60,13 +67,22 @@ class ConnectionService {
     LifecycleSource lifecycleSource,
     FailureReporter failureReporter, {
     @visibleForTesting DateTime Function() clock = DateTime.now,
+    @visibleForTesting
+    RelayClient Function({
+      required String relayHost,
+      required RelayCryptoService cryptoService,
+      required RoomKeyStorage roomKeyStorage,
+      required String? authToken,
+    })?
+    relayClientFactory,
   }) : _cryptoService = cryptoService,
        _roomKeyStorage = roomKeyStorage,
        _authTokenProvider = authTokenProvider,
        _authSession = authSession,
        _lifecycleSource = lifecycleSource,
        _failureReporter = failureReporter,
-       _clock = clock {
+       _clock = clock,
+       _relayClientFactory = relayClientFactory {
     _compositeSubscription.add(
       _lifecycleSource.lifecycleStateStream.listen((state) {
         switch (state) {
@@ -159,12 +175,19 @@ class ConnectionService {
   Future<ApiResponse<HealthResponse>> _connectViaRelay(ServerConnectionConfig config) async {
     await _disconnectRelayClient();
 
-    final relayClient = RelayClient(
-      relayHost: config.relayHost,
-      cryptoService: _cryptoService,
-      roomKeyStorage: _roomKeyStorage,
-      authToken: config.authToken,
-    );
+    final relayClient =
+        _relayClientFactory?.call(
+          relayHost: config.relayHost,
+          cryptoService: _cryptoService,
+          roomKeyStorage: _roomKeyStorage,
+          authToken: config.authToken,
+        ) ??
+        RelayClient(
+          relayHost: config.relayHost,
+          cryptoService: _cryptoService,
+          roomKeyStorage: _roomKeyStorage,
+          authToken: config.authToken,
+        );
 
     try {
       await relayClient.connect();
@@ -204,8 +227,14 @@ class ConnectionService {
       _status.add(ConnectionStatus.connected(config: config, health: health));
       _authRetryCount = 0;
       _relayReconnectBackoff = const Duration(seconds: 1);
-      _openRelaySseStream(relayClient);
-      _subscribeBridgeStatus(relayClient, config, health);
+      try {
+        _openRelaySseStream(relayClient);
+        _subscribeBridgeStatus(relayClient, config, health);
+      } catch (error, stackTrace) {
+        loge("Failed to setup SSE streams after successful relay connect", error, stackTrace);
+        await _disconnectRelayClient();
+        return ApiResponse.error(ApiError.generic());
+      }
       return ApiResponse.success(health);
     } catch (error, stackTrace) {
       loge("Failed to connect via relay", error, stackTrace);
@@ -221,6 +250,7 @@ class ConnectionService {
 
   /// Manually disconnect. Clears config, closes SSE, cancels timers.
   void disconnect() {
+    _reconnectTimer?.cancel();
     unawaited(_disconnectRelayClient());
     _status.add(const ConnectionStatus.disconnected());
   }
@@ -432,6 +462,10 @@ class ConnectionService {
     _reconnectTimer = Timer(Duration(milliseconds: delayMs), completer.complete);
     await completer.future;
     _reconnectTimer = null;
+    if (_isInBackground) {
+      _status.add(ConnectionStatus.connectionLost(config: config));
+      return;
+    }
     if (_status.value is ConnectionDisconnected) return;
 
     logd("Relay reconnect: refreshing token and reconnecting to ${config.relayHost}");
@@ -441,6 +475,10 @@ class ConnectionService {
         minTtl: const Duration(minutes: 2),
       );
 
+      if (_isInBackground) {
+        _status.add(ConnectionStatus.connectionLost(config: config));
+        return;
+      }
       if (_status.value is ConnectionDisconnected) return;
 
       if (authToken == null) {
