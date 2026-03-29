@@ -3,6 +3,7 @@ import "dart:convert";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/routing/delete_session_handler.dart";
 import "package:sesori_bridge/src/bridge/worktree_service.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -12,14 +13,16 @@ import "routing_test_helpers.dart";
 void main() {
   group("DeleteSessionHandler", () {
     late AppDatabase db;
-    late FakeBridgePlugin plugin;
+    late _TrackingFakeBridgePlugin plugin;
     late _FakeWorktreeService worktreeService;
     late DeleteSessionHandler handler;
+    late List<String> operationLog;
 
     setUp(() {
       db = createTestDatabase();
-      plugin = FakeBridgePlugin();
-      worktreeService = _FakeWorktreeService(database: db);
+      operationLog = [];
+      plugin = _TrackingFakeBridgePlugin(operationLog: operationLog);
+      worktreeService = _FakeWorktreeService(database: db, operationLog: operationLog);
       handler = DeleteSessionHandler(
         plugin: plugin,
         worktreeService: worktreeService,
@@ -63,9 +66,10 @@ void main() {
       expect(worktreeService.checkCallCount, equals(0));
       expect(worktreeService.removeCallCount, equals(0));
       expect(worktreeService.deleteBranchCallCount, equals(0));
+      expect(operationLog, equals(["pluginDelete"]));
     });
 
-    test("2) deleteWorktree=true on clean worktree: removes worktree then plugin+db", () async {
+    test("2) deleteWorktree=true on clean worktree: safety check then plugin then worktree", () async {
       await _insertSession(
         db: db,
         sessionId: "s2",
@@ -102,6 +106,7 @@ void main() {
       expect(worktreeService.deleteBranchCallCount, equals(0));
       expect(plugin.lastDeleteSessionId, equals("s2"));
       expect(await db.sessionDao.getSession(sessionId: "s2"), isNull);
+      expect(operationLog, equals(["checkSafety", "pluginDelete", "removeWorktree"]));
     });
 
     test("3) deleteBranch=true: deletes branch", () async {
@@ -138,6 +143,7 @@ void main() {
       expect(worktreeService.lastDeleteBranchForce, isFalse);
       expect(plugin.lastDeleteSessionId, equals("s3"));
       expect(await db.sessionDao.getSession(sessionId: "s3"), isNull);
+      expect(operationLog, equals(["pluginDelete", "deleteBranch"]));
     });
 
     test("4) deleteWorktree=true + deleteBranch=true: both cleanup operations run", () async {
@@ -173,6 +179,7 @@ void main() {
       expect(worktreeService.lastDeleteBranchForce, isTrue);
       expect(plugin.lastDeleteSessionId, equals("s4"));
       expect(await db.sessionDao.getSession(sessionId: "s4"), isNull);
+      expect(operationLog, equals(["checkSafety", "pluginDelete", "removeWorktree", "deleteBranch"]));
     });
 
     test("5) deleteWorktree=true on dirty worktree, force=false: returns 409 rejection", () async {
@@ -227,6 +234,7 @@ void main() {
       expect(worktreeService.deleteBranchCallCount, equals(0));
       expect(plugin.lastDeleteSessionId, isNull);
       expect(await db.sessionDao.getSession(sessionId: "s5"), isNotNull);
+      expect(operationLog, equals(["checkSafety"]));
     });
 
     test("6) force=true on dirty worktree: cleanup proceeds", () async {
@@ -263,6 +271,7 @@ void main() {
       expect(worktreeService.lastRemoveForce, isTrue);
       expect(plugin.lastDeleteSessionId, equals("s6"));
       expect(await db.sessionDao.getSession(sessionId: "s6"), isNull);
+      expect(operationLog, equals(["pluginDelete", "removeWorktree"]));
     });
 
     test("7) null worktreePath: skips git ops", () async {
@@ -296,6 +305,7 @@ void main() {
       expect(worktreeService.deleteBranchCallCount, equals(0));
       expect(plugin.lastDeleteSessionId, equals("s7"));
       expect(await db.sessionDao.getSession(sessionId: "s7"), isNull);
+      expect(operationLog, equals(["pluginDelete"]));
     });
 
     test("8) shared worktree: skips worktree removal", () async {
@@ -336,6 +346,7 @@ void main() {
       expect(worktreeService.deleteBranchCallCount, equals(0));
       expect(await db.sessionDao.getSession(sessionId: "s8-primary"), isNull);
       expect(await db.sessionDao.getSession(sessionId: "s8-secondary"), isNotNull);
+      expect(operationLog, equals(["pluginDelete"]));
     });
 
     test("9) missing DB session: plugin delete only", () async {
@@ -361,6 +372,44 @@ void main() {
       expect(worktreeService.removeCallCount, equals(0));
       expect(worktreeService.deleteBranchCallCount, equals(0));
       expect(await db.sessionDao.getSession(sessionId: "s9"), isNull);
+      expect(operationLog, equals(["pluginDelete"]));
+    });
+
+    test("10) plugin delete non-404 failure: no git cleanup and DB row remains", () async {
+      await _insertSession(
+        db: db,
+        sessionId: "s10",
+        projectId: "/repo",
+        worktreePath: "/repo/.worktrees/session-010",
+        branchName: "session-010",
+      );
+      worktreeService.safetyResult = WorktreeSafe();
+      plugin.throwOnDeleteSessionError = PluginApiException("/session/s10", 500);
+
+      await expectLater(
+        () => handler.handle(
+          makeRequest(
+            "DELETE",
+            "/session/s10",
+            body: jsonEncode(
+              const DeleteSessionRequest(
+                deleteWorktree: true,
+                deleteBranch: true,
+                force: false,
+              ).toJson(),
+            ),
+          ),
+          pathParams: {"id": "s10"},
+          queryParams: {},
+        ),
+        throwsA(isA<PluginApiException>()),
+      );
+
+      expect(worktreeService.checkCallCount, equals(1));
+      expect(worktreeService.removeCallCount, equals(0));
+      expect(worktreeService.deleteBranchCallCount, equals(0));
+      expect(await db.sessionDao.getSession(sessionId: "s10"), isNotNull);
+      expect(operationLog, equals(["checkSafety", "pluginDelete"]));
     });
   });
 }
@@ -385,6 +434,7 @@ Future<void> _insertSession({
 }
 
 class _FakeWorktreeService extends WorktreeService {
+  final List<String> operationLog;
   WorktreeSafetyResult safetyResult = WorktreeSafe();
   bool removeResult = true;
   bool deleteBranchResult = true;
@@ -402,7 +452,7 @@ class _FakeWorktreeService extends WorktreeService {
   String? lastDeleteBranchName;
   bool? lastDeleteBranchForce;
 
-  _FakeWorktreeService({required AppDatabase database})
+  _FakeWorktreeService({required AppDatabase database, required this.operationLog})
     : super(
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
@@ -414,6 +464,7 @@ class _FakeWorktreeService extends WorktreeService {
     required String expectedBranch,
   }) async {
     checkCallCount++;
+    operationLog.add("checkSafety");
     lastCheckWorktreePath = worktreePath;
     lastCheckExpectedBranch = expectedBranch;
     return safetyResult;
@@ -426,6 +477,7 @@ class _FakeWorktreeService extends WorktreeService {
     required bool force,
   }) async {
     removeCallCount++;
+    operationLog.add("removeWorktree");
     lastRemoveProjectPath = projectPath;
     lastRemoveWorktreePath = worktreePath;
     lastRemoveForce = force;
@@ -439,9 +491,22 @@ class _FakeWorktreeService extends WorktreeService {
     required bool force,
   }) async {
     deleteBranchCallCount++;
+    operationLog.add("deleteBranch");
     lastDeleteBranchProjectPath = projectPath;
     lastDeleteBranchName = branchName;
     lastDeleteBranchForce = force;
     return deleteBranchResult;
+  }
+}
+
+class _TrackingFakeBridgePlugin extends FakeBridgePlugin {
+  final List<String> operationLog;
+
+  _TrackingFakeBridgePlugin({required this.operationLog});
+
+  @override
+  Future<void> deleteSession(String sessionId) async {
+    operationLog.add("pluginDelete");
+    await super.deleteSession(sessionId);
   }
 }

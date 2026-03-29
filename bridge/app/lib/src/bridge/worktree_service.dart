@@ -314,12 +314,17 @@ class WorktreeService {
     required String worktreePath,
     required bool force,
   }) async {
+    if (!_isValidWorktreePath(projectPath: projectPath, worktreePath: worktreePath)) {
+      return false;
+    }
+
     await pruneWorktrees(projectPath: projectPath);
 
     final arguments = [
       "worktree",
       "remove",
       if (force) "--force",
+      "--",
       worktreePath,
     ];
     final result = await _runGit(
@@ -339,7 +344,7 @@ class WorktreeService {
   }) async {
     final result = await _runGit(
       projectPath: projectPath,
-      arguments: ["branch", force ? "-D" : "-d", branchName],
+      arguments: ["branch", force ? "-D" : "-d", "--", branchName],
     );
     return result.exitCode == 0;
   }
@@ -347,8 +352,8 @@ class WorktreeService {
   /// Restores (or creates) a worktree at [worktreePath] on [branchName].
   ///
   /// If [branchName] already exists, runs `git worktree add <path> <branch>`.
-  /// Otherwise creates a new branch from [baseBranch] via
-  /// `git worktree add <path> -b <branch> <baseBranch>`.
+  /// Otherwise creates a new branch from [baseCommit] (or [baseBranch] if
+  /// [baseCommit] is null) via `git worktree add <path> -b <branch> <ref>`.
   ///
   /// Returns true on success, false on failure.
   Future<bool> restoreWorktree({
@@ -356,19 +361,25 @@ class WorktreeService {
     required String worktreePath,
     required String branchName,
     required String baseBranch,
+    required String? baseCommit,
   }) async {
+    if (!_isValidWorktreePath(projectPath: projectPath, worktreePath: worktreePath)) {
+      return false;
+    }
+
     final verifyResult = await _runGit(
       projectPath: projectPath,
-      arguments: ["rev-parse", "--verify", "refs/heads/$branchName"],
+      arguments: ["rev-parse", "--verify", "--", "refs/heads/$branchName"],
     );
 
     final List<String> addArguments;
     if (verifyResult.exitCode == 0) {
       // Branch exists — check it out directly.
-      addArguments = ["worktree", "add", worktreePath, branchName];
+      addArguments = ["worktree", "add", "--", worktreePath, branchName];
     } else {
-      // Branch does not exist — create it from baseBranch.
-      addArguments = ["worktree", "add", worktreePath, "-b", branchName, baseBranch];
+      // Branch does not exist — create from baseCommit (preferred) or baseBranch.
+      final startPoint = baseCommit ?? baseBranch;
+      addArguments = ["worktree", "add", "-b", branchName, "--", worktreePath, startPoint];
     }
 
     final addResult = await _runGit(
@@ -399,6 +410,16 @@ class WorktreeService {
       return null;
     }
     return branchName;
+  }
+
+  /// Validates that [worktreePath] is under `<projectPath>/.worktrees/` to
+  /// prevent path-traversal attacks via stored database values.
+  bool _isValidWorktreePath({
+    required String projectPath,
+    required String worktreePath,
+  }) {
+    final expectedPrefix = "$projectPath/.worktrees/";
+    return worktreePath.startsWith(expectedPrefix);
   }
 }
 

@@ -52,47 +52,34 @@ class DeleteSessionHandler extends RequestHandler {
     }
 
     final sessionDto = await _sessionDao.getSession(sessionId: sessionId);
-    if (sessionDto?.worktreePath case final worktreePath?) {
-      final shouldCleanupGit = deleteRequest.deleteWorktree || deleteRequest.deleteBranch;
-      if (shouldCleanupGit) {
-        final isSharedWorktree = deleteRequest.deleteWorktree
-            ? (await _sessionDao.getSessionsByProject(projectId: sessionDto!.projectId)).any(
-                (session) => session.sessionId != sessionId && session.worktreePath == worktreePath,
-              )
-            : false;
+    final worktreePath = sessionDto?.worktreePath;
+    final shouldCleanupGit =
+        sessionDto != null && worktreePath != null && (deleteRequest.deleteWorktree || deleteRequest.deleteBranch);
+    final cleanupSession = shouldCleanupGit ? sessionDto! : null;
+    final cleanupWorktreePath = shouldCleanupGit ? worktreePath! : null;
 
-        if (deleteRequest.deleteWorktree && !isSharedWorktree && !deleteRequest.force) {
-          final safety = await _worktreeService.checkWorktreeSafety(
-            worktreePath: worktreePath,
-            expectedBranch: sessionDto!.branchName!,
-          );
-          if (safety case WorktreeUnsafe(:final issues)) {
-            final rejection = SessionCleanupRejection(
-              issues: _mapCleanupIssues(issues: issues),
-            );
-            return RelayResponse(
-              id: request.id,
-              status: 409,
-              headers: {"content-type": "application/json"},
-              body: jsonEncode(rejection.toJson()),
-            );
-          }
-        }
+    var isSharedWorktree = false;
+    if (shouldCleanupGit && deleteRequest.deleteWorktree) {
+      isSharedWorktree = (await _sessionDao.getSessionsByProject(projectId: cleanupSession!.projectId)).any(
+        (session) => session.sessionId != sessionId && session.worktreePath == cleanupWorktreePath,
+      );
+    }
 
-        if (deleteRequest.deleteWorktree && !isSharedWorktree) {
-          await _worktreeService.removeWorktree(
-            projectPath: sessionDto!.projectId,
-            worktreePath: worktreePath,
-            force: deleteRequest.force,
-          );
-        }
-        if (deleteRequest.deleteBranch && sessionDto!.branchName != null) {
-          await _worktreeService.deleteBranch(
-            projectPath: sessionDto.projectId,
-            branchName: sessionDto.branchName!,
-            force: deleteRequest.deleteWorktree ? true : deleteRequest.force,
-          );
-        }
+    if (shouldCleanupGit && deleteRequest.deleteWorktree && !isSharedWorktree && !deleteRequest.force) {
+      final safety = await _worktreeService.checkWorktreeSafety(
+        worktreePath: cleanupWorktreePath!,
+        expectedBranch: cleanupSession!.branchName!,
+      );
+      if (safety case WorktreeUnsafe(:final issues)) {
+        final rejection = SessionCleanupRejection(
+          issues: _mapCleanupIssues(issues: issues),
+        );
+        return RelayResponse(
+          id: request.id,
+          status: 409,
+          headers: {"content-type": "application/json"},
+          body: jsonEncode(rejection.toJson()),
+        );
       }
     }
 
@@ -101,6 +88,33 @@ class DeleteSessionHandler extends RequestHandler {
     } on PluginApiException catch (error) {
       if (error.statusCode != 404) {
         rethrow;
+      }
+    }
+
+    if (shouldCleanupGit) {
+      if (deleteRequest.deleteWorktree && !isSharedWorktree) {
+        final removed = await _worktreeService.removeWorktree(
+          projectPath: cleanupSession!.projectId,
+          worktreePath: cleanupWorktreePath!,
+          force: deleteRequest.force,
+        );
+        if (!removed) {
+          Log.w(
+            "DeleteSessionHandler: failed to remove worktree for session $sessionId at $worktreePath",
+          );
+        }
+      }
+      if (deleteRequest.deleteBranch && sessionDto.branchName != null) {
+        final deleted = await _worktreeService.deleteBranch(
+          projectPath: cleanupSession!.projectId,
+          branchName: cleanupSession.branchName!,
+          force: deleteRequest.deleteWorktree ? true : deleteRequest.force,
+        );
+        if (!deleted) {
+          Log.w(
+            "DeleteSessionHandler: failed to delete branch ${cleanupSession.branchName} for session $sessionId",
+          );
+        }
       }
     }
 

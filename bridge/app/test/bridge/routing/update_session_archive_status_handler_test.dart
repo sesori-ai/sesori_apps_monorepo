@@ -172,6 +172,8 @@ void main() {
       );
 
       expect(response.status, equals(409));
+      final persisted = await db.sessionDao.getSession(sessionId: "s1");
+      expect(persisted?.archivedAt, isNull);
       final rejection = SessionCleanupRejection.fromJson(
         switch (jsonDecode(response.body!)) {
           final Map<String, dynamic> map => map,
@@ -330,8 +332,52 @@ void main() {
       expect(worktreeService.lastRestoreWorktreePath, equals(deletedWorktreePath));
       expect(worktreeService.lastRestoreBranchName, equals("session-001"));
       expect(worktreeService.lastRestoreBaseBranch, equals("main"));
+      expect(worktreeService.lastRestoreBaseCommit, isNull);
       final persisted = await db.sessionDao.getSession(sessionId: "s1");
       expect(persisted?.archivedAt, isNull);
+    });
+
+    test("10) archive pre-migration session: auto-inserts row and archives", () async {
+      plugin.projectsResult = const [
+        PluginProject(id: "/repo"),
+      ];
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s-pre-migration",
+          projectID: "/repo",
+          directory: "/repo/.worktrees/session-001",
+          parentID: null,
+          title: "Pre-migration Session",
+          time: PluginSessionTime(created: 10, updated: 20, archived: null),
+          summary: null,
+        ),
+      ];
+
+      final response = await handler.handle(
+        makeRequest(
+          "PATCH",
+          "/session/s-pre-migration",
+          body: _archiveBody(
+            archived: true,
+            deleteWorktree: false,
+            deleteBranch: false,
+            force: false,
+          ),
+        ),
+        pathParams: {"id": "s-pre-migration"},
+        queryParams: {},
+      );
+
+      expect(response.status, equals(200));
+      final persisted = await db.sessionDao.getSession(sessionId: "s-pre-migration");
+      expect(persisted, isNotNull);
+      expect(persisted?.projectId, equals("/repo"));
+      expect(persisted?.isDedicated, isTrue);
+      expect(persisted?.worktreePath, isNull);
+      expect(persisted?.branchName, isNull);
+      expect(persisted?.baseBranch, isNull);
+      expect(persisted?.baseCommit, isNull);
+      expect(persisted?.archivedAt, isNotNull);
     });
 
     test("7) unarchive simple session: clears archivedAt and no worktree operations", () async {
@@ -539,6 +585,7 @@ Future<void> _insertSession({
   required String? branchName,
   String? baseBranch,
   int? archivedAt,
+  String? baseCommit,
 }) async {
   await db.sessionDao.insertSession(
     sessionId: sessionId,
@@ -548,7 +595,7 @@ Future<void> _insertSession({
     worktreePath: worktreePath,
     branchName: branchName,
     baseBranch: baseBranch,
-    baseCommit: null,
+    baseCommit: baseCommit,
   );
   if (archivedAt != null) {
     await db.sessionDao.setArchived(sessionId: sessionId, archivedAt: archivedAt);
@@ -578,6 +625,7 @@ class _FakeWorktreeService extends WorktreeService {
   String? lastRestoreWorktreePath;
   String? lastRestoreBranchName;
   String? lastRestoreBaseBranch;
+  String? lastRestoreBaseCommit;
 
   _FakeWorktreeService({required AppDatabase database})
     : super(
@@ -628,12 +676,14 @@ class _FakeWorktreeService extends WorktreeService {
     required String worktreePath,
     required String branchName,
     required String baseBranch,
+    required String? baseCommit,
   }) async {
     restoreCallCount++;
     lastRestoreProjectPath = projectPath;
     lastRestoreWorktreePath = worktreePath;
     lastRestoreBranchName = branchName;
     lastRestoreBaseBranch = baseBranch;
+    lastRestoreBaseCommit = baseCommit;
     return restoreResult;
   }
 }

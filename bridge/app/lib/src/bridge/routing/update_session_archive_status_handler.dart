@@ -54,15 +54,33 @@ class UpdateSessionArchiveStatusHandler extends RequestHandler {
       return buildErrorResponse(request, 400, "invalid JSON body");
     }
 
-    final sessionDto = await _sessionDao.getSession(sessionId: sessionId);
+    var sessionDto = await _sessionDao.getSession(sessionId: sessionId);
     if (sessionDto == null) {
-      return buildErrorResponse(request, 404, "session not found");
+      final pluginSessionLookup = await _findPluginSessionAcrossProjects(
+        sessionId: sessionId,
+      );
+      if (pluginSessionLookup == null) {
+        return buildErrorResponse(request, 404, "session not found");
+      }
+
+      await _sessionDao.insertSession(
+        sessionId: sessionId,
+        projectId: pluginSessionLookup.projectId,
+        isDedicated: true,
+        createdAt: DateTime.now().millisecondsSinceEpoch,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+      );
+      sessionDto = await _sessionDao.getSession(sessionId: sessionId);
+      if (sessionDto == null) {
+        return buildErrorResponse(request, 500, "failed to initialize session");
+      }
     }
 
     if (archiveRequest.archived) {
       final archivedAt = DateTime.now().millisecondsSinceEpoch;
-      await _sessionDao.setArchived(sessionId: sessionId, archivedAt: archivedAt);
-
       final cleanupResult = await _cleanupWorktreeIfRequested(
         request: request,
         sessionId: sessionId,
@@ -83,6 +101,8 @@ class UpdateSessionArchiveStatusHandler extends RequestHandler {
         return buildErrorResponse(request, 404, "session not found");
       }
 
+      await _sessionDao.setArchived(sessionId: sessionId, archivedAt: archivedAt);
+
       final responseSession = _withArchivedTime(
         session: pluginSession.toSharedSession(),
         archivedAt: archivedAt,
@@ -101,6 +121,7 @@ class UpdateSessionArchiveStatusHandler extends RequestHandler {
           worktreePath: worktreePath,
           branchName: sessionDto.branchName!,
           baseBranch: sessionDto.baseBranch ?? "main",
+          baseCommit: sessionDto.baseCommit,
         );
       }
     }
@@ -163,18 +184,28 @@ class UpdateSessionArchiveStatusHandler extends RequestHandler {
     }
 
     if (deleteWorktree && !isSharedWorktree) {
-      await _worktreeService.removeWorktree(
+      final removed = await _worktreeService.removeWorktree(
         projectPath: sessionDto.projectId,
         worktreePath: worktreePath,
         force: force,
       );
+      if (!removed) {
+        Log.w(
+          "UpdateSessionArchiveStatusHandler: removeWorktree failed for session=$sessionId worktreePath=$worktreePath",
+        );
+      }
     }
     if (deleteBranch && sessionDto.branchName != null) {
-      await _worktreeService.deleteBranch(
+      final branchDeleted = await _worktreeService.deleteBranch(
         projectPath: sessionDto.projectId,
         branchName: sessionDto.branchName!,
         force: deleteWorktree ? true : force,
       );
+      if (!branchDeleted) {
+        Log.w(
+          "UpdateSessionArchiveStatusHandler: deleteBranch failed for session=$sessionId branch=${sessionDto.branchName}",
+        );
+      }
     }
 
     return null;
@@ -188,6 +219,22 @@ class UpdateSessionArchiveStatusHandler extends RequestHandler {
     for (final session in sessions) {
       if (session.id == sessionId) {
         return session;
+      }
+    }
+    return null;
+  }
+
+  Future<({String projectId})?> _findPluginSessionAcrossProjects({
+    required String sessionId,
+  }) async {
+    final projects = await _plugin.getProjects();
+    for (final project in projects) {
+      final pluginSession = await _fetchPluginSession(
+        projectId: project.id,
+        sessionId: sessionId,
+      );
+      if (pluginSession != null) {
+        return (projectId: project.id);
       }
     }
     return null;

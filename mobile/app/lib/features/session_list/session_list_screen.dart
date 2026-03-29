@@ -360,6 +360,7 @@ class _SessionListBody extends StatelessWidget {
       actual,
       expected,
     ),
+    CleanupIssueWorktreeNotFound() => loc.sessionListCleanupIssueWorktreeNotFound,
   };
 
   @override

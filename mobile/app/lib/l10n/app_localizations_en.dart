@@ -558,8 +558,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String sessionListCleanupIssueBranchMismatch(String actual, String expected) {
-    return 'Worktree is on branch ‘$actual’ instead of expected ‘$expected’';
+    return 'Worktree is on branch \'$actual\' instead of expected \'$expected\'';
   }
+
+  @override
+  String get sessionListCleanupIssueWorktreeNotFound => 'Worktree directory not found on disk';
 
   @override
   String get sessionListDeleteFailed => 'Failed to delete session';

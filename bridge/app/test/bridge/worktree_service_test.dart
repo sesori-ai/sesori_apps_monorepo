@@ -473,7 +473,7 @@ void main() {
       expect(pruneInv.arguments, equals(["worktree", "prune"]));
 
       final removeInv = processRunner.invocations[1];
-      expect(removeInv.arguments, equals(["worktree", "remove", "$_projectId/.worktrees/session-001"]));
+      expect(removeInv.arguments, equals(["worktree", "remove", "--", "$_projectId/.worktrees/session-001"]));
       expect(removeInv.arguments, isNot(contains("--force")));
       expect(removeInv.workingDirectory, equals(_projectId));
     });
@@ -496,7 +496,10 @@ void main() {
       expect(processRunner.invocations, hasLength(2));
 
       final removeInv = processRunner.invocations[1];
-      expect(removeInv.arguments, equals(["worktree", "remove", "--force", "$_projectId/.worktrees/session-001"]));
+      expect(
+        removeInv.arguments,
+        equals(["worktree", "remove", "--force", "--", "$_projectId/.worktrees/session-001"]),
+      );
     });
 
     // removeWorktree failure → returns false
@@ -530,7 +533,7 @@ void main() {
       expect(result, isTrue);
       expect(processRunner.invocations, hasLength(1));
       final inv = processRunner.invocations.first;
-      expect(inv.arguments, equals(["branch", "-d", "session-001"]));
+      expect(inv.arguments, equals(["branch", "-d", "--", "session-001"]));
       expect(inv.workingDirectory, equals(_projectId));
     });
 
@@ -548,7 +551,7 @@ void main() {
       expect(result, isTrue);
       expect(processRunner.invocations, hasLength(1));
       final inv = processRunner.invocations.first;
-      expect(inv.arguments, equals(["branch", "-D", "session-001"]));
+      expect(inv.arguments, equals(["branch", "-D", "--", "session-001"]));
     });
 
     // restoreWorktree — branch exists
@@ -564,16 +567,17 @@ void main() {
         worktreePath: "$_projectId/.worktrees/session-001",
         branchName: "session-001",
         baseBranch: "main",
+        baseCommit: null,
       );
 
       expect(result, isTrue);
       expect(processRunner.invocations, hasLength(2));
 
       final verifyInv = processRunner.invocations[0];
-      expect(verifyInv.arguments, equals(["rev-parse", "--verify", "refs/heads/session-001"]));
+      expect(verifyInv.arguments, equals(["rev-parse", "--verify", "--", "refs/heads/session-001"]));
 
       final addInv = processRunner.invocations[1];
-      expect(addInv.arguments, equals(["worktree", "add", "$_projectId/.worktrees/session-001", "session-001"]));
+      expect(addInv.arguments, equals(["worktree", "add", "--", "$_projectId/.worktrees/session-001", "session-001"]));
       expect(addInv.arguments, isNot(contains("-b")));
       expect(addInv.workingDirectory, equals(_projectId));
     });
@@ -591,6 +595,7 @@ void main() {
         worktreePath: "$_projectId/.worktrees/session-001",
         branchName: "session-001",
         baseBranch: "main",
+        baseCommit: "abc123def",
       );
 
       expect(result, isTrue);
@@ -599,7 +604,7 @@ void main() {
       final addInv = processRunner.invocations[1];
       expect(
         addInv.arguments,
-        equals(["worktree", "add", "$_projectId/.worktrees/session-001", "-b", "session-001", "main"]),
+        equals(["worktree", "add", "-b", "session-001", "--", "$_projectId/.worktrees/session-001", "abc123def"]),
       );
     });
   });
