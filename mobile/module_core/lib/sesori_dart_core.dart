@@ -30,6 +30,8 @@ export "src/capabilities/voice/voice_api.dart";
 export "src/cubits/connection_overlay/connection_overlay_cubit.dart";
 export "src/cubits/login/login_cubit.dart";
 export "src/cubits/login/login_state.dart";
+export "src/cubits/new_session/new_session_cubit.dart";
+export "src/cubits/new_session/new_session_state.dart";
 export "src/cubits/notification_preferences/notification_preferences_cubit.dart";
 export "src/cubits/notification_preferences/notification_preferences_state.dart";
 export "src/cubits/project_list/project_list_cubit.dart";
