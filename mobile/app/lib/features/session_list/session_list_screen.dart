@@ -4,6 +4,7 @@ import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../core/constants.dart";
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/routing/app_router.dart";
@@ -130,7 +131,7 @@ class _SessionListBody extends StatelessWidget {
       ..showSnackBar(
         SnackBar(
           content: Text(loc.sessionListUnarchived),
-          duration: const Duration(seconds: 4),
+          duration: kSnackBarDuration,
         ),
       );
   }
@@ -143,7 +144,7 @@ class _SessionListBody extends StatelessWidget {
         .showSnackBar(
           SnackBar(
             content: Text(message),
-            duration: const Duration(seconds: 5),
+            duration: kSnackBarDuration,
             action: SnackBarAction(
               label: loc.sessionListUndo,
               onPressed: () => cubit.undoLastArchiveAction(),
@@ -207,7 +208,7 @@ class _SessionListBody extends StatelessWidget {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(loc.sessionListDeleted),
-        duration: const Duration(seconds: 4),
+        duration: kSnackBarDuration,
       ),
     );
   }
@@ -264,7 +265,7 @@ class _SessionListBody extends StatelessWidget {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(success ? loc.sessionListRefreshSuccess : loc.sessionListRefreshFailed),
-                      duration: const Duration(seconds: 4),
+                      duration: kSnackBarDuration,
                     ),
                   );
                 },

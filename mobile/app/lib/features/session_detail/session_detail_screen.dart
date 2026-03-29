@@ -5,6 +5,7 @@ import "package:flutter_bloc/flutter_bloc.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../core/constants.dart";
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../l10n/app_localizations.dart";
@@ -126,7 +127,7 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
             ..showSnackBar(
               SnackBar(
                 content: Text(context.loc.questionReplyFailed),
-                duration: const Duration(seconds: 4),
+                duration: kSnackBarDuration,
               ),
             );
           return;
@@ -153,7 +154,7 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
             ..showSnackBar(
               SnackBar(
                 content: Text(context.loc.questionRejectFailed),
-                duration: const Duration(seconds: 4),
+                duration: kSnackBarDuration,
               ),
             );
           return;

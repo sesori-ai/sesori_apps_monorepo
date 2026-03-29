@@ -3,6 +3,7 @@ import "package:get_it/get_it.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../core/constants.dart";
 import "../../core/extensions/build_context_x.dart";
 
 /// Shows the Add Project modal bottom sheet.
@@ -59,14 +60,14 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(loc.projectDiscovered),
-          duration: const Duration(seconds: 4),
+          duration: kSnackBarDuration,
         ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(loc.projectDiscoverFailed),
-          duration: const Duration(seconds: 4),
+          duration: kSnackBarDuration,
         ),
       );
     }
@@ -90,14 +91,14 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(loc.projectCreated),
-          duration: const Duration(seconds: 4),
+          duration: kSnackBarDuration,
         ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(loc.projectCreateFailed),
-          duration: const Duration(seconds: 4),
+          duration: kSnackBarDuration,
         ),
       );
     }

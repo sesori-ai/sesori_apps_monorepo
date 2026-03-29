@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../core/constants.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/widgets/app_modal_bottom_sheet.dart";
 
@@ -76,14 +77,14 @@ class _RenameProjectDialogState extends State<RenameProjectDialog> {
       messenger.showSnackBar(
         SnackBar(
           content: Text(loc.renameProjectSuccess),
-          duration: const Duration(seconds: 4),
+          duration: kSnackBarDuration,
         ),
       );
     } else {
       messenger.showSnackBar(
         SnackBar(
           content: Text(loc.renameProjectFailed),
-          duration: const Duration(seconds: 4),
+          duration: kSnackBarDuration,
         ),
       );
     }

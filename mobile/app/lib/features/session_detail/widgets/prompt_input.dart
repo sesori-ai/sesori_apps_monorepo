@@ -5,6 +5,7 @@ import "package:flutter/material.dart";
 import "package:sesori_dart_core/logging.dart";
 
 import "../../../capabilities/voice/voice_transcription_service.dart";
+import "../../../core/constants.dart";
 import "../../../core/di/injection.dart";
 import "../../../core/extensions/build_context_x.dart";
 
@@ -149,7 +150,7 @@ class _PromptInputState extends State<PromptInput> {
       ..showSnackBar(
         SnackBar(
           content: Text(message),
-          duration: const Duration(seconds: 4),
+          duration: kSnackBarDuration,
         ),
       );
   }
@@ -160,7 +161,7 @@ class _PromptInputState extends State<PromptInput> {
       ..showSnackBar(
         SnackBar(
           content: Text(context.loc.voiceRecordingLimitReached),
-          duration: const Duration(seconds: 4),
+          duration: kSnackBarDuration,
         ),
       );
   }
