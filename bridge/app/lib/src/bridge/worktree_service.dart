@@ -378,25 +378,6 @@ class WorktreeService {
     return addResult.exitCode == 0;
   }
 
-  /// Records the association between a session and its worktree in the DB.
-  Future<void> recordSessionWorktree({
-    required String sessionId,
-    required String projectId,
-    required String worktreePath,
-    required String branchName,
-  }) async {
-    await _sessionDao.insertSession(
-      sessionId: sessionId,
-      projectId: projectId,
-      isDedicated: true,
-      createdAt: DateTime.now().millisecondsSinceEpoch,
-      worktreePath: worktreePath,
-      branchName: branchName,
-      baseBranch: null,
-      baseCommit: null,
-    );
-  }
-
   // -------------------------------------------------------------------------
   // Internals
   // -------------------------------------------------------------------------

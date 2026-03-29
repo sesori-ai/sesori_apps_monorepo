@@ -212,7 +212,7 @@ class UpdateSessionArchiveStatusHandler extends RequestHandler {
               expected: expected,
               actual: actual,
             ),
-            WorktreeNotFound() => const CleanupIssue.unstagedChanges(),
+            WorktreeNotFound() => const CleanupIssue.worktreeNotFound(),
           },
         )
         .toList();

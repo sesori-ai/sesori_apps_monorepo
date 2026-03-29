@@ -603,48 +603,6 @@ void main() {
       );
     });
   });
-
-  // -------------------------------------------------------------------------
-  // recordSessionWorktree
-  // -------------------------------------------------------------------------
-
-  group("WorktreeService.recordSessionWorktree", () {
-    late AppDatabase db;
-    late WorktreeService service;
-
-    setUp(() {
-      db = createTestDatabase();
-      service = WorktreeService(
-        projectsDao: db.projectsDao,
-        sessionDao: db.sessionDao,
-        processRunner: _FakeProcessRunner().call,
-      );
-    });
-
-    tearDown(() async {
-      await db.close();
-    });
-
-    test("stores session-to-worktree mapping in the database", () async {
-      await service.recordSessionWorktree(
-        sessionId: "ses-42",
-        projectId: _projectId,
-        worktreePath: "$_projectId/.worktrees/session-042",
-        branchName: "session-042",
-      );
-
-      final stored = await db.sessionDao.getSession(
-        sessionId: "ses-42",
-      );
-
-      expect(stored, isNotNull);
-      expect(stored!.sessionId, equals("ses-42"));
-      expect(stored.projectId, equals(_projectId));
-      expect(stored.isDedicated, isTrue);
-      expect(stored.worktreePath, equals("$_projectId/.worktrees/session-042"));
-      expect(stored.branchName, equals("session-042"));
-    });
-  });
 }
 
 // ---------------------------------------------------------------------------
