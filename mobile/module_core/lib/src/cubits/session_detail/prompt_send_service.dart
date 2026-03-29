@@ -5,10 +5,18 @@ import "package:sesori_auth/sesori_auth.dart";
 import "../../capabilities/session/session_service.dart";
 import "prompt_send_queue.dart";
 
+typedef PromptSendStateSnapshot = ({
+  String? agent,
+  String? providerID,
+  String? modelID,
+  bool isConnected,
+});
+
 class PromptSendService {
   final SessionService _service;
   final String _sessionId;
   final void Function() _onQueueChanged;
+  final PromptSendStateSnapshot Function() _stateProvider;
 
   final PromptSendQueue _promptQueue = PromptSendQueue();
   bool _isSending = false;
@@ -17,9 +25,11 @@ class PromptSendService {
     required SessionService service,
     required String sessionId,
     required void Function() onQueueChanged,
+    required PromptSendStateSnapshot Function() stateProvider,
   }) : _service = service,
        _sessionId = sessionId,
-       _onQueueChanged = onQueueChanged;
+       _onQueueChanged = onQueueChanged,
+       _stateProvider = stateProvider;
 
   List<String> get queuedMessages => _promptQueue.items;
 
@@ -63,32 +73,18 @@ class PromptSendService {
     return removed;
   }
 
-  void drain({
-    required String? agent,
-    required String? providerID,
-    required String? modelID,
-    required bool isConnected,
-  }) {
+  void drain() {
     if (_promptQueue.isEmpty) return;
-    if (!isConnected) return;
-    unawaited(
-      _sendNextQueued(
-        agent: agent,
-        providerID: providerID,
-        modelID: modelID,
-        isConnected: isConnected,
-      ),
-    );
+    final current = _stateProvider();
+    if (!current.isConnected) return;
+    unawaited(_sendNextQueued());
   }
 
-  Future<void> _sendNextQueued({
-    required String? agent,
-    required String? providerID,
-    required String? modelID,
-    required bool isConnected,
-  }) async {
+  Future<void> _sendNextQueued() async {
     if (_isSending) return;
-    if (!isConnected) return;
+
+    final current = _stateProvider();
+    if (!current.isConnected) return;
 
     final message = _promptQueue.dequeue();
     if (message == null) return;
@@ -101,9 +97,9 @@ class PromptSendService {
       final result = await _service.sendMessage(
         _sessionId,
         message,
-        agent: agent,
-        providerID: providerID,
-        modelID: modelID,
+        agent: current.agent,
+        providerID: current.providerID,
+        modelID: current.modelID,
       );
 
       if (result case ErrorResponse()) {
@@ -117,12 +113,7 @@ class PromptSendService {
     }
 
     if (sendSucceeded) {
-      drain(
-        agent: agent,
-        providerID: providerID,
-        modelID: modelID,
-        isConnected: isConnected,
-      );
+      drain();
     }
   }
 }

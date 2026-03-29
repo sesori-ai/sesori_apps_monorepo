@@ -51,6 +51,15 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       service: _service,
       sessionId: _sessionId,
       onQueueChanged: _emitQueueUpdate,
+      stateProvider: () {
+        final current = state;
+        return (
+          agent: current is SessionDetailLoaded ? current.selectedAgent : null,
+          providerID: current is SessionDetailLoaded ? current.selectedProviderID : null,
+          modelID: current is SessionDetailLoaded ? current.selectedModelID : null,
+          isConnected: _isConnected,
+        );
+      },
     );
     _streamingBuffer = StreamingTextBuffer(onFlush: _emitStreamingSnapshot);
     _eventSubscription = _connectionService.sessionEvents(_sessionId).listen(_handleEvent);
@@ -579,12 +588,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (isClosed) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
-    _sendService.drain(
-      agent: current.selectedAgent,
-      providerID: current.selectedProviderID,
-      modelID: current.selectedModelID,
-      isConnected: _isConnected,
-    );
+    _sendService.drain();
   }
 
   Future<void> sendMessage(String text) async {
