@@ -5,6 +5,7 @@ import "package:flutter/material.dart";
 import "package:sesori_dart_core/logging.dart";
 
 import "../../../capabilities/voice/voice_transcription_service.dart";
+import "../../../core/constants.dart";
 import "../../../core/di/injection.dart";
 import "../../../core/extensions/build_context_x.dart";
 
@@ -146,13 +147,23 @@ class _PromptInputState extends State<PromptInput> {
   void _showVoiceError(String message) {
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
-      ..showSnackBar(SnackBar(content: Text(message)));
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          duration: kSnackBarDuration,
+        ),
+      );
   }
 
   void _showRecordingLimitReached() {
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
-      ..showSnackBar(SnackBar(content: Text(context.loc.voiceRecordingLimitReached)));
+      ..showSnackBar(
+        SnackBar(
+          content: Text(context.loc.voiceRecordingLimitReached),
+          duration: kSnackBarDuration,
+        ),
+      );
   }
 
   @override

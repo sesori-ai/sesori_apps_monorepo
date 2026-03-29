@@ -4,6 +4,7 @@ import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "../../core/constants.dart";
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/routing/app_router.dart";
@@ -86,7 +87,10 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
                 Navigator.of(sheetContext).pop();
                 cubit.hideProject(project.id);
                 scaffoldMessenger.showSnackBar(
-                  SnackBar(content: Text(loc.projectHidden)),
+                  SnackBar(
+                    content: Text(loc.projectHidden),
+                    duration: kSnackBarDuration,
+                  ),
                 );
               },
             ),
@@ -130,7 +134,10 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
                   final success = await context.read<ProjectListCubit>().refreshProjects();
                   if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(success ? loc.projectListRefreshSuccess : loc.projectListRefreshFailed)),
+                    SnackBar(
+                      content: Text(success ? loc.projectListRefreshSuccess : loc.projectListRefreshFailed),
+                      duration: kSnackBarDuration,
+                    ),
                   );
                 },
                 child: projects.isEmpty
