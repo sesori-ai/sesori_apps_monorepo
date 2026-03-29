@@ -17,6 +17,22 @@ import "models/connection_status.dart";
 import "models/sse_event.dart";
 import "server_connection_config.dart";
 
+class RelayClientFactory {
+  const RelayClientFactory();
+
+  RelayClient call({
+    required String relayHost,
+    required RelayCryptoService cryptoService,
+    required RoomKeyStorage roomKeyStorage,
+    required String? authToken,
+  }) => RelayClient(
+    relayHost: relayHost,
+    cryptoService: cryptoService,
+    roomKeyStorage: roomKeyStorage,
+    authToken: authToken,
+  );
+}
+
 @lazySingleton
 class ConnectionService {
   final RelayCryptoService _cryptoService;
@@ -26,13 +42,7 @@ class ConnectionService {
   final AuthSession _authSession;
   final FailureReporter _failureReporter;
   final DateTime Function() _clock;
-  final RelayClient Function({
-    required String relayHost,
-    required RelayCryptoService cryptoService,
-    required RoomKeyStorage roomKeyStorage,
-    required String? authToken,
-  })?
-  _relayClientFactory;
+  final RelayClientFactory _relayClientFactory;
 
   final BehaviorSubject<ConnectionStatus> _status = BehaviorSubject.seeded(const ConnectionStatus.disconnected());
   final StreamController<SseEvent> _events = StreamController<SseEvent>.broadcast();
@@ -68,14 +78,7 @@ class ConnectionService {
     LifecycleSource lifecycleSource,
     FailureReporter failureReporter, {
     @visibleForTesting DateTime Function() clock = DateTime.now,
-    @visibleForTesting
-    RelayClient Function({
-      required String relayHost,
-      required RelayCryptoService cryptoService,
-      required RoomKeyStorage roomKeyStorage,
-      required String? authToken,
-    })?
-    relayClientFactory,
+    @visibleForTesting RelayClientFactory relayClientFactory = const RelayClientFactory(),
   }) : _cryptoService = cryptoService,
        _roomKeyStorage = roomKeyStorage,
        _authTokenProvider = authTokenProvider,
@@ -121,8 +124,8 @@ class ConnectionService {
     _backgroundedAt = _clock();
     logd("App backgrounded — pausing reconnect attempts");
     _reconnectTimer?.cancel();
-    if (_reconnectDelayCompleter != null && !_reconnectDelayCompleter!.isCompleted) {
-      _reconnectDelayCompleter!.complete();
+    if (_reconnectDelayCompleter case final completer? when !completer.isCompleted) {
+      completer.complete();
     }
   }
 
@@ -179,19 +182,12 @@ class ConnectionService {
   Future<ApiResponse<HealthResponse>> _connectViaRelay(ServerConnectionConfig config) async {
     await _disconnectRelayClient();
 
-    final relayClient =
-        _relayClientFactory?.call(
-          relayHost: config.relayHost,
-          cryptoService: _cryptoService,
-          roomKeyStorage: _roomKeyStorage,
-          authToken: config.authToken,
-        ) ??
-        RelayClient(
-          relayHost: config.relayHost,
-          cryptoService: _cryptoService,
-          roomKeyStorage: _roomKeyStorage,
-          authToken: config.authToken,
-        );
+    final relayClient = _relayClientFactory.call(
+      relayHost: config.relayHost,
+      cryptoService: _cryptoService,
+      roomKeyStorage: _roomKeyStorage,
+      authToken: config.authToken,
+    );
 
     try {
       await relayClient.connect();
@@ -255,8 +251,8 @@ class ConnectionService {
   /// Manually disconnect. Clears config, closes SSE, cancels timers.
   void disconnect() {
     _reconnectTimer?.cancel();
-    if (_reconnectDelayCompleter != null && !_reconnectDelayCompleter!.isCompleted) {
-      _reconnectDelayCompleter!.complete();
+    if (_reconnectDelayCompleter case final completer? when !completer.isCompleted) {
+      completer.complete();
     }
     unawaited(_disconnectRelayClient());
     _status.add(const ConnectionStatus.disconnected());
@@ -546,8 +542,8 @@ class ConnectionService {
 
   void dispose() {
     _reconnectTimer?.cancel();
-    if (_reconnectDelayCompleter != null && !_reconnectDelayCompleter!.isCompleted) {
-      _reconnectDelayCompleter!.complete();
+    if (_reconnectDelayCompleter case final completer? when !completer.isCompleted) {
+      completer.complete();
     }
     _status.add(const ConnectionStatus.disconnected());
     unawaited(_disconnectRelayClient());

@@ -27,6 +27,36 @@ class MockFailureReporter extends Mock implements FailureReporter {}
 
 class MockRelayClient extends Mock implements RelayClient {}
 
+class _TestRelayClientFactory extends RelayClientFactory {
+  final RelayClient Function({
+    required String relayHost,
+    required RelayCryptoService cryptoService,
+    required RoomKeyStorage roomKeyStorage,
+    required String? authToken,
+  })
+  _factory;
+
+  int callCount = 0;
+
+  _TestRelayClientFactory(this._factory);
+
+  @override
+  RelayClient call({
+    required String relayHost,
+    required RelayCryptoService cryptoService,
+    required RoomKeyStorage roomKeyStorage,
+    required String? authToken,
+  }) {
+    callCount++;
+    return _factory(
+      relayHost: relayHost,
+      cryptoService: cryptoService,
+      roomKeyStorage: roomKeyStorage,
+      authToken: authToken,
+    );
+  }
+}
+
 void main() {
   setUpAll(() {
     registerFallbackValue(const Duration(minutes: 1));
@@ -109,8 +139,15 @@ void main() {
         () => authTokenProvider.getFreshAccessToken(minTtl: any(named: "minTtl")),
       ).thenAnswer((_) => tokenCompleter.future);
 
-      var relayFactoryCallCount = 0;
       final relayClient = MockRelayClient();
+      final factory = _TestRelayClientFactory(
+        ({
+          required String relayHost,
+          required RelayCryptoService cryptoService,
+          required RoomKeyStorage roomKeyStorage,
+          required String? authToken,
+        }) => relayClient,
+      );
       final service = ConnectionService(
         cryptoService,
         roomKeyStorage,
@@ -118,16 +155,7 @@ void main() {
         authSession,
         lifecycleSource,
         failureReporter,
-        relayClientFactory:
-            ({
-              required String relayHost,
-              required RelayCryptoService cryptoService,
-              required RoomKeyStorage roomKeyStorage,
-              required String? authToken,
-            }) {
-              relayFactoryCallCount++;
-              return relayClient;
-            },
+        relayClientFactory: factory,
       );
       addTearDown(service.dispose);
 
@@ -144,7 +172,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 50));
 
       expect(service.currentStatus, const ConnectionStatus.connectionLost(config: config));
-      expect(relayFactoryCallCount, 0);
+      expect(factory.callCount, 0);
     });
 
     test("SSE setup failure disconnects relay and returns error response", () async {
@@ -163,6 +191,14 @@ void main() {
       when(relayClient.disconnect).thenAnswer((_) async {});
       when(() => relayClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
 
+      final factory = _TestRelayClientFactory(
+        ({
+          required String relayHost,
+          required RelayCryptoService cryptoService,
+          required RoomKeyStorage roomKeyStorage,
+          required String? authToken,
+        }) => relayClient,
+      );
       final service = ConnectionService(
         cryptoService,
         roomKeyStorage,
@@ -170,13 +206,7 @@ void main() {
         authSession,
         lifecycleSource,
         failureReporter,
-        relayClientFactory:
-            ({
-              required String relayHost,
-              required RelayCryptoService cryptoService,
-              required RoomKeyStorage roomKeyStorage,
-              required String? authToken,
-            }) => relayClient,
+        relayClientFactory: factory,
       );
       addTearDown(service.dispose);
 

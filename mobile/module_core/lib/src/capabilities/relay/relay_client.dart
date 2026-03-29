@@ -342,8 +342,8 @@ class RelayClient {
 
     final encryptor = _sessionEncryptor;
     if (encryptor == null) {
-      if (_firstBinaryMessage != null && !_firstBinaryMessage!.isCompleted) {
-        _firstBinaryMessage!.complete(bytes);
+      if (_firstBinaryMessage case final completer? when !completer.isCompleted) {
+        completer.complete(bytes);
       } else {
         logw("Received extra binary frame before relay key exchange completion");
       }
