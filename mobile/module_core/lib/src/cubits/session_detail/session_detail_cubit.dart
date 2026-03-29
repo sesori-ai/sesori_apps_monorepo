@@ -58,6 +58,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           providerID: current is SessionDetailLoaded ? current.selectedProviderID : null,
           modelID: current is SessionDetailLoaded ? current.selectedModelID : null,
           isConnected: _isConnected,
+          isLoaded: current is SessionDetailLoaded && !isClosed,
         );
       },
     );

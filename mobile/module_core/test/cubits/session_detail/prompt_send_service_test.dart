@@ -60,6 +60,7 @@ void main() {
           providerID: currentProviderID,
           modelID: currentModelID,
           isConnected: isConnected,
+          isLoaded: true,
         ),
       );
 
@@ -93,6 +94,86 @@ void main() {
 
       expect(sentParams[0], (agent: "agent-old", providerID: "provider-old", modelID: "model-old"));
       expect(sentParams[1], (agent: "agent-new", providerID: "provider-new", modelID: "model-new"));
+    });
+
+    test("drain stops when state becomes not loaded mid-drain", () async {
+      const sessionId = "session-1";
+      var isLoaded = true;
+
+      final firstSendStarted = Completer<void>();
+      final allowFirstSendToComplete = Completer<void>();
+
+      when(
+        () => mockSessionService.sendMessage(
+          sessionId,
+          any(),
+          agent: any(named: "agent"),
+          providerID: any(named: "providerID"),
+          modelID: any(named: "modelID"),
+        ),
+      ).thenAnswer((invocation) async {
+        if ((invocation.positionalArguments[1] as String) == "first") {
+          firstSendStarted.complete();
+          await allowFirstSendToComplete.future;
+        }
+
+        return ApiResponse.success(true);
+      });
+
+      final service = PromptSendService(
+        service: mockSessionService,
+        sessionId: sessionId,
+        onQueueChanged: () {},
+        stateProvider: () => (
+          agent: "agent",
+          providerID: "provider",
+          modelID: "model",
+          isConnected: true,
+          isLoaded: isLoaded,
+        ),
+      );
+
+      await service.sendMessage(
+        text: "first",
+        agent: "agent",
+        providerID: "provider",
+        modelID: "model",
+        isConnected: false,
+      );
+      await service.sendMessage(
+        text: "second",
+        agent: "agent",
+        providerID: "provider",
+        modelID: "model",
+        isConnected: false,
+      );
+
+      service.drain();
+      await firstSendStarted.future;
+
+      isLoaded = false;
+      allowFirstSendToComplete.complete();
+
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      verify(
+        () => mockSessionService.sendMessage(
+          sessionId,
+          "first",
+          agent: any(named: "agent"),
+          providerID: any(named: "providerID"),
+          modelID: any(named: "modelID"),
+        ),
+      ).called(1);
+      verifyNever(
+        () => mockSessionService.sendMessage(
+          sessionId,
+          "second",
+          agent: any(named: "agent"),
+          providerID: any(named: "providerID"),
+          modelID: any(named: "modelID"),
+        ),
+      );
     });
   });
 }

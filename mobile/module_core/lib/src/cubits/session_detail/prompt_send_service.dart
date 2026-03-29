@@ -10,6 +10,7 @@ typedef PromptSendStateSnapshot = ({
   String? providerID,
   String? modelID,
   bool isConnected,
+  bool isLoaded,
 });
 
 class PromptSendService {
@@ -77,6 +78,7 @@ class PromptSendService {
     if (_promptQueue.isEmpty) return;
     final current = _stateProvider();
     if (!current.isConnected) return;
+    if (!current.isLoaded) return;
     unawaited(_sendNextQueued());
   }
 
@@ -85,6 +87,7 @@ class PromptSendService {
 
     final current = _stateProvider();
     if (!current.isConnected) return;
+    if (!current.isLoaded) return;
 
     final message = _promptQueue.dequeue();
     if (message == null) return;

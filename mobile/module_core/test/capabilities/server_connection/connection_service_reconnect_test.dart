@@ -97,7 +97,7 @@ void main() {
 
       await Future<void>.delayed(const Duration(milliseconds: 50));
       service.disconnect();
-      await Future<void>.delayed(const Duration(milliseconds: 1400));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
 
       verifyNever(() => authTokenProvider.getFreshAccessToken(minTtl: any(named: "minTtl")));
       expect(service.currentStatus, isA<ConnectionDisconnected>());
@@ -184,6 +184,7 @@ void main() {
 
       expect(result, isA<ErrorResponse<HealthResponse>>());
       expect(service.relayClient, isNull);
+      expect(service.currentStatus, isNot(isA<ConnectionConnected>()));
       verify(relayClient.disconnect).called(greaterThanOrEqualTo(1));
     });
   });

@@ -44,6 +44,7 @@ class ConnectionService {
   StreamSubscription<RelaySseEvent>? _relaySseSubscription;
   StreamSubscription<BridgeStatus>? _bridgeStatusSubscription;
   Timer? _reconnectTimer;
+  Completer<void>? _reconnectDelayCompleter;
   int _requestCounter = 0;
   final Random _requestIdRandom = Random();
   int _authRetryCount = 0;
@@ -120,6 +121,9 @@ class ConnectionService {
     _backgroundedAt = _clock();
     logd("App backgrounded — pausing reconnect attempts");
     _reconnectTimer?.cancel();
+    if (_reconnectDelayCompleter != null && !_reconnectDelayCompleter!.isCompleted) {
+      _reconnectDelayCompleter!.complete();
+    }
   }
 
   /// Push-based connection status stream.
@@ -224,7 +228,6 @@ class ConnectionService {
       }
 
       _relayClient = relayClient;
-      _status.add(ConnectionStatus.connected(config: config, health: health));
       _authRetryCount = 0;
       _relayReconnectBackoff = const Duration(seconds: 1);
       try {
@@ -235,6 +238,7 @@ class ConnectionService {
         await _disconnectRelayClient();
         return ApiResponse.error(ApiError.generic());
       }
+      _status.add(ConnectionStatus.connected(config: config, health: health));
       return ApiResponse.success(health);
     } catch (error, stackTrace) {
       loge("Failed to connect via relay", error, stackTrace);
@@ -251,6 +255,9 @@ class ConnectionService {
   /// Manually disconnect. Clears config, closes SSE, cancels timers.
   void disconnect() {
     _reconnectTimer?.cancel();
+    if (_reconnectDelayCompleter != null && !_reconnectDelayCompleter!.isCompleted) {
+      _reconnectDelayCompleter!.complete();
+    }
     unawaited(_disconnectRelayClient());
     _status.add(const ConnectionStatus.disconnected());
   }
@@ -459,9 +466,15 @@ class ConnectionService {
     logd("Relay reconnect: waiting ${delayMs}ms before attempt to ${config.relayHost}");
     _reconnectTimer?.cancel();
     final completer = Completer<void>();
-    _reconnectTimer = Timer(Duration(milliseconds: delayMs), completer.complete);
+    _reconnectDelayCompleter = completer;
+    _reconnectTimer = Timer(Duration(milliseconds: delayMs), () {
+      if (!completer.isCompleted) {
+        completer.complete();
+      }
+    });
     await completer.future;
     _reconnectTimer = null;
+    _reconnectDelayCompleter = null;
     if (_isInBackground) {
       _status.add(ConnectionStatus.connectionLost(config: config));
       return;
@@ -533,6 +546,10 @@ class ConnectionService {
 
   void dispose() {
     _reconnectTimer?.cancel();
+    if (_reconnectDelayCompleter != null && !_reconnectDelayCompleter!.isCompleted) {
+      _reconnectDelayCompleter!.complete();
+    }
+    _status.add(const ConnectionStatus.disconnected());
     unawaited(_disconnectRelayClient());
     _compositeSubscription.dispose();
     _dataMayBeStale.close();
