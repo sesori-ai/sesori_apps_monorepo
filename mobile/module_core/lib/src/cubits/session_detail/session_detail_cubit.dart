@@ -672,6 +672,26 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   }
 
   // ---------------------------------------------------------------------------
+  // Notifications
+  // ---------------------------------------------------------------------------
+
+  /// Clears all push notifications for this session.
+  ///
+  /// Call when the session detail screen is entered or when a question/permission
+  /// prompt becomes visible — the notification has served its purpose once the
+  /// user is already looking at the content.
+  void clearNotifications() {
+    _notificationCanceller.cancelForSession(
+      sessionId: _sessionId,
+      category: NotificationCategory.aiInteraction,
+    );
+    _notificationCanceller.cancelForSession(
+      sessionId: _sessionId,
+      category: NotificationCategory.sessionMessage,
+    );
+  }
+
+  // ---------------------------------------------------------------------------
   // Questions
   // ---------------------------------------------------------------------------
 

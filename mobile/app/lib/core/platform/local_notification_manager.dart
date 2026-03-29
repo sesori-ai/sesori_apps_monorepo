@@ -88,7 +88,7 @@ class LocalNotificationManager implements NotificationCanceller {
     final channelId = category.id;
 
     final int id;
-    if (sessionId != null && category == NotificationCategory.aiInteraction) {
+    if (sessionId != null) {
       id = computeNotificationId(sessionId: sessionId, category: category);
     } else {
       id = DateTime.now().millisecondsSinceEpoch ~/ 1000;
