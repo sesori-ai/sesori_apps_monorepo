@@ -79,7 +79,6 @@ void main() {
 
       expect(worktreeService.lastPrepareProjectId, equals("/repo"));
       expect(worktreeService.lastPrepareParentSessionId, isNull);
-      expect(plugin.lastCreateSessionProjectId, equals("/repo"));
       expect(plugin.lastCreateSessionDirectory, equals("/repo/.worktrees/session-001"));
       expect(plugin.lastCreateSessionParentId, isNull);
       expect(worktreeService.recordCalls, hasLength(1));
@@ -117,8 +116,7 @@ void main() {
         queryParams: {},
       );
 
-      expect(plugin.lastCreateSessionProjectId, equals("/repo"));
-      expect(plugin.lastCreateSessionDirectory, isNull);
+      expect(plugin.lastCreateSessionDirectory, equals("/repo"));
       expect(plugin.lastCreateSessionParentId, isNull);
       expect(worktreeService.recordCalls, isEmpty);
       expect(response.status, equals(200));
@@ -150,7 +148,7 @@ void main() {
       // Worktree service IS called for parent sessions (it handles reuse logic).
       expect(worktreeService.prepareCallCount, equals(1));
       expect(worktreeService.lastPrepareProjectId, equals("/repo"));
-      expect(plugin.lastCreateSessionProjectId, equals("/repo"));
+      expect(plugin.lastCreateSessionDirectory, equals("/repo"));
       expect(plugin.lastCreateSessionParentId, equals("parent-1"));
       expect(response.status, equals(200));
     });
@@ -295,8 +293,7 @@ class _FakeWorktreeService extends WorktreeService {
 class _ThrowingCreateSessionPlugin extends FakeBridgePlugin {
   @override
   Future<PluginSession> createSession({
-    required String projectId,
-    String? directory,
+    required String directory,
     String? parentSessionId,
   }) {
     throw StateError("createSession failed");

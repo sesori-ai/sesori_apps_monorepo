@@ -49,10 +49,9 @@ class CreateSessionHandler extends RequestHandler {
     );
 
     final created = await _plugin.createSession(
-      projectId: projectId,
       directory: switch (worktreeResult) {
         WorktreeSuccess(:final path) => path,
-        WorktreeFallback() => null,
+        WorktreeFallback(:final originalPath) => originalPath,
       },
       parentSessionId: parentSessionId,
     );

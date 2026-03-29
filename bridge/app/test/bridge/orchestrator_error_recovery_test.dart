@@ -199,8 +199,7 @@ class _ThrowingSummaryPlugin implements BridgePlugin {
 
   @override
   Future<PluginSession> createSession({
-    required String projectId,
-    String? directory,
+    required String directory,
     String? parentSessionId,
   }) async => const PluginSession(
     id: "",

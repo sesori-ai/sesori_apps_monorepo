@@ -109,8 +109,7 @@ void main() {
       );
 
       expect(response.status, equals(200));
-      expect(plugin.lastCreateSessionProjectId, equals("/tmp"));
-      expect(plugin.lastCreateSessionDirectory, isNull);
+      expect(plugin.lastCreateSessionDirectory, equals("/tmp"));
       expect(plugin.lastCreateSessionParentId, equals("parent-1"));
     });
 
