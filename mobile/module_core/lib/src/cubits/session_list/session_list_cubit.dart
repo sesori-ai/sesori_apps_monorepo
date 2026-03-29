@@ -431,14 +431,11 @@ class SessionListCubit extends Cubit<SessionListState> {
   }
 
   Future<bool> _fetchSessions({bool silent = false}) async {
-    final results = await (
+    final (sessionsResponse, baseBranchResponse) = await (
       _service.listSessions(projectId: _projectId),
       _projectService.getBaseBranch(projectId: _projectId),
     ).wait;
     if (isClosed) return false;
-
-    final sessionsResponse = results.$1;
-    final baseBranchResponse = results.$2;
 
     // Update cached base branch on success; silently ignore errors so
     // the session list still loads even if the endpoint is unavailable.
