@@ -12,6 +12,7 @@ export "src/models/pending_question.dart";
 export "src/models/project.dart";
 export "src/models/provider_info.dart";
 export "src/models/question.dart";
+export "src/models/send_prompt_body.dart";
 export "src/models/session.dart";
 export "src/models/session_status.dart";
 export "src/models/sse_event_data.dart";

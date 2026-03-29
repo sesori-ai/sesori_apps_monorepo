@@ -103,14 +103,23 @@ void main() {
           "POST",
           "/session",
           body: jsonEncode(
-            const CreateSessionRequest(projectId: "/tmp", parentSessionId: "parent-1").toJson(),
+            const CreateSessionRequest(
+              projectId: "/tmp",
+              parts: [PromptPart.text(text: "Start")],
+              agent: "architect",
+              model: PromptModel(providerID: "openai", modelID: "gpt-5"),
+            ).toJson(),
           ),
         ),
       );
 
       expect(response.status, equals(200));
       expect(plugin.lastCreateSessionDirectory, equals("/tmp"));
-      expect(plugin.lastCreateSessionParentId, equals("parent-1"));
+      expect(plugin.lastCreateSessionParentId, isNull);
+      expect(plugin.lastCreateSessionProjectId, equals("/tmp"));
+      expect(plugin.lastCreateSessionParts, equals([PluginPromptPart.text(text: "Start")]));
+      expect(plugin.lastCreateSessionAgent, equals("architect"));
+      expect(plugin.lastCreateSessionModel, equals((providerID: "openai", modelID: "gpt-5")));
     });
 
     test("routes DELETE /session/:id to DeleteSessionHandler", () async {

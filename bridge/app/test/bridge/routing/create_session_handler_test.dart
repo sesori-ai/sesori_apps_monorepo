@@ -70,7 +70,12 @@ void main() {
           "POST",
           "/session",
           body: jsonEncode(
-            const CreateSessionRequest(projectId: "/repo", parentSessionId: null).toJson(),
+            const CreateSessionRequest(
+              projectId: "/repo",
+              parts: [PromptPart.text(text: "Start")],
+              agent: null,
+              model: null,
+            ).toJson(),
           ),
         ),
         pathParams: {},
@@ -81,6 +86,7 @@ void main() {
       expect(worktreeService.lastPrepareParentSessionId, isNull);
       expect(plugin.lastCreateSessionDirectory, equals("/repo/.worktrees/session-001"));
       expect(plugin.lastCreateSessionParentId, isNull);
+      expect(plugin.lastCreateSessionParts, equals([PluginPromptPart.text(text: "Start")]));
       expect(worktreeService.recordCalls, hasLength(1));
       expect(worktreeService.recordCalls.first.sessionId, equals("s1"));
       expect(worktreeService.recordCalls.first.projectId, equals("/repo"));
@@ -109,7 +115,12 @@ void main() {
           "POST",
           "/session",
           body: jsonEncode(
-            const CreateSessionRequest(projectId: "/repo", parentSessionId: null).toJson(),
+            const CreateSessionRequest(
+              projectId: "/repo",
+              parts: [PromptPart.text(text: "Start")],
+              agent: null,
+              model: null,
+            ).toJson(),
           ),
         ),
         pathParams: {},
@@ -122,12 +133,12 @@ void main() {
       expect(response.status, equals(200));
     });
 
-    test("parent session calls worktree service and passes result to plugin", () async {
+    test("prepare worktree is called and result is passed to plugin", () async {
       plugin.createSessionResult = const PluginSession(
         id: "s-child",
         projectID: "p1",
         directory: "/repo",
-        parentID: "parent-1",
+        parentID: null,
         title: "Child",
         time: null,
         summary: null,
@@ -138,18 +149,23 @@ void main() {
           "POST",
           "/session",
           body: jsonEncode(
-            const CreateSessionRequest(projectId: "/repo", parentSessionId: "parent-1").toJson(),
+            const CreateSessionRequest(
+              projectId: "/repo",
+              parts: [PromptPart.text(text: "Start")],
+              agent: null,
+              model: null,
+            ).toJson(),
           ),
         ),
         pathParams: {},
         queryParams: {},
       );
 
-      // Worktree service IS called for parent sessions (it handles reuse logic).
       expect(worktreeService.prepareCallCount, equals(1));
       expect(worktreeService.lastPrepareProjectId, equals("/repo"));
       expect(plugin.lastCreateSessionDirectory, equals("/repo"));
-      expect(plugin.lastCreateSessionParentId, equals("parent-1"));
+      expect(plugin.lastCreateSessionParentId, isNull);
+      expect(plugin.lastCreateSessionProjectId, equals("/repo"));
       expect(response.status, equals(200));
     });
 
@@ -170,7 +186,12 @@ void main() {
             "POST",
             "/session",
             body: jsonEncode(
-              const CreateSessionRequest(projectId: "/repo", parentSessionId: null).toJson(),
+              const CreateSessionRequest(
+                projectId: "/repo",
+                parts: [PromptPart.text(text: "Start")],
+                agent: null,
+                model: null,
+              ).toJson(),
             ),
           ),
           pathParams: {},
@@ -202,7 +223,12 @@ void main() {
           "POST",
           "/session",
           body: jsonEncode(
-            const CreateSessionRequest(projectId: "/repo", parentSessionId: "parent-1").toJson(),
+            const CreateSessionRequest(
+              projectId: "/repo",
+              parts: [PromptPart.text(text: "Start")],
+              agent: null,
+              model: null,
+            ).toJson(),
           ),
         ),
         pathParams: {},
@@ -220,6 +246,51 @@ void main() {
       expect(body["title"], equals("Created"));
       expect(body["time"], equals({"created": 11, "updated": 22, "archived": 33}));
       expect(body["summary"], equals({"additions": 1, "deletions": 2, "files": 3}));
+    });
+
+    test("passes parts, agent, and model to plugin", () async {
+      worktreeService.prepareResult = WorktreeFallback(
+        originalPath: "/tmp",
+        reason: "test",
+      );
+
+      await handler.handle(
+        makeRequest(
+          "POST",
+          "/session",
+          body: jsonEncode(
+            const CreateSessionRequest(
+              projectId: "/tmp",
+              parts: [PromptPart.text(text: "Hello")],
+              agent: "architect",
+              model: PromptModel(providerID: "openai", modelID: "gpt-5"),
+            ).toJson(),
+          ),
+        ),
+        pathParams: {},
+        queryParams: {},
+      );
+
+      expect(plugin.lastCreateSessionProjectId, equals("/tmp"));
+      expect(plugin.lastCreateSessionDirectory, equals("/tmp"));
+      expect(plugin.lastCreateSessionParts, equals([PluginPromptPart.text(text: "Hello")]));
+      expect(plugin.lastCreateSessionAgent, equals("architect"));
+      expect(plugin.lastCreateSessionModel, equals((providerID: "openai", modelID: "gpt-5")));
+    });
+
+    test("returns 400 when parts are missing", () async {
+      final response = await handler.handle(
+        makeRequest(
+          "POST",
+          "/session",
+          body: jsonEncode({"projectId": "/tmp", "agent": null, "model": null}),
+        ),
+        pathParams: {},
+        queryParams: {},
+      );
+
+      expect(response.status, equals(400));
+      expect(response.body, contains("invalid JSON body"));
     });
 
     test("returns 400 on invalid JSON body", () async {
@@ -294,7 +365,10 @@ class _ThrowingCreateSessionPlugin extends FakeBridgePlugin {
   @override
   Future<PluginSession> createSession({
     required String directory,
-    String? parentSessionId,
+    required String? parentSessionId,
+    required List<PluginPromptPart> parts,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
   }) {
     throw StateError("createSession failed");
   }

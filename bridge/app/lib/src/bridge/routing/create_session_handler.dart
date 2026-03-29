@@ -4,6 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../worktree_service.dart";
+import "prompt_part_mapper.dart";
 import "request_handler.dart";
 
 /// Handles `POST /session` — creates a session for a given project.
@@ -41,12 +42,19 @@ class CreateSessionHandler extends RequestHandler {
     }
 
     final projectId = createRequest.projectId;
-    final parentSessionId = createRequest.parentSessionId;
+    final String? parentSessionId = null;
 
     final worktreeResult = await _worktreeService.prepareWorktreeForSession(
       projectId: projectId,
       parentSessionId: parentSessionId,
     );
+
+    final parts = createRequest.parts.map((p) => p.toPlugin()).toList();
+
+    final model = switch (createRequest.model) {
+      PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
+      null => null,
+    };
 
     final created = await _plugin.createSession(
       directory: switch (worktreeResult) {
@@ -54,6 +62,9 @@ class CreateSessionHandler extends RequestHandler {
         WorktreeFallback(:final originalPath) => originalPath,
       },
       parentSessionId: parentSessionId,
+      parts: parts,
+      agent: createRequest.agent,
+      model: model,
     );
 
     if (worktreeResult case WorktreeSuccess(:final path, :final branchName)) {

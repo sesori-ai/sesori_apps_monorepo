@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$CreateSessionRequest {
 
- String get projectId; String? get parentSessionId;
+ String get projectId; List<PromptPart> get parts; String? get agent; PromptModel? get model;
 /// Create a copy of CreateSessionRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $CreateSessionRequestCopyWith<CreateSessionRequest> get copyWith => _$CreateSess
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CreateSessionRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.parentSessionId, parentSessionId) || other.parentSessionId == parentSessionId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CreateSessionRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&const DeepCollectionEquality().equals(other.parts, parts)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.model, model) || other.model == model));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projectId,parentSessionId);
+int get hashCode => Object.hash(runtimeType,projectId,const DeepCollectionEquality().hash(parts),agent,model);
 
 @override
 String toString() {
-  return 'CreateSessionRequest(projectId: $projectId, parentSessionId: $parentSessionId)';
+  return 'CreateSessionRequest(projectId: $projectId, parts: $parts, agent: $agent, model: $model)';
 }
 
 
@@ -48,11 +48,11 @@ abstract mixin class $CreateSessionRequestCopyWith<$Res>  {
   factory $CreateSessionRequestCopyWith(CreateSessionRequest value, $Res Function(CreateSessionRequest) _then) = _$CreateSessionRequestCopyWithImpl;
 @useResult
 $Res call({
- String projectId, String? parentSessionId
+ String projectId, List<PromptPart> parts, String? agent, PromptModel? model
 });
 
 
-
+$PromptModelCopyWith<$Res>? get model;
 
 }
 /// @nodoc
@@ -65,14 +65,28 @@ class _$CreateSessionRequestCopyWithImpl<$Res>
 
 /// Create a copy of CreateSessionRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? projectId = null,Object? parentSessionId = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? projectId = null,Object? parts = null,Object? agent = freezed,Object? model = freezed,}) {
   return _then(_self.copyWith(
 projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
-as String,parentSessionId: freezed == parentSessionId ? _self.parentSessionId : parentSessionId // ignore: cast_nullable_to_non_nullable
-as String?,
+as String,parts: null == parts ? _self.parts : parts // ignore: cast_nullable_to_non_nullable
+as List<PromptPart>,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
+as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
+as PromptModel?,
   ));
 }
+/// Create a copy of CreateSessionRequest
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PromptModelCopyWith<$Res>? get model {
+    if (_self.model == null) {
+    return null;
+  }
 
+  return $PromptModelCopyWith<$Res>(_self.model!, (value) {
+    return _then(_self.copyWith(model: value));
+  });
+}
 }
 
 
@@ -81,11 +95,19 @@ as String?,
 @JsonSerializable()
 
 class _CreateSessionRequest implements CreateSessionRequest {
-  const _CreateSessionRequest({required this.projectId, required this.parentSessionId});
+  const _CreateSessionRequest({required this.projectId, required final  List<PromptPart> parts, required this.agent, required this.model}): _parts = parts;
   factory _CreateSessionRequest.fromJson(Map<String, dynamic> json) => _$CreateSessionRequestFromJson(json);
 
 @override final  String projectId;
-@override final  String? parentSessionId;
+ final  List<PromptPart> _parts;
+@override List<PromptPart> get parts {
+  if (_parts is EqualUnmodifiableListView) return _parts;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_parts);
+}
+
+@override final  String? agent;
+@override final  PromptModel? model;
 
 /// Create a copy of CreateSessionRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -100,16 +122,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CreateSessionRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.parentSessionId, parentSessionId) || other.parentSessionId == parentSessionId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CreateSessionRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&const DeepCollectionEquality().equals(other._parts, _parts)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.model, model) || other.model == model));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projectId,parentSessionId);
+int get hashCode => Object.hash(runtimeType,projectId,const DeepCollectionEquality().hash(_parts),agent,model);
 
 @override
 String toString() {
-  return 'CreateSessionRequest(projectId: $projectId, parentSessionId: $parentSessionId)';
+  return 'CreateSessionRequest(projectId: $projectId, parts: $parts, agent: $agent, model: $model)';
 }
 
 
@@ -120,11 +142,11 @@ abstract mixin class _$CreateSessionRequestCopyWith<$Res> implements $CreateSess
   factory _$CreateSessionRequestCopyWith(_CreateSessionRequest value, $Res Function(_CreateSessionRequest) _then) = __$CreateSessionRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String projectId, String? parentSessionId
+ String projectId, List<PromptPart> parts, String? agent, PromptModel? model
 });
 
 
-
+@override $PromptModelCopyWith<$Res>? get model;
 
 }
 /// @nodoc
@@ -137,15 +159,29 @@ class __$CreateSessionRequestCopyWithImpl<$Res>
 
 /// Create a copy of CreateSessionRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? projectId = null,Object? parentSessionId = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? projectId = null,Object? parts = null,Object? agent = freezed,Object? model = freezed,}) {
   return _then(_CreateSessionRequest(
 projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
-as String,parentSessionId: freezed == parentSessionId ? _self.parentSessionId : parentSessionId // ignore: cast_nullable_to_non_nullable
-as String?,
+as String,parts: null == parts ? _self._parts : parts // ignore: cast_nullable_to_non_nullable
+as List<PromptPart>,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
+as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
+as PromptModel?,
   ));
 }
 
+/// Create a copy of CreateSessionRequest
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PromptModelCopyWith<$Res>? get model {
+    if (_self.model == null) {
+    return null;
+  }
 
+  return $PromptModelCopyWith<$Res>(_self.model!, (value) {
+    return _then(_self.copyWith(model: value));
+  });
+}
 }
 
 // dart format on

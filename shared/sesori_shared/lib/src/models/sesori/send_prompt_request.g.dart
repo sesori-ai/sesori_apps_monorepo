@@ -23,11 +23,58 @@ Map<String, dynamic> _$SendPromptRequestToJson(_SendPromptRequest instance) =>
       'model': instance.model?.toJson(),
     };
 
-PromptPartText _$PromptPartTextFromJson(Map json) =>
-    PromptPartText(text: json['text'] as String);
+PromptPartText _$PromptPartTextFromJson(Map json) => PromptPartText(
+  text: json['text'] as String,
+  $type: json['type'] as String?,
+);
 
 Map<String, dynamic> _$PromptPartTextToJson(PromptPartText instance) =>
-    <String, dynamic>{'text': instance.text};
+    <String, dynamic>{'text': instance.text, 'type': instance.$type};
+
+PromptPartFilePath _$PromptPartFilePathFromJson(Map json) => PromptPartFilePath(
+  mime: json['mime'] as String,
+  path: json['path'] as String,
+  filename: json['filename'] as String?,
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$PromptPartFilePathToJson(PromptPartFilePath instance) =>
+    <String, dynamic>{
+      'mime': instance.mime,
+      'path': instance.path,
+      'filename': instance.filename,
+      'type': instance.$type,
+    };
+
+PromptPartFileUrl _$PromptPartFileUrlFromJson(Map json) => PromptPartFileUrl(
+  mime: json['mime'] as String,
+  url: json['url'] as String,
+  filename: json['filename'] as String?,
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$PromptPartFileUrlToJson(PromptPartFileUrl instance) =>
+    <String, dynamic>{
+      'mime': instance.mime,
+      'url': instance.url,
+      'filename': instance.filename,
+      'type': instance.$type,
+    };
+
+PromptPartFileData _$PromptPartFileDataFromJson(Map json) => PromptPartFileData(
+  mime: json['mime'] as String,
+  base64: json['base64'] as String,
+  filename: json['filename'] as String?,
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$PromptPartFileDataToJson(PromptPartFileData instance) =>
+    <String, dynamic>{
+      'mime': instance.mime,
+      'base64': instance.base64,
+      'filename': instance.filename,
+      'type': instance.$type,
+    };
 
 _PromptModel _$PromptModelFromJson(Map json) => _PromptModel(
   providerID: json['providerID'] as String,

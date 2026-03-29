@@ -419,7 +419,7 @@ class _FakeApi implements OpenCodeApi {
   @override
   Future<void> sendPrompt({
     required String sessionId,
-    required Map<String, dynamic> body,
+    required SendPromptBody body,
     required String? directory,
   }) async {}
 

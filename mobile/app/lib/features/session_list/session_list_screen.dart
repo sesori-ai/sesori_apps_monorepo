@@ -42,13 +42,11 @@ class _SessionListBody extends StatelessWidget {
 
   const _SessionListBody({this.projectName});
 
-  Future<void> _createSessionAndNavigate(BuildContext context) async {
-    final session = await context.read<SessionListCubit>().createSession();
-    if (session == null || !context.mounted) return;
-    await context.pushRoute(
-      AppRoute.sessionDetail,
-      pathParams: {"projectId": session.projectID, "sessionId": session.id},
-      queryParams: {"title": session.title ?? ""},
+  void _goToNewSession(BuildContext context) {
+    final projectId = context.read<SessionListCubit>().projectId;
+    context.pushRoute(
+      AppRoute.newSession,
+      pathParams: {"projectId": projectId},
     );
   }
 
@@ -239,7 +237,7 @@ class _SessionListBody extends StatelessWidget {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _createSessionAndNavigate(context),
+        onPressed: () => _goToNewSession(context),
         tooltip: loc.sessionListNewSession,
         child: const Icon(Icons.add),
       ),

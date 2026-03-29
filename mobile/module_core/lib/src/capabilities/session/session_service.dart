@@ -60,14 +60,24 @@ class SessionService {
     );
   }
 
-  Future<ApiResponse<Session>> createSession({required String projectId}) {
+  Future<ApiResponse<Session>> createSessionWithMessage({
+    required String projectId,
+    required String text,
+    required String? agent,
+    required PromptModel? model,
+  }) {
     return _client.post(
       "/session",
       fromJson: (json) => switch (json) {
         final Map<String, dynamic> map => Session.fromJson(map),
         _ => throw FormatException("expected map, got ${json.runtimeType}"),
       },
-      body: CreateSessionRequest(projectId: projectId, parentSessionId: null).toJson(),
+      body: CreateSessionRequest(
+        projectId: projectId,
+        parts: [PromptPart.text(text: text)],
+        agent: agent,
+        model: model,
+      ).toJson(),
     );
   }
 

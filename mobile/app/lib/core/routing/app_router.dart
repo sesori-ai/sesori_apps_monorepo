@@ -3,6 +3,7 @@ import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../../features/login/login_screen.dart";
+import "../../features/new_session/new_session_screen.dart";
 import "../../features/project_list/project_list_screen.dart";
 import "../../features/session_detail/session_detail_screen.dart";
 import "../../features/session_list/session_list_screen.dart";
@@ -24,6 +25,9 @@ extension AppRouteToGoRoute on AppRoute {
         AppRoute.sessions => SessionListScreen(
           projectId: state.pathParameters["projectId"] ?? "",
           projectName: state.uri.queryParameters["name"],
+        ),
+        AppRoute.newSession => NewSessionScreen(
+          projectId: state.pathParameters["projectId"] ?? "",
         ),
         AppRoute.sessionDetail => SessionDetailScreen(
           projectId: state.pathParameters["projectId"],

@@ -175,7 +175,7 @@ void main() {
     // session CRUD
     // -----------------------------------------------------------------------
 
-    group("createSession", () {
+    group("createSessionWithMessage", () {
       test("success: returns Session from POST /session", () async {
         final created = testSession(id: "server-session-id");
         when(
@@ -186,7 +186,12 @@ void main() {
           ),
         ).thenAnswer((_) async => ApiResponse.success(created));
 
-        final result = await sessionService.createSession(projectId: "/tmp/project");
+        final result = await sessionService.createSessionWithMessage(
+          projectId: "/tmp/project",
+          text: "hello",
+          agent: null,
+          model: null,
+        );
 
         expect(result, isA<SuccessResponse<Session>>());
         expect((result as SuccessResponse<Session>).data.id, equals("server-session-id"));
@@ -209,7 +214,12 @@ void main() {
           ),
         ).thenAnswer((_) async => ApiResponse.error(error));
 
-        final result = await sessionService.createSession(projectId: "/tmp/project");
+        final result = await sessionService.createSessionWithMessage(
+          projectId: "/tmp/project",
+          text: "hello",
+          agent: null,
+          model: null,
+        );
 
         expect(result, isA<ErrorResponse<Session>>());
         expect((result as ErrorResponse<Session>).error, equals(error));
@@ -222,7 +232,7 @@ void main() {
         ).called(1);
       });
 
-      test("sends projectId and null parentSessionId in create session body", () async {
+      test("sends projectId + prompt parts and optional fields in body", () async {
         when(
           () => mockClient.post<Session>(
             any(),
@@ -231,7 +241,12 @@ void main() {
           ),
         ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s1")));
 
-        await sessionService.createSession(projectId: "/tmp/project");
+        await sessionService.createSessionWithMessage(
+          projectId: "/tmp/project",
+          text: "first prompt",
+          agent: null,
+          model: null,
+        );
 
         final captured =
             verify(
@@ -242,7 +257,17 @@ void main() {
                   ),
                 ).captured.last
                 as Map<String, dynamic>;
-        expect(captured, equals({"projectId": "/tmp/project", "parentSessionId": null}));
+        expect(
+          captured,
+          equals({
+            "projectId": "/tmp/project",
+            "parts": [
+              {"text": "first prompt", "type": "text"},
+            ],
+            "agent": null,
+            "model": null,
+          }),
+        );
       });
     });
 
@@ -700,7 +725,7 @@ void main() {
         expect(
           captured["parts"],
           equals([
-            {"text": "Hello, world!"},
+            {"type": "text", "text": "Hello, world!"},
           ]),
         );
         expect(captured["agent"], isNull);

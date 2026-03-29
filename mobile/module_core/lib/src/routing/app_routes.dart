@@ -6,6 +6,7 @@ enum AppRoute {
   projects("/projects"),
   notificationSettings("/settings/notifications"),
   sessions("/projects/:projectId/sessions"),
+  newSession("/projects/:projectId/sessions/new"),
   sessionDetail("/projects/:projectId/sessions/:sessionId")
   ;
 

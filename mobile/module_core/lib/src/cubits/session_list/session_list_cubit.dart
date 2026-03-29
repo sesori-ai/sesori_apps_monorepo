@@ -59,6 +59,8 @@ class SessionListCubit extends Cubit<SessionListState> {
     );
   }
 
+  String get projectId => _projectId;
+
   void _handleEvent(SseEvent event) {
     try {
       if (isClosed) return;
@@ -367,21 +369,6 @@ class SessionListCubit extends Cubit<SessionListState> {
   }
 
   // ---------------------------------------------------------------------------
-
-  /// Creates a new session via POST /session and returns it, or null on failure.
-  Future<Session?> createSession() async {
-    final response = await _service.createSession(projectId: _projectId);
-
-    if (isClosed) return null;
-
-    return switch (response) {
-      SuccessResponse(:final data) => () {
-        _onSessionCreated(data);
-        return data;
-      }(),
-      ErrorResponse() => null,
-    };
-  }
 
   /// Tracks the full unfiltered server response so toggling archived
   /// doesn't require a network round-trip.

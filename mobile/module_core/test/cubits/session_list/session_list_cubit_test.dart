@@ -254,35 +254,6 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 8. createSession — calls API and returns the new Session
-    // -------------------------------------------------------------------------
-
-    blocTest<SessionListCubit, SessionListState>(
-      "createSession: calls API and returns the created Session on success",
-      build: () {
-        when(
-          () => mockSessionService.listSessions(projectId: projectId),
-        ).thenAnswer((_) async => ApiResponse.success([testSession()]));
-        when(() => mockSessionService.createSession(projectId: projectId)).thenAnswer(
-          (_) async => ApiResponse.success(testSession(id: "new-session")),
-        );
-        return buildCubit();
-      },
-      act: (cubit) async {
-        await Future<void>.delayed(Duration.zero);
-        final result = await cubit.createSession();
-        expect(result?.id, "new-session");
-      },
-      // createSession now optimistically inserts the new session into state.
-      skip: 1,
-      expect: () => [
-        isA<SessionListLoaded>()
-            .having((s) => s.sessions.length, "sessions count", 2)
-            .having((s) => s.sessions.first.id, "new session first", "new-session"),
-      ],
-    );
-
-    // -------------------------------------------------------------------------
     // 9. toggleArchived — flips showArchived flag, re-emits filtered sessions
     // -------------------------------------------------------------------------
 
