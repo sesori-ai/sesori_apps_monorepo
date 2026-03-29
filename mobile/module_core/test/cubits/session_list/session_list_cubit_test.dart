@@ -7,6 +7,7 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
+import "package:sesori_dart_core/src/capabilities/session/session_service.dart";
 import "package:sesori_dart_core/src/capabilities/sse/session_activity_info.dart";
 import "package:sesori_dart_core/src/cubits/session_list/session_list_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_list/session_list_state.dart";
@@ -167,14 +168,24 @@ void main() {
           () => mockSessionService.listSessions(projectId: projectId),
         ).thenAnswer((_) async => ApiResponse.success([testSession(id: "s1")]));
         when(
-          () => mockSessionService.archiveSession("s1"),
+          () => mockSessionService.archiveSession(
+            sessionId: "s1",
+            deleteWorktree: any(named: "deleteWorktree"),
+            deleteBranch: any(named: "deleteBranch"),
+            force: any(named: "force"),
+          ),
         ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s1")));
         return buildCubit();
       },
       act: (cubit) async {
         // Drain the constructor-triggered loadSessions() before acting.
         await Future<void>.delayed(Duration.zero);
-        final result = await cubit.archiveSession("s1");
+        final result = await cubit.archiveSession(
+          sessionId: "s1",
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        );
         expect(result, isTrue);
       },
       // Skip the initial SessionListLoaded emitted by loadSessions().
@@ -199,13 +210,23 @@ void main() {
           () => mockSessionService.listSessions(projectId: projectId),
         ).thenAnswer((_) async => ApiResponse.success([testSession(id: "s1")]));
         when(
-          () => mockSessionService.archiveSession("s1"),
+          () => mockSessionService.archiveSession(
+            sessionId: "s1",
+            deleteWorktree: any(named: "deleteWorktree"),
+            deleteBranch: any(named: "deleteBranch"),
+            force: any(named: "force"),
+          ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
         return buildCubit();
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        final result = await cubit.archiveSession("s1");
+        final result = await cubit.archiveSession(
+          sessionId: "s1",
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        );
         expect(result, isFalse);
       },
       skip: 1,
@@ -225,6 +246,46 @@ void main() {
       ],
     );
 
+    blocTest<SessionListCubit, SessionListState>(
+      "archiveSession: stores cleanup rejection and rolls back on 409",
+      build: () {
+        when(
+          () => mockSessionService.listSessions(projectId: projectId),
+        ).thenAnswer((_) async => ApiResponse.success([testSession(id: "s1")]));
+        when(
+          () => mockSessionService.archiveSession(
+            sessionId: "s1",
+            deleteWorktree: any(named: "deleteWorktree"),
+            deleteBranch: any(named: "deleteBranch"),
+            force: any(named: "force"),
+          ),
+        ).thenThrow(
+          const SessionCleanupRejectedException(
+            rejection: SessionCleanupRejection(
+              issues: [CleanupIssue.unstagedChanges()],
+            ),
+          ),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        final result = await cubit.archiveSession(
+          sessionId: "s1",
+          deleteWorktree: true,
+          deleteBranch: true,
+          force: false,
+        );
+        expect(result, isFalse);
+        expect(cubit.lastCleanupRejection?.issues.length, 1);
+      },
+      skip: 1,
+      expect: () => [
+        isA<SessionListLoaded>().having((s) => s.sessions, "sessions after optimistic archive", isEmpty),
+        isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions after rollback", 1),
+      ],
+    );
+
     // -------------------------------------------------------------------------
     // 7. deleteSession success — optimistic removal, API succeeds, returns true
     // -------------------------------------------------------------------------
@@ -235,12 +296,24 @@ void main() {
         when(
           () => mockSessionService.listSessions(projectId: projectId),
         ).thenAnswer((_) async => ApiResponse.success([testSession(id: "s1")]));
-        when(() => mockSessionService.deleteSession("s1")).thenAnswer((_) async => ApiResponse.success(true));
+        when(
+          () => mockSessionService.deleteSession(
+            sessionId: "s1",
+            deleteWorktree: any(named: "deleteWorktree"),
+            deleteBranch: any(named: "deleteBranch"),
+            force: any(named: "force"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(true));
         return buildCubit();
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        final result = await cubit.deleteSession("s1");
+        final result = await cubit.deleteSession(
+          sessionId: "s1",
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        );
         expect(result, isTrue);
       },
       skip: 1,
@@ -250,6 +323,49 @@ void main() {
           "sessions after delete",
           isEmpty,
         ),
+      ],
+    );
+
+    blocTest<SessionListCubit, SessionListState>(
+      "deleteSession: stores cleanup rejection and restores session on 409",
+      build: () {
+        when(
+          () => mockSessionService.listSessions(projectId: projectId),
+        ).thenAnswer((_) async => ApiResponse.success([testSession(id: "s1")]));
+        when(
+          () => mockSessionService.deleteSession(
+            sessionId: "s1",
+            deleteWorktree: any(named: "deleteWorktree"),
+            deleteBranch: any(named: "deleteBranch"),
+            force: any(named: "force"),
+          ),
+        ).thenThrow(
+          const SessionCleanupRejectedException(
+            rejection: SessionCleanupRejection(
+              issues: [CleanupIssue.branchMismatch(expected: "feat/session-1", actual: "main")],
+            ),
+          ),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        final result = await cubit.deleteSession(
+          sessionId: "s1",
+          deleteWorktree: true,
+          deleteBranch: true,
+          force: false,
+        );
+        expect(result, isFalse);
+        expect(
+          cubit.lastCleanupRejection?.issues.first,
+          const CleanupIssue.branchMismatch(expected: "feat/session-1", actual: "main"),
+        );
+      },
+      skip: 1,
+      expect: () => [
+        isA<SessionListLoaded>().having((s) => s.sessions, "sessions after optimistic delete", isEmpty),
+        isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions after rollback", 1),
       ],
     );
 
@@ -390,11 +506,11 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 13. unarchiveSession success — optimistically shows session, API succeeds
+    // 13. unarchiveSession success — preserves ID and updates in place
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
-      "unarchiveSession: optimistically removes session and inserts new session on API success",
+      "unarchiveSession: keeps session id and clears archived timestamp",
       build: () {
         final archivedSession = testSession(
           id: "s1",
@@ -403,33 +519,31 @@ void main() {
         when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success([archivedSession]),
         );
-        // API returns a session with a DIFFERENT ID (fork + delete creates new session).
         when(() => mockSessionService.unarchiveSession("s1")).thenAnswer(
-          (_) async => ApiResponse.success(testSession(id: "s1-new")),
+          (_) async => ApiResponse.success(testSession(id: "s1", title: "Restored")),
         );
         return buildCubit();
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        // Toggle archived on so the archived session is visible.
         cubit.toggleArchived();
         final result = await cubit.unarchiveSession("s1");
         expect(result, isTrue);
       },
-      // Skip initial load (archived session filtered out → sessions: []).
       skip: 1,
       expect: () => [
-        // toggleArchived: shows the archived session.
         isA<SessionListLoaded>()
             .having((s) => s.showArchived, "showArchived", isTrue)
-            .having((s) => s.sessions.length, "sessions after toggle", 1),
-        // Optimistic remove: old session (s1) removed from list.
-        isA<SessionListLoaded>().having((s) => s.sessions, "sessions after optimistic remove", isEmpty),
-        // API success: new session (s1-new, different ID) inserted.
+            .having((s) => s.sessions.length, "sessions after toggle", 1)
+            .having((s) => s.sessions.first.time?.archived, "starts archived", isNotNull),
+        isA<SessionListLoaded>()
+            .having((s) => s.sessions.length, "sessions after optimistic unarchive", 1)
+            .having((s) => s.sessions.first.id, "preserved id", "s1")
+            .having((s) => s.sessions.first.time?.archived, "archived cleared", isNull),
         isA<SessionListLoaded>()
             .having((s) => s.sessions.length, "sessions after API success", 1)
-            .having((s) => s.sessions.first.id, "new session id", "s1-new")
-            .having((s) => s.sessions.first.time?.archived, "archived cleared", isNull),
+            .having((s) => s.sessions.first.id, "preserved id", "s1")
+            .having((s) => s.sessions.first.title, "updated title", "Restored"),
       ],
     );
 
@@ -438,7 +552,7 @@ void main() {
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
-      "unarchiveSession: rolls back session and returns false on API failure",
+      "unarchiveSession: rolls back archived timestamp and returns false on API failure",
       build: () {
         final archivedSession = testSession(
           id: "s1",
@@ -460,13 +574,12 @@ void main() {
       },
       skip: 1,
       expect: () => [
-        // toggleArchived: shows the archived session.
         isA<SessionListLoaded>()
             .having((s) => s.showArchived, "showArchived", isTrue)
             .having((s) => s.sessions.length, "sessions after toggle", 1),
-        // Optimistic remove: old session removed from list.
-        isA<SessionListLoaded>().having((s) => s.sessions, "sessions after optimistic remove", isEmpty),
-        // Rollback: original archived session re-inserted (with archived timestamp).
+        isA<SessionListLoaded>()
+            .having((s) => s.sessions.length, "sessions after optimistic unarchive", 1)
+            .having((s) => s.sessions.first.time?.archived, "archived cleared", isNull),
         isA<SessionListLoaded>()
             .having((s) => s.sessions.length, "sessions after rollback", 1)
             .having((s) => s.sessions.first.time?.archived, "archived timestamp restored", isNotNull),
@@ -483,7 +596,14 @@ void main() {
         when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success([testSession(id: "s1")]),
         );
-        when(() => mockSessionService.archiveSession("s1")).thenAnswer(
+        when(
+          () => mockSessionService.archiveSession(
+            sessionId: "s1",
+            deleteWorktree: any(named: "deleteWorktree"),
+            deleteBranch: any(named: "deleteBranch"),
+            force: any(named: "force"),
+          ),
+        ).thenAnswer(
           (_) async => ApiResponse.success(
             testSession(id: "s1", archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000001000)),
           ),
@@ -495,7 +615,12 @@ void main() {
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        await cubit.archiveSession("s1");
+        await cubit.archiveSession(
+          sessionId: "s1",
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        );
         final undoResult = await cubit.undoLastArchiveAction();
         expect(undoResult, isTrue);
       },
@@ -509,55 +634,11 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 16. undoLastArchiveAction — returns false after unarchive (undo disabled)
+    // 16. undoLastArchiveAction — re-archives after unarchive
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
-      "undoLastArchiveAction: returns false after unarchive (undo disabled for unarchive)",
-      build: () {
-        final archivedSession = testSession(
-          id: "s1",
-          archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000001000),
-        );
-        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
-          (_) async => ApiResponse.success([archivedSession]),
-        );
-        // Returns new ID to reflect fork+delete behaviour.
-        when(() => mockSessionService.unarchiveSession("s1")).thenAnswer(
-          (_) async => ApiResponse.success(testSession(id: "s1-new")),
-        );
-        return buildCubit();
-      },
-      act: (cubit) async {
-        await Future<void>.delayed(Duration.zero);
-        cubit.toggleArchived();
-        await cubit.unarchiveSession("s1");
-        final undoResult = await cubit.undoLastArchiveAction();
-        // Undo snapshot is NOT set during unarchive → undo always returns false.
-        expect(undoResult, isFalse);
-      },
-      skip: 1,
-      expect: () => [
-        // toggleArchived: shows the archived session.
-        isA<SessionListLoaded>()
-            .having((s) => s.showArchived, "showArchived", isTrue)
-            .having((s) => s.sessions.length, "sessions after toggle", 1),
-        // Optimistic remove: session removed.
-        isA<SessionListLoaded>().having((s) => s.sessions, "sessions after optimistic remove", isEmpty),
-        // API success: new session (s1-new) inserted.
-        isA<SessionListLoaded>()
-            .having((s) => s.sessions.length, "sessions after unarchive", 1)
-            .having((s) => s.sessions.first.id, "new session id", "s1-new"),
-        // No undo emission — undoLastArchiveAction returned false (undo disabled for unarchive).
-      ],
-    );
-
-    // -------------------------------------------------------------------------
-    // 16b. unarchiveSession does not set undo snapshot
-    // -------------------------------------------------------------------------
-
-    blocTest<SessionListCubit, SessionListState>(
-      "unarchiveSession: does not set undo snapshot — undoLastArchiveAction returns false",
+      "undoLastArchiveAction: archives back after unarchive",
       build: () {
         final archivedSession = testSession(
           id: "s1",
@@ -567,7 +648,19 @@ void main() {
           (_) async => ApiResponse.success([archivedSession]),
         );
         when(() => mockSessionService.unarchiveSession("s1")).thenAnswer(
-          (_) async => ApiResponse.success(testSession(id: "s1-new")),
+          (_) async => ApiResponse.success(testSession(id: "s1")),
+        );
+        when(
+          () => mockSessionService.archiveSession(
+            sessionId: "s1",
+            deleteWorktree: any(named: "deleteWorktree"),
+            deleteBranch: any(named: "deleteBranch"),
+            force: any(named: "force"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            testSession(id: "s1", archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000002000)),
+          ),
         );
         return buildCubit();
       },
@@ -576,18 +669,17 @@ void main() {
         cubit.toggleArchived();
         await cubit.unarchiveSession("s1");
         final undoResult = await cubit.undoLastArchiveAction();
-        // No undo snapshot was stored → must return false.
-        expect(undoResult, isFalse);
+        expect(undoResult, isTrue);
       },
       skip: 1,
-      // State emissions match the success path; the undo call emits nothing.
       expect: () => [
         isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions after toggle", 1),
-        isA<SessionListLoaded>().having((s) => s.sessions, "sessions after optimistic remove", isEmpty),
         isA<SessionListLoaded>()
-            .having((s) => s.sessions.length, "sessions after reinsert", 1)
-            .having((s) => s.sessions.first.id, "new session id", "s1-new"),
-        // No 4th emission — undo snapshot was null.
+            .having((s) => s.sessions.first.id, "session id after unarchive", "s1")
+            .having((s) => s.sessions.first.time?.archived, "archived cleared", isNull),
+        isA<SessionListLoaded>()
+            .having((s) => s.sessions.first.id, "session id after undo", "s1")
+            .having((s) => s.sessions.first.time?.archived, "re-archived", isNotNull),
       ],
     );
 
@@ -604,12 +696,26 @@ void main() {
             testSession(id: "s2", title: "Second"),
           ]),
         );
-        when(() => mockSessionService.archiveSession("s1")).thenAnswer(
+        when(
+          () => mockSessionService.archiveSession(
+            sessionId: "s1",
+            deleteWorktree: any(named: "deleteWorktree"),
+            deleteBranch: any(named: "deleteBranch"),
+            force: any(named: "force"),
+          ),
+        ).thenAnswer(
           (_) async => ApiResponse.success(
             testSession(id: "s1", title: "First", archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000001000)),
           ),
         );
-        when(() => mockSessionService.archiveSession("s2")).thenAnswer(
+        when(
+          () => mockSessionService.archiveSession(
+            sessionId: "s2",
+            deleteWorktree: any(named: "deleteWorktree"),
+            deleteBranch: any(named: "deleteBranch"),
+            force: any(named: "force"),
+          ),
+        ).thenAnswer(
           (_) async => ApiResponse.success(
             testSession(id: "s2", title: "Second", archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000002000)),
           ),
@@ -622,8 +728,18 @@ void main() {
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        await cubit.archiveSession("s1");
-        await cubit.archiveSession("s2");
+        await cubit.archiveSession(
+          sessionId: "s1",
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        );
+        await cubit.archiveSession(
+          sessionId: "s2",
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        );
         final undoResult = await cubit.undoLastArchiveAction();
         expect(undoResult, isTrue);
       },
@@ -654,12 +770,26 @@ void main() {
             testSession(id: "s2", title: "Second"),
           ]),
         );
-        when(() => mockSessionService.archiveSession("s1")).thenAnswer(
+        when(
+          () => mockSessionService.archiveSession(
+            sessionId: "s1",
+            deleteWorktree: any(named: "deleteWorktree"),
+            deleteBranch: any(named: "deleteBranch"),
+            force: any(named: "force"),
+          ),
+        ).thenAnswer(
           (_) async => ApiResponse.success(
             testSession(id: "s1", title: "First", archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000001000)),
           ),
         );
-        when(() => mockSessionService.archiveSession("s2")).thenAnswer(
+        when(
+          () => mockSessionService.archiveSession(
+            sessionId: "s2",
+            deleteWorktree: any(named: "deleteWorktree"),
+            deleteBranch: any(named: "deleteBranch"),
+            force: any(named: "force"),
+          ),
+        ).thenAnswer(
           (_) async => ApiResponse.success(
             testSession(id: "s2", title: "Second", archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000002000)),
           ),
@@ -668,8 +798,18 @@ void main() {
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        await cubit.archiveSession("s1");
-        await cubit.archiveSession("s2");
+        await cubit.archiveSession(
+          sessionId: "s1",
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        );
+        await cubit.archiveSession(
+          sessionId: "s2",
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        );
         // Simulates a stale timer/callback from the first archive's snackbar
         // clearing the undo state that now belongs to the second archive.
         cubit.clearLastActionUndo();

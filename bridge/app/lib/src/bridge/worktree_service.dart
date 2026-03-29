@@ -18,13 +18,41 @@ typedef GitPathExistsChecker = bool Function({required String gitPath});
 // Result types
 // ---------------------------------------------------------------------------
 
+sealed class WorktreeSafetyResult {}
+
+class WorktreeSafe extends WorktreeSafetyResult {}
+
+class WorktreeUnsafe extends WorktreeSafetyResult {
+  final List<SafetyIssue> issues;
+  WorktreeUnsafe({required this.issues});
+}
+
+sealed class SafetyIssue {}
+
+class UnstagedChanges extends SafetyIssue {}
+
+class BranchMismatch extends SafetyIssue {
+  final String expected;
+  final String actual;
+  BranchMismatch({required this.expected, required this.actual});
+}
+
+class WorktreeNotFound extends SafetyIssue {}
+
 sealed class WorktreeResult {}
 
 class WorktreeSuccess extends WorktreeResult {
   final String path;
   final String branchName;
+  final String baseBranch;
+  final String baseCommit;
 
-  WorktreeSuccess({required this.path, required this.branchName});
+  WorktreeSuccess({
+    required this.path,
+    required this.branchName,
+    required this.baseBranch,
+    required this.baseCommit,
+  });
 }
 
 class WorktreeFallback extends WorktreeResult {
@@ -147,13 +175,15 @@ class WorktreeService {
   }) async {
     // 1. If a parent session exists, reuse its worktree.
     if (parentSessionId != null) {
-      final parentWorktree = await _sessionDao.getWorktreeForSession(
+      final parentWorktree = await _sessionDao.getSession(
         sessionId: parentSessionId,
       );
-      if (parentWorktree != null) {
+      if (parentWorktree?.worktreePath != null && parentWorktree?.branchName != null) {
         return WorktreeSuccess(
-          path: parentWorktree.worktreePath,
-          branchName: parentWorktree.branchName,
+          path: parentWorktree!.worktreePath!,
+          branchName: parentWorktree.branchName!,
+          baseBranch: parentWorktree.baseBranch ?? "",
+          baseCommit: parentWorktree.baseCommit ?? "",
         );
       }
       // Parent not found (pre-feature session) — fall through to create new.
@@ -186,7 +216,14 @@ class WorktreeService {
       baseBranch = await resolveDefaultBranch(projectPath: projectId);
     }
 
-    // 5. Try to create a worktree, retrying on branch collision.
+    // 5. Capture the base commit SHA before creating the worktree.
+    final revParseResult = await _runGit(
+      projectPath: projectId,
+      arguments: ["rev-parse", baseBranch],
+    );
+    final baseCommit = revParseResult.stdout.toString().trim();
+
+    // 6. Try to create a worktree, retrying on branch collision.
     for (var attempt = 0; attempt < _maxWorktreeCreationAttempts; attempt++) {
       final counter = await _projectsDao.incrementAndGetWorktreeCounter(
         projectId: projectId,
@@ -207,7 +244,12 @@ class WorktreeService {
       );
 
       if (result.exitCode == 0) {
-        return WorktreeSuccess(path: worktreePath, branchName: branchName);
+        return WorktreeSuccess(
+          path: worktreePath,
+          branchName: branchName,
+          baseBranch: baseBranch,
+          baseCommit: baseCommit,
+        );
       }
       // git command failed — try next counter value.
     }
@@ -219,6 +261,123 @@ class WorktreeService {
     );
   }
 
+  /// Checks whether a worktree is safe to resume (no unstaged changes, correct branch).
+  Future<WorktreeSafetyResult> checkWorktreeSafety({
+    required String worktreePath,
+    required String expectedBranch,
+  }) async {
+    if (!Directory(worktreePath).existsSync()) {
+      return WorktreeUnsafe(issues: [WorktreeNotFound()]);
+    }
+
+    final issues = <SafetyIssue>[];
+
+    final statusResult = await _processRunner(
+      "git",
+      ["status", "--porcelain"],
+      workingDirectory: worktreePath,
+    );
+    if (statusResult.stdout.toString().trim().isNotEmpty) {
+      issues.add(UnstagedChanges());
+    }
+
+    final headResult = await _processRunner(
+      "git",
+      ["rev-parse", "--abbrev-ref", "HEAD"],
+      workingDirectory: worktreePath,
+    );
+    final actualBranch = headResult.stdout.toString().trim();
+    if (actualBranch != expectedBranch) {
+      issues.add(BranchMismatch(expected: expectedBranch, actual: actualBranch));
+    }
+
+    if (issues.isEmpty) {
+      return WorktreeSafe();
+    }
+    return WorktreeUnsafe(issues: issues);
+  }
+
+  /// Prunes stale worktree administrative files (best-effort, fire-and-forget).
+  Future<void> pruneWorktrees({required String projectPath}) async {
+    await _runGit(
+      projectPath: projectPath,
+      arguments: const ["worktree", "prune"],
+    );
+  }
+
+  /// Removes a worktree. Returns true on success, false on failure.
+  ///
+  /// Calls [pruneWorktrees] first to clean up stale entries, then runs
+  /// `git worktree remove [--force] <worktreePath>`.
+  Future<bool> removeWorktree({
+    required String projectPath,
+    required String worktreePath,
+    required bool force,
+  }) async {
+    await pruneWorktrees(projectPath: projectPath);
+
+    final arguments = [
+      "worktree",
+      "remove",
+      if (force) "--force",
+      worktreePath,
+    ];
+    final result = await _runGit(
+      projectPath: projectPath,
+      arguments: arguments,
+    );
+    return result.exitCode == 0;
+  }
+
+  /// Deletes a branch. Returns true on success, false on failure.
+  ///
+  /// Uses `-D` (force) or `-d` (safe) depending on [force].
+  Future<bool> deleteBranch({
+    required String projectPath,
+    required String branchName,
+    required bool force,
+  }) async {
+    final result = await _runGit(
+      projectPath: projectPath,
+      arguments: ["branch", force ? "-D" : "-d", branchName],
+    );
+    return result.exitCode == 0;
+  }
+
+  /// Restores (or creates) a worktree at [worktreePath] on [branchName].
+  ///
+  /// If [branchName] already exists, runs `git worktree add <path> <branch>`.
+  /// Otherwise creates a new branch from [baseBranch] via
+  /// `git worktree add <path> -b <branch> <baseBranch>`.
+  ///
+  /// Returns true on success, false on failure.
+  Future<bool> restoreWorktree({
+    required String projectPath,
+    required String worktreePath,
+    required String branchName,
+    required String baseBranch,
+  }) async {
+    final verifyResult = await _runGit(
+      projectPath: projectPath,
+      arguments: ["rev-parse", "--verify", "refs/heads/$branchName"],
+    );
+
+    final List<String> addArguments;
+    if (verifyResult.exitCode == 0) {
+      // Branch exists — check it out directly.
+      addArguments = ["worktree", "add", worktreePath, branchName];
+    } else {
+      // Branch does not exist — create it from baseBranch.
+      addArguments = ["worktree", "add", worktreePath, "-b", branchName, baseBranch];
+    }
+
+    final addResult = await _runGit(
+      projectPath: projectPath,
+      arguments: addArguments,
+    );
+    return addResult.exitCode == 0;
+  }
+
   /// Records the association between a session and its worktree in the DB.
   Future<void> recordSessionWorktree({
     required String sessionId,
@@ -226,11 +385,15 @@ class WorktreeService {
     required String worktreePath,
     required String branchName,
   }) async {
-    await _sessionDao.insertMapping(
+    await _sessionDao.insertSession(
       sessionId: sessionId,
       projectId: projectId,
+      isDedicated: true,
+      createdAt: DateTime.now().millisecondsSinceEpoch,
       worktreePath: worktreePath,
       branchName: branchName,
+      baseBranch: null,
+      baseCommit: null,
     );
   }
 

@@ -105,6 +105,7 @@ void main() {
           body: jsonEncode(
             const CreateSessionRequest(
               projectId: "/tmp",
+              dedicatedWorktree: false,
               parts: [PromptPart.text(text: "Start")],
               agent: "architect",
               model: PromptModel(providerID: "openai", modelID: "gpt-5"),
@@ -123,7 +124,13 @@ void main() {
     });
 
     test("routes DELETE /session/:id to DeleteSessionHandler", () async {
-      final response = await router.route(makeRequest("DELETE", "/session/abc"));
+      final response = await router.route(
+        makeRequest(
+          "DELETE",
+          "/session/abc",
+          body: jsonEncode({"deleteWorktree": false, "deleteBranch": false, "force": false}),
+        ),
+      );
       expect(response.status, equals(200));
       expect(plugin.lastDeleteSessionId, equals("abc"));
     });

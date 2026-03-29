@@ -81,7 +81,7 @@ class _SessionListBody extends StatelessWidget {
                 if (isArchived) {
                   _unarchiveSession(context, cubit, session.id);
                 } else {
-                  _archiveSession(context, cubit, session.id);
+                  _showArchiveSheet(context, cubit, session);
                 }
               },
             ),
@@ -93,7 +93,7 @@ class _SessionListBody extends StatelessWidget {
               ),
               onTap: () {
                 Navigator.pop(sheetContext);
-                _confirmDelete(context, cubit, session);
+                _showDeleteSheet(context, cubit, session);
               },
             ),
           ],
@@ -102,16 +102,67 @@ class _SessionListBody extends StatelessWidget {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Archive
+  // ---------------------------------------------------------------------------
+
+  void _showArchiveSheet(BuildContext context, SessionListCubit cubit, Session session) {
+    showAppModalBottomSheet<void>(
+      context: context,
+      builder: (_) => _ArchiveSessionSheet(
+        session: session,
+        onConfirm: ({required bool deleteWorktree, required bool deleteBranch}) {
+          _archiveSession(
+            context,
+            cubit,
+            session.id,
+            deleteWorktree: deleteWorktree,
+            deleteBranch: deleteBranch,
+          );
+        },
+      ),
+    );
+  }
+
   Future<void> _archiveSession(
     BuildContext context,
     SessionListCubit cubit,
-    String sessionId,
-  ) async {
+    String sessionId, {
+    bool deleteWorktree = true,
+    bool deleteBranch = true,
+    bool force = false,
+  }) async {
     final loc = context.loc;
-    final success = await cubit.archiveSession(sessionId);
-    if (!success || !context.mounted) return;
+    final success = await cubit.archiveSession(
+      sessionId: sessionId,
+      deleteWorktree: deleteWorktree,
+      deleteBranch: deleteBranch,
+      force: force,
+    );
+    if (!context.mounted) return;
 
-    _showUndoSnackBar(context, cubit, loc.sessionListArchived);
+    if (success) {
+      _showUndoSnackBar(context, cubit, loc.sessionListArchived);
+      return;
+    }
+
+    // Check for cleanup rejection (409).
+    final rejection = cubit.lastCleanupRejection;
+    if (rejection != null) {
+      _showForceDialog(
+        context,
+        cubit,
+        sessionId: sessionId,
+        rejection: rejection,
+        isDelete: false,
+        deleteWorktree: deleteWorktree,
+        deleteBranch: deleteBranch,
+      );
+    } else {
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(content: Text(loc.sessionListArchiveFailed)));
+    }
   }
 
   Future<void> _unarchiveSession(
@@ -123,16 +174,7 @@ class _SessionListBody extends StatelessWidget {
     final success = await cubit.unarchiveSession(sessionId);
     if (!success || !context.mounted) return;
 
-    // Show confirmation without undo — unarchive creates a new session
-    // (via fork + delete), so the original cannot be restored.
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(loc.sessionListUnarchived),
-          duration: kSnackBarDuration,
-        ),
-      );
+    _showUndoSnackBar(context, cubit, loc.sessionListUnarchived);
   }
 
   void _showUndoSnackBar(BuildContext context, SessionListCubit cubit, String message) {
@@ -164,15 +206,115 @@ class _SessionListBody extends StatelessWidget {
         });
   }
 
-  void _confirmDelete(BuildContext context, SessionListCubit cubit, Session session) {
+  // ---------------------------------------------------------------------------
+  // Delete
+  // ---------------------------------------------------------------------------
+
+  void _showDeleteSheet(BuildContext context, SessionListCubit cubit, Session session) {
+    showAppModalBottomSheet<void>(
+      context: context,
+      builder: (_) => _DeleteSessionSheet(
+        session: session,
+        onConfirm: ({required bool deleteWorktree, required bool deleteBranch}) {
+          _deleteSession(
+            context,
+            cubit,
+            session.id,
+            deleteWorktree: deleteWorktree,
+            deleteBranch: deleteBranch,
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _deleteSession(
+    BuildContext context,
+    SessionListCubit cubit,
+    String sessionId, {
+    bool deleteWorktree = true,
+    bool deleteBranch = true,
+    bool force = false,
+  }) async {
+    final loc = context.loc;
+    final success = await cubit.deleteSession(
+      sessionId: sessionId,
+      deleteWorktree: deleteWorktree,
+      deleteBranch: deleteBranch,
+      force: force,
+    );
+    if (!context.mounted) return;
+
+    if (success) {
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(content: Text(loc.sessionListDeleted)));
+      return;
+    }
+
+    // Check for cleanup rejection (409).
+    final rejection = cubit.lastCleanupRejection;
+    if (rejection != null) {
+      _showForceDialog(
+        context,
+        cubit,
+        sessionId: sessionId,
+        rejection: rejection,
+        isDelete: true,
+        deleteWorktree: deleteWorktree,
+        deleteBranch: deleteBranch,
+      );
+    } else {
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(content: Text(loc.sessionListDeleteFailed)));
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Force delete / archive dialog (409 rejection)
+  // ---------------------------------------------------------------------------
+
+  void _showForceDialog(
+    BuildContext context,
+    SessionListCubit cubit, {
+    required String sessionId,
+    required SessionCleanupRejection rejection,
+    required bool isDelete,
+    required bool deleteWorktree,
+    required bool deleteBranch,
+  }) {
     final loc = context.loc;
 
     showDialog<void>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: Text(loc.sessionListDeleteConfirmTitle),
-          content: Text(loc.sessionListDeleteConfirmMessage),
+          title: Text(isDelete ? loc.sessionListForceDeleteTitle : loc.sessionListForceArchiveTitle),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(loc.sessionListForceMessage),
+              const SizedBox(height: 12),
+              for (final issue in rejection.issues)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        size: 18,
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(_describeCleanupIssue(loc, issue))),
+                    ],
+                  ),
+                ),
+            ],
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
@@ -181,10 +323,28 @@ class _SessionListBody extends StatelessWidget {
             TextButton(
               onPressed: () {
                 Navigator.pop(dialogContext);
-                _deleteSession(context, cubit, session.id);
+                if (isDelete) {
+                  _deleteSession(
+                    context,
+                    cubit,
+                    sessionId,
+                    deleteWorktree: deleteWorktree,
+                    deleteBranch: deleteBranch,
+                    force: true,
+                  );
+                } else {
+                  _archiveSession(
+                    context,
+                    cubit,
+                    sessionId,
+                    deleteWorktree: deleteWorktree,
+                    deleteBranch: deleteBranch,
+                    force: true,
+                  );
+                }
               },
               child: Text(
-                loc.sessionListDeleteConfirmAction,
+                isDelete ? loc.sessionListForceDeleteAction : loc.sessionListForceArchiveAction,
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ),
@@ -194,23 +354,13 @@ class _SessionListBody extends StatelessWidget {
     );
   }
 
-  Future<void> _deleteSession(
-    BuildContext context,
-    SessionListCubit cubit,
-    String sessionId,
-  ) async {
-    final loc = context.loc;
-    final success = await cubit.deleteSession(sessionId);
-    if (!success || !context.mounted) return;
-
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(loc.sessionListDeleted),
-        duration: kSnackBarDuration,
-      ),
-    );
-  }
+  String _describeCleanupIssue(AppLocalizations loc, CleanupIssue issue) => switch (issue) {
+    CleanupIssueUnstagedChanges() => loc.sessionListCleanupIssueUnstagedChanges,
+    CleanupIssueBranchMismatch(:final expected, :final actual) => loc.sessionListCleanupIssueBranchMismatch(
+      actual,
+      expected,
+    ),
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -299,7 +449,7 @@ class _SessionListBody extends StatelessWidget {
                             onSwipe: () => isArchived
                                 ? _unarchiveSession(context, cubit, session.id)
                                 : _archiveSession(context, cubit, session.id),
-                          );
+                          ); // swipe uses defaults: deleteWorktree=true, deleteBranch=true
                         },
                       ),
               ),
@@ -542,4 +692,173 @@ class _ErrorView extends StatelessWidget {
     JsonParsingError() => loc.connectErrorUnexpectedFormat,
     GenericError() => loc.connectErrorUnknown,
   };
+}
+
+// -----------------------------------------------------------------------------
+// Delete session bottom sheet
+// -----------------------------------------------------------------------------
+
+class _DeleteSessionSheet extends StatefulWidget {
+  final Session session;
+  final void Function({required bool deleteWorktree, required bool deleteBranch}) onConfirm;
+
+  const _DeleteSessionSheet({required this.session, required this.onConfirm});
+
+  @override
+  State<_DeleteSessionSheet> createState() => _DeleteSessionSheetState();
+}
+
+class _DeleteSessionSheetState extends State<_DeleteSessionSheet> {
+  bool _deleteWorktree = true;
+  bool _deleteBranch = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            loc.sessionListDeleteConfirmTitle,
+            style: theme.textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            loc.sessionListDeleteConfirmMessage,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          CheckboxListTile(
+            value: _deleteWorktree,
+            onChanged: (v) => setState(() => _deleteWorktree = v ?? false),
+            title: Text(loc.sessionListDeleteWorktreeCheckbox),
+            dense: true,
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: EdgeInsets.zero,
+          ),
+          CheckboxListTile(
+            value: _deleteBranch,
+            onChanged: (v) => setState(() => _deleteBranch = v ?? false),
+            title: Text(loc.sessionListDeleteBranchCheckbox),
+            dense: true,
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: EdgeInsets.zero,
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(loc.sessionListDeleteConfirmCancel),
+              ),
+              const SizedBox(width: 8),
+              FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: theme.colorScheme.error),
+                onPressed: () {
+                  Navigator.pop(context);
+                  widget.onConfirm(
+                    deleteWorktree: _deleteWorktree,
+                    deleteBranch: _deleteBranch,
+                  );
+                },
+                child: Text(loc.sessionListDeleteConfirmAction),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Archive session bottom sheet
+// -----------------------------------------------------------------------------
+
+class _ArchiveSessionSheet extends StatefulWidget {
+  final Session session;
+  final void Function({required bool deleteWorktree, required bool deleteBranch}) onConfirm;
+
+  const _ArchiveSessionSheet({required this.session, required this.onConfirm});
+
+  @override
+  State<_ArchiveSessionSheet> createState() => _ArchiveSessionSheetState();
+}
+
+class _ArchiveSessionSheetState extends State<_ArchiveSessionSheet> {
+  bool _deleteWorktree = true;
+  bool _deleteBranch = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            loc.sessionListArchiveConfirmTitle,
+            style: theme.textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            loc.sessionListArchiveConfirmMessage,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          CheckboxListTile(
+            value: _deleteWorktree,
+            onChanged: (v) => setState(() => _deleteWorktree = v ?? false),
+            title: Text(loc.sessionListDeleteWorktreeCheckbox),
+            dense: true,
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: EdgeInsets.zero,
+          ),
+          CheckboxListTile(
+            value: _deleteBranch,
+            onChanged: (v) => setState(() => _deleteBranch = v ?? false),
+            title: Text(loc.sessionListDeleteBranchCheckbox),
+            dense: true,
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: EdgeInsets.zero,
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(loc.sessionListDeleteConfirmCancel),
+              ),
+              const SizedBox(width: 8),
+              FilledButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  widget.onConfirm(
+                    deleteWorktree: _deleteWorktree,
+                    deleteBranch: _deleteBranch,
+                  );
+                },
+                child: Text(loc.sessionListArchiveConfirmAction),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }

@@ -516,4 +516,54 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get renameProjectFailed => 'Failed to rename project';
+
+  @override
+  String get newSessionDedicatedWorktree => 'Dedicated worktree';
+
+  @override
+  String get newSessionDedicatedWorktreeDescription => 'Creates a dedicated git worktree and branch for this session';
+
+  @override
+  String get sessionListDeleteWorktreeCheckbox => 'Delete worktree';
+
+  @override
+  String get sessionListDeleteBranchCheckbox => 'Delete branch';
+
+  @override
+  String get sessionListArchiveConfirmTitle => 'Archive session?';
+
+  @override
+  String get sessionListArchiveConfirmMessage => 'This session will be archived and hidden from the active list.';
+
+  @override
+  String get sessionListArchiveConfirmAction => 'Archive';
+
+  @override
+  String get sessionListForceDeleteTitle => 'Force delete?';
+
+  @override
+  String get sessionListForceArchiveTitle => 'Force archive?';
+
+  @override
+  String get sessionListForceMessage => 'The following issues were found:';
+
+  @override
+  String get sessionListForceDeleteAction => 'Force Delete';
+
+  @override
+  String get sessionListForceArchiveAction => 'Force Archive';
+
+  @override
+  String get sessionListCleanupIssueUnstagedChanges => 'Worktree has unstaged changes';
+
+  @override
+  String sessionListCleanupIssueBranchMismatch(String actual, String expected) {
+    return 'Worktree is on branch ‘$actual’ instead of expected ‘$expected’';
+  }
+
+  @override
+  String get sessionListDeleteFailed => 'Failed to delete session';
+
+  @override
+  String get sessionListArchiveFailed => 'Failed to archive session';
 }

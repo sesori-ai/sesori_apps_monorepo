@@ -1,0 +1,165 @@
+import "dart:convert";
+
+import "package:mocktail/mocktail.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart";
+import "package:test/test.dart";
+
+class MockRelayHttpApiClient extends Mock implements RelayHttpApiClient {}
+
+void main() {
+  group("SessionService", () {
+    late MockRelayHttpApiClient mockClient;
+    late SessionService service;
+
+    setUp(() {
+      mockClient = MockRelayHttpApiClient();
+      service = SessionService(mockClient);
+    });
+
+    test("createSessionWithMessage sends dedicatedWorktree in request body", () async {
+      const session = Session(
+        id: "s1",
+        projectID: "p1",
+        directory: "/tmp/project",
+        title: "Session",
+        time: SessionTime(created: 1, updated: 1),
+      );
+
+      when(
+        () => mockClient.post<Session>(
+          "/session",
+          fromJson: any(named: "fromJson"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(session));
+
+      final result = await service.createSessionWithMessage(
+        projectId: "p1",
+        text: "hello",
+        agent: null,
+        model: null,
+        dedicatedWorktree: true,
+      );
+
+      expect(result, isA<SuccessResponse<Session>>());
+      verify(
+        () => mockClient.post<Session>(
+          "/session",
+          fromJson: any(named: "fromJson"),
+          body: const CreateSessionRequest(
+            projectId: "p1",
+            parts: [PromptPart.text(text: "hello")],
+            agent: null,
+            model: null,
+            dedicatedWorktree: true,
+          ).toJson(),
+        ),
+      ).called(1);
+    });
+
+    test("archiveSession sends cleanup options in request body", () async {
+      const session = Session(
+        id: "s1",
+        projectID: "p1",
+        directory: "/tmp/project",
+        title: "Session",
+        time: SessionTime(created: 1, updated: 1),
+      );
+
+      when(
+        () => mockClient.patch<Session>(
+          "/session/s1",
+          fromJson: any(named: "fromJson"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(session));
+
+      await service.archiveSession(
+        sessionId: "s1",
+        deleteWorktree: true,
+        deleteBranch: false,
+        force: true,
+      );
+
+      verify(
+        () => mockClient.patch<Session>(
+          "/session/s1",
+          fromJson: any(named: "fromJson"),
+          body: const UpdateSessionArchiveRequest(
+            archived: true,
+            deleteWorktree: true,
+            deleteBranch: false,
+            force: true,
+          ).toJson(),
+        ),
+      ).called(1);
+    });
+
+    test("deleteSession sends DeleteSessionRequest as DELETE body", () async {
+      when(
+        () => mockClient.delete<bool>(
+          "/session/s1",
+          fromJson: any(named: "fromJson"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(true));
+
+      await service.deleteSession(
+        sessionId: "s1",
+        deleteWorktree: true,
+        deleteBranch: true,
+        force: false,
+      );
+
+      verify(
+        () => mockClient.delete<bool>(
+          "/session/s1",
+          fromJson: any(named: "fromJson"),
+          body: const DeleteSessionRequest(
+            deleteWorktree: true,
+            deleteBranch: true,
+            force: false,
+          ).toJson(),
+        ),
+      ).called(1);
+    });
+
+    test("deleteSession throws SessionCleanupRejectedException on 409", () async {
+      const rejection = SessionCleanupRejection(
+        issues: [CleanupIssue.unstagedChanges()],
+      );
+
+      when(
+        () => mockClient.delete<bool>(
+          "/session/s1",
+          fromJson: any(named: "fromJson"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.error(
+          ApiError.nonSuccessCode(
+            errorCode: 409,
+            rawErrorString: jsonEncode(rejection.toJson()),
+          ),
+        ),
+      );
+
+      await expectLater(
+        () => service.deleteSession(
+          sessionId: "s1",
+          deleteWorktree: true,
+          deleteBranch: true,
+          force: false,
+        ),
+        throwsA(
+          isA<SessionCleanupRejectedException>().having(
+            (error) => error.rejection,
+            "rejection",
+            rejection,
+          ),
+        ),
+      );
+    });
+  });
+}

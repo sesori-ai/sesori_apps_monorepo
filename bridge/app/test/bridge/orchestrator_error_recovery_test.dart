@@ -215,20 +215,6 @@ class _ThrowingSummaryPlugin implements BridgePlugin {
   );
 
   @override
-  Future<PluginSession> updateSessionArchiveStatus(
-    String sessionId, {
-    required bool archived,
-  }) async => const PluginSession(
-    id: "",
-    projectID: "",
-    directory: "",
-    parentID: null,
-    title: null,
-    time: null,
-    summary: null,
-  );
-
-  @override
   Future<PluginSession> renameSession({
     required String sessionId,
     required String title,

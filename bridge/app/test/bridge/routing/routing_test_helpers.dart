@@ -1,5 +1,7 @@
 import "dart:async";
 
+import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
+import "package:sesori_bridge/src/bridge/routing/get_sessions_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -30,7 +32,6 @@ class FakeBridgePlugin implements BridgePlugin {
   List<PluginMessageWithParts> messagesResult = [];
   PluginProvidersResult providersResult = const PluginProvidersResult(providers: []);
   PluginSession? createSessionResult;
-  PluginSession? updateSessionResult;
   PluginSession? renameSessionResult;
   PluginProject? renameProjectResult;
   List<PluginSession> childSessionsResult = [];
@@ -54,8 +55,6 @@ class FakeBridgePlugin implements BridgePlugin {
   List<PluginPromptPart>? lastCreateSessionParts;
   String? lastCreateSessionAgent;
   ({String providerID, String modelID})? lastCreateSessionModel;
-  String? lastUpdateSessionId;
-  bool? lastUpdateSessionArchived;
   String? lastRenameSessionId;
   String? lastRenameSessionTitle;
   String? lastRenameProjectId;
@@ -133,25 +132,6 @@ class FakeBridgePlugin implements BridgePlugin {
     lastCreateSessionAgent = agent;
     lastCreateSessionModel = model;
     return createSessionResult ??
-        const PluginSession(
-          id: "",
-          projectID: "",
-          directory: "",
-          parentID: null,
-          title: null,
-          time: null,
-          summary: null,
-        );
-  }
-
-  @override
-  Future<PluginSession> updateSessionArchiveStatus(
-    String sessionId, {
-    required bool archived,
-  }) async {
-    lastUpdateSessionId = sessionId;
-    lastUpdateSessionArchived = archived;
-    return updateSessionResult ??
         const PluginSession(
           id: "",
           projectID: "",
@@ -282,4 +262,72 @@ class FakeBridgePlugin implements BridgePlugin {
   Future<void> dispose() async {}
 
   Future<void> close() => _controller.close();
+}
+
+/// Hand-written fake [SessionDao] for testing.
+class FakeSessionDao implements SessionDaoLike {
+  final Map<String, SessionDto> _sessions = {};
+
+  /// Set up a session in the fake database.
+  void setSession(SessionDto session) {
+    _sessions[session.sessionId] = session;
+  }
+
+  @override
+  Future<Map<String, SessionDto>> getSessionsByIds({required List<String> sessionIds}) async {
+    final result = <String, SessionDto>{};
+    for (final id in sessionIds) {
+      if (_sessions.containsKey(id)) {
+        result[id] = _sessions[id]!;
+      }
+    }
+    return result;
+  }
+
+  Future<void> insertSession({
+    required String sessionId,
+    required String projectId,
+    required bool isDedicated,
+    required int createdAt,
+    required String? worktreePath,
+    required String? branchName,
+    required String? baseBranch,
+    required String? baseCommit,
+  }) async {
+    _sessions[sessionId] = SessionDto(
+      sessionId: sessionId,
+      projectId: projectId,
+      worktreePath: worktreePath,
+      branchName: branchName,
+      isDedicated: isDedicated,
+      archivedAt: null,
+      baseBranch: baseBranch,
+      baseCommit: baseCommit,
+      createdAt: createdAt,
+    );
+  }
+
+  Future<SessionDto?> getSession({required String sessionId}) async => _sessions[sessionId];
+
+  Future<void> setArchived({required String sessionId, required int archivedAt}) async {
+    if (_sessions.containsKey(sessionId)) {
+      final session = _sessions[sessionId]!;
+      _sessions[sessionId] = session.copyWith(archivedAt: archivedAt);
+    }
+  }
+
+  Future<void> clearArchived({required String sessionId}) async {
+    if (_sessions.containsKey(sessionId)) {
+      final session = _sessions[sessionId]!;
+      _sessions[sessionId] = session.copyWith(archivedAt: null);
+    }
+  }
+
+  Future<List<SessionDto>> getSessionsByProject({required String projectId}) async {
+    return _sessions.values.where((s) => s.projectId == projectId).toList();
+  }
+
+  Future<void> deleteSession({required String sessionId}) async {
+    _sessions.remove(sessionId);
+  }
 }

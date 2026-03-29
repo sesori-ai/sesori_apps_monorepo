@@ -24,6 +24,7 @@ void main() {
       handler = CreateSessionHandler(
         plugin: plugin,
         worktreeService: worktreeService,
+        sessionDao: db.sessionDao,
       );
     });
 
@@ -50,7 +51,7 @@ void main() {
       expect(response.body, contains("invalid JSON body"));
     });
 
-    test("worktree path is used and mapping is recorded", () async {
+    test("dedicated=true and WorktreeSuccess injects system prompt and stores worktree metadata", () async {
       plugin.createSessionResult = const PluginSession(
         id: "s1",
         projectID: "p1",
@@ -63,6 +64,8 @@ void main() {
       worktreeService.prepareResult = WorktreeSuccess(
         path: "/repo/.worktrees/session-001",
         branchName: "session-001",
+        baseBranch: "main",
+        baseCommit: "abc123def456",
       );
 
       final response = await handler.handle(
@@ -72,6 +75,7 @@ void main() {
           body: jsonEncode(
             const CreateSessionRequest(
               projectId: "/repo",
+              dedicatedWorktree: true,
               parts: [PromptPart.text(text: "Start")],
               agent: null,
               model: null,
@@ -82,102 +86,164 @@ void main() {
         queryParams: {},
       );
 
-      expect(worktreeService.lastPrepareProjectId, equals("/repo"));
-      expect(worktreeService.lastPrepareParentSessionId, isNull);
-      expect(plugin.lastCreateSessionDirectory, equals("/repo/.worktrees/session-001"));
-      expect(plugin.lastCreateSessionParentId, isNull);
-      expect(plugin.lastCreateSessionParts, equals([const PluginPromptPart.text(text: "Start")]));
-      expect(worktreeService.recordCalls, hasLength(1));
-      expect(worktreeService.recordCalls.first.sessionId, equals("s1"));
-      expect(worktreeService.recordCalls.first.projectId, equals("/repo"));
-      expect(worktreeService.recordCalls.first.worktreePath, equals("/repo/.worktrees/session-001"));
-      expect(worktreeService.recordCalls.first.branchName, equals("session-001"));
       expect(response.status, equals(200));
-    });
-
-    test("fallback path is used and mapping is not recorded", () async {
-      plugin.createSessionResult = const PluginSession(
-        id: "s-fallback",
-        projectID: "p1",
-        directory: "/repo",
-        parentID: null,
-        title: "Created",
-        time: null,
-        summary: null,
-      );
-      worktreeService.prepareResult = WorktreeFallback(
-        originalPath: "/repo",
-        reason: "not git",
-      );
-
-      final response = await handler.handle(
-        makeRequest(
-          "POST",
-          "/session",
-          body: jsonEncode(
-            const CreateSessionRequest(
-              projectId: "/repo",
-              parts: [PromptPart.text(text: "Start")],
-              agent: null,
-              model: null,
-            ).toJson(),
-          ),
-        ),
-        pathParams: {},
-        queryParams: {},
-      );
-
-      expect(plugin.lastCreateSessionDirectory, equals("/repo"));
-      expect(plugin.lastCreateSessionParentId, isNull);
-      expect(worktreeService.recordCalls, isEmpty);
-      expect(response.status, equals(200));
-    });
-
-    test("prepare worktree is called and result is passed to plugin", () async {
-      plugin.createSessionResult = const PluginSession(
-        id: "s-child",
-        projectID: "p1",
-        directory: "/repo",
-        parentID: null,
-        title: "Child",
-        time: null,
-        summary: null,
-      );
-
-      final response = await handler.handle(
-        makeRequest(
-          "POST",
-          "/session",
-          body: jsonEncode(
-            const CreateSessionRequest(
-              projectId: "/repo",
-              parts: [PromptPart.text(text: "Start")],
-              agent: null,
-              model: null,
-            ).toJson(),
-          ),
-        ),
-        pathParams: {},
-        queryParams: {},
-      );
-
       expect(worktreeService.prepareCallCount, equals(1));
-      expect(worktreeService.lastPrepareProjectId, equals("/repo"));
-      expect(plugin.lastCreateSessionDirectory, equals("/repo"));
-      expect(plugin.lastCreateSessionParentId, isNull);
-      expect(plugin.lastCreateSessionProjectId, equals("/repo"));
-      expect(response.status, equals(200));
+      expect(plugin.lastCreateSessionDirectory, equals("/repo/.worktrees/session-001"));
+      expect(plugin.lastCreateSessionParts, isNotNull);
+      expect(plugin.lastCreateSessionParts, hasLength(2));
+      expect(
+        plugin.lastCreateSessionParts![0],
+        equals(
+          PluginPromptPart.text(
+            text: buildWorktreeSystemPrompt(
+              branchName: "session-001",
+              worktreePath: "/repo/.worktrees/session-001",
+              baseBranch: "main",
+            ),
+          ),
+        ),
+      );
+      expect(plugin.lastCreateSessionParts![1], equals(const PluginPromptPart.text(text: "Start")));
+
+      final dbSession = await db.sessionDao.getSession(sessionId: "s1");
+      expect(dbSession, isNotNull);
+      expect(dbSession!.projectId, equals("/repo"));
+      expect(dbSession.isDedicated, isTrue);
+      expect(dbSession.worktreePath, equals("/repo/.worktrees/session-001"));
+      expect(dbSession.branchName, equals("session-001"));
+      expect(dbSession.baseBranch, equals("main"));
+      expect(dbSession.baseCommit, equals("abc123def456"));
+      expect(dbSession.createdAt, greaterThan(0));
     });
 
-    test("plugin failure is propagated and no mapping is recorded", () async {
-      final failingPlugin = _ThrowingCreateSessionPlugin();
-      final localHandler = CreateSessionHandler(
-        plugin: failingPlugin,
-        worktreeService: worktreeService,
+    test("dedicated=false skips worktree prep and stores simple session with null worktree fields", () async {
+      plugin.createSessionResult = const PluginSession(
+        id: "simple-1",
+        projectID: "p1",
+        directory: "/repo",
+        parentID: null,
+        title: "Simple",
+        time: null,
+        summary: null,
       );
       worktreeService.prepareResult = WorktreeSuccess(
         path: "/repo/.worktrees/session-001",
         branchName: "session-001",
+        baseBranch: "main",
+        baseCommit: "abc123def456",
+      );
+
+      final response = await handler.handle(
+        makeRequest(
+          "POST",
+          "/session",
+          body: jsonEncode(
+            const CreateSessionRequest(
+              projectId: "/repo",
+              dedicatedWorktree: false,
+              parts: [PromptPart.text(text: "Start")],
+              agent: null,
+              model: null,
+            ).toJson(),
+          ),
+        ),
+        pathParams: {},
+        queryParams: {},
+      );
+
+      expect(response.status, equals(200));
+      expect(worktreeService.prepareCallCount, equals(0));
+      expect(plugin.lastCreateSessionDirectory, equals("/repo"));
+      expect(plugin.lastCreateSessionParts, equals(const [PluginPromptPart.text(text: "Start")]));
+
+      final dbSession = await db.sessionDao.getSession(sessionId: "simple-1");
+      expect(dbSession, isNotNull);
+      expect(dbSession!.projectId, equals("/repo"));
+      expect(dbSession.isDedicated, isFalse);
+      expect(dbSession.worktreePath, isNull);
+      expect(dbSession.branchName, isNull);
+      expect(dbSession.baseBranch, isNull);
+      expect(dbSession.baseCommit, isNull);
+      expect(dbSession.createdAt, greaterThan(0));
+    });
+
+    test(
+      "dedicated=true and WorktreeFallback has no system prompt and stores dedicated row with null worktree fields",
+      () async {
+        plugin.createSessionResult = const PluginSession(
+          id: "fallback-1",
+          projectID: "p1",
+          directory: "/repo",
+          parentID: null,
+          title: "Fallback",
+          time: null,
+          summary: null,
+        );
+        worktreeService.prepareResult = WorktreeFallback(
+          originalPath: "/repo",
+          reason: "not git",
+        );
+
+        final response = await handler.handle(
+          makeRequest(
+            "POST",
+            "/session",
+            body: jsonEncode(
+              const CreateSessionRequest(
+                projectId: "/repo",
+                dedicatedWorktree: true,
+                parts: [PromptPart.text(text: "Start")],
+                agent: null,
+                model: null,
+              ).toJson(),
+            ),
+          ),
+          pathParams: {},
+          queryParams: {},
+        );
+
+        expect(response.status, equals(200));
+        expect(worktreeService.prepareCallCount, equals(1));
+        expect(plugin.lastCreateSessionDirectory, equals("/repo"));
+        expect(plugin.lastCreateSessionParts, equals(const [PluginPromptPart.text(text: "Start")]));
+
+        final dbSession = await db.sessionDao.getSession(sessionId: "fallback-1");
+        expect(dbSession, isNotNull);
+        expect(dbSession!.projectId, equals("/repo"));
+        expect(dbSession.isDedicated, isTrue);
+        expect(dbSession.worktreePath, isNull);
+        expect(dbSession.branchName, isNull);
+        expect(dbSession.baseBranch, isNull);
+        expect(dbSession.baseCommit, isNull);
+        expect(dbSession.createdAt, greaterThan(0));
+      },
+    );
+
+    test("buildWorktreeSystemPrompt includes branch, path, and base branch", () {
+      final prompt = buildWorktreeSystemPrompt(
+        branchName: "session-017",
+        worktreePath: "/repo/.worktrees/session-017",
+        baseBranch: "develop",
+      );
+
+      expect(prompt, contains("session-017"));
+      expect(prompt, contains("/repo/.worktrees/session-017"));
+      expect(prompt, contains("develop"));
+      expect(prompt, contains("Do NOT create new worktrees"));
+    });
+
+    test("plugin failure is propagated and no session row is inserted", () async {
+      final failingPlugin = _ThrowingCreateSessionPlugin();
+      final localHandler = CreateSessionHandler(
+        plugin: failingPlugin,
+        worktreeService: worktreeService,
+        sessionDao: db.sessionDao,
+      );
+      worktreeService.prepareResult = WorktreeSuccess(
+        path: "/repo/.worktrees/session-001",
+        branchName: "session-001",
+        baseBranch: "main",
+        baseCommit: "abc123def456",
       );
 
       await expectLater(
@@ -188,6 +254,7 @@ void main() {
             body: jsonEncode(
               const CreateSessionRequest(
                 projectId: "/repo",
+                dedicatedWorktree: true,
                 parts: [PromptPart.text(text: "Start")],
                 agent: null,
                 model: null,
@@ -199,7 +266,9 @@ void main() {
         ),
         throwsA(isA<StateError>()),
       );
-      expect(worktreeService.recordCalls, isEmpty);
+
+      final dbSession = await db.sessionDao.getSession(sessionId: "s1");
+      expect(dbSession, isNull);
       await failingPlugin.close();
     });
 
@@ -207,15 +276,11 @@ void main() {
       plugin.createSessionResult = const PluginSession(
         id: "s1",
         projectID: "p1",
-        directory: "/repo/.worktrees/session-001",
+        directory: "/repo",
         parentID: "parent-1",
         title: "Created",
         time: PluginSessionTime(created: 11, updated: 22, archived: 33),
         summary: PluginSessionSummary(additions: 1, deletions: 2, files: 3),
-      );
-      worktreeService.prepareResult = WorktreeSuccess(
-        path: "/repo/.worktrees/session-001",
-        branchName: "session-001",
       );
 
       final response = await handler.handle(
@@ -225,6 +290,7 @@ void main() {
           body: jsonEncode(
             const CreateSessionRequest(
               projectId: "/repo",
+              dedicatedWorktree: false,
               parts: [PromptPart.text(text: "Start")],
               agent: null,
               model: null,
@@ -241,7 +307,7 @@ void main() {
       };
       expect(body["id"], equals("s1"));
       expect(body["projectID"], equals("p1"));
-      expect(body["directory"], equals("/repo/.worktrees/session-001"));
+      expect(body["directory"], equals("/repo"));
       expect(body["parentID"], equals("parent-1"));
       expect(body["title"], equals("Created"));
       expect(body["time"], equals({"created": 11, "updated": 22, "archived": 33}));
@@ -249,11 +315,6 @@ void main() {
     });
 
     test("passes parts, agent, and model to plugin", () async {
-      worktreeService.prepareResult = WorktreeFallback(
-        originalPath: "/tmp",
-        reason: "test",
-      );
-
       await handler.handle(
         makeRequest(
           "POST",
@@ -261,6 +322,7 @@ void main() {
           body: jsonEncode(
             const CreateSessionRequest(
               projectId: "/tmp",
+              dedicatedWorktree: false,
               parts: [PromptPart.text(text: "Hello")],
               agent: "architect",
               model: PromptModel(providerID: "openai", modelID: "gpt-5"),
@@ -283,7 +345,7 @@ void main() {
         makeRequest(
           "POST",
           "/session",
-          body: jsonEncode({"projectId": "/tmp", "agent": null, "model": null}),
+          body: jsonEncode({"projectId": "/tmp", "dedicatedWorktree": false, "agent": null, "model": null}),
         ),
         pathParams: {},
         queryParams: {},
@@ -318,15 +380,6 @@ class _FakeWorktreeService extends WorktreeService {
     originalPath: "/repo",
     reason: "default",
   );
-  final List<
-    ({
-      String sessionId,
-      String projectId,
-      String worktreePath,
-      String branchName,
-    })
-  >
-  recordCalls = [];
 
   _FakeWorktreeService({required AppDatabase database})
     : super(
@@ -343,21 +396,6 @@ class _FakeWorktreeService extends WorktreeService {
     lastPrepareProjectId = projectId;
     lastPrepareParentSessionId = parentSessionId;
     return prepareResult;
-  }
-
-  @override
-  Future<void> recordSessionWorktree({
-    required String sessionId,
-    required String projectId,
-    required String worktreePath,
-    required String branchName,
-  }) async {
-    recordCalls.add((
-      sessionId: sessionId,
-      projectId: projectId,
-      worktreePath: worktreePath,
-      branchName: branchName,
-    ));
   }
 }
 

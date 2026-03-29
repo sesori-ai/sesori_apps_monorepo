@@ -13,6 +13,7 @@ sealed class CreateSessionRequest with _$CreateSessionRequest {
     required List<PromptPart> parts,
     required String? agent,
     required PromptModel? model,
+    required bool dedicatedWorktree,
   }) = _CreateSessionRequest;
 
   factory CreateSessionRequest.fromJson(Map<String, dynamic> json) => _$CreateSessionRequestFromJson(json);

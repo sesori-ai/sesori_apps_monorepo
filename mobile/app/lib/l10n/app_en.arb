@@ -254,6 +254,32 @@
       "renameSave": "Save",
       "renameSessionSuccess": "Session renamed",
       "renameProjectSuccess": "Project renamed",
-      "renameSessionFailed": "Failed to rename session",
-      "renameProjectFailed": "Failed to rename project"
+       "renameSessionFailed": "Failed to rename session",
+       "renameProjectFailed": "Failed to rename project",
+       "newSessionDedicatedWorktree": "Dedicated worktree",
+       "newSessionDedicatedWorktreeDescription": "Creates a dedicated git worktree and branch for this session",
+       "sessionListDeleteWorktreeCheckbox": "Delete worktree",
+       "sessionListDeleteBranchCheckbox": "Delete branch",
+       "sessionListArchiveConfirmTitle": "Archive session?",
+       "sessionListArchiveConfirmMessage": "This session will be archived and hidden from the active list.",
+       "sessionListArchiveConfirmAction": "Archive",
+       "sessionListForceDeleteTitle": "Force delete?",
+       "sessionListForceArchiveTitle": "Force archive?",
+       "sessionListForceMessage": "The following issues were found:",
+       "sessionListForceDeleteAction": "Force Delete",
+       "sessionListForceArchiveAction": "Force Archive",
+       "sessionListCleanupIssueUnstagedChanges": "Worktree has unstaged changes",
+       "sessionListCleanupIssueBranchMismatch": "Worktree is on branch \u2018{actual}\u2019 instead of expected \u2018{expected}\u2019",
+       "@sessionListCleanupIssueBranchMismatch": {
+         "placeholders": {
+           "actual": {
+             "type": "String"
+           },
+           "expected": {
+             "type": "String"
+           }
+         }
+       },
+       "sessionListDeleteFailed": "Failed to delete session",
+       "sessionListArchiveFailed": "Failed to archive session"
 }

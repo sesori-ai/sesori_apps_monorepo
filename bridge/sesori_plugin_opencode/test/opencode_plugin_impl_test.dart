@@ -260,103 +260,6 @@ void main() {
       expect(statuses["s-root"], isA<PluginSessionStatusBusy>());
     });
 
-    group("updateSessionArchiveStatus", () {
-      test("archive sends PATCH with timestamp (no regression)", () async {
-        final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
-        await server.waitForSseConnection();
-        server.requestLog.clear();
-
-        final session = await plugin.updateSessionArchiveStatus("s-root", archived: true);
-
-        expect(session.id, equals("s-root"));
-        expect(session.time?.archived, isNotNull);
-        expect(server.requestLog, equals(["PATCH /session/s-root"]));
-      });
-
-      test("unarchive forks, deletes original, renames fork, returns renamed session", () async {
-        final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
-        await server.waitForSseConnection();
-        server.requestLog.clear();
-
-        final session = await plugin.updateSessionArchiveStatus("s-root", archived: false);
-
-        expect(session.id, isNot(equals("s-root")));
-        expect(session.id, equals("s-root-fork"));
-        expect(session.title, equals("Root Session"));
-        expect(session.time?.archived, isNull);
-        expect(
-          server.requestLog,
-          equals([
-            "GET /session/s-root",
-            "POST /session/s-root/fork",
-            "DELETE /session/s-root",
-            "PATCH /session/s-root-fork",
-          ]),
-        );
-      });
-
-      test("unarchive continues and returns renamed session when delete fails", () async {
-        server.failDelete = true;
-        final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
-        await server.waitForSseConnection();
-        server.requestLog.clear();
-
-        final session = await plugin.updateSessionArchiveStatus("s-root", archived: false);
-
-        expect(session.id, equals("s-root-fork"));
-        expect(session.title, equals("Root Session"));
-        expect(
-          server.requestLog,
-          equals([
-            "GET /session/s-root",
-            "POST /session/s-root/fork",
-            "DELETE /session/s-root",
-            "PATCH /session/s-root-fork",
-          ]),
-        );
-      });
-
-      test("unarchive returns forked session when rename fails", () async {
-        server.failRename = true;
-        final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
-        await server.waitForSseConnection();
-        server.requestLog.clear();
-
-        final session = await plugin.updateSessionArchiveStatus("s-root", archived: false);
-
-        expect(session.id, equals("s-root-fork"));
-        expect(session.title, equals("Root Session (fork #1)"));
-        expect(
-          server.requestLog,
-          equals([
-            "GET /session/s-root",
-            "POST /session/s-root/fork",
-            "DELETE /session/s-root",
-            "PATCH /session/s-root-fork",
-          ]),
-        );
-      });
-
-      test("unarchive throws when fork fails", () async {
-        server.failFork = true;
-        final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
-        await server.waitForSseConnection();
-        server.requestLog.clear();
-
-        await expectLater(
-          () => plugin.updateSessionArchiveStatus("s-root", archived: false),
-          throwsA(isA<PluginApiException>()),
-        );
-        expect(
-          server.requestLog,
-          equals([
-            "GET /session/s-root",
-            "POST /session/s-root/fork",
-          ]),
-        );
-      });
-    });
-
     group("renameSession", () {
       test("sends PATCH with title body and returns updated session", () async {
         final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
@@ -480,17 +383,13 @@ class _FakeOpenCodeServer {
   final Completer<void> _firstSseClient = Completer<void>();
   final List<String> requestLog = [];
 
-  bool failFork = false;
-  bool failDelete = false;
-  bool failRename = false;
-
   final Map<String, Map<String, dynamic>> _sessions = {
     "s-root": {
       "id": "s-root",
       "projectID": "p1",
       "directory": "/repo",
       "title": "Root Session",
-      "time": <String, dynamic>{"created": 100, "updated": 200, "archived": 999},
+      "time": <String, dynamic>{"created": 100, "updated": 200},
     },
   };
 
@@ -567,39 +466,6 @@ class _FakeOpenCodeServer {
         return;
       }
 
-      final forkMatch = RegExp(r"^/session/([^/]+)/fork$").firstMatch(path);
-      if (request.method == "POST" && forkMatch != null) {
-        if (failFork) {
-          request.response.statusCode = HttpStatus.internalServerError;
-          await request.response.close();
-          return;
-        }
-        final sessionId = forkMatch.group(1)!;
-        final original = _sessions[sessionId];
-        if (original == null) {
-          request.response.statusCode = HttpStatus.notFound;
-          await request.response.close();
-          return;
-        }
-        final originalTime = switch (original["time"]) {
-          final Map<String, dynamic> time => time,
-          _ => const <String, dynamic>{},
-        };
-
-        final forked = {
-          ...original,
-          "id": "$sessionId-fork",
-          "title": "${original["title"]} (fork #1)",
-          "time": {
-            "created": originalTime["created"],
-            "updated": originalTime["updated"],
-          },
-        };
-        _sessions[forked["id"]! as String] = Map<String, dynamic>.from(forked);
-        await _sendJson(request.response, forked);
-        return;
-      }
-
       final sessionMatch = RegExp(r"^/session/([^/]+)$").firstMatch(path);
       if (sessionMatch != null && request.method == "GET") {
         final sessionId = sessionMatch.group(1)!;
@@ -614,11 +480,6 @@ class _FakeOpenCodeServer {
       }
 
       if (sessionMatch != null && request.method == "DELETE") {
-        if (failDelete) {
-          request.response.statusCode = HttpStatus.internalServerError;
-          await request.response.close();
-          return;
-        }
         final sessionId = sessionMatch.group(1)!;
         _sessions.remove(sessionId);
         await _sendJson(request.response, true);
@@ -638,11 +499,6 @@ class _FakeOpenCodeServer {
         final body = (jsonDecode(rawBody) as Map).cast<String, dynamic>();
         final title = body["title"];
         if (title is String) {
-          if (failRename) {
-            request.response.statusCode = HttpStatus.internalServerError;
-            await request.response.close();
-            return;
-          }
           session["title"] = title;
         }
 
