@@ -113,6 +113,9 @@ class AppRouteNotificationSettings extends AppRoute {
 }
 
 class AppRouteSessions extends AppRoute {
+  static const _projectIdPathParam = "projectId";
+  static const _nameQueryParam = "name";
+
   final String projectId;
   final String? projectName;
 
@@ -124,8 +127,8 @@ class AppRouteSessions extends AppRoute {
     required Map<String, String> queryParams,
   }) {
     return AppRouteSessions(
-      projectId: pathParams["projectId"] ?? "",
-      projectName: queryParams["name"],
+      projectId: pathParams[_projectIdPathParam] ?? "",
+      projectName: queryParams[_nameQueryParam],
     );
   }
 
@@ -136,7 +139,7 @@ class AppRouteSessions extends AppRoute {
   String buildPath() {
     final base = "/projects/${Uri.encodeComponent(projectId)}/sessions";
     final queryParams = <String, String>{
-      "name": ?projectName,
+      _nameQueryParam: ?projectName,
     };
     if (queryParams.isNotEmpty) {
       return Uri(path: base, queryParameters: queryParams).toString();
@@ -146,6 +149,8 @@ class AppRouteSessions extends AppRoute {
 }
 
 class AppRouteNewSession extends AppRoute {
+  static const _projectIdPathParam = "projectId";
+
   final String projectId;
 
   const AppRouteNewSession({required this.projectId});
@@ -156,7 +161,7 @@ class AppRouteNewSession extends AppRoute {
     // ignore: avoid_unused_constructor_parameters — uniform fromParams signature
     required Map<String, String> queryParams,
   }) {
-    return AppRouteNewSession(projectId: pathParams["projectId"] ?? "");
+    return AppRouteNewSession(projectId: pathParams[_projectIdPathParam] ?? "");
   }
 
   @override
@@ -167,6 +172,11 @@ class AppRouteNewSession extends AppRoute {
 }
 
 class AppRouteSessionDetail extends AppRoute {
+  static const _projectIdPathParam = "projectId";
+  static const _sessionIdPathParam = "sessionId";
+  static const _titleQueryParam = "title";
+  static const _readOnlyQueryParam = "readOnly";
+
   final String projectId;
   final String sessionId;
   final String? sessionTitle;
@@ -185,10 +195,10 @@ class AppRouteSessionDetail extends AppRoute {
     required Map<String, String> queryParams,
   }) {
     return AppRouteSessionDetail(
-      projectId: pathParams["projectId"] ?? "",
-      sessionId: pathParams["sessionId"] ?? "",
-      sessionTitle: queryParams["title"],
-      readOnly: queryParams["readOnly"] == "true",
+      projectId: pathParams[_projectIdPathParam] ?? "",
+      sessionId: pathParams[_sessionIdPathParam] ?? "",
+      sessionTitle: queryParams[_titleQueryParam],
+      readOnly: queryParams[_readOnlyQueryParam] == "true",
     );
   }
 
@@ -199,8 +209,8 @@ class AppRouteSessionDetail extends AppRoute {
   String buildPath() {
     final base = "/projects/${Uri.encodeComponent(projectId)}/sessions/${Uri.encodeComponent(sessionId)}";
     final queryParams = <String, String>{
-      "readOnly": readOnly.toString(),
-      "title": ?sessionTitle,
+      _readOnlyQueryParam: readOnly.toString(),
+      _titleQueryParam: ?sessionTitle,
     };
     return Uri(path: base, queryParameters: queryParams).toString();
   }

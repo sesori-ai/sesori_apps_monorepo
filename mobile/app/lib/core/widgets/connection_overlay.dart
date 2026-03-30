@@ -8,6 +8,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../di/injection.dart";
 import "../extensions/build_context_x.dart";
+import "../routing/app_router.dart";
 
 /// App-wide overlay that reacts to [ConnectionService] status changes.
 ///
@@ -94,7 +95,7 @@ class _ConnectionOverlayBody extends StatelessWidget {
                 onReconnect: () => context.read<ConnectionOverlayCubit>().reconnect(),
                 onDisconnect: () async {
                   await context.read<ConnectionOverlayCubit>().disconnect();
-                  router.go(AppRouteDef.login.path);
+                  router.goRoute(const AppRoute.login());
                 },
               ),
             ),
