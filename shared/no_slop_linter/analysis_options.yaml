@@ -1,0 +1,24 @@
+include: package:lints/recommended.yaml
+
+analyzer:
+  exclude:
+    [
+      build/**,
+      docs/**,
+      scripts/**,
+      test/**,
+      "**.freezed.dart",
+      "**.config.dart",
+      "**.g.dart",
+      "**.g.edited.dart",
+      "lib/generated/**",
+    ]
+
+linter:
+  rules:
+    # prefer_single_quotes: true
+    unintended_html_in_doc_comment: false
+
+formatter:
+  page_width: 120
+  trailing_commas: preserve
