@@ -226,12 +226,23 @@ class EventQueueSubscription<T extends Object> {
   final EventQueue<T> _queue;
   EventQueueSubscription._(this._queue);
 
+  bool get _isActive => identical(_queue._activeSubscription, this);
+
   /// Detaches the listener. Pending events remain buffered in the queue.
-  void cancel() => _queue._detach();
+  /// No-op if this subscription is no longer active.
+  void cancel() {
+    if (_isActive) _queue._detach();
+  }
 
   /// Pauses event delivery. Events continue to buffer.
-  void pause() => _queue.pause();
+  /// No-op if this subscription is no longer active.
+  void pause() {
+    if (_isActive) _queue.pause();
+  }
 
   /// Resumes event delivery.
-  void resume() => _queue.resume();
+  /// No-op if this subscription is no longer active.
+  void resume() {
+    if (_isActive) _queue.resume();
+  }
 }

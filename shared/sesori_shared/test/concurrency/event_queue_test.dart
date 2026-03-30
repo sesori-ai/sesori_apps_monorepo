@@ -731,6 +731,25 @@ void main() {
         );
         queue.dispose();
       });
+
+      test("stale subscription cancel does not detach newer listener", () async {
+        final log = <String>[];
+        final queue = EventQueue<String>();
+
+        final stale = queue.listen((e) async => log.add("v1:$e"));
+        stale.cancel();
+
+        final active = queue.listen((e) async => log.add("v2:$e"));
+        stale.cancel(); // stale — should be a no-op
+
+        queue.enqueue("a");
+        await pumpEventQueue();
+
+        expect(queue.hasListener, isTrue);
+        expect(log, ["v2:a"]);
+        active.cancel();
+        queue.dispose();
+      });
     });
   });
 }
