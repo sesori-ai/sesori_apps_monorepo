@@ -29,8 +29,8 @@ void main() {
       final alicePublic = await aliceKeyPair.extractPublicKey();
       final bobPublic = await bobKeyPair.extractPublicKey();
 
-      final aliceShared = await service.deriveSharedSecret(aliceKeyPair, bobPublic);
-      final bobShared = await service.deriveSharedSecret(bobKeyPair, alicePublic);
+      final aliceShared = await service.deriveSharedSecret(aliceKeyPair, peerPublicKey: bobPublic);
+      final bobShared = await service.deriveSharedSecret(bobKeyPair, peerPublicKey: alicePublic);
 
       final aliceBytes = await aliceShared.extractBytes();
       final bobBytes = await bobShared.extractBytes();
@@ -43,7 +43,7 @@ void main() {
       final peerKeyPair = await service.generateKeyPair();
       final peerPublic = await peerKeyPair.extractPublicKey();
 
-      final sharedSecret = await service.deriveSharedSecret(keyPair, peerPublic);
+      final sharedSecret = await service.deriveSharedSecret(keyPair, peerPublicKey: peerPublic);
       final encryptionKey = await service.deriveEncryptionKey(sharedSecret);
       final keyBytes = await encryptionKey.extractBytes();
 
@@ -68,12 +68,12 @@ void main() {
       final keyPair = await service.generateKeyPair();
       final peerKeyPair = await service.generateKeyPair();
       final peerPublic = await peerKeyPair.extractPublicKey();
-      final sharedSecret = await service.deriveSharedSecret(keyPair, peerPublic);
+      final sharedSecret = await service.deriveSharedSecret(keyPair, peerPublicKey: peerPublic);
       final encryptionKey = await service.deriveEncryptionKey(sharedSecret);
 
       final plaintext = utf8.encode('{"type":"request","id":"1","method":"GET","path":"/health","headers":{}}');
-      final ciphertext = await service.encrypt(plaintext, encryptionKey);
-      final decrypted = await service.decrypt(ciphertext, encryptionKey);
+      final ciphertext = await service.encrypt(plaintext, key: encryptionKey);
+      final decrypted = await service.decrypt(ciphertext, key: encryptionKey);
 
       expect(decrypted, equals(plaintext));
     });
@@ -83,7 +83,7 @@ void main() {
       final key = SecretKey(rawKey.toList());
 
       final plaintext = utf8.encode("hello relay");
-      final ciphertext = await service.encrypt(plaintext, key);
+      final ciphertext = await service.encrypt(plaintext, key: key);
 
       // nonce(24) + ciphertext(plaintext.length) + mac(16)
       expect(ciphertext.length, equals(24 + plaintext.length + 16));
@@ -94,10 +94,10 @@ void main() {
       final wrongKey = SecretKey(List.generate(32, (i) => 255 - i));
 
       final plaintext = utf8.encode("secret message");
-      final ciphertext = await service.encrypt(plaintext, rightKey);
+      final ciphertext = await service.encrypt(plaintext, key: rightKey);
 
       expect(
-        () => service.decrypt(ciphertext, wrongKey),
+        () => service.decrypt(ciphertext, key: wrongKey),
         throwsA(anything),
       );
     });
@@ -107,7 +107,7 @@ void main() {
       final tooShort = List<int>.filled(39, 0);
 
       expect(
-        () => service.decrypt(tooShort, key),
+        () => service.decrypt(tooShort, key: key),
         throwsA(isA<ArgumentError>()),
       );
     });
@@ -150,7 +150,7 @@ void main() {
       final keyPair = await service.generateKeyPair();
       final peerKeyPair = await service.generateKeyPair();
       final peerPublic = await peerKeyPair.extractPublicKey();
-      final sharedSecret = await service.deriveSharedSecret(keyPair, peerPublic);
+      final sharedSecret = await service.deriveSharedSecret(keyPair, peerPublicKey: peerPublic);
       final encryptionKey = await service.deriveEncryptionKey(sharedSecret);
 
       final encryptor = service.createSessionEncryptor(encryptionKey);

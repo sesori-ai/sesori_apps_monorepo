@@ -21,9 +21,9 @@ class RelayCryptoService {
   /// Derives a shared secret from own private key and peer's public key.
   /// Both sides derive the same shared secret via X25519 DH.
   Future<SecretKey> deriveSharedSecret(
-    SimpleKeyPair ownKeyPair,
-    SimplePublicKey peerPublicKey,
-  ) async {
+    SimpleKeyPair ownKeyPair, {
+    required SimplePublicKey peerPublicKey,
+  }) async {
     return _x25519.sharedSecretKey(
       keyPair: ownKeyPair,
       remotePublicKey: peerPublicKey,
@@ -47,7 +47,7 @@ class RelayCryptoService {
 
   /// Encrypts plaintext using XChaCha20-Poly1305.
   /// Returns: [24 bytes nonce][ciphertext + 16 byte auth tag]
-  Future<List<int>> encrypt(List<int> plaintext, SecretKey key) async {
+  Future<List<int>> encrypt(List<int> plaintext, {required SecretKey key}) async {
     final secretBox = await _cipher.encrypt(plaintext, secretKey: key);
 
     // Layout: nonce (24 bytes) + ciphertext + mac (16 bytes)
@@ -61,7 +61,7 @@ class RelayCryptoService {
   /// Decrypts ciphertext produced by [encrypt].
   /// Expects: [24 bytes nonce][ciphertext + 16 byte auth tag]
   /// Throws if authentication fails (tampered or wrong key).
-  Future<List<int>> decrypt(List<int> data, SecretKey key) async {
+  Future<List<int>> decrypt(List<int> data, {required SecretKey key}) async {
     if (data.length < 24 + 16) {
       throw ArgumentError(
         "Ciphertext too short: must be at least 40 bytes (24 nonce + 16 tag)",

@@ -12,7 +12,7 @@ sealed class FileDiff with _$FileDiff {
     required String after,
     required int additions,
     required int deletions,
-    FileDiffStatus? status,
+    required FileDiffStatus? status,
   }) = _FileDiff;
 
   factory FileDiff.fromJson(Map<String, dynamic> json) => _$FileDiffFromJson(json);

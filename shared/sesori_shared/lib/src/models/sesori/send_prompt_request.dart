@@ -8,8 +8,8 @@ part "send_prompt_request.g.dart";
 sealed class SendPromptRequest with _$SendPromptRequest {
   const factory SendPromptRequest({
     required List<PromptPart> parts,
-    String? agent,
-    PromptModel? model,
+    required String? agent,
+    required PromptModel? model,
   }) = _SendPromptRequest;
 
   factory SendPromptRequest.fromJson(Map<String, dynamic> json) => _$SendPromptRequestFromJson(json);

@@ -85,7 +85,7 @@ as String?,
 @JsonSerializable()
 
 class _Message implements Message {
-  const _Message({required this.role, required this.id, required this.sessionID, this.agent, this.modelID, this.providerID});
+  const _Message({required this.role, required this.id, required this.sessionID, required this.agent, required this.modelID, required this.providerID});
   factory _Message.fromJson(Map<String, dynamic> json) => _$MessageFromJson(json);
 
 @override final  String role;

@@ -1,3 +1,4 @@
+// ignore_for_file: no_slop_linter/avoid_as_cast, no_slop_linter/avoid_dynamic_type
 import 'package:sesori_shared/sesori_shared.dart';
 import 'package:test/test.dart';
 
@@ -76,6 +77,10 @@ void main() {
         id: 'ses_001',
         projectID: 'proj_001',
         directory: '/home/user/project',
+        parentID: null,
+        title: null,
+        time: null,
+        summary: null,
       );
       const event = SesoriSseEvent.sessionCreated(info: session);
       final json = event.toJson();
@@ -101,7 +106,10 @@ void main() {
         id: 'ses_002',
         projectID: 'proj_002',
         directory: '/home/user/other',
+        parentID: null,
         title: 'My Session',
+        time: null,
+        summary: null,
       );
       const event = SesoriSseEvent.sessionUpdated(info: session);
       final json = event.toJson();
@@ -125,6 +133,10 @@ void main() {
         id: 'ses_003',
         projectID: 'proj_003',
         directory: '/deleted/path',
+        parentID: null,
+        title: null,
+        time: null,
+        summary: null,
       );
       const event = SesoriSseEvent.sessionDeleted(info: session);
       final json = event.toJson();
@@ -146,6 +158,9 @@ void main() {
         id: 'msg_001',
         sessionID: 'ses_abc',
         role: 'assistant',
+        agent: null,
+        modelID: null,
+        providerID: null,
       );
       const event = SesoriSseEvent.messageUpdated(info: message);
       final json = event.toJson();
@@ -303,21 +318,21 @@ void main() {
   group('SesoriSessionEvent marker interface', () {
     test('sessionCreated implements SesoriSessionEvent', () {
       const created = SesoriSseEvent.sessionCreated(
-        info: Session(id: 'x', projectID: 'p', directory: '/d'),
+        info: Session(id: 'x', projectID: 'p', directory: '/d', parentID: null, title: null, time: null, summary: null),
       );
       expect(created, isA<SesoriSessionEvent>());
     });
 
     test('sessionUpdated implements SesoriSessionEvent', () {
       const updated = SesoriSseEvent.sessionUpdated(
-        info: Session(id: 'x', projectID: 'p', directory: '/d'),
+        info: Session(id: 'x', projectID: 'p', directory: '/d', parentID: null, title: null, time: null, summary: null),
       );
       expect(updated, isA<SesoriSessionEvent>());
     });
 
     test('sessionDeleted implements SesoriSessionEvent', () {
       const deleted = SesoriSseEvent.sessionDeleted(
-        info: Session(id: 'x', projectID: 'p', directory: '/d'),
+        info: Session(id: 'x', projectID: 'p', directory: '/d', parentID: null, title: null, time: null, summary: null),
       );
       expect(deleted, isA<SesoriSessionEvent>());
     });
@@ -332,7 +347,7 @@ void main() {
 
     test('messageUpdated implements SesoriSessionEvent', () {
       const event = SesoriSseEvent.messageUpdated(
-        info: Message(id: 'm', sessionID: 's', role: 'user'),
+        info: Message(id: 'm', sessionID: 's', role: 'user', agent: null, modelID: null, providerID: null),
       );
       expect(event, isA<SesoriSessionEvent>());
     });
@@ -437,21 +452,21 @@ void main() {
   group('wire-format type strings', () {
     test('sessionCreated uses session.created', () {
       final json = const SesoriSseEvent.sessionCreated(
-        info: Session(id: 'i', projectID: 'p', directory: '/d'),
+        info: Session(id: 'i', projectID: 'p', directory: '/d', parentID: null, title: null, time: null, summary: null),
       ).toJson();
       expect(json['type'], 'session.created');
     });
 
     test('sessionUpdated uses session.updated', () {
       final json = const SesoriSseEvent.sessionUpdated(
-        info: Session(id: 'i', projectID: 'p', directory: '/d'),
+        info: Session(id: 'i', projectID: 'p', directory: '/d', parentID: null, title: null, time: null, summary: null),
       ).toJson();
       expect(json['type'], 'session.updated');
     });
 
     test('sessionDeleted uses session.deleted', () {
       final json = const SesoriSseEvent.sessionDeleted(
-        info: Session(id: 'i', projectID: 'p', directory: '/d'),
+        info: Session(id: 'i', projectID: 'p', directory: '/d', parentID: null, title: null, time: null, summary: null),
       ).toJson();
       expect(json['type'], 'session.deleted');
     });
@@ -466,7 +481,7 @@ void main() {
 
     test('messageUpdated uses message.updated', () {
       final json = const SesoriSseEvent.messageUpdated(
-        info: Message(id: 'm', sessionID: 's', role: 'user'),
+        info: Message(id: 'm', sessionID: 's', role: 'user', agent: null, modelID: null, providerID: null),
       ).toJson();
       expect(json['type'], 'message.updated');
     });

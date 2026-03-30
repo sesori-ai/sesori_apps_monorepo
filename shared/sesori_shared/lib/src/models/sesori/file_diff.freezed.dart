@@ -85,7 +85,7 @@ as FileDiffStatus?,
 @JsonSerializable()
 
 class _FileDiff implements FileDiff {
-  const _FileDiff({required this.file, required this.before, required this.after, required this.additions, required this.deletions, this.status});
+  const _FileDiff({required this.file, required this.before, required this.after, required this.additions, required this.deletions, required this.status});
   factory _FileDiff.fromJson(Map<String, dynamic> json) => _$FileDiffFromJson(json);
 
 @override final  String file;

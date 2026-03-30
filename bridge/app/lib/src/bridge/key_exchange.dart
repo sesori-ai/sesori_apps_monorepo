@@ -35,7 +35,7 @@ class KeyExchangeManager {
 
     final sharedSecret = await _cryptoService.deriveSharedSecret(
       bridgeKeyPair,
-      phonePublicKey,
+      peerPublicKey: phonePublicKey,
     );
     final ephemeralKey = await _cryptoService.deriveEncryptionKey(sharedSecret);
 
@@ -46,7 +46,7 @@ class KeyExchangeManager {
     final readyJSON = utf8.encode(jsonEncode(readyMessage.toJson()));
 
     final encryptor = _cryptoService.createSessionEncryptor(ephemeralKey);
-    final encryptedFrame = await frame(readyJSON, encryptor);
+    final encryptedFrame = await frame(readyJSON, encryptor: encryptor);
 
     _pendingExchanges.remove(connID);
     return [...bridgePublicKeyBytes, ...encryptedFrame];

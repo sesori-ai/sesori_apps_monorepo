@@ -198,6 +198,7 @@ class ConnectionService {
           method: "GET",
           path: ApiPaths.health,
           headers: {},
+          body: null,
         ),
       );
 

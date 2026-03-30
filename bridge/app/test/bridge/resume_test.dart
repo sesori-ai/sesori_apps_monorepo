@@ -17,13 +17,13 @@ void main() {
       );
       final resumeFrame = await frame(
         utf8.encode(jsonEncode(const RelayMessage.resume().toJson())),
-        resumeEncryptor,
+        encryptor: resumeEncryptor,
       );
 
       final resumeDecryptor = crypto.createSessionEncryptor(
         SecretKey(List<int>.from(roomKey)),
       );
-      final resumeDecrypted = await unframe(resumeFrame, resumeDecryptor);
+      final resumeDecrypted = await unframe(resumeFrame, encryptor: resumeDecryptor);
       final resumeMsg = RelayMessage.fromJson(
         jsonDecode(utf8.decode(resumeDecrypted)) as Map<String, dynamic>,
       );
@@ -34,13 +34,13 @@ void main() {
       );
       final ackFrame = await frame(
         utf8.encode(jsonEncode(const RelayMessage.resumeAck().toJson())),
-        ackEncryptor,
+        encryptor: ackEncryptor,
       );
 
       final ackDecryptor = crypto.createSessionEncryptor(
         SecretKey(List<int>.from(roomKey)),
       );
-      final ackDecrypted = await unframe(ackFrame, ackDecryptor);
+      final ackDecrypted = await unframe(ackFrame, encryptor: ackDecryptor);
       final ackMsg = RelayMessage.fromJson(
         jsonDecode(utf8.decode(ackDecrypted)) as Map<String, dynamic>,
       );
@@ -55,11 +55,11 @@ void main() {
       final staleEncryptor = crypto.createSessionEncryptor(SecretKey(staleKey));
       final framed = await frame(
         utf8.encode(jsonEncode(const RelayMessage.resume().toJson())),
-        staleEncryptor,
+        encryptor: staleEncryptor,
       );
 
       final goodDecryptor = crypto.createSessionEncryptor(SecretKey(goodKey));
-      expect(() => unframe(framed, goodDecryptor), throwsA(isA<Object>()));
+      expect(() => unframe(framed, encryptor: goodDecryptor), throwsA(isA<Object>()));
     });
 
     test("frame starts with protocol version byte", () async {
@@ -70,7 +70,7 @@ void main() {
 
       final framed = await frame(
         utf8.encode(jsonEncode(const RelayMessage.resume().toJson())),
-        encryptor,
+        encryptor: encryptor,
       );
 
       expect(framed[0], equals(protocolVersion));

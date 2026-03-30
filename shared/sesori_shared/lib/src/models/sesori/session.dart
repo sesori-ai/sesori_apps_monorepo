@@ -10,10 +10,10 @@ sealed class Session with _$Session {
     required String id,
     required String projectID,
     required String directory,
-    String? parentID,
-    String? title,
-    SessionTime? time,
-    SessionSummary? summary,
+    required String? parentID,
+    required String? title,
+    required SessionTime? time,
+    required SessionSummary? summary,
   }) = _Session;
 
   factory Session.fromJson(Map<String, dynamic> json) => _$SessionFromJson(json);
@@ -24,7 +24,7 @@ sealed class SessionTime with _$SessionTime {
   const factory SessionTime({
     required int created,
     required int updated,
-    int? archived,
+    required int? archived,
   }) = _SessionTime;
 
   factory SessionTime.fromJson(Map<String, dynamic> json) => _$SessionTimeFromJson(json);
@@ -52,11 +52,11 @@ sealed class GlobalSession with _$GlobalSession {
     required String id,
     required String projectID,
     required String directory,
-    String? parentID,
-    String? title,
-    SessionTime? time,
-    SessionSummary? summary,
-    SessionProject? project,
+    required String? parentID,
+    required String? title,
+    required SessionTime? time,
+    required SessionSummary? summary,
+    required SessionProject? project,
   }) = _GlobalSession;
 
   factory GlobalSession.fromJson(Map<String, dynamic> json) => _$GlobalSessionFromJson(json);
@@ -70,7 +70,7 @@ sealed class GlobalSession with _$GlobalSession {
 sealed class SessionProject with _$SessionProject {
   const factory SessionProject({
     required String id,
-    String? name,
+    required String? name,
     required String worktree,
   }) = _SessionProject;
 

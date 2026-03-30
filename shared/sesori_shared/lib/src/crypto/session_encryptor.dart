@@ -17,12 +17,12 @@ class SessionEncryptor {
   /// Encrypts plaintext bytes using the session encryption key.
   /// Returns: [24 bytes nonce][ciphertext + 16 byte auth tag]
   Future<List<int>> encrypt(List<int> plaintext) {
-    return _cryptoService.encrypt(plaintext, _encryptionKey);
+    return _cryptoService.encrypt(plaintext, key: _encryptionKey);
   }
 
   /// Decrypts ciphertext using the session encryption key.
   /// Throws if authentication fails.
   Future<List<int>> decrypt(List<int> ciphertext) {
-    return _cryptoService.decrypt(ciphertext, _encryptionKey);
+    return _cryptoService.decrypt(ciphertext, key: _encryptionKey);
   }
 }

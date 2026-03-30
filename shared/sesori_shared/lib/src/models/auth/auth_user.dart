@@ -9,7 +9,7 @@ sealed class AuthUser with _$AuthUser {
     required String id,
     required String provider,
     required String providerUserId,
-    String? providerUsername,
+    required String? providerUsername,
   }) = _AuthUser;
 
   factory AuthUser.fromJson(Map<String, dynamic> json) => _$AuthUserFromJson(json);

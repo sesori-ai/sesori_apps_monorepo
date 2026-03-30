@@ -11,7 +11,7 @@ sealed class RelayMessage with _$RelayMessage {
     required String method,
     required String path,
     required Map<String, String> headers,
-    String? body,
+    required String? body,
   }) = RelayRequest;
 
   @FreezedUnionValue("response")
@@ -19,7 +19,7 @@ sealed class RelayMessage with _$RelayMessage {
     required String id,
     required int status,
     required Map<String, String> headers,
-    String? body,
+    required String? body,
   }) = RelayResponse;
 
   @FreezedUnionValue("sse_event")

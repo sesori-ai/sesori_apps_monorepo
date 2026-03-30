@@ -190,6 +190,7 @@ Session testSession({
     directory: "/home/user/my-project",
     parentID: parentID,
     title: title,
+    summary: null,
     time: SessionTime(
       created: createdAt ?? 1700000000000,
       updated: updatedAt ?? 1700000000000,
@@ -211,6 +212,9 @@ MessageWithParts testMessageWithParts({String? id}) {
       id: messageId,
       role: "assistant",
       sessionID: "session-1",
+      agent: null,
+      modelID: null,
+      providerID: null,
     ),
     parts: [
       MessagePart(
@@ -219,6 +223,14 @@ MessageWithParts testMessageWithParts({String? id}) {
         messageID: messageId,
         type: MessagePartType.text,
         text: "Hello, world!",
+        tool: null,
+        state: null,
+        prompt: null,
+        description: null,
+        agent: null,
+        agentName: null,
+        attempt: null,
+        retryError: null,
       ),
     ],
   );
@@ -298,7 +310,7 @@ SesoriQuestionAsked testMultiSseQuestionAsked({
 
 /// Returns a realistic [AgentInfo] instance.
 AgentInfo testAgentInfo() {
-  return const AgentInfo(name: "coder", description: "A coding assistant", mode: AgentMode.primary);
+  return const AgentInfo(name: "coder", description: "A coding assistant", model: null, variant: null, mode: AgentMode.primary);
 }
 
 /// Returns a realistic [ProviderListResponse] with one provider and one model.
@@ -315,6 +327,8 @@ ProviderListResponse testProviderListResponse() {
             id: "claude-3-5-sonnet",
             providerID: "anthropic",
             name: "Claude 3.5 Sonnet",
+            family: null,
+            releaseDate: null,
           ),
         },
       ),
@@ -330,4 +344,5 @@ AuthUser testAuthUser() {
     providerUserId: "12345678",
     providerUsername: "testuser",
   );
+
 }

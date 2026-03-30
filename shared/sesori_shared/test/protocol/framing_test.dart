@@ -15,7 +15,7 @@ void main() {
 
     test("frame() prepends version byte 0x01", () async {
       final plaintext = [1, 2, 3, 4, 5];
-      final framed = await frame(plaintext, encryptor);
+      final framed = await frame(plaintext, encryptor: encryptor);
 
       expect(framed[0], equals(0x01));
       expect(framed.length, greaterThan(1));
@@ -23,23 +23,23 @@ void main() {
 
     test("unframe(frame(plaintext)) round-trips correctly", () async {
       final plaintext = [10, 20, 30, 40, 50, 60, 70, 80];
-      final framed = await frame(plaintext, encryptor);
-      final recovered = await unframe(framed, encryptor);
+      final framed = await frame(plaintext, encryptor: encryptor);
+      final recovered = await unframe(framed, encryptor: encryptor);
 
       expect(recovered, equals(plaintext));
     });
 
     test("unframe() throws on empty data", () async {
-      expect(() => unframe([], encryptor), throwsA(isA<FormatException>()));
+      expect(() => unframe([], encryptor: encryptor), throwsA(isA<FormatException>()));
     });
 
     test("unframe() throws on wrong version byte", () async {
       final plaintext = [1, 2, 3];
-      final framed = await frame(plaintext, encryptor);
+      final framed = await frame(plaintext, encryptor: encryptor);
       final badVersionFrame = [0x02, ...framed.sublist(1)];
 
       expect(
-        () => unframe(badVersionFrame, encryptor),
+        () => unframe(badVersionFrame, encryptor: encryptor),
         throwsA(isA<FormatException>()),
       );
     });

@@ -108,7 +108,7 @@ $RelayMessageCopyWith(RelayMessage _, $Res Function(RelayMessage) __);
 @JsonSerializable()
 
 class RelayRequest implements RelayMessage {
-  const RelayRequest({required this.id, required this.method, required this.path, required final  Map<String, String> headers, this.body, final  String? $type}): _headers = headers,$type = $type ?? 'request';
+  const RelayRequest({required this.id, required this.method, required this.path, required final  Map<String, String> headers, required this.body, final  String? $type}): _headers = headers,$type = $type ?? 'request';
   factory RelayRequest.fromJson(Map<String, dynamic> json) => _$RelayRequestFromJson(json);
 
  final  String id;
@@ -195,7 +195,7 @@ as String?,
 @JsonSerializable()
 
 class RelayResponse implements RelayMessage {
-  const RelayResponse({required this.id, required this.status, required final  Map<String, String> headers, this.body, final  String? $type}): _headers = headers,$type = $type ?? 'response';
+  const RelayResponse({required this.id, required this.status, required final  Map<String, String> headers, required this.body, final  String? $type}): _headers = headers,$type = $type ?? 'response';
   factory RelayResponse.fromJson(Map<String, dynamic> json) => _$RelayResponseFromJson(json);
 
  final  String id;

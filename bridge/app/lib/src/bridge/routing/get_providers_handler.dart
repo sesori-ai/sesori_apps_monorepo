@@ -33,6 +33,7 @@ class GetProvidersHandler extends RequestHandler {
             providerID: p.id,
             name: m.name,
             family: m.family,
+            releaseDate: null,
           ),
       };
       return ProviderInfo(

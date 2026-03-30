@@ -347,7 +347,7 @@ Future<Map<String, dynamic>> _decryptEnvelope(
 ) async {
   final crypto = RelayCryptoService();
   final decryptor = crypto.createSessionEncryptor(SecretKey(roomKey));
-  final decrypted = await unframe(framed, decryptor);
+  final decrypted = await unframe(framed, encryptor: decryptor);
   return jsonDecode(utf8.decode(decrypted)) as Map<String, dynamic>;
 }
 

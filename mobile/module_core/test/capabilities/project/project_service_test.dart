@@ -23,7 +23,7 @@ void main() {
       const mockProject = Project(
         id: "proj-1",
         name: "My Project",
-        time: ProjectTime(created: 1000, updated: 2000),
+        time: ProjectTime(created: 1000, updated: 2000, initialized: null),
       );
 
       when(
@@ -56,7 +56,7 @@ void main() {
       const mockProject = Project(
         id: "proj-2",
         name: "Discovered Project",
-        time: ProjectTime(created: 1000, updated: 2000),
+        time: ProjectTime(created: 1000, updated: 2000, initialized: null),
       );
 
       when(
@@ -234,7 +234,7 @@ void main() {
       const mockProject = Project(
         id: "proj-1",
         name: "New Name",
-        time: ProjectTime(created: 1000, updated: 2000),
+        time: ProjectTime(created: 1000, updated: 2000, initialized: null),
       );
 
       when(

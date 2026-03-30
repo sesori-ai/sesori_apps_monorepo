@@ -228,7 +228,7 @@ class RelayClient {
     final encryptedFrame = firstEncryptedMessage.sublist(x25519KeyLength);
 
     final peerPublicKey = _cryptoService.decodePublicKeyFromBytes(bridgePublicKeyBytes);
-    final sharedSecret = await _cryptoService.deriveSharedSecret(localKeyPair, peerPublicKey);
+    final sharedSecret = await _cryptoService.deriveSharedSecret(localKeyPair, peerPublicKey: peerPublicKey);
     final encryptionKey = await _cryptoService.deriveEncryptionKey(sharedSecret);
     final ephemeralEncryptor = _cryptoService.createSessionEncryptor(encryptionKey);
 

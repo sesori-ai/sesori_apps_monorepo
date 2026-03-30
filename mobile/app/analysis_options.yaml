@@ -74,10 +74,6 @@ analyzer:
     # Allow having TODOs in the code.
     todo: ignore
 
-# plugins:
-#   no_slop_linter:
-#     path: ~/FlutterProjects/nft-craze-wallet/modules/no_slop_linter
-
 formatter:
   page_width: 120
   trailing_commas: preserve

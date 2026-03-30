@@ -25,9 +25,9 @@ sealed class ProviderModel with _$ProviderModel {
     required String id,
     required String providerID,
     required String name,
-    String? family,
+    required String? family,
     @Default("active") String status,
-    @JsonKey(name: "release_date") String? releaseDate,
+    @JsonKey(name: "release_date") required String? releaseDate,
   }) = _ProviderModel;
 
   factory ProviderModel.fromJson(Map<String, dynamic> json) => _$ProviderModelFromJson(json);

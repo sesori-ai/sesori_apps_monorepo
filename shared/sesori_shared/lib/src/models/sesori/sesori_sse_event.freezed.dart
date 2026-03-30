@@ -1527,7 +1527,7 @@ String toString() {
 @JsonSerializable()
 
 class SesoriPtyExited implements SesoriSseEvent {
-  const SesoriPtyExited({this.id, this.exitCode, final  String? $type}): $type = $type ?? 'pty.exited';
+  const SesoriPtyExited({required this.id, required this.exitCode, final  String? $type}): $type = $type ?? 'pty.exited';
   factory SesoriPtyExited.fromJson(Map<String, dynamic> json) => _$SesoriPtyExitedFromJson(json);
 
  final  String? id;
@@ -2404,7 +2404,7 @@ as String?,
 @JsonSerializable()
 
 class SesoriFileWatcherUpdated implements SesoriSseEvent {
-  const SesoriFileWatcherUpdated({this.file, this.event, final  String? $type}): $type = $type ?? 'file.watcher.updated';
+  const SesoriFileWatcherUpdated({required this.file, required this.event, final  String? $type}): $type = $type ?? 'file.watcher.updated';
   factory SesoriFileWatcherUpdated.fromJson(Map<String, dynamic> json) => _$SesoriFileWatcherUpdatedFromJson(json);
 
  final  String? file;
@@ -2518,7 +2518,7 @@ String toString() {
 @JsonSerializable()
 
 class SesoriLspClientDiagnostics implements SesoriSseEvent {
-  const SesoriLspClientDiagnostics({this.serverID, this.path, final  String? $type}): $type = $type ?? 'lsp.client.diagnostics';
+  const SesoriLspClientDiagnostics({required this.serverID, required this.path, final  String? $type}): $type = $type ?? 'lsp.client.diagnostics';
   factory SesoriLspClientDiagnostics.fromJson(Map<String, dynamic> json) => _$SesoriLspClientDiagnosticsFromJson(json);
 
  final  String? serverID;
@@ -2963,7 +2963,7 @@ as String?,
 @JsonSerializable()
 
 class SesoriTuiToastShow implements SesoriSseEvent {
-  const SesoriTuiToastShow({this.title, this.message, this.variant, final  String? $type}): $type = $type ?? 'tui.toast.show';
+  const SesoriTuiToastShow({required this.title, required this.message, required this.variant, final  String? $type}): $type = $type ?? 'tui.toast.show';
   factory SesoriTuiToastShow.fromJson(Map<String, dynamic> json) => _$SesoriTuiToastShowFromJson(json);
 
  final  String? title;

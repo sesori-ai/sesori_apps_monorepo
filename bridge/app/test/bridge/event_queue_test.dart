@@ -9,7 +9,8 @@ void main() {
     group("basic drain", () {
       test("enqueued events are dequeued in FIFO order", () async {
         final dequeued = <SesoriSseEvent>[];
-        final queue = EventQueue<SesoriSseEvent>(onDequeue: (event) async => dequeued.add(event));
+        final queue = EventQueue<SesoriSseEvent>();
+        queue.listen((event) async => dequeued.add(event));
 
         final first = _event("a");
         final second = _event("b");
@@ -24,9 +25,10 @@ void main() {
         expect(queue.length, equals(0));
       });
 
-      test("drain starts automatically on first enqueue", () async {
+      test("drain starts automatically when listener attached", () async {
         final dequeued = <SesoriSseEvent>[];
-        final queue = EventQueue<SesoriSseEvent>(onDequeue: (event) async => dequeued.add(event));
+        final queue = EventQueue<SesoriSseEvent>();
+        queue.listen((event) async => dequeued.add(event));
 
         final event = _event("x");
         queue.enqueue(event);
@@ -37,11 +39,10 @@ void main() {
 
       test("dequeue callback can serialize payload envelope", () async {
         final envelopes = <String>[];
-        final queue = EventQueue<SesoriSseEvent>(
-          onDequeue: (event) async {
-            envelopes.add(jsonEncode({"payload": event.toJson()}));
-          },
-        );
+        final queue = EventQueue<SesoriSseEvent>();
+        queue.listen((event) async {
+          envelopes.add(jsonEncode({"payload": event.toJson()}));
+        });
 
         final event = _event("serialized");
         queue.enqueue(event);
@@ -55,18 +56,16 @@ void main() {
 
       test("events enqueued during drain are picked up", () async {
         final dequeued = <SesoriSseEvent>[];
-        late EventQueue queue;
         final first = _event("first");
         final second = _event("second");
 
-        queue = EventQueue<SesoriSseEvent>(
-          onDequeue: (event) async {
-            dequeued.add(event);
-            if (identical(event, first)) {
-              queue.enqueue(second);
-            }
-          },
-        );
+        final queue = EventQueue<SesoriSseEvent>();
+        queue.listen((event) async {
+          dequeued.add(event);
+          if (identical(event, first)) {
+            queue.enqueue(second);
+          }
+        });
 
         queue.enqueue(first);
         await _pumpEventLoop();
@@ -80,12 +79,13 @@ void main() {
         final bad = _event("bad");
         final after = _event("after");
 
-        final queue = EventQueue<SesoriSseEvent>(
-          onDequeue: (event) async {
+        final queue = EventQueue<SesoriSseEvent>();
+        queue.listen(
+          (event) async {
             if (identical(event, bad)) throw Exception("fail");
             dequeued.add(event);
           },
-          onError: (_, _) {},
+          onError: (_, __) {},
         );
 
         queue.enqueue(good);
@@ -103,13 +103,13 @@ void main() {
         final poison = _event("poison");
         final healthy = _event("healthy");
 
-        final queue = EventQueue<SesoriSseEvent>(
-          onDequeue: (event) async {
+        final queue = EventQueue<SesoriSseEvent>(maxAttempts: 3);
+        queue.listen(
+          (event) async {
             if (identical(event, poison)) throw Exception("fail");
             dequeued.add(event);
           },
           onError: (event, _) => errors.add(event),
-          maxAttempts: 3,
         );
 
         queue.enqueue(poison);
@@ -135,11 +135,7 @@ void main() {
     group("maxSize", () {
       test("oldest events are dropped when maxSize is exceeded", () async {
         final dequeued = <SesoriSseEvent>[];
-        final queue = EventQueue<SesoriSseEvent>(
-          onDequeue: (event) async => dequeued.add(event),
-          maxSize: 3,
-          startPaused: true,
-        );
+        final queue = EventQueue<SesoriSseEvent>(maxSize: 3);
 
         final c = _event("c");
         final d = _event("d");
@@ -151,7 +147,7 @@ void main() {
         queue.enqueue(e);
 
         expect(queue.length, equals(3));
-        queue.resume();
+        queue.listen((event) async => dequeued.add(event));
         await _pumpEventLoop();
 
         expect(dequeued, equals([c, d, e]));
@@ -161,7 +157,8 @@ void main() {
     group("pause / resume", () {
       test("pause prevents dequeuing and resume drains backlog", () async {
         final dequeued = <SesoriSseEvent>[];
-        final queue = EventQueue<SesoriSseEvent>(onDequeue: (event) async => dequeued.add(event));
+        final queue = EventQueue<SesoriSseEvent>();
+        final sub = queue.listen((event) async => dequeued.add(event));
 
         final before = _event("before");
         final during = _event("during");
@@ -169,31 +166,28 @@ void main() {
         await _pumpEventLoop();
         expect(dequeued, equals([before]));
 
-        queue.pause();
+        sub.pause();
         queue.enqueue(during);
         await _pumpEventLoop();
 
         expect(dequeued, equals([before]));
         expect(queue.length, equals(1));
 
-        queue.resume();
+        sub.resume();
         await _pumpEventLoop();
         expect(dequeued, equals([before, during]));
       });
 
-      test("startPaused holds events until resume", () async {
+      test("buffered events flush when listener attaches", () async {
         final dequeued = <SesoriSseEvent>[];
-        final queue = EventQueue<SesoriSseEvent>(
-          onDequeue: (event) async => dequeued.add(event),
-          startPaused: true,
-        );
+        final queue = EventQueue<SesoriSseEvent>();
 
         final held = _event("held");
         queue.enqueue(held);
         await _pumpEventLoop();
         expect(dequeued, isEmpty);
 
-        queue.resume();
+        queue.listen((event) async => dequeued.add(event));
         await _pumpEventLoop();
         expect(dequeued, equals([held]));
       });
@@ -201,7 +195,7 @@ void main() {
 
     group("dispose", () {
       test("dispose clears pending events", () {
-        final queue = EventQueue<SesoriSseEvent>(onDequeue: (event) async {}, startPaused: true);
+        final queue = EventQueue<SesoriSseEvent>();
 
         queue.enqueue(_event("a"));
         queue.enqueue(_event("b"));
@@ -213,7 +207,8 @@ void main() {
 
       test("enqueue after dispose is a no-op", () async {
         final dequeued = <SesoriSseEvent>[];
-        final queue = EventQueue<SesoriSseEvent>(onDequeue: (event) async => dequeued.add(event));
+        final queue = EventQueue<SesoriSseEvent>();
+        queue.listen((event) async => dequeued.add(event));
 
         queue.dispose();
         queue.enqueue(_event("ghost"));
@@ -224,22 +219,44 @@ void main() {
       });
     });
 
-    group("onDequeue swap", () {
-      test("changing onDequeue before resume uses the new callback", () async {
+    group("listener swap (orphan pattern)", () {
+      test("cancel + listen uses the new callback for buffered events", () async {
         final log = <String>[];
-        final queue = EventQueue<SesoriSseEvent>(
-          onDequeue: (_) async => log.add("v1"),
-          startPaused: true,
-        );
+        final queue = EventQueue<SesoriSseEvent>();
 
         queue.enqueue(_event("a"));
         queue.enqueue(_event("b"));
-        queue.onDequeue = (_) async => log.add("v2");
 
-        queue.resume();
+        // Attach new listener — flushes buffer with v2
+        queue.listen((_) async => log.add("v2"));
         await _pumpEventLoop();
 
         expect(log, equals(["v2", "v2"]));
+      });
+
+      test("orphan queue buffers while detached, flushes on re-listen", () async {
+        final log = <String>[];
+        final queue = EventQueue<SesoriSseEvent>();
+
+        // Initial listener
+        final sub1 = queue.listen((_) async => log.add("v1"));
+        queue.enqueue(_event("a"));
+        await _pumpEventLoop();
+        expect(log, ["v1"]);
+
+        // Orphan: cancel listener
+        sub1.cancel();
+
+        // Events buffer while no listener
+        queue.enqueue(_event("b"));
+        queue.enqueue(_event("c"));
+        expect(queue.length, 2);
+
+        // Re-attach: new listener flushes buffer
+        queue.listen((_) async => log.add("v2"));
+        await _pumpEventLoop();
+
+        expect(log, ["v1", "v2", "v2"]);
       });
     });
   });

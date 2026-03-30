@@ -97,7 +97,7 @@ $AgentModelCopyWith<$Res>? get model {
 @JsonSerializable()
 
 class _AgentInfo implements AgentInfo {
-  const _AgentInfo({required this.name, this.description, this.model, this.variant, @JsonKey(unknownEnumValue: AgentMode.unknown) required this.mode, this.hidden = false});
+  const _AgentInfo({required this.name, required this.description, required this.model, required this.variant, @JsonKey(unknownEnumValue: AgentMode.unknown) required this.mode, this.hidden = false});
   factory _AgentInfo.fromJson(Map<String, dynamic> json) => _$AgentInfoFromJson(json);
 
 @override final  String name;
