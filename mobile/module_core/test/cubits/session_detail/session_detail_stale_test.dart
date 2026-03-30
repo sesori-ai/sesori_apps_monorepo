@@ -173,7 +173,7 @@ void main() {
 
       when(() => mockSessionService.listAgents()).thenAnswer(
         (_) async => ApiResponse.success([
-          const AgentInfo(name: "build", description: "build", mode: AgentMode.primary),
+          const AgentInfo(name: "build", description: "build", model: null, variant: null, mode: AgentMode.primary),
         ]),
       );
       when(() => mockSessionService.listProviders()).thenAnswer(
@@ -190,6 +190,8 @@ void main() {
                     id: "claude-3-5-sonnet",
                     providerID: "anthropic",
                     name: "Claude 3.5 Sonnet",
+                    family: null,
+                    releaseDate: null,
                   ),
                 },
               ),
@@ -425,14 +427,14 @@ void _stubLoadApis(MockSessionService service, {required String sessionId}) {
 
 MessageWithParts _messageWithParts({String messageId = "msg-1"}) {
   return MessageWithParts(
-    info: Message(id: messageId, role: "assistant", sessionID: "session-1"),
+    info: Message(id: messageId, role: "assistant", sessionID: "session-1", agent: null, modelID: null, providerID: null),
     parts: const [],
   );
 }
 
 List<AgentInfo> _agents() {
   return const [
-    AgentInfo(name: "coder", description: "A coding assistant", mode: AgentMode.primary),
+    AgentInfo(name: "coder", description: "A coding assistant", model: null, variant: null, mode: AgentMode.primary),
   ];
 }
 
@@ -449,6 +451,8 @@ ProviderListResponse _providers() {
             id: "claude-3-5-sonnet",
             providerID: "anthropic",
             name: "Claude 3.5 Sonnet",
+            family: null,
+            releaseDate: null,
           ),
         },
       ),

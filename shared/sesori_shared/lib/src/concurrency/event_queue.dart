@@ -1,33 +1,31 @@
 import "dart:async";
 import "dart:collection";
 
-/// A FIFO queue that drains events through [onDequeue], with pause/resume
-/// flow control.
+/// A buffered FIFO queue that delivers events sequentially to a single listener.
 ///
-/// Events are always dequeued in order. When paused, the drain loop holds
-/// per-entry until resumed — no events are skipped or reordered. When
-/// resumed, draining continues from where it left off.
+/// Events added via [enqueue] are buffered until a listener is attached with
+/// [listen]. Once attached, buffered events are flushed in order and new events
+/// are delivered immediately. If the listener is detached (via
+/// [EventQueueSubscription.cancel]), events resume buffering until a new
+/// listener is attached.
 ///
-/// If [onDequeue] throws, the event stays at the head for retry on the
+/// The listener callback is awaited before the next event is delivered,
+/// guaranteeing ordered, sequential processing.
+///
+/// If the listener throws, the event stays at the head for retry on the
 /// next drain cycle. After [maxAttempts] consecutive failures on the same
-/// event it is dropped (logged via [onError]) so a single poisoned event
+/// event it is dropped (logged via `onError`) so a single poisoned event
 /// cannot block the entire queue.
 ///
 /// Typical lifecycle:
-/// 1. Create with [onDequeue] callback and optional [maxSize]/[maxAttempts].
-/// 2. [enqueue] events — drain loop starts automatically.
-/// 3. [pause] to stop dequeuing (events keep accumulating).
-/// 4. [resume] to continue draining (backlog first, then new events).
-/// 5. [dispose] to release resources when no longer needed.
+/// 1. Create queue with optional [maxSize]/[maxAttempts].
+/// 2. [enqueue] events — they buffer until a listener is attached.
+/// 3. [listen] to start draining (flushes backlog, then processes new events).
+/// 4. [EventQueueSubscription.cancel] to detach — events buffer again.
+/// 5. [listen] again to re-attach a (possibly different) listener.
+/// 6. [dispose] to release resources when no longer needed.
 class EventQueue<T extends Object> {
-  /// Called for each dequeued event. Must complete before the next event
-  /// is dequeued to preserve ordering.
-  Future<void> Function(T event) onDequeue;
-
-  /// Called when [onDequeue] throws. Defaults to [print].
-  void Function(T event, Object error) onError;
-
-  /// Maximum number of events to retain. When exceeded, oldest events are
+  /// Maximum number of events to buffer. When exceeded, oldest events are
   /// dropped. `null` means unlimited.
   final int? maxSize;
 
@@ -35,60 +33,81 @@ class EventQueue<T extends Object> {
   /// it is dropped.
   final int maxAttempts;
 
-  final Queue<T> _events = Queue<T>();
+  final Queue<T> _buffer = Queue<T>();
   bool _draining = false;
-  bool _paused;
   bool _disposed = false;
-  Completer<void>? _resumeCompleter;
-
-  /// Consecutive failure count for the current head event.
   int _headAttempts = 0;
 
-  EventQueue({
-    required this.onDequeue,
-    this.maxSize,
-    this.maxAttempts = 5,
-    void Function(T, Object)? onError,
-    bool startPaused = false,
-  }) : onError = onError ?? _defaultOnError,
-       _paused = startPaused {
-    if (startPaused) {
-      _resumeCompleter = Completer<void>();
+  // Active listener state — all private.
+  Future<void> Function(T event)? _onData;
+  void Function(T event, Object error) _onError = _defaultOnError;
+  EventQueueSubscription<T>? _activeSubscription;
+
+  // Pause/resume (only meaningful while a listener is attached).
+  bool _paused = false;
+  Completer<void>? _resumeCompleter;
+
+  EventQueue({this.maxSize, this.maxAttempts = 5});
+
+  /// Attaches a listener that will receive buffered and future events.
+  ///
+  /// If events have been buffered while no listener was attached, they are
+  /// drained immediately (in order) through [onData].
+  ///
+  /// Only one listener can be active at a time. Cancel the returned
+  /// [EventQueueSubscription] before attaching a new listener.
+  EventQueueSubscription<T> listen(
+    Future<void> Function(T event) onData, {
+    void Function(T event, Object error)? onError,
+  }) {
+    if (_activeSubscription != null) {
+      throw StateError(
+        "EventQueue already has a listener. Cancel the existing subscription first.",
+      );
     }
+    if (_disposed) {
+      throw StateError("Cannot listen on a disposed EventQueue.");
+    }
+    _onData = onData;
+    _onError = onError ?? _defaultOnError;
+    _paused = false;
+    final subscription = EventQueueSubscription<T>._(this);
+    _activeSubscription = subscription;
+
+    if (_buffer.isNotEmpty && !_draining) {
+      unawaited(_drain());
+    }
+    return subscription;
   }
 
-  static void _defaultOnError<T>(T event, Object error) {
-    final eventData = event.toString();
-    final preview = eventData.length > 80 ? "${eventData.substring(0, 80)}..." : eventData;
-    // ignore: avoid_print
-    print("EventQueue: onDequeue failed: $error (event: $preview)");
-  }
+  /// Whether a listener is currently attached.
+  bool get hasListener => _activeSubscription != null;
 
-  /// Adds [eventData] to the back of the queue.
+  /// Adds [event] to the back of the queue.
   ///
   /// If [maxSize] is set and exceeded, the oldest event is dropped.
-  /// If the queue is not paused and not already draining, the drain loop
-  /// is started automatically.
+  /// If a listener is attached and the queue is not paused, the drain loop
+  /// starts automatically. If no listener is attached, the event is buffered.
   void enqueue(T event) {
     if (_disposed) return;
-    _events.addLast(event);
-    if (maxSize != null) {
-      while (_events.length > maxSize!) {
-        _events.removeFirst();
+    _buffer.addLast(event);
+    if (maxSize case final maxSize?) {
+      while (_buffer.length > maxSize) {
+        _buffer.removeFirst();
       }
     }
-    if (!_draining && !_paused) {
+    if (_onData != null && !_draining && !_paused) {
       unawaited(_drain());
     }
   }
 
   /// Pauses the drain loop. Events continue to accumulate but are not
-  /// dequeued until [resume] is called.
+  /// delivered until [resume] is called.
   ///
   /// The pause takes effect before the *next* event — the currently
-  /// in-flight [onDequeue] call (if any) will complete normally.
+  /// in-flight listener call (if any) will complete normally.
   void pause() {
-    if (_paused || _disposed) return;
+    if (_paused || _disposed || _activeSubscription == null) return;
     _paused = true;
     _resumeCompleter = Completer<void>();
   }
@@ -98,11 +117,12 @@ class EventQueue<T extends Object> {
   void resume() {
     if (!_paused) return;
     _paused = false;
-    if (_resumeCompleter != null && !_resumeCompleter!.isCompleted) {
-      _resumeCompleter!.complete();
+    final resumeCompleter = _resumeCompleter;
+    if (resumeCompleter != null && !resumeCompleter.isCompleted) {
+      resumeCompleter.complete();
     }
     _resumeCompleter = null;
-    if (!_draining && _events.isNotEmpty) {
+    if (!_draining && _buffer.isNotEmpty && _onData != null) {
       unawaited(_drain());
     }
   }
@@ -113,50 +133,77 @@ class EventQueue<T extends Object> {
   /// exit cleanly. The queue should not be used after calling this.
   void dispose() {
     _disposed = true;
-    _events.clear();
+    _buffer.clear();
     _paused = false;
     _headAttempts = 0;
-    if (_resumeCompleter != null && !_resumeCompleter!.isCompleted) {
-      _resumeCompleter!.complete();
+    _onData = null;
+    _activeSubscription = null;
+    final resumeCompleter = _resumeCompleter;
+    if (resumeCompleter != null && !resumeCompleter.isCompleted) {
+      resumeCompleter.complete();
     }
     _resumeCompleter = null;
   }
 
-  /// Number of events currently in the queue.
-  int get length => _events.length;
+  /// Number of events currently buffered.
+  int get length => _buffer.length;
 
   /// Whether the queue is currently paused.
   bool get isPaused => _paused;
 
   // ---------------------------------------------------------------------------
 
+  void _detach() {
+    _onData = null;
+    _onError = _defaultOnError;
+    _activeSubscription = null;
+    _paused = false;
+    final resumeCompleter = _resumeCompleter;
+    if (resumeCompleter != null && !resumeCompleter.isCompleted) {
+      resumeCompleter.complete();
+    }
+    _resumeCompleter = null;
+  }
+
+  // ignore: no_slop_linter/prefer_required_named_parameters
+  static void _defaultOnError<T>(T event, Object error) {
+    final eventData = event.toString();
+    final preview = eventData.length > 80 ? "${eventData.substring(0, 80)}..." : eventData;
+    // ignore: avoid_print
+    print("EventQueue: drain failed: ${error.toString()} (event: $preview)");
+  }
+
   Future<void> _drain() async {
     if (_draining) return;
     _draining = true;
 
     try {
-      while (_events.isNotEmpty && !_disposed) {
-        // Per-entry pause check: hold here until resumed or disposed.
+      while (_buffer.isNotEmpty && !_disposed) {
+        // No listener? Stop draining — events stay buffered.
+        if (_onData == null) break;
+
+        // Paused? Hold here until resumed, detached, or disposed.
         if (_paused) {
           final completer = _resumeCompleter;
           if (completer == null) break;
           await completer.future;
-          // After resume, re-check — queue may have been cleared by dispose.
           continue;
         }
 
-        final event = _events.first;
+        final onData = _onData;
+        if (onData == null) break;
+
+        final event = _buffer.first;
         try {
-          await onDequeue(event);
-          _events.removeFirst();
+          await onData(event);
+          _buffer.removeFirst();
           _headAttempts = 0;
         } catch (e) {
           _headAttempts++;
-          onError(event, e);
+          _onError(event, e);
 
           if (_headAttempts >= maxAttempts) {
-            // Poisoned event — drop it so the queue can make progress.
-            _events.removeFirst();
+            _buffer.removeFirst();
             _headAttempts = 0;
             continue;
           }
@@ -169,4 +216,22 @@ class EventQueue<T extends Object> {
       _draining = false;
     }
   }
+}
+
+/// Handle returned by [EventQueue.listen] to manage the subscription.
+///
+/// Call [cancel] to detach the listener — pending events remain buffered
+/// in the queue and will be delivered to the next listener.
+class EventQueueSubscription<T extends Object> {
+  final EventQueue<T> _queue;
+  EventQueueSubscription._(this._queue);
+
+  /// Detaches the listener. Pending events remain buffered in the queue.
+  void cancel() => _queue._detach();
+
+  /// Pauses event delivery. Events continue to buffer.
+  void pause() => _queue.pause();
+
+  /// Resumes event delivery.
+  void resume() => _queue.resume();
 }

@@ -10,9 +10,9 @@ sealed class Message with _$Message {
     required String role,
     required String id,
     required String sessionID,
-    String? agent,
-    String? modelID,
-    String? providerID,
+    required String? agent,
+    required String? modelID,
+    required String? providerID,
   }) = _Message;
 
   factory Message.fromJson(Map<String, dynamic> json) => _$MessageFromJson(json);

@@ -15,9 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$MessagePart {
 
- String get id; String get sessionID; String get messageID; MessagePartType get type; String? get text; String? get tool; ToolState? get state; String? get prompt; String? get description; String? get agent;// agent
- String? get agentName;// retry
- int? get attempt; String? get retryError;
+ String get id; String get sessionID; String get messageID; MessagePartType get type; String? get text; String? get tool; ToolState? get state; String? get prompt; String? get description; String? get agent; String? get agentName; int? get attempt; String? get retryError;
 /// Create a copy of MessagePart
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -106,7 +104,7 @@ $ToolStateCopyWith<$Res>? get state {
 @JsonSerializable()
 
 class _MessagePart implements MessagePart {
-  const _MessagePart({required this.id, required this.sessionID, required this.messageID, required this.type, this.text, this.tool, this.state, this.prompt, this.description, this.agent, this.agentName, this.attempt, this.retryError});
+  const _MessagePart({required this.id, required this.sessionID, required this.messageID, required this.type, required this.text, required this.tool, required this.state, required this.prompt, required this.description, required this.agent, required this.agentName, required this.attempt, required this.retryError});
   factory _MessagePart.fromJson(Map<String, dynamic> json) => _$MessagePartFromJson(json);
 
 @override final  String id;
@@ -119,9 +117,7 @@ class _MessagePart implements MessagePart {
 @override final  String? prompt;
 @override final  String? description;
 @override final  String? agent;
-// agent
 @override final  String? agentName;
-// retry
 @override final  int? attempt;
 @override final  String? retryError;
 
@@ -281,7 +277,7 @@ as String?,
 @JsonSerializable()
 
 class _ToolState implements ToolState {
-  const _ToolState({required this.status, this.title, this.output, this.error});
+  const _ToolState({required this.status, required this.title, required this.output, required this.error});
   factory _ToolState.fromJson(Map<String, dynamic> json) => _$ToolStateFromJson(json);
 
 @override final  String status;

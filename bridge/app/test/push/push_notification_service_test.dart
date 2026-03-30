@@ -15,7 +15,7 @@ void main() {
 
       harness.service.handleSseEvent(
         const SesoriSseEvent.messageUpdated(
-          info: Message(id: "msg-1", role: "user", sessionID: "session-a"),
+          info: Message(id: "msg-1", role: "user", sessionID: "session-a", agent: null, modelID: null, providerID: null),
         ),
       );
 
@@ -27,7 +27,7 @@ void main() {
 
       harness.service.handleSseEvent(
         const SesoriSseEvent.messageUpdated(
-          info: Message(id: "msg-1", role: "assistant", sessionID: "session-a"),
+          info: Message(id: "msg-1", role: "assistant", sessionID: "session-a", agent: null, modelID: null, providerID: null),
         ),
       );
 
@@ -148,7 +148,7 @@ void main() {
         );
         harness.service.handleSseEvent(
           const SesoriSseEvent.messageUpdated(
-            info: Message(id: "msg-1", role: "assistant", sessionID: "session-a"),
+            info: Message(id: "msg-1", role: "assistant", sessionID: "session-a", agent: null, modelID: null, providerID: null),
           ),
         );
         harness.service.handleSseEvent(
@@ -159,6 +159,14 @@ void main() {
               messageID: "msg-1",
               type: MessagePartType.text,
               text: "I implemented user auth using JWT, refresh tokens, secure cookies, and role checks.",
+              tool: null,
+              state: null,
+              prompt: null,
+              description: null,
+              agent: null,
+              agentName: null,
+              attempt: null,
+              retryError: null,
             ),
           ),
         );
@@ -333,7 +341,7 @@ void main() {
 
         harness.service.handleSseEvent(
           const SesoriSseEvent.messageUpdated(
-            info: Message(id: "msg-1", role: "assistant", sessionID: "session-a"),
+            info: Message(id: "msg-1", role: "assistant", sessionID: "session-a", agent: null, modelID: null, providerID: null),
           ),
         );
         harness.service.handleSseEvent(
@@ -344,6 +352,14 @@ void main() {
               messageID: "msg-1",
               type: MessagePartType.tool,
               text: "ignored",
+              tool: null,
+              state: null,
+              prompt: null,
+              description: null,
+              agent: null,
+              agentName: null,
+              attempt: null,
+              retryError: null,
             ),
           ),
         );
@@ -370,7 +386,7 @@ void main() {
 
         harness.service.handleSseEvent(
           const SesoriSseEvent.messageUpdated(
-            info: Message(id: "msg-1", role: "assistant", sessionID: "session-a"),
+            info: Message(id: "msg-1", role: "assistant", sessionID: "session-a", agent: null, modelID: null, providerID: null),
           ),
         );
         harness.service.handleSseEvent(
@@ -381,6 +397,14 @@ void main() {
               messageID: "msg-1",
               type: MessagePartType.text,
               text: "Done with migration, tests, docs, and verification checks.",
+              tool: null,
+              state: null,
+              prompt: null,
+              description: null,
+              agent: null,
+              agentName: null,
+              attempt: null,
+              retryError: null,
             ),
           ),
         );
@@ -769,5 +793,7 @@ Session _session({
     directory: directory,
     parentID: parentID,
     title: title,
+    time: null,
+    summary: null,
   );
 }

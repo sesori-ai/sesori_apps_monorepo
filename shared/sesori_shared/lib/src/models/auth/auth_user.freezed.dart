@@ -81,7 +81,7 @@ as String?,
 @JsonSerializable(createToJson: false)
 
 class _AuthUser implements AuthUser {
-  const _AuthUser({required this.id, required this.provider, required this.providerUserId, this.providerUsername});
+  const _AuthUser({required this.id, required this.provider, required this.providerUserId, required this.providerUsername});
   factory _AuthUser.fromJson(Map<String, dynamic> json) => _$AuthUserFromJson(json);
 
 @override final  String id;

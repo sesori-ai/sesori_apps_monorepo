@@ -598,5 +598,7 @@ Session _session({
     directory: directory,
     parentID: parentID,
     title: title,
+    time: null,
+    summary: null,
   );
 }

@@ -91,7 +91,9 @@ Session testSession({String? id, String? title, DateTime? archivedAt}) {
     id: id ?? "session-1",
     projectID: "project-1",
     directory: "/home/user/my-project",
+    parentID: null,
     title: title,
+    summary: null,
     time: SessionTime(
       created: 1700000000000,
       updated: 1700000000000,

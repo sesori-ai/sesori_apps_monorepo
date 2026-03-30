@@ -32,6 +32,7 @@ class GetCurrentProjectHandler extends RequestHandler {
         PluginProjectTime(:final created, :final updated) => ProjectTime(
           created: created,
           updated: updated,
+          initialized: null,
         ),
         null => null,
       },

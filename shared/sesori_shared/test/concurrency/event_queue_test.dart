@@ -4,7 +4,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 /// Yields to the event loop enough times for the drain loop to process
-/// all pending events whose [onDequeue] completes synchronously.
+/// all pending events whose listener completes synchronously.
 Future<void> pumpEventQueue([int times = 20]) async {
   for (var i = 0; i < times; i++) {
     await Future<void>.delayed(Duration.zero);
@@ -19,23 +19,22 @@ void main() {
     group("basic dequeue", () {
       test("processes a single enqueued event", () async {
         final processed = <String>[];
-        final queue = EventQueue<String>(
-          onDequeue: (e) async => processed.add(e),
-        );
+        final queue = EventQueue<String>();
+        final sub = queue.listen((e) async => processed.add(e));
 
         queue.enqueue("a");
         await pumpEventQueue();
 
         expect(processed, ["a"]);
         expect(queue.length, 0);
+        sub.cancel();
         queue.dispose();
       });
 
       test("processes multiple events in FIFO order", () async {
         final processed = <String>[];
-        final queue = EventQueue<String>(
-          onDequeue: (e) async => processed.add(e),
-        );
+        final queue = EventQueue<String>();
+        final sub = queue.listen((e) async => processed.add(e));
 
         queue.enqueue("a");
         queue.enqueue("b");
@@ -44,40 +43,34 @@ void main() {
 
         expect(processed, ["a", "b", "c"]);
         expect(queue.length, 0);
+        sub.cancel();
         queue.dispose();
       });
 
-      test("events enqueued during onDequeue handler are appended to the queue", () async {
+      test("events enqueued during listener are appended to the queue", () async {
         final processed = <String>[];
-        late EventQueue<String> queue;
-        queue = EventQueue<String>(
-          onDequeue: (e) async {
-            processed.add(e);
-            if (e == "a") {
-              queue.enqueue("d");
-            }
-          },
-        );
+        final queue = EventQueue<String>();
+        queue.listen((e) async {
+          processed.add(e);
+          if (e == "a") {
+            queue.enqueue("d");
+          }
+        });
 
         queue.enqueue("a");
         queue.enqueue("b");
         queue.enqueue("c");
         await pumpEventQueue();
 
-        // "d" is enqueued synchronously during onDequeue("a")'s body —
-        // which runs inside enqueue("a") before enqueue("b")/("c") execute.
-        // So the actual FIFO order in the internal queue is: a, d, b, c.
         expect(processed, ["a", "d", "b", "c"]);
         queue.dispose();
       });
 
-      test("drain auto-starts on first enqueue", () async {
+      test("drain auto-starts on first enqueue when listener attached", () async {
         final processed = <String>[];
-        final queue = EventQueue<String>(
-          onDequeue: (e) async => processed.add(e),
-        );
+        final queue = EventQueue<String>();
+        queue.listen((e) async => processed.add(e));
 
-        // No explicit drain call needed
         queue.enqueue("x");
         await pumpEventQueue();
 
@@ -85,21 +78,20 @@ void main() {
         queue.dispose();
       });
 
-      test("sequential onDequeue — second event waits for first to finish", () async {
+      test("sequential processing — second event waits for first to finish", () async {
         final order = <String>[];
         final gate = Completer<void>();
 
-        final queue = EventQueue<String>(
-          onDequeue: (e) async {
-            if (e == "slow") {
-              order.add("slow-start");
-              await gate.future;
-              order.add("slow-end");
-            } else {
-              order.add(e);
-            }
-          },
-        );
+        final queue = EventQueue<String>();
+        queue.listen((e) async {
+          if (e == "slow") {
+            order.add("slow-start");
+            await gate.future;
+            order.add("slow-end");
+          } else {
+            order.add(e);
+          }
+        });
 
         queue.enqueue("slow");
         queue.enqueue("fast");
@@ -117,39 +109,30 @@ void main() {
     });
 
     // -----------------------------------------------------------------------
-    // Pause / Resume
+    // Buffering (no listener)
     // -----------------------------------------------------------------------
-    group("pause / resume", () {
-      test("pause prevents dequeuing", () async {
-        final processed = <String>[];
-        final queue = EventQueue<String>(
-          onDequeue: (e) async => processed.add(e),
-        );
+    group("buffering", () {
+      test("events buffer when no listener is attached", () async {
+        final queue = EventQueue<String>();
 
-        queue.pause();
         queue.enqueue("a");
         queue.enqueue("b");
         await pumpEventQueue();
 
-        expect(processed, isEmpty);
+        expect(queue.hasListener, isFalse);
         expect(queue.length, 2);
-        expect(queue.isPaused, isTrue);
         queue.dispose();
       });
 
-      test("resume processes the backlog", () async {
+      test("listen() flushes buffered events", () async {
         final processed = <String>[];
-        final queue = EventQueue<String>(
-          onDequeue: (e) async => processed.add(e),
-        );
+        final queue = EventQueue<String>();
 
-        queue.pause();
         queue.enqueue("a");
         queue.enqueue("b");
-        await pumpEventQueue();
-        expect(processed, isEmpty);
+        expect(queue.length, 2);
 
-        queue.resume();
+        queue.listen((e) async => processed.add(e));
         await pumpEventQueue();
 
         expect(processed, ["a", "b"]);
@@ -157,21 +140,66 @@ void main() {
         queue.dispose();
       });
 
-      test("startPaused creates queue in paused state", () async {
+      test("cancel then re-listen flushes new buffer", () async {
         final processed = <String>[];
-        final queue = EventQueue<String>(
-          onDequeue: (e) async => processed.add(e),
-          startPaused: true,
-        );
+        final queue = EventQueue<String>();
 
-        expect(queue.isPaused, isTrue);
+        final sub1 = queue.listen((e) async => processed.add("v1:$e"));
         queue.enqueue("a");
+        await pumpEventQueue();
+        expect(processed, ["v1:a"]);
+
+        sub1.cancel();
+        queue.enqueue("b"); // buffered, no listener
+        queue.enqueue("c");
+        expect(queue.length, 2);
+
+        queue.listen((e) async => processed.add("v2:$e"));
+        await pumpEventQueue();
+
+        expect(processed, ["v1:a", "v2:b", "v2:c"]);
+        queue.dispose();
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // Pause / Resume
+    // -----------------------------------------------------------------------
+    group("pause / resume", () {
+      test("pause prevents dequeuing", () async {
+        final processed = <String>[];
+        final queue = EventQueue<String>();
+        final sub = queue.listen((e) async => processed.add(e));
+
+        sub.pause();
+        queue.enqueue("a");
+        queue.enqueue("b");
+        await pumpEventQueue();
+
+        expect(processed, isEmpty);
+        expect(queue.length, 2);
+        expect(queue.isPaused, isTrue);
+        sub.cancel();
+        queue.dispose();
+      });
+
+      test("resume processes the backlog", () async {
+        final processed = <String>[];
+        final queue = EventQueue<String>();
+        final sub = queue.listen((e) async => processed.add(e));
+
+        sub.pause();
+        queue.enqueue("a");
+        queue.enqueue("b");
         await pumpEventQueue();
         expect(processed, isEmpty);
 
-        queue.resume();
+        sub.resume();
         await pumpEventQueue();
-        expect(processed, ["a"]);
+
+        expect(processed, ["a", "b"]);
+        expect(queue.length, 0);
+        sub.cancel();
         queue.dispose();
       });
 
@@ -180,35 +208,27 @@ void main() {
         final firstStarted = Completer<void>();
         final firstGate = Completer<void>();
 
-        final queue = EventQueue<String>(
-          onDequeue: (e) async {
-            if (e == "a") {
-              firstStarted.complete();
-              await firstGate.future;
-            }
-            processed.add(e);
-          },
-        );
+        final queue = EventQueue<String>();
+        final sub = queue.listen((e) async {
+          if (e == "a") {
+            firstStarted.complete();
+            await firstGate.future;
+          }
+          processed.add(e);
+        });
 
         queue.enqueue("a");
         queue.enqueue("b");
 
-        // Wait for "a" to begin processing
         await firstStarted.future;
-
-        // Pause while "a" is in-flight
-        queue.pause();
-
-        // Let "a" finish
+        sub.pause();
         firstGate.complete();
         await pumpEventQueue();
 
-        // "a" completed, "b" held by pause
         expect(processed, ["a"]);
         expect(queue.length, 1);
 
-        // Resume to drain "b"
-        queue.resume();
+        sub.resume();
         await pumpEventQueue();
 
         expect(processed, ["a", "b"]);
@@ -217,81 +237,82 @@ void main() {
 
       test("multiple pause/resume cycles preserve order", () async {
         final processed = <String>[];
-        final queue = EventQueue<String>(
-          onDequeue: (e) async => processed.add(e),
-          startPaused: true,
-        );
+        final queue = EventQueue<String>();
+        final sub = queue.listen((e) async => processed.add(e));
 
+        // Pause immediately before any enqueue
+        sub.pause();
         queue.enqueue("a");
-        queue.resume();
+        sub.resume();
         await pumpEventQueue();
         expect(processed, ["a"]);
 
-        queue.pause();
+        sub.pause();
         queue.enqueue("b");
         queue.enqueue("c");
         await pumpEventQueue();
         expect(processed, ["a"]); // no change
 
-        queue.resume();
+        sub.resume();
         await pumpEventQueue();
         expect(processed, ["a", "b", "c"]);
 
-        queue.pause();
+        sub.pause();
         queue.enqueue("d");
-        queue.resume();
+        sub.resume();
         await pumpEventQueue();
         expect(processed, ["a", "b", "c", "d"]);
 
+        sub.cancel();
         queue.dispose();
       });
 
       test("resume when not paused is a no-op", () async {
         final processed = <String>[];
-        final queue = EventQueue<String>(
-          onDequeue: (e) async => processed.add(e),
-        );
+        final queue = EventQueue<String>();
+        final sub = queue.listen((e) async => processed.add(e));
 
         queue.resume(); // should not throw
         queue.enqueue("a");
         await pumpEventQueue();
         expect(processed, ["a"]);
+        sub.cancel();
         queue.dispose();
       });
 
       test("double pause is a no-op", () async {
-        final queue = EventQueue<String>(
-          onDequeue: (e) async {},
-          startPaused: true,
-        );
+        final queue = EventQueue<String>();
+        final sub = queue.listen((e) async {});
 
-        queue.pause(); // already paused — no-op
+        sub.pause();
+        sub.pause(); // already paused — no-op
         expect(queue.isPaused, isTrue);
 
-        queue.resume();
+        sub.resume();
         expect(queue.isPaused, isFalse);
+        sub.cancel();
         queue.dispose();
       });
 
       test("events accumulate during pause and drain in order on resume", () async {
         final processed = <String>[];
-        final queue = EventQueue<String>(
-          onDequeue: (e) async => processed.add(e),
-        );
+        final queue = EventQueue<String>();
+        final sub = queue.listen((e) async => processed.add(e));
 
-        queue.pause();
+        sub.pause();
         for (var i = 0; i < 50; i++) {
           queue.enqueue("event-$i");
         }
         expect(queue.length, 50);
 
-        queue.resume();
+        sub.resume();
         await pumpEventQueue(100);
 
         expect(processed.length, 50);
         for (var i = 0; i < 50; i++) {
           expect(processed[i], "event-$i");
         }
+        sub.cancel();
         queue.dispose();
       });
     });
@@ -302,18 +323,14 @@ void main() {
     group("maxSize", () {
       test("drops oldest events when maxSize exceeded", () async {
         final processed = <String>[];
-        final queue = EventQueue<String>(
-          onDequeue: (e) async => processed.add(e),
-          maxSize: 2,
-          startPaused: true,
-        );
+        final queue = EventQueue<String>(maxSize: 2);
 
         queue.enqueue("a");
         queue.enqueue("b");
         queue.enqueue("c"); // drops "a"
         expect(queue.length, 2);
 
-        queue.resume();
+        queue.listen((e) async => processed.add(e));
         await pumpEventQueue();
 
         expect(processed, ["b", "c"]);
@@ -322,18 +339,14 @@ void main() {
 
       test("maxSize 1 keeps only the latest event", () async {
         final processed = <String>[];
-        final queue = EventQueue<String>(
-          onDequeue: (e) async => processed.add(e),
-          maxSize: 1,
-          startPaused: true,
-        );
+        final queue = EventQueue<String>(maxSize: 1);
 
         queue.enqueue("a");
         queue.enqueue("b");
         queue.enqueue("c");
         expect(queue.length, 1);
 
-        queue.resume();
+        queue.listen((e) async => processed.add(e));
         await pumpEventQueue();
 
         expect(processed, ["c"]);
@@ -341,10 +354,7 @@ void main() {
       });
 
       test("null maxSize allows unlimited events", () {
-        final queue = EventQueue<String>(
-          onDequeue: (e) async {},
-          startPaused: true,
-        );
+        final queue = EventQueue<String>();
 
         for (var i = 0; i < 1000; i++) {
           queue.enqueue("event-$i");
@@ -353,13 +363,9 @@ void main() {
         queue.dispose();
       });
 
-      test("maxSize drops oldest from internal queue during enqueue", () async {
+      test("maxSize drops oldest from buffer during enqueue", () async {
         final processed = <String>[];
-        final queue = EventQueue<String>(
-          onDequeue: (e) async => processed.add(e),
-          maxSize: 3,
-          startPaused: true,
-        );
+        final queue = EventQueue<String>(maxSize: 3);
 
         queue.enqueue("a");
         queue.enqueue("b");
@@ -368,7 +374,7 @@ void main() {
         queue.enqueue("e"); // drops "b"
         expect(queue.length, 3);
 
-        queue.resume();
+        queue.listen((e) async => processed.add(e));
         await pumpEventQueue();
 
         expect(processed, ["c", "d", "e"]);
@@ -380,10 +386,11 @@ void main() {
     // Error handling & retry
     // -----------------------------------------------------------------------
     group("error handling", () {
-      test("onError called when onDequeue throws", () async {
+      test("onError called when listener throws", () async {
         final errors = <(String, Object)>[];
-        final queue = EventQueue<String>(
-          onDequeue: (e) async => throw Exception("fail"),
+        final queue = EventQueue<String>();
+        queue.listen(
+          (e) async => throw Exception("fail"),
           onError: (event, error) => errors.add((event, error)),
         );
 
@@ -397,10 +404,8 @@ void main() {
       });
 
       test("default onError does not throw", () async {
-        // Uses the built-in _defaultOnError — should just print
-        final queue = EventQueue<String>(
-          onDequeue: (e) async => throw Exception("oops"),
-        );
+        final queue = EventQueue<String>();
+        queue.listen((e) async => throw Exception("oops"));
 
         queue.enqueue("a");
         await pumpEventQueue(); // should not throw
@@ -410,8 +415,9 @@ void main() {
       test("failed event stays at head for retry on next drain trigger", () async {
         var failCount = 0;
         final processed = <String>[];
-        final queue = EventQueue<String>(
-          onDequeue: (e) async {
+        final queue = EventQueue<String>(maxAttempts: 5);
+        queue.listen(
+          (e) async {
             if (e == "flaky" && failCount < 2) {
               failCount++;
               throw Exception("transient");
@@ -419,20 +425,16 @@ void main() {
             processed.add(e);
           },
           onError: (_, __) {},
-          maxAttempts: 5,
         );
 
         queue.enqueue("flaky");
         await pumpEventQueue();
-        // Attempt 1 fails, drain breaks — "flaky" still at head
 
         queue.enqueue("trigger1");
         await pumpEventQueue();
-        // Attempt 2 fails, drain breaks
 
         queue.enqueue("trigger2");
         await pumpEventQueue();
-        // Attempt 3 succeeds (failCount == 2)
 
         expect(failCount, 2);
         expect(processed, contains("flaky"));
@@ -443,30 +445,26 @@ void main() {
       test("poison event dropped after maxAttempts consecutive failures", () async {
         final errorEvents = <String>[];
         final processed = <String>[];
-        final queue = EventQueue<String>(
-          onDequeue: (e) async {
+        final queue = EventQueue<String>(maxAttempts: 3);
+        queue.listen(
+          (e) async {
             if (e == "poison") throw Exception("always fails");
             processed.add(e);
           },
           onError: (event, _) => errorEvents.add(event),
-          maxAttempts: 3,
         );
 
         queue.enqueue("poison");
         queue.enqueue("good");
 
-        // Attempt 1: drain starts, "poison" fails, drain breaks
         await pumpEventQueue();
 
-        // Attempt 2: trigger new drain
         queue.enqueue("trigger1");
         await pumpEventQueue();
 
-        // Attempt 3: trigger new drain — maxAttempts reached, poison dropped
         queue.enqueue("trigger2");
         await pumpEventQueue();
 
-        // "poison" dropped; remaining events processed
         expect(errorEvents.where((e) => e == "poison").length, 3);
         expect(processed, contains("good"));
         expect(queue.length, 0);
@@ -475,13 +473,13 @@ void main() {
 
       test("after poison is dropped, queue continues with next event", () async {
         final processed = <String>[];
-        final queue = EventQueue<String>(
-          onDequeue: (e) async {
+        final queue = EventQueue<String>(maxAttempts: 1);
+        queue.listen(
+          (e) async {
             if (e == "bad") throw Exception("bad");
             processed.add(e);
           },
           onError: (_, __) {},
-          maxAttempts: 1, // drop immediately on first failure
         );
 
         queue.enqueue("bad");
@@ -489,18 +487,17 @@ void main() {
         queue.enqueue("good2");
         await pumpEventQueue();
 
-        // "bad" fails once → maxAttempts(1) reached → dropped → continue with rest
         expect(processed, ["good1", "good2"]);
         queue.dispose();
       });
 
       test("attempt counter resets after a successful dequeue", () async {
-        // First event fails twice then succeeds; second event should get fresh counter
         var firstAttempts = 0;
         var secondAttempts = 0;
         final processed = <String>[];
-        final queue = EventQueue<String>(
-          onDequeue: (e) async {
+        final queue = EventQueue<String>(maxAttempts: 5);
+        queue.listen(
+          (e) async {
             if (e == "first") {
               firstAttempts++;
               if (firstAttempts < 3) throw Exception("retry");
@@ -512,23 +509,19 @@ void main() {
             processed.add(e);
           },
           onError: (_, __) {},
-          maxAttempts: 5,
         );
 
         queue.enqueue("first");
         queue.enqueue("second");
 
-        // Pump through retries for "first" (needs 2 extra triggers)
         await pumpEventQueue();
         queue.enqueue("t1");
         await pumpEventQueue();
         queue.enqueue("t2");
         await pumpEventQueue();
 
-        // "first" eventually succeeds, then "second" starts with fresh counter
         expect(processed, contains("first"));
 
-        // Pump through retries for "second"
         queue.enqueue("t3");
         await pumpEventQueue();
         queue.enqueue("t4");
@@ -539,7 +532,7 @@ void main() {
       });
 
       test("maxAttempts defaults to 5", () {
-        final queue = EventQueue<String>(onDequeue: (e) async {});
+        final queue = EventQueue<String>();
         expect(queue.maxAttempts, 5);
         queue.dispose();
       });
@@ -550,10 +543,7 @@ void main() {
     // -----------------------------------------------------------------------
     group("dispose", () {
       test("clears pending events", () {
-        final queue = EventQueue<String>(
-          onDequeue: (e) async {},
-          startPaused: true,
-        );
+        final queue = EventQueue<String>();
 
         queue.enqueue("a");
         queue.enqueue("b");
@@ -565,9 +555,8 @@ void main() {
 
       test("enqueue after dispose is a no-op", () async {
         final processed = <String>[];
-        final queue = EventQueue<String>(
-          onDequeue: (e) async => processed.add(e),
-        );
+        final queue = EventQueue<String>();
+        queue.listen((e) async => processed.add(e));
 
         queue.dispose();
         queue.enqueue("a");
@@ -581,25 +570,21 @@ void main() {
         final processed = <String>[];
         final firstDone = Completer<void>();
 
-        final queue = EventQueue<String>(
-          onDequeue: (e) async {
-            processed.add(e);
-            if (e == "a") firstDone.complete();
-          },
-        );
+        final queue = EventQueue<String>();
+        final sub = queue.listen((e) async {
+          processed.add(e);
+          if (e == "a") firstDone.complete();
+        });
 
         queue.enqueue("a");
         queue.enqueue("b");
 
-        // Wait for "a" to be processed
         await firstDone.future;
 
-        // Pause — "b" is held
-        queue.pause();
+        sub.pause();
         await pumpEventQueue();
         expect(processed, ["a"]);
 
-        // Dispose while paused — should unblock drain, not process "b"
         queue.dispose();
         await pumpEventQueue();
 
@@ -611,15 +596,14 @@ void main() {
         final gate = Completer<void>();
 
         late EventQueue<String> queue;
-        queue = EventQueue<String>(
-          onDequeue: (e) async {
-            if (e == "a") {
-              await gate.future;
-              queue.dispose(); // dispose mid-drain
-            }
-            processed.add(e);
-          },
-        );
+        queue = EventQueue<String>();
+        queue.listen((e) async {
+          if (e == "a") {
+            await gate.future;
+            queue.dispose();
+          }
+          processed.add(e);
+        });
 
         queue.enqueue("a");
         queue.enqueue("b");
@@ -627,13 +611,11 @@ void main() {
         gate.complete();
         await pumpEventQueue();
 
-        // "a" handler ran (added after dispose call), "b" should NOT be processed
-        // because _disposed is true when the loop re-checks
         expect(processed, ["a"]);
       });
 
       test("pause after dispose is a no-op", () {
-        final queue = EventQueue<String>(onDequeue: (e) async {});
+        final queue = EventQueue<String>();
         queue.dispose();
         queue.pause(); // should not throw
       });
@@ -644,10 +626,7 @@ void main() {
     // -----------------------------------------------------------------------
     group("getters", () {
       test("length reflects pending event count", () {
-        final queue = EventQueue<String>(
-          onDequeue: (e) async {},
-          startPaused: true,
-        );
+        final queue = EventQueue<String>();
 
         expect(queue.length, 0);
         queue.enqueue("a");
@@ -658,71 +637,98 @@ void main() {
       });
 
       test("isPaused reflects pause state transitions", () {
-        final queue = EventQueue<String>(onDequeue: (e) async {});
+        final queue = EventQueue<String>();
+        final sub = queue.listen((e) async {});
 
         expect(queue.isPaused, isFalse);
-        queue.pause();
+        sub.pause();
         expect(queue.isPaused, isTrue);
-        queue.resume();
+        sub.resume();
         expect(queue.isPaused, isFalse);
+        sub.cancel();
         queue.dispose();
       });
 
       test("isPaused is false after dispose even if paused before", () {
-        final queue = EventQueue<String>(
-          onDequeue: (e) async {},
-          startPaused: true,
-        );
+        final queue = EventQueue<String>();
+        final sub = queue.listen((e) async {});
 
+        sub.pause();
         expect(queue.isPaused, isTrue);
         queue.dispose();
         expect(queue.isPaused, isFalse);
       });
+
+      test("hasListener reflects listener state", () {
+        final queue = EventQueue<String>();
+        expect(queue.hasListener, isFalse);
+
+        final sub = queue.listen((e) async {});
+        expect(queue.hasListener, isTrue);
+
+        sub.cancel();
+        expect(queue.hasListener, isFalse);
+        queue.dispose();
+      });
     });
 
     // -----------------------------------------------------------------------
-    // Callback replacement
+    // Listener replacement (detach + re-attach)
     // -----------------------------------------------------------------------
-    group("mutable callbacks", () {
-      test("onDequeue can be replaced at runtime", () async {
+    group("listener replacement", () {
+      test("cancel + listen attaches a new listener for buffered events", () async {
         final log = <String>[];
-        final queue = EventQueue<String>(
-          onDequeue: (e) async => log.add("v1:$e"),
-          startPaused: true,
-        );
+        final queue = EventQueue<String>();
 
-        queue.enqueue("a");
-        queue.onDequeue = (e) async => log.add("v2:$e");
+        queue.enqueue("a"); // buffered
+        final sub = queue.listen((e) async => log.add("v2:$e"));
         queue.enqueue("b");
 
-        queue.resume();
         await pumpEventQueue();
 
-        // Both events processed with v2 handler since drain hadn't started
+        // Both events processed with v2 listener
         expect(log, ["v2:a", "v2:b"]);
+        sub.cancel();
         queue.dispose();
       });
 
-      test("onError can be replaced at runtime", () async {
+      test("onError is replaced with new listener", () async {
         final errors1 = <String>[];
         final errors2 = <String>[];
-        final queue = EventQueue<String>(
-          onDequeue: (e) async => throw Exception("fail"),
+        final queue = EventQueue<String>(maxAttempts: 3);
+
+        var sub = queue.listen(
+          (e) async => throw Exception("fail"),
           onError: (e, _) => errors1.add(e),
-          maxAttempts: 3,
         );
 
         queue.enqueue("a");
         await pumpEventQueue();
         expect(errors1, ["a"]);
 
-        // Replace error handler
-        queue.onError = (e, _) => errors2.add(e);
+        // Replace listener with new error handler
+        sub.cancel();
+        sub = queue.listen(
+          (e) async => throw Exception("fail"),
+          onError: (e, _) => errors2.add(e),
+        );
         queue.enqueue("trigger");
         await pumpEventQueue();
 
-        // Second error goes to errors2
-        expect(errors2.where((e) => e == "a"), hasLength(1));
+        // New errors go to errors2
+        expect(errors2, isNotEmpty);
+        sub.cancel();
+        queue.dispose();
+      });
+
+      test("listen throws if subscription already active", () {
+        final queue = EventQueue<String>();
+        queue.listen((e) async {});
+
+        expect(
+          () => queue.listen((e) async {}),
+          throwsA(isA<StateError>()),
+        );
         queue.dispose();
       });
     });

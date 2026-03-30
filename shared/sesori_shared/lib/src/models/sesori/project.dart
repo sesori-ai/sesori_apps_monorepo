@@ -8,8 +8,8 @@ part "project.g.dart";
 sealed class Project with _$Project {
   const factory Project({
     required String id,
-    String? name,
-    ProjectTime? time,
+    required String? name,
+    required ProjectTime? time,
   }) = _Project;
 
   factory Project.fromJson(Map<String, dynamic> json) => _$ProjectFromJson(json);
@@ -20,7 +20,7 @@ sealed class ProjectTime with _$ProjectTime {
   const factory ProjectTime({
     required int created,
     required int updated,
-    int? initialized,
+    required int? initialized,
   }) = _ProjectTime;
 
   factory ProjectTime.fromJson(Map<String, dynamic> json) => _$ProjectTimeFromJson(json);

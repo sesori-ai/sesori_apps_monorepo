@@ -24,6 +24,7 @@ class SSEManager {
   static const int maxQueueSize = 50000;
 
   final Map<int, EventQueue<SesoriSseEvent>> _subscribers = {};
+  final Map<int, EventQueueSubscription<SesoriSseEvent>> _subscriptions = {};
   final Queue<({EventQueue<SesoriSseEvent> queue, DateTime expiry})> _orphanQueues =
       Queue<({EventQueue<SesoriSseEvent> queue, DateTime expiry})>();
 
@@ -49,46 +50,20 @@ class SSEManager {
     final orphan = _popValidOrphan();
 
     if (orphan != null) {
-      orphan.onDequeue = _createSendFunction(connID, client);
-      orphan.onError = (event, error) {
-        Log.w("[sse] failed to send event ${event.runtimeType} to connID=$connID: $error");
-        unawaited(
-          _failureReporter
-              .recordFailure(
-                error: error,
-                stackTrace: StackTrace.current,
-                uniqueIdentifier: "sse_send_failure:$connID",
-                fatal: false,
-                reason: "Failed to send SSE event to phone",
-                information: [event.runtimeType.toString(), "connID=$connID"],
-              )
-              .catchError((_) {}),
-        );
-      };
-      orphan.resume();
+      _subscriptions[connID] = orphan.listen(
+        _createSendFunction(connID, client),
+        onError: _createErrorHandler(connID),
+      );
       _subscribers[connID] = orphan;
       return;
     }
 
-    _subscribers[connID] = EventQueue<SesoriSseEvent>(
-      onDequeue: _createSendFunction(connID, client),
-      maxSize: maxQueueSize,
-      onError: (event, error) {
-        Log.w("[sse] failed to send event ${event.runtimeType} to connID=$connID: $error");
-        unawaited(
-          _failureReporter
-              .recordFailure(
-                error: error,
-                stackTrace: StackTrace.current,
-                uniqueIdentifier: "sse_send_failure:$connID",
-                fatal: false,
-                reason: "Failed to send SSE event to phone",
-                information: [event.runtimeType.toString(), "connID=$connID"],
-              )
-              .catchError((_) {}),
-        );
-      },
+    final queue = EventQueue<SesoriSseEvent>(maxSize: maxQueueSize);
+    _subscriptions[connID] = queue.listen(
+      _createSendFunction(connID, client),
+      onError: _createErrorHandler(connID),
     );
+    _subscribers[connID] = queue;
   }
 
   /// Removes [connID] from active subscribers.
@@ -98,9 +73,9 @@ class SSEManager {
   /// is resumed via [subscribePath] and all buffered events are delivered.
   void unsubscribe(int connID) {
     final queue = _subscribers.remove(connID);
+    _subscriptions.remove(connID)?.cancel();
     if (queue == null) return;
 
-    queue.pause();
     _orphanQueues.addLast((
       queue: queue,
       expiry: clock.now().add(replayWindow),
@@ -116,10 +91,10 @@ class SSEManager {
   /// continue to buffer incoming events and will be replayed when phones
   /// reconnect within [replayWindow].
   void orphanAll() {
-    for (final queue in _subscribers.values) {
-      queue.pause();
+    for (final entry in _subscribers.entries) {
+      _subscriptions.remove(entry.key)?.cancel();
       _orphanQueues.addLast((
-        queue: queue,
+        queue: entry.value,
         expiry: clock.now().add(replayWindow),
       ));
     }
@@ -128,6 +103,7 @@ class SSEManager {
 
   /// Clears all subscribers and orphan state.
   void stop() {
+    _subscriptions.clear();
     for (final sub in _subscribers.values) {
       sub.dispose();
     }
@@ -172,6 +148,24 @@ class SSEManager {
     return null;
   }
 
+  void Function(SesoriSseEvent, Object) _createErrorHandler(int connID) {
+    return (event, error) {
+      Log.w("[sse] failed to send event ${event.runtimeType} to connID=$connID: $error");
+      unawaited(
+        _failureReporter
+            .recordFailure(
+              error: error,
+              stackTrace: StackTrace.current,
+              uniqueIdentifier: "sse_send_failure:$connID",
+              fatal: false,
+              reason: "Failed to send SSE event to phone",
+              information: [event.runtimeType.toString(), "connID=$connID"],
+            )
+            .catchError((_) {}),
+      );
+    };
+  }
+
   Future<void> Function(SesoriSseEvent) _createSendFunction(
     int connID,
     RelayClient client,
@@ -197,7 +191,7 @@ class SSEManager {
       final payloadBytes = utf8.encode(jsonEncode(relayMessage.toJson()));
       Log.v("[sse] sending ${payloadBytes.length} bytes to connID=$connID");
       _onBytesSent(payloadBytes.length);
-      final framed = await frame(payloadBytes, encryptor!);
+      final framed = await frame(payloadBytes, encryptor: encryptor!);
       client.send(connID, framed);
     };
   }

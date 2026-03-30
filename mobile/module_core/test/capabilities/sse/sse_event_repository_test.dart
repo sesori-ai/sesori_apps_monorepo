@@ -335,7 +335,10 @@ void main() {
             id: "s1",
             projectID: "p1",
             directory: "/foo",
-            time: SessionTime(created: 1, updated: 2),
+            parentID: null,
+            title: null,
+            summary: null,
+            time: SessionTime(created: 1, updated: 2, archived: null),
           ),
         ),
       );

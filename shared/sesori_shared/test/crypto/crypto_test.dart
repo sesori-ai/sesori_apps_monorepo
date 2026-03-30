@@ -12,8 +12,8 @@ void main() {
       final pub1 = await kp1.extractPublicKey();
       final pub2 = await kp2.extractPublicKey();
 
-      final secret1 = await crypto.deriveSharedSecret(kp1, pub2);
-      final secret2 = await crypto.deriveSharedSecret(kp2, pub1);
+      final secret1 = await crypto.deriveSharedSecret(kp1, peerPublicKey: pub2);
+      final secret2 = await crypto.deriveSharedSecret(kp2, peerPublicKey: pub1);
 
       final bytes1 = await secret1.extractBytes();
       final bytes2 = await secret2.extractBytes();
@@ -25,7 +25,7 @@ void main() {
       final kp2 = await crypto.generateKeyPair();
       final pub2 = await kp2.extractPublicKey();
 
-      final secret = await crypto.deriveSharedSecret(kp1, pub2);
+      final secret = await crypto.deriveSharedSecret(kp1, peerPublicKey: pub2);
       final key = await crypto.deriveEncryptionKey(secret);
 
       expect((await key.extractBytes()).length, equals(32));
@@ -37,8 +37,8 @@ void main() {
       final pub1 = await kp1.extractPublicKey();
       final pub2 = await kp2.extractPublicKey();
 
-      final secret1 = await crypto.deriveSharedSecret(kp1, pub2);
-      final secret2 = await crypto.deriveSharedSecret(kp2, pub1);
+      final secret1 = await crypto.deriveSharedSecret(kp1, peerPublicKey: pub2);
+      final secret2 = await crypto.deriveSharedSecret(kp2, peerPublicKey: pub1);
 
       final key1 = await crypto.deriveEncryptionKey(secret1);
       final key2 = await crypto.deriveEncryptionKey(secret2);
@@ -52,10 +52,10 @@ void main() {
           "hello, world! this is a test message for XChaCha20-Poly1305"
               .codeUnits;
 
-      final ciphertext = await crypto.encrypt(plaintext, key);
+      final ciphertext = await crypto.encrypt(plaintext, key: key);
       expect(ciphertext, isNot(equals(plaintext)));
 
-      final decrypted = await crypto.decrypt(ciphertext, key);
+      final decrypted = await crypto.decrypt(ciphertext, key: key);
       expect(decrypted, equals(plaintext));
     });
 
@@ -64,9 +64,9 @@ void main() {
       final keyB = SecretKey(List<int>.generate(32, (i) => i + 1));
       final plaintext = "secret message".codeUnits;
 
-      final ciphertext = await crypto.encrypt(plaintext, keyA);
+      final ciphertext = await crypto.encrypt(plaintext, key: keyA);
 
-      expect(() => crypto.decrypt(ciphertext, keyB), throwsA(isA<Object>()));
+      expect(() => crypto.decrypt(ciphertext, key: keyB), throwsA(isA<Object>()));
     });
 
     test("SessionEncryptor round-trip", () async {

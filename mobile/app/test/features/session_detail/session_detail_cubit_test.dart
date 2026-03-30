@@ -414,6 +414,9 @@ void main() {
           id: "msg-new",
           role: "user",
           sessionID: sessionId,
+          agent: null,
+          modelID: null,
+          providerID: null,
         );
         sessionEvents.add(const SesoriMessageUpdated(info: message));
       },

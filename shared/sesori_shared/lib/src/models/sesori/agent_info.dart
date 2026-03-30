@@ -13,9 +13,9 @@ part "agent_info.g.dart";
 sealed class AgentInfo with _$AgentInfo {
   const factory AgentInfo({
     required String name,
-    String? description,
-    AgentModel? model,
-    String? variant,
+    required String? description,
+    required AgentModel? model,
+    required String? variant,
     @JsonKey(unknownEnumValue: AgentMode.unknown) required AgentMode mode,
     @Default(false) bool hidden,
   }) = _AgentInfo;

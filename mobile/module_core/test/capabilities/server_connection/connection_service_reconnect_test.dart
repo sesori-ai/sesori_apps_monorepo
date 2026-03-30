@@ -66,6 +66,7 @@ void main() {
         method: "GET",
         path: "/health",
         headers: {},
+        body: null,
       ),
     );
   });

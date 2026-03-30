@@ -94,7 +94,7 @@ $ProjectTimeCopyWith<$Res>? get time {
 @JsonSerializable()
 
 class _Project implements Project {
-  const _Project({required this.id, this.name, this.time});
+  const _Project({required this.id, required this.name, required this.time});
   factory _Project.fromJson(Map<String, dynamic> json) => _$ProjectFromJson(json);
 
 @override final  String id;
@@ -246,7 +246,7 @@ as int?,
 @JsonSerializable()
 
 class _ProjectTime implements ProjectTime {
-  const _ProjectTime({required this.created, required this.updated, this.initialized});
+  const _ProjectTime({required this.created, required this.updated, required this.initialized});
   factory _ProjectTime.fromJson(Map<String, dynamic> json) => _$ProjectTimeFromJson(json);
 
 @override final  int created;

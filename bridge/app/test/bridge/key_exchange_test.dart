@@ -167,11 +167,11 @@ Future<RelayReady> _decryptReady(
     bridgePublicKeyBytes,
     type: KeyPairType.x25519,
   );
-  final secret = await crypto.deriveSharedSecret(phoneKp, bridgePublicKey);
+  final secret = await crypto.deriveSharedSecret(phoneKp, peerPublicKey: bridgePublicKey);
   final key = await crypto.deriveEncryptionKey(secret);
   final encryptor = crypto.createSessionEncryptor(key);
 
-  final decrypted = await unframe(encryptedFrame, encryptor);
+  final decrypted = await unframe(encryptedFrame, encryptor: encryptor);
   final message = RelayMessage.fromJson(
     jsonDecode(utf8.decode(decrypted)) as Map<String, dynamic>,
   );

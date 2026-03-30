@@ -234,7 +234,7 @@ as String?,
 @JsonSerializable()
 
 class _ProviderModel implements ProviderModel {
-  const _ProviderModel({required this.id, required this.providerID, required this.name, this.family, this.status = "active", @JsonKey(name: "release_date") this.releaseDate});
+  const _ProviderModel({required this.id, required this.providerID, required this.name, required this.family, this.status = "active", @JsonKey(name: "release_date") required this.releaseDate});
   factory _ProviderModel.fromJson(Map<String, dynamic> json) => _$ProviderModelFromJson(json);
 
 @override final  String id;

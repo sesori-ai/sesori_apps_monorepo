@@ -94,7 +94,14 @@ void main() {
 
       tracker.handleEvent(
         const SesoriSseEvent.messageUpdated(
-          info: Message(id: "m-1", role: "assistant", sessionID: "session-a"),
+          info: Message(
+            id: "m-1",
+            role: "assistant",
+            sessionID: "session-a",
+            agent: null,
+            modelID: null,
+            providerID: null,
+          ),
         ),
       );
 
@@ -106,6 +113,14 @@ void main() {
             messageID: "m-1",
             type: MessagePartType.text,
             text: "assistant text",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
           ),
         ),
       );
@@ -118,7 +133,14 @@ void main() {
 
       tracker.handleEvent(
         const SesoriSseEvent.messageUpdated(
-          info: Message(id: "assistant-msg", role: "assistant", sessionID: "session-a"),
+          info: Message(
+            id: "assistant-msg",
+            role: "assistant",
+            sessionID: "session-a",
+            agent: null,
+            modelID: null,
+            providerID: null,
+          ),
         ),
       );
       tracker.handleEvent(
@@ -129,6 +151,14 @@ void main() {
             messageID: "assistant-msg",
             type: MessagePartType.text,
             text: "first",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
           ),
         ),
       );
@@ -140,6 +170,14 @@ void main() {
             messageID: "assistant-msg",
             type: MessagePartType.text,
             text: "latest",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
           ),
         ),
       );
@@ -397,7 +435,14 @@ void main() {
 
       tracker.handleEvent(
         const SesoriSseEvent.messageUpdated(
-          info: Message(id: "m-1", role: "assistant", sessionID: "session-a"),
+          info: Message(
+            id: "m-1",
+            role: "assistant",
+            sessionID: "session-a",
+            agent: null,
+            modelID: null,
+            providerID: null,
+          ),
         ),
       );
       tracker.handleEvent(
@@ -408,6 +453,14 @@ void main() {
             messageID: "m-1",
             type: MessagePartType.text,
             text: "hello",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
           ),
         ),
       );
@@ -470,7 +523,14 @@ void main() {
         )
         ..handleEvent(
           const SesoriSseEvent.messageUpdated(
-            info: Message(id: "m-1", role: "assistant", sessionID: "root"),
+            info: Message(
+              id: "m-1",
+              role: "assistant",
+              sessionID: "root",
+              agent: null,
+              modelID: null,
+              providerID: null,
+            ),
           ),
         )
         ..handleEvent(
@@ -481,6 +541,14 @@ void main() {
               messageID: "m-1",
               type: MessagePartType.text,
               text: "latest",
+              tool: null,
+              state: null,
+              prompt: null,
+              description: null,
+              agent: null,
+              agentName: null,
+              attempt: null,
+              retryError: null,
             ),
           ),
         );
@@ -571,7 +639,14 @@ void main() {
       tracker
         ..handleEvent(
           const SesoriSseEvent.messageUpdated(
-            info: Message(id: "m-1", role: "assistant", sessionID: "session-a"),
+            info: Message(
+              id: "m-1",
+              role: "assistant",
+              sessionID: "session-a",
+              agent: null,
+              modelID: null,
+              providerID: null,
+            ),
           ),
         )
         ..handleEvent(
@@ -582,6 +657,14 @@ void main() {
               messageID: "m-1",
               type: MessagePartType.tool,
               text: "should be ignored",
+              tool: null,
+              state: null,
+              prompt: null,
+              description: null,
+              agent: null,
+              agentName: null,
+              attempt: null,
+              retryError: null,
             ),
           ),
         );
@@ -595,7 +678,14 @@ void main() {
       tracker
         ..handleEvent(
           const SesoriSseEvent.messageUpdated(
-            info: Message(id: "m-1", role: "user", sessionID: "session-a"),
+            info: Message(
+              id: "m-1",
+              role: "user",
+              sessionID: "session-a",
+              agent: null,
+              modelID: null,
+              providerID: null,
+            ),
           ),
         )
         ..handleEvent(
@@ -606,6 +696,14 @@ void main() {
               messageID: "m-1",
               type: MessagePartType.text,
               text: "should be ignored",
+              tool: null,
+              state: null,
+              prompt: null,
+              description: null,
+              agent: null,
+              agentName: null,
+              attempt: null,
+              retryError: null,
             ),
           ),
         );
@@ -815,5 +913,7 @@ Session _session({
     directory: directory,
     parentID: parentID,
     title: title,
+    time: null,
+    summary: null,
   );
 }

@@ -376,7 +376,7 @@ class OrchestratorSession {
         List<int>? decrypted;
         Object? decryptError;
         try {
-          decrypted = await unframe(payload, encryptor);
+          decrypted = await unframe(payload, encryptor: encryptor);
         } catch (e) {
           decryptError = e;
         }
@@ -427,7 +427,7 @@ class OrchestratorSession {
         );
         List<int> encryptedAck;
         try {
-          encryptedAck = await frame(ackJSON, encryptor);
+          encryptedAck = await frame(ackJSON, encryptor: encryptor);
         } catch (_) {
           continue;
         }
@@ -510,7 +510,7 @@ class OrchestratorSession {
     final cryptoService = RelayCryptoService();
     final encryptionKey = SecretKey(List<int>.from(_roomKey));
     final encryptor = cryptoService.createSessionEncryptor(encryptionKey);
-    final framed = await frame(jsonBytes, encryptor);
+    final framed = await frame(jsonBytes, encryptor: encryptor);
     _client.send(connID, framed);
   }
 }

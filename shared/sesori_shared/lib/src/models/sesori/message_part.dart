@@ -39,17 +39,15 @@ sealed class MessagePart with _$MessagePart {
     required String sessionID,
     required String messageID,
     required MessagePartType type,
-    String? text,
-    String? tool,
-    ToolState? state,
-    String? prompt,
-    String? description,
-    String? agent,
-    // agent
-    String? agentName,
-    // retry
-    int? attempt,
-    String? retryError,
+    required String? text,
+    required String? tool,
+    required ToolState? state,
+    required String? prompt,
+    required String? description,
+    required String? agent,
+    required String? agentName,
+    required int? attempt,
+    required String? retryError,
   }) = _MessagePart;
 
   factory MessagePart.fromJson(Map<String, dynamic> json) => _$MessagePartFromJson(json);
@@ -59,9 +57,9 @@ sealed class MessagePart with _$MessagePart {
 sealed class ToolState with _$ToolState {
   const factory ToolState({
     required String status,
-    String? title,
-    String? output,
-    String? error,
+    required String? title,
+    required String? output,
+    required String? error,
   }) = _ToolState;
 
   factory ToolState.fromJson(Map<String, dynamic> json) => _$ToolStateFromJson(json);

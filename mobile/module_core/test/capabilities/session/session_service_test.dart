@@ -22,8 +22,10 @@ void main() {
         id: "s1",
         projectID: "p1",
         directory: "/tmp/project",
+        parentID: null,
         title: "Session",
-        time: SessionTime(created: 1, updated: 1),
+        summary: null,
+        time: SessionTime(created: 1, updated: 1, archived: null),
       );
 
       when(
@@ -63,8 +65,10 @@ void main() {
         id: "s1",
         projectID: "p1",
         directory: "/tmp/project",
+        parentID: null,
         title: "Session",
-        time: SessionTime(created: 1, updated: 1),
+        summary: null,
+        time: SessionTime(created: 1, updated: 1, archived: null),
       );
 
       when(

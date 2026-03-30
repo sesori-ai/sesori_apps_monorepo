@@ -41,6 +41,8 @@ void main() {
           body: jsonEncode(
             const SendPromptRequest(
               parts: [PromptPart.text(text: "Hello")],
+              agent: null,
+              model: null,
             ).toJson(),
           ),
         ),
@@ -62,6 +64,8 @@ void main() {
                 PromptPart.text(text: "Hello"),
                 PromptPart.text(text: "World"),
               ],
+              agent: null,
+              model: null,
             ).toJson(),
           ),
         ),
@@ -133,6 +137,8 @@ void main() {
           body: jsonEncode(
             const SendPromptRequest(
               parts: [PromptPart.text(text: "Hello")],
+              agent: null,
+              model: null,
             ).toJson(),
           ),
         ),

@@ -219,7 +219,7 @@ void main() {
 
       // Set up DB with different archived time
       sessionDao.setSession(
-        SessionDto(
+        const SessionDto(
           sessionId: "s1",
           projectId: "p1",
           worktreePath: null,
@@ -288,7 +288,7 @@ void main() {
 
       // Set up DB with null archived time
       sessionDao.setSession(
-        SessionDto(
+        const SessionDto(
           sessionId: "s1",
           projectId: "p1",
           worktreePath: null,
@@ -347,7 +347,7 @@ void main() {
 
       // s1: DB has different archived time
       sessionDao.setSession(
-        SessionDto(
+        const SessionDto(
           sessionId: "s1",
           projectId: "p1",
           worktreePath: null,
@@ -361,7 +361,7 @@ void main() {
       );
       // s2: DB has null archived time
       sessionDao.setSession(
-        SessionDto(
+        const SessionDto(
           sessionId: "s2",
           projectId: "p1",
           worktreePath: null,

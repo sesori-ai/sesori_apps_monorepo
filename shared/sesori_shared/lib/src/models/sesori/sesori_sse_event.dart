@@ -153,8 +153,8 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
 
   @FreezedUnionValue("pty.exited")
   const factory SesoriSseEvent.ptyExited({
-    String? id,
-    int? exitCode,
+    required String? id,
+    required int? exitCode,
   }) = SesoriPtyExited;
 
   @FreezedUnionValue("pty.deleted")
@@ -246,8 +246,8 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
 
   @FreezedUnionValue("file.watcher.updated")
   const factory SesoriSseEvent.fileWatcherUpdated({
-    String? file,
-    String? event,
+    required String? file,
+    required String? event,
   }) = SesoriFileWatcherUpdated;
 
   // ---------------------------------------------------------------------------
@@ -259,8 +259,8 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
 
   @FreezedUnionValue("lsp.client.diagnostics")
   const factory SesoriSseEvent.lspClientDiagnostics({
-    String? serverID,
-    String? path,
+    required String? serverID,
+    required String? path,
   }) = SesoriLspClientDiagnostics;
 
   // ---------------------------------------------------------------------------
@@ -307,9 +307,9 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
 
   @FreezedUnionValue("tui.toast.show")
   const factory SesoriSseEvent.tuiToastShow({
-    String? title,
-    String? message,
-    String? variant,
+    required String? title,
+    required String? message,
+    required String? variant,
   }) = SesoriTuiToastShow;
 
   // ---------------------------------------------------------------------------

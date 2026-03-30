@@ -110,7 +110,7 @@ $SessionSummaryCopyWith<$Res>? get summary {
 @JsonSerializable()
 
 class _Session implements Session {
-  const _Session({required this.id, required this.projectID, required this.directory, this.parentID, this.title, this.time, this.summary});
+  const _Session({required this.id, required this.projectID, required this.directory, required this.parentID, required this.title, required this.time, required this.summary});
   factory _Session.fromJson(Map<String, dynamic> json) => _$SessionFromJson(json);
 
 @override final  String id;
@@ -282,7 +282,7 @@ as int?,
 @JsonSerializable()
 
 class _SessionTime implements SessionTime {
-  const _SessionTime({required this.created, required this.updated, this.archived});
+  const _SessionTime({required this.created, required this.updated, required this.archived});
   factory _SessionTime.fromJson(Map<String, dynamic> json) => _$SessionTimeFromJson(json);
 
 @override final  int created;
@@ -603,7 +603,7 @@ $SessionProjectCopyWith<$Res>? get project {
 @JsonSerializable()
 
 class _GlobalSession implements GlobalSession {
-  const _GlobalSession({required this.id, required this.projectID, required this.directory, this.parentID, this.title, this.time, this.summary, this.project});
+  const _GlobalSession({required this.id, required this.projectID, required this.directory, required this.parentID, required this.title, required this.time, required this.summary, required this.project});
   factory _GlobalSession.fromJson(Map<String, dynamic> json) => _$GlobalSessionFromJson(json);
 
 @override final  String id;
@@ -789,7 +789,7 @@ as String,
 @JsonSerializable()
 
 class _SessionProject implements SessionProject {
-  const _SessionProject({required this.id, this.name, required this.worktree});
+  const _SessionProject({required this.id, required this.name, required this.worktree});
   factory _SessionProject.fromJson(Map<String, dynamic> json) => _$SessionProjectFromJson(json);
 
 @override final  String id;

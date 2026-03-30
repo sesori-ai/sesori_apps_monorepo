@@ -10,7 +10,7 @@ void main() {
   setUpAll(() {
     registerAllFallbackValues();
     registerFallbackValue(
-      const RelayRequest(id: "fake-id", method: "GET", path: "/", headers: {}),
+      const RelayRequest(id: "fake-id", method: "GET", path: "/", headers: {}, body: null),
     );
   });
 

@@ -22,6 +22,7 @@ DateTime? parseJwtExpiry(String token) {
     }
 
     final decoded = utf8.decode(base64Url.decode(payload));
+    // ignore: no_slop_linter/avoid_as_cast, no_slop_linter/avoid_dynamic_type
     final json = jsonDecode(decoded) as Map<String, dynamic>;
     final exp = json["exp"];
 

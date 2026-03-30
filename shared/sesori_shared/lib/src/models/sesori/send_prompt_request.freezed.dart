@@ -94,7 +94,7 @@ $PromptModelCopyWith<$Res>? get model {
 @JsonSerializable()
 
 class _SendPromptRequest implements SendPromptRequest {
-  const _SendPromptRequest({required final  List<PromptPart> parts, this.agent, this.model}): _parts = parts;
+  const _SendPromptRequest({required final  List<PromptPart> parts, required this.agent, required this.model}): _parts = parts;
   factory _SendPromptRequest.fromJson(Map<String, dynamic> json) => _$SendPromptRequestFromJson(json);
 
  final  List<PromptPart> _parts;

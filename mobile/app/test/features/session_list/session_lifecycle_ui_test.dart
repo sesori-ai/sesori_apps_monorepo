@@ -19,10 +19,6 @@ class MockSessionListCubit extends MockCubit<SessionListState> implements Sessio
   @override
   SessionCleanupRejection? get lastCleanupRejection => _lastCleanupRejection;
 
-  void setLastCleanupRejection(SessionCleanupRejection? rejection) {
-    _lastCleanupRejection = rejection;
-  }
-
   @override
   String get projectId => "project-1";
 }
