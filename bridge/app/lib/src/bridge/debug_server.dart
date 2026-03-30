@@ -55,7 +55,9 @@ class DebugServer {
     for (final client in clients) {
       try {
         await client.close();
-      } catch (_) {}
+      } catch (e) {
+        Log.d("stop: client close failed (ignored): $e");
+      }
     }
     final server = _server;
     _server = null;
@@ -145,12 +147,15 @@ class DebugServer {
       );
 
       await disconnected.future;
-    } catch (_) {
+    } catch (e) {
+      Log.d("SSE handler: error during client lifecycle (ignored): $e");
     } finally {
       _removeSseClient(response);
       try {
         await response.close();
-      } catch (_) {}
+      } catch (e) {
+        Log.d("SSE cleanup: response close failed (ignored): $e");
+      }
     }
   }
 
@@ -160,11 +165,14 @@ class DebugServer {
       try {
         client.write("data: $eventData\n\n");
         await client.flush();
-      } catch (_) {
+      } catch (e) {
+        Log.d("fan-out: client write/flush failed, removing: $e");
         _removeSseClient(client);
         try {
           await client.close();
-        } catch (_) {}
+        } catch (e) {
+          Log.d("fan-out cleanup: client close failed (ignored): $e");
+        }
       }
     }
   }

@@ -68,7 +68,9 @@ class RelayClient {
   Future<void> reconnect() async {
     try {
       await close();
-    } catch (_) {}
+    } catch (e) {
+      Log.d("reconnect: close failed (ignored): $e");
+    }
     await connect();
   }
 

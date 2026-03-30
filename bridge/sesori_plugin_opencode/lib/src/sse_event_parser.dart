@@ -1,5 +1,7 @@
 import "dart:convert";
 
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+
 import "models/sse_event_data.dart";
 
 /// Result of parsing a raw OpenCode SSE event string.
@@ -49,8 +51,9 @@ class SseEventParser {
       final SseEventData event;
       try {
         event = SseEventData.fromJson(merged);
-      } catch (_) {
+      } catch (e) {
         // Unknown or malformed event type - return null event, preserve raw
+        Log.w("SseEventParser: unknown event type '$type': $e");
         return SseParseResult(directory: directory, rawData: rawData);
       }
 
@@ -59,8 +62,9 @@ class SseEventParser {
         directory: directory,
         rawData: rawData,
       );
-    } catch (_) {
+    } catch (e) {
       // JSON decode failure or other unexpected error
+      Log.w("SseEventParser: failed to parse SSE frame: $e");
       return SseParseResult(rawData: rawData);
     }
   }

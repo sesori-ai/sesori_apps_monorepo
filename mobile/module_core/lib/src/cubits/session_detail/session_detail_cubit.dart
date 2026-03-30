@@ -10,7 +10,7 @@ import "../../capabilities/server_connection/models/sse_event.dart";
 import "../../capabilities/session/session_service.dart";
 import "../../logging/logging.dart";
 import "../../platform/notification_canceller.dart";
-import "prompt_send_queue.dart";
+import "prompt_send_service.dart";
 import "session_detail_state.dart";
 import "streaming_text_buffer.dart";
 
@@ -20,8 +20,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   final String _sessionId;
   final NotificationCanceller _notificationCanceller;
   final FailureReporter _failureReporter;
-  final PromptSendQueue _promptQueue = PromptSendQueue();
-  bool _isSending = false;
+  late final PromptSendService _sendService;
 
   late final StreamSubscription<SesoriSessionEvent> _eventSubscription;
   late final StreamSubscription<SseEvent> _globalEventSubscription;
@@ -48,6 +47,21 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
        _notificationCanceller = notificationCanceller,
        _failureReporter = failureReporter,
        super(const SessionDetailState.loading()) {
+    _sendService = PromptSendService(
+      service: _service,
+      sessionId: _sessionId,
+      onQueueChanged: _emitQueueUpdate,
+      stateProvider: () {
+        final current = state;
+        return (
+          agent: current is SessionDetailLoaded ? current.selectedAgent : null,
+          providerID: current is SessionDetailLoaded ? current.selectedProviderID : null,
+          modelID: current is SessionDetailLoaded ? current.selectedModelID : null,
+          isConnected: _isConnected,
+          isLoaded: current is SessionDetailLoaded && !isClosed,
+        );
+      },
+    );
     _streamingBuffer = StreamingTextBuffer(onFlush: _emitStreamingSnapshot);
     _eventSubscription = _connectionService.sessionEvents(_sessionId).listen(_handleEvent);
     _globalEventSubscription = _connectionService.events.listen(_handleGlobalEvent);
@@ -573,102 +587,35 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   /// connection is alive.
   void _tryDrainQueue() {
     if (isClosed) return;
-    if (_promptQueue.isEmpty) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
-    if (!_isConnected) return;
-    _sendNextQueued();
+    _sendService.drain();
   }
 
   Future<void> sendMessage(String text) async {
-    final trimmed = text.trim();
-    if (trimmed.isEmpty) return;
-
     final current = state;
-    if (current is SessionDetailLoaded) {
-      // Queue if connection is not active.
-      if (!_isConnected) {
-        _promptQueue.enqueue(trimmed);
-        _emitQueueUpdate(current);
-        return;
-      }
-
-      final result = await _service.sendMessage(
-        _sessionId,
-        trimmed,
-        agent: current.selectedAgent,
-        providerID: current.selectedProviderID,
-        modelID: current.selectedModelID,
-      );
-
-      // If the send failed (e.g. connection dropped mid-request), queue
-      // the message so it can be retried once the connection is restored.
-      if (result case ErrorResponse()) {
-        _promptQueue.requeue(trimmed);
-        _emitQueueUpdate();
-      }
-      return;
-    }
-
-    // State not yet loaded — queue the message so it isn't lost.
-    // It will drain via _tryDrainQueue once the session finishes loading.
-    _promptQueue.enqueue(trimmed);
+    await _sendService.sendMessage(
+      text: text,
+      agent: current is SessionDetailLoaded ? current.selectedAgent : null,
+      providerID: current is SessionDetailLoaded ? current.selectedProviderID : null,
+      modelID: current is SessionDetailLoaded ? current.selectedModelID : null,
+      isConnected: current is SessionDetailLoaded && _isConnected,
+    );
   }
 
   void cancelQueuedMessage(int index) {
     final current = state;
     if (current is! SessionDetailLoaded) return;
 
-    if (_promptQueue.cancel(index) != null) {
-      _emitQueueUpdate(current);
-    }
+    _sendService.cancelQueuedMessage(index);
   }
 
-  Future<void> _sendNextQueued() async {
-    if (_isSending) return;
-    if (!_isConnected) return;
-
-    final message = _promptQueue.dequeue();
-    if (message == null) return;
-
-    _isSending = true;
-    _emitQueueUpdate();
-
-    var sendSucceeded = false;
-    try {
-      final current = state;
-      final result = await _service.sendMessage(
-        _sessionId,
-        message,
-        agent: current is SessionDetailLoaded ? current.selectedAgent : null,
-        providerID: current is SessionDetailLoaded ? current.selectedProviderID : null,
-        modelID: current is SessionDetailLoaded ? current.selectedModelID : null,
-      );
-
-      // If send failed (e.g. connection dropped mid-request), re-queue at front.
-      if (result case ErrorResponse()) {
-        _promptQueue.requeue(message);
-        _emitQueueUpdate();
-      } else {
-        sendSucceeded = true;
-      }
-    } finally {
-      _isSending = false;
-    }
-
-    // Continue draining only if the send succeeded. On failure the message
-    // stays re-queued and will be retried on the next reconnect event.
-    if (sendSucceeded) {
-      _tryDrainQueue();
-    }
-  }
-
-  /// Syncs [_promptQueue] items into the cubit state.
+  /// Syncs queued prompt items into the cubit state.
   void _emitQueueUpdate([SessionDetailLoaded? known]) {
     if (isClosed) return;
     final current = known ?? state;
     if (current is! SessionDetailLoaded) return;
-    emit(current.copyWith(queuedMessages: _promptQueue.items));
+    emit(current.copyWith(queuedMessages: _sendService.queuedMessages));
   }
 
   // ---------------------------------------------------------------------------

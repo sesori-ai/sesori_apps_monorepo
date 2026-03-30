@@ -340,9 +340,10 @@ class RelayClient {
       return;
     }
 
-    if (_sessionEncryptor == null) {
-      if (_firstBinaryMessage != null && !_firstBinaryMessage!.isCompleted) {
-        _firstBinaryMessage!.complete(bytes);
+    final encryptor = _sessionEncryptor;
+    if (encryptor == null) {
+      if (_firstBinaryMessage case final completer? when !completer.isCompleted) {
+        completer.complete(bytes);
       } else {
         logw("Received extra binary frame before relay key exchange completion");
       }
@@ -350,7 +351,8 @@ class RelayClient {
     }
 
     try {
-      final relayMessage = await _decryptRelayMessage(bytes, _sessionEncryptor!);
+      final relayMessage = await _decryptRelayMessage(bytes, encryptor);
+      if (_disposed) return;
 
       switch (relayMessage) {
         case final RelayResponse response:

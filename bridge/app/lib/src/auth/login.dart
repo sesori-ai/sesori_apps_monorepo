@@ -167,7 +167,9 @@ Future<TokenData> login(String authBackendURL) async {
       );
       Log.i("Open this URL manually:");
       Log.i(initResp.authUrl);
-    } catch (_) {}
+    } catch (e) {
+      Log.w("Failed to request fallback auth URL: $e");
+    }
     Log.e(
       "Cannot complete browser login automatically without callback server.",
     );
