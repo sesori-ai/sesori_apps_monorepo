@@ -77,7 +77,7 @@ final appRouter = GoRouter(
     // Session restore: if on login and tokens exist, skip to projects
     if (state.matchedLocation == AppRouteDef.login.path) {
       final authRedirect = getIt<AuthRedirectService>();
-      return (await authRedirect.tryRestoreSession())?.path;
+      return (await authRedirect.tryRestoreSession())?.buildPath();
     }
 
     return null;

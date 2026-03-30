@@ -30,14 +30,14 @@ class AuthRedirectService {
 
   /// Exchanges an OAuth authorization code from a deep link callback
   /// and returns the route to navigate to.
-  Future<AppRouteDef?> handleOAuthCallback(Uri uri) async {
+  Future<AppRoute?> handleOAuthCallback(Uri uri) async {
     try {
       final code = uri.queryParameters["code"];
       final callbackState = uri.queryParameters["state"];
 
       if (code == null || callbackState == null || code.isEmpty || callbackState.isEmpty) {
         loge("OAuth callback missing code or state params");
-        return AppRouteDef.login;
+        return const AppRoute.login();
       }
 
       logd("Exchanging OAuth code for tokens");
@@ -46,21 +46,21 @@ class AuthRedirectService {
       await _autoConnectToRelay();
 
       logd("Login successful — navigating to projects");
-      return AppRouteDef.projects;
+      return const AppRoute.projects();
     } catch (e, st) {
       loge("OAuth code exchange failed", e, st);
-      return AppRouteDef.login;
+      return const AppRoute.login();
     }
   }
 
   /// Checks for stored tokens and tries to restore a previous session,
-  /// returning [AppRouteDef.projects] to skip login if successful.
-  Future<AppRouteDef?> tryRestoreSession() async {
+  /// returning [AppRoute.projects] to skip login if successful.
+  Future<AppRoute?> tryRestoreSession() async {
     final restored = await _authSession.restoreSession();
     if (restored) {
       logd("Session restored — auto-connecting to relay");
       await _autoConnectToRelay();
-      return AppRouteDef.projects;
+      return const AppRoute.projects();
     }
 
     return null;
