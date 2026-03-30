@@ -110,9 +110,10 @@ Worktrees: Always create new worktrees inside the `.worktrees/` directory at the
 | mobile pure Dart modules | `dart test` |
 
 ## File Size
-- Maximum file length: 250 lines per file
+- Maximum file length: 250 lines per production code file
 - If a file exceeds 250 lines, split it into smaller focused files (by use-case, component, or concern)
 - Prefer many small files over few large files
+- Test files are explicitly excluded from this limit
 
 ## Dart Coding Conventions
 
