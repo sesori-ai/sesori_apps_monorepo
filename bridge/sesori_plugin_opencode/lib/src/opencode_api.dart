@@ -5,9 +5,11 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "models/agent_info.dart";
 import "models/message_with_parts.dart";
+import "models/opencode_config.dart";
 import "models/pending_question.dart";
 import "models/project.dart";
 import "models/provider_info.dart";
+import "models/send_message_sync_body.dart";
 import "models/send_prompt_body.dart";
 import "models/session.dart";
 import "models/session_status.dart";
@@ -389,6 +391,46 @@ class OpenCodeApi {
     return decoded.map(
       (key, value) => MapEntry(key, SessionStatus.fromJson(value as Map<String, dynamic>)),
     );
+  }
+
+  Future<OpenCodeConfig> getConfig() async {
+    final response = await http.get(
+      Uri.parse("$serverURL/config"),
+      headers: _authHeaders,
+    );
+    _ensureSuccess(response, "GET /config");
+    return OpenCodeConfig.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  /// Sends a message to a session and blocks until the AI responds.
+  ///
+  /// Uses `POST /session/{id}/message` (synchronous variant) instead of
+  /// `prompt_async`. The response contains the assistant's message.
+  ///
+  /// Times out after 30 seconds.
+  Future<MessageWithParts> sendMessageSync({
+    required String sessionId,
+    required String directory,
+    required SendMessageSyncBody body,
+  }) async {
+    final client = http.Client();
+    try {
+      final response = await client
+          .post(
+            Uri.parse("$serverURL/session/$sessionId/message"),
+            headers: {
+              ..._authHeaders,
+              "content-type": "application/json",
+              _directoryOpenCodeHeader: directory,
+            },
+            body: jsonEncode(body.toJson()),
+          )
+          .timeout(const Duration(seconds: 30));
+      _ensureSuccess(response, "POST /session/$sessionId/message");
+      return MessageWithParts.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    } finally {
+      client.close();
+    }
   }
 
   static void _ensureSuccess(http.Response response, String endpoint) {

@@ -8,10 +8,12 @@ export "src/models/message.dart";
 export "src/models/message_part.dart";
 export "src/models/message_with_parts.dart";
 // Models
+export "src/models/opencode_config.dart";
 export "src/models/pending_question.dart";
 export "src/models/project.dart";
 export "src/models/provider_info.dart";
 export "src/models/question.dart";
+export "src/models/send_message_sync_body.dart";
 export "src/models/send_prompt_body.dart";
 export "src/models/session.dart";
 export "src/models/session_status.dart";
