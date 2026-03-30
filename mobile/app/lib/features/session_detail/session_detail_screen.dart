@@ -66,7 +66,9 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
   @override
   void initState() {
     super.initState();
-    _questionSub = context.read<SessionDetailCubit>().questionStream.listen(_onNewQuestion);
+    final cubit = context.read<SessionDetailCubit>();
+    _questionSub = cubit.questionStream.listen(_onNewQuestion);
+    cubit.clearNotifications();
   }
 
   @override
@@ -109,6 +111,7 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
   }
 
   void _showQuestionModal(SesoriQuestionAsked question) {
+    context.read<SessionDetailCubit>().clearNotifications();
     QuestionModal.show(
       context,
       question: question,
