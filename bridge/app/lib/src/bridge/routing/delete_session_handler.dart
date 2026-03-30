@@ -7,6 +7,7 @@ import "../persistence/daos/session_dao.dart";
 import "../persistence/tables/session_table.dart";
 import "../worktree_service.dart";
 import "request_handler.dart";
+import "worktree_cleanup.dart";
 
 const _idParam = "id";
 
@@ -54,35 +55,29 @@ class DeleteSessionHandler extends RequestHandler {
 
     final sessionDto = await _sessionDao.getSession(sessionId: sessionId);
     final wantsGitCleanup = deleteRequest.deleteWorktree || deleteRequest.deleteBranch;
-    ({String projectId, String worktreePath, String branchName})? cleanupTarget;
-
     if (wantsGitCleanup) {
       if (sessionDto case SessionDto(
         :final projectId,
         worktreePath: final worktreePath?,
         branchName: final branchName?,
       )) {
-        cleanupTarget = (
+        final cleanupResult = await performWorktreeCleanup(
+          worktreeService: _worktreeService,
+          sessionId: sessionId,
           projectId: projectId,
           worktreePath: worktreePath,
           branchName: branchName,
+          deleteWorktree: deleteRequest.deleteWorktree,
+          deleteBranch: deleteRequest.deleteBranch,
+          force: deleteRequest.force,
         );
-        if (deleteRequest.deleteWorktree && !deleteRequest.force) {
-          final safety = await _worktreeService.checkWorktreeSafety(
-            worktreePath: worktreePath,
-            expectedBranch: branchName,
+        if (cleanupResult case CleanupRejected(:final rejection)) {
+          return RelayResponse(
+            id: request.id,
+            status: 409,
+            headers: {"content-type": "application/json"},
+            body: jsonEncode(rejection.toJson()),
           );
-          if (safety case WorktreeUnsafe(:final issues)) {
-            final rejection = SessionCleanupRejection(
-              issues: _mapCleanupIssues(issues: issues),
-            );
-            return RelayResponse(
-              id: request.id,
-              status: 409,
-              headers: {"content-type": "application/json"},
-              body: jsonEncode(rejection.toJson()),
-            );
-          }
         }
       }
     }
@@ -92,37 +87,6 @@ class DeleteSessionHandler extends RequestHandler {
     } on PluginApiException catch (error) {
       if (error.statusCode != 404) {
         rethrow;
-      }
-    }
-
-    if (cleanupTarget case (
-      projectId: final projectId,
-      worktreePath: final worktreePath,
-      branchName: final branchName,
-    )) {
-      if (deleteRequest.deleteWorktree) {
-        final removed = await _worktreeService.removeWorktree(
-          projectPath: projectId,
-          worktreePath: worktreePath,
-          force: deleteRequest.force,
-        );
-        if (!removed) {
-          Log.w(
-            "DeleteSessionHandler: failed to remove worktree for session $sessionId at $worktreePath",
-          );
-        }
-      }
-      if (deleteRequest.deleteBranch) {
-        final deleted = await _worktreeService.deleteBranch(
-          projectPath: projectId,
-          branchName: branchName,
-          force: deleteRequest.deleteWorktree ? true : deleteRequest.force,
-        );
-        if (!deleted) {
-          Log.w(
-            "DeleteSessionHandler: failed to delete branch $branchName for session $sessionId",
-          );
-        }
       }
     }
 
@@ -136,20 +100,5 @@ class DeleteSessionHandler extends RequestHandler {
       headers: {},
       body: null,
     );
-  }
-
-  List<CleanupIssue> _mapCleanupIssues({required List<SafetyIssue> issues}) {
-    return issues
-        .map(
-          (issue) => switch (issue) {
-            UnstagedChanges() => const CleanupIssue.unstagedChanges(),
-            BranchMismatch(:final expected, :final actual) => CleanupIssue.branchMismatch(
-              expected: expected,
-              actual: actual,
-            ),
-            WorktreeNotFound() => const CleanupIssue.worktreeNotFound(),
-          },
-        )
-        .toList();
   }
 }

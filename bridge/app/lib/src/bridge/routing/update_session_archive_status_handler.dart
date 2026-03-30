@@ -9,6 +9,7 @@ import "../persistence/tables/session_table.dart";
 import "../worktree_service.dart";
 import "plugin_session_mapper.dart";
 import "request_handler.dart";
+import "worktree_cleanup.dart";
 
 const _idParam = "id";
 
@@ -81,16 +82,32 @@ class UpdateSessionArchiveStatusHandler extends RequestHandler {
 
     if (archiveRequest.archived) {
       final archivedAt = DateTime.now().millisecondsSinceEpoch;
-      final cleanupResult = await _cleanupWorktreeIfRequested(
-        request: request,
-        sessionId: sessionId,
-        sessionDto: sessionDto,
-        deleteWorktree: archiveRequest.deleteWorktree,
-        deleteBranch: archiveRequest.deleteBranch,
-        force: archiveRequest.force,
-      );
-      if (cleanupResult case final RelayResponse rejection) {
-        return rejection;
+      final shouldCleanupGit = archiveRequest.deleteWorktree || archiveRequest.deleteBranch;
+      if (shouldCleanupGit) {
+        if (sessionDto case SessionDto(
+          :final projectId,
+          worktreePath: final worktreePath?,
+          branchName: final branchName?,
+        )) {
+          final cleanupResult = await performWorktreeCleanup(
+            worktreeService: _worktreeService,
+            sessionId: sessionId,
+            projectId: projectId,
+            worktreePath: worktreePath,
+            branchName: branchName,
+            deleteWorktree: archiveRequest.deleteWorktree,
+            deleteBranch: archiveRequest.deleteBranch,
+            force: archiveRequest.force,
+          );
+          if (cleanupResult case CleanupRejected(:final rejection)) {
+            return RelayResponse(
+              id: request.id,
+              status: 409,
+              headers: {"content-type": "application/json"},
+              body: jsonEncode(rejection.toJson()),
+            );
+          }
+        }
       }
 
       final pluginSession = await _fetchPluginSession(
@@ -145,71 +162,6 @@ class UpdateSessionArchiveStatusHandler extends RequestHandler {
     return buildOkJsonResponse(request, jsonEncode(responseSession.toJson()));
   }
 
-  Future<RelayResponse?> _cleanupWorktreeIfRequested({
-    required RelayRequest request,
-    required String sessionId,
-    required SessionDto sessionDto,
-    required bool deleteWorktree,
-    required bool deleteBranch,
-    required bool force,
-  }) async {
-    final shouldCleanupGit = deleteWorktree || deleteBranch;
-    if (!shouldCleanupGit) {
-      return null;
-    }
-
-    final worktreePath = sessionDto.worktreePath;
-    final branchName = sessionDto.branchName;
-    if (worktreePath == null || branchName == null) {
-      return null;
-    }
-
-    if (deleteWorktree && !force) {
-      final safety = await _worktreeService.checkWorktreeSafety(
-        worktreePath: worktreePath,
-        expectedBranch: branchName,
-      );
-      if (safety case WorktreeUnsafe(:final issues)) {
-        final rejection = SessionCleanupRejection(
-          issues: _mapCleanupIssues(issues: issues),
-        );
-        return RelayResponse(
-          id: request.id,
-          status: 409,
-          headers: {"content-type": "application/json"},
-          body: jsonEncode(rejection.toJson()),
-        );
-      }
-    }
-
-    if (deleteWorktree) {
-      final removed = await _worktreeService.removeWorktree(
-        projectPath: sessionDto.projectId,
-        worktreePath: worktreePath,
-        force: force,
-      );
-      if (!removed) {
-        Log.w(
-          "UpdateSessionArchiveStatusHandler: removeWorktree failed for session=$sessionId worktreePath=$worktreePath",
-        );
-      }
-    }
-    if (deleteBranch) {
-      final branchDeleted = await _worktreeService.deleteBranch(
-        projectPath: sessionDto.projectId,
-        branchName: branchName,
-        force: deleteWorktree ? true : force,
-      );
-      if (!branchDeleted) {
-        Log.w(
-          "UpdateSessionArchiveStatusHandler: deleteBranch failed for session=$sessionId branch=$branchName",
-        );
-      }
-    }
-
-    return null;
-  }
-
   Future<PluginSession?> _fetchPluginSession({
     required String projectId,
     required String sessionId,
@@ -247,20 +199,5 @@ class UpdateSessionArchiveStatusHandler extends RequestHandler {
     return session.copyWith(
       time: time.copyWith(archived: archivedAt),
     );
-  }
-
-  List<CleanupIssue> _mapCleanupIssues({required List<SafetyIssue> issues}) {
-    return issues
-        .map(
-          (issue) => switch (issue) {
-            UnstagedChanges() => const CleanupIssue.unstagedChanges(),
-            BranchMismatch(:final expected, :final actual) => CleanupIssue.branchMismatch(
-              expected: expected,
-              actual: actual,
-            ),
-            WorktreeNotFound() => const CleanupIssue.worktreeNotFound(),
-          },
-        )
-        .toList();
   }
 }

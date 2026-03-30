@@ -106,7 +106,7 @@ void main() {
       expect(worktreeService.deleteBranchCallCount, equals(0));
       expect(plugin.lastDeleteSessionId, equals("s2"));
       expect(await db.sessionDao.getSession(sessionId: "s2"), isNull);
-      expect(operationLog, equals(["checkSafety", "pluginDelete", "removeWorktree"]));
+      expect(operationLog, equals(["checkSafety", "removeWorktree", "pluginDelete"]));
     });
 
     test("3) deleteBranch=true: deletes branch", () async {
@@ -143,7 +143,7 @@ void main() {
       expect(worktreeService.lastDeleteBranchForce, isFalse);
       expect(plugin.lastDeleteSessionId, equals("s3"));
       expect(await db.sessionDao.getSession(sessionId: "s3"), isNull);
-      expect(operationLog, equals(["pluginDelete", "deleteBranch"]));
+      expect(operationLog, equals(["deleteBranch", "pluginDelete"]));
     });
 
     test("4) deleteWorktree=true + deleteBranch=true: both cleanup operations run", () async {
@@ -179,7 +179,7 @@ void main() {
       expect(worktreeService.lastDeleteBranchForce, isTrue);
       expect(plugin.lastDeleteSessionId, equals("s4"));
       expect(await db.sessionDao.getSession(sessionId: "s4"), isNull);
-      expect(operationLog, equals(["checkSafety", "pluginDelete", "removeWorktree", "deleteBranch"]));
+      expect(operationLog, equals(["checkSafety", "removeWorktree", "deleteBranch", "pluginDelete"]));
     });
 
     test("5) deleteWorktree=true on dirty worktree, force=false: returns 409 rejection", () async {
@@ -271,7 +271,7 @@ void main() {
       expect(worktreeService.lastRemoveForce, isTrue);
       expect(plugin.lastDeleteSessionId, equals("s6"));
       expect(await db.sessionDao.getSession(sessionId: "s6"), isNull);
-      expect(operationLog, equals(["pluginDelete", "removeWorktree"]));
+      expect(operationLog, equals(["removeWorktree", "pluginDelete"]));
     });
 
     test("7) null worktreePath: skips git ops", () async {
@@ -334,7 +334,7 @@ void main() {
       expect(operationLog, equals(["pluginDelete"]));
     });
 
-    test("10) plugin delete non-404 failure: no git cleanup and DB row remains", () async {
+    test("10) plugin delete non-404 failure: cleanup already ran and DB row remains", () async {
       await _insertSession(
         db: db,
         sessionId: "s10",
@@ -365,10 +365,10 @@ void main() {
       );
 
       expect(worktreeService.checkCallCount, equals(1));
-      expect(worktreeService.removeCallCount, equals(0));
-      expect(worktreeService.deleteBranchCallCount, equals(0));
+      expect(worktreeService.removeCallCount, equals(1));
+      expect(worktreeService.deleteBranchCallCount, equals(1));
       expect(await db.sessionDao.getSession(sessionId: "s10"), isNotNull);
-      expect(operationLog, equals(["checkSafety", "pluginDelete"]));
+      expect(operationLog, equals(["checkSafety", "removeWorktree", "deleteBranch", "pluginDelete"]));
     });
   });
 }
