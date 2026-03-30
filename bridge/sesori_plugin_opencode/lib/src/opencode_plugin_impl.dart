@@ -504,4 +504,12 @@ class OpenCodePlugin implements BridgePlugin {
         )
         .toList();
   }
+
+  @override
+  Future<SessionMetadata?> generateSessionMetadata({
+    required String firstMessage,
+    required String directory,
+  }) async {
+    return null;
+  }
 }

@@ -358,6 +358,12 @@ class _FakeBridgePlugin implements BridgePlugin {
       const PluginProvidersResult(providers: []);
 
   @override
+  Future<SessionMetadata?> generateSessionMetadata({
+    required String firstMessage,
+    required String directory,
+  }) async => null;
+
+  @override
   Future<void> dispose() async {}
 
   void add(BridgeSseEvent event) => _controller.add(event);
@@ -487,6 +493,12 @@ class _TrackingBridgePlugin implements BridgePlugin {
   @override
   Future<PluginProvidersResult> getProviders({required bool connectedOnly}) async =>
       const PluginProvidersResult(providers: []);
+
+  @override
+  Future<SessionMetadata?> generateSessionMetadata({
+    required String firstMessage,
+    required String directory,
+  }) async => null;
 
   @override
   Future<void> dispose() async {}
