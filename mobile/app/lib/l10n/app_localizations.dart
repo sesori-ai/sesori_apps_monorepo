@@ -1087,12 +1087,6 @@ abstract class AppLocalizations {
   /// **'Worktree is on branch \'{actual}\' instead of expected \'{expected}\''**
   String sessionListCleanupIssueBranchMismatch(String actual, String expected);
 
-  /// No description provided for @sessionListCleanupIssueWorktreeNotFound.
-  ///
-  /// In en, this message translates to:
-  /// **'Worktree directory not found on disk'**
-  String get sessionListCleanupIssueWorktreeNotFound;
-
   /// No description provided for @sessionListDeleteFailed.
   ///
   /// In en, this message translates to:

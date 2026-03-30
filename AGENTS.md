@@ -109,6 +109,11 @@ Worktrees: Always create new worktrees inside the `.worktrees/` directory at the
 | mobile/app | `flutter test` |
 | mobile pure Dart modules | `dart test` |
 
+## File Size
+- Maximum file length: 250 lines per file
+- If a file exceeds 250 lines, split it into smaller focused files (by use-case, component, or concern)
+- Prefer many small files over few large files
+
 ## Dart Coding Conventions
 
 - Always use **named arguments with the `required` keyword**, including for nullable parameters. Never use positional arguments.

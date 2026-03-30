@@ -562,9 +562,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get sessionListCleanupIssueWorktreeNotFound => 'Worktree directory not found on disk';
-
-  @override
   String get sessionListDeleteFailed => 'Failed to delete session';
 
   @override

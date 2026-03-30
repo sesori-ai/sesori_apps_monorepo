@@ -280,7 +280,6 @@
             }
           }
         },
-        "sessionListCleanupIssueWorktreeNotFound": "Worktree directory not found on disk",
-        "sessionListDeleteFailed": "Failed to delete session",
+         "sessionListDeleteFailed": "Failed to delete session",
         "sessionListArchiveFailed": "Failed to archive session"
 }

@@ -83,7 +83,6 @@ List<CleanupIssue> mapSafetyIssues({required List<SafetyIssue> issues}) {
             expected: expected,
             actual: actual,
           ),
-          WorktreeNotFound() => const CleanupIssue.worktreeNotFound(),
         },
       )
       .toList();

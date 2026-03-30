@@ -163,10 +163,6 @@ CleanupIssue _$CleanupIssueFromJson(
           return CleanupIssueBranchMismatch.fromJson(
             json
           );
-                case 'worktree_not_found':
-          return CleanupIssueWorktreeNotFound.fromJson(
-            json
-          );
         
           default:
             throw CheckedFromJsonException(
@@ -325,44 +321,5 @@ as String,
 
 
 }
-
-/// @nodoc
-@JsonSerializable()
-
-class CleanupIssueWorktreeNotFound implements CleanupIssue {
-  const CleanupIssueWorktreeNotFound({final  String? $type}): $type = $type ?? 'worktree_not_found';
-  factory CleanupIssueWorktreeNotFound.fromJson(Map<String, dynamic> json) => _$CleanupIssueWorktreeNotFoundFromJson(json);
-
-
-
-@JsonKey(name: 'type')
-final String $type;
-
-
-
-@override
-Map<String, dynamic> toJson() {
-  return _$CleanupIssueWorktreeNotFoundToJson(this, );
-}
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CleanupIssueWorktreeNotFound);
-}
-
-@JsonKey(includeFromJson: false, includeToJson: false)
-@override
-int get hashCode => runtimeType.hashCode;
-
-@override
-String toString() {
-  return 'CleanupIssue.worktreeNotFound()';
-}
-
-
-}
-
-
-
 
 // dart format on

@@ -39,6 +39,11 @@ New services register in their module's `configure*Dependencies()` function, not
 
 BLoC/Cubit only. New features: add a Cubit in `module_core/`, add a UI widget in `app/`. Cubits are NOT registered in DI — construct them in `BlocProvider(create:)`.
 
+## File Size
+- Maximum file length: 250 lines per file
+- If a file exceeds 250 lines, split it into smaller focused files (by use-case, component, or concern)
+- Prefer many small files over few large files
+
 ## Definition of Done
 
 - `dart pub get` exits 0 from `mobile/`

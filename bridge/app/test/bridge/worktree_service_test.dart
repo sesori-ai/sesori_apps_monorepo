@@ -398,7 +398,7 @@ void main() {
       expect(unsafe.issues.whereType<BranchMismatch>(), hasLength(1));
     });
 
-    test("non-existent path: returns WorktreeUnsafe with WorktreeNotFound, no git commands called", () async {
+    test("non-existent path: returns WorktreeSafe (already cleaned up), no git commands called", () async {
       const nonExistentPath = "/tmp/this_path_does_not_exist_sesori_test_12345";
 
       final result = await service.checkWorktreeSafety(
@@ -406,10 +406,7 @@ void main() {
         expectedBranch: "session-001",
       );
 
-      expect(result, isA<WorktreeUnsafe>());
-      final unsafe = result as WorktreeUnsafe;
-      expect(unsafe.issues, hasLength(1));
-      expect(unsafe.issues.first, isA<WorktreeNotFound>());
+      expect(result, isA<WorktreeSafe>());
       // No git commands should have been called
       expect(processRunner.invocations, isEmpty);
     });

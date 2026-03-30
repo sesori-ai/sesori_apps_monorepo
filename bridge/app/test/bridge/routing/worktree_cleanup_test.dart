@@ -64,7 +64,6 @@ void main() {
         issues: [
           UnstagedChanges(),
           BranchMismatch(expected: "session-003", actual: "main"),
-          WorktreeNotFound(),
         ],
       );
 
@@ -87,7 +86,6 @@ void main() {
           const [
             CleanupIssue.unstagedChanges(),
             CleanupIssue.branchMismatch(expected: "session-003", actual: "main"),
-            CleanupIssue.worktreeNotFound(),
           ],
         ),
       );

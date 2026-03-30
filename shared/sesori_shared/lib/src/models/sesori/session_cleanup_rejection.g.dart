@@ -42,10 +42,3 @@ Map<String, dynamic> _$CleanupIssueBranchMismatchToJson(
   'actual': instance.actual,
   'type': instance.$type,
 };
-
-CleanupIssueWorktreeNotFound _$CleanupIssueWorktreeNotFoundFromJson(Map json) =>
-    CleanupIssueWorktreeNotFound($type: json['type'] as String?);
-
-Map<String, dynamic> _$CleanupIssueWorktreeNotFoundToJson(
-  CleanupIssueWorktreeNotFound instance,
-) => <String, dynamic>{'type': instance.$type};
