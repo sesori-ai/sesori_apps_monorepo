@@ -20,4 +20,5 @@ export "src/opencode_api.dart";
 export "src/opencode_plugin_impl.dart";
 export "src/opencode_repository.dart";
 export "src/opencode_service.dart";
+export "src/sanitize_branch_name.dart";
 export "src/sse_event_parser.dart";
