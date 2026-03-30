@@ -52,7 +52,11 @@ class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Sess
     final dedicatedWorktree = body.dedicatedWorktree;
     const String? parentSessionId = null;
 
-    final firstText = body.parts.whereType<PromptPartText>().map((p) => p.text).firstOrNull;
+    final firstText = body.parts
+        .whereType<PromptPartText>()
+        .map((p) => p.text)
+        .where((t) => t.trim().isNotEmpty)
+        .firstOrNull;
 
     final SessionMetadata? metadata;
     if (firstText != null) {

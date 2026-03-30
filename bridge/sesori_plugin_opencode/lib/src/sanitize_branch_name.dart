@@ -12,11 +12,11 @@
 /// 9. Return `null` if result is empty after sanitization
 ///
 /// Examples:
-/// - `"Fix Login Bug"` → `"fix-login-bug"`
-/// - `"🚀 Deploy v2"` → `"deploy-v2"`
-/// - `"session.lock"` → `"session"`
-/// - `""` → `null`
-/// - `"..."` → `null`
+/// - `"Fix Login Bug"` -> `"fix-login-bug"`
+/// - `"Deploy v2"` -> `"deploy-v2"`
+/// - `"session.lock"` -> `"session"`
+/// - `""` -> `null`
+/// - `"..."` -> `null`
 String? sanitizeBranchName({required String raw}) {
   if (raw.isEmpty) {
     return null;

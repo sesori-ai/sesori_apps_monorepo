@@ -419,6 +419,39 @@ void main() {
       expect(plugin.lastGenerateSessionMetadataMessage, isNull);
     });
 
+    test("whitespace-only text parts skipped — generateSessionMetadata not called", () async {
+      plugin.createSessionResult = const PluginSession(
+        id: "s1",
+        projectID: "p1",
+        directory: "/repo",
+        parentID: null,
+        title: null,
+        time: null,
+        summary: null,
+      );
+
+      final response = await handler.handle(
+        makeRequest(
+          "POST",
+          "/session",
+          body: jsonEncode(
+            const CreateSessionRequest(
+              projectId: "/repo",
+              dedicatedWorktree: false,
+              parts: [PromptPart.text(text: "   ")],
+              agent: null,
+              model: null,
+            ).toJson(),
+          ),
+        ),
+        pathParams: {},
+        queryParams: {},
+      );
+
+      expect(response.status, equals(200));
+      expect(plugin.lastGenerateSessionMetadataMessage, isNull);
+    });
+
     test("rename fails — session still returned successfully", () async {
       final throwingPlugin = _ThrowingRenameSessionPlugin();
       throwingPlugin.generateSessionMetadataResult = const SessionMetadata(

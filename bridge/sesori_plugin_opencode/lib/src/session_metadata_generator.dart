@@ -32,6 +32,10 @@ class SessionMetadataGenerator {
 
       final providerID = smallModelStr.substring(0, slashIndex);
       final modelID = smallModelStr.substring(slashIndex + 1);
+      if (providerID.isEmpty || modelID.isEmpty) {
+        Log.w("SessionMetadataGenerator: empty provider or model in: $smallModelStr");
+        return null;
+      }
       final truncated = firstMessage.length > 500 ? firstMessage.substring(0, 500) : firstMessage;
 
       final session = await _api.createSession(directory: directory);
@@ -74,7 +78,10 @@ class SessionMetadataGenerator {
       return null;
     }
 
-    final parsed = _tryParseJson(raw: mergedText) ?? _tryParseMarkdownJson(raw: mergedText);
+    final parsed =
+        _tryParseJson(raw: mergedText) ??
+        _tryParseMarkdownJson(raw: mergedText) ??
+        _tryExtractEmbeddedJson(raw: mergedText);
     if (parsed == null) {
       return null;
     }
@@ -129,10 +136,21 @@ class SessionMetadataGenerator {
     return _tryParseJson(raw: captured);
   }
 
+  /// Extracts a JSON object embedded in trailing text, e.g.
+  /// `Here's the JSON: {"title": "Fix Bug", "branchName": "fix-bug"} hope that helps!`
+  Map<String, dynamic>? _tryExtractEmbeddedJson({required String raw}) {
+    final match = RegExp(r"\{[^{}]*\}").firstMatch(raw);
+    final captured = match?.group(0);
+    if (captured == null) {
+      return null;
+    }
+    return _tryParseJson(raw: captured);
+  }
+
   static const _systemPrompt =
       "Read the user's first message and generate session metadata. "
       "Return a concise title using 2 to 6 words. "
-      "Return a git-branch-safe branch name in lowercase hyphenated form, max 50 chars. "
+      "Return a git-branch-safe branch name in lowercase hyphenated form, max 60 chars. "
       "Respond ONLY with valid JSON in this exact shape: "
       '{"title":"...","branchName":"..."}'
       ". No markdown fences. No explanation. Only JSON.";
