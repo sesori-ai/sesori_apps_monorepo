@@ -1,0 +1,151 @@
+name: Lint Suppressions Check
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "bridge/**"
+      - "mobile/**"
+      - "shared/**"
+
+# Cancel in-progress runs when a new commit is pushed to the same PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-suppressions:
+    name: Check for New Lint Suppressions
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v6
+        with:
+          # Checkout the PR head commit, not the merge commit
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Fetch base branch
+        run: git fetch origin ${{ github.base_ref }}
+
+      - name: Check for new lint suppressions
+        id: check
+        run: |
+          BASE_REF="origin/${{ github.base_ref }}"
+          PR_HEAD="${{ github.event.pull_request.head.sha }}"
+
+          # Parse diff to extract file:line for each new // ignore comment
+          # Excludes: generated files (.g.dart, .freezed.dart, .gr.dart) and test files (_test.dart)
+          NEW_SUPPRESSIONS=$(git diff $BASE_REF...$PR_HEAD -- '*.dart' \
+            ':!*.g.dart' ':!*.freezed.dart' ':!*.gr.dart' ':!*_test.dart' \
+            | awk '
+              /^diff --git/ {
+                # Extract filename from "diff --git a/path b/path"
+                split($0, parts, " ")
+                file = parts[3]
+                sub(/^a\//, "", file)
+              }
+              /^@@ / {
+                # Extract new file line number from "@@ -old,count +new,count @@"
+                match($0, /\+([0-9]+)/, arr)
+                line = arr[1]
+              }
+              /^\+/ && !/^\+\+\+/ {
+                # Added line - check for ignore comment
+                if ($0 ~ /\/\/ ignore/) {
+                  print file ":" line ": " substr($0, 2)
+                }
+                line++
+              }
+              /^ / {
+                # Context line - increment line counter
+                line++
+              }
+            ')
+
+          if [ -z "$NEW_SUPPRESSIONS" ]; then
+            echo "## ✅ No New Lint Suppressions" >> $GITHUB_STEP_SUMMARY
+            echo "No new \`// ignore:\` or \`// ignore_for_file:\` comments added in this PR." >> $GITHUB_STEP_SUMMARY
+            echo "✅ No new lint suppressions found"
+            echo "found=false" >> $GITHUB_OUTPUT
+          else
+            # Count suppressions
+            COUNT=$(echo "$NEW_SUPPRESSIONS" | wc -l | tr -d ' ')
+
+            # Save to output for PR comment step
+            echo "found=true" >> $GITHUB_OUTPUT
+            echo "count=$COUNT" >> $GITHUB_OUTPUT
+
+            # Save suppressions to file for PR comment (multiline)
+            echo "$NEW_SUPPRESSIONS" > /tmp/suppressions.txt
+
+            # Emit warning annotations for each suppression (shows in PR Files changed)
+            echo "$NEW_SUPPRESSIONS" | while IFS=: read -r file line content; do
+              echo "::warning file=$file,line=$line::New lint suppression: $content"
+            done
+
+            # Summary for the Actions tab
+            echo "## ⚠️ New Lint Suppressions Detected" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "This PR adds **$COUNT** new lint suppression comment(s). Please review and ensure each is justified:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "$NEW_SUPPRESSIONS" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "---" >> $GITHUB_STEP_SUMMARY
+            echo "*Reviewers: Verify each suppression is necessary and properly justified in code comments.*" >> $GITHUB_STEP_SUMMARY
+
+            echo "⚠️ $COUNT new lint suppression(s) added in this PR (see warnings)"
+          fi
+
+      - name: Delete old PR comment if no suppressions
+        if: steps.check.outputs.found == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          EXISTING_COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
+            --jq '.[] | select(.body | contains("<!-- lint-suppressions-bot -->")) | .id' | head -1 || true)
+          if [ -n "$EXISTING_COMMENT_ID" ]; then
+            gh api -X DELETE "repos/${{ github.repository }}/issues/comments/${EXISTING_COMMENT_ID}"
+            echo "Deleted previous lint suppression comment"
+          fi
+
+      - name: Comment on PR
+        if: steps.check.outputs.found == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          MARKER="<!-- lint-suppressions-bot -->"
+
+          # Delete any existing comment from this bot
+          EXISTING_COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
+            --jq '.[] | select(.body | contains("<!-- lint-suppressions-bot -->")) | .id' | head -1 || true)
+
+          if [ -n "$EXISTING_COMMENT_ID" ]; then
+            gh api -X DELETE "repos/${{ github.repository }}/issues/comments/${EXISTING_COMMENT_ID}"
+          fi
+
+          # Post new comment
+          SUPPRESSIONS=$(cat /tmp/suppressions.txt)
+          {
+            echo "${MARKER}"
+            echo "## ⚠️ New Lint Suppressions Detected"
+            echo ""
+            echo "This PR adds **${{ steps.check.outputs.count }}** new lint suppression comment(s). Please review and ensure each is justified:"
+            echo ""
+            echo '```'
+            echo "$SUPPRESSIONS"
+            echo '```'
+            echo ""
+            echo "---"
+            echo "*Reviewers: Verify each suppression is necessary and properly justified in code comments.*"
+          } > /tmp/comment.md
+          gh pr comment $PR_NUMBER --body-file /tmp/comment.md

@@ -731,6 +731,71 @@ void main() {
         );
         queue.dispose();
       });
+
+      test("stale subscription cancel does not detach newer listener", () async {
+        final log = <String>[];
+        final queue = EventQueue<String>();
+
+        final stale = queue.listen((e) async => log.add("v1:$e"));
+        stale.cancel();
+
+        final active = queue.listen((e) async => log.add("v2:$e"));
+        stale.cancel(); // stale — should be a no-op
+
+        queue.enqueue("a");
+        await pumpEventQueue();
+
+        expect(queue.hasListener, isTrue);
+        expect(log, ["v2:a"]);
+        active.cancel();
+        queue.dispose();
+      });
+
+      test("stale subscription pause does not pause newer listener", () async {
+        final log = <String>[];
+        final queue = EventQueue<String>();
+
+        final stale = queue.listen((e) async => log.add("v1:$e"));
+        stale.cancel();
+
+        final active = queue.listen((e) async => log.add("v2:$e"));
+        stale.pause(); // stale — should be a no-op
+
+        queue.enqueue("a");
+        await pumpEventQueue();
+
+        expect(queue.isPaused, isFalse);
+        expect(log, ["v2:a"]);
+        active.cancel();
+        queue.dispose();
+      });
+
+      test("stale subscription resume does not affect newer listener", () async {
+        final log = <String>[];
+        final queue = EventQueue<String>();
+
+        final stale = queue.listen((e) async => log.add("v1:$e"));
+        stale.cancel();
+
+        final active = queue.listen((e) async => log.add("v2:$e"));
+        active.pause();
+        expect(queue.isPaused, isTrue);
+
+        stale.resume(); // stale — should be a no-op
+
+        queue.enqueue("a");
+        await pumpEventQueue();
+
+        expect(queue.isPaused, isTrue);
+        expect(log, isEmpty);
+
+        active.resume();
+        await pumpEventQueue();
+        expect(log, ["v2:a"]);
+
+        active.cancel();
+        queue.dispose();
+      });
     });
   });
 }
