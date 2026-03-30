@@ -460,7 +460,7 @@ void main() {
       expect(find.text("The following issues were found:"), findsOneWidget);
       expect(find.text("Worktree has unstaged changes"), findsOneWidget);
       expect(
-        find.text("Worktree is on branch \u2018feature/xyz\u2019 instead of expected \u2018main\u2019"),
+        find.text("Worktree is on branch 'feature/xyz' instead of expected 'main'"),
         findsOneWidget,
       );
       expect(find.text("Force Delete"), findsOneWidget);
