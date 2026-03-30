@@ -308,6 +308,7 @@ void main() {
 class _FakeWorktreeService extends WorktreeService {
   String? lastPrepareProjectId;
   String? lastPrepareParentSessionId;
+  String? lastPreparePreferredBranchName;
   String? lastResolveBaseBranchProjectPath;
   int prepareCallCount = 0;
   int resolveBaseBranchAndCommitCallCount = 0;
@@ -327,10 +328,12 @@ class _FakeWorktreeService extends WorktreeService {
   Future<WorktreeResult> prepareWorktreeForSession({
     required String projectId,
     required String? parentSessionId,
+    String? preferredBranchName,
   }) async {
     prepareCallCount++;
     lastPrepareProjectId = projectId;
     lastPrepareParentSessionId = parentSessionId;
+    lastPreparePreferredBranchName = preferredBranchName;
     return prepareResult;
   }
 
