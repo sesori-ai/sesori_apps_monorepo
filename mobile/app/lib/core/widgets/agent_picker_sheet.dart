@@ -1,7 +1,8 @@
 import "package:flutter/material.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "../../../core/extensions/build_context_x.dart";
-import "../../../core/widgets/app_modal_bottom_sheet.dart";
+
+import "../extensions/build_context_x.dart";
+import "app_modal_bottom_sheet.dart";
 
 /// Bottom sheet for selecting an agent.
 ///

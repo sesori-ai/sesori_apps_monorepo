@@ -46,74 +46,199 @@ $NewSessionStateCopyWith(NewSessionState _, $Res Function(NewSessionState) __);
 
 
 class NewSessionIdle implements NewSessionState {
-  const NewSessionIdle();
+  const NewSessionIdle({final  List<AgentInfo> availableAgents = const [], final  List<ProviderInfo> availableProviders = const [], this.selectedAgent, this.selectedProviderID, this.selectedModelID}): _availableAgents = availableAgents,_availableProviders = availableProviders;
   
 
+ final  List<AgentInfo> _availableAgents;
+@JsonKey() List<AgentInfo> get availableAgents {
+  if (_availableAgents is EqualUnmodifiableListView) return _availableAgents;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_availableAgents);
+}
 
+ final  List<ProviderInfo> _availableProviders;
+@JsonKey() List<ProviderInfo> get availableProviders {
+  if (_availableProviders is EqualUnmodifiableListView) return _availableProviders;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_availableProviders);
+}
 
+ final  String? selectedAgent;
+ final  String? selectedProviderID;
+ final  String? selectedModelID;
+
+/// Create a copy of NewSessionState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$NewSessionIdleCopyWith<NewSessionIdle> get copyWith => _$NewSessionIdleCopyWithImpl<NewSessionIdle>(this, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionIdle);
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionIdle&&const DeepCollectionEquality().equals(other._availableAgents, _availableAgents)&&const DeepCollectionEquality().equals(other._availableProviders, _availableProviders)&&(identical(other.selectedAgent, selectedAgent) || other.selectedAgent == selectedAgent)&&(identical(other.selectedProviderID, selectedProviderID) || other.selectedProviderID == selectedProviderID)&&(identical(other.selectedModelID, selectedModelID) || other.selectedModelID == selectedModelID));
 }
 
 
 @override
-int get hashCode => runtimeType.hashCode;
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_availableAgents),const DeepCollectionEquality().hash(_availableProviders),selectedAgent,selectedProviderID,selectedModelID);
 
 @override
 String toString() {
-  return 'NewSessionState.idle()';
+  return 'NewSessionState.idle(availableAgents: $availableAgents, availableProviders: $availableProviders, selectedAgent: $selectedAgent, selectedProviderID: $selectedProviderID, selectedModelID: $selectedModelID)';
 }
 
 
 }
 
+/// @nodoc
+abstract mixin class $NewSessionIdleCopyWith<$Res> implements $NewSessionStateCopyWith<$Res> {
+  factory $NewSessionIdleCopyWith(NewSessionIdle value, $Res Function(NewSessionIdle) _then) = _$NewSessionIdleCopyWithImpl;
+@useResult
+$Res call({
+ List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, String? selectedAgent, String? selectedProviderID, String? selectedModelID
+});
 
 
+
+
+}
+/// @nodoc
+class _$NewSessionIdleCopyWithImpl<$Res>
+    implements $NewSessionIdleCopyWith<$Res> {
+  _$NewSessionIdleCopyWithImpl(this._self, this._then);
+
+  final NewSessionIdle _self;
+  final $Res Function(NewSessionIdle) _then;
+
+/// Create a copy of NewSessionState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? availableAgents = null,Object? availableProviders = null,Object? selectedAgent = freezed,Object? selectedProviderID = freezed,Object? selectedModelID = freezed,}) {
+  return _then(NewSessionIdle(
+availableAgents: null == availableAgents ? _self._availableAgents : availableAgents // ignore: cast_nullable_to_non_nullable
+as List<AgentInfo>,availableProviders: null == availableProviders ? _self._availableProviders : availableProviders // ignore: cast_nullable_to_non_nullable
+as List<ProviderInfo>,selectedAgent: freezed == selectedAgent ? _self.selectedAgent : selectedAgent // ignore: cast_nullable_to_non_nullable
+as String?,selectedProviderID: freezed == selectedProviderID ? _self.selectedProviderID : selectedProviderID // ignore: cast_nullable_to_non_nullable
+as String?,selectedModelID: freezed == selectedModelID ? _self.selectedModelID : selectedModelID // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
 
 /// @nodoc
 
 
 class NewSessionSending implements NewSessionState {
-  const NewSessionSending();
+  const NewSessionSending({final  List<AgentInfo> availableAgents = const [], final  List<ProviderInfo> availableProviders = const [], this.selectedAgent, this.selectedProviderID, this.selectedModelID}): _availableAgents = availableAgents,_availableProviders = availableProviders;
   
 
+ final  List<AgentInfo> _availableAgents;
+@JsonKey() List<AgentInfo> get availableAgents {
+  if (_availableAgents is EqualUnmodifiableListView) return _availableAgents;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_availableAgents);
+}
 
+ final  List<ProviderInfo> _availableProviders;
+@JsonKey() List<ProviderInfo> get availableProviders {
+  if (_availableProviders is EqualUnmodifiableListView) return _availableProviders;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_availableProviders);
+}
 
+ final  String? selectedAgent;
+ final  String? selectedProviderID;
+ final  String? selectedModelID;
+
+/// Create a copy of NewSessionState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$NewSessionSendingCopyWith<NewSessionSending> get copyWith => _$NewSessionSendingCopyWithImpl<NewSessionSending>(this, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionSending);
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionSending&&const DeepCollectionEquality().equals(other._availableAgents, _availableAgents)&&const DeepCollectionEquality().equals(other._availableProviders, _availableProviders)&&(identical(other.selectedAgent, selectedAgent) || other.selectedAgent == selectedAgent)&&(identical(other.selectedProviderID, selectedProviderID) || other.selectedProviderID == selectedProviderID)&&(identical(other.selectedModelID, selectedModelID) || other.selectedModelID == selectedModelID));
 }
 
 
 @override
-int get hashCode => runtimeType.hashCode;
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_availableAgents),const DeepCollectionEquality().hash(_availableProviders),selectedAgent,selectedProviderID,selectedModelID);
 
 @override
 String toString() {
-  return 'NewSessionState.sending()';
+  return 'NewSessionState.sending(availableAgents: $availableAgents, availableProviders: $availableProviders, selectedAgent: $selectedAgent, selectedProviderID: $selectedProviderID, selectedModelID: $selectedModelID)';
 }
 
 
 }
 
+/// @nodoc
+abstract mixin class $NewSessionSendingCopyWith<$Res> implements $NewSessionStateCopyWith<$Res> {
+  factory $NewSessionSendingCopyWith(NewSessionSending value, $Res Function(NewSessionSending) _then) = _$NewSessionSendingCopyWithImpl;
+@useResult
+$Res call({
+ List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, String? selectedAgent, String? selectedProviderID, String? selectedModelID
+});
 
 
+
+
+}
+/// @nodoc
+class _$NewSessionSendingCopyWithImpl<$Res>
+    implements $NewSessionSendingCopyWith<$Res> {
+  _$NewSessionSendingCopyWithImpl(this._self, this._then);
+
+  final NewSessionSending _self;
+  final $Res Function(NewSessionSending) _then;
+
+/// Create a copy of NewSessionState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? availableAgents = null,Object? availableProviders = null,Object? selectedAgent = freezed,Object? selectedProviderID = freezed,Object? selectedModelID = freezed,}) {
+  return _then(NewSessionSending(
+availableAgents: null == availableAgents ? _self._availableAgents : availableAgents // ignore: cast_nullable_to_non_nullable
+as List<AgentInfo>,availableProviders: null == availableProviders ? _self._availableProviders : availableProviders // ignore: cast_nullable_to_non_nullable
+as List<ProviderInfo>,selectedAgent: freezed == selectedAgent ? _self.selectedAgent : selectedAgent // ignore: cast_nullable_to_non_nullable
+as String?,selectedProviderID: freezed == selectedProviderID ? _self.selectedProviderID : selectedProviderID // ignore: cast_nullable_to_non_nullable
+as String?,selectedModelID: freezed == selectedModelID ? _self.selectedModelID : selectedModelID // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
 
 /// @nodoc
 
 
 class NewSessionError implements NewSessionState {
-  const NewSessionError({required this.message});
+  const NewSessionError({required this.message, final  List<AgentInfo> availableAgents = const [], final  List<ProviderInfo> availableProviders = const [], this.selectedAgent, this.selectedProviderID, this.selectedModelID}): _availableAgents = availableAgents,_availableProviders = availableProviders;
   
 
  final  String message;
+ final  List<AgentInfo> _availableAgents;
+@JsonKey() List<AgentInfo> get availableAgents {
+  if (_availableAgents is EqualUnmodifiableListView) return _availableAgents;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_availableAgents);
+}
+
+ final  List<ProviderInfo> _availableProviders;
+@JsonKey() List<ProviderInfo> get availableProviders {
+  if (_availableProviders is EqualUnmodifiableListView) return _availableProviders;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_availableProviders);
+}
+
+ final  String? selectedAgent;
+ final  String? selectedProviderID;
+ final  String? selectedModelID;
 
 /// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
@@ -125,16 +250,16 @@ $NewSessionErrorCopyWith<NewSessionError> get copyWith => _$NewSessionErrorCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionError&&(identical(other.message, message) || other.message == message));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionError&&(identical(other.message, message) || other.message == message)&&const DeepCollectionEquality().equals(other._availableAgents, _availableAgents)&&const DeepCollectionEquality().equals(other._availableProviders, _availableProviders)&&(identical(other.selectedAgent, selectedAgent) || other.selectedAgent == selectedAgent)&&(identical(other.selectedProviderID, selectedProviderID) || other.selectedProviderID == selectedProviderID)&&(identical(other.selectedModelID, selectedModelID) || other.selectedModelID == selectedModelID));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,message);
+int get hashCode => Object.hash(runtimeType,message,const DeepCollectionEquality().hash(_availableAgents),const DeepCollectionEquality().hash(_availableProviders),selectedAgent,selectedProviderID,selectedModelID);
 
 @override
 String toString() {
-  return 'NewSessionState.error(message: $message)';
+  return 'NewSessionState.error(message: $message, availableAgents: $availableAgents, availableProviders: $availableProviders, selectedAgent: $selectedAgent, selectedProviderID: $selectedProviderID, selectedModelID: $selectedModelID)';
 }
 
 
@@ -145,7 +270,7 @@ abstract mixin class $NewSessionErrorCopyWith<$Res> implements $NewSessionStateC
   factory $NewSessionErrorCopyWith(NewSessionError value, $Res Function(NewSessionError) _then) = _$NewSessionErrorCopyWithImpl;
 @useResult
 $Res call({
- String message
+ String message, List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, String? selectedAgent, String? selectedProviderID, String? selectedModelID
 });
 
 
@@ -162,10 +287,15 @@ class _$NewSessionErrorCopyWithImpl<$Res>
 
 /// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? message = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? message = null,Object? availableAgents = null,Object? availableProviders = null,Object? selectedAgent = freezed,Object? selectedProviderID = freezed,Object? selectedModelID = freezed,}) {
   return _then(NewSessionError(
 message: null == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
-as String,
+as String,availableAgents: null == availableAgents ? _self._availableAgents : availableAgents // ignore: cast_nullable_to_non_nullable
+as List<AgentInfo>,availableProviders: null == availableProviders ? _self._availableProviders : availableProviders // ignore: cast_nullable_to_non_nullable
+as List<ProviderInfo>,selectedAgent: freezed == selectedAgent ? _self.selectedAgent : selectedAgent // ignore: cast_nullable_to_non_nullable
+as String?,selectedProviderID: freezed == selectedProviderID ? _self.selectedProviderID : selectedProviderID // ignore: cast_nullable_to_non_nullable
+as String?,selectedModelID: freezed == selectedModelID ? _self.selectedModelID : selectedModelID // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

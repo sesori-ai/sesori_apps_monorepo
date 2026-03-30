@@ -8,11 +8,12 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../core/constants.dart";
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
+import "../../core/widgets/agent_model_buttons.dart";
+import "../../core/widgets/agent_picker_sheet.dart";
+import "../../core/widgets/model_picker_sheet.dart";
 import "../../l10n/app_localizations.dart";
-import "widgets/agent_picker_sheet.dart";
 import "widgets/assistant_message_card.dart";
 import "widgets/background_tasks_bar.dart";
-import "widgets/model_picker_sheet.dart";
 import "widgets/prompt_input.dart";
 import "widgets/question_modal.dart";
 import "widgets/queued_message_bubble.dart";
@@ -275,7 +276,7 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
                   isBusy: sessionStatus is! SessionStatusIdle,
                   onSend: (text) => context.read<SessionDetailCubit>().sendMessage(text),
                   onAbort: () => context.read<SessionDetailCubit>().abort(),
-                  header: _AgentModelButtons(
+                  header: AgentModelButtons(
                     providers: availableProviders,
                     selectedAgent: selectedAgent,
                     selectedProviderID: selectedProviderID,
@@ -561,88 +562,6 @@ class _ErrorView extends StatelessWidget {
 // -----------------------------------------------------------------------------
 // Queued messages section
 // -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// Agent + Model selection buttons (above prompt input)
-// -----------------------------------------------------------------------------
-
-class _AgentModelButtons extends StatelessWidget {
-  final List<ProviderInfo> providers;
-  final String selectedAgent;
-  final String selectedProviderID;
-  final String selectedModelID;
-  final VoidCallback onAgentTap;
-  final VoidCallback onModelTap;
-
-  const _AgentModelButtons({
-    required this.providers,
-    required this.selectedAgent,
-    required this.selectedProviderID,
-    required this.selectedModelID,
-    required this.onAgentTap,
-    required this.onModelTap,
-  });
-
-  String _resolveModelName(AppLocalizations loc) {
-    for (final provider in providers) {
-      if (provider.id == selectedProviderID) {
-        final model = provider.models[selectedModelID];
-        if (model != null) return model.name;
-      }
-    }
-    if (selectedModelID.isNotEmpty) return selectedModelID;
-    return loc.sessionDetailPickerModel;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final loc = context.loc;
-    final buttonStyle = OutlinedButton.styleFrom(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      minimumSize: .zero,
-      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      textStyle: theme.textTheme.labelSmall,
-      side: BorderSide(color: theme.colorScheme.outlineVariant),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-    );
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 6, 12, 2),
-      child: Row(
-        children: [
-          Flexible(
-            child: OutlinedButton.icon(
-              onPressed: onAgentTap,
-              icon: Icon(Icons.smart_toy_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
-              label: Text(
-                selectedAgent,
-                style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
-                overflow: .ellipsis,
-                maxLines: 1,
-              ),
-              style: buttonStyle,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: OutlinedButton.icon(
-              onPressed: onModelTap,
-              icon: Icon(Icons.memory_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
-              label: Text(
-                _resolveModelName(loc),
-                style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
-                overflow: .ellipsis,
-                maxLines: 1,
-              ),
-              style: buttonStyle,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _QueuedMessagesSection extends StatelessWidget {
   final List<String> messages;
