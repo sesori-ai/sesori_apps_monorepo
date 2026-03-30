@@ -112,7 +112,7 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
             tooltip: loc.notificationSettingsTitle,
-            onPressed: () => context.pushRoute(AppRoute.notificationSettings),
+            onPressed: () => context.pushRoute(const AppRoute.notificationSettings()),
           ),
         ],
       ),
@@ -267,9 +267,7 @@ class _ProjectTile extends StatelessWidget {
       onTap: () {
         context.read<ProjectListCubit>().setActiveProject(project);
         context.pushRoute(
-          AppRoute.sessions,
-          pathParams: {"projectId": project.id},
-          queryParams: {"name": displayName},
+          AppRoute.sessions(projectId: project.id, projectName: displayName),
         );
       },
       onLongPress: onLongPress,

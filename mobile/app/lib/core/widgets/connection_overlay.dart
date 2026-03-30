@@ -95,7 +95,7 @@ class _ConnectionOverlayBody extends StatelessWidget {
                 onReconnect: () => context.read<ConnectionOverlayCubit>().reconnect(),
                 onDisconnect: () async {
                   await context.read<ConnectionOverlayCubit>().disconnect();
-                  router.goRoute(AppRoute.login);
+                  router.goRoute(const AppRoute.login());
                 },
               ),
             ),

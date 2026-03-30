@@ -46,8 +46,7 @@ class _SessionListBody extends StatelessWidget {
   void _goToNewSession(BuildContext context) {
     final projectId = context.read<SessionListCubit>().projectId;
     context.pushRoute(
-      AppRoute.newSession,
-      pathParams: {"projectId": projectId},
+      AppRoute.newSession(projectId: projectId),
     );
   }
 
@@ -424,9 +423,12 @@ class _SessionTile extends StatelessWidget {
         trailing: const Icon(Icons.chevron_right),
         onTap: () {
           context.pushRoute(
-            AppRoute.sessionDetail,
-            pathParams: {"projectId": session.projectID, "sessionId": session.id},
-            queryParams: {"title": session.title ?? ""},
+            AppRoute.sessionDetail(
+              projectId: session.projectID,
+              sessionId: session.id,
+              sessionTitle: session.title ?? "",
+              readOnly: false,
+            ),
           );
         },
         onLongPress: onLongPress,

@@ -76,12 +76,17 @@ void main() {
         buildTapMessage(sessionId: "ses_1", projectId: "proj_1"),
       );
 
-      expect(goCalls, equals([AppRoute.projects.path]));
+      expect(goCalls, equals([AppRouteDef.projects.path]));
       expect(
         pushCalls,
         equals([
-          AppRoute.sessions.buildPath(pathParams: {"projectId": "proj_1"}),
-          AppRoute.sessionDetail.buildPath(pathParams: {"projectId": "proj_1", "sessionId": "ses_1"}),
+          const AppRoute.sessions(projectId: "proj_1", projectName: null).buildPath(),
+          const AppRoute.sessionDetail(
+            projectId: "proj_1",
+            sessionId: "ses_1",
+            sessionTitle: null,
+            readOnly: false,
+          ).buildPath(),
         ]),
       );
     });
@@ -100,7 +105,7 @@ void main() {
         buildTapMessage(sessionId: "ses_1", projectId: null),
       );
 
-      expect(goCalls, equals([AppRoute.projects.path]));
+      expect(goCalls, equals([AppRouteDef.projects.path]));
       expect(pushCalls, isEmpty);
     });
 
@@ -136,12 +141,17 @@ void main() {
         const NotificationTapEvent(sessionId: "ses_local", projectId: "proj_local"),
       );
 
-      expect(goCalls, equals([AppRoute.projects.path]));
+      expect(goCalls, equals([AppRouteDef.projects.path]));
       expect(
         pushCalls,
         equals([
-          AppRoute.sessions.buildPath(pathParams: {"projectId": "proj_local"}),
-          AppRoute.sessionDetail.buildPath(pathParams: {"projectId": "proj_local", "sessionId": "ses_local"}),
+          const AppRoute.sessions(projectId: "proj_local", projectName: null).buildPath(),
+          const AppRoute.sessionDetail(
+            projectId: "proj_local",
+            sessionId: "ses_local",
+            sessionTitle: null,
+            readOnly: false,
+          ).buildPath(),
         ]),
       );
     });
@@ -176,12 +186,17 @@ void main() {
         ),
       );
 
-      expect(goCalls, equals([AppRoute.projects.path]));
+      expect(goCalls, equals([AppRouteDef.projects.path]));
       expect(
         pushCalls,
         equals([
-          AppRoute.sessions.buildPath(pathParams: {"projectId": "proj_pending"}),
-          AppRoute.sessionDetail.buildPath(pathParams: {"projectId": "proj_pending", "sessionId": "ses_pending"}),
+          const AppRoute.sessions(projectId: "proj_pending", projectName: null).buildPath(),
+          const AppRoute.sessionDetail(
+            projectId: "proj_pending",
+            sessionId: "ses_pending",
+            sessionTitle: null,
+            readOnly: false,
+          ).buildPath(),
         ]),
       );
     });
@@ -190,9 +205,12 @@ void main() {
       final goCalls = <String>[];
       final pushCalls = <String>[];
 
-      final targetPath = AppRoute.sessionDetail.buildPath(
-        pathParams: {"projectId": "proj_1", "sessionId": "ses_1"},
-      );
+      final targetPath = const AppRoute.sessionDetail(
+        projectId: "proj_1",
+        sessionId: "ses_1",
+        sessionTitle: null,
+        readOnly: false,
+      ).buildPath();
 
       service.goForTesting = goCalls.add;
       service.pushForTesting = (route) async {

@@ -51,7 +51,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     _subscriptions.add(
       routeSource.currentRouteStream
           .switchMap((route) {
-            if (route != AppRoute.projects) return const Stream<void>.empty();
+            if (route != AppRouteDef.projects) return const Stream<void>.empty();
             return _sseEventRepository.projectActivity.throttleTime(
               refreshThrottleDuration,
               trailing: true,
@@ -71,7 +71,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
       routeSource.currentRouteStream
           .distinct()
           .pairwise()
-          .where((pair) => pair.first != AppRoute.projects && pair.last == AppRoute.projects)
+          .where((pair) => pair.first != AppRouteDef.projects && pair.last == AppRouteDef.projects)
           .listen((_) {
             if (isClosed) return;
             unawaited(refreshProjects());

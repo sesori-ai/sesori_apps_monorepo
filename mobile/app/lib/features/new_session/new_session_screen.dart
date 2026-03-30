@@ -41,9 +41,12 @@ class _NewSessionBody extends StatelessWidget {
         if (state case NewSessionCreated(:final session)) {
           Navigator.of(context).pop();
           context.pushRoute(
-            AppRoute.sessionDetail,
-            pathParams: {"projectId": session.projectID, "sessionId": session.id},
-            queryParams: {"title": session.title ?? ""},
+            AppRoute.sessionDetail(
+              projectId: session.projectID,
+              sessionId: session.id,
+              sessionTitle: session.title ?? "",
+              readOnly: false,
+            ),
           );
         }
       },
