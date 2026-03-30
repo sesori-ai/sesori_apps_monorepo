@@ -268,17 +268,13 @@ class _TaskRow extends StatelessWidget {
 
     return InkWell(
       onTap: () {
-        final queryParams = <String, String>{"readOnly": "true"};
-        if (session.title != null) {
-          queryParams["title"] = session.title!;
-        }
         context.pushRoute(
-          AppRoute.sessionDetail,
-          pathParams: {
-            "projectId": session.projectID,
-            "sessionId": session.id,
-          },
-          queryParams: queryParams,
+          AppRoute.sessionDetail(
+            projectId: session.projectID,
+            sessionId: session.id,
+            readOnly: true,
+            sessionTitle: session.title,
+          ),
         );
       },
       child: Padding(

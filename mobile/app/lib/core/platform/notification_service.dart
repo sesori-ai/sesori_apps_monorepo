@@ -129,20 +129,21 @@ class NotificationService {
 
   void _pushSessionRoute({required String sessionId, required String? projectId}) {
     if (projectId == null) {
-      goForTesting(AppRoute.projects.path);
+      goForTesting(const AppRoute.projects().path);
       return;
     }
 
-    final sessionDetailPath = AppRoute.sessionDetail.buildPath(
-      pathParams: {"projectId": projectId, "sessionId": sessionId},
-    );
+    final sessionDetailPath = AppRoute.sessionDetail(
+      projectId: projectId,
+      sessionId: sessionId,
+    ).buildPath();
 
     if (currentPathProviderForTesting() == sessionDetailPath) {
       return;
     }
 
-    final sessionPath = AppRoute.sessions.buildPath(pathParams: {"projectId": projectId});
-    goForTesting(AppRoute.projects.path);
+    final sessionPath = AppRoute.sessions(projectId: projectId).buildPath();
+    goForTesting(const AppRoute.projects().path);
     unawaited(pushForTesting(sessionPath));
     unawaited(pushForTesting(sessionDetailPath));
   }

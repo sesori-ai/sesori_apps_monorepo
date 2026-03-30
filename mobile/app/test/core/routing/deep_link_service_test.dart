@@ -22,7 +22,7 @@ void main() {
       controller = StreamController<Uri>.broadcast();
 
       when(() => mockDeepLinkSource.linkStream).thenAnswer((_) => controller.stream);
-      when(() => mockAuthRedirectService.handleOAuthCallback(any())).thenAnswer((_) async => AppRoute.projects);
+      when(() => mockAuthRedirectService.handleOAuthCallback(any())).thenAnswer((_) async => const AppRoute.projects());
 
       service = DeepLinkService(mockAuthRedirectService, mockDeepLinkSource);
     });
@@ -148,7 +148,7 @@ void main() {
       // then
       verify(() => mockAuthRedirectService.handleOAuthCallback(any())).called(1);
 
-      completer.complete(AppRoute.projects);
+      completer.complete(const AppRoute.projects());
       await Future<void>.delayed(Duration.zero);
     });
   });

@@ -551,7 +551,7 @@ void main() {
             fetchCount++;
             return ApiResponse.success([testProject()]);
           });
-          mockRouteSource.emitRoute(AppRoute.projects);
+          mockRouteSource.emitRoute(const AppRoute.projects());
           final cubit = buildCubit();
           async.elapse(Duration.zero);
           final baseline = fetchCount;
@@ -573,7 +573,7 @@ void main() {
             fetchCount++;
             return ApiResponse.success([testProject()]);
           });
-          mockRouteSource.emitRoute(AppRoute.projects);
+          mockRouteSource.emitRoute(const AppRoute.projects());
           final cubit = buildCubit();
           async.elapse(Duration.zero);
           final baseline = fetchCount;
@@ -617,16 +617,16 @@ void main() {
             return ApiResponse.success([testProject()]);
           });
           // Start on projects, navigate away, navigate back.
-          mockRouteSource.emitRoute(AppRoute.projects);
+          mockRouteSource.emitRoute(const AppRoute.projects());
           final cubit = buildCubit();
           async.elapse(Duration.zero);
           final baseline = fetchCount;
 
-          mockRouteSource.emitRoute(AppRoute.sessions);
+          mockRouteSource.emitRoute(const AppRoute.sessions(projectId: "p1"));
           async.elapse(Duration.zero);
           expect(fetchCount, baseline, reason: "no fetch on navigate away");
 
-          mockRouteSource.emitRoute(AppRoute.projects);
+          mockRouteSource.emitRoute(const AppRoute.projects());
           async.elapse(Duration.zero);
           expect(fetchCount, baseline + 1, reason: "immediate refresh on navigate back");
           cubit.close();
@@ -640,7 +640,7 @@ void main() {
             fetchCount++;
             return ApiResponse.success([testProject()]);
           });
-          mockRouteSource.emitRoute(AppRoute.projects);
+          mockRouteSource.emitRoute(const AppRoute.projects());
           final cubit = buildCubit();
           async.elapse(Duration.zero);
           final baseline = fetchCount;

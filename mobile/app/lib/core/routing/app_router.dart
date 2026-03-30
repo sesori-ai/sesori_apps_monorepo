@@ -13,23 +13,23 @@ import "../di/injection.dart";
 extension AppRouteToGoRoute on AppRoute {
   /// Returns the [GoRoute] for this route with an exhaustive builder switch.
   ///
-  /// Adding a new [AppRoute] value without handling it here will cause a
+  /// Adding a new [AppRoute] subclass without handling it here will cause a
   /// compile-time error.
   GoRoute toGoRoute() {
     return GoRoute(
       path: path,
       builder: (context, state) => switch (this) {
-        AppRoute.login => const LoginScreen(),
-        AppRoute.projects => const ProjectListScreen(),
-        AppRoute.notificationSettings => const NotificationSettingsScreen(),
-        AppRoute.sessions => SessionListScreen(
+        AppRouteLogin() => const LoginScreen(),
+        AppRouteProjects() => const ProjectListScreen(),
+        AppRouteNotificationSettings() => const NotificationSettingsScreen(),
+        AppRouteSessions() => SessionListScreen(
           projectId: state.pathParameters["projectId"] ?? "",
           projectName: state.uri.queryParameters["name"],
         ),
-        AppRoute.newSession => NewSessionScreen(
+        AppRouteNewSession() => NewSessionScreen(
           projectId: state.pathParameters["projectId"] ?? "",
         ),
-        AppRoute.sessionDetail => SessionDetailScreen(
+        AppRouteSessionDetail() => SessionDetailScreen(
           projectId: state.pathParameters["projectId"],
           sessionId: state.pathParameters["sessionId"] ?? "",
           sessionTitle: state.uri.queryParameters["title"],
@@ -45,34 +45,18 @@ extension AppRouteToGoRoute on AppRoute {
 // ---------------------------------------------------------------------------
 
 extension BuildContextNavigation on BuildContext {
-  void goRoute(
-    AppRoute route, {
-    Map<String, String>? pathParams,
-    Map<String, String>? queryParams,
-  }) {
-    GoRouter.of(this).go(
-      route.buildPath(pathParams: pathParams, queryParams: queryParams),
-    );
+  void goRoute(AppRoute route) {
+    GoRouter.of(this).go(route.buildPath());
   }
 
-  Future<T?> pushRoute<T extends Object?>(
-    AppRoute route, {
-    Map<String, String>? pathParams,
-    Map<String, String>? queryParams,
-  }) {
-    return GoRouter.of(this).push<T>(
-      route.buildPath(pathParams: pathParams, queryParams: queryParams),
-    );
+  Future<T?> pushRoute<T extends Object?>(AppRoute route) {
+    return GoRouter.of(this).push<T>(route.buildPath());
   }
 }
 
 extension GoRouterNavigation on GoRouter {
-  void goRoute(
-    AppRoute route, {
-    Map<String, String>? pathParams,
-    Map<String, String>? queryParams,
-  }) {
-    go(route.buildPath(pathParams: pathParams, queryParams: queryParams));
+  void goRoute(AppRoute route) {
+    go(route.buildPath());
   }
 }
 
@@ -81,10 +65,10 @@ extension GoRouterNavigation on GoRouter {
 // ---------------------------------------------------------------------------
 
 final appRouter = GoRouter(
-  initialLocation: AppRoute.login.path,
+  initialLocation: const AppRoute.login().path,
   redirect: (context, state) async {
     // Session restore: if on login and tokens exist, skip to projects
-    if (state.matchedLocation == AppRoute.login.path) {
+    if (state.matchedLocation == const AppRoute.login().path) {
       final authRedirect = getIt<AuthRedirectService>();
       return (await authRedirect.tryRestoreSession())?.path;
     }

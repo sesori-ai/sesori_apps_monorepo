@@ -37,7 +37,7 @@ class AuthRedirectService {
 
       if (code == null || callbackState == null || code.isEmpty || callbackState.isEmpty) {
         loge("OAuth callback missing code or state params");
-        return AppRoute.login;
+        return const AppRoute.login();
       }
 
       logd("Exchanging OAuth code for tokens");
@@ -46,10 +46,10 @@ class AuthRedirectService {
       await _autoConnectToRelay();
 
       logd("Login successful — navigating to projects");
-      return AppRoute.projects;
+      return const AppRoute.projects();
     } catch (e, st) {
       loge("OAuth code exchange failed", e, st);
-      return AppRoute.login;
+      return const AppRoute.login();
     }
   }
 
@@ -60,7 +60,7 @@ class AuthRedirectService {
     if (restored) {
       logd("Session restored — auto-connecting to relay");
       await _autoConnectToRelay();
-      return AppRoute.projects;
+      return const AppRoute.projects();
     }
 
     return null;

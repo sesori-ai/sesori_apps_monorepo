@@ -39,7 +39,7 @@ void main() {
       final result = await service.handleOAuthCallback(uri);
 
       // then
-      expect(result, equals(AppRoute.login));
+      expect(result, isA<AppRouteLogin>());
       verifyNever(
         () => mockOAuthFlowProvider.exchangeCode(
           code: any(named: "code"),
@@ -58,7 +58,7 @@ void main() {
       final result = await service.handleOAuthCallback(uri);
 
       // then
-      expect(result, equals(AppRoute.login));
+      expect(result, isA<AppRouteLogin>());
       verifyNever(
         () => mockOAuthFlowProvider.exchangeCode(
           code: any(named: "code"),
@@ -84,7 +84,7 @@ void main() {
       final result = await service.handleOAuthCallback(uri);
 
       // then
-      expect(result, equals(AppRoute.login));
+      expect(result, isA<AppRouteLogin>());
       verifyNever(() => mockConnectionService.connect(any()));
     });
 
@@ -110,7 +110,7 @@ void main() {
       final result = await service.handleOAuthCallback(uri);
 
       // then
-      expect(result, equals(AppRoute.projects));
+      expect(result, isA<AppRouteProjects>());
       final captured = verify(() => mockConnectionService.connect(captureAny())).captured;
       expect(captured.length, equals(1));
       final config = captured.single as ServerConnectionConfig;
@@ -136,7 +136,7 @@ void main() {
       final result = await service.handleOAuthCallback(uri);
 
       // then
-      expect(result, equals(AppRoute.projects));
+      expect(result, isA<AppRouteProjects>());
       verifyNever(() => mockConnectionService.connect(any()));
     });
 
@@ -158,7 +158,7 @@ void main() {
       final result = await service.handleOAuthCallback(uri);
 
       // then
-      expect(result, equals(AppRoute.projects));
+      expect(result, isA<AppRouteProjects>());
     });
   });
 
@@ -213,7 +213,7 @@ void main() {
       final result = await service.tryRestoreSession();
 
       // then
-      expect(result, equals(AppRoute.projects));
+      expect(result, isA<AppRouteProjects>());
       final captured = verify(() => mockConnectionService.connect(captureAny())).captured;
       expect(captured.length, equals(1));
       final config = captured.single as ServerConnectionConfig;
@@ -232,7 +232,7 @@ void main() {
       final result = await service.tryRestoreSession();
 
       // then
-      expect(result, equals(AppRoute.projects));
+      expect(result, isA<AppRouteProjects>());
     });
   });
 }
