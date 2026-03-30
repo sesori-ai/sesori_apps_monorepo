@@ -191,6 +191,7 @@ void main() {
           text: "hello",
           agent: null,
           model: null,
+          dedicatedWorktree: true,
         );
 
         expect(result, isA<SuccessResponse<Session>>());
@@ -219,6 +220,7 @@ void main() {
           text: "hello",
           agent: null,
           model: null,
+          dedicatedWorktree: true,
         );
 
         expect(result, isA<ErrorResponse<Session>>());
@@ -246,6 +248,7 @@ void main() {
           text: "first prompt",
           agent: null,
           model: null,
+          dedicatedWorktree: true,
         );
 
         final captured =
@@ -266,6 +269,7 @@ void main() {
             ],
             "agent": null,
             "model": null,
+            "dedicatedWorktree": true,
           }),
         );
       });
@@ -284,7 +288,12 @@ void main() {
           ),
         ).thenAnswer((_) async => ApiResponse.success(session));
 
-        final result = await sessionService.archiveSession(sessionId);
+        final result = await sessionService.archiveSession(
+          sessionId: sessionId,
+          deleteWorktree: true,
+          deleteBranch: true,
+          force: false,
+        );
 
         expect(result, isA<SuccessResponse<Session>>());
         expect((result as SuccessResponse<Session>).data, equals(session));
@@ -307,7 +316,12 @@ void main() {
           ),
         ).thenAnswer((_) async => ApiResponse.error(error));
 
-        final result = await sessionService.archiveSession(sessionId);
+        final result = await sessionService.archiveSession(
+          sessionId: sessionId,
+          deleteWorktree: true,
+          deleteBranch: true,
+          force: false,
+        );
 
         expect(result, isA<ErrorResponse<Session>>());
         expect((result as ErrorResponse<Session>).error, equals(error));
@@ -322,7 +336,12 @@ void main() {
           ),
         ).thenAnswer((_) async => ApiResponse.success(testSession()));
 
-        await sessionService.archiveSession(sessionId);
+        await sessionService.archiveSession(
+          sessionId: sessionId,
+          deleteWorktree: true,
+          deleteBranch: true,
+          force: false,
+        );
 
         final captured =
             verify(
@@ -481,10 +500,16 @@ void main() {
           () => mockClient.delete<bool>(
             "/session/$sessionId",
             fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(true));
 
-        final result = await sessionService.deleteSession(sessionId);
+        final result = await sessionService.deleteSession(
+          sessionId: sessionId,
+          deleteWorktree: true,
+          deleteBranch: true,
+          force: false,
+        );
 
         expect(result, isA<SuccessResponse<bool>>());
         expect((result as SuccessResponse<bool>).data, isTrue);
@@ -492,6 +517,7 @@ void main() {
           () => mockClient.delete<bool>(
             "/session/$sessionId",
             fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
           ),
         ).called(1);
       });
@@ -502,10 +528,16 @@ void main() {
           () => mockClient.delete<bool>(
             "/session/$sessionId",
             fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
           ),
         ).thenAnswer((_) async => ApiResponse.error(error));
 
-        final result = await sessionService.deleteSession(sessionId);
+        final result = await sessionService.deleteSession(
+          sessionId: sessionId,
+          deleteWorktree: true,
+          deleteBranch: true,
+          force: false,
+        );
 
         expect(result, isA<ErrorResponse<bool>>());
         expect((result as ErrorResponse<bool>).error, equals(error));
@@ -513,6 +545,7 @@ void main() {
           () => mockClient.delete<bool>(
             "/session/$sessionId",
             fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
           ),
         ).called(1);
       });

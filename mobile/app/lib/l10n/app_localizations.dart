@@ -1002,6 +1002,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed to rename project'**
   String get renameProjectFailed;
+
+  /// No description provided for @newSessionDedicatedWorktree.
+  ///
+  /// In en, this message translates to:
+  /// **'Dedicated worktree'**
+  String get newSessionDedicatedWorktree;
+
+  /// No description provided for @newSessionDedicatedWorktreeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Creates a dedicated git worktree and branch for this session'**
+  String get newSessionDedicatedWorktreeDescription;
+
+  /// No description provided for @sessionListDeleteWorktreeCheckbox.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete worktree'**
+  String get sessionListDeleteWorktreeCheckbox;
+
+  /// No description provided for @sessionListDeleteBranchCheckbox.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete branch'**
+  String get sessionListDeleteBranchCheckbox;
+
+  /// No description provided for @sessionListArchiveConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive session?'**
+  String get sessionListArchiveConfirmTitle;
+
+  /// No description provided for @sessionListArchiveConfirmMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This session will be archived and hidden from the active list.'**
+  String get sessionListArchiveConfirmMessage;
+
+  /// No description provided for @sessionListArchiveConfirmAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive'**
+  String get sessionListArchiveConfirmAction;
+
+  /// No description provided for @sessionListForceDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Force delete?'**
+  String get sessionListForceDeleteTitle;
+
+  /// No description provided for @sessionListForceArchiveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Force archive?'**
+  String get sessionListForceArchiveTitle;
+
+  /// No description provided for @sessionListForceMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The following issues were found:'**
+  String get sessionListForceMessage;
+
+  /// No description provided for @sessionListForceDeleteAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Force Delete'**
+  String get sessionListForceDeleteAction;
+
+  /// No description provided for @sessionListForceArchiveAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Force Archive'**
+  String get sessionListForceArchiveAction;
+
+  /// No description provided for @sessionListCleanupIssueUnstagedChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Worktree has unstaged changes'**
+  String get sessionListCleanupIssueUnstagedChanges;
+
+  /// No description provided for @sessionListCleanupIssueBranchMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Worktree is on branch \'{actual}\' instead of expected \'{expected}\''**
+  String sessionListCleanupIssueBranchMismatch(String actual, String expected);
+
+  /// No description provided for @sessionListDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to delete session'**
+  String get sessionListDeleteFailed;
+
+  /// No description provided for @sessionListArchiveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to archive session'**
+  String get sessionListArchiveFailed;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

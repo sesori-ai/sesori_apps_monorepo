@@ -90,6 +90,7 @@ class RelayHttpApiClient {
   Future<ApiResponse<T>> delete<T>(
     String path, {
     required T Function(dynamic json) fromJson,
+    Object? body,
     Map<String, String>? queryParameters,
     Map<String, String>? headers,
   }) async {
@@ -102,6 +103,7 @@ class RelayHttpApiClient {
           path,
           fromJson,
           queryParameters: queryParameters,
+          body: body,
           extraHeaders: headers,
         ),
       );

@@ -325,10 +325,6 @@ class FakeOpenCodeApi implements OpenCodeApi {
       throw UnimplementedError();
 
   @override
-  Future<Session> forkSession({required String sessionId, required String? directory}) async =>
-      throw UnimplementedError();
-
-  @override
   Future<Session> updateSession({
     required String sessionId,
     required Map<String, dynamic> body,
@@ -398,6 +394,12 @@ class FakeOpenCodeApi implements OpenCodeApi {
   @override
   Future<ProviderListResponse> listProviders() async =>
       const ProviderListResponse(all: [], defaults: {}, connected: []);
+
+  @override
+  Future<Session> forkSession({
+    required String sessionId,
+    required String directory,
+  }) async => throw UnimplementedError();
 }
 
 class FakeOpenCodeRepository extends OpenCodeRepository {

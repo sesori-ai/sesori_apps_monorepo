@@ -280,20 +280,6 @@ class _FakeBridgePlugin implements BridgePlugin {
   );
 
   @override
-  Future<PluginSession> updateSessionArchiveStatus(
-    String sessionId, {
-    required bool archived,
-  }) async => const PluginSession(
-    id: "",
-    projectID: "",
-    directory: "",
-    parentID: null,
-    title: null,
-    time: null,
-    summary: null,
-  );
-
-  @override
   Future<PluginSession> renameSession({required String sessionId, required String title}) async => const PluginSession(
     id: "",
     projectID: "",
@@ -414,20 +400,6 @@ class _TrackingBridgePlugin implements BridgePlugin {
     required List<PluginPromptPart> parts,
     required String? agent,
     required ({String providerID, String modelID})? model,
-  }) async => const PluginSession(
-    id: "",
-    projectID: "",
-    directory: "",
-    parentID: null,
-    title: null,
-    time: null,
-    summary: null,
-  );
-
-  @override
-  Future<PluginSession> updateSessionArchiveStatus(
-    String sessionId, {
-    required bool archived,
   }) async => const PluginSession(
     id: "",
     projectID: "",

@@ -18,6 +18,7 @@ _CreateSessionRequest _$CreateSessionRequestFromJson(Map json) =>
           : PromptModel.fromJson(
               Map<String, dynamic>.from(json['model'] as Map),
             ),
+      dedicatedWorktree: json['dedicatedWorktree'] as bool,
     );
 
 Map<String, dynamic> _$CreateSessionRequestToJson(
@@ -27,4 +28,5 @@ Map<String, dynamic> _$CreateSessionRequestToJson(
   'parts': instance.parts.map((e) => e.toJson()).toList(),
   'agent': instance.agent,
   'model': instance.model?.toJson(),
+  'dedicatedWorktree': instance.dedicatedWorktree,
 };

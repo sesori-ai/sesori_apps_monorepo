@@ -35,6 +35,11 @@ When changing shared types, update in this order.
 - `dart test` from `app/` and `sesori_plugin_opencode/`
 - `sesori_plugin_interface` has no tests (it's a contract package)
 
+## File Size
+- Maximum file length: 250 lines per file
+- If a file exceeds 250 lines, split it into smaller focused files (by use-case, component, or concern)
+- Prefer many small files over few large files
+
 ## Conventions
 
 - Freezed models use `build.yaml` options: `format: false`, `map: false`, `when: false`

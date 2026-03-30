@@ -37,8 +37,6 @@ abstract class BridgePlugin {
     required ({String providerID, String modelID})? model,
   });
 
-  Future<PluginSession> updateSessionArchiveStatus(String sessionId, {required bool archived});
-
   /// Rename a session's title.
   Future<PluginSession> renameSession({required String sessionId, required String title});
 

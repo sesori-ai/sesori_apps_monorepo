@@ -4,6 +4,11 @@ Thin UI shell for the Sesori mobile client. All business logic, state management
 
 See [`../AGENTS.md`](../AGENTS.md) for shared conventions (architecture layering, DI, testing, error handling).
 
+## File Size
+- Maximum file length: 250 lines per file
+- If a file exceeds 250 lines, split it into smaller focused files (by use-case, component, or concern)
+- Prefer many small files over few large files
+
 ## Flutter-Specific Conventions
 
 - `flutter_bloc` for widget integration (`BlocProvider`, `context.watch`, `context.read`)

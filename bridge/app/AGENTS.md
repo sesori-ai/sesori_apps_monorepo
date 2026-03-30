@@ -51,6 +51,11 @@ modules/
 | OpenCode plugin  | `modules/opencode_plugin/`         | OpenCode backend implementation + models + tests        |
 | Process mgmt     | `lib/src/server/`                  | Spawns OpenCode, health poll, SIGTERM cleanup         |
 
+## FILE SIZE
+- Maximum file length: 250 lines per file
+- If a file exceeds 250 lines, split it into smaller focused files (by use-case, component, or concern)
+- Prefer many small files over few large files
+
 ## CONVENTIONS
 
 - **Plugin architecture** — all backend-specific code lives in plugin modules under `modules/`. The bridge `lib/src/` is plugin-agnostic — it only imports from `sesori_plugin_interface`, never from concrete plugins.

@@ -237,15 +237,35 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
 mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
   String get sessionId;
   String get projectId;
-  String get worktreePath;
-  String get branchName;
+  String? get worktreePath;
+  String? get branchName;
+  bool get isDedicated;
+  int? get archivedAt;
+  String? get baseBranch;
+  String? get baseCommit;
+  int get createdAt;
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['session_id'] = Variable<String>(sessionId);
     map['project_id'] = Variable<String>(projectId);
-    map['worktree_path'] = Variable<String>(worktreePath);
-    map['branch_name'] = Variable<String>(branchName);
+    if (!nullToAbsent || worktreePath != null) {
+      map['worktree_path'] = Variable<String>(worktreePath);
+    }
+    if (!nullToAbsent || branchName != null) {
+      map['branch_name'] = Variable<String>(branchName);
+    }
+    map['is_dedicated'] = Variable<bool>(isDedicated);
+    if (!nullToAbsent || archivedAt != null) {
+      map['archived_at'] = Variable<int>(archivedAt);
+    }
+    if (!nullToAbsent || baseBranch != null) {
+      map['base_branch'] = Variable<String>(baseBranch);
+    }
+    if (!nullToAbsent || baseCommit != null) {
+      map['base_commit'] = Variable<String>(baseCommit);
+    }
+    map['created_at'] = Variable<int>(createdAt);
     return map;
   }
 }
@@ -285,9 +305,9 @@ class $SessionTableTable extends SessionTable
   late final GeneratedColumn<String> worktreePath = GeneratedColumn<String>(
     'worktree_path',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _branchNameMeta = const VerificationMeta(
     'branchName',
@@ -296,8 +316,66 @@ class $SessionTableTable extends SessionTable
   late final GeneratedColumn<String> branchName = GeneratedColumn<String>(
     'branch_name',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isDedicatedMeta = const VerificationMeta(
+    'isDedicated',
+  );
+  @override
+  late final GeneratedColumn<bool> isDedicated = GeneratedColumn<bool>(
+    'is_dedicated',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_dedicated" IN (0, 1))',
+    ),
+  );
+  static const VerificationMeta _archivedAtMeta = const VerificationMeta(
+    'archivedAt',
+  );
+  @override
+  late final GeneratedColumn<int> archivedAt = GeneratedColumn<int>(
+    'archived_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _baseBranchMeta = const VerificationMeta(
+    'baseBranch',
+  );
+  @override
+  late final GeneratedColumn<String> baseBranch = GeneratedColumn<String>(
+    'base_branch',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _baseCommitMeta = const VerificationMeta(
+    'baseCommit',
+  );
+  @override
+  late final GeneratedColumn<String> baseCommit = GeneratedColumn<String>(
+    'base_commit',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
   @override
@@ -306,12 +384,17 @@ class $SessionTableTable extends SessionTable
     projectId,
     worktreePath,
     branchName,
+    isDedicated,
+    archivedAt,
+    baseBranch,
+    baseCommit,
+    createdAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
-  static const String $name = 'session_worktrees_table';
+  static const String $name = 'sessions_table';
   @override
   VerificationContext validateIntegrity(
     Insertable<SessionDto> instance, {
@@ -343,16 +426,49 @@ class $SessionTableTable extends SessionTable
           _worktreePathMeta,
         ),
       );
-    } else if (isInserting) {
-      context.missing(_worktreePathMeta);
     }
     if (data.containsKey('branch_name')) {
       context.handle(
         _branchNameMeta,
         branchName.isAcceptableOrUnknown(data['branch_name']!, _branchNameMeta),
       );
+    }
+    if (data.containsKey('is_dedicated')) {
+      context.handle(
+        _isDedicatedMeta,
+        isDedicated.isAcceptableOrUnknown(
+          data['is_dedicated']!,
+          _isDedicatedMeta,
+        ),
+      );
     } else if (isInserting) {
-      context.missing(_branchNameMeta);
+      context.missing(_isDedicatedMeta);
+    }
+    if (data.containsKey('archived_at')) {
+      context.handle(
+        _archivedAtMeta,
+        archivedAt.isAcceptableOrUnknown(data['archived_at']!, _archivedAtMeta),
+      );
+    }
+    if (data.containsKey('base_branch')) {
+      context.handle(
+        _baseBranchMeta,
+        baseBranch.isAcceptableOrUnknown(data['base_branch']!, _baseBranchMeta),
+      );
+    }
+    if (data.containsKey('base_commit')) {
+      context.handle(
+        _baseCommitMeta,
+        baseCommit.isAcceptableOrUnknown(data['base_commit']!, _baseCommitMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
     }
     return context;
   }
@@ -374,10 +490,30 @@ class $SessionTableTable extends SessionTable
       worktreePath: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}worktree_path'],
-      )!,
+      ),
       branchName: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}branch_name'],
+      ),
+      isDedicated: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_dedicated'],
+      )!,
+      archivedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}archived_at'],
+      ),
+      baseBranch: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}base_branch'],
+      ),
+      baseCommit: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}base_commit'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
       )!,
     );
   }
@@ -394,48 +530,83 @@ class $SessionTableTable extends SessionTable
 class SessionTableCompanion extends UpdateCompanion<SessionDto> {
   final Value<String> sessionId;
   final Value<String> projectId;
-  final Value<String> worktreePath;
-  final Value<String> branchName;
+  final Value<String?> worktreePath;
+  final Value<String?> branchName;
+  final Value<bool> isDedicated;
+  final Value<int?> archivedAt;
+  final Value<String?> baseBranch;
+  final Value<String?> baseCommit;
+  final Value<int> createdAt;
   const SessionTableCompanion({
     this.sessionId = const Value.absent(),
     this.projectId = const Value.absent(),
     this.worktreePath = const Value.absent(),
     this.branchName = const Value.absent(),
+    this.isDedicated = const Value.absent(),
+    this.archivedAt = const Value.absent(),
+    this.baseBranch = const Value.absent(),
+    this.baseCommit = const Value.absent(),
+    this.createdAt = const Value.absent(),
   });
   SessionTableCompanion.insert({
     required String sessionId,
     required String projectId,
-    required String worktreePath,
-    required String branchName,
+    this.worktreePath = const Value.absent(),
+    this.branchName = const Value.absent(),
+    required bool isDedicated,
+    this.archivedAt = const Value.absent(),
+    this.baseBranch = const Value.absent(),
+    this.baseCommit = const Value.absent(),
+    required int createdAt,
   }) : sessionId = Value(sessionId),
        projectId = Value(projectId),
-       worktreePath = Value(worktreePath),
-       branchName = Value(branchName);
+       isDedicated = Value(isDedicated),
+       createdAt = Value(createdAt);
   static Insertable<SessionDto> custom({
     Expression<String>? sessionId,
     Expression<String>? projectId,
     Expression<String>? worktreePath,
     Expression<String>? branchName,
+    Expression<bool>? isDedicated,
+    Expression<int>? archivedAt,
+    Expression<String>? baseBranch,
+    Expression<String>? baseCommit,
+    Expression<int>? createdAt,
   }) {
     return RawValuesInsertable({
       if (sessionId != null) 'session_id': sessionId,
       if (projectId != null) 'project_id': projectId,
       if (worktreePath != null) 'worktree_path': worktreePath,
       if (branchName != null) 'branch_name': branchName,
+      if (isDedicated != null) 'is_dedicated': isDedicated,
+      if (archivedAt != null) 'archived_at': archivedAt,
+      if (baseBranch != null) 'base_branch': baseBranch,
+      if (baseCommit != null) 'base_commit': baseCommit,
+      if (createdAt != null) 'created_at': createdAt,
     });
   }
 
   SessionTableCompanion copyWith({
     Value<String>? sessionId,
     Value<String>? projectId,
-    Value<String>? worktreePath,
-    Value<String>? branchName,
+    Value<String?>? worktreePath,
+    Value<String?>? branchName,
+    Value<bool>? isDedicated,
+    Value<int?>? archivedAt,
+    Value<String?>? baseBranch,
+    Value<String?>? baseCommit,
+    Value<int>? createdAt,
   }) {
     return SessionTableCompanion(
       sessionId: sessionId ?? this.sessionId,
       projectId: projectId ?? this.projectId,
       worktreePath: worktreePath ?? this.worktreePath,
       branchName: branchName ?? this.branchName,
+      isDedicated: isDedicated ?? this.isDedicated,
+      archivedAt: archivedAt ?? this.archivedAt,
+      baseBranch: baseBranch ?? this.baseBranch,
+      baseCommit: baseCommit ?? this.baseCommit,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 
@@ -454,6 +625,21 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     if (branchName.present) {
       map['branch_name'] = Variable<String>(branchName.value);
     }
+    if (isDedicated.present) {
+      map['is_dedicated'] = Variable<bool>(isDedicated.value);
+    }
+    if (archivedAt.present) {
+      map['archived_at'] = Variable<int>(archivedAt.value);
+    }
+    if (baseBranch.present) {
+      map['base_branch'] = Variable<String>(baseBranch.value);
+    }
+    if (baseCommit.present) {
+      map['base_commit'] = Variable<String>(baseCommit.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
     return map;
   }
 
@@ -463,7 +649,12 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
           ..write('sessionId: $sessionId, ')
           ..write('projectId: $projectId, ')
           ..write('worktreePath: $worktreePath, ')
-          ..write('branchName: $branchName')
+          ..write('branchName: $branchName, ')
+          ..write('isDedicated: $isDedicated, ')
+          ..write('archivedAt: $archivedAt, ')
+          ..write('baseBranch: $baseBranch, ')
+          ..write('baseCommit: $baseCommit, ')
+          ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
@@ -669,15 +860,25 @@ typedef $$SessionTableTableCreateCompanionBuilder =
     SessionTableCompanion Function({
       required String sessionId,
       required String projectId,
-      required String worktreePath,
-      required String branchName,
+      Value<String?> worktreePath,
+      Value<String?> branchName,
+      required bool isDedicated,
+      Value<int?> archivedAt,
+      Value<String?> baseBranch,
+      Value<String?> baseCommit,
+      required int createdAt,
     });
 typedef $$SessionTableTableUpdateCompanionBuilder =
     SessionTableCompanion Function({
       Value<String> sessionId,
       Value<String> projectId,
-      Value<String> worktreePath,
-      Value<String> branchName,
+      Value<String?> worktreePath,
+      Value<String?> branchName,
+      Value<bool> isDedicated,
+      Value<int?> archivedAt,
+      Value<String?> baseBranch,
+      Value<String?> baseCommit,
+      Value<int> createdAt,
     });
 
 class $$SessionTableTableFilterComposer
@@ -706,6 +907,31 @@ class $$SessionTableTableFilterComposer
 
   ColumnFilters<String> get branchName => $composableBuilder(
     column: $table.branchName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDedicated => $composableBuilder(
+    column: $table.isDedicated,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get archivedAt => $composableBuilder(
+    column: $table.archivedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get baseBranch => $composableBuilder(
+    column: $table.baseBranch,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get baseCommit => $composableBuilder(
+    column: $table.baseCommit,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -738,6 +964,31 @@ class $$SessionTableTableOrderingComposer
     column: $table.branchName,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get isDedicated => $composableBuilder(
+    column: $table.isDedicated,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get archivedAt => $composableBuilder(
+    column: $table.archivedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get baseBranch => $composableBuilder(
+    column: $table.baseBranch,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get baseCommit => $composableBuilder(
+    column: $table.baseCommit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SessionTableTableAnnotationComposer
@@ -764,6 +1015,29 @@ class $$SessionTableTableAnnotationComposer
     column: $table.branchName,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get isDedicated => $composableBuilder(
+    column: $table.isDedicated,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get archivedAt => $composableBuilder(
+    column: $table.archivedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get baseBranch => $composableBuilder(
+    column: $table.baseBranch,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get baseCommit => $composableBuilder(
+    column: $table.baseCommit,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
 }
 
 class $$SessionTableTableTableManager
@@ -799,25 +1073,45 @@ class $$SessionTableTableTableManager
               ({
                 Value<String> sessionId = const Value.absent(),
                 Value<String> projectId = const Value.absent(),
-                Value<String> worktreePath = const Value.absent(),
-                Value<String> branchName = const Value.absent(),
+                Value<String?> worktreePath = const Value.absent(),
+                Value<String?> branchName = const Value.absent(),
+                Value<bool> isDedicated = const Value.absent(),
+                Value<int?> archivedAt = const Value.absent(),
+                Value<String?> baseBranch = const Value.absent(),
+                Value<String?> baseCommit = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
               }) => SessionTableCompanion(
                 sessionId: sessionId,
                 projectId: projectId,
                 worktreePath: worktreePath,
                 branchName: branchName,
+                isDedicated: isDedicated,
+                archivedAt: archivedAt,
+                baseBranch: baseBranch,
+                baseCommit: baseCommit,
+                createdAt: createdAt,
               ),
           createCompanionCallback:
               ({
                 required String sessionId,
                 required String projectId,
-                required String worktreePath,
-                required String branchName,
+                Value<String?> worktreePath = const Value.absent(),
+                Value<String?> branchName = const Value.absent(),
+                required bool isDedicated,
+                Value<int?> archivedAt = const Value.absent(),
+                Value<String?> baseBranch = const Value.absent(),
+                Value<String?> baseCommit = const Value.absent(),
+                required int createdAt,
               }) => SessionTableCompanion.insert(
                 sessionId: sessionId,
                 projectId: projectId,
                 worktreePath: worktreePath,
                 branchName: branchName,
+                isDedicated: isDedicated,
+                archivedAt: archivedAt,
+                baseBranch: baseBranch,
+                baseCommit: baseCommit,
+                createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

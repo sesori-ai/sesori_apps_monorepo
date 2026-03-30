@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$UpdateSessionArchiveRequest {
 
- bool get archived;
+ bool get archived; bool get deleteWorktree; bool get deleteBranch; bool get force;
 /// Create a copy of UpdateSessionArchiveRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $UpdateSessionArchiveRequestCopyWith<UpdateSessionArchiveRequest> get copyWith =
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is UpdateSessionArchiveRequest&&(identical(other.archived, archived) || other.archived == archived));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UpdateSessionArchiveRequest&&(identical(other.archived, archived) || other.archived == archived)&&(identical(other.deleteWorktree, deleteWorktree) || other.deleteWorktree == deleteWorktree)&&(identical(other.deleteBranch, deleteBranch) || other.deleteBranch == deleteBranch)&&(identical(other.force, force) || other.force == force));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,archived);
+int get hashCode => Object.hash(runtimeType,archived,deleteWorktree,deleteBranch,force);
 
 @override
 String toString() {
-  return 'UpdateSessionArchiveRequest(archived: $archived)';
+  return 'UpdateSessionArchiveRequest(archived: $archived, deleteWorktree: $deleteWorktree, deleteBranch: $deleteBranch, force: $force)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $UpdateSessionArchiveRequestCopyWith<$Res>  {
   factory $UpdateSessionArchiveRequestCopyWith(UpdateSessionArchiveRequest value, $Res Function(UpdateSessionArchiveRequest) _then) = _$UpdateSessionArchiveRequestCopyWithImpl;
 @useResult
 $Res call({
- bool archived
+ bool archived, bool deleteWorktree, bool deleteBranch, bool force
 });
 
 
@@ -65,9 +65,12 @@ class _$UpdateSessionArchiveRequestCopyWithImpl<$Res>
 
 /// Create a copy of UpdateSessionArchiveRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? archived = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? archived = null,Object? deleteWorktree = null,Object? deleteBranch = null,Object? force = null,}) {
   return _then(_self.copyWith(
 archived: null == archived ? _self.archived : archived // ignore: cast_nullable_to_non_nullable
+as bool,deleteWorktree: null == deleteWorktree ? _self.deleteWorktree : deleteWorktree // ignore: cast_nullable_to_non_nullable
+as bool,deleteBranch: null == deleteBranch ? _self.deleteBranch : deleteBranch // ignore: cast_nullable_to_non_nullable
+as bool,force: null == force ? _self.force : force // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -80,10 +83,13 @@ as bool,
 @JsonSerializable()
 
 class _UpdateSessionArchiveRequest implements UpdateSessionArchiveRequest {
-  const _UpdateSessionArchiveRequest({required this.archived});
+  const _UpdateSessionArchiveRequest({required this.archived, required this.deleteWorktree, required this.deleteBranch, required this.force});
   factory _UpdateSessionArchiveRequest.fromJson(Map<String, dynamic> json) => _$UpdateSessionArchiveRequestFromJson(json);
 
 @override final  bool archived;
+@override final  bool deleteWorktree;
+@override final  bool deleteBranch;
+@override final  bool force;
 
 /// Create a copy of UpdateSessionArchiveRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -98,16 +104,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _UpdateSessionArchiveRequest&&(identical(other.archived, archived) || other.archived == archived));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _UpdateSessionArchiveRequest&&(identical(other.archived, archived) || other.archived == archived)&&(identical(other.deleteWorktree, deleteWorktree) || other.deleteWorktree == deleteWorktree)&&(identical(other.deleteBranch, deleteBranch) || other.deleteBranch == deleteBranch)&&(identical(other.force, force) || other.force == force));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,archived);
+int get hashCode => Object.hash(runtimeType,archived,deleteWorktree,deleteBranch,force);
 
 @override
 String toString() {
-  return 'UpdateSessionArchiveRequest(archived: $archived)';
+  return 'UpdateSessionArchiveRequest(archived: $archived, deleteWorktree: $deleteWorktree, deleteBranch: $deleteBranch, force: $force)';
 }
 
 
@@ -118,7 +124,7 @@ abstract mixin class _$UpdateSessionArchiveRequestCopyWith<$Res> implements $Upd
   factory _$UpdateSessionArchiveRequestCopyWith(_UpdateSessionArchiveRequest value, $Res Function(_UpdateSessionArchiveRequest) _then) = __$UpdateSessionArchiveRequestCopyWithImpl;
 @override @useResult
 $Res call({
- bool archived
+ bool archived, bool deleteWorktree, bool deleteBranch, bool force
 });
 
 
@@ -135,9 +141,12 @@ class __$UpdateSessionArchiveRequestCopyWithImpl<$Res>
 
 /// Create a copy of UpdateSessionArchiveRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? archived = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? archived = null,Object? deleteWorktree = null,Object? deleteBranch = null,Object? force = null,}) {
   return _then(_UpdateSessionArchiveRequest(
 archived: null == archived ? _self.archived : archived // ignore: cast_nullable_to_non_nullable
+as bool,deleteWorktree: null == deleteWorktree ? _self.deleteWorktree : deleteWorktree // ignore: cast_nullable_to_non_nullable
+as bool,deleteBranch: null == deleteBranch ? _self.deleteBranch : deleteBranch // ignore: cast_nullable_to_non_nullable
+as bool,force: null == force ? _self.force : force // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }

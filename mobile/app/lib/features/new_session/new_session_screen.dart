@@ -27,8 +27,15 @@ class NewSessionScreen extends StatelessWidget {
   }
 }
 
-class _NewSessionBody extends StatelessWidget {
+class _NewSessionBody extends StatefulWidget {
   const _NewSessionBody();
+
+  @override
+  State<_NewSessionBody> createState() => _NewSessionBodyState();
+}
+
+class _NewSessionBodyState extends State<_NewSessionBody> {
+  bool _dedicatedWorktree = true;
 
   @override
   Widget build(BuildContext context) {
@@ -54,8 +61,26 @@ class _NewSessionBody extends StatelessWidget {
         appBar: AppBar(title: Text(loc.sessionListNewSession)),
         body: Column(
           children: [
-            const Expanded(
-              child: SizedBox.expand(),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SwitchListTile(
+                      title: Text(loc.newSessionDedicatedWorktree),
+                      subtitle: Text(
+                        loc.newSessionDedicatedWorktreeDescription,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      value: _dedicatedWorktree,
+                      onChanged: (value) => setState(() => _dedicatedWorktree = value),
+                    ),
+                  ],
+                ),
+              ),
             ),
             PromptInput(
               isBusy: state is NewSessionSending,
@@ -64,6 +89,7 @@ class _NewSessionBody extends StatelessWidget {
                   text: text,
                   agent: null,
                   model: null,
+                  dedicatedWorktree: _dedicatedWorktree,
                 );
               },
               onAbort: () => Navigator.of(context).pop(),

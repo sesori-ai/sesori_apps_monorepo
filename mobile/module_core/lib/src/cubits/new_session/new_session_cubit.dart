@@ -20,6 +20,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     required String text,
     required String? agent,
     required PromptModel? model,
+    required bool dedicatedWorktree,
   }) async {
     if (state is NewSessionSending) return;
 
@@ -33,6 +34,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       text: trimmed,
       agent: agent,
       model: model,
+      dedicatedWorktree: dedicatedWorktree,
     );
 
     if (isClosed) return;

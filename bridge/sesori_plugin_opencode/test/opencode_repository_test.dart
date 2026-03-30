@@ -391,10 +391,6 @@ class _FakeApi implements OpenCodeApi {
       throw UnimplementedError();
 
   @override
-  Future<Session> forkSession({required String sessionId, required String? directory}) async =>
-      throw UnimplementedError();
-
-  @override
   Future<Session> updateSession({
     required String sessionId,
     required Map<String, dynamic> body,
@@ -457,5 +453,11 @@ class _FakeApi implements OpenCodeApi {
     required String projectId,
     required String directory,
     required Map<String, dynamic> body,
+  }) async => throw UnimplementedError();
+
+  @override
+  Future<Session> forkSession({
+    required String sessionId,
+    required String directory,
   }) async => throw UnimplementedError();
 }

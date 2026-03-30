@@ -1,8 +1,16 @@
+import "dart:convert";
+
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../api/client/relay_http_client.dart";
+
+class SessionCleanupRejectedException implements Exception {
+  final SessionCleanupRejection rejection;
+
+  const SessionCleanupRejectedException({required this.rejection});
+}
 
 @lazySingleton
 class SessionService {
@@ -65,6 +73,7 @@ class SessionService {
     required String text,
     required String? agent,
     required PromptModel? model,
+    required bool dedicatedWorktree,
   }) {
     return _client.post(
       "/session",
@@ -77,19 +86,33 @@ class SessionService {
         parts: [PromptPart.text(text: text)],
         agent: agent,
         model: model,
+        dedicatedWorktree: dedicatedWorktree,
       ).toJson(),
     );
   }
 
-  Future<ApiResponse<Session>> archiveSession(String sessionId) {
-    return _client.patch(
+  Future<ApiResponse<Session>> archiveSession({
+    required String sessionId,
+    required bool deleteWorktree,
+    required bool deleteBranch,
+    required bool force,
+  }) async {
+    final response = await _client.patch(
       "/session/$sessionId",
       fromJson: (json) => switch (json) {
         final Map<String, dynamic> map => Session.fromJson(map),
         _ => throw FormatException("expected map, got ${json.runtimeType}"),
       },
-      body: const UpdateSessionArchiveRequest(archived: true).toJson(),
+      body: UpdateSessionArchiveRequest(
+        archived: true,
+        deleteWorktree: deleteWorktree,
+        deleteBranch: deleteBranch,
+        force: force,
+      ).toJson(),
     );
+
+    _throwIfCleanupRejected(response);
+    return response;
   }
 
   Future<ApiResponse<Session>> unarchiveSession(String sessionId) {
@@ -99,7 +122,12 @@ class SessionService {
         final Map<String, dynamic> map => Session.fromJson(map),
         _ => throw FormatException("expected map, got ${json.runtimeType}"),
       },
-      body: const UpdateSessionArchiveRequest(archived: false).toJson(),
+      body: const UpdateSessionArchiveRequest(
+        archived: false,
+        deleteWorktree: false,
+        deleteBranch: false,
+        force: false,
+      ).toJson(),
     );
   }
 
@@ -114,11 +142,43 @@ class SessionService {
     );
   }
 
-  Future<ApiResponse<bool>> deleteSession(String sessionId) {
-    return _client.delete(
+  Future<ApiResponse<bool>> deleteSession({
+    required String sessionId,
+    required bool deleteWorktree,
+    required bool deleteBranch,
+    required bool force,
+  }) async {
+    final response = await _client.delete(
       "/session/$sessionId",
       fromJson: (_) => true,
+      body: DeleteSessionRequest(
+        deleteWorktree: deleteWorktree,
+        deleteBranch: deleteBranch,
+        force: force,
+      ).toJson(),
     );
+
+    _throwIfCleanupRejected(response);
+    return response;
+  }
+
+  void _throwIfCleanupRejected<T>(ApiResponse<T> response) {
+    if (response case ErrorResponse(error: NonSuccessCodeError(errorCode: 409, rawErrorString: final rawBody))) {
+      try {
+        final decoded = jsonDecode(rawBody ?? "{}");
+        final rejection = SessionCleanupRejection.fromJson(
+          switch (decoded) {
+            final Map<String, dynamic> map => map,
+            _ => throw const FormatException("invalid cleanup rejection json"),
+          },
+        );
+        throw SessionCleanupRejectedException(rejection: rejection);
+      } on SessionCleanupRejectedException {
+        rethrow;
+      } on Object {
+        return;
+      }
+    }
   }
 
   Future<ApiResponse<List<Session>>> getChildren(String sessionId) {

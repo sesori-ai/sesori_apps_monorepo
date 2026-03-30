@@ -116,27 +116,6 @@ class OpenCodeApi {
     return Session.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }
 
-  Future<Session> forkSession({
-    required String sessionId,
-    required String? directory,
-  }) async {
-    final client = http.Client();
-    try {
-      final response = await client.post(
-        Uri.parse("$serverURL/session/$sessionId/fork"),
-        headers: {
-          ..._authHeaders,
-          _directoryOpenCodeHeader: ?directory,
-        },
-        body: "",
-      );
-      _ensureSuccess(response, "POST /session/$sessionId/fork");
-      return Session.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
-    } finally {
-      client.close();
-    }
-  }
-
   Future<Session> updateSession({
     required String sessionId,
     required Map<String, dynamic> body,
@@ -221,6 +200,26 @@ class OpenCodeApi {
 
     final decoded = jsonDecode(response.body) as List;
     return decoded.cast<Map<String, dynamic>>().map(Session.fromJson).toList();
+  }
+
+  Future<Session> forkSession({
+    required String sessionId,
+    required String directory,
+  }) async {
+    final client = http.Client();
+    try {
+      final response = await client.post(
+        Uri.parse("$serverURL/session/$sessionId/fork"),
+        headers: {
+          ..._authHeaders,
+          _directoryOpenCodeHeader: directory,
+        },
+      );
+      _ensureSuccess(response, "POST /session/$sessionId/fork");
+      return Session.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    } finally {
+      client.close();
+    }
   }
 
   Future<List<MessageWithParts>> getMessages({

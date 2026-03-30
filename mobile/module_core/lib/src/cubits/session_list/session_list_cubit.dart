@@ -29,6 +29,8 @@ class SessionListCubit extends Cubit<SessionListState> {
   /// so the screen can offer an undo toast.
   Session? _undoSnapshot;
 
+  SessionCleanupRejection? _lastCleanupRejection;
+
   /// Cached base branch name, fetched alongside sessions.
   String? _baseBranch;
 
@@ -60,6 +62,8 @@ class SessionListCubit extends Cubit<SessionListState> {
   }
 
   String get projectId => _projectId;
+
+  SessionCleanupRejection? get lastCleanupRejection => _lastCleanupRejection;
 
   void _handleEvent(SseEvent event) {
     try {
@@ -209,7 +213,12 @@ class SessionListCubit extends Cubit<SessionListState> {
 
   /// Archives a session. Returns `true` on success so the screen can show
   /// an undo toast.
-  Future<bool> archiveSession(String sessionId) async {
+  Future<bool> archiveSession({
+    required String sessionId,
+    required bool deleteWorktree,
+    required bool deleteBranch,
+    required bool force,
+  }) async {
     if (state is! SessionListLoaded) return false;
 
     final index = _allSessions.indexWhere((s) => s.id == sessionId);
@@ -226,7 +235,22 @@ class SessionListCubit extends Cubit<SessionListState> {
     );
     _emitFiltered();
 
-    final response = await _service.archiveSession(sessionId);
+    _lastCleanupRejection = null;
+
+    final ApiResponse<Session> response;
+    try {
+      response = await _service.archiveSession(
+        sessionId: sessionId,
+        deleteWorktree: deleteWorktree,
+        deleteBranch: deleteBranch,
+        force: force,
+      );
+    } on SessionCleanupRejectedException catch (error) {
+      _lastCleanupRejection = error.rejection;
+      _rollbackLastAction();
+      return false;
+    }
+
     if (isClosed) return false;
 
     return switch (response) {
@@ -243,21 +267,18 @@ class SessionListCubit extends Cubit<SessionListState> {
   /// Unarchives a session. Returns `true` on success so the screen can show
   /// a confirmation message.
   ///
-  /// Unlike [archiveSession], this does NOT set [_undoSnapshot] because the
-  /// operation internally creates a new session (via fork + delete) with a
-  /// different ID, so the original cannot be restored.
   Future<bool> unarchiveSession(String sessionId) async {
     if (state is! SessionListLoaded) return false;
 
     final index = _allSessions.indexWhere((s) => s.id == sessionId);
     if (index < 0) return false;
 
-    // Store for rollback (NOT for undo — undo is disabled for unarchive).
-    final original = _allSessions[index];
+    _undoSnapshot = _allSessions[index];
 
-    // Optimistically REMOVE the session (it's archived, so removing it
-    // from the list is the expected visual outcome).
-    _allSessions = List<Session>.from(_allSessions)..removeAt(index);
+    _allSessions = List<Session>.from(_allSessions);
+    _allSessions[index] = _allSessions[index].copyWith(
+      time: _allSessions[index].time?.copyWith(archived: null),
+    );
     _emitFiltered();
 
     final response = await _service.unarchiveSession(sessionId);
@@ -265,14 +286,13 @@ class SessionListCubit extends Cubit<SessionListState> {
 
     return switch (response) {
       SuccessResponse(:final data) => () {
-        // Insert the NEW session (which may have a different ID).
+        _lastCleanupRejection = null;
         _reinsertSession(data);
         return true;
       }(),
       ErrorResponse(:final error) => () {
         loge("Failed to unarchive session: $error");
-        // Rollback — re-insert the ORIGINAL session.
-        _reinsertSession(original);
+        _rollbackLastAction();
         return false;
       }(),
     };
@@ -288,7 +308,12 @@ class SessionListCubit extends Cubit<SessionListState> {
     // If the snapshot was not archived, the last action was an archive → unarchive.
     final wasArchived = snapshot.time?.archived != null;
     final response = wasArchived
-        ? await _service.archiveSession(snapshot.id)
+        ? await _service.archiveSession(
+            sessionId: snapshot.id,
+            deleteWorktree: false,
+            deleteBranch: false,
+            force: false,
+          )
         : await _service.unarchiveSession(snapshot.id);
     if (isClosed) return false;
 
@@ -323,25 +348,46 @@ class SessionListCubit extends Cubit<SessionListState> {
   }
 
   /// Deletes a session permanently.
-  Future<bool> deleteSession(String sessionId) async {
+  Future<bool> deleteSession({
+    required String sessionId,
+    required bool deleteWorktree,
+    required bool deleteBranch,
+    required bool force,
+  }) async {
     if (state is! SessionListLoaded) return false;
 
     final index = _allSessions.indexWhere((s) => s.id == sessionId);
     if (index < 0) return false;
 
+    final originalSession = _allSessions[index];
+
     // Optimistically remove.
     _allSessions = List<Session>.from(_allSessions)..removeAt(index);
     _emitFiltered();
 
-    final response = await _service.deleteSession(sessionId);
+    _lastCleanupRejection = null;
+
+    final ApiResponse<bool> response;
+    try {
+      response = await _service.deleteSession(
+        sessionId: sessionId,
+        deleteWorktree: deleteWorktree,
+        deleteBranch: deleteBranch,
+        force: force,
+      );
+    } on SessionCleanupRejectedException catch (error) {
+      _lastCleanupRejection = error.rejection;
+      _reinsertSession(originalSession);
+      return false;
+    }
+
     if (isClosed) return false;
 
     return switch (response) {
       SuccessResponse() => true,
       ErrorResponse(:final error) => () {
         loge("Failed to delete session: $error");
-        // Reload to restore consistent state.
-        loadSessions();
+        _reinsertSession(originalSession);
         return false;
       }(),
     };
