@@ -5,6 +5,9 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/routing/app_router.dart";
+import "../../core/widgets/agent_model_buttons.dart";
+import "../../core/widgets/agent_picker_sheet.dart";
+import "../../core/widgets/model_picker_sheet.dart";
 import "../session_detail/widgets/prompt_input.dart";
 
 class NewSessionScreen extends StatelessWidget {
@@ -36,6 +39,65 @@ class _NewSessionBody extends StatefulWidget {
 
 class _NewSessionBodyState extends State<_NewSessionBody> {
   bool _dedicatedWorktree = true;
+
+  void _openAgentPicker(AgentModelData data) {
+    final cubit = context.read<NewSessionCubit>();
+    AgentPickerSheet.show(
+      context,
+      agents: data.agents,
+      selectedAgent: data.agent ?? "",
+      onAgentChanged: cubit.selectAgent,
+    );
+  }
+
+  void _openModelPicker(AgentModelData data) {
+    final cubit = context.read<NewSessionCubit>();
+    ModelPickerSheet.show(
+      context,
+      providers: data.providers,
+      selectedProviderID: data.providerID ?? "",
+      selectedModelID: data.modelID ?? "",
+      onModelChanged: cubit.selectModel,
+    );
+  }
+
+  Widget? _buildHeader(NewSessionState state) {
+    final data = state.agentModelData;
+    final agentButtons = data != null && data.agents.isNotEmpty && data.agent != null
+        ? AgentModelButtons(
+            providers: data.providers,
+            selectedAgent: data.agent!,
+            selectedProviderID: data.providerID ?? "",
+            selectedModelID: data.modelID ?? "",
+            onAgentTap: () => _openAgentPicker(data),
+            onModelTap: () => _openModelPicker(data),
+          )
+        : null;
+
+    final errorBanner = switch (state) {
+      NewSessionError(:final message) => Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+          ],
+        ),
+      ),
+      _ => null,
+    };
+
+    if (agentButtons == null && errorBanner == null) return null;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [agentButtons, errorBanner].whereType<Widget>().toList(),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -87,28 +149,11 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
               onSend: (text) {
                 context.read<NewSessionCubit>().createSessionWithMessage(
                   text: text,
-                  agent: null,
-                  model: null,
                   dedicatedWorktree: _dedicatedWorktree,
                 );
               },
               onAbort: () => Navigator.of(context).pop(),
-              header: switch (state) {
-                NewSessionError(:final message) => Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          message,
-                          style: TextStyle(color: Theme.of(context).colorScheme.error),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                _ => null,
-              },
+              header: _buildHeader(state),
             ),
           ],
         ),

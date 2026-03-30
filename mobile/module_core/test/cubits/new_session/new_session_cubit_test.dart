@@ -3,6 +3,7 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_cubit.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_state.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_helpers.dart";
@@ -13,6 +14,16 @@ void main() {
 
     setUp(() {
       mockSessionService = MockSessionService();
+
+      // Stub agent/provider fetches that fire on cubit construction.
+      when(
+        () => mockSessionService.listAgents(),
+      ).thenAnswer((_) async => ApiResponse<List<AgentInfo>>.success(<AgentInfo>[]));
+      when(() => mockSessionService.listProviders()).thenAnswer(
+        (_) async => ApiResponse<ProviderListResponse>.success(
+          const ProviderListResponse(items: [], connectedOnly: false),
+        ),
+      );
     });
 
     NewSessionCubit buildCubit() => NewSessionCubit(
@@ -37,14 +48,16 @@ void main() {
       act: (cubit) async {
         await cubit.createSessionWithMessage(
           text: "hello",
-          agent: null,
-          model: null,
           dedicatedWorktree: false,
         );
       },
       expect: () => [
-        const NewSessionState.sending(),
-        NewSessionState.created(session: testSession(id: "s1")),
+        // First sending is from createSessionWithMessage.
+        isA<NewSessionSending>(),
+        // _loadAgentModelData may resolve during the request, emitting an
+        // updated NewSessionSending with default agent/model values.
+        isA<NewSessionSending>(),
+        isA<NewSessionCreated>(),
       ],
       verify: (_) {
         verify(
