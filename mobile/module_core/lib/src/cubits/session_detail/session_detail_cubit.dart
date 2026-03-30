@@ -681,14 +681,13 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   /// prompt becomes visible — the notification has served its purpose once the
   /// user is already looking at the content.
   void clearNotifications() {
-    _notificationCanceller.cancelForSession(
-      sessionId: _sessionId,
-      category: NotificationCategory.aiInteraction,
-    );
-    _notificationCanceller.cancelForSession(
-      sessionId: _sessionId,
-      category: NotificationCategory.sessionMessage,
-    );
+    for (final category in NotificationCategory.values) {
+      if (category == NotificationCategory.unknown) continue;
+      _notificationCanceller.cancelForSession(
+        sessionId: _sessionId,
+        category: category,
+      );
+    }
   }
 
   // ---------------------------------------------------------------------------

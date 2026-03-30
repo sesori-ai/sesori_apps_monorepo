@@ -83,12 +83,12 @@ void main() {
       ).called(1);
     });
 
-    test('with sessionId but non-aiInteraction category uses timestamp-based ID', () async {
+    test('with sessionId and non-aiInteraction category also uses deterministic ID', () async {
       stubPluginShow();
 
       const sessionId = 'ses_abc';
       const category = NotificationCategory.sessionMessage;
-      final deterministicId = computeNotificationId(sessionId: sessionId, category: category);
+      final expectedId = computeNotificationId(sessionId: sessionId, category: category);
 
       await manager.show(
         title: 'Test Title',
@@ -98,20 +98,15 @@ void main() {
         projectId: null,
       );
 
-      // Capture the actual ID used
-      final captured = verify(
+      verify(
         () => mockPlugin.show(
-          id: captureAny(named: 'id'),
+          id: expectedId,
           title: any(named: 'title'),
           body: any(named: 'body'),
           notificationDetails: any(named: 'notificationDetails'),
           payload: any(named: 'payload'),
         ),
-      ).captured;
-
-      final actualId = captured[0] as int;
-      // Verify it's NOT the deterministic ID (should be timestamp-based)
-      expect(actualId, isNot(deterministicId));
+      ).called(1);
     });
 
     test('without sessionId uses timestamp-based ID even for aiInteraction', () async {

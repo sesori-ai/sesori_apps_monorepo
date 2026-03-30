@@ -359,6 +359,41 @@ void main() {
     );
 
     blocTest<SessionDetailCubit, SessionDetailState>(
+      "clearNotifications cancels all non-unknown notification categories",
+      build: () => SessionDetailCubit(
+        mockSessionService,
+        mockConnectionService,
+        sessionId: sessionId,
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: mockFailureReporter,
+      ),
+      act: (cubit) async {
+        await _awaitLoaded(cubit);
+        cubit.clearNotifications();
+      },
+      expect: () => [
+        isA<SessionDetailLoaded>(),
+      ],
+      verify: (_) {
+        for (final category in NotificationCategory.values) {
+          if (category == NotificationCategory.unknown) continue;
+          verify(
+            () => mockNotificationCanceller.cancelForSession(
+              sessionId: sessionId,
+              category: category,
+            ),
+          ).called(1);
+        }
+        verifyNever(
+          () => mockNotificationCanceller.cancelForSession(
+            sessionId: sessionId,
+            category: NotificationCategory.unknown,
+          ),
+        );
+      },
+    );
+
+    blocTest<SessionDetailCubit, SessionDetailState>(
       "SSE message.updated adds message to state",
       build: () {
         when(
