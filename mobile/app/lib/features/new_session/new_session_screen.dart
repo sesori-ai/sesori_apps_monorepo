@@ -45,6 +45,7 @@ class _NewSessionBody extends StatelessWidget {
               projectId: session.projectID,
               sessionId: session.id,
               sessionTitle: session.title ?? "",
+              readOnly: false,
             ),
           );
         }

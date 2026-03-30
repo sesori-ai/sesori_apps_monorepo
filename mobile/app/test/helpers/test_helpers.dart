@@ -7,7 +7,7 @@ import "package:mocktail/mocktail.dart";
 import "package:record/record.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart" show AppRoute, RouteSource;
+import "package:sesori_dart_core/sesori_dart_core.dart" show AppRouteDef, RouteSource;
 import "package:sesori_dart_core/src/api/client/relay_http_client.dart";
 import "package:sesori_dart_core/src/capabilities/project/project_service.dart";
 import "package:sesori_dart_core/src/capabilities/relay/relay_client.dart";
@@ -92,16 +92,16 @@ class MockLifecycleSource extends Mock implements LifecycleSource {
 class MockNotificationCanceller extends Mock implements NotificationCanceller {}
 
 class MockRouteSource extends Mock implements RouteSource {
-  final BehaviorSubject<AppRoute?> _currentRoute;
+  final BehaviorSubject<AppRouteDef?> _currentRoute;
 
-  MockRouteSource({AppRoute? initialRoute}) : _currentRoute = BehaviorSubject.seeded(initialRoute);
+  MockRouteSource({AppRouteDef? initialRoute}) : _currentRoute = BehaviorSubject.seeded(initialRoute);
 
   @override
-  ValueStream<AppRoute?> get currentRouteStream => _currentRoute.stream;
+  ValueStream<AppRouteDef?> get currentRouteStream => _currentRoute.stream;
 
-  AppRoute? get currentRoute => _currentRoute.value;
+  AppRouteDef? get currentRoute => _currentRoute.value;
 
-  void emitRoute(AppRoute? route) => _currentRoute.add(route);
+  void emitRoute(AppRouteDef? route) => _currentRoute.add(route);
 }
 
 class MockSseEventRepository extends Mock implements SseEventRepository {

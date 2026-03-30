@@ -52,7 +52,7 @@ class DeepLinkService {
       final route = await _authRedirectService.handleOAuthCallback(uri);
       if (route != null) {
         try {
-          appRouter.goRoute(route);
+          appRouter.go(route.path);
         } catch (e, st) {
           loge("Failed to navigate after OAuth callback", e, st);
         }

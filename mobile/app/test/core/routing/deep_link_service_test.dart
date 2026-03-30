@@ -22,7 +22,7 @@ void main() {
       controller = StreamController<Uri>.broadcast();
 
       when(() => mockDeepLinkSource.linkStream).thenAnswer((_) => controller.stream);
-      when(() => mockAuthRedirectService.handleOAuthCallback(any())).thenAnswer((_) async => const AppRoute.projects());
+      when(() => mockAuthRedirectService.handleOAuthCallback(any())).thenAnswer((_) async => AppRouteDef.projects);
 
       service = DeepLinkService(mockAuthRedirectService, mockDeepLinkSource);
     });
@@ -136,7 +136,7 @@ void main() {
 
     test("concurrent callback processing is guarded", () async {
       // given
-      final completer = Completer<AppRoute?>();
+      final completer = Completer<AppRouteDef?>();
       when(() => mockAuthRedirectService.handleOAuthCallback(any())).thenAnswer((_) => completer.future);
       service.init();
 
@@ -148,7 +148,7 @@ void main() {
       // then
       verify(() => mockAuthRedirectService.handleOAuthCallback(any())).called(1);
 
-      completer.complete(const AppRoute.projects());
+      completer.complete(AppRouteDef.projects);
       await Future<void>.delayed(Duration.zero);
     });
   });

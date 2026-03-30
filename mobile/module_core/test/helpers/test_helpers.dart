@@ -28,16 +28,16 @@ class MockConnectionService extends Mock implements ConnectionService {
 }
 
 class MockRouteSource extends Mock implements RouteSource {
-  final BehaviorSubject<AppRoute?> _currentRoute;
+  final BehaviorSubject<AppRouteDef?> _currentRoute;
 
-  MockRouteSource({AppRoute? initialRoute}) : _currentRoute = BehaviorSubject.seeded(initialRoute);
+  MockRouteSource({AppRouteDef? initialRoute}) : _currentRoute = BehaviorSubject.seeded(initialRoute);
 
   @override
-  ValueStream<AppRoute?> get currentRouteStream => _currentRoute.stream;
+  ValueStream<AppRouteDef?> get currentRouteStream => _currentRoute.stream;
 
-  AppRoute? get currentRoute => _currentRoute.value;
+  AppRouteDef? get currentRoute => _currentRoute.value;
 
-  void emitRoute(AppRoute? route) => _currentRoute.add(route);
+  void emitRoute(AppRouteDef? route) => _currentRoute.add(route);
 }
 
 class MockSseEventRepository extends Mock implements SseEventRepository {

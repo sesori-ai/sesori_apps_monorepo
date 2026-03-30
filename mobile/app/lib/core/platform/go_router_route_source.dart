@@ -9,7 +9,7 @@ import "../routing/app_router.dart";
 
 @Singleton(as: RouteSource)
 class GoRouterRouteSource implements RouteSource, Disposable {
-  final BehaviorSubject<AppRoute?> _currentRouteStream;
+  final BehaviorSubject<AppRouteDef?> _currentRouteStream;
 
   GoRouterRouteSource()
     : _currentRouteStream = BehaviorSubject.seeded(
@@ -19,7 +19,7 @@ class GoRouterRouteSource implements RouteSource, Disposable {
   }
 
   @override
-  ValueStream<AppRoute?> get currentRouteStream => _currentRouteStream.stream;
+  ValueStream<AppRouteDef?> get currentRouteStream => _currentRouteStream.stream;
 
   @override
   FutureOr<void> onDispose() {
@@ -37,13 +37,13 @@ class GoRouterRouteSource implements RouteSource, Disposable {
 
   /// Routes sorted longest-path-first so `/projects/:id/sessions` is tried
   /// before `/projects`. Computed once — the route table is static.
-  static final _orderedRoutes = AppRoute.values.toList()..sort((a, b) => b.path.length.compareTo(a.path.length));
+  static final _orderedRoutes = AppRouteDef.values.toList()..sort((a, b) => b.path.length.compareTo(a.path.length));
 
   static final _regexByRoute = {
-    for (final route in AppRoute.values) route: _buildRegex(route),
+    for (final route in AppRouteDef.values) route: _buildRegex(route),
   };
 
-  static AppRoute? _matchRoute(String path) {
+  static AppRouteDef? _matchRoute(String path) {
     for (final route in _orderedRoutes) {
       if (_regexByRoute[route]!.hasMatch(path)) {
         return route;
@@ -52,7 +52,7 @@ class GoRouterRouteSource implements RouteSource, Disposable {
     return null;
   }
 
-  static RegExp _buildRegex(AppRoute route) {
+  static RegExp _buildRegex(AppRouteDef route) {
     final regexPath = route.path
         .split("/")
         .map((segment) {

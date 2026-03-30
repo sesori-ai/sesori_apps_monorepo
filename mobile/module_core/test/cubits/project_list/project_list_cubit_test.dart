@@ -5,7 +5,7 @@ import "package:fake_async/fake_async.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart" show AppRoute;
+import "package:sesori_dart_core/sesori_dart_core.dart" show AppRouteDef;
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/project_list/project_list_cubit.dart";
@@ -551,7 +551,7 @@ void main() {
             fetchCount++;
             return ApiResponse.success([testProject()]);
           });
-          mockRouteSource.emitRoute(const AppRoute.projects());
+          mockRouteSource.emitRoute(AppRouteDef.projects);
           final cubit = buildCubit();
           async.elapse(Duration.zero);
           final baseline = fetchCount;
@@ -573,7 +573,7 @@ void main() {
             fetchCount++;
             return ApiResponse.success([testProject()]);
           });
-          mockRouteSource.emitRoute(const AppRoute.projects());
+          mockRouteSource.emitRoute(AppRouteDef.projects);
           final cubit = buildCubit();
           async.elapse(Duration.zero);
           final baseline = fetchCount;
@@ -617,16 +617,16 @@ void main() {
             return ApiResponse.success([testProject()]);
           });
           // Start on projects, navigate away, navigate back.
-          mockRouteSource.emitRoute(const AppRoute.projects());
+          mockRouteSource.emitRoute(AppRouteDef.projects);
           final cubit = buildCubit();
           async.elapse(Duration.zero);
           final baseline = fetchCount;
 
-          mockRouteSource.emitRoute(const AppRoute.sessions(projectId: "p1"));
+          mockRouteSource.emitRoute(AppRouteDef.sessions);
           async.elapse(Duration.zero);
           expect(fetchCount, baseline, reason: "no fetch on navigate away");
 
-          mockRouteSource.emitRoute(const AppRoute.projects());
+          mockRouteSource.emitRoute(AppRouteDef.projects);
           async.elapse(Duration.zero);
           expect(fetchCount, baseline + 1, reason: "immediate refresh on navigate back");
           cubit.close();
@@ -640,7 +640,7 @@ void main() {
             fetchCount++;
             return ApiResponse.success([testProject()]);
           });
-          mockRouteSource.emitRoute(const AppRoute.projects());
+          mockRouteSource.emitRoute(AppRouteDef.projects);
           final cubit = buildCubit();
           async.elapse(Duration.zero);
           final baseline = fetchCount;

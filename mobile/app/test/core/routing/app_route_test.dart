@@ -12,9 +12,9 @@ import "package:sesori_mobile/features/session_list/session_list_screen.dart";
 void main() {
   group("AppRoute", () {
     test("each value has a non-empty path starting with /", () {
-      for (final route in AppRoute.values) {
-        expect(route.path, isNotEmpty, reason: "${route.runtimeType} should have a path");
-        expect(route.path.startsWith("/"), isTrue, reason: "${route.runtimeType} path should start with /");
+      for (final def in AppRouteDef.values) {
+        expect(def.path, isNotEmpty, reason: "${def.name} should have a path");
+        expect(def.path.startsWith("/"), isTrue, reason: "${def.name} path should start with /");
       }
     });
   });
@@ -27,7 +27,7 @@ void main() {
     });
 
     test("substitutes projectId for sessions", () {
-      final result = const AppRoute.sessions(projectId: "proj-123").buildPath();
+      final result = const AppRoute.sessions(projectId: "proj-123", projectName: null).buildPath();
       expect(result, "/projects/proj-123/sessions");
     });
 
@@ -35,8 +35,10 @@ void main() {
       final result = const AppRoute.sessionDetail(
         projectId: "proj-123",
         sessionId: "ses-456",
+        sessionTitle: null,
+        readOnly: false,
       ).buildPath();
-      expect(result, "/projects/proj-123/sessions/ses-456");
+      expect(result, "/projects/proj-123/sessions/ses-456?readOnly=false");
     });
 
     test("includes projectName as query param for sessions", () {
@@ -49,7 +51,7 @@ void main() {
     });
 
     test("omits query string when no query params set", () {
-      final result = const AppRoute.sessions(projectId: "proj-123").buildPath();
+      final result = const AppRoute.sessions(projectId: "proj-123", projectName: null).buildPath();
       expect(result, "/projects/proj-123/sessions");
       expect(result, isNot(contains("?")));
     });
@@ -67,24 +69,27 @@ void main() {
       expect(result, contains("readOnly=true"));
     });
 
-    test("omits readOnly from query when false", () {
+    test("always includes readOnly in query when false", () {
       final result = const AppRoute.sessionDetail(
         projectId: "proj-1",
         sessionId: "ses-1",
+        sessionTitle: null,
+        readOnly: false,
       ).buildPath();
-      expect(result, "/projects/proj-1/sessions/ses-1");
-      expect(result, isNot(contains("readOnly")));
+      expect(result, "/projects/proj-1/sessions/ses-1?readOnly=false");
     });
 
     test("encodes path params with special characters", () {
       final result = const AppRoute.sessionDetail(
         projectId: "project/with?special&chars",
         sessionId: "id/with?special&chars",
+        sessionTitle: null,
+        readOnly: false,
       ).buildPath();
       // Special characters in the param value must be percent-encoded
       expect(
         result,
-        "/projects/project%2Fwith%3Fspecial%26chars/sessions/id%2Fwith%3Fspecial%26chars",
+        "/projects/project%2Fwith%3Fspecial%26chars/sessions/id%2Fwith%3Fspecial%26chars?readOnly=false",
       );
     });
 
@@ -96,14 +101,14 @@ void main() {
 
   group("AppRoute.toGoRoute", () {
     test("returns GoRoute with matching path for every route", () {
-      for (final route in AppRoute.values) {
-        final goRoute = route.toGoRoute();
-        expect(goRoute.path, route.path, reason: "${route.runtimeType} GoRoute path should match");
+      for (final def in AppRouteDef.values) {
+        final goRoute = def.toGoRoute();
+        expect(goRoute.path, def.path, reason: "${def.name} GoRoute path should match");
       }
     });
 
     test("login route builds LoginScreen", () {
-      final goRoute = const AppRoute.login().toGoRoute();
+      final goRoute = AppRouteDef.login.toGoRoute();
       final widget = goRoute.builder!(
         _FakeBuildContext(),
         _FakeGoRouterState(),
@@ -112,7 +117,7 @@ void main() {
     });
 
     test("projects route builds ProjectListScreen", () {
-      final goRoute = const AppRoute.projects().toGoRoute();
+      final goRoute = AppRouteDef.projects.toGoRoute();
       final widget = goRoute.builder!(
         _FakeBuildContext(),
         _FakeGoRouterState(),
@@ -121,7 +126,7 @@ void main() {
     });
 
     test("sessions route builds SessionListScreen with path and query params", () {
-      final goRoute = const AppRoute.sessions(projectId: "").toGoRoute();
+      final goRoute = AppRouteDef.sessions.toGoRoute();
       final widget = goRoute.builder!(
         _FakeBuildContext(),
         _FakeGoRouterState(
@@ -136,7 +141,7 @@ void main() {
     });
 
     test("sessions route defaults missing params to empty strings", () {
-      final goRoute = const AppRoute.sessions(projectId: "").toGoRoute();
+      final goRoute = AppRouteDef.sessions.toGoRoute();
       final widget = goRoute.builder!(
         _FakeBuildContext(),
         _FakeGoRouterState(),
@@ -147,7 +152,7 @@ void main() {
     });
 
     test("sessionDetail route builds SessionDetailScreen with params", () {
-      final goRoute = const AppRoute.sessionDetail(projectId: "", sessionId: "").toGoRoute();
+      final goRoute = AppRouteDef.sessionDetail.toGoRoute();
       final widget = goRoute.builder!(
         _FakeBuildContext(),
         _FakeGoRouterState(
@@ -164,7 +169,7 @@ void main() {
     });
 
     test("sessionDetail route defaults readOnly to false when absent", () {
-      final goRoute = const AppRoute.sessionDetail(projectId: "", sessionId: "").toGoRoute();
+      final goRoute = AppRouteDef.sessionDetail.toGoRoute();
       final widget = goRoute.builder!(
         _FakeBuildContext(),
         _FakeGoRouterState(

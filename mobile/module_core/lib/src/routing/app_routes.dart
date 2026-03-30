@@ -1,20 +1,42 @@
 const bundleId = "com.sesori.app";
 const redirectUri = "$bundleId://auth/callback";
 
-/// Type-safe route definitions for the app.
+/// Path-template enum for GoRouter registration and route matching.
+///
+/// [AppRouteDef.values] is compile-time complete, so every route is
+/// guaranteed to be registered — no manual list to keep in sync.
+enum AppRouteDef {
+  login("/login"),
+  projects("/projects"),
+  notificationSettings("/settings/notifications"),
+  sessions("/projects/:projectId/sessions"),
+  newSession("/projects/:projectId/sessions/new"),
+  sessionDetail("/projects/:projectId/sessions/:sessionId"),
+  ;
+
+  const AppRouteDef(this.path);
+  final String path;
+}
+
+/// Type-safe route definitions for navigation.
 ///
 /// Each subclass carries exactly the parameters its screen needs, so
-/// navigation call sites can never forget a required param.
+/// call sites can never forget a required param.
 ///
 /// Use factory constructors for ergonomic creation:
 /// ```dart
-/// context.pushRoute(AppRoute.sessionDetail(projectId: 'p1', sessionId: 's1'));
+/// context.pushRoute(AppRoute.sessionDetail(
+///   projectId: 'p1',
+///   sessionId: 's1',
+///   sessionTitle: null,
+///   readOnly: false,
+/// ));
 /// ```
 sealed class AppRoute {
   const AppRoute();
 
-  /// Path template with `:param` placeholders (used for GoRouter registration).
-  String get path;
+  /// The matching [AppRouteDef] for this route.
+  AppRouteDef get def;
 
   /// Builds a concrete URI string from this route's parameters.
   ///
@@ -25,71 +47,99 @@ sealed class AppRoute {
   const factory AppRoute.login() = AppRouteLogin;
   const factory AppRoute.projects() = AppRouteProjects;
   const factory AppRoute.notificationSettings() = AppRouteNotificationSettings;
-  const factory AppRoute.sessions({required String projectId, String? projectName}) = AppRouteSessions;
+  const factory AppRoute.sessions({
+    required String projectId,
+    required String? projectName,
+  }) = AppRouteSessions;
   const factory AppRoute.newSession({required String projectId}) = AppRouteNewSession;
   const factory AppRoute.sessionDetail({
     required String projectId,
     required String sessionId,
-    String? sessionTitle,
-    bool readOnly,
+    required String? sessionTitle,
+    required bool readOnly,
   }) = AppRouteSessionDetail;
 
-  /// One instance per route type — used for GoRouter registration and route
-  /// matching. Parameter values are irrelevant; only [path] templates matter.
-  static const values = <AppRoute>[
-    AppRouteLogin(),
-    AppRouteProjects(),
-    AppRouteNotificationSettings(),
-    AppRouteSessions(projectId: ""),
-    AppRouteNewSession(projectId: ""),
-    AppRouteSessionDetail(projectId: "", sessionId: ""),
-  ];
+  /// Creates the correct subclass by decoding path/query params for [def].
+  ///
+  /// This is the inverse of [buildPath] — encoding and decoding are
+  /// co-located in each subclass so they cannot fall out of sync.
+  static AppRoute fromDef({
+    required AppRouteDef def,
+    required Map<String, String> pathParams,
+    required Map<String, String> queryParams,
+  }) {
+    return switch (def) {
+      AppRouteDef.login => const AppRoute.login(),
+      AppRouteDef.projects => const AppRoute.projects(),
+      AppRouteDef.notificationSettings => const AppRoute.notificationSettings(),
+      AppRouteDef.sessions => AppRouteSessions.fromParams(pathParams: pathParams, queryParams: queryParams),
+      AppRouteDef.newSession => AppRouteNewSession.fromParams(pathParams: pathParams, queryParams: queryParams),
+      AppRouteDef.sessionDetail => AppRouteSessionDetail.fromParams(
+        pathParams: pathParams,
+        queryParams: queryParams,
+      ),
+    };
+  }
 }
 
 class AppRouteLogin extends AppRoute {
   const AppRouteLogin();
 
   @override
-  String get path => "/login";
+  AppRouteDef get def => AppRouteDef.login;
 
   @override
-  String buildPath() => path;
+  String buildPath() => def.path;
 }
 
 class AppRouteProjects extends AppRoute {
   const AppRouteProjects();
 
   @override
-  String get path => "/projects";
+  AppRouteDef get def => AppRouteDef.projects;
 
   @override
-  String buildPath() => path;
+  String buildPath() => def.path;
 }
 
 class AppRouteNotificationSettings extends AppRoute {
   const AppRouteNotificationSettings();
 
   @override
-  String get path => "/settings/notifications";
+  AppRouteDef get def => AppRouteDef.notificationSettings;
 
   @override
-  String buildPath() => path;
+  String buildPath() => def.path;
 }
 
 class AppRouteSessions extends AppRoute {
   final String projectId;
   final String? projectName;
 
-  const AppRouteSessions({required this.projectId, this.projectName});
+  const AppRouteSessions({required this.projectId, required this.projectName});
+
+  /// Decodes from path/query parameter maps (inverse of [buildPath]).
+  factory AppRouteSessions.fromParams({
+    required Map<String, String> pathParams,
+    required Map<String, String> queryParams,
+  }) {
+    return AppRouteSessions(
+      projectId: pathParams["projectId"] ?? "",
+      projectName: queryParams["name"],
+    );
+  }
 
   @override
-  String get path => "/projects/:projectId/sessions";
+  AppRouteDef get def => AppRouteDef.sessions;
 
   @override
   String buildPath() {
     final base = "/projects/${Uri.encodeComponent(projectId)}/sessions";
-    if (projectName != null) {
-      return Uri(path: base, queryParameters: {"name": projectName}).toString();
+    final queryParams = <String, String>{
+      "name": ?projectName,
+    };
+    if (queryParams.isNotEmpty) {
+      return Uri(path: base, queryParameters: queryParams).toString();
     }
     return base;
   }
@@ -100,8 +150,17 @@ class AppRouteNewSession extends AppRoute {
 
   const AppRouteNewSession({required this.projectId});
 
+  /// Decodes from path/query parameter maps (inverse of [buildPath]).
+  factory AppRouteNewSession.fromParams({
+    required Map<String, String> pathParams,
+    // ignore: avoid_unused_constructor_parameters — uniform fromParams signature
+    required Map<String, String> queryParams,
+  }) {
+    return AppRouteNewSession(projectId: pathParams["projectId"] ?? "");
+  }
+
   @override
-  String get path => "/projects/:projectId/sessions/new";
+  AppRouteDef get def => AppRouteDef.newSession;
 
   @override
   String buildPath() => "/projects/${Uri.encodeComponent(projectId)}/sessions/new";
@@ -116,22 +175,33 @@ class AppRouteSessionDetail extends AppRoute {
   const AppRouteSessionDetail({
     required this.projectId,
     required this.sessionId,
-    this.sessionTitle,
-    this.readOnly = false,
+    required this.sessionTitle,
+    required this.readOnly,
   });
 
+  /// Decodes from path/query parameter maps (inverse of [buildPath]).
+  factory AppRouteSessionDetail.fromParams({
+    required Map<String, String> pathParams,
+    required Map<String, String> queryParams,
+  }) {
+    return AppRouteSessionDetail(
+      projectId: pathParams["projectId"] ?? "",
+      sessionId: pathParams["sessionId"] ?? "",
+      sessionTitle: queryParams["title"],
+      readOnly: queryParams["readOnly"] == "true",
+    );
+  }
+
   @override
-  String get path => "/projects/:projectId/sessions/:sessionId";
+  AppRouteDef get def => AppRouteDef.sessionDetail;
 
   @override
   String buildPath() {
     final base = "/projects/${Uri.encodeComponent(projectId)}/sessions/${Uri.encodeComponent(sessionId)}";
-    final queryParams = <String, String>{};
-    if (sessionTitle != null) queryParams["title"] = sessionTitle!;
-    if (readOnly) queryParams["readOnly"] = "true";
-    if (queryParams.isNotEmpty) {
-      return Uri(path: base, queryParameters: queryParams).toString();
-    }
-    return base;
+    final queryParams = <String, String>{
+      "readOnly": readOnly.toString(),
+      "title": ?sessionTitle,
+    };
+    return Uri(path: base, queryParameters: queryParams).toString();
   }
 }
