@@ -14,14 +14,15 @@ class DiffViewModelBuilder {
   /// Runs DiffEngine.computeDiff in an isolate via compute() for each file.
   /// Pre-computes syntax highlighting spans via [DiffHighlighter] if initialized.
   static Future<List<DiffFileViewModel>> build(List<FileDiff> diffs) async {
+    await DiffHighlighter.initialize();
     final results = <DiffFileViewModel>[];
     for (final diff in diffs) {
       final fileName = p.posix.basename(diff.file);
 
       // Detect binary files
       final isBinary = isBinaryFile(
-        diff.file,
-        diff.before.isNotEmpty ? diff.before : diff.after,
+        filePath: diff.file,
+        content: diff.before.isNotEmpty ? diff.before : diff.after,
       );
 
       if (isBinary) {
@@ -42,7 +43,7 @@ class DiffViewModelBuilder {
       }
 
       final fileResult = await compute(_computeFileDiff, (diff.before, diff.after));
-      final language = detectLanguage(diff.file);
+      final language = detectLanguage(filePath: diff.file);
 
       // Derive status if null
       final derivedStatus = diff.status ?? _deriveStatus(diff.before, diff.after);
@@ -87,7 +88,7 @@ class DiffViewModelBuilder {
   /// Top-level function for compute() — must be top-level or static.
   /// Computes diff for a pair of file contents.
   static DiffFileResult _computeFileDiff((String before, String after) args) {
-    return DiffEngine.computeDiff(args.$1, args.$2);
+    return DiffEngine.computeDiff(before: args.$1, after: args.$2);
   }
 
   /// Derives FileDiffStatus from before/after content when status is null.

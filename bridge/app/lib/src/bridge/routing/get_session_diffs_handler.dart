@@ -30,7 +30,7 @@ class GetSessionDiffsHandler extends RequestHandler {
 
     final session = await _sessionDao.getSession(sessionId: sessionId);
     if (session == null) {
-      return _emptyResponse(request);
+      return buildErrorResponse(request, 404, "session not found: $sessionId");
     }
 
     final worktreePath = session.worktreePath;
@@ -39,11 +39,22 @@ class GetSessionDiffsHandler extends RequestHandler {
       return _emptyResponse(request);
     }
 
-    final diffs = await computeSessionDiffs(
-      worktreePath: worktreePath,
-      baseCommit: baseCommit,
-      processRunner: _processRunner,
-    );
+    if (!Directory(worktreePath).existsSync()) {
+      return _emptyResponse(request);
+    }
+
+    final List<FileDiff> diffs;
+    try {
+      diffs = await computeSessionDiffs(
+        worktreePath: worktreePath,
+        baseCommit: baseCommit,
+        processRunner: _processRunner,
+      );
+    } on BaseCommitUnreachableException catch (error) {
+      return buildErrorResponse(request, 422, error.message);
+    } on GitDiffQueryException catch (error) {
+      return buildErrorResponse(request, 500, error.message);
+    }
 
     final body = jsonEncode(diffs.map((diff) => diff.toJson()).toList());
     return buildOkJsonResponse(request, body);

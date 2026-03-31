@@ -49,7 +49,7 @@ class DiffFileResult {
 class DiffEngine {
   static const int _contextLines = 3;
 
-  static DiffFileResult computeDiff(String before, String after) {
+  static DiffFileResult computeDiff({required String before, required String after}) {
     final lineMode = _linesToChars(before, after);
     final chars1 = lineMode.chars1;
     final chars2 = lineMode.chars2;

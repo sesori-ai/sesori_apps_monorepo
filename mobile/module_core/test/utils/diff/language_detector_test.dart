@@ -4,87 +4,87 @@ import 'package:test/test.dart';
 void main() {
   group('detectLanguage', () {
     test('detects Dart files', () {
-      expect(detectLanguage('src/main.dart'), equals('dart'));
+      expect(detectLanguage(filePath: 'src/main.dart'), equals('dart'));
     });
 
     test('detects TypeScript files', () {
-      expect(detectLanguage('src/index.ts'), equals('typescript'));
+      expect(detectLanguage(filePath: 'src/index.ts'), equals('typescript'));
     });
 
     test('detects TSX files as TypeScript', () {
-      expect(detectLanguage('app/page.tsx'), equals('typescript'));
+      expect(detectLanguage(filePath: 'app/page.tsx'), equals('typescript'));
     });
 
     test('detects JavaScript files', () {
-      expect(detectLanguage('main.js'), equals('javascript'));
+      expect(detectLanguage(filePath: 'main.js'), equals('javascript'));
     });
 
     test('detects JSX files as JavaScript', () {
-      expect(detectLanguage('app.jsx'), equals('javascript'));
+      expect(detectLanguage(filePath: 'app.jsx'), equals('javascript'));
     });
 
     test('detects Python files', () {
-      expect(detectLanguage('script.py'), equals('python'));
+      expect(detectLanguage(filePath: 'script.py'), equals('python'));
     });
 
     test('detects Go files', () {
-      expect(detectLanguage('main.go'), equals('go'));
+      expect(detectLanguage(filePath: 'main.go'), equals('go'));
     });
 
     test('detects Java files', () {
-      expect(detectLanguage('Main.java'), equals('java'));
+      expect(detectLanguage(filePath: 'Main.java'), equals('java'));
     });
 
     test('detects Kotlin files', () {
-      expect(detectLanguage('Main.kt'), equals('kotlin'));
+      expect(detectLanguage(filePath: 'Main.kt'), equals('kotlin'));
     });
 
     test('detects Gradle Kotlin files', () {
-      expect(detectLanguage('build.gradle.kts'), equals('kotlin'));
+      expect(detectLanguage(filePath: 'build.gradle.kts'), equals('kotlin'));
     });
 
     test('detects Swift files', () {
-      expect(detectLanguage('app.swift'), equals('swift'));
+      expect(detectLanguage(filePath: 'app.swift'), equals('swift'));
     });
 
     test('detects Rust files', () {
-      expect(detectLanguage('lib.rs'), equals('rust'));
+      expect(detectLanguage(filePath: 'lib.rs'), equals('rust'));
     });
 
     test('detects HTML files', () {
-      expect(detectLanguage('index.html'), equals('html'));
+      expect(detectLanguage(filePath: 'index.html'), equals('html'));
     });
 
     test('detects CSS files', () {
-      expect(detectLanguage('style.css'), equals('css'));
+      expect(detectLanguage(filePath: 'style.css'), equals('css'));
     });
 
     test('detects JSON files', () {
-      expect(detectLanguage('data.json'), equals('json'));
+      expect(detectLanguage(filePath: 'data.json'), equals('json'));
     });
 
     test('detects YAML files', () {
-      expect(detectLanguage('config.yaml'), equals('yaml'));
+      expect(detectLanguage(filePath: 'config.yaml'), equals('yaml'));
     });
 
     test('detects YML files as YAML', () {
-      expect(detectLanguage('config.yml'), equals('yaml'));
+      expect(detectLanguage(filePath: 'config.yml'), equals('yaml'));
     });
 
     test('detects SQL files', () {
-      expect(detectLanguage('query.sql'), equals('sql'));
+      expect(detectLanguage(filePath: 'query.sql'), equals('sql'));
     });
 
     test('returns null for unsupported extensions', () {
-      expect(detectLanguage('README.md'), isNull);
+      expect(detectLanguage(filePath: 'README.md'), isNull);
     });
 
     test('handles dots in directory names', () {
-      expect(detectLanguage('path.with.dots/file.py'), equals('python'));
+      expect(detectLanguage(filePath: 'path.with.dots/file.py'), equals('python'));
     });
 
     test('returns null for files without extension', () {
-      expect(detectLanguage('no_extension'), isNull);
+      expect(detectLanguage(filePath: 'no_extension'), isNull);
     });
   });
 }

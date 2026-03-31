@@ -1,5 +1,6 @@
 import "dart:io";
 
+import "package:path/path.dart" as p;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../worktree_service.dart" show ProcessRunner;
@@ -10,6 +11,20 @@ const _generatedFileSuffixes = <String>[
   ".steps.dart",
   ".config.dart",
 ];
+
+class BaseCommitUnreachableException implements Exception {
+  final String message;
+  const BaseCommitUnreachableException({required this.message});
+  @override
+  String toString() => message;
+}
+
+class GitDiffQueryException implements Exception {
+  final String message;
+  const GitDiffQueryException({required this.message});
+  @override
+  String toString() => message;
+}
 
 Future<List<FileDiff>> computeSessionDiffs({
   required String worktreePath,
@@ -26,25 +41,41 @@ Future<List<FileDiff>> computeSessionDiffs({
     arguments: ["rev-parse", "--verify", baseCommit],
   );
   if (verifyCommit.exitCode != 0) {
-    return const <FileDiff>[];
+    throw BaseCommitUnreachableException(
+      message: "base commit '$baseCommit' is not reachable",
+    );
   }
 
   final nameStatusResult = await _runGit(
     processRunner: processRunner,
     worktreePath: worktreePath,
-    arguments: ["diff", "--no-ext-diff", "--no-color", "--name-status", baseCommit],
+    arguments: [
+      "diff",
+      "--no-ext-diff",
+      "--no-color",
+      "--no-renames",
+      "--name-status",
+      baseCommit,
+    ],
   );
   if (nameStatusResult.exitCode != 0) {
-    return const <FileDiff>[];
+    throw const GitDiffQueryException(message: "git diff --name-status failed");
   }
 
   final numstatResult = await _runGit(
     processRunner: processRunner,
     worktreePath: worktreePath,
-    arguments: ["diff", "--no-ext-diff", "--no-color", "--numstat", baseCommit],
+    arguments: [
+      "diff",
+      "--no-ext-diff",
+      "--no-color",
+      "--no-renames",
+      "--numstat",
+      baseCommit,
+    ],
   );
   if (numstatResult.exitCode != 0) {
-    return const <FileDiff>[];
+    throw const GitDiffQueryException(message: "git diff --numstat failed");
   }
 
   final statusEntries = _parseNameStatus(nameStatusResult.stdout.toString());
@@ -107,7 +138,7 @@ List<({String file, FileDiffStatus? status})> _parseNameStatus(String output) {
     final file = parts.last.trim();
     if (file.isEmpty) continue;
 
-    entries.add((file: file, status: _parseStatus(statusToken[0])));
+    entries.add((file: file, status: _parseStatus(statusToken)));
   }
 
   return entries;
@@ -125,14 +156,19 @@ Map<String, ({int additions, int deletions})> _parseNumstat(String output) {
     final file = parts.last.trim();
     if (file.isEmpty) continue;
 
-    final additions = int.tryParse(parts[0].trim()) ?? 0;
-    final deletions = int.tryParse(parts[1].trim()) ?? 0;
+    final additionsToken = parts[0].trim();
+    final deletionsToken = parts[1].trim();
+    final additions = additionsToken == "-" ? 0 : int.tryParse(additionsToken) ?? 0;
+    final deletions = deletionsToken == "-" ? 0 : int.tryParse(deletionsToken) ?? 0;
     byFile[file] = (additions: additions, deletions: deletions);
   }
   return byFile;
 }
 
 FileDiffStatus? _parseStatus(String token) {
+  if (token.startsWith("R") || token.startsWith("C")) {
+    return FileDiffStatus.modified;
+  }
   return switch (token) {
     "A" => FileDiffStatus.added,
     "D" => FileDiffStatus.deleted,
@@ -158,11 +194,11 @@ Future<String> _readBefore({
     arguments: ["show", "$baseCommit:$file"],
   );
 
-  if (result.exitCode != 0) {
-    return "";
-  }
+  if (result.exitCode != 0) return "";
 
-  return result.stdout.toString();
+  final stdout = result.stdout.toString();
+  if (stdout.contains("\x00")) return "";
+  return stdout;
 }
 
 String _readAfter({
@@ -170,18 +206,41 @@ String _readAfter({
   required String file,
   required FileDiffStatus? status,
 }) {
-  if (status == FileDiffStatus.deleted) {
+  if (status == FileDiffStatus.deleted) return "";
+
+  final absoluteWorktreePath = p.normalize(p.absolute(worktreePath));
+  final candidatePath = p.normalize(p.absolute(p.join(worktreePath, file)));
+  if (candidatePath != absoluteWorktreePath && !p.isWithin(absoluteWorktreePath, candidatePath)) {
     return "";
   }
 
-  final fileOnDisk = File("$worktreePath/$file");
+  final entityType = FileSystemEntity.typeSync(candidatePath, followLinks: false);
+  if (entityType == FileSystemEntityType.link || entityType == FileSystemEntityType.notFound) {
+    return "";
+  }
+
+  final fileOnDisk = File(candidatePath);
   if (!fileOnDisk.existsSync()) {
     return "";
   }
 
+  String resolvedPath;
+  try {
+    resolvedPath = p.normalize(fileOnDisk.resolveSymbolicLinksSync());
+  } on FileSystemException {
+    return "";
+  }
+  final normalizedWorktreePath = p.normalize(
+    Directory(worktreePath).resolveSymbolicLinksSync(),
+  );
+  if (resolvedPath != normalizedWorktreePath && !p.isWithin(normalizedWorktreePath, resolvedPath)) {
+    return "";
+  }
   try {
     return fileOnDisk.readAsStringSync();
   } on FileSystemException {
+    return "";
+  } on FormatException {
     return "";
   }
 }

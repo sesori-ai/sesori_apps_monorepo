@@ -1,6 +1,6 @@
 /// Maps a file path's extension to a [syntax_highlight] language name.
 /// Returns null for unsupported or binary extensions.
-String? detectLanguage(String filePath) {
+String? detectLanguage({required String filePath}) {
   final ext = filePath.contains('.') ? filePath.split('.').last.toLowerCase() : '';
   return switch (ext) {
     'dart' => 'dart',

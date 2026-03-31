@@ -6,7 +6,7 @@ void main() {
     test("equal files", () {
       const content = "alpha\nbeta\ngamma\n";
 
-      final result = DiffEngine.computeDiff(content, content);
+      final result = DiffEngine.computeDiff(before: content, after: content);
 
       expect(result.hunks, isEmpty);
       expect(result.additions, 0);
@@ -16,7 +16,7 @@ void main() {
     test("pure addition (empty before)", () {
       const after = "a\nb\nc\n";
 
-      final result = DiffEngine.computeDiff("", after);
+      final result = DiffEngine.computeDiff(before: "", after: after);
 
       expect(result.hunks, hasLength(1));
       expect(result.additions, 3);
@@ -33,7 +33,7 @@ void main() {
     test("pure deletion (empty after)", () {
       const before = "a\nb\nc\n";
 
-      final result = DiffEngine.computeDiff(before, "");
+      final result = DiffEngine.computeDiff(before: before, after: "");
 
       expect(result.hunks, hasLength(1));
       expect(result.additions, 0);
@@ -51,7 +51,7 @@ void main() {
       const before = "line1\nline2\nline3\n";
       const after = "line1\nline2 updated\nline3\n";
 
-      final result = DiffEngine.computeDiff(before, after);
+      final result = DiffEngine.computeDiff(before: before, after: after);
 
       expect(result.hunks, hasLength(1));
       expect(result.additions, 1);
@@ -77,7 +77,7 @@ void main() {
       afterLines[12] = "line 13 updated";
       final after = "${afterLines.join("\n")}\n";
 
-      final result = DiffEngine.computeDiff(before, after);
+      final result = DiffEngine.computeDiff(before: before, after: after);
 
       expect(result.hunks, hasLength(2));
       expect(result.additions, 2);
@@ -95,7 +95,7 @@ void main() {
       final before = "${beforeLines.join("\n")}\n";
       final after = "${afterLines.join("\n")}\n";
 
-      final result = DiffEngine.computeDiff(before, after);
+      final result = DiffEngine.computeDiff(before: before, after: after);
 
       expect(result.hunks, hasLength(1));
       expect(result.additions, 2);
@@ -109,7 +109,7 @@ void main() {
       const before = "alpha\nbeta";
       const after = "alpha\nbeta updated";
 
-      final result = DiffEngine.computeDiff(before, after);
+      final result = DiffEngine.computeDiff(before: before, after: after);
 
       expect(result.hunks, hasLength(1));
       expect(result.additions, 1);
@@ -121,7 +121,7 @@ void main() {
       const before = "hello\n😀 grin\ncafe\n";
       const after = "hello\n😀 grin\ncafe\nnaive\n";
 
-      final result = DiffEngine.computeDiff(before, after);
+      final result = DiffEngine.computeDiff(before: before, after: after);
 
       expect(result.hunks, hasLength(1));
       expect(result.additions, 1);
@@ -130,7 +130,7 @@ void main() {
     });
 
     test("identical single-line files", () {
-      final result = DiffEngine.computeDiff("single line", "single line");
+      final result = DiffEngine.computeDiff(before: "single line", after: "single line");
 
       expect(result.hunks, isEmpty);
       expect(result.additions, 0);
@@ -147,7 +147,7 @@ void main() {
       final before = "${beforeLines.join("\n")}\n";
       final after = "${afterLines.join("\n")}\n";
 
-      final result = DiffEngine.computeDiff(before, after);
+      final result = DiffEngine.computeDiff(before: before, after: after);
 
       expect(result.additions, 3);
       expect(result.deletions, 3);

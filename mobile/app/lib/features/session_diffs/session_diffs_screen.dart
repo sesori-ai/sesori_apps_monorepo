@@ -86,6 +86,9 @@ class _SessionDiffsBody extends StatelessWidget {
     return FutureBuilder<List<DiffFileViewModel>>(
       future: DiffViewModelBuilder.build(files),
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(child: Text("Error computing diffs: ${snapshot.error}"));
+        }
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }

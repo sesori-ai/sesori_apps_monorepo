@@ -1,6 +1,6 @@
 /// Heuristic to detect binary files.
 /// Checks extension first, then looks for null bytes in first 8KB of content.
-bool isBinaryFile(String filePath, String content) {
+bool isBinaryFile({required String filePath, required String content}) {
   final ext = filePath.contains('.') ? filePath.split('.').last.toLowerCase() : '';
   const binaryExtensions = {
     'png',
