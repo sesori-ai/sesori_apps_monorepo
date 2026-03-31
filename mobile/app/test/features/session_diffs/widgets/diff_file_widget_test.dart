@@ -13,12 +13,12 @@ void main() {
     int additions = 5,
     int deletions = 2,
     FileDiffStatus? status,
-    bool isBinary = false,
+    FileDiffSkipReason? skipReason,
     bool isExpanded = true,
     List<DiffHunkViewModel>? hunks,
   }) {
     return DiffFileViewModel(
-      fileDiff: FileDiff(
+      fileDiff: FileDiff.content(
         file: "lib/$fileName",
         before: "",
         after: "",
@@ -31,7 +31,7 @@ void main() {
       additions: additions,
       deletions: deletions,
       status: status,
-      isBinary: isBinary,
+      skipReason: skipReason,
       isExpanded: isExpanded,
     );
   }
@@ -185,10 +185,26 @@ void main() {
     });
 
     testWidgets("binary file shows placeholder instead of hunks", (tester) async {
-      final vm = buildVM(isBinary: true);
+      final vm = buildVM(skipReason: FileDiffSkipReason.binary);
       await tester.pumpWidget(buildTestWidget(vm));
 
       expect(find.text("Binary file changed"), findsOneWidget);
+      expect(find.byType(DiffHunkWidget), findsNothing);
+    });
+
+    testWidgets("too large file shows placeholder", (tester) async {
+      final vm = buildVM(skipReason: FileDiffSkipReason.tooLarge);
+      await tester.pumpWidget(buildTestWidget(vm));
+
+      expect(find.text("File diff too large to display"), findsOneWidget);
+      expect(find.byType(DiffHunkWidget), findsNothing);
+    });
+
+    testWidgets("read error file shows placeholder", (tester) async {
+      final vm = buildVM(skipReason: FileDiffSkipReason.readError);
+      await tester.pumpWidget(buildTestWidget(vm));
+
+      expect(find.text("Could not read file"), findsOneWidget);
       expect(find.byType(DiffHunkWidget), findsNothing);
     });
 

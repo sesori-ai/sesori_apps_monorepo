@@ -40,8 +40,8 @@ class DiffFileViewModel {
   final int additions;
   final int deletions;
   final FileDiffStatus? status;
+  final FileDiffSkipReason? skipReason;
   bool isExpanded;
-  final bool isBinary;
 
   DiffFileViewModel({
     required this.fileDiff,
@@ -51,7 +51,7 @@ class DiffFileViewModel {
     required this.additions,
     required this.deletions,
     this.status,
+    this.skipReason,
     this.isExpanded = true,
-    this.isBinary = false,
   });
 }

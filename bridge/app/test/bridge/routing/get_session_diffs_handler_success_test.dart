@@ -102,16 +102,19 @@ void main() {
       };
 
       expect(byFile["lib/modified.dart"]?["status"], equals("modified"));
+      expect(byFile["lib/modified.dart"]?["runtimeType"], equals("content"));
       expect(byFile["lib/modified.dart"]?["before"], equals("modified before\n"));
       expect(byFile["lib/modified.dart"]?["after"], equals("modified after\n"));
       expect(byFile["lib/modified.dart"]?["additions"], equals(5));
       expect(byFile["lib/modified.dart"]?["deletions"], equals(2));
 
       expect(byFile["lib/added.dart"]?["status"], equals("added"));
+      expect(byFile["lib/added.dart"]?["runtimeType"], equals("content"));
       expect(byFile["lib/added.dart"]?["before"], equals(""));
       expect(byFile["lib/added.dart"]?["after"], equals("added after\n"));
 
       expect(byFile["lib/deleted.dart"]?["status"], equals("deleted"));
+      expect(byFile["lib/deleted.dart"]?["runtimeType"], equals("content"));
       expect(byFile["lib/deleted.dart"]?["before"], equals("deleted before\n"));
       expect(byFile["lib/deleted.dart"]?["after"], equals(""));
 
@@ -167,7 +170,7 @@ void main() {
       expect((body.single as Map<String, dynamic>)["file"], equals("lib/kept.dart"));
     });
 
-    test("treats binary numstat markers as zero counts", () async {
+    test("returns skipped diff for binary file", () async {
       File("${tempDir.path}/assets/blob.dat")
         ..createSync(recursive: true)
         ..writeAsBytesSync([0, 159, 146, 150]);
@@ -210,8 +213,61 @@ void main() {
         _ => throw StateError("expected JSON list"),
       };
       final entry = body.single as Map<String, dynamic>;
-      expect(entry["additions"], equals(0));
-      expect(entry["deletions"], equals(0));
+      expect(entry["runtimeType"], equals("skipped"));
+      expect(entry["reason"], equals("binary"));
+      expect(entry["status"], equals("modified"));
+      expect(entry.containsKey("before"), isFalse);
+      expect(entry.containsKey("after"), isFalse);
+    });
+
+    test("returns skipped diff when combined content exceeds 100KB", () async {
+      final beforeLarge = List.filled(60 * 1024, "a").join();
+      final afterLarge = List.filled(60 * 1024, "b").join();
+      File("${tempDir.path}/lib/too_large.dart")
+        ..createSync(recursive: true)
+        ..writeAsStringSync(afterLarge);
+
+      await sessionDao.insertSession(
+        sessionId: "s1",
+        projectId: "project-1",
+        isDedicated: true,
+        createdAt: 123,
+        worktreePath: tempDir.path,
+        branchName: "session-001",
+        baseBranch: "main",
+        baseCommit: "abc123",
+      );
+
+      processRunner.responder = ({required List<String> arguments}) {
+        if (arguments.length >= 2 && arguments[0] == "rev-parse" && arguments[1] == "--verify") {
+          return ProcessResult(1, 0, "abc123\n", "");
+        }
+        if (arguments.contains("--name-status")) {
+          return ProcessResult(1, 0, "M\tlib/too_large.dart\n", "");
+        }
+        if (arguments.contains("--numstat")) {
+          return ProcessResult(1, 0, "1\t1\tlib/too_large.dart\n", "");
+        }
+        if (arguments.length >= 2 && arguments[0] == "show") {
+          return ProcessResult(1, 0, beforeLarge, "");
+        }
+        throw StateError("Unexpected git call: $arguments");
+      };
+
+      final response = await handler.handle(
+        makeRequest("GET", "/session/s1/diff"),
+        pathParams: {"id": "s1"},
+        queryParams: {},
+      );
+
+      final body = switch (jsonDecode(response.body!)) {
+        final List<dynamic> list => list,
+        _ => throw StateError("expected JSON list"),
+      };
+      final entry = body.single as Map<String, dynamic>;
+      expect(entry["runtimeType"], equals("skipped"));
+      expect(entry["reason"], equals("tooLarge"));
+      expect(entry["status"], equals("modified"));
     });
   });
 }

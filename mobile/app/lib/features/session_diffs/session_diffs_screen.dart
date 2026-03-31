@@ -75,8 +75,20 @@ class _SessionDiffsBody extends StatelessWidget {
     return switch (state) {
       DiffStateLoaded(:final files) => (
         files.length,
-        files.fold(0, (sum, f) => sum + f.additions),
-        files.fold(0, (sum, f) => sum + f.deletions),
+        files.fold(
+          0,
+          (int sum, file) => switch (file) {
+            FileDiffContent(:final additions) => sum + additions,
+            _ => sum,
+          },
+        ),
+        files.fold(
+          0,
+          (int sum, file) => switch (file) {
+            FileDiffContent(:final deletions) => sum + deletions,
+            _ => sum,
+          },
+        ),
       ),
       _ => (0, 0, 0),
     };

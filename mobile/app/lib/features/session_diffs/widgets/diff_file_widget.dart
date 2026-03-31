@@ -6,7 +6,7 @@ import "diff_hunk_widget.dart";
 
 /// Renders a single file diff: a tappable header with file name, +/- stats,
 /// status badge, and expand/collapse chevron. When expanded, shows either the
-/// diff hunks or a "Binary file changed" placeholder.
+/// diff hunks or a skipped-file placeholder.
 class DiffFileWidget extends StatefulWidget {
   final DiffFileViewModel viewModel;
 
@@ -41,8 +41,8 @@ class _DiffFileWidgetState extends State<DiffFileWidget> {
         ),
         // Body — visible when expanded
         if (_isExpanded)
-          widget.viewModel.isBinary
-              ? _buildBinaryPlaceholder()
+          widget.viewModel.skipReason != null
+              ? _buildSkippedPlaceholder(widget.viewModel.skipReason!)
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: widget.viewModel.hunks.map((h) => DiffHunkWidget(viewModel: h)).toList(),
@@ -133,12 +133,17 @@ class _DiffFileWidgetState extends State<DiffFileWidget> {
     );
   }
 
-  Widget _buildBinaryPlaceholder() {
-    return const Padding(
-      padding: EdgeInsets.all(16),
+  Widget _buildSkippedPlaceholder(FileDiffSkipReason reason) {
+    final message = switch (reason) {
+      FileDiffSkipReason.binary => "Binary file changed",
+      FileDiffSkipReason.tooLarge => "File diff too large to display",
+      FileDiffSkipReason.readError => "Could not read file",
+    };
+    return Padding(
+      padding: const EdgeInsets.all(16),
       child: Text(
-        "Binary file changed",
-        style: TextStyle(
+        message,
+        style: const TextStyle(
           color: Colors.grey,
           fontStyle: FontStyle.italic,
         ),

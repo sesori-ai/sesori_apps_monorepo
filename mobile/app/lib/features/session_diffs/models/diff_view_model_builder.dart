@@ -3,7 +3,6 @@ import 'package:path/path.dart' as p;
 import 'package:sesori_dart_core/sesori_dart_core.dart';
 import 'package:sesori_shared/sesori_shared.dart';
 
-import '../utils/binary_detector.dart';
 import '../utils/diff_highlighter.dart';
 import 'diff_file_view_model.dart';
 
@@ -17,68 +16,63 @@ class DiffViewModelBuilder {
     await DiffHighlighter.initialize();
     final results = <DiffFileViewModel>[];
     for (final diff in diffs) {
-      final fileName = p.posix.basename(diff.file);
+      switch (diff) {
+        case FileDiffContent(
+          :final file,
+          :final before,
+          :final after,
+          :final additions,
+          :final deletions,
+          :final status,
+        ):
+          final fileName = p.posix.basename(file);
+          final fileResult = await compute(_computeFileDiff, (before, after));
+          final language = detectLanguage(filePath: file);
+          final derivedStatus = status ?? _deriveStatus(before, after);
 
-      // Detect binary files
-      final isBinary = isBinaryFile(
-        filePath: diff.file,
-        content: diff.before.isNotEmpty ? diff.before : diff.after,
-      );
+          final hunks = fileResult.hunks
+              .map(
+                (hunk) => DiffHunkViewModel(
+                  hunk: hunk,
+                  lines: hunk.lines.map((line) => DiffLineViewModel(line: line)).toList(),
+                ),
+              )
+              .toList();
 
-      if (isBinary) {
-        final derivedStatus = diff.status ?? _deriveStatus(diff.before, diff.after);
-        results.add(
-          DiffFileViewModel(
-            fileDiff: diff,
-            fileName: fileName,
-            language: null,
-            hunks: const [],
-            additions: 0,
-            deletions: 0,
-            status: derivedStatus,
-            isBinary: true,
-          ),
-        );
-        continue;
-      }
+          for (final hunk in hunks) {
+            for (final lineViewModel in hunk.lines) {
+              lineViewModel.highlightedSpan = DiffHighlighter.highlightLine(
+                lineViewModel.line.content,
+                language,
+              );
+            }
+          }
 
-      final fileResult = await compute(_computeFileDiff, (diff.before, diff.after));
-      final language = detectLanguage(filePath: diff.file);
-
-      // Derive status if null
-      final derivedStatus = diff.status ?? _deriveStatus(diff.before, diff.after);
-
-      final hunks = fileResult.hunks
-          .map(
-            (hunk) => DiffHunkViewModel(
-              hunk: hunk,
-              lines: hunk.lines.map((line) => DiffLineViewModel(line: line)).toList(),
+          results.add(
+            DiffFileViewModel(
+              fileDiff: diff,
+              fileName: fileName,
+              language: language,
+              hunks: hunks,
+              additions: additions,
+              deletions: deletions,
+              status: derivedStatus,
             ),
-          )
-          .toList();
-
-      // Pre-compute syntax highlighting spans outside the widget build phase.
-      for (final hunk in hunks) {
-        for (final lineViewModel in hunk.lines) {
-          lineViewModel.highlightedSpan = DiffHighlighter.highlightLine(
-            lineViewModel.line.content,
-            language,
           );
-        }
+        case FileDiffSkipped(:final file, :final reason, :final status):
+          results.add(
+            DiffFileViewModel(
+              fileDiff: diff,
+              fileName: p.posix.basename(file),
+              language: null,
+              hunks: const [],
+              additions: 0,
+              deletions: 0,
+              status: status,
+              skipReason: reason,
+            ),
+          );
       }
-
-      results.add(
-        DiffFileViewModel(
-          fileDiff: diff,
-          fileName: fileName,
-          language: language,
-          hunks: hunks,
-          additions: fileResult.additions,
-          deletions: fileResult.deletions,
-          status: derivedStatus,
-          isBinary: isBinary,
-        ),
-      );
     }
     // Sort alphabetically by file path
     results.sort((a, b) => a.fileDiff.file.compareTo(b.fileDiff.file));

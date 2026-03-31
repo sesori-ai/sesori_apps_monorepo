@@ -24,7 +24,7 @@ void main() {
       sessionId: sessionId,
     );
 
-    FileDiff testFileDiff({String? file}) => FileDiff(
+    FileDiff testFileDiff({String? file}) => FileDiff.content(
       file: file ?? "lib/src/foo.dart",
       before: "class Foo {}",
       after: "class Foo { int x = 0; }",
