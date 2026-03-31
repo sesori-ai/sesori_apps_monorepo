@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:go_router/go_router.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../extensions/build_context_x.dart";
@@ -49,7 +50,12 @@ class ModelPickerSheet extends StatefulWidget {
             selectedModelID: selectedModelID,
             onModelChanged: (providerID, modelID) {
               onModelChanged(providerID, modelID);
-              Navigator.of(context).pop();
+              final router = GoRouter.maybeOf(context);
+              if (router != null) {
+                router.pop();
+              } else {
+                Navigator.pop(context);
+              }
             },
           ),
         );
@@ -66,7 +72,7 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
 
   late final _sortedProviders = widget.providers.toList()..sort((a, b) => a.name.compareTo(b.name));
 
-  bool _matchesQuery(ProviderModel model, String providerName) {
+  bool _matchesQuery({required ProviderModel model, required String providerName}) {
     if (_query.isEmpty) return true;
     final q = _query.toLowerCase();
     return model.name.toLowerCase().contains(q) ||
@@ -121,7 +127,7 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
         // Drag handle
         Center(
           child: Container(
-            margin: const EdgeInsets.only(top: 12, bottom: 8),
+            margin: const EdgeInsetsDirectional.only(top: 12, bottom: 8),
             width: 32,
             height: 4,
             decoration: BoxDecoration(
@@ -162,7 +168,7 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
           child: ListView(
             padding: .zero,
             children: [
-              for (final provider in _sortedProviders) ..._buildProviderSection(provider, theme),
+              for (final provider in _sortedProviders) ..._buildProviderSection(provider: provider, theme: theme),
             ],
           ),
         ),
@@ -170,15 +176,20 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
     );
   }
 
-  List<Widget> _buildProviderSection(ProviderInfo provider, ThemeData theme) {
+  List<Widget> _buildProviderSection({required ProviderInfo provider, required ThemeData theme}) {
     final isSearching = _query.isNotEmpty;
     final visibleIds = isSearching ? null : _defaultVisibleIds(provider);
 
     final models =
         provider.models.values
             .where((m) => m.status != "deprecated")
-            .where((m) => _matchesQuery(m, provider.name))
-            .where((m) => isSearching || visibleIds!.contains(m.id))
+            .where((m) => _matchesQuery(model: m, providerName: provider.name))
+            .where((m) {
+              if (isSearching) {
+                return true;
+              }
+              return visibleIds?.contains(m.id) ?? false;
+            })
             .toList()
           // Sort by release_date descending (newest first), then by name.
           ..sort((a, b) {
@@ -192,7 +203,7 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
 
     return [
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+        padding: const EdgeInsetsDirectional.fromSTEB(16, 16, 16, 4),
         child: Text(
           provider.name,
           style: theme.textTheme.labelLarge?.copyWith(
@@ -232,7 +243,10 @@ class _ModelTile extends StatelessWidget {
     return ListTile(
       dense: true,
       title: Text(name),
-      subtitle: subtitle != null ? Text(subtitle!) : null,
+      subtitle: switch (subtitle) {
+        final text? => Text(text),
+        null => null,
+      },
       leading: isSelected
           ? Icon(Icons.radio_button_checked, color: theme.colorScheme.primary)
           : Icon(Icons.radio_button_unchecked, color: theme.colorScheme.outline),

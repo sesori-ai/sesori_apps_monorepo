@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
+import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "../../core/constants.dart";
@@ -55,7 +56,7 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
     super.dispose();
   }
 
-  void _showProjectMenu(BuildContext context, Project project) {
+  void _showProjectMenu({required BuildContext context, required Project project}) {
     // Capture messenger and cubit before any Navigator.pop to avoid
     // post-pop context access.
     final scaffoldMessenger = ScaffoldMessenger.of(context);
@@ -72,7 +73,12 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
               leading: const Icon(Icons.edit_outlined),
               title: Text(loc.rename),
               onTap: () {
-                Navigator.of(sheetContext).pop();
+                final router = GoRouter.maybeOf(sheetContext);
+                if (router != null) {
+                  router.pop();
+                } else {
+                  Navigator.pop(sheetContext);
+                }
                 showRenameProjectDialog(
                   context: context,
                   project: project,
@@ -84,7 +90,12 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
               leading: const Icon(Icons.visibility_off_outlined),
               title: Text(loc.hideProject),
               onTap: () {
-                Navigator.of(sheetContext).pop();
+                final router = GoRouter.maybeOf(sheetContext);
+                if (router != null) {
+                  router.pop();
+                } else {
+                  Navigator.pop(sheetContext);
+                }
                 cubit.hideProject(project.id);
                 scaffoldMessenger.showSnackBar(
                   SnackBar(
@@ -184,7 +195,7 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
                           return _ProjectTile(
                             project: project,
                             activeSessions: activityById[project.id] ?? 0,
-                            onLongPress: () => _showProjectMenu(context, project),
+                            onLongPress: () => _showProjectMenu(context: context, project: project),
                           );
                         },
                       ),
@@ -314,7 +325,10 @@ class _ErrorView extends StatelessWidget {
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
-            Text(_describeError(loc, error), textAlign: .center),
+            Text(
+              _describeError(loc: loc, error: error),
+              textAlign: .center,
+            ),
             const SizedBox(height: 24),
             FilledButton.icon(
               onPressed: onRetry,
@@ -327,7 +341,7 @@ class _ErrorView extends StatelessWidget {
     );
   }
 
-  String _describeError(AppLocalizations loc, ApiError error) => switch (error) {
+  String _describeError({required AppLocalizations loc, required ApiError error}) => switch (error) {
     NotAuthenticatedError() => loc.apiErrorNotAuthenticated,
     NonSuccessCodeError(:final errorCode, :final rawErrorString) =>
       rawErrorString != null

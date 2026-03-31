@@ -22,19 +22,31 @@ class NotificationService {
   String? _currentToken;
   String? _pendingSessionId;
   String? _pendingProjectId;
-
-  @visibleForTesting
-  void Function(String route) goForTesting = appRouter.go;
-
-  @visibleForTesting
-  Future<void> Function(String route) pushForTesting = (route) async {
+  void Function(String route) _goForTesting = appRouter.go;
+  Future<void> Function(String route) _pushForTesting = (route) async {
     await appRouter.push<void>(route);
   };
-
-  @visibleForTesting
-  String Function() currentPathProviderForTesting = () {
+  String Function() _currentPathProviderForTesting = () {
     return appRouter.routeInformationProvider.value.uri.path;
   };
+
+  @visibleForTesting
+  void Function(String route) get goForTesting => _goForTesting;
+
+  @visibleForTesting
+  set goForTesting(void Function(String route) value) => _goForTesting = value;
+
+  @visibleForTesting
+  Future<void> Function(String route) get pushForTesting => _pushForTesting;
+
+  @visibleForTesting
+  set pushForTesting(Future<void> Function(String route) value) => _pushForTesting = value;
+
+  @visibleForTesting
+  String Function() get currentPathProviderForTesting => _currentPathProviderForTesting;
+
+  @visibleForTesting
+  set currentPathProviderForTesting(String Function() value) => _currentPathProviderForTesting = value;
 
   @visibleForTesting
   String? get currentTokenForTesting => _currentToken;

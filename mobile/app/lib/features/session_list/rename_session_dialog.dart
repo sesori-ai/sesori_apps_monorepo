@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -37,6 +38,15 @@ class _RenameSessionDialogState extends State<_RenameSessionDialog> {
   late final TextEditingController _controller;
   bool _actionLoading = false;
 
+  void _dismissDialog() {
+    final router = GoRouter.maybeOf(context);
+    if (router != null) {
+      router.pop();
+      return;
+    }
+    Navigator.pop(context);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -53,7 +63,6 @@ class _RenameSessionDialogState extends State<_RenameSessionDialog> {
     final title = _controller.text.trim();
     if (title.isEmpty) return;
 
-    final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final loc = context.loc;
 
@@ -68,7 +77,7 @@ class _RenameSessionDialogState extends State<_RenameSessionDialog> {
     setState(() => _actionLoading = false);
 
     if (success) {
-      navigator.pop();
+      _dismissDialog();
       messenger.showSnackBar(
         SnackBar(
           content: Text(loc.renameSessionSuccess),
@@ -90,7 +99,7 @@ class _RenameSessionDialogState extends State<_RenameSessionDialog> {
     final loc = context.loc;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,

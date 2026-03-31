@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:get_it/get_it.dart";
+import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -11,6 +12,7 @@ import "../../core/extensions/build_context_x.dart";
 /// The [cubit] is passed explicitly so the dialog can call
 /// `createProject` / `discoverProject` without relying on the
 /// widget tree's BlocProvider (which lives in the parent screen).
+// ignore: no_slop_linter/prefer_required_named_parameters, shared helper signature used by tests
 Future<void> showAddProjectDialog(BuildContext context, ProjectListCubit cubit) {
   return showModalBottomSheet<void>(
     context: context,
@@ -39,6 +41,15 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
   String _browsingPath = "";
   bool _actionLoading = false;
 
+  void _dismissDialog() {
+    final router = GoRouter.maybeOf(context);
+    if (router != null) {
+      router.pop();
+      return;
+    }
+    Navigator.pop(context);
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -56,7 +67,7 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
 
     final loc = context.loc;
     if (success) {
-      Navigator.of(context).pop();
+      _dismissDialog();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(loc.projectDiscovered),
@@ -87,7 +98,7 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
 
     final loc = context.loc;
     if (success) {
-      Navigator.of(context).pop();
+      _dismissDialog();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(loc.projectCreated),
@@ -112,7 +123,7 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
     return SizedBox(
       height: screenHeight * 0.7,
       child: Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+        padding: EdgeInsetsDirectional.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
         child: Column(
           children: [
             const SizedBox(height: 8),
@@ -142,7 +153,7 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -278,7 +289,7 @@ class _DirectoryBrowserState extends State<_DirectoryBrowser> {
         // Breadcrumb header with back button
         if (_currentPath.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.only(left: 4, right: 16, top: 4),
+            padding: const EdgeInsetsDirectional.only(start: 4, end: 16, top: 4),
             child: Row(
               children: [
                 IconButton(

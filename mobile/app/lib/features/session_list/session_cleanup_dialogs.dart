@@ -28,7 +28,7 @@ void _showForceDialog({
             const SizedBox(height: 12),
             for (final issue in rejection.issues)
               Padding(
-                padding: const EdgeInsets.only(bottom: 4),
+                padding: const EdgeInsetsDirectional.only(bottom: 4),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -117,7 +117,7 @@ class _DeleteSessionSheetState extends State<_DeleteSessionSheet> {
     final theme = Theme.of(context);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -202,7 +202,7 @@ class _ArchiveSessionSheetState extends State<_ArchiveSessionSheet> {
     final theme = Theme.of(context);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,

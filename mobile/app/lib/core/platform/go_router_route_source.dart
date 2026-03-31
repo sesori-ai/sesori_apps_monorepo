@@ -45,7 +45,10 @@ class GoRouterRouteSource implements RouteSource, Disposable {
 
   static AppRouteDef? _matchRoute(String path) {
     for (final route in _orderedRoutes) {
-      if (_regexByRoute[route]!.hasMatch(path)) {
+      if (_regexByRoute[route] case final regex?) {
+        if (!regex.hasMatch(path)) {
+          continue;
+        }
         return route;
       }
     }

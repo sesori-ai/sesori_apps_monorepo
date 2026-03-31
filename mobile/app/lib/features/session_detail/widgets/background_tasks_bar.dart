@@ -281,7 +281,7 @@ class _TaskRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Row(
           children: [
-            _statusIcon(status, theme),
+            _statusIcon(status: status, theme: theme),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -294,7 +294,7 @@ class _TaskRow extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
-                    _statusLabel(loc, status),
+                    _statusLabel(loc: loc, status: status),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -313,7 +313,7 @@ class _TaskRow extends StatelessWidget {
     );
   }
 
-  Widget _statusIcon(SessionStatus? status, ThemeData theme) => switch (status) {
+  Widget _statusIcon({required SessionStatus? status, required ThemeData theme}) => switch (status) {
     SessionStatusBusy() => SizedBox(
       width: 16,
       height: 16,
@@ -338,7 +338,7 @@ class _TaskRow extends StatelessWidget {
       color: theme.colorScheme.outline,
     ),
   };
-  String _statusLabel(AppLocalizations loc, SessionStatus? status) => switch (status) {
+  String _statusLabel({required AppLocalizations loc, required SessionStatus? status}) => switch (status) {
     SessionStatusBusy() => loc.backgroundTaskStatusBusy,
     SessionStatusRetry() => loc.backgroundTaskStatusRetry,
     SessionStatusIdle() => _completedLabel(loc),

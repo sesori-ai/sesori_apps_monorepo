@@ -38,7 +38,7 @@ class _SessionTile extends StatelessWidget {
         child: Align(
           alignment: .centerLeft,
           child: Padding(
-            padding: const EdgeInsets.only(left: 24),
+            padding: const EdgeInsetsDirectional.only(start: 24),
             child: Icon(
               isArchived ? Icons.unarchive_outlined : Icons.archive_outlined,
               color: theme.colorScheme.onSecondaryContainer,
@@ -83,9 +83,11 @@ class _SessionTile extends StatelessWidget {
                     ),
                   ),
                   if (backgroundTaskCount > 0) ...[
-                    Text(
-                      " \u00b7 ",
-                      style: theme.textTheme.bodySmall?.copyWith(
+                    Padding(
+                      padding: const EdgeInsetsDirectional.symmetric(horizontal: 6),
+                      child: Icon(
+                        Icons.circle,
+                        size: 3,
                         color: theme.colorScheme.primary,
                       ),
                     ),

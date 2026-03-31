@@ -150,7 +150,7 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
 
                 switch (state) {
                   LoginAuthenticating() => Padding(
-                    padding: const EdgeInsets.only(top: 16),
+                    padding: const EdgeInsetsDirectional.only(top: 16),
                     child: Text(
                       loc.loginAuthenticating,
                       style: theme.textTheme.bodyMedium?.copyWith(
@@ -160,7 +160,7 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                     ),
                   ),
                   LoginAwaitingCallback() => Padding(
-                    padding: const EdgeInsets.only(top: 16),
+                    padding: const EdgeInsetsDirectional.only(top: 16),
                     child: Text(
                       loc.loginAwaitingCallback,
                       style: theme.textTheme.bodyMedium?.copyWith(
@@ -169,13 +169,14 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                       textAlign: .center,
                     ),
                   ),
-                  _ => const SizedBox.shrink(),
+                  LoginIdle() => const SizedBox.shrink(),
+                  LoginFailed() => const SizedBox.shrink(),
                 },
 
                 // Error state
                 switch (state) {
                   LoginFailed(:final error) => Padding(
-                    padding: const EdgeInsets.only(top: 24),
+                    padding: const EdgeInsetsDirectional.only(top: 24),
                     child: Card(
                       color: theme.colorScheme.errorContainer,
                       child: Padding(
@@ -189,7 +190,7 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                _getErrorMessage(loc, error),
+                                _getErrorMessage(loc: loc, error: error),
                                 style: TextStyle(
                                   color: theme.colorScheme.onErrorContainer,
                                 ),
@@ -200,7 +201,9 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                       ),
                     ),
                   ),
-                  _ => const SizedBox.shrink(),
+                  LoginIdle() => const SizedBox.shrink(),
+                  LoginAuthenticating() => const SizedBox.shrink(),
+                  LoginAwaitingCallback() => const SizedBox.shrink(),
                 },
 
                 const SizedBox(height: 48),
@@ -212,7 +215,7 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
     );
   }
 
-  String _getErrorMessage(AppLocalizations loc, String error) {
+  String _getErrorMessage({required AppLocalizations loc, required String error}) {
     return switch (error) {
       "loginBrowserOpenFailed" => loc.loginBrowserOpenFailed,
       _ => loc.loginError,

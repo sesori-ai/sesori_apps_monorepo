@@ -12,8 +12,11 @@ class ToolPartWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final loc = context.loc;
+    final state = part.state;
     final toolName = part.state?.title ?? part.tool ?? loc.sessionDetailToolUnknown;
-    final status = part.state?.status ?? "pending";
+    final status = state?.status ?? "pending";
+    final output = status == "completed" ? state?.output : null;
+    final errorText = status == "error" ? state?.error : null;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -30,7 +33,7 @@ class ToolPartWidget extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Row(
                 children: [
-                  _statusIcon(status, theme),
+                  _statusIcon(status: status, theme: theme),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -43,7 +46,7 @@ class ToolPartWidget extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    _statusLabel(loc, status),
+                    _statusLabel(loc: loc, status: status),
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: theme.colorScheme.outline,
                     ),
@@ -51,9 +54,9 @@ class ToolPartWidget extends StatelessWidget {
                 ],
               ),
             ),
-            if (status == "completed" && part.state?.output != null)
+            if (output != null)
               Padding(
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 12, 8),
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(8),
@@ -62,7 +65,7 @@ class ToolPartWidget extends StatelessWidget {
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    _truncateOutput(part.state!.output!),
+                    _truncateOutput(output),
                     style: theme.textTheme.bodySmall?.copyWith(
                       fontFamily: "monospace",
                       fontSize: 11,
@@ -72,11 +75,11 @@ class ToolPartWidget extends StatelessWidget {
                   ),
                 ),
               ),
-            if (status == "error" && part.state?.error != null)
+            if (errorText != null)
               Padding(
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 12, 8),
                 child: Text(
-                  part.state!.error!,
+                  errorText,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.error,
                   ),
@@ -90,7 +93,7 @@ class ToolPartWidget extends StatelessWidget {
     );
   }
 
-  Widget _statusIcon(String status, ThemeData theme) => switch (status) {
+  Widget _statusIcon({required String status, required ThemeData theme}) => switch (status) {
     "pending" || "running" => SizedBox(
       width: 16,
       height: 16,
@@ -112,7 +115,7 @@ class ToolPartWidget extends StatelessWidget {
     ),
   };
 
-  String _statusLabel(AppLocalizations loc, String status) => switch (status) {
+  String _statusLabel({required AppLocalizations loc, required String status}) => switch (status) {
     "pending" => loc.sessionDetailToolPending,
     "running" => loc.sessionDetailToolRunning,
     "completed" => loc.sessionDetailToolCompleted,

@@ -6,6 +6,7 @@ import "../di/injection.dart";
 
 /// Shared [MarkdownBody.onTapLink] handler that opens URLs in the system
 /// browser via the DI-registered [UrlLauncher].
+// ignore: no_slop_linter/prefer_required_named_parameters, callback signature is defined by MarkdownBody.onTapLink
 void handleMarkdownLinkTap(String text, String? href, String title) {
   if (href == null) return;
   final uri = Uri.tryParse(href);
@@ -13,6 +14,7 @@ void handleMarkdownLinkTap(String text, String? href, String title) {
   getIt<UrlLauncher>().launch(uri);
 }
 
+// ignore: no_slop_linter/prefer_required_named_parameters, paragraphStyle is an optional override
 MarkdownStyleSheet buildSessionMarkdownStyleSheet(
   ThemeData theme, {
   TextStyle? paragraphStyle,

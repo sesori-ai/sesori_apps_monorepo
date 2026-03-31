@@ -118,7 +118,7 @@ class SesoriApp extends StatelessWidget {
       routerConfig: appRouter,
       builder: (context, child) => ConnectionOverlay(
         router: appRouter,
-        child: child!,
+        child: child ?? const SizedBox.shrink(),
       ),
     );
   }

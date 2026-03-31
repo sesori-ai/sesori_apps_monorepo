@@ -30,7 +30,7 @@ class AssistantMessageCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: .start,
         children: [
-          for (final part in visibleParts) _buildPart(context, part),
+          for (final part in visibleParts) _buildPart(context: context, part: part),
         ],
       ),
     );
@@ -49,7 +49,7 @@ class AssistantMessageCard extends StatelessWidget {
     ].contains(part.type);
   }
 
-  Widget _buildPart(BuildContext context, MessagePart part) {
+  Widget _buildPart({required BuildContext context, required MessagePart part}) {
     final streaming = streamingText[part.id];
 
     return switch (part.type) {
@@ -79,7 +79,12 @@ class AssistantMessageCard extends StatelessWidget {
         attempt: part.attempt,
         retryError: part.retryError,
       ),
-      _ => const SizedBox.shrink(),
+      MessagePartType.stepStart => const SizedBox.shrink(),
+      MessagePartType.stepFinish => const SizedBox.shrink(),
+      MessagePartType.file => const SizedBox.shrink(),
+      MessagePartType.snapshot => const SizedBox.shrink(),
+      MessagePartType.patch => const SizedBox.shrink(),
+      MessagePartType.compaction => const SizedBox.shrink(),
     };
   }
 }

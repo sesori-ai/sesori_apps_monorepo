@@ -104,7 +104,7 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
     );
   }
 
-  String _buildAgentModelSubtitle(String? agent, String? modelID) {
+  String _buildAgentModelSubtitle({required String? agent, required String? modelID}) {
     final parts = <String>[];
     if (agent != null) parts.add(agent);
     if (modelID != null) parts.add(modelID);
@@ -188,7 +188,9 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
             Text(
               switch (state) {
                 SessionDetailLoaded(:final sessionTitle) when sessionTitle != null => sessionTitle,
-                _ => widget.sessionTitle ?? loc.sessionDetailTitle,
+                SessionDetailLoaded() => widget.sessionTitle ?? loc.sessionDetailTitle,
+                SessionDetailLoading() => widget.sessionTitle ?? loc.sessionDetailTitle,
+                SessionDetailFailed() => widget.sessionTitle ?? loc.sessionDetailTitle,
               },
             ),
             if (state case SessionDetailLoaded(
@@ -196,7 +198,7 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
               :final modelID,
             ))
               Text(
-                _buildAgentModelSubtitle(agent, modelID),
+                _buildAgentModelSubtitle(agent: agent, modelID: modelID),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -212,7 +214,7 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
               when sessionStatus is! SessionStatusIdle ||
                   childStatuses.values.any((s) => s is SessionStatusBusy || s is SessionStatusRetry))
             Padding(
-              padding: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsetsDirectional.only(end: 16),
               child: SizedBox(
                 width: 16,
                 height: 16,
@@ -534,7 +536,10 @@ class _ErrorView extends StatelessWidget {
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
-            Text(_describeError(loc, error), textAlign: .center),
+            Text(
+              _describeError(loc: loc, error: error),
+              textAlign: .center,
+            ),
             const SizedBox(height: 24),
             FilledButton.icon(
               onPressed: onRetry,
@@ -547,7 +552,7 @@ class _ErrorView extends StatelessWidget {
     );
   }
 
-  String _describeError(AppLocalizations loc, ApiError error) => switch (error) {
+  String _describeError({required AppLocalizations loc, required ApiError error}) => switch (error) {
     NotAuthenticatedError() => loc.apiErrorNotAuthenticated,
     NonSuccessCodeError(:final errorCode, :final rawErrorString) =>
       rawErrorString != null

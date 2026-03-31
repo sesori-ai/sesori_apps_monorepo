@@ -9,6 +9,7 @@ import "package:flutter/material.dart";
 ///
 /// Callers do **not** need to wrap their content in [SafeArea] or manually pad
 /// for the keyboard.
+// ignore: no_slop_linter/prefer_required_named_parameters, backgroundColor is intentionally optional for sheet defaults
 Future<T?> showAppModalBottomSheet<T>({
   required BuildContext context,
   required WidgetBuilder builder,
@@ -46,7 +47,7 @@ class _ModalSafeArea extends StatelessWidget {
     final bottomPadding = viewInsets.bottom > 0 ? viewInsets.bottom : viewPadding.bottom;
 
     return Padding(
-      padding: EdgeInsets.only(bottom: bottomPadding),
+      padding: EdgeInsetsDirectional.only(bottom: bottomPadding),
       child: child,
     );
   }

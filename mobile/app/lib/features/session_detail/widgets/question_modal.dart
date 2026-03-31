@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
+import "package:go_router/go_router.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../../core/extensions/build_context_x.dart";
@@ -60,6 +61,15 @@ class _QuestionModalState extends State<QuestionModal> {
   /// Selection state for the *current* question.
   final Set<String> _selectedLabels = {};
   bool _customSelected = false;
+
+  void _dismissModal() {
+    final router = GoRouter.maybeOf(context);
+    if (router != null) {
+      router.pop();
+      return;
+    }
+    Navigator.pop(context);
+  }
 
   List<QuestionInfo> get _questions => widget.question.questions;
   int get _totalQuestions => _questions.length;
@@ -154,7 +164,7 @@ class _QuestionModalState extends State<QuestionModal> {
     if (_isLastQuestion) {
       // All questions answered — submit.
       widget.onReply(widget.question.id, _collectedAnswers);
-      Navigator.of(context).pop();
+      _dismissModal();
     } else {
       // Advance to next question — reset selection state.
       setState(() {
@@ -168,7 +178,7 @@ class _QuestionModalState extends State<QuestionModal> {
 
   void _onReject() {
     widget.onReject(widget.question.id);
-    Navigator.of(context).pop();
+    _dismissModal();
   }
 
   // ---------------------------------------------------------------------------
@@ -207,7 +217,7 @@ class _QuestionModalState extends State<QuestionModal> {
 
           // Header row
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 8, 12),
+            padding: const EdgeInsetsDirectional.fromSTEB(16, 4, 8, 12),
             child: Row(
               children: [
                 Icon(
@@ -235,7 +245,7 @@ class _QuestionModalState extends State<QuestionModal> {
           // Step indicator (only when there are multiple questions)
           if (_isMultiQuestion)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 8),
               child: Row(
                 children: [
                   Text(
@@ -309,7 +319,7 @@ class _QuestionModalState extends State<QuestionModal> {
 
           // Submit / Next button
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 16),
             child: SizedBox(
               width: double.infinity,
               child: FilledButton(
@@ -348,7 +358,7 @@ class _OptionTile extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsetsDirectional.only(bottom: 8),
       child: Material(
         color: isSelected ? theme.colorScheme.primaryContainer : theme.colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(12),
@@ -422,7 +432,7 @@ class _CustomAnswerTile extends StatelessWidget {
     final loc = context.loc;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsetsDirectional.only(bottom: 8),
       child: Material(
         color: isSelected ? theme.colorScheme.primaryContainer : theme.colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(12),
@@ -435,7 +445,7 @@ class _CustomAnswerTile extends StatelessWidget {
               crossAxisAlignment: .start,
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(top: 10),
+                  padding: const EdgeInsetsDirectional.only(top: 10),
                   child: Icon(
                     isMultiple
                         ? (isSelected ? Icons.check_box : Icons.check_box_outline_blank)
