@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:convert";
 import "dart:io";
 
+import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -13,8 +14,10 @@ class DebugServer {
   final RequestRouter _router;
   final BridgeEventMapper _mapper;
   final int port;
-  HttpServer? _server;
   final List<HttpResponse> _sseClients = [];
+  final CompositeSubscription _compositeSubscription = CompositeSubscription();
+
+  HttpServer? _server;
   StreamSubscription<BridgeSseEvent>? _pluginEventsSub;
 
   int _nextRequestId = 1;
@@ -29,6 +32,7 @@ class DebugServer {
        _mapper = BridgeEventMapper(plugin: plugin, failureReporter: failureReporter);
 
   int? get boundPort => _server?.port;
+  RequestRouter get router => _router;
 
   Future<void> start() async {
     if (_server != null) {
@@ -39,10 +43,11 @@ class DebugServer {
     _server = server;
 
     Log.i("Debug server listening on http://127.0.0.1:${server.port}");
-    server.listen(_handleRequest);
+    server.listen(_handleRequest).addTo(_compositeSubscription);
   }
 
   Future<void> stop() async {
+    await _compositeSubscription.cancel();
     await _pluginEventsSub?.cancel();
     _pluginEventsSub = null;
     final clients = List<HttpResponse>.from(_sseClients);

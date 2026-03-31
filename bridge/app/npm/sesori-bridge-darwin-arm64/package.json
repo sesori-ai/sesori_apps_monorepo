@@ -4,7 +4,7 @@
   "description": "Sesori Bridge binary for macOS ARM64",
   "os": ["darwin"],
   "cpu": ["arm64"],
-  "files": ["bin/"],
+  "files": ["bin/", "lib/"],
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
     "type": "git",

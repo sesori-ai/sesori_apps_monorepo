@@ -4,7 +4,7 @@
   "description": "Sesori Bridge binary for Linux x64",
   "os": ["linux"],
   "cpu": ["x64"],
-  "files": ["bin/"],
+  "files": ["bin/", "lib/"],
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
     "type": "git",

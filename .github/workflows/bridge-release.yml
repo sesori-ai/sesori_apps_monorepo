@@ -1,0 +1,374 @@
+name: Bridge Release
+
+on:
+  push:
+    tags: ['bridge-v*']
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (build only, no publish)'
+        required: false
+        default: 'false'
+        type: boolean
+      publish_npm:
+        description: 'Publish npm packages (manual only)'
+        required: false
+        default: 'false'
+        type: boolean
+      release_tag:
+        description: 'Existing bridge tag to publish from when publish_npm=true (for example bridge-v0.3.1)'
+        required: false
+        default: ''
+        type: string
+
+jobs:
+  build:
+    name: Build (${{ matrix.asset_name }})
+    runs-on: ${{ matrix.os }}
+    env:
+      PUB_CACHE: ${{ github.workspace }}/.pub-cache
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target_os: macos
+            target_arch: arm64
+            asset_name: sesori-bridge-macos-arm64
+            archive_ext: tar.gz
+          - os: macos-13
+            target_os: macos
+            target_arch: x64
+            asset_name: sesori-bridge-macos-x64
+            archive_ext: tar.gz
+          - os: ubuntu-latest
+            target_os: linux
+            target_arch: x64
+            asset_name: sesori-bridge-linux-x64
+            archive_ext: tar.gz
+          - os: ubuntu-24.04-arm
+            target_os: linux
+            target_arch: arm64
+            asset_name: sesori-bridge-linux-arm64
+            archive_ext: tar.gz
+          - os: windows-latest
+            target_os: windows
+            target_arch: x64
+            asset_name: sesori-bridge-windows-x64
+            archive_ext: zip
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dart-lang/setup-dart@v1
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.pub-cache
+          key: ${{ runner.os }}-${{ runner.arch }}-pub-${{ hashFiles('bridge/pubspec.lock') }}
+
+      - name: Extract version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_NAME}" == bridge-v* ]]; then
+            VERSION="${GITHUB_REF_NAME#bridge-v}"
+          else
+            VERSION=$(grep '^version:' bridge/app/pubspec.yaml | awk '{print $2}')
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Get dependencies
+        run: dart pub get
+        working-directory: bridge
+
+      - name: Bump version
+        if: startsWith(github.ref_name, 'bridge-v')
+        shell: bash
+        run: |
+          CURRENT_VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}')
+          if [[ "$CURRENT_VERSION" == "${{ steps.version.outputs.VERSION }}" ]]; then
+            echo "Version already set to $CURRENT_VERSION; skipping bump."
+            exit 0
+          fi
+
+          dart run tool/bump_version.dart ${{ steps.version.outputs.VERSION }}
+        working-directory: bridge/app
+
+      - name: Build binary
+        run: dart build cli -o build/cli
+        working-directory: bridge/app
+
+      - name: Rename binary (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: mv build/cli/bundle/bin/bridge build/cli/bundle/bin/sesori-bridge
+        working-directory: bridge/app
+
+      - name: Rename binary (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Rename-Item -Path "bridge/app/build/cli/bundle/bin/bridge.exe" -NewName "sesori-bridge.exe"
+
+      - name: Create archive (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: tar -czf ${{ matrix.asset_name }}.tar.gz -C build/cli/bundle .
+        working-directory: bridge/app
+
+      - name: Create archive (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path "bridge/app/build/cli/bundle/*" -DestinationPath "bridge/app/${{ matrix.asset_name }}.zip"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: bridge/app/${{ matrix.asset_name }}.${{ matrix.archive_ext }}
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event.inputs.dry_run != 'true' && startsWith(github.ref_name, 'bridge-v')
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Generate checksums
+        working-directory: artifacts
+        run: |
+          find . -type f \( -name '*.tar.gz' -o -name '*.zip' \) -print0 | sort -z | while IFS= read -r -d '' file; do
+            sha256sum "$file" | awk -v name="$(basename "$file")" '{print $1 "  " name}'
+          done > checksums.txt
+          cat checksums.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Bridge ${{ github.ref_name }}
+          make_latest: "true"
+          files: |
+            artifacts/**/*.tar.gz
+            artifacts/**/*.zip
+            artifacts/checksums.txt
+
+  publish-platform:
+    name: Publish platform npm packages
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.event.inputs.dry_run != 'true' &&
+      github.event.inputs.publish_npm == 'true'
+    permissions:
+      contents: read
+    env:
+      PUB_CACHE: ${{ github.workspace }}/.pub-cache
+      RELEASE_TAG: ${{ github.event.inputs.release_tag }}
+    steps:
+      - name: Validate manual publish inputs
+        shell: bash
+        run: |
+          if [[ -z "$RELEASE_TAG" ]]; then
+            echo "release_tag is required when publish_npm=true" >&2
+            exit 1
+          fi
+          if [[ "$RELEASE_TAG" != bridge-v* ]]; then
+            echo "release_tag must start with bridge-v" >&2
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.release_tag }}
+
+      - uses: dart-lang/setup-dart@v1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.pub-cache
+          key: ${{ runner.os }}-${{ runner.arch }}-pub-${{ hashFiles('bridge/pubspec.lock') }}
+
+      - name: Get dependencies
+        run: dart pub get
+        working-directory: bridge
+
+      - name: Extract version
+        id: version
+        shell: bash
+        run: |
+          if [[ -n "$RELEASE_TAG" ]]; then
+            VERSION="${RELEASE_TAG#bridge-v}"
+          elif [[ "${GITHUB_REF_NAME}" == bridge-v* ]]; then
+            VERSION="${GITHUB_REF_NAME#bridge-v}"
+          else
+            VERSION=$(grep '^version:' bridge/app/pubspec.yaml | awk '{print $2}')
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Bump version
+        if: startsWith(github.ref_name, 'bridge-v') || github.event.inputs.release_tag != ''
+        shell: bash
+        run: |
+          CURRENT_VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}')
+          if [[ "$CURRENT_VERSION" == "${{ steps.version.outputs.VERSION }}" ]]; then
+            echo "Version already set to $CURRENT_VERSION; skipping bump."
+            exit 0
+          fi
+
+          dart run tool/bump_version.dart ${{ steps.version.outputs.VERSION }}
+        working-directory: bridge/app
+
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir artifacts --pattern "*.tar.gz" --pattern "*.zip"
+
+      - name: Extract archives and copy runtime bundles
+        shell: bash
+        run: |
+          mkdir -p /tmp/bridges/macos-arm64 /tmp/bridges/macos-x64 \
+                   /tmp/bridges/linux-x64 /tmp/bridges/linux-arm64 \
+                   /tmp/bridges/windows-x64
+
+          copy_runtime_bundle() {
+            local source_root="$1"
+            local package_root="$2"
+            local binary_name="$3"
+
+            rm -rf "$package_root/bin" "$package_root/lib"
+            mkdir -p "$package_root/bin"
+            cp "$source_root/bin/$binary_name" "$package_root/bin/$binary_name"
+
+            if [[ -d "$source_root/lib" ]]; then
+              cp -R "$source_root/lib" "$package_root/lib"
+            fi
+          }
+
+          tar -xzf artifacts/sesori-bridge-macos-arm64.tar.gz \
+              -C /tmp/bridges/macos-arm64
+          copy_runtime_bundle \
+            /tmp/bridges/macos-arm64 \
+            bridge/app/npm/sesori-bridge-darwin-arm64 \
+            sesori-bridge
+          chmod +x bridge/app/npm/sesori-bridge-darwin-arm64/bin/sesori-bridge
+
+          tar -xzf artifacts/sesori-bridge-macos-x64.tar.gz \
+              -C /tmp/bridges/macos-x64
+          copy_runtime_bundle \
+            /tmp/bridges/macos-x64 \
+            bridge/app/npm/sesori-bridge-darwin-x64 \
+            sesori-bridge
+          chmod +x bridge/app/npm/sesori-bridge-darwin-x64/bin/sesori-bridge
+
+          tar -xzf artifacts/sesori-bridge-linux-x64.tar.gz \
+              -C /tmp/bridges/linux-x64
+          copy_runtime_bundle \
+            /tmp/bridges/linux-x64 \
+            bridge/app/npm/sesori-bridge-linux-x64 \
+            sesori-bridge
+          chmod +x bridge/app/npm/sesori-bridge-linux-x64/bin/sesori-bridge
+
+          tar -xzf artifacts/sesori-bridge-linux-arm64.tar.gz \
+              -C /tmp/bridges/linux-arm64
+          copy_runtime_bundle \
+            /tmp/bridges/linux-arm64 \
+            bridge/app/npm/sesori-bridge-linux-arm64 \
+            sesori-bridge
+          chmod +x bridge/app/npm/sesori-bridge-linux-arm64/bin/sesori-bridge
+
+          unzip artifacts/sesori-bridge-windows-x64.zip \
+                -d /tmp/bridges/windows-x64
+          copy_runtime_bundle \
+            /tmp/bridges/windows-x64 \
+            bridge/app/npm/sesori-bridge-win32-x64 \
+            sesori-bridge.exe
+
+      - name: Setup .npmrc
+        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+
+      - name: Publish platform packages
+        shell: bash
+        working-directory: bridge/app/npm
+        run: |
+          for pkg in sesori-bridge-darwin-arm64 sesori-bridge-darwin-x64 \
+                     sesori-bridge-linux-x64 sesori-bridge-linux-arm64 \
+                     sesori-bridge-win32-x64; do
+            echo "Publishing $pkg..."
+            (cd "$pkg" && npm publish --access public)
+          done
+
+  publish-wrapper:
+    name: Publish wrapper npm package
+    needs: publish-platform
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.event.inputs.dry_run != 'true' &&
+      github.event.inputs.publish_npm == 'true'
+    env:
+      PUB_CACHE: ${{ github.workspace }}/.pub-cache
+      RELEASE_TAG: ${{ github.event.inputs.release_tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.release_tag }}
+
+      - uses: dart-lang/setup-dart@v1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.pub-cache
+          key: ${{ runner.os }}-${{ runner.arch }}-pub-${{ hashFiles('bridge/pubspec.lock') }}
+
+      - name: Get dependencies
+        run: dart pub get
+        working-directory: bridge
+
+      - name: Extract version
+        id: version
+        shell: bash
+        run: |
+          if [[ -n "$RELEASE_TAG" ]]; then
+            VERSION="${RELEASE_TAG#bridge-v}"
+          elif [[ "${GITHUB_REF_NAME}" == bridge-v* ]]; then
+            VERSION="${GITHUB_REF_NAME#bridge-v}"
+          else
+            VERSION=$(grep '^version:' bridge/app/pubspec.yaml | awk '{print $2}')
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Bump version
+        if: startsWith(github.ref_name, 'bridge-v') || github.event.inputs.release_tag != ''
+        shell: bash
+        run: |
+          CURRENT_VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}')
+          if [[ "$CURRENT_VERSION" == "${{ steps.version.outputs.VERSION }}" ]]; then
+            echo "Version already set to $CURRENT_VERSION; skipping bump."
+            exit 0
+          fi
+
+          dart run tool/bump_version.dart ${{ steps.version.outputs.VERSION }}
+        working-directory: bridge/app
+
+      - name: Setup .npmrc
+        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+
+      - name: Publish wrapper package
+        run: npm publish --access public
+        working-directory: bridge/app/npm/sesori-bridge
