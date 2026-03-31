@@ -394,12 +394,19 @@ class OpenCodeApi {
   }
 
   Future<OpenCodeConfig> getConfig() async {
-    final response = await http.get(
-      Uri.parse("$serverURL/config"),
-      headers: _authHeaders,
-    );
-    _ensureSuccess(response, "GET /config");
-    return OpenCodeConfig.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    final client = http.Client();
+    try {
+      final response = await client.get(
+        Uri.parse("$serverURL/config"),
+        headers: _authHeaders,
+      );
+      _ensureSuccess(response, "GET /config");
+      return OpenCodeConfig.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>,
+      );
+    } finally {
+      client.close();
+    }
   }
 
   /// Sends a message to a session and blocks until the AI responds.

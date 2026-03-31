@@ -121,8 +121,8 @@ class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Sess
           sessionId: created.id,
           title: title,
         );
-      } catch (_) {
-        // Best-effort: if rename fails, use original session data.
+      } catch (e) {
+        Log.w("Failed to rename session ${created.id}: $e");
       }
     }
 

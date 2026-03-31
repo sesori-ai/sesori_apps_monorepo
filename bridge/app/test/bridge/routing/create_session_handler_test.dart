@@ -430,25 +430,21 @@ void main() {
         summary: null,
       );
 
-      final response = await handler.handle(
-        makeRequest(
-          "POST",
-          "/session",
-          body: jsonEncode(
-            const CreateSessionRequest(
-              projectId: "/repo",
-              dedicatedWorktree: false,
-              parts: [PromptPart.text(text: "   ")],
-              agent: null,
-              model: null,
-            ).toJson(),
-          ),
+      final result = await handler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "/repo",
+          dedicatedWorktree: false,
+          parts: [PromptPart.text(text: "   ")],
+          agent: null,
+          model: null,
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      expect(response.status, equals(200));
+      expect(result.id, equals("s1"));
       expect(plugin.lastGenerateSessionMetadataMessage, isNull);
     });
 
