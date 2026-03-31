@@ -8,17 +8,20 @@ const _generatedFileSuffixes = <String>[".freezed.dart", ".g.dart", ".steps.dart
 const _maxDiffContentBytes = 100 * 1024;
 
 /// Safely decode [Process.run] stdout, which may be a [String] or [List<int>].
+/// Never throws — falls back to lossy decoding on malformed input.
 String _decodeOutput(Object? out) {
   if (out is String) return out;
   if (out is List<int>) {
     try {
       return utf8.decode(out);
     } on FormatException {
-      return systemEncoding.decode(out);
+      return utf8.decode(out, allowMalformed: true);
     }
   }
   return "";
 }
+
+final _hexHashPattern = RegExp(r'^[0-9a-f]{4,40}$');
 
 class BaseCommitUnreachableException implements Exception {
   final String message;
@@ -40,6 +43,10 @@ Future<List<FileDiff>> computeSessionDiffs({
   required ProcessRunner processRunner,
 }) async {
   if (!Directory(worktreePath).existsSync()) return const <FileDiff>[];
+  // Reject non-hex baseCommit to prevent git option injection (e.g. "--git-dir=...")
+  if (!_hexHashPattern.hasMatch(baseCommit)) {
+    throw BaseCommitUnreachableException(message: "invalid base commit format: '$baseCommit'");
+  }
   final verifyCommit = await _runGit(
     processRunner: processRunner,
     worktreePath: worktreePath,
@@ -95,11 +102,6 @@ Future<List<FileDiff>> computeSessionDiffs({
       diffs.add(FileDiff.skipped(file: entry.file, reason: FileDiffSkipReason.tooLarge, status: entry.status));
       continue;
     }
-    if (before.isEmpty && after.isEmpty && (beforeResult.exists || afterResult.exists)) {
-      diffs.add(FileDiff.skipped(file: entry.file, reason: FileDiffSkipReason.binary, status: entry.status));
-      continue;
-    }
-
     diffs.add(
       FileDiff.content(
         file: entry.file,
