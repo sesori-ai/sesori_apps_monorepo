@@ -21,9 +21,11 @@
 import 'package:analysis_server_plugin/plugin.dart';
 import 'package:analysis_server_plugin/registry.dart';
 // ignore: implementation_imports
-import 'package:analysis_server_plugin/src/plugin_server.dart' show PluginServer;
+import 'package:analysis_server_plugin/src/plugin_server.dart'
+    show PluginServer;
 // ignore: implementation_imports
-import 'package:analysis_server_plugin/src/registry.dart' show PluginRegistryImpl;
+import 'package:analysis_server_plugin/src/registry.dart'
+    show PluginRegistryImpl;
 
 import 'src/fixes/add_return_type_fix.dart';
 import 'src/fixes/dartz_tuple_to_record_fix.dart';
@@ -39,6 +41,7 @@ import 'src/rules/avoid_hardcoded_text_styles_rule.dart';
 import 'src/rules/avoid_implicit_tostring_rule.dart';
 import 'src/rules/avoid_mutable_class_fields_rule.dart';
 import 'src/rules/avoid_navigator_of_rule.dart';
+import 'src/rules/avoid_raw_go_router_rule.dart';
 import 'src/rules/avoid_string_literals_in_widgets_rule.dart';
 import 'src/rules/prefer_edge_insets_directional_rule.dart';
 import 'src/rules/prefer_exhaustive_switch_rule.dart';
@@ -64,11 +67,12 @@ class _NoSlopLinterPlugin extends Plugin {
     registry.registerWarningRule(AvoidImplicitTostringRule());
     registry.registerWarningRule(AvoidMutableClassFieldsRule());
     registry.registerWarningRule(AvoidNavigatorOfRule());
+    registry.registerWarningRule(AvoidRawGoRouterRule());
     registry.registerWarningRule(AvoidStringLiteralsInWidgetsRule());
     registry.registerWarningRule(PreferEdgeInsetsDirectionalRule());
     registry.registerWarningRule(PreferExhaustiveSwitchRule());
     registry.registerWarningRule(PreferRequiredNamedParametersRule());
-    registry.registerWarningRule(PreferSizeConstRule());
+    // registry.registerWarningRule(PreferSizeConstRule());
     registry.registerWarningRule(PreferTextAlignDirectionalRule());
 
     // Lint rules (disabled by default, must be enabled in analysis_options.yaml)
@@ -76,10 +80,22 @@ class _NoSlopLinterPlugin extends Plugin {
     registry.registerLintRule(AvoidHardcodedTextStylesRule());
 
     // Fixes
-    registry.registerFixForRule(AvoidDynamicReturnTypeRule.code, AddReturnTypeFix.new);
-    registry.registerFixForRule(AvoidDartzTupleRule.code, DartzTupleToRecordFix.new);
-    registry.registerFixForRule(PreferExhaustiveSwitchRule.code, ExhaustiveSwitchCombinedFix.new);
-    registry.registerFixForRule(PreferExhaustiveSwitchRule.code, ExhaustiveSwitchIndividualFix.new);
+    registry.registerFixForRule(
+      AvoidDynamicReturnTypeRule.code,
+      AddReturnTypeFix.new,
+    );
+    registry.registerFixForRule(
+      AvoidDartzTupleRule.code,
+      DartzTupleToRecordFix.new,
+    );
+    registry.registerFixForRule(
+      PreferExhaustiveSwitchRule.code,
+      ExhaustiveSwitchCombinedFix.new,
+    );
+    registry.registerFixForRule(
+      PreferExhaustiveSwitchRule.code,
+      ExhaustiveSwitchIndividualFix.new,
+    );
     registry.registerFixForRule(
       PreferRequiredNamedParametersRule.codePositionalParams,
       RequiredNamedParamsAllNamedFix.new,

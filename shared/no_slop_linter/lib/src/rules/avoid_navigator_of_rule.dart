@@ -8,8 +8,9 @@ import 'package:analyzer/error/error.dart';
 
 /// A lint rule that forbids Navigator.of(context) usage.
 ///
-/// This project uses AutoRoute for navigation. Using Navigator.of(context)
-/// bypasses the routing system and can lead to inconsistent navigation behavior.
+/// This project uses GoRouter with custom extensions for navigation.
+/// Using Navigator.of(context) bypasses the routing system and can lead
+/// to inconsistent navigation behavior.
 ///
 /// Examples that trigger this rule:
 /// - `Navigator.of(context).push(...)`
@@ -17,23 +18,31 @@ import 'package:analyzer/error/error.dart';
 /// - `Navigator.of(context, rootNavigator: true).pushNamed(...)`
 ///
 /// Valid examples:
-/// - `context.router.push(...)` - AutoRoute
-/// - `context.router.pop()` - AutoRoute
-/// - `AutoRouter.of(context).push(...)` - AutoRoute
+/// - `context.pushRoute(AppRoute.xxx())` - GoRouter custom extension
+/// - `context.goRoute(AppRoute.xxx())` - GoRouter custom extension
+/// - `context.pop()` - GoRouter pop (works for dialogs/sheets too)
 class AvoidNavigatorOfRule extends NoSlopRule {
-  AvoidNavigatorOfRule() : super(name: code.lowerCaseName, description: 'Forbids Navigator.of(context).');
+  AvoidNavigatorOfRule()
+    : super(
+        name: code.lowerCaseName,
+        description: 'Forbids Navigator.of(context).',
+      );
 
   static const code = LintCode(
     'avoid_navigator_of',
-    'Avoid Navigator.of(context). Use AutoRoute instead.',
-    correctionMessage: 'Use context.router.push/pop or AutoRouter.of(context).',
+    'Avoid Navigator.of(context). Use GoRouter instead.',
+    correctionMessage:
+        'Use context.pushRoute/goRoute/pop() from GoRouter extensions.',
   );
 
   @override
   DiagnosticCode get diagnosticCode => code;
 
   @override
-  void registerRuleProcessors(RuleVisitorRegistry registry, RuleContext context) {
+  void registerRuleProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
+  ) {
     registry.addMethodInvocation(this, _Visitor(this));
   }
 }
