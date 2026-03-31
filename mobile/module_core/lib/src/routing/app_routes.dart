@@ -12,6 +12,7 @@ enum AppRouteDef {
   sessions("/projects/:projectId/sessions"),
   newSession("/projects/:projectId/sessions/new"),
   sessionDetail("/projects/:projectId/sessions/:sessionId"),
+  sessionDiffs("/projects/:projectId/sessions/:sessionId/diffs"),
   ;
 
   const AppRouteDef(this.path);
@@ -58,6 +59,10 @@ sealed class AppRoute {
     required String? sessionTitle,
     required bool readOnly,
   }) = AppRouteSessionDetail;
+  const factory AppRoute.sessionDiffs({
+    required String projectId,
+    required String sessionId,
+  }) = AppRouteSessionDiffs;
 
   /// Creates the correct subclass by decoding path/query params for [def].
   ///
@@ -75,6 +80,10 @@ sealed class AppRoute {
       AppRouteDef.sessions => AppRouteSessions.fromParams(pathParams: pathParams, queryParams: queryParams),
       AppRouteDef.newSession => AppRouteNewSession.fromParams(pathParams: pathParams, queryParams: queryParams),
       AppRouteDef.sessionDetail => AppRouteSessionDetail.fromParams(
+        pathParams: pathParams,
+        queryParams: queryParams,
+      ),
+      AppRouteDef.sessionDiffs => AppRouteSessionDiffs.fromParams(
         pathParams: pathParams,
         queryParams: queryParams,
       ),
@@ -214,4 +223,32 @@ class AppRouteSessionDetail extends AppRoute {
     };
     return Uri(path: base, queryParameters: queryParams).toString();
   }
+}
+
+class AppRouteSessionDiffs extends AppRoute {
+  static const _projectIdPathParam = "projectId";
+  static const _sessionIdPathParam = "sessionId";
+
+  final String projectId;
+  final String sessionId;
+
+  const AppRouteSessionDiffs({required this.projectId, required this.sessionId});
+
+  /// Decodes from path/query parameter maps (inverse of [buildPath]).
+  factory AppRouteSessionDiffs.fromParams({
+    required Map<String, String> pathParams,
+    // ignore: avoid_unused_constructor_parameters — uniform fromParams signature
+    required Map<String, String> queryParams,
+  }) {
+    return AppRouteSessionDiffs(
+      projectId: pathParams[_projectIdPathParam] ?? "",
+      sessionId: pathParams[_sessionIdPathParam] ?? "",
+    );
+  }
+
+  @override
+  AppRouteDef get def => AppRouteDef.sessionDiffs;
+
+  @override
+  String buildPath() => "/projects/${Uri.encodeComponent(projectId)}/sessions/${Uri.encodeComponent(sessionId)}/diffs";
 }

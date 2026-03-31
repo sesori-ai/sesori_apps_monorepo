@@ -45,6 +45,8 @@ export "src/cubits/project_list/project_list_cubit.dart";
 export "src/cubits/project_list/project_list_state.dart";
 export "src/cubits/session_detail/session_detail_cubit.dart";
 export "src/cubits/session_detail/session_detail_state.dart";
+export "src/cubits/session_diffs/diff_cubit.dart";
+export "src/cubits/session_diffs/diff_state.dart";
 export "src/cubits/session_list/session_list_cubit.dart";
 export "src/cubits/session_list/session_list_state.dart";
 // DI
@@ -60,3 +62,6 @@ export "src/platform/url_launcher.dart";
 // Routing
 export "src/routing/app_routes.dart";
 export "src/routing/auth_redirect_service.dart";
+// Utils
+export "src/utils/diff/diff_engine.dart";
+export "src/utils/diff/language_detector.dart";
