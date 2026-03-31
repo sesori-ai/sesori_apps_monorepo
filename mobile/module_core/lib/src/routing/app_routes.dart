@@ -237,7 +237,7 @@ class AppRouteSessionDiffs extends AppRoute {
   /// Decodes from path/query parameter maps (inverse of [buildPath]).
   factory AppRouteSessionDiffs.fromParams({
     required Map<String, String> pathParams,
-    // ignore: avoid_unused_constructor_parameters — uniform fromParams signature
+    // ignore: avoid_unused_constructor_parameters — uniform fromParams contract required by AppRoute.fromDef
     required Map<String, String> queryParams,
   }) {
     return AppRouteSessionDiffs(

@@ -1,3 +1,4 @@
+import "dart:convert";
 import "dart:io";
 import "package:path/path.dart" as p;
 import "package:sesori_shared/sesori_shared.dart";
@@ -5,6 +6,19 @@ import "../worktree_service.dart" show ProcessRunner;
 
 const _generatedFileSuffixes = <String>[".freezed.dart", ".g.dart", ".steps.dart", ".config.dart"];
 const _maxDiffContentBytes = 100 * 1024;
+
+/// Safely decode [Process.run] stdout, which may be a [String] or [List<int>].
+String _decodeOutput(Object? out) {
+  if (out is String) return out;
+  if (out is List<int>) {
+    try {
+      return utf8.decode(out);
+    } on FormatException {
+      return systemEncoding.decode(out);
+    }
+  }
+  return "";
+}
 
 class BaseCommitUnreachableException implements Exception {
   final String message;
@@ -51,8 +65,8 @@ Future<List<FileDiff>> computeSessionDiffs({
     throw const GitDiffQueryException(message: "git diff --numstat failed");
   }
 
-  final statusEntries = _parseNameStatus(nameStatusResult.stdout.toString());
-  final statsByFile = _parseNumstat(numstatResult.stdout.toString());
+  final statusEntries = _parseNameStatus(_decodeOutput(nameStatusResult.stdout));
+  final statsByFile = _parseNumstat(_decodeOutput(numstatResult.stdout));
   final filteredEntries = statusEntries.where((entry) => !_isGeneratedFile(entry.file)).toList(growable: false);
 
   final diffs = <FileDiff>[];
@@ -166,7 +180,7 @@ Future<_FileReadResult> _readBefore({
     arguments: ["show", "$baseCommit:$file"],
   );
   if (result.exitCode != 0) return const _FileReadError();
-  final stdout = result.stdout.toString();
+  final stdout = _decodeOutput(result.stdout);
   if (stdout.contains("\x00")) return const _FileBinary();
   return _FileContent(content: stdout, exists: true);
 }
