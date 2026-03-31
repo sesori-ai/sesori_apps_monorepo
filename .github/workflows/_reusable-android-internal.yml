@@ -1,0 +1,118 @@
+name: Android Internal Deploy
+
+on:
+  workflow_call:
+    secrets:
+      GOOGLE_PLAY_SERVICE_ACCOUNT_JSON:
+        required: true
+      ANDROID_KEYSTORE_BASE64:
+        required: true
+      ANDROID_KEYSTORE_PASSWORD:
+        required: true
+      ANDROID_KEY_ALIAS:
+        required: true
+      ANDROID_KEY_PASSWORD:
+        required: true
+
+jobs:
+  deploy:
+    name: Build and Deploy to Internal Track
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 45
+
+    env:
+      CI: true
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Read Flutter version from .tool-versions
+        shell: bash
+        run: |
+          FLUTTER_VERSION=$(awk '$1 == "flutter" { print $2 }' .tool-versions | sed 's/-stable$//')
+          if [ -z "$FLUTTER_VERSION" ]; then
+            echo "Unable to find a Flutter version in .tool-versions" >&2
+            exit 1
+          fi
+          echo "FLUTTER_VERSION=$FLUTTER_VERSION" >> "$GITHUB_ENV"
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+
+      - name: Get dependencies (workspace)
+        run: dart pub get
+        working-directory: mobile
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'gradle'
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+          working-directory: mobile/app/android
+
+      - name: Setup Google Play credentials
+        working-directory: mobile/app/android
+        run: |
+          echo '${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}' > fastlane/service-account.json
+
+      - name: Setup Android signing
+        run: |
+          echo '${{ secrets.ANDROID_KEYSTORE_BASE64 }}' | base64 --decode > mobile/app/android/app/upload-keystore.jks
+          cat > mobile/app/android/release.properties << EOF
+          storeFile=upload-keystore.jks
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          EOF
+
+      - name: Get next version code
+        id: version
+        working-directory: mobile/app/android
+        run: |
+          VERSION_CODE=$(bundle exec fastlane next_version_code 2>&1 | grep -oE 'Next version code: [0-9]+' | grep -oE '[0-9]+')
+          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
+          echo "Building with version code: $VERSION_CODE"
+
+      - name: Build Android AAB
+        working-directory: mobile/app
+        run: flutter build appbundle --release --build-number=${{ steps.version.outputs.version_code }}
+
+      - name: Deploy to Internal Track
+        working-directory: mobile/app/android
+        run: bundle exec fastlane deploy_internal
+
+      - name: Cleanup credentials
+        if: always()
+        run: |
+          rm -f mobile/app/android/fastlane/service-account.json
+          rm -f mobile/app/android/app/upload-keystore.jks
+          rm -f mobile/app/android/release.properties
+
+      - name: Upload build artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-build-logs-${{ github.run_id }}
+          path: |
+            mobile/app/android/app/build/reports/
+            mobile/app/build/app/outputs/logs/
+          retention-days: 7
+
+      - name: Summary
+        if: success()
+        run: |
+          echo "## Android Internal Deploy Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version Code**: ${{ steps.version.outputs.version_code }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY

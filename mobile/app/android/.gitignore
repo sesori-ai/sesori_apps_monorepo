@@ -13,3 +13,9 @@ key.properties
 release.properties
 **/release.keystore
 **/release.jks
+**/upload-keystore.jks
+
+# Fastlane
+fastlane/report.xml
+fastlane/README.md
+fastlane/service-account.json
