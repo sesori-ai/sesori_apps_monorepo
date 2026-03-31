@@ -70,6 +70,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
 
   /// Applies agent/model field updates to the current state, regardless of
   /// which variant is active. No-op when the cubit is closed or in `created`.
+  // ignore: no_slop_linter/prefer_required_named_parameters, optional state patch parameters
   void _emitAgentModelUpdate({
     List<AgentInfo>? availableAgents,
     List<ProviderInfo>? availableProviders,
@@ -119,6 +120,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     _emitAgentModelUpdate(selectedAgent: agent);
   }
 
+  // ignore: no_slop_linter/prefer_required_named_parameters, public cubit API consumed by UI layer
   void selectModel(String providerID, String modelID) {
     _emitAgentModelUpdate(selectedProviderID: providerID, selectedModelID: modelID);
   }

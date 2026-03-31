@@ -10,6 +10,7 @@ class LoginCubit extends Cubit<LoginState> {
   final OAuthFlowProvider _oAuthFlowProvider;
   final UrlLauncher _urlLauncher;
 
+  // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
   LoginCubit(
     OAuthFlowProvider oAuthFlowProvider,
     UrlLauncher urlLauncher,

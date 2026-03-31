@@ -88,7 +88,7 @@ class MultiTaskIsolatePoolImpl implements MultiTaskIsolate {
     }
 
     if (IsolateConfigs.debugLogsEnabled) {
-      // ignore: avoid_print
+      // ignore: avoid_print, debug logging for isolate scheduler internals
       print(
         "Isolate pool debug: running task on isolate [${_isolates.indexOf(selectedIsolate)}] "
         "with [${selectedIsolate.activeTaskCount}] active tasks",

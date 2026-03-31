@@ -46,7 +46,7 @@ class MessageQueue<T, OUT> {
     this.inFlightTimeout,
     Completer<void>? isReady,
   }) : _isReady = isReady ?? (Completer()..complete()) {
-    // ignore: discarded_futures
+    // ignore: discarded_futures, readiness future intentionally fire-and-forget
     _isReady.future.then((value) => _checkAndSendNext());
   }
 

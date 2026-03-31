@@ -26,7 +26,7 @@ class MultiTaskIsolateImpl implements MultiTaskIsolate {
     required String debugName,
   }) {
     _isolate = Isolate.spawn(
-      // ignore: inference_failure_on_function_invocation
+      // ignore: inference_failure_on_function_invocation, Isolate.spawn generic inference is intentional here
       _isolateEntry,
       _receivePort.sendPort,
       debugName: debugName,

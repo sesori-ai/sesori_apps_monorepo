@@ -34,6 +34,7 @@ class SessionListCubit extends Cubit<SessionListState> {
   /// Cached base branch name, fetched alongside sessions.
   String? _baseBranch;
 
+  // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
   SessionListCubit(
     SessionService service,
     ProjectService projectService,
@@ -69,15 +70,13 @@ class SessionListCubit extends Cubit<SessionListState> {
     try {
       if (isClosed) return;
       logd("[SessionList] event received: ${event.data.runtimeType}");
-      switch (event.data) {
-        case SesoriSessionCreated(:final info):
-          _onSessionCreated(info);
-        case SesoriSessionUpdated(:final info):
-          _onSessionUpdated(info);
-        case SesoriSessionDeleted(:final info):
-          _onSessionDeleted(info);
-        default:
-          break;
+      final data = event.data;
+      if (data case SesoriSessionCreated(:final info)) {
+        _onSessionCreated(info);
+      } else if (data case SesoriSessionUpdated(:final info)) {
+        _onSessionUpdated(info);
+      } else if (data case SesoriSessionDeleted(:final info)) {
+        _onSessionDeleted(info);
       }
     } catch (e, st) {
       loge("SSE event handler error", e, st);
@@ -86,7 +85,7 @@ class SessionListCubit extends Cubit<SessionListState> {
             .recordFailure(
               error: e,
               stackTrace: st,
-              uniqueIdentifier: "session_list_event:${event.data.runtimeType}",
+              uniqueIdentifier: "session_list_event:${event.data.runtimeType.toString()}",
               fatal: false,
               reason: "Failed to handle session list event",
               information: [event.data.runtimeType.toString()],
@@ -98,8 +97,9 @@ class SessionListCubit extends Cubit<SessionListState> {
 
   void _onSessionActivityUpdated(Map<String, Map<String, SessionActivityInfo>> activityByProjectId) {
     if (isClosed) return;
-    if (state is! SessionListLoaded) return;
-    final loaded = state as SessionListLoaded;
+    final current = state;
+    if (current is! SessionListLoaded) return;
+    final loaded = current;
     final projectActivity = activityByProjectId[_projectId] ?? <String, SessionActivityInfo>{};
     emit(
       SessionListState.loaded(
@@ -193,8 +193,9 @@ class SessionListCubit extends Cubit<SessionListState> {
 
   void _onStaleReconnect() {
     if (isClosed) return;
-    if (state is! SessionListLoaded) return;
-    final loaded = state as SessionListLoaded;
+    final current = state;
+    if (current is! SessionListLoaded) return;
+    final loaded = current;
     emit(loaded.copyWith(isRefreshing: true));
     unawaited(
       refreshSessions().whenComplete(() {
@@ -256,7 +257,7 @@ class SessionListCubit extends Cubit<SessionListState> {
     return switch (response) {
       SuccessResponse() => true,
       ErrorResponse(:final error) => () {
-        loge("Failed to archive session: $error");
+        loge("Failed to archive session: ${error.toString()}");
         // Rollback — re-insert the original session.
         _rollbackLastAction();
         return false;
@@ -291,7 +292,7 @@ class SessionListCubit extends Cubit<SessionListState> {
         return true;
       }(),
       ErrorResponse(:final error) => () {
-        loge("Failed to unarchive session: $error");
+        loge("Failed to unarchive session: ${error.toString()}");
         _rollbackLastAction();
         return false;
       }(),
@@ -322,7 +323,7 @@ class SessionListCubit extends Cubit<SessionListState> {
         _reinsertSession(data);
         return true;
       case ErrorResponse(:final error):
-        loge("Failed to undo archive action: $error");
+        loge("Failed to undo archive action: ${error.toString()}");
         return false;
     }
   }
@@ -386,7 +387,7 @@ class SessionListCubit extends Cubit<SessionListState> {
     return switch (response) {
       SuccessResponse() => true,
       ErrorResponse(:final error) => () {
-        loge("Failed to delete session: $error");
+        loge("Failed to delete session: ${error.toString()}");
         _reinsertSession(originalSession);
         return false;
       }(),
@@ -484,7 +485,7 @@ class SessionListCubit extends Cubit<SessionListState> {
 
       case ErrorResponse(:final error):
         if (silent) {
-          logw("Failed to refresh sessions: $error");
+          logw("Failed to refresh sessions: ${error.toString()}");
         } else {
           emit(SessionListState.failed(error: error));
         }

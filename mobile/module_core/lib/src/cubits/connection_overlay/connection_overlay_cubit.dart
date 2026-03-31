@@ -13,6 +13,7 @@ class ConnectionOverlayCubit extends Cubit<ConnectionStatus> {
   final AuthSession _authSession;
   late final StreamSubscription<ConnectionStatus> _subscription;
 
+  // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
   ConnectionOverlayCubit(ConnectionService connectionService, AuthSession authSession)
     : _connectionService = connectionService,
       _authSession = authSession,

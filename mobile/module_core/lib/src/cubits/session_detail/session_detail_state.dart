@@ -8,6 +8,7 @@ part "session_detail_state.freezed.dart";
 sealed class SessionDetailState with _$SessionDetailState {
   const factory SessionDetailState.loading() = SessionDetailLoading;
 
+  // ignore: no_slop_linter/prefer_required_named_parameters, optional metadata fields are intentionally nullable
   const factory SessionDetailState.loaded({
     required List<MessageWithParts> messages,
     required Map<String, String> streamingText,

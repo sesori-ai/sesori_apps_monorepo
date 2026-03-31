@@ -52,11 +52,13 @@ class VoiceApi {
     }
   }
 
-  // ignore: no_slop_linter/avoid_dynamic_type, json parsing callback
+  // ignore: no_slop_linter/avoid_dynamic_type, JSON parser callback signature requires dynamic input
   static String _parseTranscript(dynamic json) {
-    if (json is Map<String, dynamic>) {
-      final text = json["text"] as String?;
-      if (text != null && text.isNotEmpty) return text;
+    if (json is Map<String, Object?>) {
+      final textValue = json["text"];
+      if (textValue case final String text when text.isNotEmpty) {
+        return text;
+      }
     }
     throw const FormatException("Missing or empty 'text' field in transcription response");
   }

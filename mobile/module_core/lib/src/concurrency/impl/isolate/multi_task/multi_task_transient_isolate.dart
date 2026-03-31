@@ -66,13 +66,13 @@ class MultiTaskTransientIsolate implements MultiTaskIsolate {
   }) {
     assert(_isolate == null);
     if (IsolateConfigs.debugLogsEnabled) {
-      // ignore: avoid_print
+      // ignore: avoid_print, debug logging for transient isolate lifecycle
       print("Isolate transient debug: creating new isolate");
     }
 
     void onActiveTaskCountChanged(int activeTasksCount) {
       if (IsolateConfigs.debugLogsEnabled) {
-        // ignore: avoid_print
+        // ignore: avoid_print, debug logging for transient isolate lifecycle
         print("Isolate transient debug: canceling scheduled isolate dispose: $activeTasksCount active tasks");
       }
       _inactivityTimer?.cancel();
@@ -80,13 +80,13 @@ class MultiTaskTransientIsolate implements MultiTaskIsolate {
 
       if (activeTasksCount == 0) {
         if (IsolateConfigs.debugLogsEnabled) {
-          // ignore: avoid_print
+          // ignore: avoid_print, debug logging for transient isolate lifecycle
           print("Isolate transient debug: scheduling isolate dispose");
         }
 
         _inactivityTimer = Timer(_timeout, () {
           if (IsolateConfigs.debugLogsEnabled) {
-            // ignore: avoid_print
+            // ignore: avoid_print, debug logging for transient isolate lifecycle
             print("Isolate transient debug: disposing isolate");
           }
           _isolate?.dispose();

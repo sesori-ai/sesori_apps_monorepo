@@ -14,16 +14,16 @@ class ProjectService {
     return _client.get(
       "/project",
       fromJson: (json) => switch (json) {
-        final List<dynamic> list =>
+        final List<Object?> list =>
           list
               .map(
                 (e) => switch (e) {
-                  final Map<String, dynamic> map => Project.fromJson(map),
-                  _ => throw FormatException("expected map, got ${e.runtimeType}"),
+                  final Map<String, Object?> map => Project.fromJson(map),
+                  _ => throw FormatException("expected map, got ${e.runtimeType.toString()}"),
                 },
               )
               .toList(),
-        _ => throw FormatException("expected list, got ${json.runtimeType}"),
+        _ => throw FormatException("expected list, got ${json.runtimeType.toString()}"),
       },
     );
   }
@@ -33,8 +33,8 @@ class ProjectService {
     return _client.get(
       "/project/current",
       fromJson: (json) => switch (json) {
-        final Map<String, dynamic> map => Project.fromJson(map),
-        _ => throw FormatException("expected map, got ${json.runtimeType}"),
+        final Map<String, Object?> map => Project.fromJson(map),
+        _ => throw FormatException("expected map, got ${json.runtimeType.toString()}"),
       },
       headers: {"x-project-id": projectId},
     );
@@ -46,8 +46,8 @@ class ProjectService {
       "/project/create",
       body: {"path": path},
       fromJson: (json) => switch (json) {
-        final Map<String, dynamic> map => Project.fromJson(map),
-        _ => throw FormatException("expected map, got ${json.runtimeType}"),
+        final Map<String, Object?> map => Project.fromJson(map),
+        _ => throw FormatException("expected map, got ${json.runtimeType.toString()}"),
       },
     );
   }
@@ -58,8 +58,8 @@ class ProjectService {
       "/project/open",
       body: {"path": path},
       fromJson: (json) => switch (json) {
-        final Map<String, dynamic> map => Project.fromJson(map),
-        _ => throw FormatException("expected map, got ${json.runtimeType}"),
+        final Map<String, Object?> map => Project.fromJson(map),
+        _ => throw FormatException("expected map, got ${json.runtimeType.toString()}"),
       },
     );
   }
@@ -84,16 +84,16 @@ class ProjectService {
       "/filesystem/suggestions",
       queryParameters: prefix.isEmpty ? null : {"prefix": prefix},
       fromJson: (json) => switch (json) {
-        final List<dynamic> list =>
+        final List<Object?> list =>
           list
               .map(
                 (e) => switch (e) {
-                  final Map<String, dynamic> map => FilesystemSuggestion.fromJson(map),
-                  _ => throw FormatException("expected map, got ${e.runtimeType}"),
+                  final Map<String, Object?> map => FilesystemSuggestion.fromJson(map),
+                  _ => throw FormatException("expected map, got ${e.runtimeType.toString()}"),
                 },
               )
               .toList(),
-        _ => throw FormatException("expected list, got ${json.runtimeType}"),
+        _ => throw FormatException("expected list, got ${json.runtimeType.toString()}"),
       },
     );
   }
@@ -104,8 +104,12 @@ class ProjectService {
     return _client.get(
       "/project/base-branch",
       fromJson: (json) => switch (json) {
-        final Map<String, dynamic> map => map["baseBranch"] as String?,
-        _ => throw FormatException("expected map, got ${json.runtimeType}"),
+        final Map<String, Object?> map => switch (map["baseBranch"]) {
+          final String baseBranch => baseBranch,
+          null => null,
+          _ => throw const FormatException("expected baseBranch as string or null"),
+        },
+        _ => throw FormatException("expected map, got ${json.runtimeType.toString()}"),
       },
       headers: {"x-project-id": projectId},
     );
@@ -120,8 +124,8 @@ class ProjectService {
       "/project/name",
       body: RenameProjectRequest(projectId: projectId, name: name).toJson(),
       fromJson: (json) => switch (json) {
-        final Map<String, dynamic> map => Project.fromJson(map),
-        _ => throw FormatException("expected map, got ${json.runtimeType}"),
+        final Map<String, Object?> map => Project.fromJson(map),
+        _ => throw FormatException("expected map, got ${json.runtimeType.toString()}"),
       },
     );
   }

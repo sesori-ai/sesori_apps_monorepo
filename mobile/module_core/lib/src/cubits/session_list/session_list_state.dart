@@ -10,6 +10,7 @@ part "session_list_state.freezed.dart";
 sealed class SessionListState with _$SessionListState {
   const factory SessionListState.loading() = SessionListLoading;
 
+  // ignore: no_slop_linter/prefer_required_named_parameters, optional base branch is absent for some projects
   const factory SessionListState.loaded({
     required List<Session> sessions,
     @Default(false) bool showArchived,
