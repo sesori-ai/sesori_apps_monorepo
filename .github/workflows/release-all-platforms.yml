@@ -1,0 +1,88 @@
+name: Release All Platforms
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_ios:
+        description: 'Deploy to iOS TestFlight'
+        required: false
+        type: boolean
+        default: true
+      ios_runner:
+        description: 'macOS runner for iOS build'
+        required: false
+        type: choice
+        options:
+          - macos-latest
+        default: 'macos-latest'
+      deploy_android:
+        description: 'Deploy to Android Internal Track'
+        required: false
+        type: boolean
+        default: true
+
+concurrency:
+  group: release-all-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ios:
+    if: ${{ inputs.deploy_ios }}
+    uses: ./.github/workflows/_reusable-ios-testflight.yml
+    with:
+      runner: ${{ inputs.ios_runner }}
+    secrets:
+      APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+      APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+      APP_STORE_CONNECT_API_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
+      MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+      MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+      MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+
+  android:
+    if: ${{ inputs.deploy_android }}
+    uses: ./.github/workflows/_reusable-android-internal.yml
+    secrets:
+      GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+  summary:
+    name: Release Summary
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    needs: [ios, android]
+    if: always()
+
+    steps:
+      - name: Generate Summary
+        run: |
+          echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Platform Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ inputs.deploy_ios }}" == "true" ]; then
+            if [ "${{ needs.ios.result }}" == "success" ]; then
+              echo "- **iOS TestFlight**: Deployed" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.ios.result }}" == "failure" ]; then
+              echo "- **iOS TestFlight**: Failed" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "- **iOS TestFlight**: ${{ needs.ios.result }}" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "- **iOS TestFlight**: Skipped" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ inputs.deploy_android }}" == "true" ]; then
+            if [ "${{ needs.android.result }}" == "success" ]; then
+              echo "- **Android Internal**: Deployed" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.android.result }}" == "failure" ]; then
+              echo "- **Android Internal**: Failed" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "- **Android Internal**: ${{ needs.android.result }}" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "- **Android Internal**: Skipped" >> $GITHUB_STEP_SUMMARY
+          fi
