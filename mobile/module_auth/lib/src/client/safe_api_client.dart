@@ -20,6 +20,7 @@ abstract class SafeApiClient {
   /// If [contentType] is null, [ContentType.json] will be used.
   Future<ApiResponse<T>> get<T>(
     final Uri url, {
+    // ignore: no_slop_linter/avoid_dynamic_type, json parsing callback
     required final T Function(dynamic json) fromJson,
     final Map<String, String>? headers,
     final ContentType? contentType,
@@ -29,6 +30,7 @@ abstract class SafeApiClient {
   /// If [contentType] is null, [ContentType.json] will be used.
   Future<ApiResponse<T>> post<T>(
     final Uri url, {
+    // ignore: no_slop_linter/avoid_dynamic_type, json parsing callback
     required final T Function(dynamic json) fromJson,
     final Map<String, String>? headers,
     required final Object? body,
@@ -39,6 +41,7 @@ abstract class SafeApiClient {
   /// If [contentType] is null, [ContentType.json] will be used.
   Future<ApiResponse<T>> patch<T>(
     final Uri url, {
+    // ignore: no_slop_linter/avoid_dynamic_type, json parsing callback
     required final T Function(dynamic json) fromJson,
     final Map<String, String>? headers,
     required final Object? body,
@@ -49,6 +52,7 @@ abstract class SafeApiClient {
   /// If [contentType] is null, [ContentType.json] will be used.
   Future<ApiResponse<T>> delete<T>(
     final Uri url, {
+    // ignore: no_slop_linter/avoid_dynamic_type, json parsing callback
     required final T Function(dynamic json) fromJson,
     final Map<String, String>? headers,
     final ContentType? contentType,

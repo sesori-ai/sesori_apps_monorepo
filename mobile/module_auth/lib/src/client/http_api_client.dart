@@ -92,9 +92,10 @@ class HttpApiClient implements SafeApiClient {
   }
 
   /// Sends a multipart POST request. All [http.Client] usage stays in this layer.
-  // ignore: no_slop_linter/avoid_dynamic_type, json parsing function
+  // ignore: no_slop_linter/prefer_required_named_parameters, optional HTTP parameters
   Future<ApiResponse<T>> postMultipart<T>(
     final Uri url, {
+    // ignore: no_slop_linter/avoid_dynamic_type, json parsing callback
     required final T Function(dynamic json) fromJson,
     required final List<http.MultipartFile> files,
     final Map<String, String>? headers,
@@ -137,10 +138,11 @@ class HttpApiClient implements SafeApiClient {
     }
   }
 
-  // ignore: no_slop_linter/avoid_dynamic_type, json parsing function
+  // ignore: no_slop_linter/prefer_required_named_parameters, optional HTTP parameters
   Future<ApiResponse<T>> _execute<T>({
     required HttpMethod method,
     required Uri url,
+    // ignore: no_slop_linter/avoid_dynamic_type, json parsing callback
     required T Function(dynamic json) fromJson,
     Map<String, String>? headers,
     Object? body,

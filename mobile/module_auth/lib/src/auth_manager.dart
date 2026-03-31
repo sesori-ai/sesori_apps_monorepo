@@ -79,9 +79,14 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     );
 
     final response = await _get(uri);
-    _ensureSuccess(response, "Failed to get ${provider.label} auth URL");
+    _ensureSuccess(response, context: "Failed to get ${provider.label} auth URL");
 
-    final bodyJson = jsonDecode(response.body) as Map<String, dynamic>;
+    final decodedBody = jsonDecode(response.body);
+    // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+    if (decodedBody is! Map<String, dynamic>) {
+      throw const FormatException("Authorization URL response is not a JSON object");
+    }
+    final bodyJson = decodedBody;
     final authUrlResponse = AuthUrlResponse.fromJson(bodyJson);
     return authUrlResponse.authUrl;
   }
@@ -112,9 +117,14 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
         "redirectUri": redirectUri,
       },
     );
-    _ensureSuccess(response, "${provider.label} code exchange failed");
+    _ensureSuccess(response, context: "${provider.label} code exchange failed");
 
-    final bodyJson = jsonDecode(response.body) as Map<String, dynamic>;
+    final decodedBody = jsonDecode(response.body);
+    // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+    if (decodedBody is! Map<String, dynamic>) {
+      throw const FormatException("Code exchange response is not a JSON object");
+    }
+    final bodyJson = decodedBody;
     final authResponse = AuthResponse.fromJson(bodyJson);
 
     await _tokenStorage.saveTokens(
@@ -144,9 +154,14 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
         uri,
         headers: _authHeader(accessToken),
       );
-      _ensureSuccess(response, "Failed to fetch current user");
+      _ensureSuccess(response, context: "Failed to fetch current user");
 
-      final bodyJson = jsonDecode(response.body) as Map<String, dynamic>;
+      final decodedBody = jsonDecode(response.body);
+      // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+      if (decodedBody is! Map<String, dynamic>) {
+        throw const FormatException("Current user response is not a JSON object");
+      }
+      final bodyJson = decodedBody;
       final authMeResponse = AuthMeResponse.fromJson(bodyJson);
       return authMeResponse.user;
     } on http.ClientException catch (error, stackTrace) {
@@ -165,7 +180,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
         name: "sesori_auth",
       );
       return null;
-      // ignore: avoid_catching_errors
+      // ignore: avoid_catching_errors, StateError is thrown for non-2xx auth responses
     } on StateError catch (error, stackTrace) {
       developer.log(
         "Failed to fetch current user: auth/me returned non-success",
@@ -195,7 +210,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
         uri,
         headers: _authHeader(accessToken),
       );
-      _ensureSuccess(response, "Failed to invalidate all sessions");
+      _ensureSuccess(response, context: "Failed to invalidate all sessions");
     }
 
     await Future.wait([
@@ -236,9 +251,14 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
         uri,
         body: {"refreshToken": refreshToken},
       );
-      _ensureSuccess(response, "Token refresh failed");
+      _ensureSuccess(response, context: "Token refresh failed");
 
-      final bodyJson = jsonDecode(response.body) as Map<String, dynamic>;
+      final decodedBody = jsonDecode(response.body);
+      // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+      if (decodedBody is! Map<String, dynamic>) {
+        throw const FormatException("Token refresh response is not a JSON object");
+      }
+      final bodyJson = decodedBody;
       final authResponse = AuthResponse.fromJson(bodyJson);
 
       await _tokenStorage.saveTokens(
@@ -270,6 +290,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     return (codeVerifier, codeChallenge);
   }
 
+  // ignore: no_slop_linter/prefer_required_named_parameters, optional HTTP parameters
   Future<http.Response> _get(
     Uri url, {
     Map<String, String>? headers,
@@ -283,6 +304,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     );
   }
 
+  // ignore: no_slop_linter/prefer_required_named_parameters, optional HTTP parameters
   Future<http.Response> _post(
     Uri url, {
     Object? body,
@@ -303,7 +325,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     "Authorization": "Bearer $accessToken",
   };
 
-  void _ensureSuccess(http.Response response, String context) {
+  void _ensureSuccess(http.Response response, {required String context}) {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError("$context (HTTP ${response.statusCode})");
     }
