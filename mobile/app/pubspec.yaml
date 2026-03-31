@@ -62,7 +62,9 @@ dependencies:
   url_launcher: ^6.3.2
   universal_platform: ^1.1.0
   record: ^6.2.0
+  path: any
   path_provider: ^2.1.5
+  re_highlight: ^0.0.3
   wakelock_plus: ^1.5.1
   firebase_core: ^4.6.0
   firebase_analytics: ^12.2.0
