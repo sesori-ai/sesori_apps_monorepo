@@ -17,6 +17,8 @@ import "models/connection_status.dart";
 import "models/sse_event.dart";
 import "server_connection_config.dart";
 
+typedef Clock = DateTime Function();
+
 class RelayClientFactory {
   const RelayClientFactory();
 
@@ -41,7 +43,7 @@ class ConnectionService {
   final AuthTokenProvider _authTokenProvider;
   final AuthSession _authSession;
   final FailureReporter _failureReporter;
-  final DateTime Function() _clock;
+  final Clock _clock;
   final RelayClientFactory _relayClientFactory;
 
   final BehaviorSubject<ConnectionStatus> _status = BehaviorSubject.seeded(const ConnectionStatus.disconnected());
@@ -77,7 +79,7 @@ class ConnectionService {
     AuthSession authSession,
     LifecycleSource lifecycleSource,
     FailureReporter failureReporter, {
-    @visibleForTesting DateTime Function() clock = DateTime.now,
+    @visibleForTesting Clock clock = DateTime.now,
     @visibleForTesting RelayClientFactory relayClientFactory = const RelayClientFactory(),
   }) : _cryptoService = cryptoService,
        _roomKeyStorage = roomKeyStorage,

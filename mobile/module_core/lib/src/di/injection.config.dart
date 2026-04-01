@@ -30,6 +30,7 @@ import 'package:sesori_dart_core/src/capabilities/sse/sse_event_repository.dart'
     as _i569;
 import 'package:sesori_dart_core/src/capabilities/voice/voice_api.dart'
     as _i176;
+import 'package:sesori_dart_core/src/platform/lifecycle_source.dart' as _i903;
 import 'package:sesori_dart_core/src/routing/auth_redirect_service.dart'
     as _i436;
 import 'package:sesori_shared/sesori_shared.dart' as _i553;
@@ -41,14 +42,6 @@ extension GetItInjectableX on _i174.GetIt {
     _i526.EnvironmentFilter? environmentFilter,
   }) {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
-    gh.lazySingleton<_i436.AuthRedirectService>(
-      () => _i436.AuthRedirectService(
-        gh<_i442.OAuthFlowProvider>(),
-        gh<_i442.AuthSession>(),
-        gh<_i442.AuthTokenProvider>(),
-        gh<_i369.ConnectionService>(),
-      ),
-    );
     gh.lazySingleton<_i786.NotificationPreferencesService>(
       () => _i786.NotificationPreferencesService(gh<_i442.SecureStorage>()),
     );
@@ -60,6 +53,26 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i176.VoiceApi>(
       () => _i176.VoiceApi(gh<_i442.AuthenticatedHttpApiClient>()),
+    );
+    gh.lazySingleton<_i369.ConnectionService>(
+      () => _i369.ConnectionService(
+        gh<_i553.RelayCryptoService>(),
+        gh<_i895.RoomKeyStorage>(),
+        gh<_i442.AuthTokenProvider>(),
+        gh<_i442.AuthSession>(),
+        gh<_i903.LifecycleSource>(),
+        gh<_i553.FailureReporter>(),
+        clock: gh<_i369.Clock>(),
+        relayClientFactory: gh<_i369.RelayClientFactory>(),
+      ),
+    );
+    gh.lazySingleton<_i436.AuthRedirectService>(
+      () => _i436.AuthRedirectService(
+        gh<_i442.OAuthFlowProvider>(),
+        gh<_i442.AuthSession>(),
+        gh<_i442.AuthTokenProvider>(),
+        gh<_i369.ConnectionService>(),
+      ),
     );
     gh.lazySingleton<_i569.SseEventRepository>(
       () => _i569.SseEventRepository(
