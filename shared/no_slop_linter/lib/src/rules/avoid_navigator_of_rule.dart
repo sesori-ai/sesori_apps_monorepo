@@ -6,16 +6,16 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/error/error.dart';
 
-/// A lint rule that forbids Navigator.of(context) usage.
+/// A lint rule that forbids direct Navigator usage.
 ///
 /// This project uses GoRouter with custom extensions for navigation.
-/// Using Navigator.of(context) bypasses the routing system and can lead
-/// to inconsistent navigation behavior.
+/// Using Navigator directly bypasses the routing system.
 ///
 /// Examples that trigger this rule:
 /// - `Navigator.of(context).push(...)`
 /// - `Navigator.of(context).pop()`
-/// - `Navigator.of(context, rootNavigator: true).pushNamed(...)`
+/// - `Navigator.pop(context)`
+/// - `Navigator.push(context, route)`
 ///
 /// Valid examples:
 /// - `context.pushRoute(AppRoute.xxx())` - GoRouter custom extension
@@ -25,12 +25,12 @@ class AvoidNavigatorOfRule extends NoSlopRule {
   AvoidNavigatorOfRule()
     : super(
         name: code.lowerCaseName,
-        description: 'Forbids Navigator.of(context).',
+        description: 'Forbids direct Navigator usage.',
       );
 
   static const code = LintCode(
     'avoid_navigator_of',
-    'Avoid Navigator.of(context). Use GoRouter instead.',
+    'Avoid direct Navigator usage. Use GoRouter instead.',
     correctionMessage:
         'Use context.pushRoute/goRoute/pop() from GoRouter extensions.',
   );
@@ -57,9 +57,7 @@ class _Visitor extends SimpleAstVisitor<void> {
     if (rule.isCurrentFileExcluded) return;
     final target = node.target;
     if (target is SimpleIdentifier && target.name == 'Navigator') {
-      if (node.methodName.name == 'of') {
-        rule.reportAtNode(node);
-      }
+      rule.reportAtNode(node);
     }
   }
 }

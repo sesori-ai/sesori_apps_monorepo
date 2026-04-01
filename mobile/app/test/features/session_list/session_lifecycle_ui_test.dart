@@ -247,7 +247,7 @@ void main() {
     testWidgets("shows checkboxes for delete worktree and branch", (tester) async {
       final session = testSession(title: "My Session");
       when(() => mockCubit.state).thenReturn(
-        SessionListState.loaded(sessions: [session]),
+        SessionListState.loaded(sessions: [session], baseBranch: null),
       );
 
       await tester.pumpWidget(_buildApp(cubit: mockCubit));
@@ -269,7 +269,7 @@ void main() {
     testWidgets("checkboxes are checked by default", (tester) async {
       final session = testSession(title: "My Session");
       when(() => mockCubit.state).thenReturn(
-        SessionListState.loaded(sessions: [session]),
+        SessionListState.loaded(sessions: [session], baseBranch: null),
       );
 
       await tester.pumpWidget(_buildApp(cubit: mockCubit));
@@ -294,7 +294,7 @@ void main() {
     testWidgets("unchecking worktree checkbox and confirming passes false", (tester) async {
       final session = testSession(title: "My Session");
       when(() => mockCubit.state).thenReturn(
-        SessionListState.loaded(sessions: [session]),
+        SessionListState.loaded(sessions: [session], baseBranch: null),
       );
       when(
         () => mockCubit.deleteSession(
@@ -340,7 +340,7 @@ void main() {
     testWidgets("shows archive checkboxes and confirm button", (tester) async {
       final session = testSession(title: "My Session");
       when(() => mockCubit.state).thenReturn(
-        SessionListState.loaded(sessions: [session]),
+        SessionListState.loaded(sessions: [session], baseBranch: null),
       );
 
       await tester.pumpWidget(_buildApp(cubit: mockCubit));
@@ -359,7 +359,7 @@ void main() {
     testWidgets("archive confirm calls cubit with checkbox values", (tester) async {
       final session = testSession(title: "My Session");
       when(() => mockCubit.state).thenReturn(
-        SessionListState.loaded(sessions: [session]),
+        SessionListState.loaded(sessions: [session], baseBranch: null),
       );
       when(
         () => mockCubit.archiveSession(

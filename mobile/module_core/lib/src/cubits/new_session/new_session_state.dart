@@ -5,41 +5,29 @@ part "new_session_state.freezed.dart";
 
 @Freezed()
 sealed class NewSessionState with _$NewSessionState {
-  // ignore: no_slop_linter/prefer_required_named_parameters, optional state selection fields
   const factory NewSessionState.idle({
-    @Default([]) List<AgentInfo> availableAgents,
-    @Default([]) List<ProviderInfo> availableProviders,
-    // ignore: no_slop_linter/prefer_required_named_parameters, optional state field
-    String? selectedAgent,
-    // ignore: no_slop_linter/prefer_required_named_parameters, optional state field
-    String? selectedProviderID,
-    // ignore: no_slop_linter/prefer_required_named_parameters, optional state field
-    String? selectedModelID,
+    required List<AgentInfo> availableAgents,
+    required List<ProviderInfo> availableProviders,
+    required String? selectedAgent,
+    required String? selectedProviderID,
+    required String? selectedModelID,
   }) = NewSessionIdle;
 
-  // ignore: no_slop_linter/prefer_required_named_parameters, optional state selection fields
   const factory NewSessionState.sending({
-    @Default([]) List<AgentInfo> availableAgents,
-    @Default([]) List<ProviderInfo> availableProviders,
-    // ignore: no_slop_linter/prefer_required_named_parameters, optional state field
-    String? selectedAgent,
-    // ignore: no_slop_linter/prefer_required_named_parameters, optional state field
-    String? selectedProviderID,
-    // ignore: no_slop_linter/prefer_required_named_parameters, optional state field
-    String? selectedModelID,
+    required List<AgentInfo> availableAgents,
+    required List<ProviderInfo> availableProviders,
+    required String? selectedAgent,
+    required String? selectedProviderID,
+    required String? selectedModelID,
   }) = NewSessionSending;
 
-  // ignore: no_slop_linter/prefer_required_named_parameters, optional state selection fields
   const factory NewSessionState.error({
     required String message,
-    @Default([]) List<AgentInfo> availableAgents,
-    @Default([]) List<ProviderInfo> availableProviders,
-    // ignore: no_slop_linter/prefer_required_named_parameters, optional state field
-    String? selectedAgent,
-    // ignore: no_slop_linter/prefer_required_named_parameters, optional state field
-    String? selectedProviderID,
-    // ignore: no_slop_linter/prefer_required_named_parameters, optional state field
-    String? selectedModelID,
+    required List<AgentInfo> availableAgents,
+    required List<ProviderInfo> availableProviders,
+    required String? selectedAgent,
+    required String? selectedProviderID,
+    required String? selectedModelID,
   }) = NewSessionError;
 
   const factory NewSessionState.created({required Session session}) = NewSessionCreated;

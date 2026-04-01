@@ -78,7 +78,7 @@ String toString() {
 
 
 class SessionDetailLoaded implements SessionDetailState {
-  const SessionDetailLoaded({required final  List<MessageWithParts> messages, required final  Map<String, String> streamingText, required this.sessionStatus, final  List<SesoriQuestionAsked> pendingQuestions = const [], this.sessionTitle, this.agent, this.modelID, this.providerID, final  List<Session> children = const [], final  Map<String, SessionStatus> childStatuses = const {}, final  List<String> queuedMessages = const [], final  List<AgentInfo> availableAgents = const [], final  List<ProviderInfo> availableProviders = const [], required this.selectedAgent, required this.selectedProviderID, required this.selectedModelID, this.isRefreshing = false}): _messages = messages,_streamingText = streamingText,_pendingQuestions = pendingQuestions,_children = children,_childStatuses = childStatuses,_queuedMessages = queuedMessages,_availableAgents = availableAgents,_availableProviders = availableProviders;
+  const SessionDetailLoaded({required final  List<MessageWithParts> messages, required final  Map<String, String> streamingText, required this.sessionStatus, required final  List<SesoriQuestionAsked> pendingQuestions, required this.sessionTitle, required this.agent, required this.modelID, required this.providerID, required final  List<Session> children, required final  Map<String, SessionStatus> childStatuses, required final  List<String> queuedMessages, required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required this.selectedAgent, required this.selectedProviderID, required this.selectedModelID, required this.isRefreshing}): _messages = messages,_streamingText = streamingText,_pendingQuestions = pendingQuestions,_children = children,_childStatuses = childStatuses,_queuedMessages = queuedMessages,_availableAgents = availableAgents,_availableProviders = availableProviders;
   
 
  final  List<MessageWithParts> _messages;
@@ -97,7 +97,7 @@ class SessionDetailLoaded implements SessionDetailState {
 
  final  SessionStatus sessionStatus;
  final  List<SesoriQuestionAsked> _pendingQuestions;
-@JsonKey() List<SesoriQuestionAsked> get pendingQuestions {
+ List<SesoriQuestionAsked> get pendingQuestions {
   if (_pendingQuestions is EqualUnmodifiableListView) return _pendingQuestions;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_pendingQuestions);
@@ -112,14 +112,14 @@ class SessionDetailLoaded implements SessionDetailState {
 // Background tasks (child sessions).
  final  List<Session> _children;
 // Background tasks (child sessions).
-@JsonKey() List<Session> get children {
+ List<Session> get children {
   if (_children is EqualUnmodifiableListView) return _children;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_children);
 }
 
  final  Map<String, SessionStatus> _childStatuses;
-@JsonKey() Map<String, SessionStatus> get childStatuses {
+ Map<String, SessionStatus> get childStatuses {
   if (_childStatuses is EqualUnmodifiableMapView) return _childStatuses;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableMapView(_childStatuses);
@@ -128,7 +128,7 @@ class SessionDetailLoaded implements SessionDetailState {
 // Queued messages (waiting to be sent when connection is restored).
  final  List<String> _queuedMessages;
 // Queued messages (waiting to be sent when connection is restored).
-@JsonKey() List<String> get queuedMessages {
+ List<String> get queuedMessages {
   if (_queuedMessages is EqualUnmodifiableListView) return _queuedMessages;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_queuedMessages);
@@ -137,14 +137,14 @@ class SessionDetailLoaded implements SessionDetailState {
 // Available agents and providers for selection.
  final  List<AgentInfo> _availableAgents;
 // Available agents and providers for selection.
-@JsonKey() List<AgentInfo> get availableAgents {
+ List<AgentInfo> get availableAgents {
   if (_availableAgents is EqualUnmodifiableListView) return _availableAgents;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_availableAgents);
 }
 
  final  List<ProviderInfo> _availableProviders;
-@JsonKey() List<ProviderInfo> get availableProviders {
+ List<ProviderInfo> get availableProviders {
   if (_availableProviders is EqualUnmodifiableListView) return _availableProviders;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_availableProviders);
@@ -154,7 +154,7 @@ class SessionDetailLoaded implements SessionDetailState {
  final  String selectedAgent;
  final  String selectedProviderID;
  final  String selectedModelID;
-@JsonKey() final  bool isRefreshing;
+ final  bool isRefreshing;
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.

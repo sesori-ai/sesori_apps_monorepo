@@ -48,12 +48,12 @@ void _showForceDialog({
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
+            onPressed: () => dialogContext.pop(),
             child: Text(loc.sessionListDeleteConfirmCancel),
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(dialogContext);
+              dialogContext.pop();
               if (isDelete) {
                 _deleteSession(
                   context: context,
@@ -155,14 +155,14 @@ class _DeleteSessionSheetState extends State<_DeleteSessionSheet> {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => context.pop(),
                 child: Text(loc.sessionListDeleteConfirmCancel),
               ),
               const SizedBox(width: 8),
               FilledButton(
                 style: FilledButton.styleFrom(backgroundColor: theme.colorScheme.error),
                 onPressed: () {
-                  Navigator.pop(context);
+                  context.pop();
                   widget.onConfirm(
                     deleteWorktree: _deleteWorktree,
                     deleteBranch: _deleteBranch,
@@ -240,13 +240,13 @@ class _ArchiveSessionSheetState extends State<_ArchiveSessionSheet> {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => context.pop(),
                 child: Text(loc.sessionListDeleteConfirmCancel),
               ),
               const SizedBox(width: 8),
               FilledButton(
                 onPressed: () {
-                  Navigator.pop(context);
+                  context.pop();
                   widget.onConfirm(
                     deleteWorktree: _deleteWorktree,
                     deleteBranch: _deleteBranch,

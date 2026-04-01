@@ -42,12 +42,7 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
   bool _actionLoading = false;
 
   void _dismissDialog() {
-    final router = GoRouter.maybeOf(context);
-    if (router != null) {
-      router.pop();
-      return;
-    }
-    Navigator.pop(context);
+    context.pop();
   }
 
   @override

@@ -5,6 +5,7 @@ import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:get_it/get_it.dart";
+import "package:go_router/go_router.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/project_list/add_project_dialog.dart";
@@ -39,13 +40,22 @@ const _projectsDirEntries = [
 // ---------------------------------------------------------------------------
 
 Widget _buildApp({required ProjectListCubit cubit, required Widget child}) {
-  return MaterialApp(
+  final router = GoRouter(
+    routes: [
+      GoRoute(
+        path: "/",
+        builder: (context, state) => BlocProvider<ProjectListCubit>.value(
+          value: cubit,
+          child: child,
+        ),
+      ),
+    ],
+  );
+
+  return MaterialApp.router(
+    routerConfig: router,
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
-    home: BlocProvider<ProjectListCubit>.value(
-      value: cubit,
-      child: child,
-    ),
   );
 }
 

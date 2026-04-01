@@ -66,10 +66,10 @@ void main() {
 
     /// Convenience factory — stubs must be set up before calling this.
     SessionListCubit buildCubit() => SessionListCubit(
-      mockSessionService,
-      mockProjectService,
-      mockConnectionService,
-      mockSseEventRepository,
+      service: mockSessionService,
+      projectService: mockProjectService,
+      connectionService: mockConnectionService,
+      sseEventRepository: mockSseEventRepository,
       projectId: projectId,
       failureReporter: mockFailureReporter,
     );
@@ -1204,10 +1204,10 @@ void main() {
           (_) async => ApiResponse.success(sessions),
         );
         return SessionListCubit(
-          mockSessionService,
-          mockProjectService,
-          mockConnectionService,
-          mockSseEventRepository,
+          service: mockSessionService,
+          projectService: mockProjectService,
+          connectionService: mockConnectionService,
+          sseEventRepository: mockSseEventRepository,
           projectId: "global",
           failureReporter: mockFailureReporter,
         );

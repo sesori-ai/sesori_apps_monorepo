@@ -19,16 +19,16 @@ void main() {
     });
 
     group("listProjects", () {
-      test("success: returns List<Project> from GET /project", () async {
+      test("success: returns List<Project?> from GET /project", () async {
         // Arrange
         final testProjects = [
           testProject(path: "/home/user/project-1", name: "Project 1"),
           testProject(path: "/home/user/project-2", name: "Project 2"),
         ];
-        final successResponse = ApiResponse<List<Project>>.success(testProjects);
+        final successResponse = ApiResponse<List<Project?>>.success(testProjects);
 
         when(
-          () => mockClient.get<List<Project>>(
+          () => mockClient.get<List<Project?>>(
             "/project",
             fromJson: any(named: "fromJson"),
           ),
@@ -38,10 +38,10 @@ void main() {
         final result = await projectService.listProjects();
 
         // Assert
-        expect(result, isA<SuccessResponse<List<Project>>>());
-        expect((result as SuccessResponse<List<Project>>).data, equals(testProjects));
+        expect(result, isA<SuccessResponse<List<Project?>>>());
+        expect((result as SuccessResponse<List<Project?>>).data, equals(testProjects));
         verify(
-          () => mockClient.get<List<Project>>(
+          () => mockClient.get<List<Project?>>(
             "/project",
             fromJson: any(named: "fromJson"),
           ),
@@ -51,10 +51,10 @@ void main() {
       test("error: propagates API error from GET /project", () async {
         // Arrange
         final apiError = ApiError.generic();
-        final errorResponse = ApiResponse<List<Project>>.error(apiError);
+        final errorResponse = ApiResponse<List<Project?>>.error(apiError);
 
         when(
-          () => mockClient.get<List<Project>>(
+          () => mockClient.get<List<Project?>>(
             "/project",
             fromJson: any(named: "fromJson"),
           ),
@@ -64,10 +64,10 @@ void main() {
         final result = await projectService.listProjects();
 
         // Assert
-        expect(result, isA<ErrorResponse<List<Project>>>());
-        expect((result as ErrorResponse<List<Project>>).error, equals(apiError));
+        expect(result, isA<ErrorResponse<List<Project?>>>());
+        expect((result as ErrorResponse<List<Project?>>).error, equals(apiError));
         verify(
-          () => mockClient.get<List<Project>>(
+          () => mockClient.get<List<Project?>>(
             "/project",
             fromJson: any(named: "fromJson"),
           ),
@@ -77,7 +77,7 @@ void main() {
       test("verifies correct path passed to client.get()", () async {
         // Arrange
         when(
-          () => mockClient.get<List<Project>>(
+          () => mockClient.get<List<Project?>>(
             any(),
             fromJson: any(named: "fromJson"),
           ),
@@ -88,7 +88,7 @@ void main() {
 
         // Assert
         verify(
-          () => mockClient.get<List<Project>>(
+          () => mockClient.get<List<Project?>>(
             "/project",
             fromJson: any(named: "fromJson"),
           ),

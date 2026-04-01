@@ -63,12 +63,7 @@ class _QuestionModalState extends State<QuestionModal> {
   bool _customSelected = false;
 
   void _dismissModal() {
-    final router = GoRouter.maybeOf(context);
-    if (router != null) {
-      router.pop();
-      return;
-    }
-    Navigator.pop(context);
+    context.pop();
   }
 
   List<QuestionInfo> get _questions => widget.question.questions;

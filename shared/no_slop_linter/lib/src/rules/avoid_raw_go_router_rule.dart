@@ -28,7 +28,8 @@ class AvoidRawGoRouterRule extends NoSlopRule {
   AvoidRawGoRouterRule()
     : super(
         name: code.lowerCaseName,
-        description: 'Forbids raw GoRouter string-based navigation methods.',
+        description:
+            'Forbids raw GoRouter navigation and direct GoRouter access.',
       );
 
   static const code = LintCode(
@@ -51,7 +52,6 @@ class AvoidRawGoRouterRule extends NoSlopRule {
 }
 
 /// Raw GoRouter navigation method names that should be forbidden.
-/// These accept string paths/names instead of typed route objects.
 const _forbiddenMethods = {
   'go',
   'goNamed',
@@ -72,12 +72,22 @@ class _Visitor extends SimpleAstVisitor<void> {
   void visitMethodInvocation(MethodInvocation node) {
     if (rule.isCurrentFileExcluded) return;
 
+    final target = node.target;
+
+    // Block GoRouter.of(...) and GoRouter.maybeOf(...)
+    if (target is SimpleIdentifier && target.name == 'GoRouter') {
+      final method = node.methodName.name;
+      if (method == 'of' || method == 'maybeOf') {
+        rule.reportAtNode(node);
+        return;
+      }
+    }
+
     final methodName = node.methodName.name;
     if (!_forbiddenMethods.contains(methodName)) return;
 
     // Only flag calls with a target (e.g., context.go(...), router.push(...)).
-    // Standalone calls are not GoRouter extension methods.
-    if (node.target == null) return;
+    if (target == null) return;
 
     rule.reportAtNode(node);
   }

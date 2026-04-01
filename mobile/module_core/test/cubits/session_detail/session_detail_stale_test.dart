@@ -169,7 +169,7 @@ void main() {
 
       await _awaitLoaded(cubit);
       cubit.selectAgent("oracle");
-      cubit.selectModel("openai", "gpt-4.1");
+      cubit.selectModel(providerID: "openai", modelID: "gpt-4.1");
 
       when(() => mockSessionService.listAgents()).thenAnswer(
         (_) async => ApiResponse.success([
@@ -427,7 +427,14 @@ void _stubLoadApis(MockSessionService service, {required String sessionId}) {
 
 MessageWithParts _messageWithParts({String messageId = "msg-1"}) {
   return MessageWithParts(
-    info: Message(id: messageId, role: "assistant", sessionID: "session-1", agent: null, modelID: null, providerID: null),
+    info: Message(
+      id: messageId,
+      role: "assistant",
+      sessionID: "session-1",
+      agent: null,
+      modelID: null,
+      providerID: null,
+    ),
     parts: const [],
   );
 }

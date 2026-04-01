@@ -117,6 +117,7 @@ Worktrees: Always create new worktrees inside the `.worktrees/` directory at the
 ## Dart Coding Conventions
 
 - Always use **named arguments with the `required` keyword**, including for nullable parameters. Never use positional arguments.
+- **Never replace a `switch` statement with a cascade of `if` statements** to satisfy the `prefer_exhaustive_switch` lint. Instead, keep the `switch` and add all missing cases explicitly (return `null` or handle appropriately for unrecognized values).
 
 ```dart
 // CORRECT

@@ -46,18 +46,18 @@ $NewSessionStateCopyWith(NewSessionState _, $Res Function(NewSessionState) __);
 
 
 class NewSessionIdle implements NewSessionState {
-  const NewSessionIdle({final  List<AgentInfo> availableAgents = const [], final  List<ProviderInfo> availableProviders = const [], this.selectedAgent, this.selectedProviderID, this.selectedModelID}): _availableAgents = availableAgents,_availableProviders = availableProviders;
+  const NewSessionIdle({required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required this.selectedAgent, required this.selectedProviderID, required this.selectedModelID}): _availableAgents = availableAgents,_availableProviders = availableProviders;
   
 
  final  List<AgentInfo> _availableAgents;
-@JsonKey() List<AgentInfo> get availableAgents {
+ List<AgentInfo> get availableAgents {
   if (_availableAgents is EqualUnmodifiableListView) return _availableAgents;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_availableAgents);
 }
 
  final  List<ProviderInfo> _availableProviders;
-@JsonKey() List<ProviderInfo> get availableProviders {
+ List<ProviderInfo> get availableProviders {
   if (_availableProviders is EqualUnmodifiableListView) return _availableProviders;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_availableProviders);
@@ -132,18 +132,18 @@ as String?,
 
 
 class NewSessionSending implements NewSessionState {
-  const NewSessionSending({final  List<AgentInfo> availableAgents = const [], final  List<ProviderInfo> availableProviders = const [], this.selectedAgent, this.selectedProviderID, this.selectedModelID}): _availableAgents = availableAgents,_availableProviders = availableProviders;
+  const NewSessionSending({required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required this.selectedAgent, required this.selectedProviderID, required this.selectedModelID}): _availableAgents = availableAgents,_availableProviders = availableProviders;
   
 
  final  List<AgentInfo> _availableAgents;
-@JsonKey() List<AgentInfo> get availableAgents {
+ List<AgentInfo> get availableAgents {
   if (_availableAgents is EqualUnmodifiableListView) return _availableAgents;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_availableAgents);
 }
 
  final  List<ProviderInfo> _availableProviders;
-@JsonKey() List<ProviderInfo> get availableProviders {
+ List<ProviderInfo> get availableProviders {
   if (_availableProviders is EqualUnmodifiableListView) return _availableProviders;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_availableProviders);
@@ -218,19 +218,19 @@ as String?,
 
 
 class NewSessionError implements NewSessionState {
-  const NewSessionError({required this.message, final  List<AgentInfo> availableAgents = const [], final  List<ProviderInfo> availableProviders = const [], this.selectedAgent, this.selectedProviderID, this.selectedModelID}): _availableAgents = availableAgents,_availableProviders = availableProviders;
+  const NewSessionError({required this.message, required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required this.selectedAgent, required this.selectedProviderID, required this.selectedModelID}): _availableAgents = availableAgents,_availableProviders = availableProviders;
   
 
  final  String message;
  final  List<AgentInfo> _availableAgents;
-@JsonKey() List<AgentInfo> get availableAgents {
+ List<AgentInfo> get availableAgents {
   if (_availableAgents is EqualUnmodifiableListView) return _availableAgents;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_availableAgents);
 }
 
  final  List<ProviderInfo> _availableProviders;
-@JsonKey() List<ProviderInfo> get availableProviders {
+ List<ProviderInfo> get availableProviders {
   if (_availableProviders is EqualUnmodifiableListView) return _availableProviders;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_availableProviders);

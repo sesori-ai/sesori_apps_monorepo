@@ -10,13 +10,13 @@ class ProjectService {
 
   ProjectService(RelayHttpApiClient client) : _client = client;
 
-  Future<ApiResponse<List<Project>>> listProjects() {
+  Future<ApiResponse<List<Project?>>> listProjects() {
     return _client.get(
       "/project",
       fromJson: (json) => switch (json) {
         final List<Object?> list =>
           list
-              .map(
+              .map<Project?>(
                 (e) => switch (e) {
                   // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
                   final Map<String, dynamic> map => Project.fromJson(map),

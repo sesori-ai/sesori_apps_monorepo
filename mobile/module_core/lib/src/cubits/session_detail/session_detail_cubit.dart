@@ -92,7 +92,10 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       );
 
       // Filter agents: only show visible, non-subagent agents for user selection.
-      final agents = snapshot.agents.where((a) => !a.hidden && a.mode != AgentMode.subagent).toList();
+      final agents = snapshot.agents
+          .whereType<AgentInfo>()
+          .where((a) => !a.hidden && a.mode != AgentMode.subagent)
+          .toList();
 
       // Only connected providers with active models.
       final providers = snapshot.providerData?.items ?? <ProviderInfo>[];
@@ -137,16 +140,19 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
                 ),
               )
               .toList(),
+          sessionTitle: null,
           agent: latestAssistant?.agent,
           modelID: latestAssistant?.modelID,
           providerID: latestAssistant?.providerID,
           children: childSessions,
           childStatuses: childStatuses,
+          queuedMessages: const [],
           availableAgents: agents,
           availableProviders: providers,
           selectedAgent: defaultAgent,
           selectedProviderID: defaultProviderID,
           selectedModelID: defaultModelID,
+          isRefreshing: false,
         ),
       );
 
@@ -184,7 +190,10 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       final childStatuses = Map<String, SessionStatus>.fromEntries(
         snapshot.statuses.entries.where((e) => childIds.contains(e.key)),
       );
-      final availableAgents = snapshot.agents.where((a) => !a.hidden && a.mode != AgentMode.subagent).toList();
+      final availableAgents = snapshot.agents
+          .whereType<AgentInfo>()
+          .where((a) => !a.hidden && a.mode != AgentMode.subagent)
+          .toList();
       final availableProviders = snapshot.providerData?.items ?? <ProviderInfo>[];
 
       final streamingText = _streamingBuffer.snapshot();
@@ -233,7 +242,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       List<PendingQuestion> pendingQuestions,
       List<Session> childSessions,
       Map<String, SessionStatus> statuses,
-      List<AgentInfo> agents,
+      List<AgentInfo?> agents,
       ProviderListResponse? providerData,
     })
   >
@@ -322,7 +331,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         case SesoriMessagePartRemoved(:final messageID, :final partID):
           _onPartRemoved(messageId: messageID, partId: partID);
         case SesoriSessionStatus(:final status):
-          _onSessionStatus(status);
+          _onSessionStatus(status: status);
         case SesoriQuestionAsked():
           _onQuestionAsked(event);
         case SesoriQuestionReplied(:final requestID):
@@ -362,12 +371,57 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   void _handleGlobalEvent(SseEvent event) {
     final data = event.data;
     try {
-      if (data case SesoriSessionCreated(:final info) when info.parentID == _sessionId) {
-        _onChildSessionCreated(info);
-      } else if (data case SesoriSessionStatus(:final sessionID, :final status)) {
-        _onChildSessionStatus(sessionId: sessionID, status: status);
-      } else if (data case SesoriSessionUpdated(:final info)) {
-        _onChildSessionUpdated(info);
+      switch (data) {
+        case SesoriSessionCreated(:final info) when info.parentID == _sessionId:
+          _onChildSessionCreated(info);
+        case SesoriSessionStatus(:final sessionID, :final status):
+          _onChildSessionStatus(sessionId: sessionID, status: status);
+        case SesoriSessionUpdated(:final info):
+          _onChildSessionUpdated(info);
+        case SesoriSessionCreated() ||
+            SesoriSessionDeleted() ||
+            SesoriSessionDiff() ||
+            SesoriSessionError() ||
+            SesoriSessionCompacted() ||
+            SesoriServerConnected() ||
+            SesoriServerHeartbeat() ||
+            SesoriServerInstanceDisposed() ||
+            SesoriGlobalDisposed() ||
+            // ignore: deprecated_member_use, legacy idle event is still emitted for backward compatibility
+            SesoriSessionIdle() ||
+            SesoriMessageUpdated() ||
+            SesoriMessageRemoved() ||
+            SesoriMessagePartUpdated() ||
+            SesoriMessagePartDelta() ||
+            SesoriMessagePartRemoved() ||
+            SesoriPtyCreated() ||
+            SesoriPtyUpdated() ||
+            SesoriPtyExited() ||
+            SesoriPtyDeleted() ||
+            SesoriPermissionAsked() ||
+            SesoriPermissionReplied() ||
+            SesoriPermissionUpdated() ||
+            SesoriQuestionAsked() ||
+            SesoriQuestionReplied() ||
+            SesoriQuestionRejected() ||
+            SesoriTodoUpdated() ||
+            SesoriProjectsSummary() ||
+            SesoriProjectUpdated() ||
+            SesoriVcsBranchUpdated() ||
+            SesoriFileEdited() ||
+            SesoriFileWatcherUpdated() ||
+            SesoriLspUpdated() ||
+            SesoriLspClientDiagnostics() ||
+            SesoriMcpToolsChanged() ||
+            SesoriMcpBrowserOpenFailed() ||
+            SesoriInstallationUpdated() ||
+            SesoriInstallationUpdateAvailable() ||
+            SesoriWorkspaceReady() ||
+            SesoriWorkspaceFailed() ||
+            SesoriTuiToastShow() ||
+            SesoriWorktreeReady() ||
+            SesoriWorktreeFailed():
+          break;
       }
     } catch (e, st) {
       loge("SSE global event handler error", e, st);
@@ -475,12 +529,12 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     emit(current.copyWith(messages: messages));
   }
 
-  void _onSessionStatus(SessionStatus sessionStatus) {
+  void _onSessionStatus({required SessionStatus status}) {
     final current = state;
     if (current is! SessionDetailLoaded) return;
 
     if (isClosed) return;
-    emit(current.copyWith(sessionStatus: sessionStatus));
+    emit(current.copyWith(sessionStatus: status));
   }
 
   // ---------------------------------------------------------------------------
@@ -488,7 +542,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   // ---------------------------------------------------------------------------
 
   void _onPartDelta({required String partId, required String delta}) {
-    _streamingBuffer.appendDelta(partId, delta);
+    _streamingBuffer.appendDelta(partId: partId, delta: delta);
   }
 
   void _onPartUpdated(MessagePart part) {
@@ -715,8 +769,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     emit(current.copyWith(selectedAgent: agent));
   }
 
-  // ignore: no_slop_linter/prefer_required_named_parameters, public cubit API consumed by UI layer
-  void selectModel(String providerID, String modelID) {
+  void selectModel({required String providerID, required String modelID}) {
     final current = state;
     if (current is! SessionDetailLoaded) return;
 

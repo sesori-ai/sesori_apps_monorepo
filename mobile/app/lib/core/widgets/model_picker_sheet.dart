@@ -50,12 +50,7 @@ class ModelPickerSheet extends StatefulWidget {
             selectedModelID: selectedModelID,
             onModelChanged: (providerID, modelID) {
               onModelChanged(providerID, modelID);
-              final router = GoRouter.maybeOf(context);
-              if (router != null) {
-                router.pop();
-              } else {
-                Navigator.pop(context);
-              }
+              context.pop();
             },
           ),
         );

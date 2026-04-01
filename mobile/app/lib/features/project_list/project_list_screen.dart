@@ -73,12 +73,7 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
               leading: const Icon(Icons.edit_outlined),
               title: Text(loc.rename),
               onTap: () {
-                final router = GoRouter.maybeOf(sheetContext);
-                if (router != null) {
-                  router.pop();
-                } else {
-                  Navigator.pop(sheetContext);
-                }
+                sheetContext.pop();
                 showRenameProjectDialog(
                   context: context,
                   project: project,
@@ -90,12 +85,7 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
               leading: const Icon(Icons.visibility_off_outlined),
               title: Text(loc.hideProject),
               onTap: () {
-                final router = GoRouter.maybeOf(sheetContext);
-                if (router != null) {
-                  router.pop();
-                } else {
-                  Navigator.pop(sheetContext);
-                }
+                sheetContext.pop();
                 cubit.hideProject(project.id);
                 scaffoldMessenger.showSnackBar(
                   SnackBar(

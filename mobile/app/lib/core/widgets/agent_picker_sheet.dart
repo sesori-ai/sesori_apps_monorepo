@@ -35,12 +35,7 @@ class AgentPickerSheet extends StatelessWidget {
         selectedAgent: selectedAgent,
         onAgentChanged: (agent) {
           onAgentChanged(agent);
-          final router = GoRouter.maybeOf(context);
-          if (router != null) {
-            router.pop();
-          } else {
-            Navigator.pop(context);
-          }
+          context.pop();
         },
       ),
     );

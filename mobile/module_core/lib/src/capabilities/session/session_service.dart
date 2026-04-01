@@ -18,13 +18,13 @@ class SessionService {
 
   SessionService(RelayHttpApiClient client) : _client = client;
 
-  Future<ApiResponse<List<AgentInfo>>> listAgents() {
+  Future<ApiResponse<List<AgentInfo?>>> listAgents() {
     return _client.get(
       "/agent",
       fromJson: (json) => switch (json) {
         final List<Object?> list =>
           list
-              .map(
+              .map<AgentInfo?>(
                 (e) => switch (e) {
                   // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
                   final Map<String, dynamic> map => AgentInfo.fromJson(map),
@@ -57,7 +57,7 @@ class SessionService {
       fromJson: (json) => switch (json) {
         final List<Object?> list =>
           list
-              .map(
+              .map<Session>(
                 (e) => switch (e) {
                   // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
                   final Map<String, dynamic> map => Session.fromJson(map),
@@ -195,7 +195,7 @@ class SessionService {
       fromJson: (json) => switch (json) {
         final List<Object?> list =>
           list
-              .map(
+              .map<Session>(
                 (e) => switch (e) {
                   // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
                   final Map<String, dynamic> map => Session.fromJson(map),
@@ -236,7 +236,7 @@ class SessionService {
       fromJson: (json) => switch (json) {
         final List<Object?> list =>
           list
-              .map(
+              .map<MessageWithParts>(
                 (e) => switch (e) {
                   // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
                   final Map<String, dynamic> map => MessageWithParts.fromJson(map),
@@ -282,7 +282,7 @@ class SessionService {
       fromJson: (json) => switch (json) {
         final List<Object?> list =>
           list
-              .map(
+              .map<PendingQuestion>(
                 (e) => switch (e) {
                   // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
                   final Map<String, dynamic> map => PendingQuestion.fromJson(map),

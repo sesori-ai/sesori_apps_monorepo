@@ -34,12 +34,11 @@ class SessionListCubit extends Cubit<SessionListState> {
   /// Cached base branch name, fetched alongside sessions.
   String? _baseBranch;
 
-  // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
-  SessionListCubit(
-    SessionService service,
-    ProjectService projectService,
-    ConnectionService connectionService,
-    SseEventRepository sseEventRepository, {
+  SessionListCubit({
+    required SessionService service,
+    required ProjectService projectService,
+    required ConnectionService connectionService,
+    required SseEventRepository sseEventRepository,
     required String projectId,
     required FailureReporter failureReporter,
   }) : _service = service,
@@ -71,12 +70,56 @@ class SessionListCubit extends Cubit<SessionListState> {
       if (isClosed) return;
       logd("[SessionList] event received: ${event.data.runtimeType}");
       final data = event.data;
-      if (data case SesoriSessionCreated(:final info)) {
-        _onSessionCreated(info);
-      } else if (data case SesoriSessionUpdated(:final info)) {
-        _onSessionUpdated(info);
-      } else if (data case SesoriSessionDeleted(:final info)) {
-        _onSessionDeleted(info);
+      switch (data) {
+        case SesoriSessionCreated(:final info):
+          _onSessionCreated(info);
+        case SesoriSessionUpdated(:final info):
+          _onSessionUpdated(info);
+        case SesoriSessionDeleted(:final info):
+          _onSessionDeleted(info);
+        case SesoriServerConnected() ||
+            SesoriServerHeartbeat() ||
+            SesoriServerInstanceDisposed() ||
+            SesoriGlobalDisposed() ||
+            SesoriSessionDiff() ||
+            SesoriSessionError() ||
+            SesoriSessionCompacted() ||
+            SesoriSessionStatus() ||
+            // ignore: deprecated_member_use, legacy idle event is still emitted for backward compatibility
+            SesoriSessionIdle() ||
+            SesoriMessageUpdated() ||
+            SesoriMessageRemoved() ||
+            SesoriMessagePartUpdated() ||
+            SesoriMessagePartDelta() ||
+            SesoriMessagePartRemoved() ||
+            SesoriPtyCreated() ||
+            SesoriPtyUpdated() ||
+            SesoriPtyExited() ||
+            SesoriPtyDeleted() ||
+            SesoriPermissionAsked() ||
+            SesoriPermissionReplied() ||
+            SesoriPermissionUpdated() ||
+            SesoriQuestionAsked() ||
+            SesoriQuestionReplied() ||
+            SesoriQuestionRejected() ||
+            SesoriTodoUpdated() ||
+            SesoriProjectsSummary() ||
+            SesoriProjectUpdated() ||
+            SesoriVcsBranchUpdated() ||
+            SesoriFileEdited() ||
+            SesoriFileWatcherUpdated() ||
+            SesoriLspUpdated() ||
+            SesoriLspClientDiagnostics() ||
+            SesoriMcpToolsChanged() ||
+            SesoriMcpBrowserOpenFailed() ||
+            SesoriInstallationUpdated() ||
+            SesoriInstallationUpdateAvailable() ||
+            SesoriWorkspaceReady() ||
+            SesoriWorkspaceFailed() ||
+            SesoriTuiToastShow() ||
+            SesoriWorktreeReady() ||
+            SesoriWorktreeFailed():
+          break;
       }
     } catch (e, st) {
       loge("SSE event handler error", e, st);
@@ -106,6 +149,7 @@ class SessionListCubit extends Cubit<SessionListState> {
         sessions: loaded.sessions,
         showArchived: loaded.showArchived,
         activeSessionIds: projectActivity,
+        baseBranch: loaded.baseBranch,
       ),
     );
   }

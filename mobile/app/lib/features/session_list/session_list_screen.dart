@@ -30,10 +30,10 @@ class SessionListScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => SessionListCubit(
-        getIt<SessionService>(),
-        getIt<ProjectService>(),
-        getIt<ConnectionService>(),
-        getIt<SseEventRepository>(),
+        service: getIt<SessionService>(),
+        projectService: getIt<ProjectService>(),
+        connectionService: getIt<ConnectionService>(),
+        sseEventRepository: getIt<SseEventRepository>(),
         projectId: projectId,
         failureReporter: getIt<FailureReporter>(),
       ),
@@ -69,12 +69,7 @@ class _SessionListBody extends StatelessWidget {
               leading: const Icon(Icons.edit_outlined),
               title: Text(loc.rename),
               onTap: () {
-                final router = GoRouter.maybeOf(sheetContext);
-                if (router != null) {
-                  router.pop();
-                } else {
-                  Navigator.pop(sheetContext);
-                }
+                sheetContext.pop();
                 showRenameSessionDialog(
                   context: context,
                   session: session,
@@ -86,12 +81,7 @@ class _SessionListBody extends StatelessWidget {
               leading: Icon(isArchived ? Icons.unarchive_outlined : Icons.archive_outlined),
               title: Text(isArchived ? loc.sessionListUnarchive : loc.sessionListArchive),
               onTap: () {
-                final router = GoRouter.maybeOf(sheetContext);
-                if (router != null) {
-                  router.pop();
-                } else {
-                  Navigator.pop(sheetContext);
-                }
+                sheetContext.pop();
                 if (isArchived) {
                   _unarchiveSession(context: context, cubit: cubit, sessionId: session.id);
                 } else {
@@ -106,12 +96,7 @@ class _SessionListBody extends StatelessWidget {
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
               onTap: () {
-                final router = GoRouter.maybeOf(sheetContext);
-                if (router != null) {
-                  router.pop();
-                } else {
-                  Navigator.pop(sheetContext);
-                }
+                sheetContext.pop();
                 _showDeleteSheet(context: context, cubit: cubit, session: session);
               },
             ),

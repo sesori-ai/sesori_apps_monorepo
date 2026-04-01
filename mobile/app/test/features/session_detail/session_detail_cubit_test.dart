@@ -245,7 +245,7 @@ void main() {
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
-        cubit.selectModel("openai", "gpt-4.1");
+        cubit.selectModel(providerID: "openai", modelID: "gpt-4.1");
       },
       expect: () => [
         isA<SessionDetailLoaded>(),

@@ -23,10 +23,10 @@ void main() {
     // -----------------------------------------------------------------------
 
     group("listAgents", () {
-      test("success: returns List<AgentInfo> from GET /agent", () async {
+      test("success: returns List<AgentInfo?> from GET /agent", () async {
         final agents = [testAgentInfo()];
         when(
-          () => mockClient.get<List<AgentInfo>>(
+          () => mockClient.get<List<AgentInfo?>>(
             "/agent",
             fromJson: any(named: "fromJson"),
           ),
@@ -34,10 +34,10 @@ void main() {
 
         final result = await sessionService.listAgents();
 
-        expect(result, isA<SuccessResponse<List<AgentInfo>>>());
-        expect((result as SuccessResponse<List<AgentInfo>>).data, equals(agents));
+        expect(result, isA<SuccessResponse<List<AgentInfo?>>>());
+        expect((result as SuccessResponse<List<AgentInfo?>>).data, equals(agents));
         verify(
-          () => mockClient.get<List<AgentInfo>>(
+          () => mockClient.get<List<AgentInfo?>>(
             "/agent",
             fromJson: any(named: "fromJson"),
           ),
@@ -47,7 +47,7 @@ void main() {
       test("error: propagates API error from GET /agent", () async {
         final error = ApiError.generic();
         when(
-          () => mockClient.get<List<AgentInfo>>(
+          () => mockClient.get<List<AgentInfo?>>(
             "/agent",
             fromJson: any(named: "fromJson"),
           ),
@@ -55,10 +55,10 @@ void main() {
 
         final result = await sessionService.listAgents();
 
-        expect(result, isA<ErrorResponse<List<AgentInfo>>>());
-        expect((result as ErrorResponse<List<AgentInfo>>).error, equals(error));
+        expect(result, isA<ErrorResponse<List<AgentInfo?>>>());
+        expect((result as ErrorResponse<List<AgentInfo?>>).error, equals(error));
         verify(
-          () => mockClient.get<List<AgentInfo>>(
+          () => mockClient.get<List<AgentInfo?>>(
             "/agent",
             fromJson: any(named: "fromJson"),
           ),

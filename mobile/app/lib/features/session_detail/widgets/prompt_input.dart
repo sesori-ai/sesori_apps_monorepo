@@ -181,7 +181,7 @@ class _PromptInputState extends State<PromptInput> {
       child: Column(
         mainAxisSize: .min,
         children: [
-          ...[widget.header].whereType<Widget>(),
+          ?widget.header,
           Padding(
             padding: EdgeInsetsDirectional.only(
               start: 12,

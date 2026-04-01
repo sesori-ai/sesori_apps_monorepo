@@ -14,7 +14,15 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     required String projectId,
   }) : _sessionService = sessionService,
        _projectId = projectId,
-       super(const NewSessionState.idle()) {
+       super(
+         const NewSessionState.idle(
+           availableAgents: [],
+           availableProviders: [],
+           selectedAgent: null,
+           selectedProviderID: null,
+           selectedModelID: null,
+         ),
+       ) {
     _loadAgentModelData();
   }
 
@@ -28,7 +36,8 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       if (isClosed) return;
 
       final agents = switch (agentsResponse) {
-        SuccessResponse(:final data) => data.where((a) => !a.hidden && a.mode != AgentMode.subagent).toList(),
+        SuccessResponse(:final data) =>
+          data.whereType<AgentInfo>().where((a) => !a.hidden && a.mode != AgentMode.subagent).toList(),
         ErrorResponse() => <AgentInfo>[],
       };
 

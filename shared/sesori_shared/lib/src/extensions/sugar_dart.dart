@@ -23,6 +23,19 @@ Map<String, dynamic> jsonDecodeMap(String source) {
   }
 }
 
+// ignore: no_slop_linter/avoid_dynamic_type, JSON decoding
+List<Map<String, dynamic>> jsonDecodeListMap(String source) {
+  final result = jsonDecode(source);
+
+  if (result is List) {
+    return result.cast();
+  } else {
+    throw FormatException(
+      "Invalid JSON Array (not a List) in jsonDecodeListMap: $source",
+    );
+  }
+}
+
 typedef ComputeCallback<M, R> = FutureOr<R> Function(M message);
 
 extension Sugar<T> on T {

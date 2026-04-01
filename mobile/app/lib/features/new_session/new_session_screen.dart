@@ -42,12 +42,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
   bool _dedicatedWorktree = true;
 
   void _dismissScreen() {
-    final router = GoRouter.maybeOf(context);
-    if (router != null) {
-      router.pop();
-      return;
-    }
-    Navigator.pop(context);
+    context.pop();
   }
 
   void _openAgentPicker(AgentModelData data) {

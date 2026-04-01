@@ -20,6 +20,8 @@ import 'package:analyzer/error/error.dart';
 /// - `void bar(dynamic x) {}` - dynamic parameter
 /// - `List<dynamic> items;` - dynamic in generic
 /// - `Map<dynamic, String> map;` - dynamic as key type
+/// - `Object foo;` - untyped Object usage
+/// - `List<Object?> items;` - Object? in generic
 ///
 /// Valid examples (exceptions):
 /// - `factory Foo.fromJson(Map<String, dynamic> json)` - fromJson factory
@@ -28,7 +30,11 @@ import 'package:analyzer/error/error.dart';
 /// - `external dynamic foo();` - external declarations (JS interop)
 /// - `@override void foo(dynamic x)` - parameters in overridden methods
 class AvoidDynamicTypeRule extends NoSlopRule {
-  AvoidDynamicTypeRule() : super(name: code.lowerCaseName, description: 'Forbids usage of the dynamic type.');
+  AvoidDynamicTypeRule()
+    : super(
+        name: code.lowerCaseName,
+        description: 'Forbids usage of the dynamic type.',
+      );
 
   static const code = LintCode(
     'avoid_dynamic_type',
@@ -40,7 +46,10 @@ class AvoidDynamicTypeRule extends NoSlopRule {
   DiagnosticCode get diagnosticCode => code;
 
   @override
-  void registerRuleProcessors(RuleVisitorRegistry registry, RuleContext context) {
+  void registerRuleProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
+  ) {
     registry.addNamedType(this, _Visitor(this));
   }
 
@@ -57,7 +66,8 @@ class AvoidDynamicTypeRule extends NoSlopRule {
     if (typeArguments[1] != dynamicNode) return false;
 
     final firstArg = typeArguments[0];
-    if (firstArg is! NamedType || firstArg.name.lexeme != 'String') return false;
+    if (firstArg is! NamedType || firstArg.name.lexeme != 'String')
+      return false;
 
     final mapType = typeArgumentList.parent;
     if (mapType is! NamedType || mapType.name.lexeme != 'Map') return false;
@@ -76,12 +86,16 @@ class AvoidDynamicTypeRule extends NoSlopRule {
 
   bool _isToJsonReturnType(NamedType mapType) {
     final method = _findAncestorOfType<MethodDeclaration>(mapType);
-    if (method != null && method.returnType == mapType && method.name.lexeme == 'toJson') {
+    if (method != null &&
+        method.returnType == mapType &&
+        method.name.lexeme == 'toJson') {
       return true;
     }
 
     final function = _findAncestorOfType<FunctionDeclaration>(mapType);
-    if (function != null && function.returnType == mapType && function.name.lexeme == 'toJson') {
+    if (function != null &&
+        function.returnType == mapType &&
+        function.name.lexeme == 'toJson') {
       return true;
     }
 
@@ -91,7 +105,8 @@ class AvoidDynamicTypeRule extends NoSlopRule {
   bool _isInFromJsonMethod(FormalParameter parameter) {
     final constructor = _findAncestorOfType<ConstructorDeclaration>(parameter);
     if (constructor != null) {
-      if (constructor.factoryKeyword != null && constructor.name?.lexeme == 'fromJson') {
+      if (constructor.factoryKeyword != null &&
+          constructor.name?.lexeme == 'fromJson') {
         return true;
       }
     }
@@ -166,8 +181,14 @@ class _Visitor extends SimpleAstVisitor<void> {
   @override
   void visitNamedType(NamedType node) {
     if (rule.isCurrentFileExcluded) return;
-    if (node.name.lexeme != 'dynamic') return;
-    if (rule._isAllowedDynamic(node)) return;
-    rule.reportAtNode(node);
+    final name = node.name.lexeme;
+    if (name == 'dynamic') {
+      if (rule._isAllowedDynamic(node)) return;
+      rule.reportAtNode(node);
+    } else if (name == 'Object') {
+      if (rule._isInExternalDeclaration(node)) return;
+      if (rule._isInOverriddenMethodParameter(node)) return;
+      rule.reportAtNode(node);
+    }
   }
 }
