@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../models/diff_file_view_model.dart";
+import "../utils/diff_theme.dart";
 import "diff_hunk_widget.dart";
 
 /// Renders a single file diff: a tappable header with file name, +/- stats,
@@ -18,10 +19,6 @@ class DiffFileWidget extends StatefulWidget {
 
 class _DiffFileWidgetState extends State<DiffFileWidget> {
   late bool _isExpanded;
-
-  /// Light header background.
-  static const _headerBg = Color(0xFFF8F8F8);
-  static const _headerBorder = Color(0xFFE0E0E0);
 
   @override
   void initState() {
@@ -53,12 +50,13 @@ class _DiffFileWidgetState extends State<DiffFileWidget> {
 
   Widget _buildHeader() {
     final vm = widget.viewModel;
+    final theme = DiffTheme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: const BoxDecoration(
-        color: _headerBg,
+      decoration: BoxDecoration(
+        color: theme.fileHeaderBg,
         border: Border(
-          bottom: BorderSide(color: _headerBorder, width: 0.5),
+          bottom: BorderSide(color: theme.fileHeaderBorder, width: 0.5),
         ),
       ),
       child: Row(
@@ -103,7 +101,7 @@ class _DiffFileWidgetState extends State<DiffFileWidget> {
           Icon(
             _isExpanded ? Icons.expand_less : Icons.expand_more,
             size: 18,
-            color: Colors.grey.shade600,
+            color: theme.chevronColor,
           ),
         ],
       ),

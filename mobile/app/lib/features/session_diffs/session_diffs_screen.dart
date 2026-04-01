@@ -65,7 +65,7 @@ class _SessionDiffsBody extends StatelessWidget {
           DiffStateLoaded(:final files) when files.isEmpty => const Center(
             child: Text("No file changes in this session"),
           ),
-          DiffStateLoaded(:final files) => _buildFileList(files),
+          DiffStateLoaded(:final files) => _buildFileList(context, files),
         },
       ),
     );
@@ -94,9 +94,12 @@ class _SessionDiffsBody extends StatelessWidget {
     };
   }
 
-  Widget _buildFileList(List<FileDiff> files) {
+  Widget _buildFileList(BuildContext context, List<FileDiff> files) {
     return FutureBuilder<List<DiffFileViewModel>>(
-      future: DiffViewModelBuilder.build(files),
+      future: DiffViewModelBuilder.build(
+        files,
+        brightness: Theme.of(context).brightness,
+      ),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Center(child: Text("Error computing diffs: ${snapshot.error}"));

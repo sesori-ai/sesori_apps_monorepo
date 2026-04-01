@@ -12,8 +12,11 @@ class DiffViewModelBuilder {
   /// Builds view models for a list of file diffs.
   /// Runs DiffEngine.computeDiff in an isolate via compute() for each file.
   /// Pre-computes syntax highlighting spans via [DiffHighlighter] if initialized.
-  static Future<List<DiffFileViewModel>> build(List<FileDiff> diffs) async {
-    await DiffHighlighter.initialize();
+  static Future<List<DiffFileViewModel>> build(
+    List<FileDiff> diffs, {
+    Brightness brightness = Brightness.light,
+  }) async {
+    await DiffHighlighter.initialize(brightness: brightness);
     final results = <DiffFileViewModel>[];
     for (final diff in diffs) {
       switch (diff) {
