@@ -7,7 +7,7 @@ part "set_base_branch_request.g.dart";
 sealed class SetBaseBranchRequest with _$SetBaseBranchRequest {
   const factory SetBaseBranchRequest({
     required String projectId,
-    required String? baseBranch,
+    required String baseBranch,
   }) = _SetBaseBranchRequest;
 
   factory SetBaseBranchRequest.fromJson(Map<String, dynamic> json) => _$SetBaseBranchRequestFromJson(json);

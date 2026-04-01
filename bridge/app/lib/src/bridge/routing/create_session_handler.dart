@@ -1,5 +1,3 @@
-import "dart:convert";
-
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -24,7 +22,7 @@ IMPORTANT: Do NOT create new worktrees, branches, or working directories for thi
 }
 
 /// Handles `POST /session` — creates a session for a given project.
-class CreateSessionHandler extends RequestHandler {
+class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Session> {
   final BridgePlugin _plugin;
   final WorktreeService _worktreeService;
   final SessionDao _sessionDao;
@@ -36,32 +34,22 @@ class CreateSessionHandler extends RequestHandler {
   }) : _plugin = plugin,
        _worktreeService = worktreeService,
        _sessionDao = sessionDao,
-       super(HttpMethod.post, "/session");
+       super(
+         HttpMethod.post,
+         "/session/create",
+         fromJson: CreateSessionRequest.fromJson,
+       );
 
   @override
-  Future<RelayResponse> handle(
+  Future<Session> handle(
     RelayRequest request, {
+    required CreateSessionRequest body,
     required Map<String, String> pathParams,
     required Map<String, String> queryParams,
-    String? fragment,
+    required String? fragment,
   }) async {
-    final CreateSessionRequest createRequest;
-    try {
-      final decoded = jsonDecode(request.body ?? "{}");
-      createRequest = CreateSessionRequest.fromJson(
-        switch (decoded) {
-          final Map<String, dynamic> map => map,
-          _ => throw const FormatException("invalid JSON body"),
-        },
-      );
-    } on FormatException {
-      return buildErrorResponse(request, 400, "invalid JSON body");
-    } on Object {
-      return buildErrorResponse(request, 400, "invalid JSON body");
-    }
-
-    final projectId = createRequest.projectId;
-    final dedicatedWorktree = createRequest.dedicatedWorktree;
+    final projectId = body.projectId;
+    final dedicatedWorktree = body.dedicatedWorktree;
     const String? parentSessionId = null;
 
     final WorktreeResult? worktreeResult;
@@ -74,7 +62,7 @@ class CreateSessionHandler extends RequestHandler {
       worktreeResult = null;
     }
 
-    final parts = createRequest.parts.map((p) => p.toPlugin()).toList();
+    final parts = body.parts.map((p) => p.toPlugin()).toList();
     if (worktreeResult case WorktreeSuccess(:final path, :final branchName, :final baseBranch)) {
       parts.insert(
         0,
@@ -88,7 +76,7 @@ class CreateSessionHandler extends RequestHandler {
       );
     }
 
-    final model = switch (createRequest.model) {
+    final model = switch (body.model) {
       PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
       null => null,
     };
@@ -105,7 +93,7 @@ class CreateSessionHandler extends RequestHandler {
       directory: directory,
       parentSessionId: parentSessionId,
       parts: parts,
-      agent: createRequest.agent,
+      agent: body.agent,
       model: model,
     );
 
@@ -171,6 +159,6 @@ class CreateSessionHandler extends RequestHandler {
       },
     );
 
-    return buildOkJsonResponse(request, jsonEncode(session.toJson()));
+    return session;
   }
 }

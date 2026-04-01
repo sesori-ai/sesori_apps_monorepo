@@ -1,39 +1,36 @@
-import "dart:convert";
-
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "question_mapper.dart";
 import "request_handler.dart";
 
-/// Handles `GET /questions` — returns all pending questions for a project.
-///
-/// Requires `x-project-id` header to scope questions to a project's sessions.
-class GetProjectQuestionsHandler extends RequestHandler {
-  static const _projectIdHeader = "x-project-id";
+/// Handles `POST /project/questions` — returns all pending questions for a project.
+class GetProjectQuestionsHandler extends BodyRequestHandler<ProjectIdRequest, PendingQuestionResponse> {
   final BridgePlugin _plugin;
 
-  GetProjectQuestionsHandler(this._plugin) : super(HttpMethod.get, "/questions");
+  GetProjectQuestionsHandler(this._plugin)
+    : super(
+        HttpMethod.post,
+        "/project/questions",
+        fromJson: ProjectIdRequest.fromJson,
+      );
 
   @override
-  Future<RelayResponse> handle(
+  Future<PendingQuestionResponse> handle(
     RelayRequest request, {
+    required ProjectIdRequest body,
     required Map<String, String> pathParams,
     required Map<String, String> queryParams,
-    String? fragment,
+    required String? fragment,
   }) async {
-    final projectId = findHeader(request.headers, _projectIdHeader);
-    if (projectId == null || projectId.isEmpty) {
-      return buildErrorResponse(
-        request,
-        400,
-        "missing $_projectIdHeader header",
-      );
+    final projectId = body.projectId;
+    if (projectId.isEmpty) {
+      throw buildErrorResponse(request, 400, "empty project id");
     }
 
     final pluginQuestions = await _plugin.getProjectQuestions(projectId: projectId);
     final questions = mapPluginQuestions(pluginQuestions);
 
-    return buildOkJsonResponse(request, jsonEncode(questions.map((q) => q.toJson()).toList()));
+    return PendingQuestionResponse(data: questions);
   }
 }

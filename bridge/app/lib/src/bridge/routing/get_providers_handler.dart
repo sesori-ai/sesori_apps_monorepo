@@ -1,29 +1,22 @@
-import "dart:convert";
-
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "request_handler.dart";
 
-const String _connectedOnlyParam = "connectedOnly";
-
 /// Handles `GET /provider` — returns providers and their models from the plugin.
-class GetProvidersHandler extends RequestHandler {
+class GetProvidersHandler extends GetRequestHandler<ProviderListResponse> {
   final BridgePlugin _plugin;
 
-  GetProvidersHandler(this._plugin) : super(HttpMethod.get, "/provider");
+  GetProvidersHandler(this._plugin) : super("/provider");
 
   @override
-  Future<RelayResponse> handle(
+  Future<ProviderListResponse> handle(
     RelayRequest request, {
     required Map<String, String> pathParams,
     required Map<String, String> queryParams,
-    String? fragment,
+    required String? fragment,
   }) async {
-    // Default to true if not specified
-    final connectedOnly = !(queryParams[_connectedOnlyParam]?.toLowerCase() == "false");
-
-    final result = await _plugin.getProviders(connectedOnly: connectedOnly);
+    final result = await _plugin.getProviders(connectedOnly: true);
 
     final providers = result.providers.map((p) {
       final models = <String, ProviderModel>{
@@ -46,9 +39,9 @@ class GetProvidersHandler extends RequestHandler {
 
     final response = ProviderListResponse(
       items: providers,
-      connectedOnly: connectedOnly,
+      connectedOnly: true,
     );
 
-    return buildOkJsonResponse(request, jsonEncode(response.toJson()));
+    return response;
   }
 }

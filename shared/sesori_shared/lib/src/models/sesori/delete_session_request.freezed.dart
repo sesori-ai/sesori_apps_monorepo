@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$DeleteSessionRequest {
 
- bool get deleteWorktree; bool get deleteBranch; bool get force;
+ String get sessionId; bool get deleteWorktree; bool get deleteBranch; bool get force;
 /// Create a copy of DeleteSessionRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $DeleteSessionRequestCopyWith<DeleteSessionRequest> get copyWith => _$DeleteSess
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeleteSessionRequest&&(identical(other.deleteWorktree, deleteWorktree) || other.deleteWorktree == deleteWorktree)&&(identical(other.deleteBranch, deleteBranch) || other.deleteBranch == deleteBranch)&&(identical(other.force, force) || other.force == force));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeleteSessionRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.deleteWorktree, deleteWorktree) || other.deleteWorktree == deleteWorktree)&&(identical(other.deleteBranch, deleteBranch) || other.deleteBranch == deleteBranch)&&(identical(other.force, force) || other.force == force));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,deleteWorktree,deleteBranch,force);
+int get hashCode => Object.hash(runtimeType,sessionId,deleteWorktree,deleteBranch,force);
 
 @override
 String toString() {
-  return 'DeleteSessionRequest(deleteWorktree: $deleteWorktree, deleteBranch: $deleteBranch, force: $force)';
+  return 'DeleteSessionRequest(sessionId: $sessionId, deleteWorktree: $deleteWorktree, deleteBranch: $deleteBranch, force: $force)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $DeleteSessionRequestCopyWith<$Res>  {
   factory $DeleteSessionRequestCopyWith(DeleteSessionRequest value, $Res Function(DeleteSessionRequest) _then) = _$DeleteSessionRequestCopyWithImpl;
 @useResult
 $Res call({
- bool deleteWorktree, bool deleteBranch, bool force
+ String sessionId, bool deleteWorktree, bool deleteBranch, bool force
 });
 
 
@@ -65,9 +65,10 @@ class _$DeleteSessionRequestCopyWithImpl<$Res>
 
 /// Create a copy of DeleteSessionRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? deleteWorktree = null,Object? deleteBranch = null,Object? force = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? deleteWorktree = null,Object? deleteBranch = null,Object? force = null,}) {
   return _then(_self.copyWith(
-deleteWorktree: null == deleteWorktree ? _self.deleteWorktree : deleteWorktree // ignore: cast_nullable_to_non_nullable
+sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
+as String,deleteWorktree: null == deleteWorktree ? _self.deleteWorktree : deleteWorktree // ignore: cast_nullable_to_non_nullable
 as bool,deleteBranch: null == deleteBranch ? _self.deleteBranch : deleteBranch // ignore: cast_nullable_to_non_nullable
 as bool,force: null == force ? _self.force : force // ignore: cast_nullable_to_non_nullable
 as bool,
@@ -82,9 +83,10 @@ as bool,
 @JsonSerializable()
 
 class _DeleteSessionRequest implements DeleteSessionRequest {
-  const _DeleteSessionRequest({required this.deleteWorktree, required this.deleteBranch, required this.force});
+  const _DeleteSessionRequest({required this.sessionId, required this.deleteWorktree, required this.deleteBranch, required this.force});
   factory _DeleteSessionRequest.fromJson(Map<String, dynamic> json) => _$DeleteSessionRequestFromJson(json);
 
+@override final  String sessionId;
 @override final  bool deleteWorktree;
 @override final  bool deleteBranch;
 @override final  bool force;
@@ -102,16 +104,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DeleteSessionRequest&&(identical(other.deleteWorktree, deleteWorktree) || other.deleteWorktree == deleteWorktree)&&(identical(other.deleteBranch, deleteBranch) || other.deleteBranch == deleteBranch)&&(identical(other.force, force) || other.force == force));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DeleteSessionRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.deleteWorktree, deleteWorktree) || other.deleteWorktree == deleteWorktree)&&(identical(other.deleteBranch, deleteBranch) || other.deleteBranch == deleteBranch)&&(identical(other.force, force) || other.force == force));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,deleteWorktree,deleteBranch,force);
+int get hashCode => Object.hash(runtimeType,sessionId,deleteWorktree,deleteBranch,force);
 
 @override
 String toString() {
-  return 'DeleteSessionRequest(deleteWorktree: $deleteWorktree, deleteBranch: $deleteBranch, force: $force)';
+  return 'DeleteSessionRequest(sessionId: $sessionId, deleteWorktree: $deleteWorktree, deleteBranch: $deleteBranch, force: $force)';
 }
 
 
@@ -122,7 +124,7 @@ abstract mixin class _$DeleteSessionRequestCopyWith<$Res> implements $DeleteSess
   factory _$DeleteSessionRequestCopyWith(_DeleteSessionRequest value, $Res Function(_DeleteSessionRequest) _then) = __$DeleteSessionRequestCopyWithImpl;
 @override @useResult
 $Res call({
- bool deleteWorktree, bool deleteBranch, bool force
+ String sessionId, bool deleteWorktree, bool deleteBranch, bool force
 });
 
 
@@ -139,9 +141,10 @@ class __$DeleteSessionRequestCopyWithImpl<$Res>
 
 /// Create a copy of DeleteSessionRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? deleteWorktree = null,Object? deleteBranch = null,Object? force = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? deleteWorktree = null,Object? deleteBranch = null,Object? force = null,}) {
   return _then(_DeleteSessionRequest(
-deleteWorktree: null == deleteWorktree ? _self.deleteWorktree : deleteWorktree // ignore: cast_nullable_to_non_nullable
+sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
+as String,deleteWorktree: null == deleteWorktree ? _self.deleteWorktree : deleteWorktree // ignore: cast_nullable_to_non_nullable
 as bool,deleteBranch: null == deleteBranch ? _self.deleteBranch : deleteBranch // ignore: cast_nullable_to_non_nullable
 as bool,force: null == force ? _self.force : force // ignore: cast_nullable_to_non_nullable
 as bool,

@@ -40,7 +40,7 @@ import "update_session_archive_status_handler.dart";
 /// converted to a `502` response so callers never have to deal with routing
 /// failures.
 class RequestRouter {
-  final List<RequestHandler> _handlers;
+  final List<RequestHandlerBase> _handlers;
 
   RequestRouter({
     required BridgePlugin plugin,
@@ -52,7 +52,7 @@ class RequestRouter {
          sessionDao: sessionDao,
        );
 
-  static List<RequestHandler> _buildHandlers({
+  static List<RequestHandlerBase> _buildHandlers({
     required BridgePlugin plugin,
     required ProjectsDao projectsDao,
     required SessionDao sessionDao,
@@ -110,7 +110,7 @@ class RequestRouter {
       for (final handler in _handlers) {
         if (handler.canHandle(request)) {
           final (:pathParams, :queryParams, :fragment) = handler.extractParams(request);
-          return await handler.handle(
+          return await handler.handleInternal(
             request,
             pathParams: pathParams,
             queryParams: queryParams,

@@ -233,11 +233,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     if (isClosed) return false;
 
     switch (projectResponse) {
-      case SuccessResponse(:final data):
-        final projects = data.whereType<Project>().toList();
-        projects.sort(
-          (a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0),
-        );
+      case SuccessResponse(data: Projects(data: final projects)):
         emit(
           ProjectListState.loaded(
             projects: projects,

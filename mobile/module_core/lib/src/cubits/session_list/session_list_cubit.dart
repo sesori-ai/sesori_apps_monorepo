@@ -412,7 +412,7 @@ class SessionListCubit extends Cubit<SessionListState> {
 
     _lastCleanupRejection = null;
 
-    final ApiResponse<bool> response;
+    final ApiResponse<void> response;
     try {
       response = await _service.deleteSession(
         sessionId: sessionId,
@@ -518,12 +518,12 @@ class SessionListCubit extends Cubit<SessionListState> {
     // Update cached base branch on success; silently ignore errors so
     // the session list still loads even if the endpoint is unavailable.
     if (baseBranchResponse case SuccessResponse(:final data)) {
-      _baseBranch = data;
+      _baseBranch = data.baseBranch;
     }
 
     switch (sessionsResponse) {
       case SuccessResponse(:final data):
-        _allSessions = data;
+        _allSessions = data.items;
         _emitFiltered();
         return true;
 

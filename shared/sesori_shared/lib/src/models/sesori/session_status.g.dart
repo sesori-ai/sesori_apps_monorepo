@@ -6,6 +6,22 @@ part of 'session_status.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
+_SessionStatusResponse _$SessionStatusResponseFromJson(Map json) =>
+    _SessionStatusResponse(
+      statuses: (json['statuses'] as Map).map(
+        (k, e) => MapEntry(
+          k as String,
+          SessionStatus.fromJson(Map<String, dynamic>.from(e as Map)),
+        ),
+      ),
+    );
+
+Map<String, dynamic> _$SessionStatusResponseToJson(
+  _SessionStatusResponse instance,
+) => <String, dynamic>{
+  'statuses': instance.statuses.map((k, e) => MapEntry(k, e.toJson())),
+};
+
 SessionStatusIdle _$SessionStatusIdleFromJson(Map json) =>
     SessionStatusIdle($type: json['type'] as String?);
 

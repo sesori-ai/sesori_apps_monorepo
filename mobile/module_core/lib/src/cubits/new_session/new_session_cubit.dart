@@ -36,8 +36,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       if (isClosed) return;
 
       final agents = switch (agentsResponse) {
-        SuccessResponse(:final data) =>
-          data.whereType<AgentInfo>().where((a) => !a.hidden && a.mode != AgentMode.subagent).toList(),
+        SuccessResponse(:final data) => data.agents.where((a) => !a.hidden && a.mode != AgentMode.subagent).toList(),
         ErrorResponse() => <AgentInfo>[],
       };
 
@@ -202,6 +201,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       DartHttpClientError() => "Unable to reach server.",
       JsonParsingError() => "Unexpected server response.",
       GenericError() => "Failed to create session.",
+      EmptyResponseError() => "Empty response from server.",
     };
   }
 }

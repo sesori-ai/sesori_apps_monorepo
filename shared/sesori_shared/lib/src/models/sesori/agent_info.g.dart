@@ -6,6 +6,16 @@ part of 'agent_info.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
+_Agents _$AgentsFromJson(Map json) => _Agents(
+  agents: (json['agents'] as List<dynamic>)
+      .map((e) => AgentInfo.fromJson(Map<String, dynamic>.from(e as Map)))
+      .toList(),
+);
+
+Map<String, dynamic> _$AgentsToJson(_Agents instance) => <String, dynamic>{
+  'agents': instance.agents.map((e) => e.toJson()).toList(),
+};
+
 _AgentInfo _$AgentInfoFromJson(Map json) => _AgentInfo(
   name: json['name'] as String,
   description: json['description'] as String?,

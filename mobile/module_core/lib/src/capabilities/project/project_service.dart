@@ -10,35 +10,19 @@ class ProjectService {
 
   ProjectService(RelayHttpApiClient client) : _client = client;
 
-  Future<ApiResponse<List<Project?>>> listProjects() {
+  Future<ApiResponse<Projects>> listProjects() {
     return _client.get(
-      "/project",
-      fromJson: (json) => switch (json) {
-        final List<Object?> list =>
-          list
-              .map<Project?>(
-                (e) => switch (e) {
-                  // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
-                  final Map<String, dynamic> map => Project.fromJson(map),
-                  _ => throw FormatException("expected map, got ${e.runtimeType.toString()}"),
-                },
-              )
-              .toList(),
-        _ => throw FormatException("expected list, got ${json.runtimeType.toString()}"),
-      },
+      "/projects",
+      fromJson: Projects.fromJson,
     );
   }
 
   /// Returns the project matching the requested project ID.
   Future<ApiResponse<Project>> getProject({required String projectId}) {
-    return _client.get(
+    return _client.post(
       "/project/current",
-      fromJson: (json) => switch (json) {
-        // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
-        final Map<String, dynamic> map => Project.fromJson(map),
-        _ => throw FormatException("expected map, got ${json.runtimeType.toString()}"),
-      },
-      headers: {"x-project-id": projectId},
+      fromJson: Project.fromJson,
+      body: ProjectIdRequest(projectId: projectId),
     );
   }
 
@@ -46,12 +30,8 @@ class ProjectService {
   Future<ApiResponse<Project>> createProject({required String path}) {
     return _client.post(
       "/project/create",
-      body: {"path": path},
-      fromJson: (json) => switch (json) {
-        // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
-        final Map<String, dynamic> map => Project.fromJson(map),
-        _ => throw FormatException("expected map, got ${json.runtimeType.toString()}"),
-      },
+      body: ProjectPathRequest(path: path),
+      fromJson: Project.fromJson,
     );
   }
 
@@ -59,12 +39,8 @@ class ProjectService {
   Future<ApiResponse<Project>> discoverProject({required String path}) {
     return _client.post(
       "/project/open",
-      body: {"path": path},
-      fromJson: (json) => switch (json) {
-        // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
-        final Map<String, dynamic> map => Project.fromJson(map),
-        _ => throw FormatException("expected map, got ${json.runtimeType.toString()}"),
-      },
+      body: ProjectPathRequest(path: path),
+      fromJson: Project.fromJson,
     );
   }
 
@@ -72,8 +48,8 @@ class ProjectService {
   Future<ApiResponse<void>> hideProject({required String projectId}) {
     return _client.post(
       "/project/hide",
-      body: {"projectId": projectId},
-      fromJson: (_) {},
+      body: ProjectIdRequest(projectId: projectId),
+      fromJson: SuccessEmptyResponse.fromJson,
     );
   }
 
@@ -81,43 +57,23 @@ class ProjectService {
   ///
   /// When [prefix] is empty the query parameter is omitted, which tells the
   /// bridge to return the user's home-directory children.
-  Future<ApiResponse<List<FilesystemSuggestion>>> getFilesystemSuggestions({
-    required String prefix,
+  Future<ApiResponse<FilesystemSuggestions>> getFilesystemSuggestions({
+    required String? prefix,
   }) {
-    return _client.get(
+    return _client.post(
       "/filesystem/suggestions",
-      queryParameters: prefix.isEmpty ? null : {"prefix": prefix},
-      fromJson: (json) => switch (json) {
-        final List<Object?> list =>
-          list
-              .map(
-                (e) => switch (e) {
-                  // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
-                  final Map<String, dynamic> map => FilesystemSuggestion.fromJson(map),
-                  _ => throw FormatException("expected map, got ${e.runtimeType.toString()}"),
-                },
-              )
-              .toList(),
-        _ => throw FormatException("expected list, got ${json.runtimeType.toString()}"),
-      },
+      body: FilesystemSuggestionsRequest(prefix: prefix, maxResults: 50),
+      fromJson: FilesystemSuggestions.fromJson,
     );
   }
 
   /// Returns the base branch name for the given project, or `null` if
   /// the project has no base branch configured.
-  Future<ApiResponse<String?>> getBaseBranch({required String projectId}) {
-    return _client.get(
+  Future<ApiResponse<BaseBranchResponse>> getBaseBranch({required String projectId}) {
+    return _client.post(
       "/project/base-branch",
-      fromJson: (json) => switch (json) {
-        // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
-        final Map<String, dynamic> map => switch (map["baseBranch"]) {
-          final String baseBranch => baseBranch,
-          null => null,
-          _ => throw const FormatException("expected baseBranch as string or null"),
-        },
-        _ => throw FormatException("expected map, got ${json.runtimeType.toString()}"),
-      },
-      headers: {"x-project-id": projectId},
+      body: ProjectIdRequest(projectId: projectId),
+      fromJson: BaseBranchResponse.fromJson,
     );
   }
 
@@ -128,12 +84,8 @@ class ProjectService {
   }) {
     return _client.patch(
       "/project/name",
-      body: RenameProjectRequest(projectId: projectId, name: name).toJson(),
-      fromJson: (json) => switch (json) {
-        // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
-        final Map<String, dynamic> map => Project.fromJson(map),
-        _ => throw FormatException("expected map, got ${json.runtimeType.toString()}"),
-      },
+      body: RenameProjectRequest(projectId: projectId, name: name),
+      fromJson: Project.fromJson,
     );
   }
 }

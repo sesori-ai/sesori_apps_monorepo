@@ -1,5 +1,3 @@
-import "dart:convert";
-
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -8,17 +6,17 @@ import "request_handler.dart";
 /// Handles `GET /session/status` — returns statuses for sessions.
 ///
 /// Returns statuses for ALL sessions globally — not filtered by session or project.
-class GetSessionStatusesHandler extends RequestHandler {
+class GetSessionStatusesHandler extends GetRequestHandler<SessionStatusResponse> {
   final BridgePlugin _plugin;
 
-  GetSessionStatusesHandler(this._plugin) : super(HttpMethod.get, "/session/status");
+  GetSessionStatusesHandler(this._plugin) : super("/session/status");
 
   @override
-  Future<RelayResponse> handle(
+  Future<SessionStatusResponse> handle(
     RelayRequest request, {
     required Map<String, String> pathParams,
     required Map<String, String> queryParams,
-    String? fragment,
+    required String? fragment,
   }) async {
     final pluginStatuses = await _plugin.getSessionStatuses();
 
@@ -37,7 +35,6 @@ class GetSessionStatusesHandler extends RequestHandler {
       ),
     );
 
-    final body = jsonEncode(mapped.map((k, v) => MapEntry(k, v.toJson())));
-    return buildOkJsonResponse(request, body);
+    return SessionStatusResponse(statuses: mapped);
   }
 }

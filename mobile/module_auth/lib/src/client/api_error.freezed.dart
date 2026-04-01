@@ -35,6 +35,10 @@ ApiError _$ApiErrorFromJson(
           return NonSuccessCodeError.fromJson(
             json
           );
+                case 'emptyResponse':
+          return EmptyResponseError.fromJson(
+            json
+          );
         
           default:
             throw CheckedFromJsonException(
@@ -360,5 +364,41 @@ as String?,
 
 
 }
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class EmptyResponseError extends ApiError {
+   EmptyResponseError({final  String? $type}): $type = $type ?? 'emptyResponse',super._();
+  factory EmptyResponseError.fromJson(Map<String, dynamic> json) => _$EmptyResponseErrorFromJson(json);
+
+
+
+@JsonKey(name: 'runtimeType')
+final String $type;
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is EmptyResponseError);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'ApiError.emptyResponse()';
+}
+
+
+}
+
+
+
 
 // dart format on

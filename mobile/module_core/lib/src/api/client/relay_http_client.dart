@@ -21,7 +21,7 @@ class RelayHttpApiClient {
   Future<ApiResponse<T>> get<T>(
     String path, {
     // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing callback requires dynamic payload
-    required T Function(dynamic json) fromJson,
+    required T Function(Map<String, dynamic> json) fromJson,
     Map<String, String>? queryParameters,
     Map<String, String>? headers,
   }) async {
@@ -45,7 +45,7 @@ class RelayHttpApiClient {
   Future<ApiResponse<T>> post<T>(
     String path, {
     // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing callback requires dynamic payload
-    required T Function(dynamic json) fromJson,
+    required T Function(Map<String, dynamic> json) fromJson,
     required Object? body,
     Map<String, String>? queryParameters,
     Map<String, String>? headers,
@@ -71,7 +71,7 @@ class RelayHttpApiClient {
   Future<ApiResponse<T>> patch<T>(
     String path, {
     // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing callback requires dynamic payload
-    required T Function(dynamic json) fromJson,
+    required T Function(Map<String, dynamic> json) fromJson,
     required Object? body,
     Map<String, String>? queryParameters,
     Map<String, String>? headers,
@@ -97,7 +97,7 @@ class RelayHttpApiClient {
   Future<ApiResponse<T>> delete<T>(
     String path, {
     // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing callback requires dynamic payload
-    required T Function(dynamic json) fromJson,
+    required T Function(Map<String, dynamic> json) fromJson,
     Object? body,
     Map<String, String>? queryParameters,
     Map<String, String>? headers,
@@ -132,7 +132,7 @@ class RelayHttpApiClient {
     required HttpMethod method,
     required String path,
     // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing callback requires dynamic payload
-    required T Function(dynamic json) fromJson,
+    required T Function(Map<String, dynamic> json) fromJson,
     Map<String, String>? queryParameters,
     Object? body,
     Map<String, String>? extraHeaders,
@@ -172,11 +172,11 @@ class RelayHttpApiClient {
 
       final responseBody = response.body;
       if (responseBody == null || responseBody.isEmpty) {
-        return ApiResponse.success(fromJson(null));
+        return ApiResponse.error(ApiError.emptyResponse());
       }
 
       try {
-        final json = jsonDecode(responseBody);
+        final json = jsonDecodeMap(responseBody);
         return ApiResponse.success(fromJson(json));
       } catch (error, stackTrace) {
         loge("Failed to parse relay response JSON", error, stackTrace);

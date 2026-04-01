@@ -241,7 +241,7 @@ class _DirectoryBrowserState extends State<_DirectoryBrowser> {
     });
 
     final response = await GetIt.instance<ProjectService>().getFilesystemSuggestions(
-      prefix: _currentPath,
+      prefix: _currentPath.isEmpty ? null : _currentPath,
     );
 
     if (!mounted) return;
@@ -249,7 +249,7 @@ class _DirectoryBrowserState extends State<_DirectoryBrowser> {
       _loading = false;
       switch (response) {
         case SuccessResponse(:final data):
-          _entries = data;
+          _entries = data.data;
           _hasError = false;
         case ErrorResponse():
           _entries = [];

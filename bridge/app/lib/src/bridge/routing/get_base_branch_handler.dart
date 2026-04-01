@@ -1,35 +1,31 @@
-import "dart:convert";
-
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../persistence/daos/projects_dao.dart";
 import "request_handler.dart";
 
-/// Handles `GET /project/base-branch` — returns the base branch for a project.
-///
-/// Requires `x-project-id` header. Returns `{"baseBranch": "develop"}` or
-/// `{"baseBranch": null}` when no base branch has been configured.
-class GetBaseBranchHandler extends RequestHandler {
-  static const _projectIdHeader = "x-project-id";
+/// Handles `POST /project/base-branch` — returns the base branch for a project.
+class GetBaseBranchHandler extends BodyRequestHandler<ProjectIdRequest, BaseBranchResponse> {
   final ProjectsDao _projectsDao;
 
-  GetBaseBranchHandler(this._projectsDao) : super(HttpMethod.get, "/project/base-branch");
+  GetBaseBranchHandler(this._projectsDao)
+    : super(
+        HttpMethod.post,
+        "/project/base-branch",
+        fromJson: ProjectIdRequest.fromJson,
+      );
 
   @override
-  Future<RelayResponse> handle(
+  Future<BaseBranchResponse> handle(
     RelayRequest request, {
+    required ProjectIdRequest body,
     required Map<String, String> pathParams,
     required Map<String, String> queryParams,
-    String? fragment,
+    required String? fragment,
   }) async {
-    final projectId = findHeader(request.headers, _projectIdHeader);
-    if (projectId == null || projectId.isEmpty) {
-      return buildErrorResponse(request, 400, "missing $_projectIdHeader header");
-    }
+    final projectId = body.projectId;
 
     final baseBranch = await _projectsDao.getBaseBranch(projectId: projectId);
 
-    final body = jsonEncode({"baseBranch": baseBranch});
-    return buildOkJsonResponse(request, body);
+    return BaseBranchResponse(baseBranch: baseBranch);
   }
 }

@@ -1,22 +1,20 @@
-import "dart:convert";
-
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "request_handler.dart";
 
 /// Handles `GET /agent` — returns all available agents from the plugin.
-class GetAgentsHandler extends RequestHandler {
+class GetAgentsHandler extends GetRequestHandler<Agents> {
   final BridgePlugin _plugin;
 
-  GetAgentsHandler(this._plugin) : super(HttpMethod.get, "/agent");
+  GetAgentsHandler(this._plugin) : super("/agent");
 
   @override
-  Future<RelayResponse> handle(
+  Future<Agents> handle(
     RelayRequest request, {
     required Map<String, String> pathParams,
     required Map<String, String> queryParams,
-    String? fragment,
+    required String? fragment,
   }) async {
     final pluginAgents = await _plugin.getAgents();
     final agents = pluginAgents
@@ -43,6 +41,6 @@ class GetAgentsHandler extends RequestHandler {
         )
         .toList();
 
-    return buildOkJsonResponse(request, jsonEncode(agents.map((a) => a.toJson()).toList()));
+    return Agents(agents: agents);
   }
 }

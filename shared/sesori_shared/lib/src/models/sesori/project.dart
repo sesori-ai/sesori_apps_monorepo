@@ -5,6 +5,15 @@ part "project.freezed.dart";
 part "project.g.dart";
 
 @Freezed(fromJson: true, toJson: true)
+sealed class Projects with _$Projects {
+  const factory Projects({
+    required List<Project> data,
+  }) = _Projects;
+
+  factory Projects.fromJson(Map<String, dynamic> json) => _$ProjectsFromJson(json);
+}
+
+@Freezed(fromJson: true, toJson: true)
 sealed class Project with _$Project {
   const factory Project({
     required String id,
@@ -24,4 +33,22 @@ sealed class ProjectTime with _$ProjectTime {
   }) = _ProjectTime;
 
   factory ProjectTime.fromJson(Map<String, dynamic> json) => _$ProjectTimeFromJson(json);
+}
+
+@Freezed(fromJson: true, toJson: true)
+sealed class ProjectIdRequest with _$ProjectIdRequest {
+  const factory ProjectIdRequest({
+    required String projectId,
+  }) = _ProjectIdRequest;
+
+  factory ProjectIdRequest.fromJson(Map<String, dynamic> json) => _$ProjectIdRequestFromJson(json);
+}
+
+@Freezed(fromJson: true, toJson: true)
+sealed class ProjectPathRequest with _$ProjectPathRequest {
+  const factory ProjectPathRequest({
+    required String path,
+  }) = _ProjectPathRequest;
+
+  factory ProjectPathRequest.fromJson(Map<String, dynamic> json) => _$ProjectPathRequestFromJson(json);
 }

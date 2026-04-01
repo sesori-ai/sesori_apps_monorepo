@@ -4,6 +4,28 @@ part "session.freezed.dart";
 
 part "session.g.dart";
 
+/// Response from `GET /session`.
+@Freezed(fromJson: true, toJson: true)
+sealed class SessionListResponse with _$SessionListResponse {
+  const factory SessionListResponse({
+    required List<Session> items,
+  }) = _SessionListResponse;
+
+  factory SessionListResponse.fromJson(Map<String, dynamic> json) => _$SessionListResponseFromJson(json);
+}
+
+/// Request body for `POST /sessions`.
+@Freezed(fromJson: true, toJson: true)
+sealed class SessionListRequest with _$SessionListRequest {
+  const factory SessionListRequest({
+    required String projectId,
+    required int? start,
+    required int? limit,
+  }) = _SessionListRequest;
+
+  factory SessionListRequest.fromJson(Map<String, dynamic> json) => _$SessionListRequestFromJson(json);
+}
+
 @Freezed(fromJson: true, toJson: true)
 sealed class Session with _$Session {
   const factory Session({
@@ -75,4 +97,13 @@ sealed class SessionProject with _$SessionProject {
   }) = _SessionProject;
 
   factory SessionProject.fromJson(Map<String, dynamic> json) => _$SessionProjectFromJson(json);
+}
+
+@Freezed(fromJson: true, toJson: true)
+sealed class SessionIdRequest with _$SessionIdRequest {
+  const factory SessionIdRequest({
+    required String sessionId,
+  }) = _SessionIdRequest;
+
+  factory SessionIdRequest.fromJson(Map<String, dynamic> json) => _$SessionIdRequestFromJson(json);
 }

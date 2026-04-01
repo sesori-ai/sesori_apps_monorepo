@@ -29,3 +29,6 @@ NonSuccessCodeError _$NonSuccessCodeErrorFromJson(Map json) =>
       rawErrorString: json['rawErrorString'] as String?,
       $type: json['runtimeType'] as String?,
     );
+
+EmptyResponseError _$EmptyResponseErrorFromJson(Map json) =>
+    EmptyResponseError($type: json['runtimeType'] as String?);

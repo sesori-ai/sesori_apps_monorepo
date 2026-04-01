@@ -264,24 +264,24 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     );
 
     final messages = switch (messagesResponse) {
-      SuccessResponse(:final data) => data,
+      SuccessResponse(:final data) => data.messages,
       ErrorResponse(:final error) => throw error,
     };
 
     final pendingQuestions = switch (questionsResponse) {
-      SuccessResponse(:final data) => data,
+      SuccessResponse(:final data) => data.data,
       ErrorResponse() => <PendingQuestion>[],
     };
     final childSessions = switch (childrenResponse) {
-      SuccessResponse(:final data) => data,
+      SuccessResponse(:final data) => data.items,
       ErrorResponse() => <Session>[],
     };
     final statuses = switch (statusesResponse) {
-      SuccessResponse(:final data) => data,
+      SuccessResponse(:final data) => data.statuses,
       ErrorResponse() => <String, SessionStatus>{},
     };
     final agents = switch (agentsResponse) {
-      SuccessResponse(:final data) => data,
+      SuccessResponse(:final data) => data.agents,
       ErrorResponse(:final error) => () {
         loge("Failed to load agents: ${error.toString()}");
         return <AgentInfo>[];

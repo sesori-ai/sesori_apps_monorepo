@@ -6,6 +6,31 @@ part of 'session.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
+_SessionListResponse _$SessionListResponseFromJson(Map json) =>
+    _SessionListResponse(
+      items: (json['items'] as List<dynamic>)
+          .map((e) => Session.fromJson(Map<String, dynamic>.from(e as Map)))
+          .toList(),
+    );
+
+Map<String, dynamic> _$SessionListResponseToJson(
+  _SessionListResponse instance,
+) => <String, dynamic>{'items': instance.items.map((e) => e.toJson()).toList()};
+
+_SessionListRequest _$SessionListRequestFromJson(Map json) =>
+    _SessionListRequest(
+      projectId: json['projectId'] as String,
+      start: (json['start'] as num?)?.toInt(),
+      limit: (json['limit'] as num?)?.toInt(),
+    );
+
+Map<String, dynamic> _$SessionListRequestToJson(_SessionListRequest instance) =>
+    <String, dynamic>{
+      'projectId': instance.projectId,
+      'start': instance.start,
+      'limit': instance.limit,
+    };
+
 _Session _$SessionFromJson(Map json) => _Session(
   id: json['id'] as String,
   projectID: json['projectID'] as String,
@@ -103,3 +128,9 @@ Map<String, dynamic> _$SessionProjectToJson(_SessionProject instance) =>
       'name': instance.name,
       'worktree': instance.worktree,
     };
+
+_SessionIdRequest _$SessionIdRequestFromJson(Map json) =>
+    _SessionIdRequest(sessionId: json['sessionId'] as String);
+
+Map<String, dynamic> _$SessionIdRequestToJson(_SessionIdRequest instance) =>
+    <String, dynamic>{'sessionId': instance.sessionId};

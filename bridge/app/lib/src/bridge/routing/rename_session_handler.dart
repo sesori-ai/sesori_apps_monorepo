@@ -1,5 +1,3 @@
-import "dart:convert";
-
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -7,40 +5,27 @@ import "plugin_session_mapper.dart";
 import "request_handler.dart";
 
 /// Handles `PATCH /session/title` — renames a session.
-class RenameSessionHandler extends RequestHandler {
+class RenameSessionHandler extends BodyRequestHandler<RenameSessionRequest, Session> {
   final BridgePlugin _plugin;
 
-  RenameSessionHandler(this._plugin) : super(HttpMethod.patch, "/session/title");
+  RenameSessionHandler(this._plugin)
+    : super(HttpMethod.patch, "/session/title", fromJson: RenameSessionRequest.fromJson);
 
   @override
-  Future<RelayResponse> handle(
+  Future<Session> handle(
     RelayRequest request, {
+    required RenameSessionRequest body,
     required Map<String, String> pathParams,
     required Map<String, String> queryParams,
-    String? fragment,
+    required String? fragment,
   }) async {
-    final RenameSessionRequest renameRequest;
-    try {
-      final decoded = jsonDecode(request.body ?? "{}");
-      renameRequest = RenameSessionRequest.fromJson(
-        switch (decoded) {
-          final Map<String, dynamic> map => map,
-          _ => throw const FormatException("invalid JSON body"),
-        },
-      );
-    } on FormatException {
-      return buildErrorResponse(request, 400, "invalid JSON body");
-    } on Object {
-      return buildErrorResponse(request, 400, "invalid JSON body");
+    if (body.sessionId.isEmpty) {
+      throw buildErrorResponse(request, 400, "empty session id");
     }
-
     final updated = await _plugin.renameSession(
-      sessionId: renameRequest.sessionId,
-      title: renameRequest.title,
+      sessionId: body.sessionId,
+      title: body.title,
     );
-
-    final session = updated.toSharedSession();
-
-    return buildOkJsonResponse(request, jsonEncode(session.toJson()));
+    return updated.toSharedSession();
   }
 }
