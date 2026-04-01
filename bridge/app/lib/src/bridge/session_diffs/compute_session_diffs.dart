@@ -26,10 +26,26 @@ Future<List<FileDiff>> computeSessionDiffs({
     throw BaseBranchUnreachableException(message: "base branch '$baseBranch' is not reachable");
   }
 
+  final mergeBaseResult = await _runGit(
+    processRunner: processRunner,
+    worktreePath: worktreePath,
+    arguments: ["merge-base", baseBranch, "HEAD"],
+  );
+  if (mergeBaseResult.exitCode != 0) {
+    if (mergeBaseResult.exitCode == 1) {
+      throw BaseBranchUnreachableException(message: "no common ancestor between '$baseBranch' and HEAD");
+    }
+    throw const GitDiffQueryException(message: "git merge-base failed");
+  }
+  final mergeBaseSha = decodeOutput(mergeBaseResult.stdout).trim();
+  if (mergeBaseSha.isEmpty) {
+    throw const GitDiffQueryException(message: "git merge-base returned empty result");
+  }
+
   final nameStatusResult = await _runGit(
     processRunner: processRunner,
     worktreePath: worktreePath,
-    arguments: ["diff", "--no-ext-diff", "--no-color", "--no-renames", "--name-status", baseBranch],
+    arguments: ["diff", "--no-ext-diff", "--no-color", "--no-renames", "--name-status", mergeBaseSha],
   );
   if (nameStatusResult.exitCode != 0) {
     throw const GitDiffQueryException(message: "git diff --name-status failed");
@@ -38,7 +54,7 @@ Future<List<FileDiff>> computeSessionDiffs({
   final numstatResult = await _runGit(
     processRunner: processRunner,
     worktreePath: worktreePath,
-    arguments: ["diff", "--no-ext-diff", "--no-color", "--no-renames", "--numstat", baseBranch],
+    arguments: ["diff", "--no-ext-diff", "--no-color", "--no-renames", "--numstat", mergeBaseSha],
   );
   if (numstatResult.exitCode != 0) {
     throw const GitDiffQueryException(message: "git diff --numstat failed");
@@ -53,7 +69,7 @@ Future<List<FileDiff>> computeSessionDiffs({
     final beforeResult = await readBefore(
       processRunner: processRunner,
       worktreePath: worktreePath,
-      baseBranch: baseBranch,
+      baseBranch: mergeBaseSha,
       file: entry.file,
       status: entry.status,
     );
