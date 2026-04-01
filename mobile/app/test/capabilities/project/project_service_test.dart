@@ -19,17 +19,19 @@ void main() {
     });
 
     group("listProjects", () {
-      test("success: returns List<Project?> from GET /project", () async {
+      test("success: returns Projects from GET /projects", () async {
         // Arrange
-        final testProjects = [
-          testProject(path: "/home/user/project-1", name: "Project 1"),
-          testProject(path: "/home/user/project-2", name: "Project 2"),
-        ];
-        final successResponse = ApiResponse<List<Project?>>.success(testProjects);
+        final testProjects = Projects(
+          data: [
+            testProject(path: "/home/user/project-1", name: "Project 1"),
+            testProject(path: "/home/user/project-2", name: "Project 2"),
+          ],
+        );
+        final successResponse = ApiResponse<Projects>.success(testProjects);
 
         when(
-          () => mockClient.get<List<Project?>>(
-            "/project",
+          () => mockClient.get<Projects>(
+            "/projects",
             fromJson: any(named: "fromJson"),
           ),
         ).thenAnswer((_) async => successResponse);
@@ -38,24 +40,24 @@ void main() {
         final result = await projectService.listProjects();
 
         // Assert
-        expect(result, isA<SuccessResponse<List<Project?>>>());
-        expect((result as SuccessResponse<List<Project?>>).data, equals(testProjects));
+        expect(result, isA<SuccessResponse<Projects>>());
+        expect((result as SuccessResponse<Projects>).data, equals(testProjects));
         verify(
-          () => mockClient.get<List<Project?>>(
-            "/project",
+          () => mockClient.get<Projects>(
+            "/projects",
             fromJson: any(named: "fromJson"),
           ),
         ).called(1);
       });
 
-      test("error: propagates API error from GET /project", () async {
+      test("error: propagates API error from GET /projects", () async {
         // Arrange
         final apiError = ApiError.generic();
-        final errorResponse = ApiResponse<List<Project?>>.error(apiError);
+        final errorResponse = ApiResponse<Projects>.error(apiError);
 
         when(
-          () => mockClient.get<List<Project?>>(
-            "/project",
+          () => mockClient.get<Projects>(
+            "/projects",
             fromJson: any(named: "fromJson"),
           ),
         ).thenAnswer((_) async => errorResponse);
@@ -64,11 +66,11 @@ void main() {
         final result = await projectService.listProjects();
 
         // Assert
-        expect(result, isA<ErrorResponse<List<Project?>>>());
-        expect((result as ErrorResponse<List<Project?>>).error, equals(apiError));
+        expect(result, isA<ErrorResponse<Projects>>());
+        expect((result as ErrorResponse<Projects>).error, equals(apiError));
         verify(
-          () => mockClient.get<List<Project?>>(
-            "/project",
+          () => mockClient.get<Projects>(
+            "/projects",
             fromJson: any(named: "fromJson"),
           ),
         ).called(1);
@@ -77,19 +79,19 @@ void main() {
       test("verifies correct path passed to client.get()", () async {
         // Arrange
         when(
-          () => mockClient.get<List<Project?>>(
+          () => mockClient.get<Projects>(
             any(),
             fromJson: any(named: "fromJson"),
           ),
-        ).thenAnswer((_) async => ApiResponse.success([]));
+        ).thenAnswer((_) async => ApiResponse.success(const Projects(data: [])));
 
         // Act
         await projectService.listProjects();
 
         // Assert
         verify(
-          () => mockClient.get<List<Project?>>(
-            "/project",
+          () => mockClient.get<Projects>(
+            "/projects",
             fromJson: any(named: "fromJson"),
           ),
         ).called(1);
@@ -97,16 +99,16 @@ void main() {
     });
 
     group("getProject", () {
-      test("success: returns Project from GET /project/current", () async {
+      test("success: returns Project from POST /project/current", () async {
         // Arrange
         final testProj = testProject(path: "/home/user/current-project");
         final successResponse = ApiResponse<Project>.success(testProj);
 
         when(
-          () => mockClient.get<Project>(
+          () => mockClient.post<Project>(
             "/project/current",
             fromJson: any(named: "fromJson"),
-            headers: any(named: "headers"),
+            body: any(named: "body"),
           ),
         ).thenAnswer((_) async => successResponse);
 
@@ -117,24 +119,24 @@ void main() {
         expect(result, isA<SuccessResponse<Project>>());
         expect((result as SuccessResponse<Project>).data, equals(testProj));
         verify(
-          () => mockClient.get<Project>(
+          () => mockClient.post<Project>(
             "/project/current",
             fromJson: any(named: "fromJson"),
-            headers: {"x-project-id": "/home/user/current-project"},
+            body: const ProjectIdRequest(projectId: "/home/user/current-project"),
           ),
         ).called(1);
       });
 
-      test("error: propagates API error from GET /project/current", () async {
+      test("error: propagates API error from POST /project/current", () async {
         // Arrange
         final apiError = ApiError.dartHttpClient(Exception("Connection failed"));
         final errorResponse = ApiResponse<Project>.error(apiError);
 
         when(
-          () => mockClient.get<Project>(
+          () => mockClient.post<Project>(
             "/project/current",
             fromJson: any(named: "fromJson"),
-            headers: any(named: "headers"),
+            body: any(named: "body"),
           ),
         ).thenAnswer((_) async => errorResponse);
 
@@ -145,21 +147,21 @@ void main() {
         expect(result, isA<ErrorResponse<Project>>());
         expect((result as ErrorResponse<Project>).error, equals(apiError));
         verify(
-          () => mockClient.get<Project>(
+          () => mockClient.post<Project>(
             "/project/current",
             fromJson: any(named: "fromJson"),
-            headers: {"x-project-id": "/home/user/current-project"},
+            body: const ProjectIdRequest(projectId: "/home/user/current-project"),
           ),
         ).called(1);
       });
 
-      test("verifies correct path passed to client.get()", () async {
+      test("verifies correct path passed to client.post()", () async {
         // Arrange
         when(
-          () => mockClient.get<Project>(
+          () => mockClient.post<Project>(
             any(),
             fromJson: any(named: "fromJson"),
-            headers: any(named: "headers"),
+            body: any(named: "body"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(testProject()));
 
@@ -168,10 +170,10 @@ void main() {
 
         // Assert
         verify(
-          () => mockClient.get<Project>(
+          () => mockClient.post<Project>(
             "/project/current",
             fromJson: any(named: "fromJson"),
-            headers: {"x-project-id": "/home/user/current-project"},
+            body: const ProjectIdRequest(projectId: "/home/user/current-project"),
           ),
         ).called(1);
       });
