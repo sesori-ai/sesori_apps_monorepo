@@ -7,8 +7,6 @@ import "exceptions.dart";
 import "file_content_reader.dart";
 import "git_diff_parser.dart";
 
-const _maxDiffContentBytes = 100 * 1024;
-
 Future<List<FileDiff>> computeSessionDiffs({
   required String worktreePath,
   required String baseBranch,
@@ -16,7 +14,7 @@ Future<List<FileDiff>> computeSessionDiffs({
 }) async {
   if (!Directory(worktreePath).existsSync()) return const <FileDiff>[];
   if (baseBranch.isEmpty) {
-    throw const BaseCommitUnreachableException(message: "invalid base branch format: ''");
+    throw const BaseBranchUnreachableException(message: "invalid base branch format: ''");
   }
 
   final verifyBranch = await _runGit(
@@ -25,7 +23,7 @@ Future<List<FileDiff>> computeSessionDiffs({
     arguments: ["rev-parse", "--verify", baseBranch],
   );
   if (verifyBranch.exitCode != 0) {
-    throw BaseCommitUnreachableException(message: "base branch '$baseBranch' is not reachable");
+    throw BaseBranchUnreachableException(message: "base branch '$baseBranch' is not reachable");
   }
 
   final nameStatusResult = await _runGit(
@@ -76,6 +74,17 @@ Future<List<FileDiff>> computeSessionDiffs({
       continue;
     }
 
+    if (beforeResult is FileTooLarge || afterResult is FileTooLarge) {
+      diffs.add(
+        FileDiff.skipped(
+          file: entry.file,
+          reason: FileDiffSkipReason.tooLarge,
+          status: entry.status,
+        ),
+      );
+      continue;
+    }
+
     if (beforeResult is FileBinary || afterResult is FileBinary) {
       diffs.add(
         FileDiff.skipped(
@@ -89,7 +98,7 @@ Future<List<FileDiff>> computeSessionDiffs({
 
     final before = contentOrEmpty(beforeResult);
     final after = contentOrEmpty(afterResult);
-    if (before.length + after.length > _maxDiffContentBytes) {
+    if (before.length + after.length > maxFileContentBytes) {
       diffs.add(
         FileDiff.skipped(
           file: entry.file,

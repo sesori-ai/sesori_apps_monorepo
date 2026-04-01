@@ -1,7 +1,7 @@
-class BaseCommitUnreachableException implements Exception {
+class BaseBranchUnreachableException implements Exception {
   final String message;
 
-  const BaseCommitUnreachableException({required this.message});
+  const BaseBranchUnreachableException({required this.message});
 
   @override
   String toString() => message;

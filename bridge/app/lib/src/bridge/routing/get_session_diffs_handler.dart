@@ -48,7 +48,7 @@ class GetSessionDiffsHandler extends BodyRequestHandler<SessionIdRequest, Sessio
         baseBranch: baseBranch,
         processRunner: _processRunner,
       );
-    } on BaseCommitUnreachableException catch (error) {
+    } on BaseBranchUnreachableException catch (error) {
       throw buildErrorResponse(request, 422, error.message);
     } on GitDiffQueryException catch (error) {
       throw buildErrorResponse(request, 500, error.message);
