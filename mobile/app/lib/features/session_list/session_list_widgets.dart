@@ -227,6 +227,7 @@ class _ErrorView extends StatelessWidget {
           : loc.connectErrorNonSuccessCode(errorCode),
     DartHttpClientError(:final innerError) => loc.connectErrorConnectionFailed(innerError.toString()),
     JsonParsingError() => loc.connectErrorUnexpectedFormat,
+    EmptyResponseError() => loc.connectErrorUnexpectedFormat,
     GenericError() => loc.connectErrorUnknown,
   };
 }

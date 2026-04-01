@@ -83,7 +83,9 @@ void main() {
     blocTest<ProjectListCubit, ProjectListState>(
       "constructor triggers loadProjects: emits ProjectListLoaded with fetched projects",
       build: () {
-        when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.success([testProject()]));
+        when(
+          () => mockProjectService.listProjects(),
+        ).thenAnswer((_) async => ApiResponse.success(Projects(data: [testProject()])));
         return buildCubit();
       },
       expect: () => [
@@ -102,7 +104,9 @@ void main() {
     blocTest<ProjectListCubit, ProjectListState>(
       "load success with empty list: emits ProjectListLoaded with empty projects",
       build: () {
-        when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.success(<Project>[]));
+        when(
+          () => mockProjectService.listProjects(),
+        ).thenAnswer((_) async => ApiResponse.success(Projects(data: <Project>[])));
         return buildCubit();
       },
       expect: () => [
@@ -137,7 +141,7 @@ void main() {
       "hideProject: removes project from state and calls service.hideProject",
       build: () {
         when(() => mockProjectService.listProjects()).thenAnswer(
-          (_) async => ApiResponse.success([projectA, projectB, projectC]),
+          (_) async => ApiResponse.success(Projects(data: [projectA, projectB, projectC])),
         );
         when(
           () => mockProjectService.hideProject(projectId: any(named: "projectId")),
@@ -179,7 +183,9 @@ void main() {
     blocTest<ProjectListCubit, ProjectListState>(
       "createProject: calls service, refreshes project list, and returns true on success",
       build: () {
-        when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.success([projectA]));
+        when(
+          () => mockProjectService.listProjects(),
+        ).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
         when(
           () => mockProjectService.createProject(path: any(named: "path")),
         ).thenAnswer((_) async => ApiResponse.success(projectB));
@@ -188,7 +194,7 @@ void main() {
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
         when(() => mockProjectService.listProjects()).thenAnswer(
-          (_) async => ApiResponse.success([projectA, projectB]),
+          (_) async => ApiResponse.success(Projects(data: [projectA, projectB])),
         );
         final result = await cubit.createProject(path: "/dev/new");
         expect(result, isTrue);
@@ -215,7 +221,9 @@ void main() {
     blocTest<ProjectListCubit, ProjectListState>(
       "createProject: returns false and emits no state on API error",
       build: () {
-        when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.success([projectA]));
+        when(
+          () => mockProjectService.listProjects(),
+        ).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
         when(
           () => mockProjectService.createProject(path: any(named: "path")),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
@@ -237,7 +245,9 @@ void main() {
     blocTest<ProjectListCubit, ProjectListState>(
       "discoverProject: refreshes project list on success",
       build: () {
-        when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.success([projectA]));
+        when(
+          () => mockProjectService.listProjects(),
+        ).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
         when(
           () => mockProjectService.discoverProject(path: any(named: "path")),
         ).thenAnswer((_) async => ApiResponse.success(projectB));
@@ -246,7 +256,7 @@ void main() {
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
         when(() => mockProjectService.listProjects()).thenAnswer(
-          (_) async => ApiResponse.success([projectA, projectB]),
+          (_) async => ApiResponse.success(Projects(data: [projectA, projectB])),
         );
         final result = await cubit.discoverProject(path: "/dev/B");
         expect(result, isTrue);
@@ -277,7 +287,9 @@ void main() {
     blocTest<ProjectListCubit, ProjectListState>(
       "renameProject: calls service, refreshes project list, and returns true on success",
       build: () {
-        when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.success([projectA]));
+        when(
+          () => mockProjectService.listProjects(),
+        ).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
         when(
           () => mockProjectService.renameProject(
             projectId: any(named: "projectId"),
@@ -289,7 +301,7 @@ void main() {
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
         when(() => mockProjectService.listProjects()).thenAnswer(
-          (_) async => ApiResponse.success([projectA, projectB]),
+          (_) async => ApiResponse.success(Projects(data: [projectA, projectB])),
         );
         final result = await cubit.renameProject(projectId: "A", name: "New Name");
         expect(result, isTrue);
@@ -316,7 +328,9 @@ void main() {
     blocTest<ProjectListCubit, ProjectListState>(
       "renameProject: returns false and emits no state on API error",
       build: () {
-        when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.success([projectA]));
+        when(
+          () => mockProjectService.listProjects(),
+        ).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
         when(
           () => mockProjectService.renameProject(
             projectId: any(named: "projectId"),
@@ -341,7 +355,9 @@ void main() {
     blocTest<ProjectListCubit, ProjectListState>(
       "setActiveProject: calls connectionService.setActiveDirectory with project id",
       build: () {
-        when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.success(<Project>[]));
+        when(
+          () => mockProjectService.listProjects(),
+        ).thenAnswer((_) async => ApiResponse.success(Projects(data: <Project>[])));
         return buildCubit();
       },
       act: (cubit) => cubit.setActiveProject(testProject()),
@@ -362,7 +378,9 @@ void main() {
     blocTest<ProjectListCubit, ProjectListState>(
       "explicit loadProjects call: re-fetches and emits loading then loaded",
       build: () {
-        when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.success([testProject()]));
+        when(
+          () => mockProjectService.listProjects(),
+        ).thenAnswer((_) async => ApiResponse.success(Projects(data: [testProject()])));
         return buildCubit();
       },
       act: (cubit) async {
@@ -395,7 +413,7 @@ void main() {
           },
         });
         when(() => mockProjectService.listProjects()).thenAnswer(
-          (_) async => ApiResponse.success([globalProject, testProject()]),
+          (_) async => ApiResponse.success(Projects(data: [globalProject, testProject()])),
         );
         return buildCubit();
       },
@@ -421,13 +439,15 @@ void main() {
     blocTest<ProjectListCubit, ProjectListState>(
       "refreshProjects: emits loaded without loading state and returns true",
       build: () {
-        when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.success([testProject()]));
+        when(
+          () => mockProjectService.listProjects(),
+        ).thenAnswer((_) async => ApiResponse.success(Projects(data: [testProject()])));
         return buildCubit();
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
         when(() => mockProjectService.listProjects()).thenAnswer(
-          (_) async => ApiResponse.success([testProject(name: "Refreshed")]),
+          (_) async => ApiResponse.success(Projects(data: [testProject(name: "Refreshed")])),
         );
         final result = await cubit.refreshProjects();
         expect(result, isTrue);
@@ -449,7 +469,9 @@ void main() {
     blocTest<ProjectListCubit, ProjectListState>(
       "refreshProjects: keeps current state and returns false on API failure",
       build: () {
-        when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.success([testProject()]));
+        when(
+          () => mockProjectService.listProjects(),
+        ).thenAnswer((_) async => ApiResponse.success(Projects(data: [testProject()])));
         return buildCubit();
       },
       act: (cubit) async {
@@ -469,7 +491,9 @@ void main() {
     blocTest<ProjectListCubit, ProjectListState>(
       "projectActivity update: emits loaded state with updated activityById",
       build: () {
-        when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.success([testProject()]));
+        when(
+          () => mockProjectService.listProjects(),
+        ).thenAnswer((_) async => ApiResponse.success(Projects(data: [testProject()])));
         return buildCubit();
       },
       act: (cubit) async {
@@ -490,7 +514,7 @@ void main() {
     blocTest<ProjectListCubit, ProjectListState>(
       "projectActivity update: ignored when state is not ProjectListLoaded",
       build: () {
-        final completer = Completer<ApiResponse<List<Project>>>();
+        final completer = Completer<ApiResponse<Projects>>();
         when(() => mockProjectService.listProjects()).thenAnswer((_) => completer.future);
         return buildCubit();
       },
@@ -509,7 +533,9 @@ void main() {
       "_fetchProjects: seeds activityById from repository at load time",
       build: () {
         mockSseEventRepository.emitProjectActivity({_projectId: 2});
-        when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.success([testProject()]));
+        when(
+          () => mockProjectService.listProjects(),
+        ).thenAnswer((_) async => ApiResponse.success(Projects(data: [testProject()])));
         return buildCubit();
       },
       expect: () => [
@@ -525,7 +551,9 @@ void main() {
       "projectActivity update: activity clears when repository emits empty map",
       build: () {
         mockSseEventRepository.emitProjectActivity({_projectId: 1});
-        when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.success([testProject()]));
+        when(
+          () => mockProjectService.listProjects(),
+        ).thenAnswer((_) async => ApiResponse.success(Projects(data: [testProject()])));
         return buildCubit();
       },
       act: (cubit) async {
@@ -549,7 +577,7 @@ void main() {
           var fetchCount = 0;
           when(() => mockProjectService.listProjects()).thenAnswer((_) async {
             fetchCount++;
-            return ApiResponse.success([testProject()]);
+            return ApiResponse.success(Projects(data: [testProject()]));
           });
           mockRouteSource.emitRoute(AppRouteDef.projects);
           final cubit = buildCubit();
@@ -571,7 +599,7 @@ void main() {
           var fetchCount = 0;
           when(() => mockProjectService.listProjects()).thenAnswer((_) async {
             fetchCount++;
-            return ApiResponse.success([testProject()]);
+            return ApiResponse.success(Projects(data: [testProject()]));
           });
           mockRouteSource.emitRoute(AppRouteDef.projects);
           final cubit = buildCubit();
@@ -595,7 +623,7 @@ void main() {
           var fetchCount = 0;
           when(() => mockProjectService.listProjects()).thenAnswer((_) async {
             fetchCount++;
-            return ApiResponse.success([testProject()]);
+            return ApiResponse.success(Projects(data: [testProject()]));
           });
           final cubit = buildCubit(); // route = null
           async.elapse(Duration.zero);
@@ -614,7 +642,7 @@ void main() {
           var fetchCount = 0;
           when(() => mockProjectService.listProjects()).thenAnswer((_) async {
             fetchCount++;
-            return ApiResponse.success([testProject()]);
+            return ApiResponse.success(Projects(data: [testProject()]));
           });
           // Start on projects, navigate away, navigate back.
           mockRouteSource.emitRoute(AppRouteDef.projects);
@@ -638,7 +666,7 @@ void main() {
           var fetchCount = 0;
           when(() => mockProjectService.listProjects()).thenAnswer((_) async {
             fetchCount++;
-            return ApiResponse.success([testProject()]);
+            return ApiResponse.success(Projects(data: [testProject()]));
           });
           mockRouteSource.emitRoute(AppRouteDef.projects);
           final cubit = buildCubit();
@@ -661,7 +689,7 @@ void main() {
       "connection reconnect triggers silent refresh",
       build: () {
         when(() => mockProjectService.listProjects()).thenAnswer(
-          (_) async => ApiResponse.success([testProject()]),
+          (_) async => ApiResponse.success(Projects(data: [testProject()])),
         );
         return buildCubit();
       },
@@ -669,10 +697,14 @@ void main() {
         await Future<void>.delayed(Duration.zero);
         // Change mock to return updated data
         when(() => mockProjectService.listProjects()).thenAnswer(
-          (_) async => ApiResponse.success([
-            testProject(),
-            testProject(path: "/home/user/another-project"),
-          ]),
+          (_) async => ApiResponse.success(
+            Projects(
+              data: [
+                testProject(),
+                testProject(path: "/home/user/another-project"),
+              ],
+            ),
+          ),
         );
         // Emit connected status
         const config = ServerConnectionConfig(
@@ -703,7 +735,7 @@ void main() {
         await Future<void>.delayed(Duration.zero);
         // Switch mock to succeed so the reconnect-triggered load works.
         when(() => mockProjectService.listProjects()).thenAnswer(
-          (_) async => ApiResponse.success([testProject()]),
+          (_) async => ApiResponse.success(Projects(data: [testProject()])),
         );
         const config = ServerConnectionConfig(
           relayHost: "relay.example.com",
@@ -730,7 +762,7 @@ void main() {
       "rapid ConnectionConnected events coalesce into single refresh",
       build: () {
         when(() => mockProjectService.listProjects()).thenAnswer(
-          (_) async => ApiResponse.success([testProject()]),
+          (_) async => ApiResponse.success(Projects(data: [testProject()])),
         );
         return buildCubit();
       },
@@ -742,7 +774,7 @@ void main() {
 
         // Use a Completer so the first refresh stays in-flight while the
         // second ConnectionConnected arrives — this is what exercises the guard.
-        final completer = Completer<ApiResponse<List<Project>>>();
+        final completer = Completer<ApiResponse<Projects>>();
         when(() => mockProjectService.listProjects()).thenAnswer((_) => completer.future);
 
         const config = ServerConnectionConfig(
@@ -758,7 +790,7 @@ void main() {
         await Future<void>.delayed(Duration.zero);
 
         // Let the in-flight refresh complete.
-        completer.complete(ApiResponse.success([testProject()]));
+        completer.complete(ApiResponse.success(Projects(data: [testProject()])));
         await Future<void>.delayed(Duration.zero);
       },
       skip: 1,
@@ -774,7 +806,7 @@ void main() {
       "ConnectionConnected while state is loading does not trigger refresh",
       build: () {
         when(() => mockProjectService.listProjects()).thenAnswer(
-          (_) async => ApiResponse.success([testProject()]),
+          (_) async => ApiResponse.success(Projects(data: [testProject()])),
         );
 
         // Seed the status controller as Connected BEFORE building the cubit,
@@ -809,7 +841,7 @@ void main() {
         "stale signal triggers refresh with isRefreshing indicator",
         build: () {
           when(() => mockProjectService.listProjects()).thenAnswer(
-            (_) async => ApiResponse.success([testProject()]),
+            (_) async => ApiResponse.success(Projects(data: [testProject()])),
           );
           return buildCubit();
         },
@@ -874,7 +906,7 @@ void main() {
         "stale + ConnectionConnected refresh coalesced into single API call",
         build: () {
           when(() => mockProjectService.listProjects()).thenAnswer(
-            (_) async => ApiResponse.success([testProject()]),
+            (_) async => ApiResponse.success(Projects(data: [testProject()])),
           );
           return buildCubit();
         },

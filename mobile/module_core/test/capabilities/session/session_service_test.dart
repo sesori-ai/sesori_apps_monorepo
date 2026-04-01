@@ -30,7 +30,7 @@ void main() {
 
       when(
         () => mockClient.post<Session>(
-          "/session",
+          "/session/create",
           fromJson: any(named: "fromJson"),
           body: any(named: "body"),
         ),
@@ -47,7 +47,7 @@ void main() {
       expect(result, isA<SuccessResponse<Session>>());
       verify(
         () => mockClient.post<Session>(
-          "/session",
+          "/session/create",
           fromJson: any(named: "fromJson"),
           body: const CreateSessionRequest(
             projectId: "p1",
@@ -55,7 +55,7 @@ void main() {
             agent: null,
             model: null,
             dedicatedWorktree: true,
-          ).toJson(),
+          ),
         ),
       ).called(1);
     });
@@ -73,7 +73,7 @@ void main() {
 
       when(
         () => mockClient.patch<Session>(
-          "/session/s1",
+          "/session/update/archive",
           fromJson: any(named: "fromJson"),
           body: any(named: "body"),
         ),
@@ -88,26 +88,27 @@ void main() {
 
       verify(
         () => mockClient.patch<Session>(
-          "/session/s1",
+          "/session/update/archive",
           fromJson: any(named: "fromJson"),
           body: const UpdateSessionArchiveRequest(
+            sessionId: "s1",
             archived: true,
             deleteWorktree: true,
             deleteBranch: false,
             force: true,
-          ).toJson(),
+          ),
         ),
       ).called(1);
     });
 
     test("deleteSession sends DeleteSessionRequest as DELETE body", () async {
       when(
-        () => mockClient.delete<bool>(
-          "/session/s1",
+        () => mockClient.delete<SuccessEmptyResponse>(
+          "/session/delete",
           fromJson: any(named: "fromJson"),
           body: any(named: "body"),
         ),
-      ).thenAnswer((_) async => ApiResponse.success(true));
+      ).thenAnswer((_) async => ApiResponse.success(const SuccessEmptyResponse()));
 
       await service.deleteSession(
         sessionId: "s1",
@@ -117,14 +118,15 @@ void main() {
       );
 
       verify(
-        () => mockClient.delete<bool>(
-          "/session/s1",
+        () => mockClient.delete<SuccessEmptyResponse>(
+          "/session/delete",
           fromJson: any(named: "fromJson"),
           body: const DeleteSessionRequest(
+            sessionId: "s1",
             deleteWorktree: true,
             deleteBranch: true,
             force: false,
-          ).toJson(),
+          ),
         ),
       ).called(1);
     });
@@ -135,8 +137,8 @@ void main() {
       );
 
       when(
-        () => mockClient.delete<bool>(
-          "/session/s1",
+        () => mockClient.delete<SuccessEmptyResponse>(
+          "/session/delete",
           fromJson: any(named: "fromJson"),
           body: any(named: "body"),
         ),

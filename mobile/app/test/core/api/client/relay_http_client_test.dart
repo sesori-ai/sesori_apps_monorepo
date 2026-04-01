@@ -43,12 +43,12 @@ void main() {
             id: "req-1",
             status: 200,
             headers: {},
-            body: '"relay-result"',
+            body: '{"value":"relay-result"}',
           ),
         );
 
         // Act
-        final result = await client.get<String>("/session", fromJson: (json) => json as String);
+        final result = await client.get<String>("/session", fromJson: (json) => json["value"] as String);
 
         // Assert
         expect(result, isA<SuccessResponse<String>>());
@@ -66,14 +66,14 @@ void main() {
             id: "req-1",
             status: 200,
             headers: {},
-            body: '"ok"',
+            body: '{"value":"ok"}',
           ),
         );
 
         // Act
         final result = await client.post<String>(
           "/session",
-          fromJson: (json) => json as String,
+          fromJson: (json) => json["value"] as String,
           body: {"key": "value"},
         );
 
@@ -92,14 +92,14 @@ void main() {
             id: "req-1",
             status: 200,
             headers: {},
-            body: '"ok"',
+            body: '{"value":"ok"}',
           ),
         );
 
         // Act
         final result = await client.patch<String>(
           "/session/1",
-          fromJson: (json) => json as String,
+          fromJson: (json) => json["value"] as String,
           body: {"key": "value"},
         );
 
@@ -118,14 +118,14 @@ void main() {
             id: "req-1",
             status: 200,
             headers: {},
-            body: "null",
+            body: "{}",
           ),
         );
 
         // Act
         final result = await client.delete<String>(
           "/session/1",
-          fromJson: (json) => json?.toString() ?? "",
+          fromJson: (json) => json.toString(),
         );
 
         // Assert
@@ -143,7 +143,7 @@ void main() {
         // Act
         final result = await client.get<String>(
           "/session",
-          fromJson: (json) => json?.toString() ?? "",
+          fromJson: (json) => json.toString(),
         );
 
         // Assert
@@ -155,13 +155,13 @@ void main() {
       test("appends query parameters to the relay request path", () async {
         // Arrange
         when(() => mockRelayClient.sendRequest(any())).thenAnswer(
-          (_) async => const RelayResponse(id: "req-3", status: 200, headers: {}, body: "null"),
+          (_) async => const RelayResponse(id: "req-3", status: 200, headers: {}, body: "{}"),
         );
 
         // Act
         await client.get<String>(
           "/search",
-          fromJson: (json) => json?.toString() ?? "",
+          fromJson: (json) => json.toString(),
           queryParameters: {"q": "flutter", "limit": "10"},
         );
 
@@ -176,13 +176,13 @@ void main() {
       test("merges custom headers with request headers", () async {
         // Arrange
         when(() => mockRelayClient.sendRequest(any())).thenAnswer(
-          (_) async => const RelayResponse(id: "req-4", status: 200, headers: {}, body: "null"),
+          (_) async => const RelayResponse(id: "req-4", status: 200, headers: {}, body: "{}"),
         );
 
         // Act
         await client.get<String>(
           "/session",
-          fromJson: (json) => json?.toString() ?? "",
+          fromJson: (json) => json.toString(),
           headers: {"x-project-id": "/home/user/project"},
         );
 
@@ -195,13 +195,13 @@ void main() {
       test("merges custom headers with content-type header for POST", () async {
         // Arrange
         when(() => mockRelayClient.sendRequest(any())).thenAnswer(
-          (_) async => const RelayResponse(id: "req-5", status: 200, headers: {}, body: "null"),
+          (_) async => const RelayResponse(id: "req-5", status: 200, headers: {}, body: "{}"),
         );
 
         // Act
         await client.post<String>(
           "/session",
-          fromJson: (json) => json?.toString() ?? "",
+          fromJson: (json) => json.toString(),
           body: {"key": "value"},
           headers: {"x-project-id": "/home/user/project"},
         );
@@ -226,7 +226,7 @@ void main() {
         // Act
         final result = await client.get<String>(
           "/health",
-          fromJson: (json) => json?.toString() ?? "",
+          fromJson: (json) => json.toString(),
         );
 
         // Assert
@@ -243,7 +243,7 @@ void main() {
         // Act
         final result = await client.get<String>(
           "/health",
-          fromJson: (json) => json?.toString() ?? "",
+          fromJson: (json) => json.toString(),
         );
 
         // Assert
@@ -259,7 +259,7 @@ void main() {
         // Act
         final result = await client.post<String>(
           "/session",
-          fromJson: (json) => json?.toString() ?? "",
+          fromJson: (json) => json.toString(),
           body: null,
         );
 
@@ -276,7 +276,7 @@ void main() {
         // Act
         final result = await client.patch<String>(
           "/session/1",
-          fromJson: (json) => json?.toString() ?? "",
+          fromJson: (json) => json.toString(),
           body: null,
         );
 
@@ -293,7 +293,7 @@ void main() {
         // Act
         final result = await client.delete<String>(
           "/session/1",
-          fromJson: (json) => json?.toString() ?? "",
+          fromJson: (json) => json.toString(),
         );
 
         // Assert
@@ -323,7 +323,7 @@ void main() {
         );
 
         // Act
-        final result = await client.get<String>("/protected", fromJson: (json) => json?.toString() ?? "");
+        final result = await client.get<String>("/protected", fromJson: (json) => json.toString());
 
         // Assert: 401 should be re-mapped to NotAuthenticatedError
         expect(result, isA<ErrorResponse<String>>());

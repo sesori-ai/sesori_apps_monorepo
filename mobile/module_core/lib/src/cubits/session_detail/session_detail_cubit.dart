@@ -82,7 +82,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       if (isClosed) return;
 
       final latestAssistant = _latestAssistantMessage(snapshot.messages);
-      final childSessions = snapshot.childSessions
+      final childSessions = [...snapshot.childSessions]
         ..sort((a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0));
 
       // Filter statuses to only include child session IDs.

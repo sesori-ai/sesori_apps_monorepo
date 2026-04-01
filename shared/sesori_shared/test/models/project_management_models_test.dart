@@ -2,11 +2,11 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
-  group("CreateProjectRequest", () {
+  group("ProjectPathRequest", () {
     test("JSON roundtrip with valid path", () {
-      const original = CreateProjectRequest(path: "/Users/dev/my-project");
+      const original = ProjectPathRequest(path: "/Users/dev/my-project");
       final json = original.toJson();
-      final restored = CreateProjectRequest.fromJson(json);
+      final restored = ProjectPathRequest.fromJson(json);
 
       expect(restored, equals(original));
       expect(json, equals({"path": "/Users/dev/my-project"}));
@@ -14,7 +14,7 @@ void main() {
 
     test("fromJson throws on missing required field", () {
       expect(
-        () => CreateProjectRequest.fromJson({}),
+        () => ProjectPathRequest.fromJson({}),
         throwsA(isA<TypeError>()),
       );
     });

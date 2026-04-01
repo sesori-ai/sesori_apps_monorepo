@@ -4,7 +4,14 @@ library;
 // Re-exports from sesori_auth (move + re-export pattern)
 export "package:sesori_auth/sesori_auth.dart" show SecureStorage;
 export "package:sesori_auth/sesori_auth.dart"
-    show ApiError, DartHttpClientError, GenericError, JsonParsingError, NonSuccessCodeError, NotAuthenticatedError;
+    show
+        ApiError,
+        DartHttpClientError,
+        EmptyResponseError,
+        GenericError,
+        JsonParsingError,
+        NonSuccessCodeError,
+        NotAuthenticatedError;
 export "package:sesori_auth/sesori_auth.dart" show ApiResponse, ErrorResponse, SuccessResponse;
 export "package:sesori_auth/sesori_auth.dart" show HttpMethod, SafeApiClient;
 export "package:sesori_auth/sesori_auth.dart" show HttpApiClient;
