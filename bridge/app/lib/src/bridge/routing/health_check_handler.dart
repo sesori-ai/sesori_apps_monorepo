@@ -16,7 +16,10 @@ class HealthCheckHandler extends GetRequestHandler<SuccessEmptyResponse> {
     required Map<String, String> queryParams,
     required String? fragment,
   }) async {
-    await _plugin.healthCheck();
+    final healthy = await _plugin.healthCheck();
+    if (!healthy) {
+      throw buildErrorResponse(request, 503, "backend unhealthy");
+    }
     return const SuccessEmptyResponse();
   }
 }

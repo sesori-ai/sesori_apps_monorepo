@@ -449,6 +449,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fetchDirectoryFailed => 'Could not load directory contents';
 
   @override
+  String get fetchDirectoryRetry => 'Retry';
+
+  @override
+  String get fetchDirectoryGoBack => 'Go Back';
+
+  @override
   String get gitRepoBadge => 'git';
 
   @override

@@ -3,13 +3,13 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "request_handler.dart";
 
-/// Handles `GET /project/current` — returns project for a given project id.
+/// Handles `POST /project/current` — returns project for a given project id.
 class GetCurrentProjectHandler extends BodyRequestHandler<ProjectIdRequest, Project> {
   final BridgePlugin _plugin;
 
   GetCurrentProjectHandler(this._plugin)
     : super(
-        HttpMethod.get,
+        HttpMethod.post,
         "/project/current",
         fromJson: ProjectIdRequest.fromJson,
       );
@@ -23,6 +23,9 @@ class GetCurrentProjectHandler extends BodyRequestHandler<ProjectIdRequest, Proj
     required String? fragment,
   }) async {
     final projectId = body.projectId;
+    if (projectId.isEmpty) {
+      throw buildErrorResponse(request, 400, "empty project id");
+    }
 
     final pluginProject = await _plugin.getProject(projectId);
     final project = Project(

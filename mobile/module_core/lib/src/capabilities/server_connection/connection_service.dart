@@ -212,26 +212,9 @@ class ConnectionService {
         );
       }
 
-      final responseBody = response.body;
-      if (responseBody == null) {
-        throw const FormatException("Health response body is null");
-      }
-      // ignore: no_slop_linter/avoid_dynamic_type, JSON decode requires dynamic values
-      final json = jsonDecode(responseBody);
-      // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
-      if (json is! Map<String, dynamic>) {
-        throw const FormatException("Health response is not a JSON object");
-      }
-      final health = HealthResponse.fromJson(json);
-      if (!health.healthy) {
-        await relayClient.disconnect();
-        return ApiResponse.error(
-          ApiError.nonSuccessCode(
-            errorCode: 503,
-            rawErrorString: response.body,
-          ),
-        );
-      }
+      // A non-error status code is sufficient — the bridge only returns 200
+      // when the underlying backend is healthy. The response body is ignored.
+      const health = HealthResponse(healthy: true, version: "");
 
       _relayClient = relayClient;
       _authRetryCount = 0;

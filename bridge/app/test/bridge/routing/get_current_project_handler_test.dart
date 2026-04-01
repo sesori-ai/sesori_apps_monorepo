@@ -17,17 +17,34 @@ void main() {
 
     tearDown(() => plugin.close());
 
-    test("canHandle GET /project/current", () {
-      expect(handler.canHandle(makeRequest("GET", "/project/current")), isTrue);
+    test("canHandle POST /project/current", () {
+      expect(handler.canHandle(makeRequest("POST", "/project/current")), isTrue);
     });
 
-    test("does not handle GET /project", () {
-      expect(handler.canHandle(makeRequest("GET", "/project")), isFalse);
+    test("does not handle GET /project/current", () {
+      expect(handler.canHandle(makeRequest("GET", "/project/current")), isFalse);
+    });
+
+    test("does not handle POST /project", () {
+      expect(handler.canHandle(makeRequest("POST", "/project")), isFalse);
+    });
+
+    test("rejects empty project id", () async {
+      expect(
+        () => handler.handle(
+          makeRequest("POST", "/project/current"),
+          body: const ProjectIdRequest(projectId: ""),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", 400)),
+      );
     });
 
     test("returns typed project", () async {
       final response = await handler.handle(
-        makeRequest("GET", "/project/current"),
+        makeRequest("POST", "/project/current"),
         body: const ProjectIdRequest(projectId: "/tmp/project"),
         pathParams: {},
         queryParams: {},
@@ -45,7 +62,7 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("GET", "/project/current"),
+        makeRequest("POST", "/project/current"),
         body: const ProjectIdRequest(projectId: "/tmp/project"),
         pathParams: {},
         queryParams: {},

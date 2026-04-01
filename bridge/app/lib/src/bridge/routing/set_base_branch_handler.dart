@@ -5,8 +5,8 @@ import "request_handler.dart";
 
 /// Handles `PUT /project/base-branch` — sets the base branch for a project.
 ///
-/// Accepts a JSON body matching [SetBaseBranchRequest]. Pass `null` for
-/// [baseBranch] to reset the configured branch to the default.
+/// Accepts a JSON body matching [SetBaseBranchRequest]. Both [projectId] and
+/// [baseBranch] are required non-empty strings.
 class SetBaseBranchHandler extends BodyRequestHandler<SetBaseBranchRequest, SuccessEmptyResponse> {
   final ProjectsDao _projectsDao;
 

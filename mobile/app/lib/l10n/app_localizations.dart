@@ -865,6 +865,18 @@ abstract class AppLocalizations {
   /// **'Could not load directory contents'**
   String get fetchDirectoryFailed;
 
+  /// No description provided for @fetchDirectoryRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get fetchDirectoryRetry;
+
+  /// No description provided for @fetchDirectoryGoBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Go Back'**
+  String get fetchDirectoryGoBack;
+
   /// No description provided for @gitRepoBadge.
   ///
   /// In en, this message translates to:

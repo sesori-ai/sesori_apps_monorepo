@@ -1,3 +1,4 @@
+import "dart:convert";
 import "dart:io";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -153,7 +154,14 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
           force: body.force,
         );
         if (cleanupResult case CleanupRejected(:final rejection)) {
-          throw buildErrorResponse(request, 409, "cleanup rejected ${rejection.issues.join(", ")}");
+          // IMPORTANT: Do not change this response structure — the mobile app
+          // parses the 409 body as SessionCleanupRejection JSON.
+          throw RelayResponse(
+            id: request.id,
+            status: 409,
+            headers: {"content-type": "application/json"},
+            body: jsonEncode(rejection.toJson()),
+          );
         }
       }
     }

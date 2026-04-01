@@ -70,7 +70,7 @@ class OpenCodePlugin implements BridgePlugin {
   Stream<BridgeSseEvent> get events => _eventBuffer.stream;
 
   @override
-  Future<String> healthCheck() async {
+  Future<bool> healthCheck() async {
     final client = http.Client();
     try {
       final headers = <String, String>{};
@@ -81,7 +81,7 @@ class OpenCodePlugin implements BridgePlugin {
       final response = await client
           .get(Uri.parse("$_serverUrl/global/health"), headers: headers)
           .timeout(const Duration(seconds: 5));
-      return response.body;
+      return response.statusCode >= 200 && response.statusCode < 300;
     } finally {
       client.close();
     }

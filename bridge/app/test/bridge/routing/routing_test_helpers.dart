@@ -90,9 +90,9 @@ class FakeBridgePlugin implements BridgePlugin {
   Stream<BridgeSseEvent> get events => _controller.stream;
 
   @override
-  Future<String> healthCheck() async {
+  Future<bool> healthCheck() async {
     if (throwOnHealthCheck) throw Exception("healthCheck error");
-    return '{"status":"ok"}';
+    return true;
   }
 
   @override

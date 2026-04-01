@@ -312,10 +312,35 @@ class _DirectoryBrowserState extends State<_DirectoryBrowser> {
               ? const Center(child: CircularProgressIndicator())
               : _hasError
               ? Center(
-                  child: Text(
-                    loc.fetchDirectoryFailed,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.error,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
+                        const SizedBox(height: 12),
+                        Text(
+                          loc.fetchDirectoryFailed,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.error,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        FilledButton.icon(
+                          onPressed: _fetchEntries,
+                          icon: const Icon(Icons.refresh),
+                          label: Text(loc.fetchDirectoryRetry),
+                        ),
+                        if (_currentPath.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          OutlinedButton.icon(
+                            onPressed: _navigateUp,
+                            icon: const Icon(Icons.arrow_back),
+                            label: Text(loc.fetchDirectoryGoBack),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 )

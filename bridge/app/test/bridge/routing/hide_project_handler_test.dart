@@ -45,6 +45,19 @@ void main() {
       expect(hiddenIds, contains("p1"));
     });
 
+    test("rejects empty project id", () async {
+      expect(
+        () => handler.handle(
+          makeRequest("POST", "/project/hide"),
+          body: const ProjectIdRequest(projectId: ""),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", 400)),
+      );
+    });
+
     test("handles project IDs containing slashes", () async {
       const projectId = "/Users/alex/projects/my-app";
       final response = await handler.handle(

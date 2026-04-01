@@ -27,6 +27,9 @@ class HideProjectHandler extends BodyRequestHandler<ProjectIdRequest, SuccessEmp
     required String? fragment,
   }) async {
     final projectId = body.projectId;
+    if (projectId.isEmpty) {
+      throw buildErrorResponse(request, 400, "empty project id");
+    }
 
     await _store.hideProject(projectId: projectId);
 
