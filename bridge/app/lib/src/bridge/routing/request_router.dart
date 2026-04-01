@@ -16,6 +16,7 @@ import "get_current_project_handler.dart";
 import "get_project_questions_handler.dart";
 import "get_projects_handler.dart";
 import "get_providers_handler.dart";
+import "get_session_diffs_handler.dart";
 import "get_session_messages_handler.dart";
 import "get_session_questions_handler.dart";
 import "get_session_statuses_handler.dart";
@@ -101,6 +102,7 @@ class RequestRouter {
       GetBaseBranchHandler(projectsDao),
       SetBaseBranchHandler(projectsDao),
       FilesystemSuggestionsHandler(),
+      GetSessionDiffsHandler(sessionDao),
     ];
   }
 

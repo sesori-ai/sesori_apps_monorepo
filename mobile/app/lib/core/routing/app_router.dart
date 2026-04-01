@@ -6,6 +6,7 @@ import "../../features/login/login_screen.dart";
 import "../../features/new_session/new_session_screen.dart";
 import "../../features/project_list/project_list_screen.dart";
 import "../../features/session_detail/session_detail_screen.dart";
+import "../../features/session_diffs/session_diffs_screen.dart";
 import "../../features/session_list/session_list_screen.dart";
 import "../../features/settings/notification_settings_screen.dart";
 import "../di/injection.dart";
@@ -41,6 +42,10 @@ extension AppRouteToGoRoute on AppRouteDef {
               sessionTitle: sessionTitle,
               readOnly: readOnly,
             ),
+          AppRouteSessionDiffs(:final projectId, :final sessionId) => SessionDiffsScreen(
+            projectId: projectId,
+            sessionId: sessionId,
+          ),
         };
       },
     );

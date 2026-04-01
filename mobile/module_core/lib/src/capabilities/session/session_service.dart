@@ -164,6 +164,14 @@ class SessionService {
     );
   }
 
+  Future<ApiResponse<SessionDiffsResponse>> getSessionDiffs({required String sessionId}) {
+    return _client.post(
+      "/session/diffs",
+      fromJson: SessionDiffsResponse.fromJson,
+      body: SessionIdRequest(sessionId: sessionId),
+    );
+  }
+
   Future<ApiResponse<MessageWithPartsResponse>> getMessages(String sessionId) {
     return _client.post(
       "/session/messages",

@@ -11,11 +11,34 @@ part of 'file_diff.dart';
 
 // dart format off
 T _$identity<T>(T value) => value;
+FileDiff _$FileDiffFromJson(
+  Map<String, dynamic> json
+) {
+        switch (json['runtimeType']) {
+                  case 'content':
+          return FileDiffContent.fromJson(
+            json
+          );
+                case 'skipped':
+          return FileDiffSkipped.fromJson(
+            json
+          );
+        
+          default:
+            throw CheckedFromJsonException(
+  json,
+  'runtimeType',
+  'FileDiff',
+  'Invalid union type "${json['runtimeType']}"!'
+);
+        }
+      
+}
 
 /// @nodoc
 mixin _$FileDiff {
 
- String get file; String get before; String get after; int get additions; int get deletions; FileDiffStatus? get status;
+ String get file; FileDiffStatus? get status;
 /// Create a copy of FileDiff
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +51,16 @@ $FileDiffCopyWith<FileDiff> get copyWith => _$FileDiffCopyWithImpl<FileDiff>(thi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is FileDiff&&(identical(other.file, file) || other.file == file)&&(identical(other.before, before) || other.before == before)&&(identical(other.after, after) || other.after == after)&&(identical(other.additions, additions) || other.additions == additions)&&(identical(other.deletions, deletions) || other.deletions == deletions)&&(identical(other.status, status) || other.status == status));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is FileDiff&&(identical(other.file, file) || other.file == file)&&(identical(other.status, status) || other.status == status));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,file,before,after,additions,deletions,status);
+int get hashCode => Object.hash(runtimeType,file,status);
 
 @override
 String toString() {
-  return 'FileDiff(file: $file, before: $before, after: $after, additions: $additions, deletions: $deletions, status: $status)';
+  return 'FileDiff(file: $file, status: $status)';
 }
 
 
@@ -48,7 +71,7 @@ abstract mixin class $FileDiffCopyWith<$Res>  {
   factory $FileDiffCopyWith(FileDiff value, $Res Function(FileDiff) _then) = _$FileDiffCopyWithImpl;
 @useResult
 $Res call({
- String file, String before, String after, int additions, int deletions, FileDiffStatus? status
+ String file, FileDiffStatus? status
 });
 
 
@@ -65,14 +88,10 @@ class _$FileDiffCopyWithImpl<$Res>
 
 /// Create a copy of FileDiff
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? file = null,Object? before = null,Object? after = null,Object? additions = null,Object? deletions = null,Object? status = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? file = null,Object? status = freezed,}) {
   return _then(_self.copyWith(
 file: null == file ? _self.file : file // ignore: cast_nullable_to_non_nullable
-as String,before: null == before ? _self.before : before // ignore: cast_nullable_to_non_nullable
-as String,after: null == after ? _self.after : after // ignore: cast_nullable_to_non_nullable
-as String,additions: null == additions ? _self.additions : additions // ignore: cast_nullable_to_non_nullable
-as int,deletions: null == deletions ? _self.deletions : deletions // ignore: cast_nullable_to_non_nullable
-as int,status: freezed == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as String,status: freezed == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as FileDiffStatus?,
   ));
 }
@@ -84,31 +103,35 @@ as FileDiffStatus?,
 /// @nodoc
 @JsonSerializable()
 
-class _FileDiff implements FileDiff {
-  const _FileDiff({required this.file, required this.before, required this.after, required this.additions, required this.deletions, required this.status});
-  factory _FileDiff.fromJson(Map<String, dynamic> json) => _$FileDiffFromJson(json);
+class FileDiffContent implements FileDiff {
+  const FileDiffContent({required this.file, required this.before, required this.after, required this.additions, required this.deletions, required this.status, final  String? $type}): $type = $type ?? 'content';
+  factory FileDiffContent.fromJson(Map<String, dynamic> json) => _$FileDiffContentFromJson(json);
 
 @override final  String file;
-@override final  String before;
-@override final  String after;
-@override final  int additions;
-@override final  int deletions;
+ final  String before;
+ final  String after;
+ final  int additions;
+ final  int deletions;
 @override final  FileDiffStatus? status;
+
+@JsonKey(name: 'runtimeType')
+final String $type;
+
 
 /// Create a copy of FileDiff
 /// with the given fields replaced by the non-null parameter values.
 @override @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-_$FileDiffCopyWith<_FileDiff> get copyWith => __$FileDiffCopyWithImpl<_FileDiff>(this, _$identity);
+$FileDiffContentCopyWith<FileDiffContent> get copyWith => _$FileDiffContentCopyWithImpl<FileDiffContent>(this, _$identity);
 
 @override
 Map<String, dynamic> toJson() {
-  return _$FileDiffToJson(this, );
+  return _$FileDiffContentToJson(this, );
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _FileDiff&&(identical(other.file, file) || other.file == file)&&(identical(other.before, before) || other.before == before)&&(identical(other.after, after) || other.after == after)&&(identical(other.additions, additions) || other.additions == additions)&&(identical(other.deletions, deletions) || other.deletions == deletions)&&(identical(other.status, status) || other.status == status));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is FileDiffContent&&(identical(other.file, file) || other.file == file)&&(identical(other.before, before) || other.before == before)&&(identical(other.after, after) || other.after == after)&&(identical(other.additions, additions) || other.additions == additions)&&(identical(other.deletions, deletions) || other.deletions == deletions)&&(identical(other.status, status) || other.status == status));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -117,15 +140,15 @@ int get hashCode => Object.hash(runtimeType,file,before,after,additions,deletion
 
 @override
 String toString() {
-  return 'FileDiff(file: $file, before: $before, after: $after, additions: $additions, deletions: $deletions, status: $status)';
+  return 'FileDiff.content(file: $file, before: $before, after: $after, additions: $additions, deletions: $deletions, status: $status)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class _$FileDiffCopyWith<$Res> implements $FileDiffCopyWith<$Res> {
-  factory _$FileDiffCopyWith(_FileDiff value, $Res Function(_FileDiff) _then) = __$FileDiffCopyWithImpl;
+abstract mixin class $FileDiffContentCopyWith<$Res> implements $FileDiffCopyWith<$Res> {
+  factory $FileDiffContentCopyWith(FileDiffContent value, $Res Function(FileDiffContent) _then) = _$FileDiffContentCopyWithImpl;
 @override @useResult
 $Res call({
  String file, String before, String after, int additions, int deletions, FileDiffStatus? status
@@ -136,23 +159,100 @@ $Res call({
 
 }
 /// @nodoc
-class __$FileDiffCopyWithImpl<$Res>
-    implements _$FileDiffCopyWith<$Res> {
-  __$FileDiffCopyWithImpl(this._self, this._then);
+class _$FileDiffContentCopyWithImpl<$Res>
+    implements $FileDiffContentCopyWith<$Res> {
+  _$FileDiffContentCopyWithImpl(this._self, this._then);
 
-  final _FileDiff _self;
-  final $Res Function(_FileDiff) _then;
+  final FileDiffContent _self;
+  final $Res Function(FileDiffContent) _then;
 
 /// Create a copy of FileDiff
 /// with the given fields replaced by the non-null parameter values.
 @override @pragma('vm:prefer-inline') $Res call({Object? file = null,Object? before = null,Object? after = null,Object? additions = null,Object? deletions = null,Object? status = freezed,}) {
-  return _then(_FileDiff(
+  return _then(FileDiffContent(
 file: null == file ? _self.file : file // ignore: cast_nullable_to_non_nullable
 as String,before: null == before ? _self.before : before // ignore: cast_nullable_to_non_nullable
 as String,after: null == after ? _self.after : after // ignore: cast_nullable_to_non_nullable
 as String,additions: null == additions ? _self.additions : additions // ignore: cast_nullable_to_non_nullable
 as int,deletions: null == deletions ? _self.deletions : deletions // ignore: cast_nullable_to_non_nullable
 as int,status: freezed == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as FileDiffStatus?,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class FileDiffSkipped implements FileDiff {
+  const FileDiffSkipped({required this.file, required this.reason, required this.status, final  String? $type}): $type = $type ?? 'skipped';
+  factory FileDiffSkipped.fromJson(Map<String, dynamic> json) => _$FileDiffSkippedFromJson(json);
+
+@override final  String file;
+ final  FileDiffSkipReason reason;
+@override final  FileDiffStatus? status;
+
+@JsonKey(name: 'runtimeType')
+final String $type;
+
+
+/// Create a copy of FileDiff
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$FileDiffSkippedCopyWith<FileDiffSkipped> get copyWith => _$FileDiffSkippedCopyWithImpl<FileDiffSkipped>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$FileDiffSkippedToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is FileDiffSkipped&&(identical(other.file, file) || other.file == file)&&(identical(other.reason, reason) || other.reason == reason)&&(identical(other.status, status) || other.status == status));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,file,reason,status);
+
+@override
+String toString() {
+  return 'FileDiff.skipped(file: $file, reason: $reason, status: $status)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $FileDiffSkippedCopyWith<$Res> implements $FileDiffCopyWith<$Res> {
+  factory $FileDiffSkippedCopyWith(FileDiffSkipped value, $Res Function(FileDiffSkipped) _then) = _$FileDiffSkippedCopyWithImpl;
+@override @useResult
+$Res call({
+ String file, FileDiffSkipReason reason, FileDiffStatus? status
+});
+
+
+
+
+}
+/// @nodoc
+class _$FileDiffSkippedCopyWithImpl<$Res>
+    implements $FileDiffSkippedCopyWith<$Res> {
+  _$FileDiffSkippedCopyWithImpl(this._self, this._then);
+
+  final FileDiffSkipped _self;
+  final $Res Function(FileDiffSkipped) _then;
+
+/// Create a copy of FileDiff
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? file = null,Object? reason = null,Object? status = freezed,}) {
+  return _then(FileDiffSkipped(
+file: null == file ? _self.file : file // ignore: cast_nullable_to_non_nullable
+as String,reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
+as FileDiffSkipReason,status: freezed == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as FileDiffStatus?,
   ));
 }

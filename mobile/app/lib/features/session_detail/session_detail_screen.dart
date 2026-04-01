@@ -8,6 +8,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../core/constants.dart";
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
+import "../../core/routing/app_router.dart";
 import "../../core/widgets/agent_model_buttons.dart";
 import "../../core/widgets/agent_picker_sheet.dart";
 import "../../core/widgets/model_picker_sheet.dart";
@@ -27,7 +28,7 @@ class SessionDetailScreen extends StatelessWidget {
 
   const SessionDetailScreen({
     super.key,
-    this.projectId,
+    required this.projectId,
     required this.sessionId,
     this.sessionTitle,
     this.readOnly = false,
@@ -44,6 +45,8 @@ class SessionDetailScreen extends StatelessWidget {
         failureReporter: getIt<FailureReporter>(),
       ),
       child: _SessionDetailBody(
+        projectId: projectId,
+        sessionId: sessionId,
         sessionTitle: sessionTitle,
         readOnly: readOnly,
       ),
@@ -52,10 +55,17 @@ class SessionDetailScreen extends StatelessWidget {
 }
 
 class _SessionDetailBody extends StatefulWidget {
+  final String? projectId;
+  final String sessionId;
   final String? sessionTitle;
   final bool readOnly;
 
-  const _SessionDetailBody({this.sessionTitle, this.readOnly = false});
+  const _SessionDetailBody({
+    required this.projectId,
+    required this.sessionId,
+    required this.sessionTitle,
+    this.readOnly = false,
+  });
 
   @override
   State<_SessionDetailBody> createState() => _SessionDetailBodyState();
@@ -208,6 +218,19 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.difference_outlined),
+            tooltip: "File changes",
+            onPressed: () {
+              if (widget.projectId == null) return;
+              context.pushRoute(
+                AppRoute.sessionDiffs(
+                  projectId: widget.projectId!,
+                  sessionId: widget.sessionId,
+                ),
+              );
+            },
+          ),
           if (state
               case SessionDetailLoaded(
                 :final sessionStatus,
