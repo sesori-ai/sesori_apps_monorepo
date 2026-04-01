@@ -1,5 +1,3 @@
-import "dart:convert";
-
 import "package:sesori_bridge/src/bridge/routing/rename_project_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -35,19 +33,16 @@ void main() {
       expect(handler.canHandle(makeRequest("PATCH", "/project/p1")), isFalse);
     });
 
-    test("extracts projectId and parses name from body", () async {
+    test("extracts projectId and name from typed body", () async {
       plugin.renameProjectResult = const PluginProject(
         id: "p1",
         name: "New Name",
         time: null,
       );
 
-      await handler.handleInternal(
-        makeRequest(
-          "PATCH",
-          "/project/name",
-          body: jsonEncode(const RenameProjectRequest(projectId: "p1", name: "New Name").toJson()),
-        ),
+      await handler.handle(
+        makeRequest("PATCH", "/project/name"),
+        body: const RenameProjectRequest(projectId: "p1", name: "New Name"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -57,29 +52,25 @@ void main() {
       expect(plugin.lastRenameProjectName, equals("New Name"));
     });
 
-    test("returns 200 with mapped Project JSON", () async {
+    test("returns mapped Project", () async {
       plugin.renameProjectResult = const PluginProject(
         id: "p1",
         name: "Renamed Project",
         time: PluginProjectTime(created: 10, updated: 20),
       );
 
-      final response = await handler.handleInternal(
-        makeRequest(
-          "PATCH",
-          "/project/name",
-          body: jsonEncode(const RenameProjectRequest(projectId: "p1", name: "Renamed Project").toJson()),
-        ),
+      final result = await handler.handle(
+        makeRequest("PATCH", "/project/name"),
+        body: const RenameProjectRequest(projectId: "p1", name: "Renamed Project"),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
-      expect(response.status, equals(200));
-      expect(response.headers["content-type"], equals("application/json"));
-      final project = jsonDecode(response.body!) as Map<String, dynamic>;
-      expect(project["id"], equals("p1"));
-      expect(project["name"], equals("Renamed Project"));
+      expect(result.id, equals("p1"));
+      expect(result.name, equals("Renamed Project"));
+      expect(result.time?.created, equals(10));
+      expect(result.time?.updated, equals(20));
     });
   });
 }

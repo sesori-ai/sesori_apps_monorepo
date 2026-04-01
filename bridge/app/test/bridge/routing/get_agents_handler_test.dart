@@ -1,7 +1,6 @@
-import "dart:convert";
-
 import "package:sesori_bridge/src/bridge/routing/get_agents_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "routing_test_helpers.dart";
@@ -22,18 +21,15 @@ void main() {
       expect(handler.canHandle(makeRequest("GET", "/agent")), isTrue);
     });
 
-    test("returns JSON list", () async {
-      final response = await handler.handleInternal(
+    test("returns typed list", () async {
+      final response = await handler.handle(
         makeRequest("GET", "/agent"),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
-      expect(response.status, equals(200));
-      expect(response.headers["content-type"], equals("application/json"));
-      final body = jsonDecode(response.body!) as Map<String, dynamic>;
-      expect(body["agents"], isA<List<dynamic>>());
+      expect(response.agents, isA<List<AgentInfo>>());
     });
 
     test("maps all fields correctly", () async {
@@ -48,25 +44,20 @@ void main() {
         ),
       ];
 
-      final response = await handler.handleInternal(
+      final response = await handler.handle(
         makeRequest("GET", "/agent"),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
-      final json = jsonDecode(response.body!) as Map<String, dynamic>;
-      final body = json["agents"] as List<dynamic>;
-      final agent = body[0] as Map<String, dynamic>;
-      expect(agent["name"], equals("planner"));
-      expect(agent["description"], equals("Plans tasks"));
-      expect(agent["variant"], equals("high"));
-      expect(agent["mode"], equals("primary"));
-      expect(agent["hidden"], isTrue);
-
-      final model = agent["model"] as Map<String, dynamic>;
-      expect(model["modelID"], equals("gpt-4o"));
-      expect(model["providerID"], equals("openai"));
+      final agent = response.agents[0];
+      expect(agent.name, equals("planner"));
+      expect(agent.description, equals("Plans tasks"));
+      expect(agent.variant, equals("high"));
+      expect(agent.mode, equals(AgentMode.primary));
+      expect(agent.hidden, isTrue);
+      expect(agent.model, equals(const AgentModel(modelID: "gpt-4o", providerID: "openai")));
     });
 
     test("handles agents with and without model", () async {
@@ -89,17 +80,15 @@ void main() {
         ),
       ];
 
-      final response = await handler.handleInternal(
+      final response = await handler.handle(
         makeRequest("GET", "/agent"),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
-      final json = jsonDecode(response.body!) as Map<String, dynamic>;
-      final body = json["agents"] as List<dynamic>;
-      expect((body[0] as Map<String, dynamic>)["model"], isNotNull);
-      expect((body[1] as Map<String, dynamic>)["model"], isNull);
+      expect(response.agents[0].model, isNotNull);
+      expect(response.agents[1].model, isNull);
     });
   });
 }

@@ -1,7 +1,6 @@
-import "dart:convert";
-
 import "package:sesori_bridge/src/bridge/routing/get_session_statuses_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "routing_test_helpers.dart";
@@ -26,23 +25,19 @@ void main() {
       expect(handler.canHandle(makeRequest("GET", "/session")), isFalse);
     });
 
-    test("returns JSON map", () async {
+    test("returns typed statuses map", () async {
       plugin.sessionStatusesResult = {
         "s1": const PluginSessionStatus.idle(),
       };
 
-      final response = await handler.handleInternal(
+      final response = await handler.handle(
         makeRequest("GET", "/session/status"),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
-      expect(response.status, equals(200));
-      expect(response.headers["content-type"], equals("application/json"));
-      final body = jsonDecode(response.body!) as Map<String, dynamic>;
-      final statuses = body["statuses"] as Map<String, dynamic>;
-      expect(statuses.containsKey("s1"), isTrue);
+      expect(response.statuses.containsKey("s1"), isTrue);
     });
 
     test("maps idle, busy, and retry correctly", () async {
@@ -56,27 +51,19 @@ void main() {
         ),
       };
 
-      final response = await handler.handleInternal(
+      final response = await handler.handle(
         makeRequest("GET", "/session/status"),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
-      final body = jsonDecode(response.body!) as Map<String, dynamic>;
-      final statuses = body["statuses"] as Map<String, dynamic>;
-
-      final idle = statuses["idle-session"] as Map<String, dynamic>;
-      expect(idle["type"], equals("idle"));
-
-      final busy = statuses["busy-session"] as Map<String, dynamic>;
-      expect(busy["type"], equals("busy"));
-
-      final retry = statuses["retry-session"] as Map<String, dynamic>;
-      expect(retry["type"], equals("retry"));
-      expect(retry["attempt"], equals(2));
-      expect(retry["message"], equals("Rate limited"));
-      expect(retry["next"], equals(123456));
+      expect(response.statuses["idle-session"], equals(const SessionStatus.idle()));
+      expect(response.statuses["busy-session"], equals(const SessionStatus.busy()));
+      expect(
+        response.statuses["retry-session"],
+        equals(const SessionStatus.retry(attempt: 2, message: "Rate limited", next: 123456)),
+      );
     });
   });
 }

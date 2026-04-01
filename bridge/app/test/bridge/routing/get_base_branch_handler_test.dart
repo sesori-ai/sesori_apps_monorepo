@@ -1,8 +1,7 @@
-import "dart:convert";
-
 import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/routing/get_base_branch_handler.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_database.dart";
@@ -37,57 +36,43 @@ void main() {
     });
 
     test("returns baseBranch null for unknown project", () async {
-      final response = await handler.handleInternal(
-        makeRequest("POST", "/project/base-branch", body: jsonEncode({"projectId": "unknown-project"})),
+      final response = await handler.handle(
+        makeRequest("POST", "/project/base-branch"),
+        body: const ProjectIdRequest(projectId: "unknown-project"),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
-      expect(response.status, equals(200));
-      expect(response.headers["content-type"], equals("application/json"));
-      final body = switch (jsonDecode(response.body!)) {
-        final Map<String, dynamic> map => map,
-        _ => throw StateError("expected JSON object"),
-      };
-      expect(body.containsKey("baseBranch"), isTrue);
-      expect(body["baseBranch"], isNull);
+      expect(response.baseBranch, isNull);
     });
 
     test("returns configured baseBranch after it has been set", () async {
       await dao.setBaseBranch(projectId: "/Users/dev/my-app", baseBranch: "develop");
 
-      final response = await handler.handleInternal(
-        makeRequest("POST", "/project/base-branch", body: jsonEncode({"projectId": "/Users/dev/my-app"})),
+      final response = await handler.handle(
+        makeRequest("POST", "/project/base-branch"),
+        body: const ProjectIdRequest(projectId: "/Users/dev/my-app"),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
-      expect(response.status, equals(200));
-      final body = switch (jsonDecode(response.body!)) {
-        final Map<String, dynamic> map => map,
-        _ => throw StateError("expected JSON object"),
-      };
-      expect(body["baseBranch"], equals("develop"));
+      expect(response.baseBranch, equals("develop"));
     });
 
     test("returns baseBranch for another project", () async {
       await dao.setBaseBranch(projectId: "proj-1", baseBranch: "main");
 
-      final response = await handler.handleInternal(
-        makeRequest("POST", "/project/base-branch", body: jsonEncode({"projectId": "proj-1"})),
+      final response = await handler.handle(
+        makeRequest("POST", "/project/base-branch"),
+        body: const ProjectIdRequest(projectId: "proj-1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
-      expect(response.status, equals(200));
-      final body = switch (jsonDecode(response.body!)) {
-        final Map<String, dynamic> map => map,
-        _ => throw StateError("expected JSON object"),
-      };
-      expect(body["baseBranch"], equals("main"));
+      expect(response.baseBranch, equals("main"));
     });
   });
 }

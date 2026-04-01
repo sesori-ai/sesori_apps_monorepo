@@ -1,5 +1,3 @@
-import "dart:convert";
-
 import "package:sesori_bridge/src/bridge/routing/send_prompt_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -34,18 +32,13 @@ void main() {
     });
 
     test("extracts session id", () async {
-      await handler.handleInternal(
-        makeRequest(
-          "POST",
-          "/session/prompt_async",
-          body: jsonEncode(
-            const SendPromptRequest(
-              sessionId: "s1",
-              parts: [PromptPart.text(text: "Hello")],
-              agent: null,
-              model: null,
-            ).toJson(),
-          ),
+      await handler.handle(
+        makeRequest("POST", "/session/prompt_async"),
+        body: const SendPromptRequest(
+          sessionId: "s1",
+          parts: [PromptPart.text(text: "Hello")],
+          agent: null,
+          model: null,
         ),
         pathParams: {},
         queryParams: {},
@@ -56,21 +49,16 @@ void main() {
     });
 
     test("parses parts", () async {
-      await handler.handleInternal(
-        makeRequest(
-          "POST",
-          "/session/prompt_async",
-          body: jsonEncode(
-            const SendPromptRequest(
-              sessionId: "s1",
-              parts: [
-                PromptPart.text(text: "Hello"),
-                PromptPart.text(text: "World"),
-              ],
-              agent: null,
-              model: null,
-            ).toJson(),
-          ),
+      await handler.handle(
+        makeRequest("POST", "/session/prompt_async"),
+        body: const SendPromptRequest(
+          sessionId: "s1",
+          parts: [
+            PromptPart.text(text: "Hello"),
+            PromptPart.text(text: "World"),
+          ],
+          agent: null,
+          model: null,
         ),
         pathParams: {},
         queryParams: {},
@@ -84,18 +72,13 @@ void main() {
     });
 
     test("parses agent + model", () async {
-      await handler.handleInternal(
-        makeRequest(
-          "POST",
-          "/session/prompt_async",
-          body: jsonEncode(
-            const SendPromptRequest(
-              sessionId: "s1",
-              parts: [PromptPart.text(text: "Hello")],
-              agent: "planner",
-              model: PromptModel(providerID: "openai", modelID: "gpt-4o"),
-            ).toJson(),
-          ),
+      await handler.handle(
+        makeRequest("POST", "/session/prompt_async"),
+        body: const SendPromptRequest(
+          sessionId: "s1",
+          parts: [PromptPart.text(text: "Hello")],
+          agent: "planner",
+          model: PromptModel(providerID: "openai", modelID: "gpt-4o"),
         ),
         pathParams: {},
         queryParams: {},
@@ -108,20 +91,15 @@ void main() {
     });
 
     test("records correct args", () async {
-      await handler.handleInternal(
-        makeRequest(
-          "POST",
-          "/session/prompt_async",
-          body: jsonEncode(
-            const SendPromptRequest(
-              sessionId: "s42",
-              parts: [PromptPart.text(text: "Ship it")],
-              agent: "coder",
-              model: PromptModel(
-                providerID: "anthropic",
-                modelID: "claude-3-5-sonnet",
-              ),
-            ).toJson(),
+      await handler.handle(
+        makeRequest("POST", "/session/prompt_async"),
+        body: const SendPromptRequest(
+          sessionId: "s42",
+          parts: [PromptPart.text(text: "Ship it")],
+          agent: "coder",
+          model: PromptModel(
+            providerID: "anthropic",
+            modelID: "claude-3-5-sonnet",
           ),
         ),
         pathParams: {},
@@ -138,26 +116,38 @@ void main() {
     });
 
     test("returns 200", () async {
-      final response = await handler.handleInternal(
-        makeRequest(
-          "POST",
-          "/session/prompt_async",
-          body: jsonEncode(
-            const SendPromptRequest(
-              sessionId: "s1",
-              parts: [PromptPart.text(text: "Hello")],
-              agent: null,
-              model: null,
-            ).toJson(),
-          ),
+      final response = await handler.handle(
+        makeRequest("POST", "/session/prompt_async"),
+        body: const SendPromptRequest(
+          sessionId: "s1",
+          parts: [PromptPart.text(text: "Hello")],
+          agent: null,
+          model: null,
         ),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
-      expect(response.status, equals(200));
-      expect(response.body, equals("{}"));
+      expect(response, equals(const SuccessEmptyResponse()));
+    });
+
+    test("throws 400 on empty session id", () async {
+      expect(
+        () => handler.handle(
+          makeRequest("POST", "/session/prompt_async"),
+          body: const SendPromptRequest(
+            sessionId: "",
+            parts: [PromptPart.text(text: "Hello")],
+            agent: null,
+            model: null,
+          ),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
+      );
     });
   });
 }

@@ -1,4 +1,3 @@
-import "dart:convert";
 import "dart:io";
 
 import "package:sesori_bridge/src/bridge/routing/create_project_handler.dart";
@@ -39,12 +38,9 @@ void main() {
         time: PluginProjectTime(created: 10, updated: 20),
       );
 
-      final response = await handler.handleInternal(
-        makeRequest(
-          "POST",
-          "/project/create",
-          body: jsonEncode(ProjectPathRequest(path: path).toJson()),
-        ),
+      final result = await handler.handle(
+        makeRequest("POST", "/project/create"),
+        body: ProjectPathRequest(path: path),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -53,18 +49,10 @@ void main() {
       expect(Directory(path).existsSync(), isTrue);
       expect(Directory("$path/.git").existsSync(), isTrue);
       expect(plugin.lastGetCurrentProjectProjectId, equals(path));
-      expect(response.status, equals(200));
-      expect(response.headers["content-type"], equals("application/json"));
-
-      final body = switch (jsonDecode(response.body!)) {
-        final Map<String, dynamic> map => map,
-        _ => throw StateError("expected JSON object"),
-      };
-      expect(body["id"], equals("p-1"));
-      expect(body["name"], equals("New Project"));
-      final time = body["time"] as Map<String, dynamic>;
-      expect(time["created"], equals(10));
-      expect(time["updated"], equals(20));
+      expect(result.id, equals("p-1"));
+      expect(result.name, equals("New Project"));
+      expect(result.time?.created, equals(10));
+      expect(result.time?.updated, equals(20));
     });
 
     test(".gitignore is created with .worktrees/ entry after git init", () async {
@@ -75,18 +63,15 @@ void main() {
         time: PluginProjectTime(created: 30, updated: 40),
       );
 
-      final response = await handler.handleInternal(
-        makeRequest(
-          "POST",
-          "/project/create",
-          body: jsonEncode(ProjectPathRequest(path: path).toJson()),
-        ),
+      final result = await handler.handle(
+        makeRequest("POST", "/project/create"),
+        body: ProjectPathRequest(path: path),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
-      expect(response.status, equals(200));
+      expect(result.id, equals("p-2"));
 
       final gitignoreFile = File("$path/.gitignore");
       expect(gitignoreFile.existsSync(), isTrue);
@@ -98,104 +83,86 @@ void main() {
     test("path that already exists as directory returns 409", () async {
       final existing = Directory("${tempDir.path}/existing")..createSync();
 
-      final response = await handler.handleInternal(
-        makeRequest(
-          "POST",
-          "/project/create",
-          body: jsonEncode(ProjectPathRequest(path: existing.path).toJson()),
+      await expectLater(
+        () => handler.handle(
+          makeRequest("POST", "/project/create"),
+          body: ProjectPathRequest(path: existing.path),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(409))),
       );
-
-      expect(response.status, equals(409));
-      expect(response.body, contains("directory already exists"));
     });
 
     test("empty path returns 400", () async {
-      final response = await handler.handleInternal(
-        makeRequest(
-          "POST",
-          "/project/create",
-          body: jsonEncode(const ProjectPathRequest(path: "").toJson()),
+      await expectLater(
+        () => handler.handle(
+          makeRequest("POST", "/project/create"),
+          body: const ProjectPathRequest(path: ""),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("path must not be empty"));
     });
 
     test("relative path returns 400", () async {
-      final response = await handler.handleInternal(
-        makeRequest(
-          "POST",
-          "/project/create",
-          body: jsonEncode(const ProjectPathRequest(path: "relative/project").toJson()),
+      await expectLater(
+        () => handler.handle(
+          makeRequest("POST", "/project/create"),
+          body: const ProjectPathRequest(path: "relative/project"),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("path must be absolute"));
     });
 
     test("path traversal returns 400", () async {
-      final response = await handler.handleInternal(
-        makeRequest(
-          "POST",
-          "/project/create",
-          body: jsonEncode(ProjectPathRequest(path: "${tempDir.path}/../escape").toJson()),
+      await expectLater(
+        () => handler.handle(
+          makeRequest("POST", "/project/create"),
+          body: ProjectPathRequest(path: "${tempDir.path}/../escape"),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("path traversal not allowed"));
     });
 
     test("parent directory does not exist returns 400", () async {
       final path = "${tempDir.path}/missing-parent/project";
 
-      final response = await handler.handleInternal(
-        makeRequest(
-          "POST",
-          "/project/create",
-          body: jsonEncode(ProjectPathRequest(path: path).toJson()),
+      await expectLater(
+        () => handler.handle(
+          makeRequest("POST", "/project/create"),
+          body: ProjectPathRequest(path: path),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("parent directory does not exist"));
     });
 
     test("plugin getProject PluginApiException returns 500", () async {
       final path = "${tempDir.path}/plugin-error";
       plugin.injectGetProjectError = PluginApiException("/project", 503);
 
-      final response = await handler.handleInternal(
-        makeRequest(
-          "POST",
-          "/project/create",
-          body: jsonEncode(ProjectPathRequest(path: path).toJson()),
+      await expectLater(
+        () => handler.handle(
+          makeRequest("POST", "/project/create"),
+          body: ProjectPathRequest(path: path),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
+        throwsA(isA<PluginApiException>()),
       );
-
-      expect(response.status, equals(500));
-      expect(response.body, contains("Internal Server Error"));
     });
   });
 }

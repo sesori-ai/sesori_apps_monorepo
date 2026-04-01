@@ -1,8 +1,7 @@
-import "dart:convert";
-
 import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/routing/hide_project_handler.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_database.dart";
@@ -33,29 +32,31 @@ void main() {
     });
 
     test("returns 200 and stores hidden project id", () async {
-      final response = await handler.handleInternal(
-        makeRequest("POST", "/project/hide", body: jsonEncode({"projectId": "p1"})),
+      final response = await handler.handle(
+        makeRequest("POST", "/project/hide"),
+        body: const ProjectIdRequest(projectId: "p1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
       final hiddenIds = await dao.getHiddenProjectIds();
-      expect(response.status, equals(200));
+      expect(response, equals(const SuccessEmptyResponse()));
       expect(hiddenIds, contains("p1"));
     });
 
     test("handles project IDs containing slashes", () async {
       const projectId = "/Users/alex/projects/my-app";
-      final response = await handler.handleInternal(
-        makeRequest("POST", "/project/hide", body: jsonEncode({"projectId": projectId})),
+      final response = await handler.handle(
+        makeRequest("POST", "/project/hide"),
+        body: const ProjectIdRequest(projectId: projectId),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
       final hiddenIds = await dao.getHiddenProjectIds();
-      expect(response.status, equals(200));
+      expect(response, equals(const SuccessEmptyResponse()));
       expect(hiddenIds, contains(projectId));
     });
   });

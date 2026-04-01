@@ -1,5 +1,3 @@
-import "dart:convert";
-
 import "package:sesori_bridge/src/bridge/routing/get_session_questions_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -28,29 +26,28 @@ void main() {
     });
 
     test("returns 400 when session id is empty", () async {
-      final response = await handler.handleInternal(
-        makeRequest("POST", "/session/questions", body: jsonEncode({"sessionId": ""})),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
+      await expectLater(
+        () => handler.handle(
+          makeRequest("POST", "/session/questions"),
+          body: const SessionIdRequest(sessionId: ""),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("empty session id"));
     });
 
-    test("returns JSON object", () async {
-      final response = await handler.handleInternal(
-        makeRequest("POST", "/session/questions", body: jsonEncode({"sessionId": "s-1"})),
+    test("returns typed response", () async {
+      final response = await handler.handle(
+        makeRequest("POST", "/session/questions"),
+        body: const SessionIdRequest(sessionId: "s-1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
-      expect(response.status, equals(200));
-      expect(response.headers["content-type"], equals("application/json"));
-      final body = jsonDecode(response.body!) as Map<String, dynamic>;
-      expect(body["data"], isA<List<dynamic>>());
+      expect(response.data, isA<List<PendingQuestion>>());
     });
 
     test("maps fields including nested question info and options", () async {
@@ -73,18 +70,15 @@ void main() {
         ),
       ];
 
-      final response = await handler.handleInternal(
-        makeRequest("POST", "/session/questions", body: jsonEncode({"sessionId": "s-1"})),
+      final response = await handler.handle(
+        makeRequest("POST", "/session/questions"),
+        body: const SessionIdRequest(sessionId: "s-1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
-      final json = jsonDecode(response.body!) as Map<String, dynamic>;
-      final body = json["data"] as List<dynamic>;
-      final questions = body.map((q) => PendingQuestion.fromJson(q as Map<String, dynamic>)).toList();
-
-      final item = questions.first;
+      final item = response.data.first;
       expect(item.id, equals("q-1"));
       expect(item.sessionID, equals("s-1"));
 

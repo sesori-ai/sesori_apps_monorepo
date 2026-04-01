@@ -1,7 +1,6 @@
-import "dart:convert";
-
 import "package:sesori_bridge/src/bridge/routing/get_session_messages_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "routing_test_helpers.dart";
@@ -31,20 +30,22 @@ void main() {
     });
 
     test("returns 400 when session id is empty", () async {
-      final response = await handler.handleInternal(
-        makeRequest("POST", "/session/messages", body: jsonEncode({"sessionId": ""})),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
+      await expectLater(
+        () => handler.handle(
+          makeRequest("POST", "/session/messages"),
+          body: const SessionIdRequest(sessionId: ""),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("empty session id"));
     });
 
     test("uses request body sessionId as the session ID passed to plugin", () async {
-      await handler.handleInternal(
-        makeRequest("POST", "/session/messages", body: jsonEncode({"sessionId": "session-xyz"})),
+      await handler.handle(
+        makeRequest("POST", "/session/messages"),
+        body: const SessionIdRequest(sessionId: "session-xyz"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -52,27 +53,26 @@ void main() {
       expect(plugin.lastGetMessagesSessionId, equals("session-xyz"));
     });
 
-    test("returns 200 with application/json content-type", () async {
-      final response = await handler.handleInternal(
-        makeRequest("POST", "/session/messages", body: jsonEncode({"sessionId": "s1"})),
+    test("returns typed response", () async {
+      final response = await handler.handle(
+        makeRequest("POST", "/session/messages"),
+        body: const SessionIdRequest(sessionId: "s1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
-      expect(response.status, equals(200));
-      expect(response.headers["content-type"], equals("application/json"));
+      expect(response, isA<MessageWithPartsResponse>());
     });
 
     test("returns empty list when plugin has no messages", () async {
-      final response = await handler.handleInternal(
-        makeRequest("POST", "/session/messages", body: jsonEncode({"sessionId": "s1"})),
+      final response = await handler.handle(
+        makeRequest("POST", "/session/messages"),
+        body: const SessionIdRequest(sessionId: "s1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
-      final json = jsonDecode(response.body!) as Map<String, dynamic>;
-      final body = json["messages"] as List<dynamic>;
-      expect(body, isEmpty);
+      expect(response.messages, isEmpty);
     });
 
     test("returns serialised message list", () async {
@@ -101,16 +101,15 @@ void main() {
         ),
       ];
 
-      final response = await handler.handleInternal(
-        makeRequest("POST", "/session/messages", body: jsonEncode({"sessionId": "s1"})),
+      final response = await handler.handle(
+        makeRequest("POST", "/session/messages"),
+        body: const SessionIdRequest(sessionId: "s1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
-      final json = jsonDecode(response.body!) as Map<String, dynamic>;
-      final body = json["messages"] as List<dynamic>;
-      expect(body.length, equals(2));
+      expect(response.messages.length, equals(2));
     });
   });
 }

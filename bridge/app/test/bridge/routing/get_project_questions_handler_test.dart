@@ -1,5 +1,3 @@
-import "dart:convert";
-
 import "package:sesori_bridge/src/bridge/routing/get_project_questions_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -27,18 +25,16 @@ void main() {
       expect(handler.canHandle(makeRequest("GET", "/project/questions")), isFalse);
     });
 
-    test("returns JSON object on success", () async {
-      final response = await handler.handleInternal(
-        makeRequest("POST", "/project/questions", body: jsonEncode({"projectId": "/tmp/project"})),
+    test("returns typed response on success", () async {
+      final response = await handler.handle(
+        makeRequest("POST", "/project/questions"),
+        body: const ProjectIdRequest(projectId: "/tmp/project"),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
-      expect(response.status, equals(200));
-      expect(response.headers["content-type"], equals("application/json"));
-      final body = jsonDecode(response.body!) as Map<String, dynamic>;
-      expect(body["data"], isA<List<dynamic>>());
+      expect(response.data, isA<List<PendingQuestion>>());
     });
 
     test("maps fields including nested question info and options", () async {
@@ -61,18 +57,15 @@ void main() {
         ),
       ];
 
-      final response = await handler.handleInternal(
-        makeRequest("POST", "/project/questions", body: jsonEncode({"projectId": "/tmp/project"})),
+      final response = await handler.handle(
+        makeRequest("POST", "/project/questions"),
+        body: const ProjectIdRequest(projectId: "/tmp/project"),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
-      final json = jsonDecode(response.body!) as Map<String, dynamic>;
-      final body = json["data"] as List<dynamic>;
-      final questions = body.map((q) => PendingQuestion.fromJson(q as Map<String, dynamic>)).toList();
-
-      final item = questions.first;
+      final item = response.data.first;
       expect(item.id, equals("q-1"));
       expect(item.sessionID, equals("s-1"));
 
@@ -88,6 +81,19 @@ void main() {
       final second = question.options[1];
       expect(second.label, equals("B"));
       expect(second.description, equals("Option B"));
+    });
+
+    test("throws 400 on empty project id", () async {
+      expect(
+        () => handler.handle(
+          makeRequest("POST", "/project/questions"),
+          body: const ProjectIdRequest(projectId: ""),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
+      );
     });
   });
 }

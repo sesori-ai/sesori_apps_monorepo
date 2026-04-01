@@ -1,5 +1,3 @@
-import "dart:convert";
-
 import "package:sesori_bridge/src/bridge/routing/reply_to_question_handler.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -23,20 +21,15 @@ void main() {
     });
 
     test("extracts requestId, sessionId, and parses answers", () async {
-      await handler.handleInternal(
-        makeRequest(
-          "POST",
-          "/question/reply",
-          body: jsonEncode(
-            const ReplyToQuestionRequest(
-              requestId: "q1",
-              sessionId: "ses-1",
-              answers: [
-                ReplyAnswer(values: ["yes"]),
-                ReplyAnswer(values: ["tool-a", "tool-b"]),
-              ],
-            ).toJson(),
-          ),
+      await handler.handle(
+        makeRequest("POST", "/question/reply"),
+        body: const ReplyToQuestionRequest(
+          requestId: "q1",
+          sessionId: "ses-1",
+          answers: [
+            ReplyAnswer(values: ["yes"]),
+            ReplyAnswer(values: ["tool-a", "tool-b"]),
+          ],
         ),
         pathParams: {},
         queryParams: {},
@@ -55,38 +48,59 @@ void main() {
     });
 
     test("returns 200", () async {
-      final response = await handler.handleInternal(
-        makeRequest(
-          "POST",
-          "/question/reply",
-          body: jsonEncode(
-            const ReplyToQuestionRequest(
-              requestId: "q1",
-              sessionId: "ses-1",
-              answers: [
-                ReplyAnswer(values: ["ok"]),
-              ],
-            ).toJson(),
-          ),
+      final response = await handler.handle(
+        makeRequest("POST", "/question/reply"),
+        body: const ReplyToQuestionRequest(
+          requestId: "q1",
+          sessionId: "ses-1",
+          answers: [
+            ReplyAnswer(values: ["ok"]),
+          ],
         ),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
-      expect(response.status, equals(200));
-      expect(response.body, equals("{}"));
+      expect(response, equals(const SuccessEmptyResponse()));
     });
 
-    test("returns 400 on missing answers", () async {
-      final response = await handler.handleInternal(
-        makeRequest("POST", "/question/reply", body: "{}"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
+    test("returns 400 on empty request id", () async {
+      await expectLater(
+        () => handler.handle(
+          makeRequest("POST", "/question/reply"),
+          body: const ReplyToQuestionRequest(
+            requestId: "",
+            sessionId: "ses-1",
+            answers: [
+              ReplyAnswer(values: ["ok"]),
+            ],
+          ),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
+    });
 
-      expect(response.status, equals(400));
+    test("returns 400 on empty session id", () async {
+      expect(
+        () => handler.handle(
+          makeRequest("POST", "/question/reply"),
+          body: const ReplyToQuestionRequest(
+            requestId: "q1",
+            sessionId: "",
+            answers: [
+              ReplyAnswer(values: ["ok"]),
+            ],
+          ),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
+      );
     });
   });
 }

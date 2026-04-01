@@ -1,7 +1,6 @@
-import "dart:convert";
-
 import "package:sesori_bridge/src/bridge/routing/get_current_project_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "routing_test_helpers.dart";
@@ -26,21 +25,16 @@ void main() {
       expect(handler.canHandle(makeRequest("GET", "/project")), isFalse);
     });
 
-    test("returns JSON", () async {
-      final response = await handler.handleInternal(
-        makeRequest(
-          "GET",
-          "/project/current",
-          body: jsonEncode({"projectId": "/tmp/project"}),
-        ),
+    test("returns typed project", () async {
+      final response = await handler.handle(
+        makeRequest("GET", "/project/current"),
+        body: const ProjectIdRequest(projectId: "/tmp/project"),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
-      expect(response.status, equals(200));
-      expect(response.headers["content-type"], equals("application/json"));
-      expect(jsonDecode(response.body!), isA<Map<String, dynamic>>());
+      expect(response, isA<Project>());
     });
 
     test("maps fields", () async {
@@ -50,12 +44,9 @@ void main() {
         time: PluginProjectTime(created: 11, updated: 22),
       );
 
-      final response = await handler.handleInternal(
-        makeRequest(
-          "GET",
-          "/project/current",
-          body: jsonEncode({"projectId": "/tmp/project"}),
-        ),
+      final response = await handler.handle(
+        makeRequest("GET", "/project/current"),
+        body: const ProjectIdRequest(projectId: "/tmp/project"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -63,13 +54,10 @@ void main() {
 
       expect(plugin.lastGetCurrentProjectProjectId, equals("/tmp/project"));
 
-      final project = jsonDecode(response.body!) as Map<String, dynamic>;
-      expect(project["id"], equals("p1"));
-      expect(project["name"], equals("My Project"));
-
-      final time = project["time"] as Map<String, dynamic>;
-      expect(time["created"], equals(11));
-      expect(time["updated"], equals(22));
+      expect(response.id, equals("p1"));
+      expect(response.name, equals("My Project"));
+      expect(response.time?.created, equals(11));
+      expect(response.time?.updated, equals(22));
     });
   });
 }

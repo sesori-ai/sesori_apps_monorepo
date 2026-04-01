@@ -1,8 +1,7 @@
-import "dart:convert";
-
 import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/routing/set_base_branch_handler.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_database.dart";
@@ -37,29 +36,21 @@ void main() {
     });
 
     test("valid body returns 200 with empty success response", () async {
-      final response = await handler.handleInternal(
-        makeRequest(
-          "PUT",
-          "/project/base-branch",
-          body: jsonEncode({"projectId": "proj-1", "baseBranch": "develop"}),
-        ),
+      final response = await handler.handle(
+        makeRequest("PUT", "/project/base-branch"),
+        body: const SetBaseBranchRequest(projectId: "proj-1", baseBranch: "develop"),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
-      expect(response.status, equals(200));
-      expect(response.headers["content-type"], equals("application/json"));
-      expect(response.body, equals("{}"));
+      expect(response, equals(const SuccessEmptyResponse()));
     });
 
     test("stores baseBranch in DB after successful PUT", () async {
-      await handler.handleInternal(
-        makeRequest(
-          "PUT",
-          "/project/base-branch",
-          body: jsonEncode({"projectId": "proj-2", "baseBranch": "main"}),
-        ),
+      await handler.handle(
+        makeRequest("PUT", "/project/base-branch"),
+        body: const SetBaseBranchRequest(projectId: "proj-2", baseBranch: "main"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -70,35 +61,29 @@ void main() {
     });
 
     test("empty project id returns 400", () async {
-      final response = await handler.handleInternal(
-        makeRequest(
-          "PUT",
-          "/project/base-branch",
-          body: jsonEncode({"projectId": "", "baseBranch": "main"}),
+      await expectLater(
+        () => handler.handle(
+          makeRequest("PUT", "/project/base-branch"),
+          body: const SetBaseBranchRequest(projectId: "", baseBranch: "main"),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("empty project id"));
     });
 
     test("empty base branch returns 400", () async {
-      final response = await handler.handleInternal(
-        makeRequest(
-          "PUT",
-          "/project/base-branch",
-          body: jsonEncode({"projectId": "proj-4", "baseBranch": ""}),
+      await expectLater(
+        () => handler.handle(
+          makeRequest("PUT", "/project/base-branch"),
+          body: const SetBaseBranchRequest(projectId: "proj-4", baseBranch: ""),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("empty base branch"));
     });
   });
 }

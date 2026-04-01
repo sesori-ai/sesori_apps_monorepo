@@ -1,5 +1,3 @@
-import "dart:convert";
-
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/routing/create_session_handler.dart";
 import "package:sesori_bridge/src/bridge/worktree_service.dart";
@@ -58,26 +56,21 @@ void main() {
         baseCommit: "abc123def456",
       );
 
-      final response = await handler.handleInternal(
-        makeRequest(
-          "POST",
-          "/session/create",
-          body: jsonEncode(
-            const CreateSessionRequest(
-              projectId: "/repo",
-              dedicatedWorktree: true,
-              parts: [PromptPart.text(text: "Start")],
-              agent: null,
-              model: null,
-            ).toJson(),
-          ),
+      final result = await handler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "/repo",
+          dedicatedWorktree: true,
+          parts: [PromptPart.text(text: "Start")],
+          agent: null,
+          model: null,
         ),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
-      expect(response.status, equals(200));
+      expect(result.id, equals("s1"));
       expect(worktreeService.prepareCallCount, equals(1));
       expect(plugin.lastCreateSessionDirectory, equals("/repo/.worktrees/session-001"));
       expect(plugin.lastCreateSessionParts, isNotNull);
@@ -122,26 +115,21 @@ void main() {
         baseCommit: "abc123def456",
       );
 
-      final response = await handler.handleInternal(
-        makeRequest(
-          "POST",
-          "/session/create",
-          body: jsonEncode(
-            const CreateSessionRequest(
-              projectId: "/repo",
-              dedicatedWorktree: false,
-              parts: [PromptPart.text(text: "Start")],
-              agent: null,
-              model: null,
-            ).toJson(),
-          ),
+      final result = await handler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "/repo",
+          dedicatedWorktree: false,
+          parts: [PromptPart.text(text: "Start")],
+          agent: null,
+          model: null,
         ),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
-      expect(response.status, equals(200));
+      expect(result.id, equals("simple-1"));
       expect(worktreeService.prepareCallCount, equals(0));
       expect(worktreeService.resolveBaseBranchAndCommitCallCount, equals(1));
       expect(worktreeService.lastResolveBaseBranchProjectPath, equals("/repo"));
@@ -176,26 +164,21 @@ void main() {
           reason: "not git",
         );
 
-        final response = await handler.handleInternal(
-          makeRequest(
-            "POST",
-            "/session/create",
-            body: jsonEncode(
-              const CreateSessionRequest(
-                projectId: "/repo",
-                dedicatedWorktree: true,
-                parts: [PromptPart.text(text: "Start")],
-                agent: null,
-                model: null,
-              ).toJson(),
-            ),
+        final result = await handler.handle(
+          makeRequest("POST", "/session/create"),
+          body: const CreateSessionRequest(
+            projectId: "/repo",
+            dedicatedWorktree: true,
+            parts: [PromptPart.text(text: "Start")],
+            agent: null,
+            model: null,
           ),
           pathParams: {},
           queryParams: {},
           fragment: null,
         );
 
-        expect(response.status, equals(200));
+        expect(result.id, equals("fallback-1"));
         expect(worktreeService.prepareCallCount, equals(1));
         expect(plugin.lastCreateSessionDirectory, equals("/repo"));
         expect(plugin.lastCreateSessionParts, equals(const [PluginPromptPart.text(text: "Start")]));
@@ -239,34 +222,29 @@ void main() {
         baseCommit: "abc123def456",
       );
 
-      final response = await localHandler.handleInternal(
-        makeRequest(
-          "POST",
-          "/session/create",
-          body: jsonEncode(
-            const CreateSessionRequest(
-              projectId: "/repo",
-              dedicatedWorktree: true,
-              parts: [PromptPart.text(text: "Start")],
-              agent: null,
-              model: null,
-            ).toJson(),
+      await expectLater(
+        () => localHandler.handle(
+          makeRequest("POST", "/session/create"),
+          body: const CreateSessionRequest(
+            projectId: "/repo",
+            dedicatedWorktree: true,
+            parts: [PromptPart.text(text: "Start")],
+            agent: null,
+            model: null,
           ),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
+        throwsA(isA<StateError>()),
       );
-
-      expect(response.status, equals(500));
-      expect(response.body, contains("createSession failed"));
 
       final dbSession = await db.sessionDao.getSession(sessionId: "s1");
       expect(dbSession, isNull);
       await failingPlugin.close();
     });
 
-    test("response format remains unchanged", () async {
+    test("returns mapped Session fields", () async {
       plugin.createSessionResult = const PluginSession(
         id: "s1",
         projectID: "p1",
@@ -277,52 +255,42 @@ void main() {
         summary: PluginSessionSummary(additions: 1, deletions: 2, files: 3),
       );
 
-      final response = await handler.handleInternal(
-        makeRequest(
-          "POST",
-          "/session/create",
-          body: jsonEncode(
-            const CreateSessionRequest(
-              projectId: "/repo",
-              dedicatedWorktree: false,
-              parts: [PromptPart.text(text: "Start")],
-              agent: null,
-              model: null,
-            ).toJson(),
-          ),
+      final result = await handler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "/repo",
+          dedicatedWorktree: false,
+          parts: [PromptPart.text(text: "Start")],
+          agent: null,
+          model: null,
         ),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
-      final body = switch (jsonDecode(response.body!)) {
-        final Map<String, dynamic> map => map,
-        _ => throw StateError("expected JSON object"),
-      };
-      expect(body["id"], equals("s1"));
-      expect(body["projectID"], equals("p1"));
-      expect(body["directory"], equals("/repo"));
-      expect(body["parentID"], equals("parent-1"));
-      expect(body["title"], equals("Created"));
-      expect(body["time"], equals({"created": 11, "updated": 22, "archived": 33}));
-      expect(body["summary"], equals({"additions": 1, "deletions": 2, "files": 3}));
+      expect(result.id, equals("s1"));
+      expect(result.projectID, equals("p1"));
+      expect(result.directory, equals("/repo"));
+      expect(result.parentID, equals("parent-1"));
+      expect(result.title, equals("Created"));
+      expect(result.time?.created, equals(11));
+      expect(result.time?.updated, equals(22));
+      expect(result.time?.archived, equals(33));
+      expect(result.summary?.additions, equals(1));
+      expect(result.summary?.deletions, equals(2));
+      expect(result.summary?.files, equals(3));
     });
 
     test("passes parts, agent, and model to plugin", () async {
-      await handler.handleInternal(
-        makeRequest(
-          "POST",
-          "/session/create",
-          body: jsonEncode(
-            const CreateSessionRequest(
-              projectId: "/tmp",
-              dedicatedWorktree: false,
-              parts: [PromptPart.text(text: "Hello")],
-              agent: "architect",
-              model: PromptModel(providerID: "openai", modelID: "gpt-5"),
-            ).toJson(),
-          ),
+      await handler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "/tmp",
+          dedicatedWorktree: false,
+          parts: [PromptPart.text(text: "Hello")],
+          agent: "architect",
+          model: PromptModel(providerID: "openai", modelID: "gpt-5"),
         ),
         pathParams: {},
         queryParams: {},

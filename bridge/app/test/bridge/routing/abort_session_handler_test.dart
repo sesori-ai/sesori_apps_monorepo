@@ -1,6 +1,5 @@
-import "dart:convert";
-
 import "package:sesori_bridge/src/bridge/routing/abort_session_handler.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "routing_test_helpers.dart";
@@ -22,34 +21,33 @@ void main() {
     });
 
     test("extracts sessionId from request body", () async {
-      await handler.handleInternal(
-        makeRequest("POST", "/session/abort", body: jsonEncode({"sessionId": "s1"})),
+      await handler.handle(
+        makeRequest("POST", "/session/abort"),
+        body: const SessionIdRequest(sessionId: "s1"),
         pathParams: {},
         queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastAbortSessionId, equals("s1"));
     });
 
     test("returns 200", () async {
-      final response = await handler.handleInternal(
-        makeRequest("POST", "/session/abort", body: jsonEncode({"sessionId": "s1"})),
+      final response = await handler.handle(
+        makeRequest("POST", "/session/abort"),
+        body: const SessionIdRequest(sessionId: "s1"),
         pathParams: {},
         queryParams: {},
-        fragment: null,
       );
 
-      expect(response.status, equals(200));
-      expect(response.body, equals("{}"));
+      expect(response, equals(const SuccessEmptyResponse()));
     });
 
     test("records id", () async {
-      await handler.handleInternal(
-        makeRequest("POST", "/session/abort", body: jsonEncode({"sessionId": "session-xyz"})),
+      await handler.handle(
+        makeRequest("POST", "/session/abort"),
+        body: const SessionIdRequest(sessionId: "session-xyz"),
         pathParams: {},
         queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastAbortSessionId, equals("session-xyz"));

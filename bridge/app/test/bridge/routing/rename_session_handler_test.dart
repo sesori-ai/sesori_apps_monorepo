@@ -1,5 +1,3 @@
-import "dart:convert";
-
 import "package:sesori_bridge/src/bridge/routing/rename_session_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -35,7 +33,7 @@ void main() {
       expect(handler.canHandle(makeRequest("PATCH", "/session/s1")), isFalse);
     });
 
-    test("extracts sessionId and parses title from body", () async {
+    test("extracts sessionId and title from typed body", () async {
       plugin.renameSessionResult = const PluginSession(
         id: "s1",
         projectID: "p1",
@@ -46,12 +44,9 @@ void main() {
         summary: null,
       );
 
-      await handler.handleInternal(
-        makeRequest(
-          "PATCH",
-          "/session/title",
-          body: jsonEncode(const RenameSessionRequest(sessionId: "s1", title: "New Title").toJson()),
-        ),
+      await handler.handle(
+        makeRequest("PATCH", "/session/title"),
+        body: const RenameSessionRequest(sessionId: "s1", title: "New Title"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -61,7 +56,7 @@ void main() {
       expect(plugin.lastRenameSessionTitle, equals("New Title"));
     });
 
-    test("returns 200 with mapped Session JSON", () async {
+    test("returns mapped Session", () async {
       plugin.renameSessionResult = const PluginSession(
         id: "s1",
         projectID: "p1",
@@ -72,25 +67,38 @@ void main() {
         summary: PluginSessionSummary(additions: 4, deletions: 1, files: 2),
       );
 
-      final response = await handler.handleInternal(
-        makeRequest(
-          "PATCH",
-          "/session/title",
-          body: jsonEncode(const RenameSessionRequest(sessionId: "s1", title: "Renamed Session").toJson()),
-        ),
+      final result = await handler.handle(
+        makeRequest("PATCH", "/session/title"),
+        body: const RenameSessionRequest(sessionId: "s1", title: "Renamed Session"),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
-      expect(response.status, equals(200));
-      expect(response.headers["content-type"], equals("application/json"));
-      final session = jsonDecode(response.body!) as Map<String, dynamic>;
-      expect(session["id"], equals("s1"));
-      expect(session["projectID"], equals("p1"));
-      expect(session["directory"], equals("/tmp"));
-      expect(session["parentID"], equals("parent-1"));
-      expect(session["title"], equals("Renamed Session"));
+      expect(result.id, equals("s1"));
+      expect(result.projectID, equals("p1"));
+      expect(result.directory, equals("/tmp"));
+      expect(result.parentID, equals("parent-1"));
+      expect(result.title, equals("Renamed Session"));
+      expect(result.time?.created, equals(10));
+      expect(result.time?.updated, equals(20));
+      expect(result.time?.archived, equals(30));
+      expect(result.summary?.additions, equals(4));
+      expect(result.summary?.deletions, equals(1));
+      expect(result.summary?.files, equals(2));
+    });
+
+    test("throws 400 on empty session id", () async {
+      expect(
+        () => handler.handle(
+          makeRequest("PATCH", "/session/title"),
+          body: const RenameSessionRequest(sessionId: "", title: "New Title"),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
+      );
     });
   });
 }
