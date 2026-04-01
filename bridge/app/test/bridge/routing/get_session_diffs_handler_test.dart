@@ -1,8 +1,10 @@
+import "dart:convert";
 import "dart:io";
 
 import "package:sesori_bridge/src/bridge/persistence/daos/session_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/routing/get_session_diffs_handler.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_database.dart";
@@ -32,19 +34,23 @@ void main() {
       }
     });
 
-    test("canHandle accepts GET /session/:id/diff", () {
-      expect(handler.canHandle(makeRequest("GET", "/session/s1/diff")), isTrue);
+    test("canHandle accepts POST /session/diffs", () {
+      expect(handler.canHandle(makeRequest("POST", "/session/diffs")), isTrue);
     });
 
     test("canHandle rejects other method and path", () {
+      expect(handler.canHandle(makeRequest("GET", "/session/diffs")), isFalse);
       expect(handler.canHandle(makeRequest("POST", "/session/s1/diff")), isFalse);
-      expect(handler.canHandle(makeRequest("GET", "/session/s1/message")), isFalse);
     });
 
     test("returns 404 when session is missing", () async {
       final response = await handler.handleInternal(
-        makeRequest("GET", "/session/missing/diff"),
-        pathParams: {"id": "missing"},
+        makeRequest(
+          "POST",
+          "/session/diffs",
+          body: jsonEncode(const SessionIdRequest(sessionId: "missing")),
+        ),
+        pathParams: {},
         queryParams: {},
         fragment: null,
       );
@@ -54,7 +60,7 @@ void main() {
       expect(processRunner.invocations, isEmpty);
     });
 
-    test("returns [] when session has null worktreePath", () async {
+    test("returns empty diffs when session has null worktreePath", () async {
       await sessionDao.insertSession(
         sessionId: "s1",
         projectId: "project-1",
@@ -63,22 +69,26 @@ void main() {
         worktreePath: null,
         branchName: "session-001",
         baseBranch: "main",
-        baseCommit: "abc123",
+        baseCommit: "main",
       );
 
       final response = await handler.handleInternal(
-        makeRequest("GET", "/session/s1/diff"),
-        pathParams: {"id": "s1"},
+        makeRequest(
+          "POST",
+          "/session/diffs",
+          body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
+        ),
+        pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
       expect(response.status, equals(200));
-      expect(response.body, equals("[]"));
+      expect(response.body, equals('{"diffs":[]}'));
       expect(processRunner.invocations, isEmpty);
     });
 
-    test("returns [] when session has null baseCommit", () async {
+    test("returns empty diffs when session has null baseBranch", () async {
       await sessionDao.insertSession(
         sessionId: "s1",
         projectId: "project-1",
@@ -86,23 +96,27 @@ void main() {
         createdAt: 123,
         worktreePath: tempDir.path,
         branchName: "session-001",
-        baseBranch: "main",
+        baseBranch: null,
         baseCommit: null,
       );
 
       final response = await handler.handleInternal(
-        makeRequest("GET", "/session/s1/diff"),
-        pathParams: {"id": "s1"},
+        makeRequest(
+          "POST",
+          "/session/diffs",
+          body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
+        ),
+        pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
       expect(response.status, equals(200));
-      expect(response.body, equals("[]"));
+      expect(response.body, equals('{"diffs":[]}'));
       expect(processRunner.invocations, isEmpty);
     });
 
-    test("returns [] when worktree directory does not exist", () async {
+    test("returns empty diffs when worktree directory does not exist", () async {
       await sessionDao.insertSession(
         sessionId: "s1",
         projectId: "project-1",
@@ -111,22 +125,26 @@ void main() {
         worktreePath: "${tempDir.path}/does-not-exist",
         branchName: "session-001",
         baseBranch: "main",
-        baseCommit: "abc123",
+        baseCommit: "main",
       );
 
       final response = await handler.handleInternal(
-        makeRequest("GET", "/session/s1/diff"),
-        pathParams: {"id": "s1"},
+        makeRequest(
+          "POST",
+          "/session/diffs",
+          body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
+        ),
+        pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
       expect(response.status, equals(200));
-      expect(response.body, equals("[]"));
+      expect(response.body, equals('{"diffs":[]}'));
       expect(processRunner.invocations, isEmpty);
     });
 
-    test("returns 422 when base commit is unreachable", () async {
+    test("returns 422 when base branch is unreachable", () async {
       await sessionDao.insertSession(
         sessionId: "s1",
         projectId: "project-1",
@@ -135,7 +153,7 @@ void main() {
         worktreePath: tempDir.path,
         branchName: "session-001",
         baseBranch: "main",
-        baseCommit: "abc123",
+        baseCommit: "main",
       );
 
       processRunner.responder = ({required List<String> arguments}) {
@@ -146,14 +164,18 @@ void main() {
       };
 
       final response = await handler.handleInternal(
-        makeRequest("GET", "/session/s1/diff"),
-        pathParams: {"id": "s1"},
+        makeRequest(
+          "POST",
+          "/session/diffs",
+          body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
+        ),
+        pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
       expect(response.status, equals(422));
-      expect(response.body, equals("base commit 'abc123' is not reachable"));
+      expect(response.body, equals("base branch 'main' is not reachable"));
     });
 
     test("returns 500 when git diff fails", () async {
@@ -165,7 +187,7 @@ void main() {
         worktreePath: tempDir.path,
         branchName: "session-001",
         baseBranch: "main",
-        baseCommit: "abc123",
+        baseCommit: "main",
       );
 
       processRunner.responder = ({required List<String> arguments}) {
@@ -179,8 +201,12 @@ void main() {
       };
 
       final response = await handler.handleInternal(
-        makeRequest("GET", "/session/s1/diff"),
-        pathParams: {"id": "s1"},
+        makeRequest(
+          "POST",
+          "/session/diffs",
+          body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
+        ),
+        pathParams: {},
         queryParams: {},
         fragment: null,
       );
@@ -189,16 +215,28 @@ void main() {
       expect(response.body, equals("git diff --name-status failed"));
     });
 
-    test("returns 400 when session id is missing", () async {
+    test("returns 400 when request body is missing", () async {
       final response = await handler.handleInternal(
-        makeRequest("GET", "/session//diff"),
+        makeRequest("POST", "/session/diffs"),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
       expect(response.status, equals(400));
-      expect(response.body, equals("missing session id"));
+      expect(response.body, equals("Bad Request: missing JSON body"));
+    });
+
+    test("returns 400 when sessionId is missing in body", () async {
+      final response = await handler.handleInternal(
+        makeRequest("POST", "/session/diffs", body: "{}"),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response.status, equals(400));
+      expect(response.body, contains("Bad Request: invalid JSON body"));
     });
   });
 }

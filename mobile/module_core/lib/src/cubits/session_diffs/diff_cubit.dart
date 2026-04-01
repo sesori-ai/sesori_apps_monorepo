@@ -25,7 +25,7 @@ class DiffCubit extends Cubit<DiffState> {
 
       switch (response) {
         case SuccessResponse(:final data):
-          emit(DiffState.loaded(files: data));
+          emit(DiffState.loaded(files: data.diffs));
         case ErrorResponse(:final error):
           emit(DiffState.failed(error: error));
       }

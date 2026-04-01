@@ -41,6 +41,7 @@ export "src/models/sesori/send_prompt_request.dart";
 export "src/models/sesori/sesori_sse_event.dart";
 export "src/models/sesori/session.dart";
 export "src/models/sesori/session_cleanup_rejection.dart";
+export "src/models/sesori/session_diffs_response.dart";
 export "src/models/sesori/session_status.dart";
 export "src/models/sesori/set_base_branch_request.dart";
 export "src/models/sesori/success_empty_response.dart";

@@ -4,6 +4,7 @@ import "dart:io";
 import "package:sesori_bridge/src/bridge/persistence/daos/session_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/routing/get_session_diffs_handler.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_database.dart";
@@ -49,7 +50,7 @@ void main() {
         worktreePath: tempDir.path,
         branchName: "session-001",
         baseBranch: "main",
-        baseCommit: "abc123",
+        baseCommit: "main",
       );
 
       processRunner.responder = ({required List<String> arguments}) {
@@ -73,10 +74,10 @@ void main() {
           );
         }
         if (arguments.length >= 2 && arguments[0] == "show") {
-          if (arguments[1] == "abc123:lib/modified.dart") {
+          if (arguments[1] == "main:lib/modified.dart") {
             return ProcessResult(1, 0, "modified before\n", "");
           }
-          if (arguments[1] == "abc123:lib/deleted.dart") {
+          if (arguments[1] == "main:lib/deleted.dart") {
             return ProcessResult(1, 0, "deleted before\n", "");
           }
           return ProcessResult(1, 128, "", "fatal");
@@ -85,16 +86,20 @@ void main() {
       };
 
       final response = await handler.handleInternal(
-        makeRequest("GET", "/session/s1/diff"),
-        pathParams: {"id": "s1"},
+        makeRequest(
+          "POST",
+          "/session/diffs",
+          body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
+        ),
+        pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
       expect(response.status, equals(200));
       final body = switch (jsonDecode(response.body!)) {
-        final List<dynamic> list => list,
-        _ => throw StateError("expected JSON list"),
+        {"diffs": final List<dynamic> list} => list,
+        _ => throw StateError("expected JSON object with diffs"),
       };
       expect(body, hasLength(3));
 
@@ -125,7 +130,7 @@ void main() {
       expect(numstatCall.single.arguments, contains("--no-renames"));
     });
 
-    test("filters generated files", () async {
+    test("includes generated files too", () async {
       File("${tempDir.path}/lib/kept.dart")
         ..createSync(recursive: true)
         ..writeAsStringSync("after\n");
@@ -138,7 +143,7 @@ void main() {
         worktreePath: tempDir.path,
         branchName: "session-001",
         baseBranch: "main",
-        baseCommit: "abc123",
+        baseCommit: "main",
       );
 
       processRunner.responder = ({required List<String> arguments}) {
@@ -158,18 +163,25 @@ void main() {
       };
 
       final response = await handler.handleInternal(
-        makeRequest("GET", "/session/s1/diff"),
-        pathParams: {"id": "s1"},
+        makeRequest(
+          "POST",
+          "/session/diffs",
+          body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
+        ),
+        pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
       final body = switch (jsonDecode(response.body!)) {
-        final List<dynamic> list => list,
-        _ => throw StateError("expected JSON list"),
+        {"diffs": final List<dynamic> list} => list,
+        _ => throw StateError("expected JSON object with diffs"),
       };
-      expect(body, hasLength(1));
-      expect((body.single as Map<String, dynamic>)["file"], equals("lib/kept.dart"));
+      expect(body, hasLength(2));
+      expect(
+        body.map((dynamic item) => (item as Map<String, dynamic>)["file"] as String).toSet(),
+        equals({"lib/kept.dart", "lib/model.freezed.dart"}),
+      );
     });
 
     test("returns skipped diff for binary file", () async {
@@ -185,7 +197,7 @@ void main() {
         worktreePath: tempDir.path,
         branchName: "session-001",
         baseBranch: "main",
-        baseCommit: "abc123",
+        baseCommit: "main",
       );
 
       processRunner.responder = ({required List<String> arguments}) {
@@ -205,15 +217,19 @@ void main() {
       };
 
       final response = await handler.handleInternal(
-        makeRequest("GET", "/session/s1/diff"),
-        pathParams: {"id": "s1"},
+        makeRequest(
+          "POST",
+          "/session/diffs",
+          body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
+        ),
+        pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
       final body = switch (jsonDecode(response.body!)) {
-        final List<dynamic> list => list,
-        _ => throw StateError("expected JSON list"),
+        {"diffs": final List<dynamic> list} => list,
+        _ => throw StateError("expected JSON object with diffs"),
       };
       final entry = body.single as Map<String, dynamic>;
       expect(entry["runtimeType"], equals("skipped"));
@@ -238,7 +254,7 @@ void main() {
         worktreePath: tempDir.path,
         branchName: "session-001",
         baseBranch: "main",
-        baseCommit: "abc123",
+        baseCommit: "main",
       );
 
       processRunner.responder = ({required List<String> arguments}) {
@@ -258,15 +274,19 @@ void main() {
       };
 
       final response = await handler.handleInternal(
-        makeRequest("GET", "/session/s1/diff"),
-        pathParams: {"id": "s1"},
+        makeRequest(
+          "POST",
+          "/session/diffs",
+          body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
+        ),
+        pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
       final body = switch (jsonDecode(response.body!)) {
-        final List<dynamic> list => list,
-        _ => throw StateError("expected JSON list"),
+        {"diffs": final List<dynamic> list} => list,
+        _ => throw StateError("expected JSON object with diffs"),
       };
       final entry = body.single as Map<String, dynamic>;
       expect(entry["runtimeType"], equals("skipped"));

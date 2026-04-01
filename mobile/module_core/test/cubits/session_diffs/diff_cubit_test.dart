@@ -42,7 +42,7 @@ void main() {
       build: () {
         when(
           () => mockSessionService.getSessionDiffs(sessionId: sessionId),
-        ).thenAnswer((_) async => ApiResponse.success([testFileDiff()]));
+        ).thenAnswer((_) async => ApiResponse.success(SessionDiffsResponse(diffs: [testFileDiff()])));
         return buildCubit();
       },
       expect: () => [
@@ -89,7 +89,7 @@ void main() {
       build: () {
         when(
           () => mockSessionService.getSessionDiffs(sessionId: sessionId),
-        ).thenAnswer((_) async => ApiResponse.success(<FileDiff>[]));
+        ).thenAnswer((_) async => ApiResponse.success(SessionDiffsResponse(diffs: const [])));
         return buildCubit();
       },
       expect: () => [
@@ -106,7 +106,7 @@ void main() {
       build: () {
         when(
           () => mockSessionService.getSessionDiffs(sessionId: sessionId),
-        ).thenAnswer((_) async => ApiResponse.success([testFileDiff()]));
+        ).thenAnswer((_) async => ApiResponse.success(SessionDiffsResponse(diffs: [testFileDiff()])));
         return buildCubit();
       },
       act: (cubit) async {
@@ -114,10 +114,14 @@ void main() {
         when(
           () => mockSessionService.getSessionDiffs(sessionId: sessionId),
         ).thenAnswer(
-          (_) async => ApiResponse.success([
-            testFileDiff(file: "lib/src/bar.dart"),
-            testFileDiff(file: "lib/src/baz.dart"),
-          ]),
+          (_) async => ApiResponse.success(
+            SessionDiffsResponse(
+              diffs: [
+                testFileDiff(file: "lib/src/bar.dart"),
+                testFileDiff(file: "lib/src/baz.dart"),
+              ],
+            ),
+          ),
         );
         await cubit.refresh();
       },
@@ -144,7 +148,7 @@ void main() {
         await Future<void>.delayed(Duration.zero);
         when(
           () => mockSessionService.getSessionDiffs(sessionId: sessionId),
-        ).thenAnswer((_) async => ApiResponse.success([testFileDiff()]));
+        ).thenAnswer((_) async => ApiResponse.success(SessionDiffsResponse(diffs: [testFileDiff()])));
         await cubit.refresh();
       },
       skip: 1, // skip initial failed emission

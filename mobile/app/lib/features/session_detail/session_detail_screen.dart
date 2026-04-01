@@ -28,7 +28,7 @@ class SessionDetailScreen extends StatelessWidget {
 
   const SessionDetailScreen({
     super.key,
-    this.projectId,
+    required this.projectId,
     required this.sessionId,
     this.sessionTitle,
     this.readOnly = false,
@@ -60,7 +60,12 @@ class _SessionDetailBody extends StatefulWidget {
   final String? sessionTitle;
   final bool readOnly;
 
-  const _SessionDetailBody({this.projectId, required this.sessionId, this.sessionTitle, this.readOnly = false});
+  const _SessionDetailBody({
+    required this.projectId,
+    required this.sessionId,
+    required this.sessionTitle,
+    this.readOnly = false,
+  });
 
   @override
   State<_SessionDetailBody> createState() => _SessionDetailBodyState();
