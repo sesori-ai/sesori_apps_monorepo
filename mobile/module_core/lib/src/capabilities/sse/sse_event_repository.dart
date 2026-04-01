@@ -79,7 +79,7 @@ class SseEventRepository with Disposable {
             .recordFailure(
               error: e,
               stackTrace: st,
-              uniqueIdentifier: "sse_event_repository:${event.data.runtimeType}",
+              uniqueIdentifier: "sse_event_repository:${event.data.runtimeType.toString()}",
               fatal: false,
               reason: "Failed to handle SSE event in repository",
               information: [event.data.runtimeType.toString()],

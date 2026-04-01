@@ -49,7 +49,7 @@ void main() {
 
       when(() => mockConnectionService.sessionEvents(sessionId)).thenAnswer((_) => sessionEvents.stream);
       when(() => mockConnectionService.events).thenAnswer((_) => globalEvents.stream);
-      when(() => mockConnectionService.status).thenAnswer((_) => connectionStatus.stream);
+      when(() => mockConnectionService.status).thenAnswer((_) => connectionStatus);
       when(() => mockConnectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
       when(
         () => mockNotificationCanceller.cancelForSession(
@@ -86,7 +86,8 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 10));
 
         when(() => mockSessionService.getMessages(sessionId)).thenAnswer(
-          (_) async => ApiResponse.success([_messageWithParts(messageId: "msg-refreshed")]),
+          (_) async =>
+              ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-refreshed")])),
         );
 
         final emitted = <SessionDetailState>[];
@@ -131,7 +132,8 @@ void main() {
       clearInteractions(mockSessionService);
 
       when(() => mockSessionService.getMessages(sessionId)).thenAnswer(
-        (_) async => ApiResponse.success([_messageWithParts(messageId: "msg-immediate")]),
+        (_) async =>
+            ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-immediate")])),
       );
 
       final emitted = <SessionDetailState>[];
@@ -169,12 +171,16 @@ void main() {
 
       await _awaitLoaded(cubit);
       cubit.selectAgent("oracle");
-      cubit.selectModel("openai", "gpt-4.1");
+      cubit.selectModel(providerID: "openai", modelID: "gpt-4.1");
 
       when(() => mockSessionService.listAgents()).thenAnswer(
-        (_) async => ApiResponse.success([
-          const AgentInfo(name: "build", description: "build", model: null, variant: null, mode: AgentMode.primary),
-        ]),
+        (_) async => ApiResponse.success(
+          const Agents(
+            agents: [
+              AgentInfo(name: "build", description: "build", model: null, variant: null, mode: AgentMode.primary),
+            ],
+          ),
+        ),
       );
       when(() => mockSessionService.listProviders()).thenAnswer(
         (_) async => ApiResponse.success(
@@ -223,16 +229,22 @@ void main() {
       await _awaitLoaded(cubit);
       clearInteractions(mockSessionService);
 
-      final messagesCompleter = Completer<ApiResponse<List<MessageWithParts>>>();
+      final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
       when(() => mockSessionService.getMessages(sessionId)).thenAnswer((_) => messagesCompleter.future);
       when(
         () => mockSessionService.getPendingQuestions(sessionId),
-      ).thenAnswer((_) async => ApiResponse.success(<PendingQuestion>[]));
-      when(() => mockSessionService.getChildren(sessionId)).thenAnswer((_) async => ApiResponse.success(<Session>[]));
+      ).thenAnswer((_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])));
+      when(
+        () => mockSessionService.getChildren(sessionId),
+      ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: <Session>[])));
       when(
         () => mockSessionService.getSessionStatuses(),
-      ).thenAnswer((_) async => ApiResponse.success(<String, SessionStatus>{}));
-      when(() => mockSessionService.listAgents()).thenAnswer((_) async => ApiResponse.success(_agents()));
+      ).thenAnswer(
+        (_) async => ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),
+      );
+      when(
+        () => mockSessionService.listAgents(),
+      ).thenAnswer((_) async => ApiResponse.success(Agents(agents: _agents())));
       when(() => mockSessionService.listProviders()).thenAnswer((_) async => ApiResponse.success(_providers()));
 
       final emitted = <SessionDetailState>[];
@@ -253,7 +265,9 @@ void main() {
       );
       await Future<void>.delayed(const Duration(milliseconds: 80));
 
-      messagesCompleter.complete(ApiResponse.success([_messageWithParts(messageId: "msg-race")]));
+      messagesCompleter.complete(
+        ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-race")])),
+      );
       await Future<void>.delayed(const Duration(milliseconds: 30));
 
       final refreshed = emitted.last as SessionDetailLoaded;
@@ -275,7 +289,9 @@ void main() {
       await _awaitLoaded(cubit);
 
       when(() => mockSessionService.getMessages(sessionId)).thenAnswer(
-        (_) async => ApiResponse.success([_messageWithParts(messageId: "msg-provider-fallback")]),
+        (_) async => ApiResponse.success(
+          MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-provider-fallback")]),
+        ),
       );
       when(() => mockSessionService.listProviders()).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
 
@@ -289,7 +305,7 @@ void main() {
     });
 
     test("stale signal is ignored when state is SessionDetailLoading", () async {
-      final messagesCompleter = Completer<ApiResponse<List<MessageWithParts>>>();
+      final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
       when(() => mockSessionService.getMessages(sessionId)).thenAnswer((_) => messagesCompleter.future);
 
       final cubit = SessionDetailCubit(
@@ -310,7 +326,7 @@ void main() {
       verify(() => mockSessionService.listAgents()).called(1);
       verify(() => mockSessionService.listProviders()).called(1);
 
-      messagesCompleter.complete(ApiResponse.success([_messageWithParts()]));
+      messagesCompleter.complete(ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()])));
       await _awaitLoaded(cubit);
       await cubit.close();
     });
@@ -387,23 +403,31 @@ void main() {
       await _awaitLoaded(cubit);
       reset(mockSessionService);
 
-      final messagesCompleter = Completer<ApiResponse<List<MessageWithParts>>>();
+      final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
       when(() => mockSessionService.getMessages(sessionId)).thenAnswer((_) => messagesCompleter.future);
       when(
         () => mockSessionService.getPendingQuestions(sessionId),
-      ).thenAnswer((_) async => ApiResponse.success(<PendingQuestion>[]));
-      when(() => mockSessionService.getChildren(sessionId)).thenAnswer((_) async => ApiResponse.success(<Session>[]));
+      ).thenAnswer((_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])));
+      when(
+        () => mockSessionService.getChildren(sessionId),
+      ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: <Session>[])));
       when(
         () => mockSessionService.getSessionStatuses(),
-      ).thenAnswer((_) async => ApiResponse.success(<String, SessionStatus>{}));
-      when(() => mockSessionService.listAgents()).thenAnswer((_) async => ApiResponse.success(_agents()));
+      ).thenAnswer(
+        (_) async => ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),
+      );
+      when(
+        () => mockSessionService.listAgents(),
+      ).thenAnswer((_) async => ApiResponse.success(Agents(agents: _agents())));
       when(() => mockSessionService.listProviders()).thenAnswer((_) async => ApiResponse.success(_providers()));
 
       mockConnectionService.emitDataMayBeStale();
       mockConnectionService.emitDataMayBeStale();
       await Future<void>.delayed(const Duration(milliseconds: 10));
 
-      messagesCompleter.complete(ApiResponse.success([_messageWithParts(messageId: "msg-coalesced")]));
+      messagesCompleter.complete(
+        ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-coalesced")])),
+      );
       await Future<void>.delayed(const Duration(milliseconds: 20));
 
       verify(() => mockSessionService.getMessages(sessionId)).called(1);
@@ -417,17 +441,52 @@ void main() {
 }
 
 void _stubLoadApis(MockSessionService service, {required String sessionId}) {
-  when(() => service.getMessages(sessionId)).thenAnswer((_) async => ApiResponse.success([_messageWithParts()]));
-  when(() => service.getPendingQuestions(sessionId)).thenAnswer((_) async => ApiResponse.success(<PendingQuestion>[]));
-  when(() => service.getChildren(sessionId)).thenAnswer((_) async => ApiResponse.success(<Session>[]));
-  when(() => service.getSessionStatuses()).thenAnswer((_) async => ApiResponse.success(<String, SessionStatus>{}));
-  when(() => service.listAgents()).thenAnswer((_) async => ApiResponse.success(_agents()));
-  when(() => service.listProviders()).thenAnswer((_) async => ApiResponse.success(_providers()));
+  when(
+    () => service.getMessages(any()),
+  ).thenAnswer(
+    (_) => Future<ApiResponse<MessageWithPartsResponse>>.value(
+      ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()])),
+    ),
+  );
+  when(
+    () => service.getPendingQuestions(any()),
+  ).thenAnswer(
+    (_) => Future<ApiResponse<PendingQuestionResponse>>.value(
+      ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])),
+    ),
+  );
+  when(
+    () => service.getChildren(any()),
+  ).thenAnswer(
+    (_) => Future<ApiResponse<SessionListResponse>>.value(
+      ApiResponse.success(SessionListResponse(items: <Session>[])),
+    ),
+  );
+  when(
+    () => service.getSessionStatuses(),
+  ).thenAnswer(
+    (_) => Future<ApiResponse<SessionStatusResponse>>.value(
+      ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),
+    ),
+  );
+  when(() => service.listAgents()).thenAnswer(
+    (_) => Future<ApiResponse<Agents>>.value(ApiResponse.success(Agents(agents: _agents()))),
+  );
+  when(() => service.listProviders()).thenAnswer(
+    (_) => Future<ApiResponse<ProviderListResponse>>.value(ApiResponse.success(_providers())),
+  );
 }
 
 MessageWithParts _messageWithParts({String messageId = "msg-1"}) {
   return MessageWithParts(
-    info: Message(id: messageId, role: "assistant", sessionID: "session-1", agent: null, modelID: null, providerID: null),
+    info: Message(
+      id: messageId,
+      role: "assistant",
+      sessionID: "session-1",
+      agent: null,
+      modelID: null,
+      providerID: null,
+    ),
     parts: const [],
   );
 }
@@ -465,7 +524,7 @@ Future<void> _awaitLoaded(SessionDetailCubit cubit) async {
     if (cubit.state is SessionDetailLoaded) return;
     await Future<void>.delayed(const Duration(milliseconds: 1));
   }
-  fail("Timed out waiting for SessionDetailLoaded");
+  fail("Timed out waiting for SessionDetailLoaded; current state: ${cubit.state}");
 }
 
 Future<void> _awaitFailed(SessionDetailCubit cubit) async {

@@ -4,19 +4,22 @@ import "package:sesori_shared/sesori_shared.dart";
 import "request_handler.dart";
 
 /// Handles `GET /global/health` — proxies the backend's health status.
-class HealthCheckHandler extends RequestHandler {
+class HealthCheckHandler extends GetRequestHandler<SuccessEmptyResponse> {
   final BridgePlugin _plugin;
 
-  HealthCheckHandler(this._plugin) : super(HttpMethod.get, "/global/health");
+  HealthCheckHandler(this._plugin) : super("/global/health");
 
   @override
-  Future<RelayResponse> handle(
+  Future<SuccessEmptyResponse> handle(
     RelayRequest request, {
     required Map<String, String> pathParams,
     required Map<String, String> queryParams,
-    String? fragment,
+    required String? fragment,
   }) async {
-    final body = await _plugin.healthCheck();
-    return buildOkJsonResponse(request, body);
+    final healthy = await _plugin.healthCheck();
+    if (!healthy) {
+      throw buildErrorResponse(request, 503, "backend unhealthy");
+    }
+    return const SuccessEmptyResponse();
   }
 }

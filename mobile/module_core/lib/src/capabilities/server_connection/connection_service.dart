@@ -212,24 +212,20 @@ class ConnectionService {
         );
       }
 
-      final json = jsonDecode(response.body!) as Map<String, dynamic>;
-      final health = HealthResponse.fromJson(json);
-      if (!health.healthy) {
-        await relayClient.disconnect();
-        return ApiResponse.error(
-          ApiError.nonSuccessCode(
-            errorCode: 503,
-            rawErrorString: response.body,
-          ),
-        );
-      }
+      // A non-error status code is sufficient — the bridge only returns 200
+      // when the underlying backend is healthy. The response body is ignored.
+      const health = HealthResponse(healthy: true, version: "");
 
       _relayClient = relayClient;
       _authRetryCount = 0;
       _relayReconnectBackoff = const Duration(seconds: 1);
       try {
         _openRelaySseStream(relayClient);
-        _subscribeBridgeStatus(relayClient, config, health);
+        _subscribeBridgeStatus(
+          relayClient: relayClient,
+          config: config,
+          health: health,
+        );
       } catch (error, stackTrace) {
         loge("Failed to setup SSE streams after successful relay connect", error, stackTrace);
         await _disconnectRelayClient();
@@ -242,7 +238,7 @@ class ConnectionService {
       try {
         await relayClient.disconnect().timeout(const Duration(seconds: 3));
       } catch (disconnectError, disconnectStackTrace) {
-        logw("Best-effort relay disconnect failed after connect error: $disconnectError");
+        logw("Best-effort relay disconnect failed after connect error: ${disconnectError.toString()}");
         loge("Relay disconnect cleanup failed", disconnectError, disconnectStackTrace);
       }
       return ApiResponse.error(ApiError.generic());
@@ -292,11 +288,11 @@ class ConnectionService {
         );
   }
 
-  void _subscribeBridgeStatus(
-    RelayClient relayClient,
-    ServerConnectionConfig config,
-    HealthResponse health,
-  ) {
+  void _subscribeBridgeStatus({
+    required RelayClient relayClient,
+    required ServerConnectionConfig config,
+    required HealthResponse health,
+  }) {
     _bridgeStatusSubscription = relayClient.bridgeStatus.listen(
       (status) {
         switch (status) {
@@ -322,13 +318,22 @@ class ConnectionService {
     if (rawData.isEmpty) return;
 
     try {
-      final json = jsonDecode(rawData) as Map<String, dynamic>;
-      final payload = json["payload"] as Map<String, dynamic>?;
-      final type = payload?["type"] as String?;
-      if (type == null || payload == null) return;
+      // ignore: no_slop_linter/avoid_dynamic_type, JSON decode requires dynamic values
+      final decoded = jsonDecode(rawData);
+      // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+      if (decoded is! Map<String, dynamic>) return;
 
-      final properties = payload["properties"] as Map<String, dynamic>? ?? {};
-      final merged = {"type": type, ...properties};
+      final payloadValue = decoded["payload"];
+      // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+      if (payloadValue is! Map<String, dynamic>) return;
+
+      final typeValue = payloadValue["type"];
+      if (typeValue is! String) return;
+
+      final propertiesValue = payloadValue["properties"];
+      // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+      final properties = propertiesValue is Map<String, dynamic> ? propertiesValue : <String, dynamic>{};
+      final merged = <String, Object?>{"type": typeValue, ...properties};
 
       final SesoriSseEvent eventData;
       try {
@@ -338,17 +343,20 @@ class ConnectionService {
         _failureReporter.recordFailure(
           error: e,
           stackTrace: st,
-          uniqueIdentifier: "sse_parse_failure:$type",
+          uniqueIdentifier: "sse_parse_failure:$typeValue",
           fatal: false,
-          reason: "Unknown or malformed SSE event type: $type",
-          information: properties.entries.map((e) => "${e.key}: ${e.value}").toList(),
+          reason: "Unknown or malformed SSE event type: $typeValue",
+          information: properties.entries.map((e) => "${e.key}: ${e.value.toString()}").toList(),
         );
         return;
       }
 
       logd("[SSE] event: ${eventData.runtimeType}");
-
-      _events.add(SseEvent(data: eventData, directory: json["directory"] as String?));
+      final directory = switch (decoded["directory"]) {
+        final String value => value,
+        _ => null,
+      };
+      _events.add(SseEvent(data: eventData, directory: directory));
     } catch (e, st) {
       loge("Failed to parse SSE frame", e, st);
     }

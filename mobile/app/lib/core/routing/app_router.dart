@@ -53,10 +53,12 @@ extension AppRouteToGoRoute on AppRouteDef {
 
 extension BuildContextNavigation on BuildContext {
   void goRoute(AppRoute route) {
+    // ignore: no_slop_linter/avoid_raw_go_router, typed wrapper implementation
     GoRouter.of(this).go(route.buildPath());
   }
 
   Future<T?> pushRoute<T extends Object?>(AppRoute route) {
+    // ignore: no_slop_linter/avoid_raw_go_router, typed wrapper implementation
     return GoRouter.of(this).push<T>(route.buildPath());
   }
 }
@@ -94,7 +96,7 @@ final appRouter = GoRouter(
     }
 
     // Unexpected routing error — log it. GoRouter stays on the current page.
-    loge("GoRouter could not match route: $uri");
+    loge("GoRouter could not match route: ${uri.toString()}");
   },
   routes: AppRouteDef.values.map((def) => def.toGoRoute()).toList(),
 );

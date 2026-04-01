@@ -15,6 +15,8 @@ analyzer:
       "**.g.dart",
       "**.g.edited.dart",
       "lib/generated/**",
+      "lib/l10n/app_localizations*.dart",
+      "lib/firebase_options.dart",
     ]
   language:
     strict-casts: true

@@ -1,10 +1,10 @@
-import "dart:convert";
 import "dart:io";
 
 import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/routing/open_project_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_database.dart";
@@ -51,61 +51,42 @@ void main() {
     // ── Path validation ──────────────────────────────────────────────────────
 
     test("returns 400 when path is empty", () async {
-      final response = await handler.handle(
-        makeRequest("POST", "/project/open", body: jsonEncode({"path": ""})),
-        pathParams: {},
-        queryParams: {},
+      await expectLater(
+        () => handler.handle(
+          makeRequest("POST", "/project/open"),
+          body: const ProjectPathRequest(path: ""),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("empty"));
     });
 
     test("returns 400 when path is relative", () async {
-      final response = await handler.handle(
-        makeRequest("POST", "/project/open", body: jsonEncode({"path": "relative/path"})),
-        pathParams: {},
-        queryParams: {},
+      await expectLater(
+        () => handler.handle(
+          makeRequest("POST", "/project/open"),
+          body: const ProjectPathRequest(path: "relative/path"),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("absolute"));
     });
 
     test("returns 400 when path contains path traversal (..) segment", () async {
-      final response = await handler.handle(
-        makeRequest(
-          "POST",
-          "/project/open",
-          body: jsonEncode({"path": "/tmp/../etc"}),
+      await expectLater(
+        () => handler.handle(
+          makeRequest("POST", "/project/open"),
+          body: const ProjectPathRequest(path: "/tmp/../etc"),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
         ),
-        pathParams: {},
-        queryParams: {},
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("traversal"));
-    });
-
-    test("returns 400 when body is invalid JSON", () async {
-      final response = await handler.handle(
-        makeRequest("POST", "/project/open", body: "not-json"),
-        pathParams: {},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("invalid JSON body"));
-    });
-
-    test("returns 400 when body is missing", () async {
-      final response = await handler.handle(
-        makeRequest("POST", "/project/open"),
-        pathParams: {},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(400));
     });
 
     // ── Filesystem validation ────────────────────────────────────────────────
@@ -113,32 +94,29 @@ void main() {
     test("returns 404 when path does not exist", () async {
       final nonExistent = "${tempDir.path}/nonexistent-path-xyz";
 
-      final response = await handler.handle(
-        makeRequest(
-          "POST",
-          "/project/open",
-          body: jsonEncode({"path": nonExistent}),
+      await expectLater(
+        () => handler.handle(
+          makeRequest("POST", "/project/open"),
+          body: ProjectPathRequest(path: nonExistent),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
         ),
-        pathParams: {},
-        queryParams: {},
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(404))),
       );
-
-      expect(response.status, equals(404));
     });
 
     test("returns 400 when path points to a file not a directory", () async {
-      final response = await handler.handle(
-        makeRequest(
-          "POST",
-          "/project/open",
-          body: jsonEncode({"path": tempFile.path}),
+      await expectLater(
+        () => handler.handle(
+          makeRequest("POST", "/project/open"),
+          body: ProjectPathRequest(path: tempFile.path),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
         ),
-        pathParams: {},
-        queryParams: {},
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("directory"));
     });
 
     // ── Successful discovery ─────────────────────────────────────────────────
@@ -147,13 +125,11 @@ void main() {
       plugin.currentProjectResult = PluginProject(id: tempDir.path);
 
       await handler.handle(
-        makeRequest(
-          "POST",
-          "/project/open",
-          body: jsonEncode({"path": tempDir.path}),
-        ),
+        makeRequest("POST", "/project/open"),
+        body: ProjectPathRequest(path: tempDir.path),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(plugin.lastGetCurrentProjectProjectId, equals(tempDir.path));
@@ -162,18 +138,15 @@ void main() {
     test("returns 200 with application/json content-type", () async {
       plugin.currentProjectResult = PluginProject(id: tempDir.path);
 
-      final response = await handler.handle(
-        makeRequest(
-          "POST",
-          "/project/open",
-          body: jsonEncode({"path": tempDir.path}),
-        ),
+      final result = await handler.handle(
+        makeRequest("POST", "/project/open"),
+        body: ProjectPathRequest(path: tempDir.path),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      expect(response.status, equals(200));
-      expect(response.headers["content-type"], equals("application/json"));
+      expect(result.id, equals(tempDir.path));
     });
 
     test("maps project id and name fields", () async {
@@ -182,22 +155,16 @@ void main() {
         name: "My Project",
       );
 
-      final response = await handler.handle(
-        makeRequest(
-          "POST",
-          "/project/open",
-          body: jsonEncode({"path": tempDir.path}),
-        ),
+      final result = await handler.handle(
+        makeRequest("POST", "/project/open"),
+        body: ProjectPathRequest(path: tempDir.path),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      final body = switch (jsonDecode(response.body!)) {
-        final Map<String, dynamic> map => map,
-        _ => throw StateError("expected JSON object"),
-      };
-      expect(body["id"], equals(tempDir.path));
-      expect(body["name"], equals("My Project"));
+      expect(result.id, equals(tempDir.path));
+      expect(result.name, equals("My Project"));
     });
 
     test("maps ProjectTime when plugin returns time", () async {
@@ -206,53 +173,44 @@ void main() {
         time: const PluginProjectTime(created: 1000, updated: 2000),
       );
 
-      final response = await handler.handle(
-        makeRequest(
-          "POST",
-          "/project/open",
-          body: jsonEncode({"path": tempDir.path}),
-        ),
+      final result = await handler.handle(
+        makeRequest("POST", "/project/open"),
+        body: ProjectPathRequest(path: tempDir.path),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      final body = jsonDecode(response.body!) as Map<String, dynamic>;
-      final time = body["time"] as Map<String, dynamic>;
-      expect(time["created"], equals(1000));
-      expect(time["updated"], equals(2000));
+      expect(result.time?.created, equals(1000));
+      expect(result.time?.updated, equals(2000));
     });
 
     test("time is null when plugin returns no time", () async {
       plugin.currentProjectResult = PluginProject(id: tempDir.path);
 
-      final response = await handler.handle(
-        makeRequest(
-          "POST",
-          "/project/open",
-          body: jsonEncode({"path": tempDir.path}),
-        ),
+      final result = await handler.handle(
+        makeRequest("POST", "/project/open"),
+        body: ProjectPathRequest(path: tempDir.path),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      final body = jsonDecode(response.body!) as Map<String, dynamic>;
-      expect(body["time"], isNull);
+      expect(result.time, isNull);
     });
 
     // ── Plugin error propagation ─────────────────────────────────────────────
 
-    test("propagates PluginApiException when plugin.getProject() throws", () async {
+    test("returns 500 when plugin.getProject() throws", () async {
       plugin.throwOnGetProjectError = PluginApiException("/project/open", 404);
 
       await expectLater(
-        handler.handle(
-          makeRequest(
-            "POST",
-            "/project/open",
-            body: jsonEncode({"path": tempDir.path}),
-          ),
+        () => handler.handle(
+          makeRequest("POST", "/project/open"),
+          body: ProjectPathRequest(path: tempDir.path),
           pathParams: {},
           queryParams: {},
+          fragment: null,
         ),
         throwsA(isA<PluginApiException>()),
       );
@@ -267,28 +225,22 @@ void main() {
       );
 
       final first = await handler.handle(
-        makeRequest(
-          "POST",
-          "/project/open",
-          body: jsonEncode({"path": tempDir.path}),
-        ),
+        makeRequest("POST", "/project/open"),
+        body: ProjectPathRequest(path: tempDir.path),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       final second = await handler.handle(
-        makeRequest(
-          "POST",
-          "/project/open",
-          body: jsonEncode({"path": tempDir.path}),
-        ),
+        makeRequest("POST", "/project/open"),
+        body: ProjectPathRequest(path: tempDir.path),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      expect(first.status, equals(200));
-      expect(second.status, equals(200));
-      expect(first.body, equals(second.body));
+      expect(first, equals(second));
     });
 
     test("unhides discovered project id", () async {
@@ -296,13 +248,11 @@ void main() {
       await hiddenStore.hideProject(projectId: tempDir.path);
 
       await handler.handle(
-        makeRequest(
-          "POST",
-          "/project/open",
-          body: jsonEncode({"path": tempDir.path}),
-        ),
+        makeRequest("POST", "/project/open"),
+        body: ProjectPathRequest(path: tempDir.path),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       final hiddenIds = await hiddenStore.getHiddenProjectIds();

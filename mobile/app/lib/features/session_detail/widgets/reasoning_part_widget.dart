@@ -105,7 +105,7 @@ class _ReasoningPartWidgetState extends State<ReasoningPartWidget> {
                   ),
                   // Header
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                    padding: const EdgeInsetsDirectional.fromSTEB(16, 4, 16, 12),
                     child: Row(
                       children: [
                         Icon(
@@ -280,7 +280,7 @@ class _ReasoningPartWidgetState extends State<ReasoningPartWidget> {
               ),
               if (widget.isStreaming && widget.text.isNotEmpty)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                  padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 12, 10),
                   child: ShaderMask(
                     shaderCallback: (bounds) => const LinearGradient(
                       begin: Alignment.topCenter,

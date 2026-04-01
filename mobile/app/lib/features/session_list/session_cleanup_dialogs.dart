@@ -28,7 +28,7 @@ void _showForceDialog({
             const SizedBox(height: 12),
             for (final issue in rejection.issues)
               Padding(
-                padding: const EdgeInsets.only(bottom: 4),
+                padding: const EdgeInsetsDirectional.only(bottom: 4),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -48,12 +48,12 @@ void _showForceDialog({
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
+            onPressed: () => dialogContext.pop(),
             child: Text(loc.sessionListDeleteConfirmCancel),
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(dialogContext);
+              dialogContext.pop();
               if (isDelete) {
                 _deleteSession(
                   context: context,
@@ -117,7 +117,7 @@ class _DeleteSessionSheetState extends State<_DeleteSessionSheet> {
     final theme = Theme.of(context);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -155,14 +155,14 @@ class _DeleteSessionSheetState extends State<_DeleteSessionSheet> {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => context.pop(),
                 child: Text(loc.sessionListDeleteConfirmCancel),
               ),
               const SizedBox(width: 8),
               FilledButton(
                 style: FilledButton.styleFrom(backgroundColor: theme.colorScheme.error),
                 onPressed: () {
-                  Navigator.pop(context);
+                  context.pop();
                   widget.onConfirm(
                     deleteWorktree: _deleteWorktree,
                     deleteBranch: _deleteBranch,
@@ -202,7 +202,7 @@ class _ArchiveSessionSheetState extends State<_ArchiveSessionSheet> {
     final theme = Theme.of(context);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -240,13 +240,13 @@ class _ArchiveSessionSheetState extends State<_ArchiveSessionSheet> {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => context.pop(),
                 child: Text(loc.sessionListDeleteConfirmCancel),
               ),
               const SizedBox(width: 8),
               FilledButton(
                 onPressed: () {
-                  Navigator.pop(context);
+                  context.pop();
                   widget.onConfirm(
                     deleteWorktree: _deleteWorktree,
                     deleteBranch: _deleteBranch,

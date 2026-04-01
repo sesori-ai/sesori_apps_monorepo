@@ -3,32 +3,26 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "request_handler.dart";
 
-const _idParam = "id";
-
 /// Handles `POST /session/:id/abort` — aborts in-progress session execution.
-class AbortSessionHandler extends RequestHandler {
+class AbortSessionHandler extends BodyRequestHandler<SessionIdRequest, SuccessEmptyResponse> {
   final BridgePlugin _plugin;
 
-  AbortSessionHandler(this._plugin) : super(HttpMethod.post, "/session/:$_idParam/abort");
+  AbortSessionHandler(this._plugin)
+    : super(
+        HttpMethod.post,
+        "/session/abort",
+        fromJson: SessionIdRequest.fromJson,
+      );
 
   @override
-  Future<RelayResponse> handle(
+  Future<SuccessEmptyResponse> handle(
     RelayRequest request, {
+    required SessionIdRequest body,
     required Map<String, String> pathParams,
     required Map<String, String> queryParams,
     String? fragment,
   }) async {
-    final sessionId = pathParams[_idParam];
-    if (sessionId == null || sessionId.isEmpty) {
-      return buildErrorResponse(request, 400, "missing session id");
-    }
-
-    await _plugin.abortSession(sessionId: sessionId);
-    return RelayResponse(
-      id: request.id,
-      status: 200,
-      headers: {},
-      body: null,
-    );
+    await _plugin.abortSession(sessionId: body.sessionId);
+    return const SuccessEmptyResponse();
   }
 }

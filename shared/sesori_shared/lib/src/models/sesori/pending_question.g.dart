@@ -6,6 +6,20 @@ part of 'pending_question.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
+_PendingQuestionResponse _$PendingQuestionResponseFromJson(Map json) =>
+    _PendingQuestionResponse(
+      data: (json['data'] as List<dynamic>)
+          .map(
+            (e) =>
+                PendingQuestion.fromJson(Map<String, dynamic>.from(e as Map)),
+          )
+          .toList(),
+    );
+
+Map<String, dynamic> _$PendingQuestionResponseToJson(
+  _PendingQuestionResponse instance,
+) => <String, dynamic>{'data': instance.data.map((e) => e.toJson()).toList()};
+
 _PendingQuestion _$PendingQuestionFromJson(Map json) => _PendingQuestion(
   id: json['id'] as String,
   sessionID: json['sessionID'] as String,

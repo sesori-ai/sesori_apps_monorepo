@@ -286,7 +286,7 @@ class _ThrowingSummaryPlugin implements BridgePlugin {
   Future<PluginProject> getProject(String projectId) async => const PluginProject(id: "");
 
   @override
-  Future<String> healthCheck() async => '{"healthy":true}';
+  Future<bool> healthCheck() async => true;
 
   @override
   List<PluginProjectActivitySummary> getActiveSessionsSummary() {

@@ -18,7 +18,7 @@ void main() {
       // Stub agent/provider fetches that fire on cubit construction.
       when(
         () => mockSessionService.listAgents(),
-      ).thenAnswer((_) async => ApiResponse<List<AgentInfo>>.success(<AgentInfo>[]));
+      ).thenAnswer((_) async => ApiResponse<Agents>.success(const Agents(agents: <AgentInfo>[])));
       when(() => mockSessionService.listProviders()).thenAnswer(
         (_) async => ApiResponse<ProviderListResponse>.success(
           const ProviderListResponse(items: [], connectedOnly: false),

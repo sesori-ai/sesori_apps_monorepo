@@ -1,4 +1,5 @@
 import "package:sesori_bridge/src/bridge/routing/health_check_handler.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "routing_test_helpers.dart";
@@ -27,23 +28,14 @@ void main() {
       expect(handler.canHandle(makeRequest("GET", "/project")), isFalse);
     });
 
-    test("returns 200 with plugin health body", () async {
+    test("returns success response", () async {
       final response = await handler.handle(
         makeRequest("GET", "/global/health"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
-      expect(response.status, equals(200));
-      expect(response.body, equals('{"status":"ok"}'));
-    });
-
-    test("returns application/json content-type", () async {
-      final response = await handler.handle(
-        makeRequest("GET", "/global/health"),
-        pathParams: {},
-        queryParams: {},
-      );
-      expect(response.headers["content-type"], equals("application/json"));
+      expect(response, equals(const SuccessEmptyResponse()));
     });
   });
 }

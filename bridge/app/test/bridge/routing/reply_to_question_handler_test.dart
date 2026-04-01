@@ -1,5 +1,3 @@
-import "dart:convert";
-
 import "package:sesori_bridge/src/bridge/routing/reply_to_question_handler.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -18,27 +16,24 @@ void main() {
 
     tearDown(() => plugin.close());
 
-    test("canHandle POST /question/:id/reply", () {
-      expect(handler.canHandle(makeRequest("POST", "/question/q1/reply")), isTrue);
+    test("canHandle POST /question/reply", () {
+      expect(handler.canHandle(makeRequest("POST", "/question/reply")), isTrue);
     });
 
-    test("extracts id, sessionId, and parses answers", () async {
+    test("extracts requestId, sessionId, and parses answers", () async {
       await handler.handle(
-        makeRequest(
-          "POST",
-          "/question/q1/reply",
-          body: jsonEncode(
-            const ReplyToQuestionRequest(
-              sessionId: "ses-1",
-              answers: [
-                ReplyAnswer(values: ["yes"]),
-                ReplyAnswer(values: ["tool-a", "tool-b"]),
-              ],
-            ).toJson(),
-          ),
+        makeRequest("POST", "/question/reply"),
+        body: const ReplyToQuestionRequest(
+          requestId: "q1",
+          sessionId: "ses-1",
+          answers: [
+            ReplyAnswer(values: ["yes"]),
+            ReplyAnswer(values: ["tool-a", "tool-b"]),
+          ],
         ),
-        pathParams: {"id": "q1"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(plugin.lastReplyQuestionId, equals("q1"));
@@ -54,56 +49,58 @@ void main() {
 
     test("returns 200", () async {
       final response = await handler.handle(
-        makeRequest(
-          "POST",
-          "/question/q1/reply",
-          body: jsonEncode(
-            const ReplyToQuestionRequest(
-              sessionId: "ses-1",
-              answers: [
-                ReplyAnswer(values: ["ok"]),
-              ],
-            ).toJson(),
-          ),
-        ),
-        pathParams: {"id": "q1"},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(200));
-      expect(response.body, isNull);
-    });
-
-    test("returns 400 on missing answers", () async {
-      final response = await handler.handle(
-        makeRequest("POST", "/question/q1/reply", body: "{}"),
-        pathParams: {"id": "q1"},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(400));
-    });
-
-    test("returns 400 when path param id is missing", () async {
-      final response = await handler.handle(
-        makeRequest(
-          "POST",
-          "/question/q1/reply",
-          body: jsonEncode(
-            const ReplyToQuestionRequest(
-              sessionId: "ses-1",
-              answers: [
-                ReplyAnswer(values: ["ok"]),
-              ],
-            ).toJson(),
-          ),
+        makeRequest("POST", "/question/reply"),
+        body: const ReplyToQuestionRequest(
+          requestId: "q1",
+          sessionId: "ses-1",
+          answers: [
+            ReplyAnswer(values: ["ok"]),
+          ],
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      expect(response.status, equals(400));
-      expect(response.body, contains("missing question id"));
+      expect(response, equals(const SuccessEmptyResponse()));
+    });
+
+    test("returns 400 on empty request id", () async {
+      await expectLater(
+        () => handler.handle(
+          makeRequest("POST", "/question/reply"),
+          body: const ReplyToQuestionRequest(
+            requestId: "",
+            sessionId: "ses-1",
+            answers: [
+              ReplyAnswer(values: ["ok"]),
+            ],
+          ),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
+      );
+    });
+
+    test("returns 400 on empty session id", () async {
+      expect(
+        () => handler.handle(
+          makeRequest("POST", "/question/reply"),
+          body: const ReplyToQuestionRequest(
+            requestId: "q1",
+            sessionId: "",
+            answers: [
+              ReplyAnswer(values: ["ok"]),
+            ],
+          ),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
+      );
     });
   });
 }

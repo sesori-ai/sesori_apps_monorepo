@@ -1,40 +1,40 @@
-import "dart:convert";
 import "dart:io";
 
 import "package:sesori_shared/sesori_shared.dart";
 
 import "request_handler.dart";
 
-/// Handles `GET /filesystem/suggestions` — lists child directories of a given prefix path.
-class FilesystemSuggestionsHandler extends RequestHandler {
-  static const _maxResults = 20;
-
-  FilesystemSuggestionsHandler() : super(HttpMethod.get, "/filesystem/suggestions");
+/// Handles `POST /filesystem/suggestions` — lists child directories of a given prefix path.
+class FilesystemSuggestionsHandler extends BodyRequestHandler<FilesystemSuggestionsRequest, FilesystemSuggestions> {
+  FilesystemSuggestionsHandler()
+    : super(
+        HttpMethod.post,
+        "/filesystem/suggestions",
+        fromJson: FilesystemSuggestionsRequest.fromJson,
+      );
 
   @override
-  Future<RelayResponse> handle(
+  Future<FilesystemSuggestions> handle(
     RelayRequest request, {
+    required FilesystemSuggestionsRequest body,
     required Map<String, String> pathParams,
     required Map<String, String> queryParams,
-    String? fragment,
+    required String? fragment,
   }) async {
-    var prefix = queryParams["prefix"];
-    if (prefix == null || prefix.isEmpty) {
-      prefix = Platform.environment["HOME"] ?? "/";
-    }
+    final prefix = body.prefix ?? Platform.environment["HOME"] ?? "/";
 
     // Validate path
     if (!prefix.startsWith("/")) {
-      return buildErrorResponse(request, 400, "prefix must be an absolute path");
+      throw buildErrorResponse(request, 400, "prefix must be an absolute path");
     }
     if (prefix.contains("..")) {
-      return buildErrorResponse(request, 400, "path traversal not allowed");
+      throw buildErrorResponse(request, 400, "path traversal not allowed");
     }
 
     // List child directories
     final dir = Directory(prefix);
     if (!dir.existsSync()) {
-      return buildOkJsonResponse(request, "[]");
+      throw buildErrorResponse(request, 404, "directory not found");
     }
 
     try {
@@ -43,7 +43,7 @@ class FilesystemSuggestionsHandler extends RequestHandler {
               .listSync(followLinks: false)
               .whereType<Directory>()
               .where((d) => !d.path.split("/").last.startsWith("."))
-              .take(_maxResults)
+              .take(body.maxResults)
               .map((d) {
                 final name = d.path.split("/").last;
                 final isGitRepo = Directory("${d.path}/.git").existsSync();
@@ -52,9 +52,11 @@ class FilesystemSuggestionsHandler extends RequestHandler {
               .toList()
             ..sort((a, b) => a.name.compareTo(b.name));
 
-      return buildOkJsonResponse(request, jsonEncode(entries.map((e) => e.toJson()).toList()));
+      final suggestions = FilesystemSuggestions(data: entries);
+
+      return suggestions;
     } on FileSystemException {
-      return buildOkJsonResponse(request, "[]");
+      throw buildErrorResponse(request, 500, "failed to list filesystem suggestions");
     }
   }
 }

@@ -11,6 +11,149 @@ part of 'session_status.dart';
 
 // dart format off
 T _$identity<T>(T value) => value;
+
+/// @nodoc
+mixin _$SessionStatusResponse {
+
+// key is session id, value is status
+ Map<String, SessionStatus> get statuses;
+/// Create a copy of SessionStatusResponse
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SessionStatusResponseCopyWith<SessionStatusResponse> get copyWith => _$SessionStatusResponseCopyWithImpl<SessionStatusResponse>(this as SessionStatusResponse, _$identity);
+
+  /// Serializes this SessionStatusResponse to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionStatusResponse&&const DeepCollectionEquality().equals(other.statuses, statuses));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(statuses));
+
+@override
+String toString() {
+  return 'SessionStatusResponse(statuses: $statuses)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SessionStatusResponseCopyWith<$Res>  {
+  factory $SessionStatusResponseCopyWith(SessionStatusResponse value, $Res Function(SessionStatusResponse) _then) = _$SessionStatusResponseCopyWithImpl;
+@useResult
+$Res call({
+ Map<String, SessionStatus> statuses
+});
+
+
+
+
+}
+/// @nodoc
+class _$SessionStatusResponseCopyWithImpl<$Res>
+    implements $SessionStatusResponseCopyWith<$Res> {
+  _$SessionStatusResponseCopyWithImpl(this._self, this._then);
+
+  final SessionStatusResponse _self;
+  final $Res Function(SessionStatusResponse) _then;
+
+/// Create a copy of SessionStatusResponse
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? statuses = null,}) {
+  return _then(_self.copyWith(
+statuses: null == statuses ? _self.statuses : statuses // ignore: cast_nullable_to_non_nullable
+as Map<String, SessionStatus>,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _SessionStatusResponse implements SessionStatusResponse {
+  const _SessionStatusResponse({required final  Map<String, SessionStatus> statuses}): _statuses = statuses;
+  factory _SessionStatusResponse.fromJson(Map<String, dynamic> json) => _$SessionStatusResponseFromJson(json);
+
+// key is session id, value is status
+ final  Map<String, SessionStatus> _statuses;
+// key is session id, value is status
+@override Map<String, SessionStatus> get statuses {
+  if (_statuses is EqualUnmodifiableMapView) return _statuses;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableMapView(_statuses);
+}
+
+
+/// Create a copy of SessionStatusResponse
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$SessionStatusResponseCopyWith<_SessionStatusResponse> get copyWith => __$SessionStatusResponseCopyWithImpl<_SessionStatusResponse>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SessionStatusResponseToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionStatusResponse&&const DeepCollectionEquality().equals(other._statuses, _statuses));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_statuses));
+
+@override
+String toString() {
+  return 'SessionStatusResponse(statuses: $statuses)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$SessionStatusResponseCopyWith<$Res> implements $SessionStatusResponseCopyWith<$Res> {
+  factory _$SessionStatusResponseCopyWith(_SessionStatusResponse value, $Res Function(_SessionStatusResponse) _then) = __$SessionStatusResponseCopyWithImpl;
+@override @useResult
+$Res call({
+ Map<String, SessionStatus> statuses
+});
+
+
+
+
+}
+/// @nodoc
+class __$SessionStatusResponseCopyWithImpl<$Res>
+    implements _$SessionStatusResponseCopyWith<$Res> {
+  __$SessionStatusResponseCopyWithImpl(this._self, this._then);
+
+  final _SessionStatusResponse _self;
+  final $Res Function(_SessionStatusResponse) _then;
+
+/// Create a copy of SessionStatusResponse
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? statuses = null,}) {
+  return _then(_SessionStatusResponse(
+statuses: null == statuses ? _self._statuses : statuses // ignore: cast_nullable_to_non_nullable
+as Map<String, SessionStatus>,
+  ));
+}
+
+
+}
+
 SessionStatus _$SessionStatusFromJson(
   Map<String, dynamic> json
 ) {

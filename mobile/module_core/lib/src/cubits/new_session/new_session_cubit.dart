@@ -14,7 +14,15 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     required String projectId,
   }) : _sessionService = sessionService,
        _projectId = projectId,
-       super(const NewSessionState.idle()) {
+       super(
+         const NewSessionState.idle(
+           availableAgents: [],
+           availableProviders: [],
+           selectedAgent: null,
+           selectedProviderID: null,
+           selectedModelID: null,
+         ),
+       ) {
     _loadAgentModelData();
   }
 
@@ -28,7 +36,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       if (isClosed) return;
 
       final agents = switch (agentsResponse) {
-        SuccessResponse(:final data) => data.where((a) => !a.hidden && a.mode != AgentMode.subagent).toList(),
+        SuccessResponse(:final data) => data.agents.where((a) => !a.hidden && a.mode != AgentMode.subagent).toList(),
         ErrorResponse() => <AgentInfo>[],
       };
 
@@ -70,6 +78,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
 
   /// Applies agent/model field updates to the current state, regardless of
   /// which variant is active. No-op when the cubit is closed or in `created`.
+  // ignore: no_slop_linter/prefer_required_named_parameters, optional state patch parameters
   void _emitAgentModelUpdate({
     List<AgentInfo>? availableAgents,
     List<ProviderInfo>? availableProviders,
@@ -119,6 +128,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     _emitAgentModelUpdate(selectedAgent: agent);
   }
 
+  // ignore: no_slop_linter/prefer_required_named_parameters, public cubit API consumed by UI layer
   void selectModel(String providerID, String modelID) {
     _emitAgentModelUpdate(selectedProviderID: providerID, selectedModelID: modelID);
   }
@@ -191,6 +201,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       DartHttpClientError() => "Unable to reach server.",
       JsonParsingError() => "Unexpected server response.",
       GenericError() => "Failed to create session.",
+      EmptyResponseError() => "Empty response from server.",
     };
   }
 }

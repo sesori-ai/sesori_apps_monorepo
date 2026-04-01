@@ -13,6 +13,286 @@ part of 'session.dart';
 T _$identity<T>(T value) => value;
 
 /// @nodoc
+mixin _$SessionListResponse {
+
+ List<Session> get items;
+/// Create a copy of SessionListResponse
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SessionListResponseCopyWith<SessionListResponse> get copyWith => _$SessionListResponseCopyWithImpl<SessionListResponse>(this as SessionListResponse, _$identity);
+
+  /// Serializes this SessionListResponse to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionListResponse&&const DeepCollectionEquality().equals(other.items, items));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(items));
+
+@override
+String toString() {
+  return 'SessionListResponse(items: $items)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SessionListResponseCopyWith<$Res>  {
+  factory $SessionListResponseCopyWith(SessionListResponse value, $Res Function(SessionListResponse) _then) = _$SessionListResponseCopyWithImpl;
+@useResult
+$Res call({
+ List<Session> items
+});
+
+
+
+
+}
+/// @nodoc
+class _$SessionListResponseCopyWithImpl<$Res>
+    implements $SessionListResponseCopyWith<$Res> {
+  _$SessionListResponseCopyWithImpl(this._self, this._then);
+
+  final SessionListResponse _self;
+  final $Res Function(SessionListResponse) _then;
+
+/// Create a copy of SessionListResponse
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? items = null,}) {
+  return _then(_self.copyWith(
+items: null == items ? _self.items : items // ignore: cast_nullable_to_non_nullable
+as List<Session>,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _SessionListResponse implements SessionListResponse {
+  const _SessionListResponse({required final  List<Session> items}): _items = items;
+  factory _SessionListResponse.fromJson(Map<String, dynamic> json) => _$SessionListResponseFromJson(json);
+
+ final  List<Session> _items;
+@override List<Session> get items {
+  if (_items is EqualUnmodifiableListView) return _items;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_items);
+}
+
+
+/// Create a copy of SessionListResponse
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$SessionListResponseCopyWith<_SessionListResponse> get copyWith => __$SessionListResponseCopyWithImpl<_SessionListResponse>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SessionListResponseToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionListResponse&&const DeepCollectionEquality().equals(other._items, _items));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_items));
+
+@override
+String toString() {
+  return 'SessionListResponse(items: $items)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$SessionListResponseCopyWith<$Res> implements $SessionListResponseCopyWith<$Res> {
+  factory _$SessionListResponseCopyWith(_SessionListResponse value, $Res Function(_SessionListResponse) _then) = __$SessionListResponseCopyWithImpl;
+@override @useResult
+$Res call({
+ List<Session> items
+});
+
+
+
+
+}
+/// @nodoc
+class __$SessionListResponseCopyWithImpl<$Res>
+    implements _$SessionListResponseCopyWith<$Res> {
+  __$SessionListResponseCopyWithImpl(this._self, this._then);
+
+  final _SessionListResponse _self;
+  final $Res Function(_SessionListResponse) _then;
+
+/// Create a copy of SessionListResponse
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? items = null,}) {
+  return _then(_SessionListResponse(
+items: null == items ? _self._items : items // ignore: cast_nullable_to_non_nullable
+as List<Session>,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$SessionListRequest {
+
+ String get projectId; int? get start; int? get limit;
+/// Create a copy of SessionListRequest
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SessionListRequestCopyWith<SessionListRequest> get copyWith => _$SessionListRequestCopyWithImpl<SessionListRequest>(this as SessionListRequest, _$identity);
+
+  /// Serializes this SessionListRequest to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionListRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.start, start) || other.start == start)&&(identical(other.limit, limit) || other.limit == limit));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,projectId,start,limit);
+
+@override
+String toString() {
+  return 'SessionListRequest(projectId: $projectId, start: $start, limit: $limit)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SessionListRequestCopyWith<$Res>  {
+  factory $SessionListRequestCopyWith(SessionListRequest value, $Res Function(SessionListRequest) _then) = _$SessionListRequestCopyWithImpl;
+@useResult
+$Res call({
+ String projectId, int? start, int? limit
+});
+
+
+
+
+}
+/// @nodoc
+class _$SessionListRequestCopyWithImpl<$Res>
+    implements $SessionListRequestCopyWith<$Res> {
+  _$SessionListRequestCopyWithImpl(this._self, this._then);
+
+  final SessionListRequest _self;
+  final $Res Function(SessionListRequest) _then;
+
+/// Create a copy of SessionListRequest
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? projectId = null,Object? start = freezed,Object? limit = freezed,}) {
+  return _then(_self.copyWith(
+projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
+as String,start: freezed == start ? _self.start : start // ignore: cast_nullable_to_non_nullable
+as int?,limit: freezed == limit ? _self.limit : limit // ignore: cast_nullable_to_non_nullable
+as int?,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _SessionListRequest implements SessionListRequest {
+  const _SessionListRequest({required this.projectId, required this.start, required this.limit});
+  factory _SessionListRequest.fromJson(Map<String, dynamic> json) => _$SessionListRequestFromJson(json);
+
+@override final  String projectId;
+@override final  int? start;
+@override final  int? limit;
+
+/// Create a copy of SessionListRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$SessionListRequestCopyWith<_SessionListRequest> get copyWith => __$SessionListRequestCopyWithImpl<_SessionListRequest>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SessionListRequestToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionListRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.start, start) || other.start == start)&&(identical(other.limit, limit) || other.limit == limit));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,projectId,start,limit);
+
+@override
+String toString() {
+  return 'SessionListRequest(projectId: $projectId, start: $start, limit: $limit)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$SessionListRequestCopyWith<$Res> implements $SessionListRequestCopyWith<$Res> {
+  factory _$SessionListRequestCopyWith(_SessionListRequest value, $Res Function(_SessionListRequest) _then) = __$SessionListRequestCopyWithImpl;
+@override @useResult
+$Res call({
+ String projectId, int? start, int? limit
+});
+
+
+
+
+}
+/// @nodoc
+class __$SessionListRequestCopyWithImpl<$Res>
+    implements _$SessionListRequestCopyWith<$Res> {
+  __$SessionListRequestCopyWithImpl(this._self, this._then);
+
+  final _SessionListRequest _self;
+  final $Res Function(_SessionListRequest) _then;
+
+/// Create a copy of SessionListRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? projectId = null,Object? start = freezed,Object? limit = freezed,}) {
+  return _then(_SessionListRequest(
+projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
+as String,start: freezed == start ? _self.start : start // ignore: cast_nullable_to_non_nullable
+as int?,limit: freezed == limit ? _self.limit : limit // ignore: cast_nullable_to_non_nullable
+as int?,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
 mixin _$Session {
 
  String get id; String get projectID; String get directory; String? get parentID; String? get title; SessionTime? get time; SessionSummary? get summary;
@@ -851,6 +1131,140 @@ class __$SessionProjectCopyWithImpl<$Res>
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String?,worktree: null == worktree ? _self.worktree : worktree // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$SessionIdRequest {
+
+ String get sessionId;
+/// Create a copy of SessionIdRequest
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SessionIdRequestCopyWith<SessionIdRequest> get copyWith => _$SessionIdRequestCopyWithImpl<SessionIdRequest>(this as SessionIdRequest, _$identity);
+
+  /// Serializes this SessionIdRequest to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionIdRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,sessionId);
+
+@override
+String toString() {
+  return 'SessionIdRequest(sessionId: $sessionId)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SessionIdRequestCopyWith<$Res>  {
+  factory $SessionIdRequestCopyWith(SessionIdRequest value, $Res Function(SessionIdRequest) _then) = _$SessionIdRequestCopyWithImpl;
+@useResult
+$Res call({
+ String sessionId
+});
+
+
+
+
+}
+/// @nodoc
+class _$SessionIdRequestCopyWithImpl<$Res>
+    implements $SessionIdRequestCopyWith<$Res> {
+  _$SessionIdRequestCopyWithImpl(this._self, this._then);
+
+  final SessionIdRequest _self;
+  final $Res Function(SessionIdRequest) _then;
+
+/// Create a copy of SessionIdRequest
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,}) {
+  return _then(_self.copyWith(
+sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _SessionIdRequest implements SessionIdRequest {
+  const _SessionIdRequest({required this.sessionId});
+  factory _SessionIdRequest.fromJson(Map<String, dynamic> json) => _$SessionIdRequestFromJson(json);
+
+@override final  String sessionId;
+
+/// Create a copy of SessionIdRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$SessionIdRequestCopyWith<_SessionIdRequest> get copyWith => __$SessionIdRequestCopyWithImpl<_SessionIdRequest>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SessionIdRequestToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionIdRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,sessionId);
+
+@override
+String toString() {
+  return 'SessionIdRequest(sessionId: $sessionId)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$SessionIdRequestCopyWith<$Res> implements $SessionIdRequestCopyWith<$Res> {
+  factory _$SessionIdRequestCopyWith(_SessionIdRequest value, $Res Function(_SessionIdRequest) _then) = __$SessionIdRequestCopyWithImpl;
+@override @useResult
+$Res call({
+ String sessionId
+});
+
+
+
+
+}
+/// @nodoc
+class __$SessionIdRequestCopyWithImpl<$Res>
+    implements _$SessionIdRequestCopyWith<$Res> {
+  __$SessionIdRequestCopyWithImpl(this._self, this._then);
+
+  final _SessionIdRequest _self;
+  final $Res Function(_SessionIdRequest) _then;
+
+/// Create a copy of SessionIdRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = null,}) {
+  return _then(_SessionIdRequest(
+sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }

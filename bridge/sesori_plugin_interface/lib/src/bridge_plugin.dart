@@ -88,8 +88,9 @@ abstract class BridgePlugin {
   /// Get a project by its ID.
   Future<PluginProject> getProject(String projectId);
 
-  /// Health check — returns the backend's health status as a JSON string.
-  Future<String> healthCheck();
+  /// Health check — returns `true` when the backend is healthy, `false`
+  /// otherwise.
+  Future<bool> healthCheck();
 
   /// Get providers and their models from the backend.
   ///

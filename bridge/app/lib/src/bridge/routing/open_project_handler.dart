@@ -1,4 +1,3 @@
-import "dart:convert";
 import "dart:io";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -9,55 +8,45 @@ import "plugin_project_mapper.dart";
 import "request_handler.dart";
 
 /// Handles `POST /project/open` — opens an existing directory as a project.
-class OpenProjectHandler extends RequestHandler {
+class OpenProjectHandler extends BodyRequestHandler<ProjectPathRequest, Project> {
   final BridgePlugin _plugin;
   final ProjectsDao _hiddenStore;
 
-  OpenProjectHandler(this._plugin, this._hiddenStore) : super(HttpMethod.post, "/project/open");
+  OpenProjectHandler(this._plugin, this._hiddenStore)
+    : super(
+        HttpMethod.post,
+        "/project/open",
+        fromJson: ProjectPathRequest.fromJson,
+      );
 
   @override
-  Future<RelayResponse> handle(
+  Future<Project> handle(
     RelayRequest request, {
+    required ProjectPathRequest body,
     required Map<String, String> pathParams,
     required Map<String, String> queryParams,
-    String? fragment,
+    required String? fragment,
   }) async {
-    // Parse request body
-    final DiscoverProjectRequest discoverRequest;
-    try {
-      final decoded = jsonDecode(request.body ?? "{}");
-      discoverRequest = DiscoverProjectRequest.fromJson(
-        switch (decoded) {
-          final Map<String, dynamic> map => map,
-          _ => throw const FormatException("invalid JSON body"),
-        },
-      );
-    } on FormatException {
-      return buildErrorResponse(request, 400, "invalid JSON body");
-    } on Object {
-      return buildErrorResponse(request, 400, "invalid JSON body");
-    }
-
-    final path = discoverRequest.path;
+    final path = body.path;
 
     // Validate path
     if (path.isEmpty) {
-      return buildErrorResponse(request, 400, "path must not be empty");
+      throw buildErrorResponse(request, 400, "path must not be empty");
     }
     if (!path.startsWith("/")) {
-      return buildErrorResponse(request, 400, "path must be absolute");
+      throw buildErrorResponse(request, 400, "path must be absolute");
     }
     if (path.contains("..")) {
-      return buildErrorResponse(request, 400, "path traversal not allowed");
+      throw buildErrorResponse(request, 400, "path traversal not allowed");
     }
 
     // Verify directory exists
     final entity = FileSystemEntity.typeSync(path, followLinks: false);
     if (entity == FileSystemEntityType.notFound) {
-      return buildErrorResponse(request, 404, "directory not found");
+      throw buildErrorResponse(request, 404, "directory not found");
     }
     if (entity != FileSystemEntityType.directory) {
-      return buildErrorResponse(request, 400, "path is not a directory");
+      throw buildErrorResponse(request, 400, "path is not a directory");
     }
 
     // Discover via plugin (getProject triggers auto-discovery)
@@ -66,6 +55,6 @@ class OpenProjectHandler extends RequestHandler {
 
     final project = pluginProject.toSharedProject();
 
-    return buildOkJsonResponse(request, jsonEncode(project.toJson()));
+    return project;
   }
 }

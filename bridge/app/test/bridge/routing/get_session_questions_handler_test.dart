@@ -1,5 +1,3 @@
-import "dart:convert";
-
 import "package:sesori_bridge/src/bridge/routing/get_session_questions_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -19,35 +17,37 @@ void main() {
 
     tearDown(() => plugin.close());
 
-    test("canHandle GET /session/:id/questions", () {
-      expect(handler.canHandle(makeRequest("GET", "/session/s-1/questions")), isTrue);
+    test("canHandle POST /session/questions", () {
+      expect(handler.canHandle(makeRequest("POST", "/session/questions")), isTrue);
     });
 
-    test("rejects GET /session/questions (missing id segment)", () {
+    test("does not handle GET /session/questions", () {
       expect(handler.canHandle(makeRequest("GET", "/session/questions")), isFalse);
     });
 
-    test("returns 400 when session id is missing", () async {
-      final response = await handler.handle(
-        makeRequest("GET", "/session//questions"),
-        pathParams: {"id": ""},
-        queryParams: {},
+    test("returns 400 when session id is empty", () async {
+      await expectLater(
+        () => handler.handle(
+          makeRequest("POST", "/session/questions"),
+          body: const SessionIdRequest(sessionId: ""),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("missing session id"));
     });
 
-    test("returns JSON list", () async {
+    test("returns typed response", () async {
       final response = await handler.handle(
-        makeRequest("GET", "/session/s-1/questions"),
-        pathParams: {"id": "s-1"},
+        makeRequest("POST", "/session/questions"),
+        body: const SessionIdRequest(sessionId: "s-1"),
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      expect(response.status, equals(200));
-      expect(response.headers["content-type"], equals("application/json"));
-      expect(jsonDecode(response.body!), isA<List<dynamic>>());
+      expect(response.data, isA<List<PendingQuestion>>());
     });
 
     test("maps fields including nested question info and options", () async {
@@ -71,15 +71,14 @@ void main() {
       ];
 
       final response = await handler.handle(
-        makeRequest("GET", "/session/s-1/questions"),
-        pathParams: {"id": "s-1"},
+        makeRequest("POST", "/session/questions"),
+        body: const SessionIdRequest(sessionId: "s-1"),
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      final body = jsonDecode(response.body!) as List<dynamic>;
-      final questions = body.map((q) => PendingQuestion.fromJson(q as Map<String, dynamic>)).toList();
-
-      final item = questions.first;
+      final item = response.data.first;
       expect(item.id, equals("q-1"));
       expect(item.sessionID, equals("s-1"));
 

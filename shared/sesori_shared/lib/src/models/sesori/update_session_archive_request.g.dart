@@ -8,6 +8,7 @@ part of 'update_session_archive_request.dart';
 
 _UpdateSessionArchiveRequest _$UpdateSessionArchiveRequestFromJson(Map json) =>
     _UpdateSessionArchiveRequest(
+      sessionId: json['sessionId'] as String,
       archived: json['archived'] as bool,
       deleteWorktree: json['deleteWorktree'] as bool,
       deleteBranch: json['deleteBranch'] as bool,
@@ -17,6 +18,7 @@ _UpdateSessionArchiveRequest _$UpdateSessionArchiveRequestFromJson(Map json) =>
 Map<String, dynamic> _$UpdateSessionArchiveRequestToJson(
   _UpdateSessionArchiveRequest instance,
 ) => <String, dynamic>{
+  'sessionId': instance.sessionId,
   'archived': instance.archived,
   'deleteWorktree': instance.deleteWorktree,
   'deleteBranch': instance.deleteBranch,

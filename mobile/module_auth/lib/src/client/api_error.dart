@@ -21,6 +21,8 @@ sealed class ApiError extends Error with _$ApiError {
     required String? rawErrorString,
   }) = NonSuccessCodeError;
 
+  factory ApiError.emptyResponse() = EmptyResponseError;
+
   // @override
   // StackTrace? get stackTrace => super.stackTrace;
 }

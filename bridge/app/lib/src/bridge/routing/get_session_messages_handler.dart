@@ -1,29 +1,31 @@
-import "dart:convert";
-
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../plugin_to_shared_mapping.dart";
 import "request_handler.dart";
 
-const _idParam = "id";
-
-/// Handles `GET /session/:id/message` — returns all messages for a session.
-class GetSessionMessagesHandler extends RequestHandler {
+/// Handles `POST /session/messages` — returns all messages for a session.
+class GetSessionMessagesHandler extends BodyRequestHandler<SessionIdRequest, MessageWithPartsResponse> {
   final BridgePlugin _plugin;
 
-  GetSessionMessagesHandler(this._plugin) : super(HttpMethod.get, "/session/:$_idParam/message");
+  GetSessionMessagesHandler(this._plugin)
+    : super(
+        HttpMethod.post,
+        "/session/messages",
+        fromJson: SessionIdRequest.fromJson,
+      );
 
   @override
-  Future<RelayResponse> handle(
+  Future<MessageWithPartsResponse> handle(
     RelayRequest request, {
+    required SessionIdRequest body,
     required Map<String, String> pathParams,
     required Map<String, String> queryParams,
-    String? fragment,
+    required String? fragment,
   }) async {
-    final sessionId = pathParams[_idParam];
-    if (sessionId == null || sessionId.isEmpty) {
-      return buildErrorResponse(request, 400, "missing session id");
+    final sessionId = body.sessionId;
+    if (sessionId.isEmpty) {
+      throw buildErrorResponse(request, 400, "empty session id");
     }
 
     final pluginMessages = await _plugin.getSessionMessages(sessionId);
@@ -44,7 +46,6 @@ class GetSessionMessagesHandler extends RequestHandler {
         )
         .toList();
 
-    final body = jsonEncode(messages.map((m) => m.toJson()).toList());
-    return buildOkJsonResponse(request, body);
+    return MessageWithPartsResponse(messages: messages);
   }
 }

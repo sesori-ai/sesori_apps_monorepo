@@ -13,6 +13,146 @@ part of 'agent_info.dart';
 T _$identity<T>(T value) => value;
 
 /// @nodoc
+mixin _$Agents {
+
+ List<AgentInfo> get agents;
+/// Create a copy of Agents
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$AgentsCopyWith<Agents> get copyWith => _$AgentsCopyWithImpl<Agents>(this as Agents, _$identity);
+
+  /// Serializes this Agents to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Agents&&const DeepCollectionEquality().equals(other.agents, agents));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(agents));
+
+@override
+String toString() {
+  return 'Agents(agents: $agents)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $AgentsCopyWith<$Res>  {
+  factory $AgentsCopyWith(Agents value, $Res Function(Agents) _then) = _$AgentsCopyWithImpl;
+@useResult
+$Res call({
+ List<AgentInfo> agents
+});
+
+
+
+
+}
+/// @nodoc
+class _$AgentsCopyWithImpl<$Res>
+    implements $AgentsCopyWith<$Res> {
+  _$AgentsCopyWithImpl(this._self, this._then);
+
+  final Agents _self;
+  final $Res Function(Agents) _then;
+
+/// Create a copy of Agents
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? agents = null,}) {
+  return _then(_self.copyWith(
+agents: null == agents ? _self.agents : agents // ignore: cast_nullable_to_non_nullable
+as List<AgentInfo>,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _Agents implements Agents {
+  const _Agents({required final  List<AgentInfo> agents}): _agents = agents;
+  factory _Agents.fromJson(Map<String, dynamic> json) => _$AgentsFromJson(json);
+
+ final  List<AgentInfo> _agents;
+@override List<AgentInfo> get agents {
+  if (_agents is EqualUnmodifiableListView) return _agents;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_agents);
+}
+
+
+/// Create a copy of Agents
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$AgentsCopyWith<_Agents> get copyWith => __$AgentsCopyWithImpl<_Agents>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$AgentsToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Agents&&const DeepCollectionEquality().equals(other._agents, _agents));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_agents));
+
+@override
+String toString() {
+  return 'Agents(agents: $agents)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$AgentsCopyWith<$Res> implements $AgentsCopyWith<$Res> {
+  factory _$AgentsCopyWith(_Agents value, $Res Function(_Agents) _then) = __$AgentsCopyWithImpl;
+@override @useResult
+$Res call({
+ List<AgentInfo> agents
+});
+
+
+
+
+}
+/// @nodoc
+class __$AgentsCopyWithImpl<$Res>
+    implements _$AgentsCopyWith<$Res> {
+  __$AgentsCopyWithImpl(this._self, this._then);
+
+  final _Agents _self;
+  final $Res Function(_Agents) _then;
+
+/// Create a copy of Agents
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? agents = null,}) {
+  return _then(_Agents(
+agents: null == agents ? _self._agents : agents // ignore: cast_nullable_to_non_nullable
+as List<AgentInfo>,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
 mixin _$AgentInfo {
 
  String get name; String? get description; AgentModel? get model; String? get variant;@JsonKey(unknownEnumValue: AgentMode.unknown) AgentMode get mode; bool get hidden;

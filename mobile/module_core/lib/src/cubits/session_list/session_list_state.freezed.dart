@@ -78,7 +78,7 @@ String toString() {
 
 
 class SessionListLoaded implements SessionListState {
-  const SessionListLoaded({required final  List<Session> sessions, this.showArchived = false, final  Map<String, SessionActivityInfo> activeSessionIds = const {}, this.isRefreshing = false, this.baseBranch}): _sessions = sessions,_activeSessionIds = activeSessionIds;
+  const SessionListLoaded({required final  List<Session> sessions, this.showArchived = false, final  Map<String, SessionActivityInfo> activeSessionIds = const {}, this.isRefreshing = false, required this.baseBranch}): _sessions = sessions,_activeSessionIds = activeSessionIds;
   
 
  final  List<Session> _sessions;

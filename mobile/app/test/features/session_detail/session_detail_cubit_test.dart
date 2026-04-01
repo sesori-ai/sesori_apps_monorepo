@@ -245,7 +245,7 @@ void main() {
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
-        cubit.selectModel("openai", "gpt-4.1");
+        cubit.selectModel(providerID: "openai", modelID: "gpt-4.1");
       },
       expect: () => [
         isA<SessionDetailLoaded>(),
@@ -279,8 +279,8 @@ void main() {
     blocTest<SessionDetailCubit, SessionDetailState>(
       "replyToQuestion optimistically removes pending question and calls API",
       build: () {
-        when(() => mockSessionService.getPendingQuestions(any())).thenAnswer(
-          (_) async => ApiResponse.success([testPendingQuestion()]),
+        when(() => mockSessionService.getPendingQuestions(sessionId)).thenAnswer(
+          (_) async => ApiResponse.success(PendingQuestionResponse(data: [testPendingQuestion()])),
         );
 
         return SessionDetailCubit(
@@ -327,8 +327,8 @@ void main() {
     blocTest<SessionDetailCubit, SessionDetailState>(
       "rejectQuestion optimistically removes pending question and calls API",
       build: () {
-        when(() => mockSessionService.getPendingQuestions(any())).thenAnswer(
-          (_) async => ApiResponse.success([testPendingQuestion()]),
+        when(() => mockSessionService.getPendingQuestions(sessionId)).thenAnswer(
+          (_) async => ApiResponse.success(PendingQuestionResponse(data: [testPendingQuestion()])),
         );
 
         return SessionDetailCubit(
@@ -398,7 +398,7 @@ void main() {
       build: () {
         when(
           () => mockSessionService.getMessages(sessionId),
-        ).thenAnswer((_) async => ApiResponse.success(<MessageWithParts>[]));
+        ).thenAnswer((_) async => ApiResponse.success(const MessageWithPartsResponse(messages: <MessageWithParts>[])));
 
         return SessionDetailCubit(
           mockSessionService,
@@ -480,8 +480,8 @@ void main() {
     blocTest<SessionDetailCubit, SessionDetailState>(
       "SSE question.resolved removes pending question",
       build: () {
-        when(() => mockSessionService.getPendingQuestions(any())).thenAnswer(
-          (_) async => ApiResponse.success([testPendingQuestion()]),
+        when(() => mockSessionService.getPendingQuestions(sessionId)).thenAnswer(
+          (_) async => ApiResponse.success(PendingQuestionResponse(data: [testPendingQuestion()])),
         );
 
         return SessionDetailCubit(
@@ -547,7 +547,7 @@ void main() {
         // Service returns children in ASC order (oldest first).
         when(
           () => mockSessionService.getChildren(sessionId),
-        ).thenAnswer((_) async => ApiResponse.success([oldChild, midChild, newChild]));
+        ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [oldChild, midChild, newChild])));
 
         return SessionDetailCubit(
           mockSessionService,
@@ -573,7 +573,7 @@ void main() {
 
         when(
           () => mockSessionService.getChildren(sessionId),
-        ).thenAnswer((_) async => ApiResponse.success([existingChild]));
+        ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [existingChild])));
 
         return SessionDetailCubit(
           mockSessionService,
@@ -768,7 +768,9 @@ void main() {
         when(
           () => mockSessionService.getSessionStatuses(),
         ).thenAnswer(
-          (_) async => ApiResponse.success({sessionId: const SessionStatus.busy()}),
+          (_) async => ApiResponse.success(
+            const SessionStatusResponse(statuses: {sessionId: SessionStatus.busy()}),
+          ),
         );
         return SessionDetailCubit(
           mockSessionService,
@@ -1057,23 +1059,47 @@ void _stubAllDefaults(
   required BehaviorSubject<ConnectionStatus> connectionStatus,
 }) {
   when(
-    () => service.getMessages(sessionId),
-  ).thenAnswer((_) async => ApiResponse.success([testMessageWithParts()]));
+    () => service.getMessages(any()),
+  ).thenAnswer(
+    (_) => Future<ApiResponse<MessageWithPartsResponse>>.value(
+      ApiResponse.success(MessageWithPartsResponse(messages: [testMessageWithParts()])),
+    ),
+  );
   when(
     () => service.getPendingQuestions(any()),
-  ).thenAnswer((_) async => ApiResponse.success(<PendingQuestion>[]));
+  ).thenAnswer(
+    (_) => Future<ApiResponse<PendingQuestionResponse>>.value(
+      ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])),
+    ),
+  );
   when(
-    () => service.getChildren(sessionId),
-  ).thenAnswer((_) async => ApiResponse.success(<Session>[]));
+    () => service.getChildren(any()),
+  ).thenAnswer(
+    (_) => Future<ApiResponse<SessionListResponse>>.value(
+      ApiResponse.success(SessionListResponse(items: <Session>[])),
+    ),
+  );
   when(
     () => service.getSessionStatuses(),
-  ).thenAnswer((_) async => ApiResponse.success(<String, SessionStatus>{}));
+  ).thenAnswer(
+    (_) => Future<ApiResponse<SessionStatusResponse>>.value(
+      ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),
+    ),
+  );
   when(
     () => service.listAgents(),
-  ).thenAnswer((_) async => ApiResponse.success([testAgentInfo()]));
+  ).thenAnswer(
+    (_) => Future<ApiResponse<Agents>>.value(
+      ApiResponse.success(Agents(agents: [testAgentInfo()])),
+    ),
+  );
   when(
     () => service.listProviders(),
-  ).thenAnswer((_) async => ApiResponse.success(testProviderListResponse()));
+  ).thenAnswer(
+    (_) => Future<ApiResponse<ProviderListResponse>>.value(
+      ApiResponse.success(testProviderListResponse()),
+    ),
+  );
 
   when(
     () => connectionService.sessionEvents(sessionId),
@@ -1091,7 +1117,7 @@ void _stubAllDefaults(
   );
   when(
     () => connectionService.status,
-  ).thenAnswer((_) => connectionStatus.stream);
+  ).thenAnswer((_) => connectionStatus);
 
   when(
     () => notificationCanceller.cancelForSession(
@@ -1108,18 +1134,18 @@ void _stubAllDefaults(
       providerID: any(named: "providerID"),
       modelID: any(named: "modelID"),
     ),
-  ).thenAnswer((_) async => ApiResponse.success(true));
+  ).thenAnswer((_) async => ApiResponse.success(null));
   when(
     () => service.abortSession(any()),
-  ).thenAnswer((_) async => ApiResponse.success(true));
+  ).thenAnswer((_) async => ApiResponse.success(const SuccessEmptyResponse()));
   when(
     () => service.replyToQuestion(
       requestId: any(named: "requestId"),
       sessionId: any(named: "sessionId"),
       answers: any(named: "answers"),
     ),
-  ).thenAnswer((_) async => ApiResponse.success(true));
+  ).thenAnswer((_) async => ApiResponse.success(null));
   when(
     () => service.rejectQuestion(any()),
-  ).thenAnswer((_) async => ApiResponse.success(true));
+  ).thenAnswer((_) async => ApiResponse.success(null));
 }

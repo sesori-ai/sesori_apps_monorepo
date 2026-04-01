@@ -22,7 +22,7 @@ class RelayClient {
   final RoomKeyStorage _roomKeyStorage;
 
   WebSocketChannel? _channel;
-  StreamSubscription<dynamic>? _channelSubscription;
+  StreamSubscription<Object?>? _channelSubscription;
   SessionEncryptor? _sessionEncryptor;
 
   final Map<String, Completer<RelayResponse>> _pendingRequests = {};
@@ -37,7 +37,8 @@ class RelayClient {
   static const int _messageVersion = 0x01;
   static const Duration _handshakeTimeout = Duration(seconds: 15);
   static const Duration _requestTimeout = Duration(seconds: 30);
-  int? lastCloseCode;
+  int? _lastCloseCode;
+  int? get lastCloseCode => _lastCloseCode;
 
   RelayClient({
     required this.relayHost,
@@ -65,20 +66,24 @@ class RelayClient {
     }
 
     _connectionState = RelayClientConnectionState.connecting;
-    lastCloseCode = null;
+    _lastCloseCode = null;
     final uri = Uri.parse("wss://$relayHost/ws");
 
     try {
       _channel = WebSocketChannel.connect(uri);
+      final channel = _channel;
+      if (channel == null) {
+        throw StateError("Failed to create relay WebSocket channel");
+      }
       unawaited(
-        _channel!.sink.done.catchError((Object error) {
-          logw("WebSocket sink closed with error (suppressed): $error");
+        channel.sink.done.catchError((Object error) {
+          logw("WebSocket sink closed with error (suppressed): ${error.toString()}");
         }),
       );
       _firstBinaryMessage = Completer<Uint8List>();
 
-      _channelSubscription = _channel!.stream.listen(
-        (dynamic message) {
+      _channelSubscription = channel.stream.listen(
+        (Object? message) {
           unawaited(_onSocketMessage(message));
         },
         onError: (Object error, StackTrace stackTrace) {
@@ -87,7 +92,7 @@ class RelayClient {
           if (firstBinaryMessage != null && !firstBinaryMessage.isCompleted) {
             firstBinaryMessage.completeError(error, stackTrace);
           }
-          _completeAllPendingWithError(StateError("Relay socket stream error: $error"));
+          _completeAllPendingWithError(StateError("Relay socket stream error: ${error.toString()}"));
         },
         onDone: _onSocketDone,
       );
@@ -96,9 +101,10 @@ class RelayClient {
       // the relay requires a valid JWT to authenticate the WebSocket connection
       // and route it to the correct account group. Transport-level encryption
       // is provided by WSS (TLS). The relay cannot read E2EE application data.
-      if (authToken != null && authToken!.isNotEmpty) {
-        final authMessage = RelayMessage.auth(token: authToken!, role: RelayProtocol.rolePhone);
-        _channel!.sink.add(jsonEncode(authMessage.toJson()));
+      final token = authToken;
+      if (token != null && token.isNotEmpty) {
+        final authMessage = RelayMessage.auth(token: token, role: RelayProtocol.rolePhone);
+        channel.sink.add(jsonEncode(authMessage.toJson()));
         logd("Relay auth message sent");
       }
 
@@ -145,7 +151,11 @@ class RelayClient {
       // Send encrypted resume message — binary frame, relay forwards to bridge.
       await _sendEncryptedMessageWithEncryptor(const RelayMessage.resume(), resumeEncryptor);
 
-      final responseBytes = await _firstBinaryMessage!.future.timeout(
+      final firstBinaryMessage = _firstBinaryMessage;
+      if (firstBinaryMessage == null) {
+        throw StateError("Binary message completer is null before resume");
+      }
+      final responseBytes = await firstBinaryMessage.future.timeout(
         _handshakeTimeout,
         onTimeout: () {
           throw TimeoutException("Timed out waiting for relay resume response", _handshakeTimeout);
@@ -163,12 +173,14 @@ class RelayClient {
           _sessionEncryptor = resumeEncryptor;
           return true;
         }
-        throw StateError("Expected resume_ack, got ${responseMsg.runtimeType}");
+        throw StateError("Expected resume_ack, got ${responseMsg.runtimeType.toString()}");
       }
 
       if (responseBytes.first == RelayProtocol.jsonStartByte) {
         // Plaintext JSON from bridge — expect rekey_required.
+        // ignore: no_slop_linter/avoid_dynamic_type, JSON decode requires dynamic values
         final decoded = jsonDecode(utf8.decode(responseBytes));
+        // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
         if (decoded is! Map<String, dynamic>) {
           throw const FormatException("Plaintext resume response is not a JSON object");
         }
@@ -178,7 +190,7 @@ class RelayClient {
           await _roomKeyStorage.clearRoomKey();
           return false;
         }
-        throw StateError("Unexpected plaintext message during resume: ${msg.runtimeType}");
+        throw StateError("Unexpected plaintext message during resume: ${msg.runtimeType.toString()}");
       }
 
       throw FormatException(
@@ -234,7 +246,7 @@ class RelayClient {
 
     final readyMessage = await _decryptRelayMessage(encryptedFrame, ephemeralEncryptor);
     if (readyMessage is! RelayReady) {
-      throw StateError("Expected ready message after key exchange, got ${readyMessage.runtimeType}");
+      throw StateError("Expected ready message after key exchange, got ${readyMessage.runtimeType.toString()}");
     }
 
     // The ready message delivers the bridge's public key (confirmation) and the
@@ -309,7 +321,8 @@ class RelayClient {
     _connectionState = RelayClientConnectionState.disconnecting;
 
     try {
-      if (_sessionEncryptor != null && _sseController != null && !_sseController!.isClosed) {
+      final sseController = _sseController;
+      if (_sessionEncryptor != null && sseController != null && !sseController.isClosed) {
         await _sendEncryptedMessage(const RelayMessage.sseUnsubscribe());
       }
     } catch (error, stackTrace) {
@@ -324,7 +337,7 @@ class RelayClient {
     _connectionState = RelayClientConnectionState.disconnected;
   }
 
-  Future<void> _onSocketMessage(dynamic message) async {
+  Future<void> _onSocketMessage(Object? message) async {
     if (_disposed) {
       return;
     }
@@ -336,7 +349,7 @@ class RelayClient {
 
     final bytes = _toBytes(message);
     if (bytes == null) {
-      logw("Unsupported relay frame type: ${message.runtimeType}");
+      logw("Unsupported relay frame type: ${message.runtimeType.toString()}");
       return;
     }
 
@@ -354,26 +367,29 @@ class RelayClient {
       final relayMessage = await _decryptRelayMessage(bytes, encryptor);
       if (_disposed) return;
 
-      switch (relayMessage) {
-        case final RelayResponse response:
-          final completer = _pendingRequests.remove(response.id);
-          if (completer == null) {
-            logw("No pending request for relay response id=${response.id}");
-            return;
-          }
-          if (!completer.isCompleted) {
-            completer.complete(response);
-          }
-        case final RelaySseEvent sseEvent:
-          final controller = _sseController;
-          if (controller == null || controller.isClosed) {
-            logw("Received relay SSE event without an active subscription");
-            return;
-          }
-          controller.add(sseEvent);
-        default:
-          logw("Unhandled relay message type: ${relayMessage.runtimeType}");
+      if (relayMessage case final RelayResponse response) {
+        final completer = _pendingRequests.remove(response.id);
+        if (completer == null) {
+          logw("No pending request for relay response id=${response.id}");
+          return;
+        }
+        if (!completer.isCompleted) {
+          completer.complete(response);
+        }
+        return;
       }
+
+      if (relayMessage case final RelaySseEvent sseEvent) {
+        final controller = _sseController;
+        if (controller == null || controller.isClosed) {
+          logw("Received relay SSE event without an active subscription");
+          return;
+        }
+        controller.add(sseEvent);
+        return;
+      }
+
+      logw("Unhandled relay message type: ${relayMessage.runtimeType.toString()}");
     } catch (error, stackTrace) {
       loge("Failed to route incoming relay message", error, stackTrace);
     }
@@ -381,7 +397,7 @@ class RelayClient {
 
   void _onSocketDone() {
     final closeCode = _channel?.closeCode;
-    lastCloseCode = closeCode;
+    _lastCloseCode = closeCode;
 
     final firstBinaryMessage = _firstBinaryMessage;
     if (firstBinaryMessage != null && !firstBinaryMessage.isCompleted) {
@@ -418,6 +434,7 @@ class RelayClient {
 
   /// Sends an encrypted message using the provided [encryptor] instead of
   /// [_sessionEncryptor]. Used during handshake before the session is established.
+  // ignore: no_slop_linter/prefer_required_named_parameters, private handshake helper mirrors call sites
   Future<void> _sendEncryptedMessageWithEncryptor(
     RelayMessage message,
     SessionEncryptor encryptor,
@@ -433,6 +450,7 @@ class RelayClient {
     channel.sink.add(payload);
   }
 
+  // ignore: no_slop_linter/prefer_required_named_parameters, private decrypt helper mirrors call sites
   Future<RelayMessage> _decryptRelayMessage(Uint8List message, SessionEncryptor encryptor) async {
     if (message.isEmpty) {
       throw const FormatException("Relay message is empty");
@@ -445,7 +463,9 @@ class RelayClient {
 
     final encryptedPayload = message.sublist(1);
     final decryptedBytes = await encryptor.decrypt(encryptedPayload);
+    // ignore: no_slop_linter/avoid_dynamic_type, JSON decode requires dynamic values
     final decoded = jsonDecode(utf8.decode(decryptedBytes));
+    // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
     if (decoded is! Map<String, dynamic>) {
       throw const FormatException("Relay payload is not a JSON object");
     }
@@ -453,7 +473,7 @@ class RelayClient {
     return RelayMessage.fromJson(decoded);
   }
 
-  Uint8List? _toBytes(dynamic message) {
+  Uint8List? _toBytes(Object? message) {
     if (message is Uint8List) {
       return message;
     }
@@ -510,8 +530,15 @@ class RelayClient {
   /// (not E2EE) sent by the relay itself, e.g. bridge_connected / bridge_disconnected.
   void _onTextFrame(String message) {
     try {
-      final json = jsonDecode(message) as Map<String, dynamic>;
-      final type = json["type"] as String?;
+      // ignore: no_slop_linter/avoid_dynamic_type, JSON decode requires dynamic values
+      final decoded = jsonDecode(message);
+      // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+      if (decoded is! Map<String, dynamic>) {
+        logw("Relay: text frame is not a JSON object");
+        return;
+      }
+      final typeValue = decoded["type"];
+      final type = typeValue is String ? typeValue : null;
       switch (type) {
         case RelayProtocol.typeBridgeConnected:
           logd("Relay: bridge came online");
@@ -526,7 +553,7 @@ class RelayClient {
           }
           _bridgeStatusController.add(BridgeStatus.offline);
         default:
-          logw("Relay: unknown text frame type: $type");
+          logw("Relay: unknown text frame type: ${type.toString()}");
       }
     } catch (error, stackTrace) {
       loge("Failed to parse relay text frame", error, stackTrace);

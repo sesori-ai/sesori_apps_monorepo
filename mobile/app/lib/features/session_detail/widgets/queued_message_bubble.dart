@@ -18,7 +18,7 @@ class QueuedMessageBubble extends StatelessWidget {
     final loc = context.loc;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsetsDirectional.symmetric(horizontal: 16, vertical: 4),
       child: Row(
         crossAxisAlignment: .start,
         children: [
@@ -38,7 +38,7 @@ class QueuedMessageBubble extends StatelessWidget {
                 crossAxisAlignment: .end,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
+                    padding: const EdgeInsetsDirectional.fromSTEB(14, 10, 14, 6),
                     child: Column(
                       crossAxisAlignment: .end,
                       children: [
@@ -71,7 +71,7 @@ class QueuedMessageBubble extends StatelessWidget {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
+                    padding: const EdgeInsetsDirectional.fromSTEB(8, 0, 8, 6),
                     child: Row(
                       mainAxisSize: .min,
                       children: [

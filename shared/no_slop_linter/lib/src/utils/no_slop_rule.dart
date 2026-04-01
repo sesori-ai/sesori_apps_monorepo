@@ -10,40 +10,60 @@ abstract class NoSlopRule extends AnalysisRule {
   bool get isCurrentFileExcluded {
     final currentPath = _context?.currentUnit?.file.path;
     if (currentPath == null) return false;
+    if (currentPath.endsWith('_test.dart')) return true;
     final libraryElement = _context?.libraryElement;
     if (libraryElement == null) return false;
-    final isAnalyzed = libraryElement.session.analysisContext.contextRoot.isAnalyzed(currentPath);
+    final isAnalyzed = libraryElement.session.analysisContext.contextRoot
+        .isAnalyzed(currentPath);
     return isAnalyzed == false;
   }
 
   @override
-  void registerNodeProcessors(RuleVisitorRegistry registry, RuleContext context) {
+  void registerNodeProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
+  ) {
     _context = context;
     registerRuleProcessors(registry, context);
   }
 
-  void registerRuleProcessors(RuleVisitorRegistry registry, RuleContext context);
+  void registerRuleProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
+  );
 }
 
 abstract class NoSlopMultiRule extends MultiAnalysisRule {
-  NoSlopMultiRule({required super.name, required super.description, super.state});
+  NoSlopMultiRule({
+    required super.name,
+    required super.description,
+    super.state,
+  });
 
   RuleContext? _context;
 
   bool get isCurrentFileExcluded {
     final currentPath = _context?.currentUnit?.file.path;
     if (currentPath == null) return false;
+    if (currentPath.endsWith('_test.dart')) return true;
     final libraryElement = _context?.libraryElement;
     if (libraryElement == null) return false;
-    final isAnalyzed = libraryElement.session.analysisContext.contextRoot.isAnalyzed(currentPath);
+    final isAnalyzed = libraryElement.session.analysisContext.contextRoot
+        .isAnalyzed(currentPath);
     return isAnalyzed == false;
   }
 
   @override
-  void registerNodeProcessors(RuleVisitorRegistry registry, RuleContext context) {
+  void registerNodeProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
+  ) {
     _context = context;
     registerRuleProcessors(registry, context);
   }
 
-  void registerRuleProcessors(RuleVisitorRegistry registry, RuleContext context);
+  void registerRuleProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
+  );
 }

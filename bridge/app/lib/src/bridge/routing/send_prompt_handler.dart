@@ -1,45 +1,36 @@
-import "dart:convert";
-
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "prompt_part_mapper.dart";
 import "request_handler.dart";
 
-const _idParam = "id";
-
-/// Handles `POST /session/:id/prompt_async` — sends a prompt to a session.
-class SendPromptHandler extends RequestHandler {
+/// Handles `POST /session/prompt_async` — sends a prompt to a session.
+class SendPromptHandler extends BodyRequestHandler<SendPromptRequest, SuccessEmptyResponse> {
   final BridgePlugin _plugin;
 
-  SendPromptHandler(this._plugin) : super(HttpMethod.post, "/session/:$_idParam/prompt_async");
+  SendPromptHandler(this._plugin)
+    : super(
+        HttpMethod.post,
+        "/session/prompt_async",
+        fromJson: SendPromptRequest.fromJson,
+      );
 
   @override
-  Future<RelayResponse> handle(
+  Future<SuccessEmptyResponse> handle(
     RelayRequest request, {
+    required SendPromptRequest body,
     required Map<String, String> pathParams,
     required Map<String, String> queryParams,
-    String? fragment,
+    required String? fragment,
   }) async {
-    final sessionId = pathParams[_idParam];
-    if (sessionId == null || sessionId.isEmpty) {
-      return buildErrorResponse(request, 400, "missing session id");
+    final sessionId = body.sessionId;
+    if (sessionId.isEmpty) {
+      throw buildErrorResponse(request, 400, "empty session id");
     }
 
-    final SendPromptRequest promptRequest;
-    try {
-      promptRequest = SendPromptRequest.fromJson(
-        jsonDecode(request.body ?? "{}") as Map<String, dynamic>,
-      );
-    } on FormatException {
-      return buildErrorResponse(request, 400, "invalid JSON body");
-    } on Object {
-      return buildErrorResponse(request, 400, "invalid JSON body");
-    }
+    final parts = body.parts.map((p) => p.toPlugin()).toList();
 
-    final parts = promptRequest.parts.map((p) => p.toPlugin()).toList();
-
-    final model = switch (promptRequest.model) {
+    final model = switch (body.model) {
       PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
       null => null,
     };
@@ -47,15 +38,10 @@ class SendPromptHandler extends RequestHandler {
     await _plugin.sendPrompt(
       sessionId: sessionId,
       parts: parts,
-      agent: promptRequest.agent,
+      agent: body.agent,
       model: model,
     );
 
-    return RelayResponse(
-      id: request.id,
-      status: 200,
-      headers: {},
-      body: null,
-    );
+    return const SuccessEmptyResponse();
   }
 }

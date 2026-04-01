@@ -181,11 +181,11 @@ class _PromptInputState extends State<PromptInput> {
       child: Column(
         mainAxisSize: .min,
         children: [
-          if (widget.header != null) widget.header!,
+          ?widget.header,
           Padding(
-            padding: EdgeInsets.only(
-              left: 12,
-              right: 8,
+            padding: EdgeInsetsDirectional.only(
+              start: 12,
+              end: 8,
               top: widget.header != null ? 4 : 8,
               bottom: MediaQuery.of(context).padding.bottom + 8,
             ),

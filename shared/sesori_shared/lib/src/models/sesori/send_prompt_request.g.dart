@@ -7,6 +7,7 @@ part of 'send_prompt_request.dart';
 // **************************************************************************
 
 _SendPromptRequest _$SendPromptRequestFromJson(Map json) => _SendPromptRequest(
+  sessionId: json['sessionId'] as String,
   parts: (json['parts'] as List<dynamic>)
       .map((e) => PromptPart.fromJson(Map<String, dynamic>.from(e as Map)))
       .toList(),
@@ -18,6 +19,7 @@ _SendPromptRequest _$SendPromptRequestFromJson(Map json) => _SendPromptRequest(
 
 Map<String, dynamic> _$SendPromptRequestToJson(_SendPromptRequest instance) =>
     <String, dynamic>{
+      'sessionId': instance.sessionId,
       'parts': instance.parts.map((e) => e.toJson()).toList(),
       'agent': instance.agent,
       'model': instance.model?.toJson(),

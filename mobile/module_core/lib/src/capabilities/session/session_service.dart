@@ -18,53 +18,26 @@ class SessionService {
 
   SessionService(RelayHttpApiClient client) : _client = client;
 
-  Future<ApiResponse<List<AgentInfo>>> listAgents() {
+  Future<ApiResponse<Agents>> listAgents() {
     return _client.get(
       "/agent",
-      fromJson: (json) => switch (json) {
-        final List<dynamic> list =>
-          list
-              .map(
-                (e) => switch (e) {
-                  final Map<String, dynamic> map => AgentInfo.fromJson(map),
-                  _ => throw FormatException("expected map, got ${e.runtimeType}"),
-                },
-              )
-              .toList(),
-        _ => throw FormatException("expected list, got ${json.runtimeType}"),
-      },
+      fromJson: Agents.fromJson,
     );
   }
 
   Future<ApiResponse<ProviderListResponse>> listProviders() {
     return _client.get(
       "/provider",
-      fromJson: (json) => switch (json) {
-        final Map<String, dynamic> map => ProviderListResponse.fromJson(map),
-        _ => throw FormatException("expected map, got ${json.runtimeType}"),
-      },
+      fromJson: ProviderListResponse.fromJson,
     );
   }
 
   /// Lists sessions for the current project.
-  ///
-  /// Project scoping is passed via the `x-project-id` header.
-  Future<ApiResponse<List<Session>>> listSessions({required String projectId}) {
-    return _client.get(
-      "/session",
-      fromJson: (json) => switch (json) {
-        final List<dynamic> list =>
-          list
-              .map(
-                (e) => switch (e) {
-                  final Map<String, dynamic> map => Session.fromJson(map),
-                  _ => throw FormatException("expected map, got ${e.runtimeType}"),
-                },
-              )
-              .toList(),
-        _ => throw FormatException("expected list, got ${json.runtimeType}"),
-      },
-      headers: {"x-project-id": projectId},
+  Future<ApiResponse<SessionListResponse>> listSessions({required String projectId}) {
+    return _client.post(
+      "/sessions",
+      fromJson: SessionListResponse.fromJson,
+      body: SessionListRequest(projectId: projectId, start: null, limit: null),
     );
   }
 
@@ -76,18 +49,15 @@ class SessionService {
     required bool dedicatedWorktree,
   }) {
     return _client.post(
-      "/session",
-      fromJson: (json) => switch (json) {
-        final Map<String, dynamic> map => Session.fromJson(map),
-        _ => throw FormatException("expected map, got ${json.runtimeType}"),
-      },
+      "/session/create",
+      fromJson: Session.fromJson,
       body: CreateSessionRequest(
         projectId: projectId,
         parts: [PromptPart.text(text: text)],
         agent: agent,
         model: model,
         dedicatedWorktree: dedicatedWorktree,
-      ).toJson(),
+      ),
     );
   }
 
@@ -98,17 +68,15 @@ class SessionService {
     required bool force,
   }) async {
     final response = await _client.patch(
-      "/session/$sessionId",
-      fromJson: (json) => switch (json) {
-        final Map<String, dynamic> map => Session.fromJson(map),
-        _ => throw FormatException("expected map, got ${json.runtimeType}"),
-      },
+      "/session/update/archive",
+      fromJson: Session.fromJson,
       body: UpdateSessionArchiveRequest(
+        sessionId: sessionId,
         archived: true,
         deleteWorktree: deleteWorktree,
         deleteBranch: deleteBranch,
         force: force,
-      ).toJson(),
+      ),
     );
 
     _throwIfCleanupRejected(response);
@@ -117,45 +85,44 @@ class SessionService {
 
   Future<ApiResponse<Session>> unarchiveSession(String sessionId) {
     return _client.patch(
-      "/session/$sessionId",
-      fromJson: (json) => switch (json) {
-        final Map<String, dynamic> map => Session.fromJson(map),
-        _ => throw FormatException("expected map, got ${json.runtimeType}"),
-      },
-      body: const UpdateSessionArchiveRequest(
+      "/session/update/archive",
+      fromJson: Session.fromJson,
+      body: UpdateSessionArchiveRequest(
+        sessionId: sessionId,
         archived: false,
         deleteWorktree: false,
         deleteBranch: false,
         force: false,
-      ).toJson(),
+      ),
     );
   }
 
-  Future<ApiResponse<Session>> renameSession({required String sessionId, required String title}) {
+  Future<ApiResponse<Session>> renameSession({
+    required String sessionId,
+    required String title,
+  }) {
     return _client.patch(
       "/session/title",
-      fromJson: (json) => switch (json) {
-        final Map<String, dynamic> map => Session.fromJson(map),
-        _ => throw FormatException("expected map, got ${json.runtimeType}"),
-      },
-      body: RenameSessionRequest(sessionId: sessionId, title: title).toJson(),
+      fromJson: Session.fromJson,
+      body: RenameSessionRequest(sessionId: sessionId, title: title),
     );
   }
 
-  Future<ApiResponse<bool>> deleteSession({
+  Future<ApiResponse<void>> deleteSession({
     required String sessionId,
     required bool deleteWorktree,
     required bool deleteBranch,
     required bool force,
   }) async {
     final response = await _client.delete(
-      "/session/$sessionId",
-      fromJson: (_) => true,
+      "/session/delete",
+      fromJson: SuccessEmptyResponse.fromJson,
       body: DeleteSessionRequest(
+        sessionId: sessionId,
         deleteWorktree: deleteWorktree,
         deleteBranch: deleteBranch,
         force: force,
-      ).toJson(),
+      ),
     );
 
     _throwIfCleanupRejected(response);
@@ -168,6 +135,7 @@ class SessionService {
         final decoded = jsonDecode(rawBody ?? "{}");
         final rejection = SessionCleanupRejection.fromJson(
           switch (decoded) {
+            // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
             final Map<String, dynamic> map => map,
             _ => throw const FormatException("invalid cleanup rejection json"),
           },
@@ -181,63 +149,31 @@ class SessionService {
     }
   }
 
-  Future<ApiResponse<List<Session>>> getChildren(String sessionId) {
-    return _client.get(
-      "/session/$sessionId/children",
-      fromJson: (json) => switch (json) {
-        final List<dynamic> list =>
-          list
-              .map(
-                (e) => switch (e) {
-                  final Map<String, dynamic> map => Session.fromJson(map),
-                  _ => throw FormatException("expected map, got ${e.runtimeType}"),
-                },
-              )
-              .toList(),
-        _ => throw FormatException("expected list, got ${json.runtimeType}"),
-      },
+  Future<ApiResponse<SessionListResponse>> getChildren(String sessionId) {
+    return _client.post(
+      "/session/children",
+      fromJson: SessionListResponse.fromJson,
+      body: SessionIdRequest(sessionId: sessionId),
     );
   }
 
-  Future<ApiResponse<Map<String, SessionStatus>>> getSessionStatuses() {
+  Future<ApiResponse<SessionStatusResponse>> getSessionStatuses() {
     return _client.get(
       "/session/status",
-      fromJson: (json) => switch (json) {
-        final Map<String, dynamic> map => map.map(
-          (key, value) => MapEntry(
-            key,
-            switch (value) {
-              final Map<String, dynamic> valueMap => SessionStatus.fromJson(valueMap),
-              _ => throw FormatException("expected map value, got ${value.runtimeType}"),
-            },
-          ),
-        ),
-        _ => throw FormatException("expected map, got ${json.runtimeType}"),
-      },
+      fromJson: SessionStatusResponse.fromJson,
     );
   }
 
-  Future<ApiResponse<List<MessageWithParts>>> getMessages(
-    String sessionId,
-  ) {
-    return _client.get(
-      "/session/$sessionId/message",
-      fromJson: (json) => switch (json) {
-        final List<dynamic> list =>
-          list
-              .map(
-                (e) => switch (e) {
-                  final Map<String, dynamic> map => MessageWithParts.fromJson(map),
-                  _ => throw FormatException("expected map, got ${e.runtimeType}"),
-                },
-              )
-              .toList(),
-        _ => throw FormatException("expected list, got ${json.runtimeType}"),
-      },
+  Future<ApiResponse<MessageWithPartsResponse>> getMessages(String sessionId) {
+    return _client.post(
+      "/session/messages",
+      fromJson: MessageWithPartsResponse.fromJson,
+      body: SessionIdRequest(sessionId: sessionId),
     );
   }
 
-  Future<ApiResponse<bool>> sendMessage(
+  // ignore: no_slop_linter/prefer_required_named_parameters, public API with optional model selection
+  Future<ApiResponse<void>> sendMessage(
     String sessionId,
     String text, {
     String? agent,
@@ -245,59 +181,50 @@ class SessionService {
     String? modelID,
   }) {
     return _client.post(
-      "/session/$sessionId/prompt_async",
-      fromJson: (_) => true,
+      "/session/prompt_async",
+      fromJson: SuccessEmptyResponse.fromJson,
       body: SendPromptRequest(
+        sessionId: sessionId,
         parts: [PromptPart.text(text: text)],
         agent: agent,
         model: providerID != null && modelID != null ? PromptModel(providerID: providerID, modelID: modelID) : null,
-      ).toJson(),
+      ),
     );
   }
 
-  Future<ApiResponse<bool>> abortSession(String sessionId) {
+  Future<ApiResponse<SuccessEmptyResponse>> abortSession(String sessionId) {
     return _client.post(
-      "/session/$sessionId/abort",
-      fromJson: (_) => true,
-      body: null,
+      "/session/abort",
+      fromJson: SuccessEmptyResponse.fromJson,
+      body: SessionIdRequest(sessionId: sessionId),
     );
   }
 
-  Future<ApiResponse<List<PendingQuestion>>> getPendingQuestions(String sessionId) {
-    return _client.get(
-      "/session/$sessionId/questions",
-      fromJson: (json) => switch (json) {
-        final List<dynamic> list =>
-          list
-              .map(
-                (e) => switch (e) {
-                  final Map<String, dynamic> map => PendingQuestion.fromJson(map),
-                  _ => throw FormatException("expected map, got ${e.runtimeType}"),
-                },
-              )
-              .toList(),
-        _ => throw FormatException("expected list, got ${json.runtimeType}"),
-      },
+  Future<ApiResponse<PendingQuestionResponse>> getPendingQuestions(String sessionId) {
+    return _client.post(
+      "/session/questions",
+      fromJson: PendingQuestionResponse.fromJson,
+      body: SessionIdRequest(sessionId: sessionId),
     );
   }
 
-  Future<ApiResponse<bool>> replyToQuestion({
+  Future<ApiResponse<void>> replyToQuestion({
     required String requestId,
     required String sessionId,
     required List<ReplyAnswer> answers,
   }) {
     return _client.post(
-      "/question/$requestId/reply",
-      fromJson: (_) => true,
-      body: ReplyToQuestionRequest(sessionId: sessionId, answers: answers).toJson(),
+      "/question/reply",
+      fromJson: SuccessEmptyResponse.fromJson,
+      body: ReplyToQuestionRequest(requestId: requestId, sessionId: sessionId, answers: answers),
     );
   }
 
-  Future<ApiResponse<bool>> rejectQuestion(String requestId) {
+  Future<ApiResponse<void>> rejectQuestion(String requestId) {
     return _client.post(
-      "/question/$requestId/reject",
-      fromJson: (_) => true,
-      body: null,
+      "/question/reject",
+      fromJson: SuccessEmptyResponse.fromJson,
+      body: RejectQuestionRequest(requestId: requestId),
     );
   }
 }

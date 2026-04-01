@@ -34,7 +34,7 @@ class AuthenticatedHttpApiClient implements SafeApiClient {
       makeRequest: (token) => _client.get(
         url,
         fromJson: fromJson,
-        headers: _withAuthHeader(headers, token),
+        headers: _withAuthHeader(headers, token: token),
         contentType: contentType,
         logBody: logBody,
       ),
@@ -55,7 +55,7 @@ class AuthenticatedHttpApiClient implements SafeApiClient {
       makeRequest: (token) => _client.post(
         url,
         fromJson: fromJson,
-        headers: _withAuthHeader(headers, token),
+        headers: _withAuthHeader(headers, token: token),
         body: body,
         contentType: contentType,
         logBody: logBody,
@@ -77,7 +77,7 @@ class AuthenticatedHttpApiClient implements SafeApiClient {
       makeRequest: (token) => _client.patch(
         url,
         fromJson: fromJson,
-        headers: _withAuthHeader(headers, token),
+        headers: _withAuthHeader(headers, token: token),
         body: body,
         contentType: contentType,
         logBody: logBody,
@@ -98,16 +98,17 @@ class AuthenticatedHttpApiClient implements SafeApiClient {
       makeRequest: (token) => _client.delete(
         url,
         fromJson: fromJson,
-        headers: _withAuthHeader(headers, token),
+        headers: _withAuthHeader(headers, token: token),
         contentType: contentType,
         logBody: logBody,
       ),
     );
   }
 
-  // ignore: no_slop_linter/avoid_dynamic_type, json parsing callback
+  // ignore: no_slop_linter/prefer_required_named_parameters, optional HTTP parameters
   Future<ApiResponse<T>> postMultipart<T>(
     Uri url, {
+    // ignore: no_slop_linter/avoid_dynamic_type, json parsing callback
     required T Function(dynamic json) fromJson,
     required Future<List<http.MultipartFile>> Function() createFiles,
     Map<String, String>? headers,
@@ -121,7 +122,7 @@ class AuthenticatedHttpApiClient implements SafeApiClient {
           url,
           fromJson: fromJson,
           files: files,
-          headers: _withAuthHeader(headers, token),
+          headers: _withAuthHeader(headers, token: token),
           fields: fields,
           timeout: timeout,
         );
@@ -149,7 +150,7 @@ class AuthenticatedHttpApiClient implements SafeApiClient {
     return response;
   }
 
-  Map<String, String> _withAuthHeader(Map<String, String>? headers, String token) => {
+  Map<String, String> _withAuthHeader(Map<String, String>? headers, {required String token}) => {
     ...?headers,
     "Authorization": "Bearer $token",
   };

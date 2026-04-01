@@ -12,24 +12,24 @@ void main() {
 
     test("appendDelta accumulates text for a part", () {
       final buffer = StreamingTextBuffer(onFlush: () {});
-      buffer.appendDelta("p1", "Hello");
-      buffer.appendDelta("p1", " World");
+      buffer.appendDelta(partId: "p1", delta: "Hello");
+      buffer.appendDelta(partId: "p1", delta: " World");
       expect(buffer.snapshot(), {"p1": "Hello World"});
       buffer.dispose();
     });
 
     test("appendDelta handles multiple parts independently", () {
       final buffer = StreamingTextBuffer(onFlush: () {});
-      buffer.appendDelta("p1", "a");
-      buffer.appendDelta("p2", "b");
+      buffer.appendDelta(partId: "p1", delta: "a");
+      buffer.appendDelta(partId: "p2", delta: "b");
       expect(buffer.snapshot(), {"p1": "a", "p2": "b"});
       buffer.dispose();
     });
 
     test("removePart clears a specific part", () {
       final buffer = StreamingTextBuffer(onFlush: () {});
-      buffer.appendDelta("p1", "data");
-      buffer.appendDelta("p2", "keep");
+      buffer.appendDelta(partId: "p1", delta: "data");
+      buffer.appendDelta(partId: "p2", delta: "keep");
       buffer.removePart("p1");
       expect(buffer.snapshot(), {"p2": "keep"});
       buffer.dispose();
@@ -37,7 +37,7 @@ void main() {
 
     test("removePart is a no-op for unknown part", () {
       final buffer = StreamingTextBuffer(onFlush: () {});
-      buffer.appendDelta("p1", "data");
+      buffer.appendDelta(partId: "p1", delta: "data");
       buffer.removePart("nonexistent");
       expect(buffer.snapshot(), {"p1": "data"});
       buffer.dispose();
@@ -51,7 +51,7 @@ void main() {
           throttle: const Duration(milliseconds: 50),
         );
 
-        buffer.appendDelta("p1", "data");
+        buffer.appendDelta(partId: "p1", delta: "data");
         expect(flushCount, 0);
 
         async.elapse(const Duration(milliseconds: 50));
@@ -69,9 +69,9 @@ void main() {
           throttle: const Duration(milliseconds: 50),
         );
 
-        buffer.appendDelta("p1", "a");
-        buffer.appendDelta("p1", "b");
-        buffer.appendDelta("p1", "c");
+        buffer.appendDelta(partId: "p1", delta: "a");
+        buffer.appendDelta(partId: "p1", delta: "b");
+        buffer.appendDelta(partId: "p1", delta: "c");
 
         async.elapse(const Duration(milliseconds: 50));
         expect(flushCount, 1);
@@ -89,11 +89,11 @@ void main() {
           throttle: const Duration(milliseconds: 50),
         );
 
-        buffer.appendDelta("p1", "first");
+        buffer.appendDelta(partId: "p1", delta: "first");
         async.elapse(const Duration(milliseconds: 50));
         expect(flushCount, 1);
 
-        buffer.appendDelta("p1", " second");
+        buffer.appendDelta(partId: "p1", delta: " second");
         async.elapse(const Duration(milliseconds: 50));
         expect(flushCount, 2);
 
@@ -109,7 +109,7 @@ void main() {
           throttle: const Duration(milliseconds: 50),
         );
 
-        buffer.appendDelta("p1", "data");
+        buffer.appendDelta(partId: "p1", delta: "data");
         buffer.dispose();
 
         async.elapse(const Duration(milliseconds: 100));
@@ -125,8 +125,8 @@ void main() {
           throttle: const Duration(milliseconds: 50),
         );
 
-        buffer.appendDelta("p1", "data");
-        buffer.appendDelta("p2", "more");
+        buffer.appendDelta(partId: "p1", delta: "data");
+        buffer.appendDelta(partId: "p2", delta: "more");
         expect(buffer.snapshot(), {"p1": "data", "p2": "more"});
 
         buffer.clear();
@@ -139,8 +139,8 @@ void main() {
 
     test("clear() followed by snapshot() returns empty map", () {
       final buffer = StreamingTextBuffer(onFlush: () {});
-      buffer.appendDelta("p1", "text");
-      buffer.appendDelta("p2", "more");
+      buffer.appendDelta(partId: "p1", delta: "text");
+      buffer.appendDelta(partId: "p2", delta: "more");
       buffer.clear();
       expect(buffer.snapshot(), isEmpty);
       buffer.dispose();
@@ -154,11 +154,11 @@ void main() {
           throttle: const Duration(milliseconds: 50),
         );
 
-        buffer.appendDelta("p1", "first");
+        buffer.appendDelta(partId: "p1", delta: "first");
         buffer.clear();
         expect(buffer.snapshot(), isEmpty);
 
-        buffer.appendDelta("p2", "second");
+        buffer.appendDelta(partId: "p2", delta: "second");
         expect(buffer.snapshot(), {"p2": "second"});
 
         async.elapse(const Duration(milliseconds: 50));

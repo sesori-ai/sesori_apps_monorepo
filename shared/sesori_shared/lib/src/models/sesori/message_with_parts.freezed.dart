@@ -13,6 +13,146 @@ part of 'message_with_parts.dart';
 T _$identity<T>(T value) => value;
 
 /// @nodoc
+mixin _$MessageWithPartsResponse {
+
+ List<MessageWithParts> get messages;
+/// Create a copy of MessageWithPartsResponse
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$MessageWithPartsResponseCopyWith<MessageWithPartsResponse> get copyWith => _$MessageWithPartsResponseCopyWithImpl<MessageWithPartsResponse>(this as MessageWithPartsResponse, _$identity);
+
+  /// Serializes this MessageWithPartsResponse to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageWithPartsResponse&&const DeepCollectionEquality().equals(other.messages, messages));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(messages));
+
+@override
+String toString() {
+  return 'MessageWithPartsResponse(messages: $messages)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $MessageWithPartsResponseCopyWith<$Res>  {
+  factory $MessageWithPartsResponseCopyWith(MessageWithPartsResponse value, $Res Function(MessageWithPartsResponse) _then) = _$MessageWithPartsResponseCopyWithImpl;
+@useResult
+$Res call({
+ List<MessageWithParts> messages
+});
+
+
+
+
+}
+/// @nodoc
+class _$MessageWithPartsResponseCopyWithImpl<$Res>
+    implements $MessageWithPartsResponseCopyWith<$Res> {
+  _$MessageWithPartsResponseCopyWithImpl(this._self, this._then);
+
+  final MessageWithPartsResponse _self;
+  final $Res Function(MessageWithPartsResponse) _then;
+
+/// Create a copy of MessageWithPartsResponse
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? messages = null,}) {
+  return _then(_self.copyWith(
+messages: null == messages ? _self.messages : messages // ignore: cast_nullable_to_non_nullable
+as List<MessageWithParts>,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _MessageWithPartsResponse implements MessageWithPartsResponse {
+  const _MessageWithPartsResponse({required final  List<MessageWithParts> messages}): _messages = messages;
+  factory _MessageWithPartsResponse.fromJson(Map<String, dynamic> json) => _$MessageWithPartsResponseFromJson(json);
+
+ final  List<MessageWithParts> _messages;
+@override List<MessageWithParts> get messages {
+  if (_messages is EqualUnmodifiableListView) return _messages;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_messages);
+}
+
+
+/// Create a copy of MessageWithPartsResponse
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$MessageWithPartsResponseCopyWith<_MessageWithPartsResponse> get copyWith => __$MessageWithPartsResponseCopyWithImpl<_MessageWithPartsResponse>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$MessageWithPartsResponseToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MessageWithPartsResponse&&const DeepCollectionEquality().equals(other._messages, _messages));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_messages));
+
+@override
+String toString() {
+  return 'MessageWithPartsResponse(messages: $messages)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$MessageWithPartsResponseCopyWith<$Res> implements $MessageWithPartsResponseCopyWith<$Res> {
+  factory _$MessageWithPartsResponseCopyWith(_MessageWithPartsResponse value, $Res Function(_MessageWithPartsResponse) _then) = __$MessageWithPartsResponseCopyWithImpl;
+@override @useResult
+$Res call({
+ List<MessageWithParts> messages
+});
+
+
+
+
+}
+/// @nodoc
+class __$MessageWithPartsResponseCopyWithImpl<$Res>
+    implements _$MessageWithPartsResponseCopyWith<$Res> {
+  __$MessageWithPartsResponseCopyWithImpl(this._self, this._then);
+
+  final _MessageWithPartsResponse _self;
+  final $Res Function(_MessageWithPartsResponse) _then;
+
+/// Create a copy of MessageWithPartsResponse
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? messages = null,}) {
+  return _then(_MessageWithPartsResponse(
+messages: null == messages ? _self._messages : messages // ignore: cast_nullable_to_non_nullable
+as List<MessageWithParts>,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
 mixin _$MessageWithParts {
 
  Message get info; List<MessagePart> get parts;

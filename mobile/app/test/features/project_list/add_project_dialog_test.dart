@@ -5,6 +5,7 @@ import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:get_it/get_it.dart";
+import "package:go_router/go_router.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/project_list/add_project_dialog.dart";
@@ -39,13 +40,22 @@ const _projectsDirEntries = [
 // ---------------------------------------------------------------------------
 
 Widget _buildApp({required ProjectListCubit cubit, required Widget child}) {
-  return MaterialApp(
+  final router = GoRouter(
+    routes: [
+      GoRoute(
+        path: "/",
+        builder: (context, state) => BlocProvider<ProjectListCubit>.value(
+          value: cubit,
+          child: child,
+        ),
+      ),
+    ],
+  );
+
+  return MaterialApp.router(
+    routerConfig: router,
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
-    home: BlocProvider<ProjectListCubit>.value(
-      value: cubit,
-      child: child,
-    ),
   );
 }
 
@@ -128,7 +138,7 @@ void _stubSuggestionsWithEntries(
 }) {
   when(
     () => service.getFilesystemSuggestions(prefix: any(named: "prefix")),
-  ).thenAnswer((_) async => ApiResponse.success(entries));
+  ).thenAnswer((_) async => ApiResponse.success(FilesystemSuggestions(data: entries)));
 }
 
 void _stubSuggestionsPerPrefix(
@@ -136,8 +146,8 @@ void _stubSuggestionsPerPrefix(
   required Map<String, List<FilesystemSuggestion>> byPrefix,
 }) {
   when(() => service.getFilesystemSuggestions(prefix: any(named: "prefix"))).thenAnswer((invocation) async {
-    final prefix = invocation.namedArguments[const Symbol("prefix")] as String;
-    return ApiResponse.success(byPrefix[prefix] ?? []);
+    final prefix = invocation.namedArguments[const Symbol("prefix")] as String?;
+    return ApiResponse.success(FilesystemSuggestions(data: byPrefix[prefix ?? ""] ?? []));
   });
 }
 
@@ -487,7 +497,7 @@ void main() {
     testWidgets("loading state shows progress indicator", (tester) async {
       when(
         () => mockProjectService.getFilesystemSuggestions(prefix: any(named: "prefix")),
-      ).thenAnswer((_) => Completer<ApiResponse<List<FilesystemSuggestion>>>().future);
+      ).thenAnswer((_) => Completer<ApiResponse<FilesystemSuggestions>>().future);
 
       await tester.pumpWidget(
         _buildApp(

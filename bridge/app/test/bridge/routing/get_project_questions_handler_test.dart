@@ -1,5 +1,3 @@
-import "dart:convert";
-
 import "package:sesori_bridge/src/bridge/routing/get_project_questions_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -19,46 +17,24 @@ void main() {
 
     tearDown(() => plugin.close());
 
-    test("canHandle GET /questions", () {
-      expect(handler.canHandle(makeRequest("GET", "/questions")), isTrue);
+    test("canHandle POST /project/questions", () {
+      expect(handler.canHandle(makeRequest("POST", "/project/questions")), isTrue);
     });
 
-    test("does not handle POST /questions", () {
-      expect(handler.canHandle(makeRequest("POST", "/questions")), isFalse);
+    test("does not handle GET /project/questions", () {
+      expect(handler.canHandle(makeRequest("GET", "/project/questions")), isFalse);
     });
 
-    test("returns 400 when x-project-id header is missing", () async {
+    test("returns typed response on success", () async {
       final response = await handler.handle(
-        makeRequest("GET", "/questions"),
+        makeRequest("POST", "/project/questions"),
+        body: const ProjectIdRequest(projectId: "/tmp/project"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      expect(response.status, equals(400));
-      expect(response.body, contains("missing x-project-id header"));
-    });
-
-    test("returns 400 when x-project-id header is empty", () async {
-      final response = await handler.handle(
-        makeRequest("GET", "/questions", headers: {"x-project-id": ""}),
-        pathParams: {},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("missing x-project-id header"));
-    });
-
-    test("returns JSON list on success", () async {
-      final response = await handler.handle(
-        makeRequest("GET", "/questions", headers: {"x-project-id": "/tmp/project"}),
-        pathParams: {},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(200));
-      expect(response.headers["content-type"], equals("application/json"));
-      expect(jsonDecode(response.body!), isA<List<dynamic>>());
+      expect(response.data, isA<List<PendingQuestion>>());
     });
 
     test("maps fields including nested question info and options", () async {
@@ -82,15 +58,14 @@ void main() {
       ];
 
       final response = await handler.handle(
-        makeRequest("GET", "/questions", headers: {"x-project-id": "/tmp/project"}),
+        makeRequest("POST", "/project/questions"),
+        body: const ProjectIdRequest(projectId: "/tmp/project"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      final body = jsonDecode(response.body!) as List<dynamic>;
-      final questions = body.map((q) => PendingQuestion.fromJson(q as Map<String, dynamic>)).toList();
-
-      final item = questions.first;
+      final item = response.data.first;
       expect(item.id, equals("q-1"));
       expect(item.sessionID, equals("s-1"));
 
@@ -106,6 +81,19 @@ void main() {
       final second = question.options[1];
       expect(second.label, equals("B"));
       expect(second.description, equals("Option B"));
+    });
+
+    test("throws 400 on empty project id", () async {
+      expect(
+        () => handler.handle(
+          makeRequest("POST", "/project/questions"),
+          body: const ProjectIdRequest(projectId: ""),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
+      );
     });
   });
 }

@@ -6,34 +6,43 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/error/error.dart';
 
-/// A lint rule that forbids Navigator.of(context) usage.
+/// A lint rule that forbids direct Navigator usage.
 ///
-/// This project uses AutoRoute for navigation. Using Navigator.of(context)
-/// bypasses the routing system and can lead to inconsistent navigation behavior.
+/// This project uses GoRouter with custom extensions for navigation.
+/// Using Navigator directly bypasses the routing system.
 ///
 /// Examples that trigger this rule:
 /// - `Navigator.of(context).push(...)`
 /// - `Navigator.of(context).pop()`
-/// - `Navigator.of(context, rootNavigator: true).pushNamed(...)`
+/// - `Navigator.pop(context)`
+/// - `Navigator.push(context, route)`
 ///
 /// Valid examples:
-/// - `context.router.push(...)` - AutoRoute
-/// - `context.router.pop()` - AutoRoute
-/// - `AutoRouter.of(context).push(...)` - AutoRoute
+/// - `context.pushRoute(AppRoute.xxx())` - GoRouter custom extension
+/// - `context.goRoute(AppRoute.xxx())` - GoRouter custom extension
+/// - `context.pop()` - GoRouter pop (works for dialogs/sheets too)
 class AvoidNavigatorOfRule extends NoSlopRule {
-  AvoidNavigatorOfRule() : super(name: code.lowerCaseName, description: 'Forbids Navigator.of(context).');
+  AvoidNavigatorOfRule()
+    : super(
+        name: code.lowerCaseName,
+        description: 'Forbids direct Navigator usage.',
+      );
 
   static const code = LintCode(
     'avoid_navigator_of',
-    'Avoid Navigator.of(context). Use AutoRoute instead.',
-    correctionMessage: 'Use context.router.push/pop or AutoRouter.of(context).',
+    'Avoid direct Navigator usage. Use GoRouter instead.',
+    correctionMessage:
+        'Use context.pushRoute/goRoute/pop() from GoRouter extensions.',
   );
 
   @override
   DiagnosticCode get diagnosticCode => code;
 
   @override
-  void registerRuleProcessors(RuleVisitorRegistry registry, RuleContext context) {
+  void registerRuleProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
+  ) {
     registry.addMethodInvocation(this, _Visitor(this));
   }
 }
@@ -48,9 +57,7 @@ class _Visitor extends SimpleAstVisitor<void> {
     if (rule.isCurrentFileExcluded) return;
     final target = node.target;
     if (target is SimpleIdentifier && target.name == 'Navigator') {
-      if (node.methodName.name == 'of') {
-        rule.reportAtNode(node);
-      }
+      rule.reportAtNode(node);
     }
   }
 }

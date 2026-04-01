@@ -15,6 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$ReplyToQuestionRequest {
 
+ String get requestId;// questions request id
  String get sessionId; List<ReplyAnswer> get answers;
 /// Create a copy of ReplyToQuestionRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -28,16 +29,16 @@ $ReplyToQuestionRequestCopyWith<ReplyToQuestionRequest> get copyWith => _$ReplyT
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ReplyToQuestionRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&const DeepCollectionEquality().equals(other.answers, answers));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ReplyToQuestionRequest&&(identical(other.requestId, requestId) || other.requestId == requestId)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&const DeepCollectionEquality().equals(other.answers, answers));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,const DeepCollectionEquality().hash(answers));
+int get hashCode => Object.hash(runtimeType,requestId,sessionId,const DeepCollectionEquality().hash(answers));
 
 @override
 String toString() {
-  return 'ReplyToQuestionRequest(sessionId: $sessionId, answers: $answers)';
+  return 'ReplyToQuestionRequest(requestId: $requestId, sessionId: $sessionId, answers: $answers)';
 }
 
 
@@ -48,7 +49,7 @@ abstract mixin class $ReplyToQuestionRequestCopyWith<$Res>  {
   factory $ReplyToQuestionRequestCopyWith(ReplyToQuestionRequest value, $Res Function(ReplyToQuestionRequest) _then) = _$ReplyToQuestionRequestCopyWithImpl;
 @useResult
 $Res call({
- String sessionId, List<ReplyAnswer> answers
+ String requestId, String sessionId, List<ReplyAnswer> answers
 });
 
 
@@ -65,9 +66,10 @@ class _$ReplyToQuestionRequestCopyWithImpl<$Res>
 
 /// Create a copy of ReplyToQuestionRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? answers = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? requestId = null,Object? sessionId = null,Object? answers = null,}) {
   return _then(_self.copyWith(
-sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
+requestId: null == requestId ? _self.requestId : requestId // ignore: cast_nullable_to_non_nullable
+as String,sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,answers: null == answers ? _self.answers : answers // ignore: cast_nullable_to_non_nullable
 as List<ReplyAnswer>,
   ));
@@ -81,9 +83,11 @@ as List<ReplyAnswer>,
 @JsonSerializable()
 
 class _ReplyToQuestionRequest implements ReplyToQuestionRequest {
-  const _ReplyToQuestionRequest({required this.sessionId, required final  List<ReplyAnswer> answers}): _answers = answers;
+  const _ReplyToQuestionRequest({required this.requestId, required this.sessionId, required final  List<ReplyAnswer> answers}): _answers = answers;
   factory _ReplyToQuestionRequest.fromJson(Map<String, dynamic> json) => _$ReplyToQuestionRequestFromJson(json);
 
+@override final  String requestId;
+// questions request id
 @override final  String sessionId;
  final  List<ReplyAnswer> _answers;
 @override List<ReplyAnswer> get answers {
@@ -106,16 +110,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ReplyToQuestionRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&const DeepCollectionEquality().equals(other._answers, _answers));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ReplyToQuestionRequest&&(identical(other.requestId, requestId) || other.requestId == requestId)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&const DeepCollectionEquality().equals(other._answers, _answers));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,const DeepCollectionEquality().hash(_answers));
+int get hashCode => Object.hash(runtimeType,requestId,sessionId,const DeepCollectionEquality().hash(_answers));
 
 @override
 String toString() {
-  return 'ReplyToQuestionRequest(sessionId: $sessionId, answers: $answers)';
+  return 'ReplyToQuestionRequest(requestId: $requestId, sessionId: $sessionId, answers: $answers)';
 }
 
 
@@ -126,7 +130,7 @@ abstract mixin class _$ReplyToQuestionRequestCopyWith<$Res> implements $ReplyToQ
   factory _$ReplyToQuestionRequestCopyWith(_ReplyToQuestionRequest value, $Res Function(_ReplyToQuestionRequest) _then) = __$ReplyToQuestionRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String sessionId, List<ReplyAnswer> answers
+ String requestId, String sessionId, List<ReplyAnswer> answers
 });
 
 
@@ -143,11 +147,146 @@ class __$ReplyToQuestionRequestCopyWithImpl<$Res>
 
 /// Create a copy of ReplyToQuestionRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? answers = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? requestId = null,Object? sessionId = null,Object? answers = null,}) {
   return _then(_ReplyToQuestionRequest(
-sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
+requestId: null == requestId ? _self.requestId : requestId // ignore: cast_nullable_to_non_nullable
+as String,sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,answers: null == answers ? _self._answers : answers // ignore: cast_nullable_to_non_nullable
 as List<ReplyAnswer>,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$RejectQuestionRequest {
+
+ String get requestId;
+/// Create a copy of RejectQuestionRequest
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$RejectQuestionRequestCopyWith<RejectQuestionRequest> get copyWith => _$RejectQuestionRequestCopyWithImpl<RejectQuestionRequest>(this as RejectQuestionRequest, _$identity);
+
+  /// Serializes this RejectQuestionRequest to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is RejectQuestionRequest&&(identical(other.requestId, requestId) || other.requestId == requestId));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,requestId);
+
+@override
+String toString() {
+  return 'RejectQuestionRequest(requestId: $requestId)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $RejectQuestionRequestCopyWith<$Res>  {
+  factory $RejectQuestionRequestCopyWith(RejectQuestionRequest value, $Res Function(RejectQuestionRequest) _then) = _$RejectQuestionRequestCopyWithImpl;
+@useResult
+$Res call({
+ String requestId
+});
+
+
+
+
+}
+/// @nodoc
+class _$RejectQuestionRequestCopyWithImpl<$Res>
+    implements $RejectQuestionRequestCopyWith<$Res> {
+  _$RejectQuestionRequestCopyWithImpl(this._self, this._then);
+
+  final RejectQuestionRequest _self;
+  final $Res Function(RejectQuestionRequest) _then;
+
+/// Create a copy of RejectQuestionRequest
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? requestId = null,}) {
+  return _then(_self.copyWith(
+requestId: null == requestId ? _self.requestId : requestId // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _RejectQuestionRequest implements RejectQuestionRequest {
+  const _RejectQuestionRequest({required this.requestId});
+  factory _RejectQuestionRequest.fromJson(Map<String, dynamic> json) => _$RejectQuestionRequestFromJson(json);
+
+@override final  String requestId;
+
+/// Create a copy of RejectQuestionRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$RejectQuestionRequestCopyWith<_RejectQuestionRequest> get copyWith => __$RejectQuestionRequestCopyWithImpl<_RejectQuestionRequest>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$RejectQuestionRequestToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _RejectQuestionRequest&&(identical(other.requestId, requestId) || other.requestId == requestId));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,requestId);
+
+@override
+String toString() {
+  return 'RejectQuestionRequest(requestId: $requestId)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$RejectQuestionRequestCopyWith<$Res> implements $RejectQuestionRequestCopyWith<$Res> {
+  factory _$RejectQuestionRequestCopyWith(_RejectQuestionRequest value, $Res Function(_RejectQuestionRequest) _then) = __$RejectQuestionRequestCopyWithImpl;
+@override @useResult
+$Res call({
+ String requestId
+});
+
+
+
+
+}
+/// @nodoc
+class __$RejectQuestionRequestCopyWithImpl<$Res>
+    implements _$RejectQuestionRequestCopyWith<$Res> {
+  __$RejectQuestionRequestCopyWithImpl(this._self, this._then);
+
+  final _RejectQuestionRequest _self;
+  final $Res Function(_RejectQuestionRequest) _then;
+
+/// Create a copy of RejectQuestionRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? requestId = null,}) {
+  return _then(_RejectQuestionRequest(
+requestId: null == requestId ? _self.requestId : requestId // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 

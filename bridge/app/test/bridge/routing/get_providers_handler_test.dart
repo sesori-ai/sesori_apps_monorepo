@@ -1,7 +1,6 @@
-import "dart:convert";
-
 import "package:sesori_bridge/src/bridge/routing/get_providers_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "routing_test_helpers.dart";
@@ -43,17 +42,19 @@ void main() {
         makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
       expect(plugin.lastGetProvidersConnectedOnly, isTrue);
     });
 
-    test("connectedOnly is false when explicitly set to false", () async {
+    test("connectedOnly remains true when explicitly set to false", () async {
       await handler.handle(
         makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {"connectedOnly": "false"},
+        fragment: null,
       );
-      expect(plugin.lastGetProvidersConnectedOnly, isFalse);
+      expect(plugin.lastGetProvidersConnectedOnly, isTrue);
     });
 
     test("connectedOnly is true when explicitly set to true", () async {
@@ -61,38 +62,41 @@ void main() {
         makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {"connectedOnly": "true"},
+        fragment: null,
       );
       expect(plugin.lastGetProvidersConnectedOnly, isTrue);
     });
 
-    test("connectedOnly is case-insensitive (FALSE -> false)", () async {
+    test("connectedOnly remains true for uppercase FALSE", () async {
       await handler.handle(
         makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {"connectedOnly": "FALSE"},
+        fragment: null,
       );
-      expect(plugin.lastGetProvidersConnectedOnly, isFalse);
+      expect(plugin.lastGetProvidersConnectedOnly, isTrue);
     });
 
-    test("connectedOnly defaults to true for invalid values", () async {
+    test("connectedOnly remains true for invalid values", () async {
       await handler.handle(
         makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {"connectedOnly": "maybe"},
+        fragment: null,
       );
       expect(plugin.lastGetProvidersConnectedOnly, isTrue);
     });
 
     // ── Response format ─────────────────────────────────────────────────────
 
-    test("returns 200 with application/json content-type", () async {
+    test("returns typed provider list response", () async {
       final response = await handler.handle(
         makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
-      expect(response.status, equals(200));
-      expect(response.headers["content-type"], equals("application/json"));
+      expect(response, isA<ProviderListResponse>());
     });
 
     test("returns empty items list when plugin has no providers", () async {
@@ -100,9 +104,9 @@ void main() {
         makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
-      final body = jsonDecode(response.body!) as Map<String, dynamic>;
-      expect(body["items"] as List, isEmpty);
+      expect(response.items, isEmpty);
     });
 
     test("response includes connectedOnly flag set to true by default", () async {
@@ -110,19 +114,19 @@ void main() {
         makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
-      final body = jsonDecode(response.body!) as Map<String, dynamic>;
-      expect(body["connectedOnly"], isTrue);
+      expect(response.connectedOnly, isTrue);
     });
 
-    test("response includes connectedOnly flag set to false when specified", () async {
+    test("response includes connectedOnly flag set to true when specified false", () async {
       final response = await handler.handle(
         makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {"connectedOnly": "false"},
+        fragment: null,
       );
-      final body = jsonDecode(response.body!) as Map<String, dynamic>;
-      expect(body["connectedOnly"], isFalse);
+      expect(response.connectedOnly, isTrue);
     });
 
     // ── Data transformation ─────────────────────────────────────────────────
@@ -144,14 +148,13 @@ void main() {
         makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      final body = jsonDecode(response.body!) as Map<String, dynamic>;
-      final items = body["items"] as List<dynamic>;
-      expect(items, hasLength(1));
-      final provider = items[0] as Map<String, dynamic>;
-      expect(provider["id"], equals("anthropic"));
-      expect(provider["name"], equals("Anthropic"));
+      final provider = response.items[0];
+      expect(response.items, hasLength(1));
+      expect(provider.id, equals("anthropic"));
+      expect(provider.name, equals("Anthropic"));
     });
 
     test("maps defaultModelID when present", () async {
@@ -171,12 +174,11 @@ void main() {
         makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      final body = jsonDecode(response.body!) as Map<String, dynamic>;
-      final items = body["items"] as List<dynamic>;
-      final provider = items[0] as Map<String, dynamic>;
-      expect(provider["defaultModelID"], equals("gpt-4o"));
+      final provider = response.items[0];
+      expect(provider.defaultModelID, equals("gpt-4o"));
     });
 
     test("defaultModelID is null when absent", () async {
@@ -196,12 +198,11 @@ void main() {
         makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      final body = jsonDecode(response.body!) as Map<String, dynamic>;
-      final items = body["items"] as List<dynamic>;
-      final provider = items[0] as Map<String, dynamic>;
-      expect(provider["defaultModelID"], isNull);
+      final provider = response.items[0];
+      expect(provider.defaultModelID, isNull);
     });
 
     test("maps models with id, providerID, name, and family", () async {
@@ -224,25 +225,23 @@ void main() {
         makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      final body = jsonDecode(response.body!) as Map<String, dynamic>;
-      final items = body["items"] as List<dynamic>;
-      final provider = items[0] as Map<String, dynamic>;
-      final models = provider["models"] as Map<String, dynamic>;
+      final models = response.items[0].models;
       expect(models, hasLength(2));
 
-      final opus = models["claude-3-opus"] as Map<String, dynamic>;
-      expect(opus["id"], equals("claude-3-opus"));
-      expect(opus["providerID"], equals("anthropic"));
-      expect(opus["name"], equals("Claude 3 Opus"));
-      expect(opus["family"], equals("claude-3"));
+      final opus = models["claude-3-opus"]!;
+      expect(opus.id, equals("claude-3-opus"));
+      expect(opus.providerID, equals("anthropic"));
+      expect(opus.name, equals("Claude 3 Opus"));
+      expect(opus.family, equals("claude-3"));
 
-      final sonnet = models["claude-3-sonnet"] as Map<String, dynamic>;
-      expect(sonnet["id"], equals("claude-3-sonnet"));
-      expect(sonnet["providerID"], equals("anthropic"));
-      expect(sonnet["name"], equals("Claude 3 Sonnet"));
-      expect(sonnet["family"], isNull);
+      final sonnet = models["claude-3-sonnet"]!;
+      expect(sonnet.id, equals("claude-3-sonnet"));
+      expect(sonnet.providerID, equals("anthropic"));
+      expect(sonnet.name, equals("Claude 3 Sonnet"));
+      expect(sonnet.family, isNull);
     });
 
     test("provider with no models has empty models map", () async {
@@ -262,12 +261,10 @@ void main() {
         makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      final body = jsonDecode(response.body!) as Map<String, dynamic>;
-      final items = body["items"] as List<dynamic>;
-      final provider = items[0] as Map<String, dynamic>;
-      expect(provider["models"] as Map, isEmpty);
+      expect(response.items[0].models, isEmpty);
     });
 
     test("returns all providers when plugin returns multiple", () async {
@@ -301,11 +298,10 @@ void main() {
         makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      final body = jsonDecode(response.body!) as Map<String, dynamic>;
-      final items = body["items"] as List<dynamic>;
-      expect(items, hasLength(3));
+      expect(response.items, hasLength(3));
     });
   });
 }

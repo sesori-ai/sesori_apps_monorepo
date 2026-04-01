@@ -1,7 +1,6 @@
-import "dart:convert";
-
 import "package:sesori_bridge/src/bridge/routing/get_child_sessions_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "routing_test_helpers.dart";
@@ -18,36 +17,40 @@ void main() {
 
     tearDown(() => plugin.close());
 
-    test("canHandle GET /session/:id/children", () {
-      expect(handler.canHandle(makeRequest("GET", "/session/s1/children")), isTrue);
+    test("canHandle POST /session/children", () {
+      expect(handler.canHandle(makeRequest("POST", "/session/children")), isTrue);
     });
 
-    test("does not handle GET /session/:id/message", () {
-      expect(handler.canHandle(makeRequest("GET", "/session/s1/message")), isFalse);
+    test("does not handle GET /session/children", () {
+      expect(handler.canHandle(makeRequest("GET", "/session/children")), isFalse);
     });
 
-    test("extracts id", () async {
+    test("extracts sessionId from body", () async {
       await handler.handle(
-        makeRequest("GET", "/session/s1/children"),
-        pathParams: {"id": "s1"},
+        makeRequest("POST", "/session/children"),
+        body: const SessionIdRequest(sessionId: "s1"),
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(plugin.lastGetChildSessionsSessionId, equals("s1"));
     });
 
-    test("returns 400 when path param id is missing", () async {
-      final response = await handler.handle(
-        makeRequest("GET", "/session/s1/children"),
-        pathParams: {},
-        queryParams: {},
+    test("returns 400 when session id is empty", () async {
+      await expectLater(
+        () => handler.handle(
+          makeRequest("POST", "/session/children"),
+          body: const SessionIdRequest(sessionId: ""),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("missing session id"));
     });
 
-    test("returns JSON list", () async {
+    test("returns typed response", () async {
       plugin.childSessionsResult = const [
         PluginSession(
           id: "c1",
@@ -61,15 +64,14 @@ void main() {
       ];
 
       final response = await handler.handle(
-        makeRequest("GET", "/session/s1/children"),
-        pathParams: {"id": "s1"},
+        makeRequest("POST", "/session/children"),
+        body: const SessionIdRequest(sessionId: "s1"),
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      expect(response.status, equals(200));
-      expect(response.headers["content-type"], equals("application/json"));
-      final body = jsonDecode(response.body!) as List<dynamic>;
-      expect(body, hasLength(1));
+      expect(response.items, hasLength(1));
     });
 
     test("maps correctly", () async {
@@ -86,28 +88,25 @@ void main() {
       ];
 
       final response = await handler.handle(
-        makeRequest("GET", "/session/parent-1/children"),
-        pathParams: {"id": "parent-1"},
+        makeRequest("POST", "/session/children"),
+        body: const SessionIdRequest(sessionId: "parent-1"),
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      final body = jsonDecode(response.body!) as List<dynamic>;
-      final session = body[0] as Map<String, dynamic>;
-      expect(session["id"], equals("child-1"));
-      expect(session["projectID"], equals("project-1"));
-      expect(session["directory"], equals("/tmp/project"));
-      expect(session["parentID"], equals("parent-1"));
-      expect(session["title"], equals("Child Session"));
-
-      final time = session["time"] as Map<String, dynamic>;
-      expect(time["created"], equals(10));
-      expect(time["updated"], equals(20));
-      expect(time["archived"], isNull);
-
-      final summary = session["summary"] as Map<String, dynamic>;
-      expect(summary["additions"], equals(5));
-      expect(summary["deletions"], equals(2));
-      expect(summary["files"], equals(3));
+      final session = response.items[0];
+      expect(session.id, equals("child-1"));
+      expect(session.projectID, equals("project-1"));
+      expect(session.directory, equals("/tmp/project"));
+      expect(session.parentID, equals("parent-1"));
+      expect(session.title, equals("Child Session"));
+      expect(session.time?.created, equals(10));
+      expect(session.time?.updated, equals(20));
+      expect(session.time?.archived, isNull);
+      expect(session.summary?.additions, equals(5));
+      expect(session.summary?.deletions, equals(2));
+      expect(session.summary?.files, equals(3));
     });
   });
 }

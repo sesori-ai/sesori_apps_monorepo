@@ -13,6 +13,146 @@ part of 'pending_question.dart';
 T _$identity<T>(T value) => value;
 
 /// @nodoc
+mixin _$PendingQuestionResponse {
+
+ List<PendingQuestion> get data;
+/// Create a copy of PendingQuestionResponse
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PendingQuestionResponseCopyWith<PendingQuestionResponse> get copyWith => _$PendingQuestionResponseCopyWithImpl<PendingQuestionResponse>(this as PendingQuestionResponse, _$identity);
+
+  /// Serializes this PendingQuestionResponse to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PendingQuestionResponse&&const DeepCollectionEquality().equals(other.data, data));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(data));
+
+@override
+String toString() {
+  return 'PendingQuestionResponse(data: $data)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PendingQuestionResponseCopyWith<$Res>  {
+  factory $PendingQuestionResponseCopyWith(PendingQuestionResponse value, $Res Function(PendingQuestionResponse) _then) = _$PendingQuestionResponseCopyWithImpl;
+@useResult
+$Res call({
+ List<PendingQuestion> data
+});
+
+
+
+
+}
+/// @nodoc
+class _$PendingQuestionResponseCopyWithImpl<$Res>
+    implements $PendingQuestionResponseCopyWith<$Res> {
+  _$PendingQuestionResponseCopyWithImpl(this._self, this._then);
+
+  final PendingQuestionResponse _self;
+  final $Res Function(PendingQuestionResponse) _then;
+
+/// Create a copy of PendingQuestionResponse
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? data = null,}) {
+  return _then(_self.copyWith(
+data: null == data ? _self.data : data // ignore: cast_nullable_to_non_nullable
+as List<PendingQuestion>,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _PendingQuestionResponse implements PendingQuestionResponse {
+  const _PendingQuestionResponse({required final  List<PendingQuestion> data}): _data = data;
+  factory _PendingQuestionResponse.fromJson(Map<String, dynamic> json) => _$PendingQuestionResponseFromJson(json);
+
+ final  List<PendingQuestion> _data;
+@override List<PendingQuestion> get data {
+  if (_data is EqualUnmodifiableListView) return _data;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_data);
+}
+
+
+/// Create a copy of PendingQuestionResponse
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$PendingQuestionResponseCopyWith<_PendingQuestionResponse> get copyWith => __$PendingQuestionResponseCopyWithImpl<_PendingQuestionResponse>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PendingQuestionResponseToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PendingQuestionResponse&&const DeepCollectionEquality().equals(other._data, _data));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_data));
+
+@override
+String toString() {
+  return 'PendingQuestionResponse(data: $data)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$PendingQuestionResponseCopyWith<$Res> implements $PendingQuestionResponseCopyWith<$Res> {
+  factory _$PendingQuestionResponseCopyWith(_PendingQuestionResponse value, $Res Function(_PendingQuestionResponse) _then) = __$PendingQuestionResponseCopyWithImpl;
+@override @useResult
+$Res call({
+ List<PendingQuestion> data
+});
+
+
+
+
+}
+/// @nodoc
+class __$PendingQuestionResponseCopyWithImpl<$Res>
+    implements _$PendingQuestionResponseCopyWith<$Res> {
+  __$PendingQuestionResponseCopyWithImpl(this._self, this._then);
+
+  final _PendingQuestionResponse _self;
+  final $Res Function(_PendingQuestionResponse) _then;
+
+/// Create a copy of PendingQuestionResponse
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? data = null,}) {
+  return _then(_PendingQuestionResponse(
+data: null == data ? _self._data : data // ignore: cast_nullable_to_non_nullable
+as List<PendingQuestion>,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
 mixin _$PendingQuestion {
 
  String get id; String get sessionID; List<QuestionInfo> get questions;

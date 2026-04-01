@@ -1,8 +1,7 @@
-import "dart:convert";
-
 import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/routing/hide_project_handler.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_database.dart";
@@ -34,48 +33,44 @@ void main() {
 
     test("returns 200 and stores hidden project id", () async {
       final response = await handler.handle(
-        makeRequest("POST", "/project/hide", body: jsonEncode({"projectId": "p1"})),
+        makeRequest("POST", "/project/hide"),
+        body: const ProjectIdRequest(projectId: "p1"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       final hiddenIds = await dao.getHiddenProjectIds();
-      expect(response.status, equals(200));
+      expect(response, equals(const SuccessEmptyResponse()));
       expect(hiddenIds, contains("p1"));
+    });
+
+    test("rejects empty project id", () async {
+      expect(
+        () => handler.handle(
+          makeRequest("POST", "/project/hide"),
+          body: const ProjectIdRequest(projectId: ""),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", 400)),
+      );
     });
 
     test("handles project IDs containing slashes", () async {
       const projectId = "/Users/alex/projects/my-app";
       final response = await handler.handle(
-        makeRequest("POST", "/project/hide", body: jsonEncode({"projectId": projectId})),
+        makeRequest("POST", "/project/hide"),
+        body: const ProjectIdRequest(projectId: projectId),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       final hiddenIds = await dao.getHiddenProjectIds();
-      expect(response.status, equals(200));
+      expect(response, equals(const SuccessEmptyResponse()));
       expect(hiddenIds, contains(projectId));
-    });
-
-    test("returns 400 when body is missing projectId", () async {
-      final response = await handler.handle(
-        makeRequest("POST", "/project/hide", body: jsonEncode({})),
-        pathParams: {},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("missing or empty projectId"));
-    });
-
-    test("returns 400 when body is invalid JSON", () async {
-      final response = await handler.handle(
-        makeRequest("POST", "/project/hide", body: "not json"),
-        pathParams: {},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(400));
     });
   });
 }

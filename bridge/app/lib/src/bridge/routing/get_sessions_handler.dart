@@ -1,19 +1,14 @@
-import "dart:convert";
-
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../persistence/tables/session_table.dart";
+import "plugin_session_mapper.dart";
 import "request_handler.dart";
 
-/// Handles `GET /session` — returns sessions for a given project.
-///
-/// Requires `x-project-id` header. Supports `start` and `limit`
-/// query parameters for pagination.
+/// Handles `GET /sessions` — returns sessions for a given project.
 ///
 /// Merges archive status from the database with plugin session data.
-class GetSessionsHandler extends RequestHandler {
-  static const _projectIdHeader = "x-project-id";
+class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionListResponse> {
   final BridgePlugin _plugin;
   final SessionDaoLike _sessionDao;
 
@@ -21,26 +16,31 @@ class GetSessionsHandler extends RequestHandler {
     this._plugin,
     SessionDaoLike sessionDao,
   ) : _sessionDao = sessionDao,
-      super(HttpMethod.get, "/session");
+      super(
+        HttpMethod.post,
+        "/sessions",
+        fromJson: SessionListRequest.fromJson,
+      );
 
   @override
-  Future<RelayResponse> handle(
+  Future<SessionListResponse> handle(
     RelayRequest request, {
+    required SessionListRequest body,
     required Map<String, String> pathParams,
     required Map<String, String> queryParams,
-    String? fragment,
+    required String? fragment,
   }) async {
-    final projectId = findHeader(request.headers, _projectIdHeader);
-    if (projectId == null || projectId.isEmpty) {
-      return buildErrorResponse(
+    final projectId = body.projectId;
+    if (projectId.isEmpty) {
+      throw buildErrorResponse(
         request,
         400,
-        "missing $_projectIdHeader header",
+        "missing project id in body",
       );
     }
 
-    final start = queryParams["start"] != null ? int.tryParse(queryParams["start"]!) : null;
-    final limit = queryParams["limit"] != null ? int.tryParse(queryParams["limit"]!) : null;
+    final start = body.start;
+    final limit = body.limit;
 
     final pluginSessions = await _plugin.getSessions(
       projectId,
@@ -49,43 +49,7 @@ class GetSessionsHandler extends RequestHandler {
     );
 
     // Map plugin sessions to shared Session objects
-    final sessions = pluginSessions
-        .map(
-          (s) => Session(
-            id: s.id,
-            projectID: s.projectID,
-            directory: s.directory,
-            parentID: s.parentID,
-            title: s.title,
-            time: switch (s.time) {
-              PluginSessionTime(
-                :final created,
-                :final updated,
-                :final archived,
-              ) =>
-                SessionTime(
-                  created: created,
-                  updated: updated,
-                  archived: archived,
-                ),
-              null => null,
-            },
-            summary: switch (s.summary) {
-              PluginSessionSummary(
-                :final additions,
-                :final deletions,
-                :final files,
-              ) =>
-                SessionSummary(
-                  additions: additions,
-                  deletions: deletions,
-                  files: files,
-                ),
-              null => null,
-            },
-          ),
-        )
-        .toList();
+    final sessions = pluginSessions.map((s) => s.toSharedSession()).toList();
 
     // Merge archive status from database
     final sessionIds = sessions.map((s) => s.id).toList();
@@ -109,8 +73,7 @@ class GetSessionsHandler extends RequestHandler {
       return session;
     }).toList();
 
-    final body = jsonEncode(mergedSessions.map((s) => s.toJson()).toList());
-    return buildOkJsonResponse(request, body);
+    return SessionListResponse(items: mergedSessions);
   }
 }
 

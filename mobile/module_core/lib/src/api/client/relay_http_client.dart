@@ -17,9 +17,11 @@ class RelayHttpApiClient {
 
   RelayHttpApiClient(ConnectionService connectionService) : _connectionService = connectionService;
 
+  // ignore: no_slop_linter/prefer_required_named_parameters, optional HTTP parameters
   Future<ApiResponse<T>> get<T>(
     String path, {
-    required T Function(dynamic json) fromJson,
+    // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing callback requires dynamic payload
+    required T Function(Map<String, dynamic> json) fromJson,
     Map<String, String>? queryParameters,
     Map<String, String>? headers,
   }) async {
@@ -27,10 +29,10 @@ class RelayHttpApiClient {
     if (relayClient != null && relayClient.isConnected) {
       return _mapAuthErrors(
         await _sendViaRelay(
-          relayClient,
-          HttpMethod.get,
-          path,
-          fromJson,
+          relayClient: relayClient,
+          method: HttpMethod.get,
+          path: path,
+          fromJson: fromJson,
           queryParameters: queryParameters,
           extraHeaders: headers,
         ),
@@ -39,9 +41,11 @@ class RelayHttpApiClient {
     return _relayDisconnectedResponse();
   }
 
+  // ignore: no_slop_linter/prefer_required_named_parameters, optional HTTP parameters
   Future<ApiResponse<T>> post<T>(
     String path, {
-    required T Function(dynamic json) fromJson,
+    // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing callback requires dynamic payload
+    required T Function(Map<String, dynamic> json) fromJson,
     required Object? body,
     Map<String, String>? queryParameters,
     Map<String, String>? headers,
@@ -50,10 +54,10 @@ class RelayHttpApiClient {
     if (relayClient != null && relayClient.isConnected) {
       return _mapAuthErrors(
         await _sendViaRelay(
-          relayClient,
-          HttpMethod.post,
-          path,
-          fromJson,
+          relayClient: relayClient,
+          method: HttpMethod.post,
+          path: path,
+          fromJson: fromJson,
           queryParameters: queryParameters,
           body: body,
           extraHeaders: headers,
@@ -63,9 +67,11 @@ class RelayHttpApiClient {
     return _relayDisconnectedResponse();
   }
 
+  // ignore: no_slop_linter/prefer_required_named_parameters, optional HTTP parameters
   Future<ApiResponse<T>> patch<T>(
     String path, {
-    required T Function(dynamic json) fromJson,
+    // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing callback requires dynamic payload
+    required T Function(Map<String, dynamic> json) fromJson,
     required Object? body,
     Map<String, String>? queryParameters,
     Map<String, String>? headers,
@@ -74,10 +80,10 @@ class RelayHttpApiClient {
     if (relayClient != null && relayClient.isConnected) {
       return _mapAuthErrors(
         await _sendViaRelay(
-          relayClient,
-          HttpMethod.patch,
-          path,
-          fromJson,
+          relayClient: relayClient,
+          method: HttpMethod.patch,
+          path: path,
+          fromJson: fromJson,
           queryParameters: queryParameters,
           body: body,
           extraHeaders: headers,
@@ -87,9 +93,11 @@ class RelayHttpApiClient {
     return _relayDisconnectedResponse();
   }
 
+  // ignore: no_slop_linter/prefer_required_named_parameters, optional HTTP parameters
   Future<ApiResponse<T>> delete<T>(
     String path, {
-    required T Function(dynamic json) fromJson,
+    // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing callback requires dynamic payload
+    required T Function(Map<String, dynamic> json) fromJson,
     Object? body,
     Map<String, String>? queryParameters,
     Map<String, String>? headers,
@@ -98,10 +106,10 @@ class RelayHttpApiClient {
     if (relayClient != null && relayClient.isConnected) {
       return _mapAuthErrors(
         await _sendViaRelay(
-          relayClient,
-          HttpMethod.delete,
-          path,
-          fromJson,
+          relayClient: relayClient,
+          method: HttpMethod.delete,
+          path: path,
+          fromJson: fromJson,
           queryParameters: queryParameters,
           body: body,
           extraHeaders: headers,
@@ -118,11 +126,13 @@ class RelayHttpApiClient {
     return response;
   }
 
-  Future<ApiResponse<T>> _sendViaRelay<T>(
-    RelayClient relayClient,
-    HttpMethod method,
-    String path,
-    T Function(dynamic json) fromJson, {
+  // ignore: no_slop_linter/prefer_required_named_parameters, optional relay request shaping parameters
+  Future<ApiResponse<T>> _sendViaRelay<T>({
+    required RelayClient relayClient,
+    required HttpMethod method,
+    required String path,
+    // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing callback requires dynamic payload
+    required T Function(Map<String, dynamic> json) fromJson,
     Map<String, String>? queryParameters,
     Object? body,
     Map<String, String>? extraHeaders,
@@ -160,16 +170,17 @@ class RelayHttpApiClient {
         );
       }
 
-      if (response.body == null || response.body!.isEmpty) {
-        return ApiResponse.success(fromJson(null));
+      final responseBody = response.body;
+      if (responseBody == null || responseBody.isEmpty) {
+        return ApiResponse.error(ApiError.emptyResponse());
       }
 
       try {
-        final json = jsonDecode(response.body!);
+        final json = jsonDecodeMap(responseBody);
         return ApiResponse.success(fromJson(json));
       } catch (error, stackTrace) {
         loge("Failed to parse relay response JSON", error, stackTrace);
-        return ApiResponse.error(ApiError.jsonParsing(response.body!));
+        return ApiResponse.error(ApiError.jsonParsing(responseBody));
       }
     } catch (error, stackTrace) {
       loge("Relay API request failed", error, stackTrace);

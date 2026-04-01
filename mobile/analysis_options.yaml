@@ -1,3 +1,3 @@
-# plugins:
-#   no_slop_linter:
-#     path: ../shared/no_slop_linter
+plugins:
+  no_slop_linter:
+    path: ../shared/no_slop_linter

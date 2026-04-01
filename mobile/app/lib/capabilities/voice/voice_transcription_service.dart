@@ -205,6 +205,7 @@ class VoiceTranscriptionService {
     NonSuccessCodeError(:final errorCode) => VoiceTranscriptionError.serverError(errorCode),
     DartHttpClientError() => VoiceTranscriptionError.networkError(),
     JsonParsingError() => VoiceTranscriptionError.emptyTranscript(),
+    EmptyResponseError() => VoiceTranscriptionError.emptyTranscript(),
     GenericError() => VoiceTranscriptionError.networkError(),
   };
 

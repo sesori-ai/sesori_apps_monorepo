@@ -5,15 +5,15 @@ import "package:test/test.dart";
 import "routing_test_helpers.dart";
 
 // Minimal concrete subclass used to exercise base-class behaviour.
-class _StubHandler extends RequestHandler {
+class _StubHandler extends RequestHandlerBase {
   _StubHandler(super.method, super.path);
 
   @override
-  Future<RelayResponse> handle(
+  Future<RelayResponse> handleInternal(
     RelayRequest request, {
     required Map<String, String> pathParams,
     required Map<String, String> queryParams,
-    String? fragment,
+    required String? fragment,
   }) async => RelayResponse(
     id: request.id,
     status: 200,

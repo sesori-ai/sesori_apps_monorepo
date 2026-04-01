@@ -7,6 +7,16 @@ part "message_with_parts.freezed.dart";
 
 part "message_with_parts.g.dart";
 
+/// Response body for `POST /session/messages`.
+@Freezed(fromJson: true, toJson: true)
+sealed class MessageWithPartsResponse with _$MessageWithPartsResponse {
+  const factory MessageWithPartsResponse({
+    required List<MessageWithParts> messages,
+  }) = _MessageWithPartsResponse;
+
+  factory MessageWithPartsResponse.fromJson(Map<String, dynamic> json) => _$MessageWithPartsResponseFromJson(json);
+}
+
 @Freezed(fromJson: true, toJson: true)
 sealed class MessageWithParts with _$MessageWithParts {
   const factory MessageWithParts({

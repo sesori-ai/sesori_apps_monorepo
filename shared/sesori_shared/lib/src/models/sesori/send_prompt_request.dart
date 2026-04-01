@@ -4,9 +4,11 @@ part "send_prompt_request.freezed.dart";
 
 part "send_prompt_request.g.dart";
 
+/// Request body for `POST /session/prompt`.
 @Freezed(fromJson: true, toJson: true)
 sealed class SendPromptRequest with _$SendPromptRequest {
   const factory SendPromptRequest({
+    required String sessionId,
     required List<PromptPart> parts,
     required String? agent,
     required PromptModel? model,

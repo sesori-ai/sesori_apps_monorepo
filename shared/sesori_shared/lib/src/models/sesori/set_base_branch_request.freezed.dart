@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$SetBaseBranchRequest {
 
- String get projectId; String? get baseBranch;
+ String get projectId; String get baseBranch;
 /// Create a copy of SetBaseBranchRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -48,7 +48,7 @@ abstract mixin class $SetBaseBranchRequestCopyWith<$Res>  {
   factory $SetBaseBranchRequestCopyWith(SetBaseBranchRequest value, $Res Function(SetBaseBranchRequest) _then) = _$SetBaseBranchRequestCopyWithImpl;
 @useResult
 $Res call({
- String projectId, String? baseBranch
+ String projectId, String baseBranch
 });
 
 
@@ -65,11 +65,11 @@ class _$SetBaseBranchRequestCopyWithImpl<$Res>
 
 /// Create a copy of SetBaseBranchRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? projectId = null,Object? baseBranch = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? projectId = null,Object? baseBranch = null,}) {
   return _then(_self.copyWith(
 projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
-as String,baseBranch: freezed == baseBranch ? _self.baseBranch : baseBranch // ignore: cast_nullable_to_non_nullable
-as String?,
+as String,baseBranch: null == baseBranch ? _self.baseBranch : baseBranch // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 
@@ -85,7 +85,7 @@ class _SetBaseBranchRequest implements SetBaseBranchRequest {
   factory _SetBaseBranchRequest.fromJson(Map<String, dynamic> json) => _$SetBaseBranchRequestFromJson(json);
 
 @override final  String projectId;
-@override final  String? baseBranch;
+@override final  String baseBranch;
 
 /// Create a copy of SetBaseBranchRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -120,7 +120,7 @@ abstract mixin class _$SetBaseBranchRequestCopyWith<$Res> implements $SetBaseBra
   factory _$SetBaseBranchRequestCopyWith(_SetBaseBranchRequest value, $Res Function(_SetBaseBranchRequest) _then) = __$SetBaseBranchRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String projectId, String? baseBranch
+ String projectId, String baseBranch
 });
 
 
@@ -137,11 +137,11 @@ class __$SetBaseBranchRequestCopyWithImpl<$Res>
 
 /// Create a copy of SetBaseBranchRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? projectId = null,Object? baseBranch = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? projectId = null,Object? baseBranch = null,}) {
   return _then(_SetBaseBranchRequest(
 projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
-as String,baseBranch: freezed == baseBranch ? _self.baseBranch : baseBranch // ignore: cast_nullable_to_non_nullable
-as String?,
+as String,baseBranch: null == baseBranch ? _self.baseBranch : baseBranch // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 

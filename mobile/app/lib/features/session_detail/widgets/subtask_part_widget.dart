@@ -56,7 +56,7 @@ class SubtaskPartWidget extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Row(
               children: [
-                _statusIcon(status, theme),
+                _statusIcon(status: status, theme: theme),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -94,7 +94,7 @@ class SubtaskPartWidget extends StatelessWidget {
     );
   }
 
-  Widget _statusIcon(SessionStatus? status, ThemeData theme) => switch (status) {
+  Widget _statusIcon({required SessionStatus? status, required ThemeData theme}) => switch (status) {
     SessionStatusBusy() => SizedBox(
       width: 16,
       height: 16,

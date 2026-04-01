@@ -22,7 +22,7 @@ sealed class SessionListState with _$SessionListState {
     @Default(false) bool isRefreshing,
 
     /// The base branch of the project (e.g. "main", "develop"), if available.
-    String? baseBranch,
+    required String? baseBranch,
   }) = SessionListLoaded;
 
   /// The requested project ID no longer resolves to the expected project on

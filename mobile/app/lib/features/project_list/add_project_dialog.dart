@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:get_it/get_it.dart";
+import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -11,6 +12,7 @@ import "../../core/extensions/build_context_x.dart";
 /// The [cubit] is passed explicitly so the dialog can call
 /// `createProject` / `discoverProject` without relying on the
 /// widget tree's BlocProvider (which lives in the parent screen).
+// ignore: no_slop_linter/prefer_required_named_parameters, shared helper signature used by tests
 Future<void> showAddProjectDialog(BuildContext context, ProjectListCubit cubit) {
   return showModalBottomSheet<void>(
     context: context,
@@ -39,6 +41,10 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
   String _browsingPath = "";
   bool _actionLoading = false;
 
+  void _dismissDialog() {
+    context.pop();
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -56,7 +62,7 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
 
     final loc = context.loc;
     if (success) {
-      Navigator.of(context).pop();
+      _dismissDialog();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(loc.projectDiscovered),
@@ -87,7 +93,7 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
 
     final loc = context.loc;
     if (success) {
-      Navigator.of(context).pop();
+      _dismissDialog();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(loc.projectCreated),
@@ -112,7 +118,7 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
     return SizedBox(
       height: screenHeight * 0.7,
       child: Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+        padding: EdgeInsetsDirectional.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
         child: Column(
           children: [
             const SizedBox(height: 8),
@@ -142,7 +148,7 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -235,7 +241,7 @@ class _DirectoryBrowserState extends State<_DirectoryBrowser> {
     });
 
     final response = await GetIt.instance<ProjectService>().getFilesystemSuggestions(
-      prefix: _currentPath,
+      prefix: _currentPath.isEmpty ? null : _currentPath,
     );
 
     if (!mounted) return;
@@ -243,7 +249,7 @@ class _DirectoryBrowserState extends State<_DirectoryBrowser> {
       _loading = false;
       switch (response) {
         case SuccessResponse(:final data):
-          _entries = data;
+          _entries = data.data;
           _hasError = false;
         case ErrorResponse():
           _entries = [];
@@ -278,7 +284,7 @@ class _DirectoryBrowserState extends State<_DirectoryBrowser> {
         // Breadcrumb header with back button
         if (_currentPath.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.only(left: 4, right: 16, top: 4),
+            padding: const EdgeInsetsDirectional.only(start: 4, end: 16, top: 4),
             child: Row(
               children: [
                 IconButton(
@@ -306,10 +312,35 @@ class _DirectoryBrowserState extends State<_DirectoryBrowser> {
               ? const Center(child: CircularProgressIndicator())
               : _hasError
               ? Center(
-                  child: Text(
-                    loc.fetchDirectoryFailed,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.error,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
+                        const SizedBox(height: 12),
+                        Text(
+                          loc.fetchDirectoryFailed,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.error,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        FilledButton.icon(
+                          onPressed: _fetchEntries,
+                          icon: const Icon(Icons.refresh),
+                          label: Text(loc.fetchDirectoryRetry),
+                        ),
+                        if (_currentPath.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          OutlinedButton.icon(
+                            onPressed: _navigateUp,
+                            icon: const Icon(Icons.arrow_back),
+                            label: Text(loc.fetchDirectoryGoBack),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 )

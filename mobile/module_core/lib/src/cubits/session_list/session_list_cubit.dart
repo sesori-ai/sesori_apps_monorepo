@@ -34,11 +34,11 @@ class SessionListCubit extends Cubit<SessionListState> {
   /// Cached base branch name, fetched alongside sessions.
   String? _baseBranch;
 
-  SessionListCubit(
-    SessionService service,
-    ProjectService projectService,
-    ConnectionService connectionService,
-    SseEventRepository sseEventRepository, {
+  SessionListCubit({
+    required SessionService service,
+    required ProjectService projectService,
+    required ConnectionService connectionService,
+    required SseEventRepository sseEventRepository,
     required String projectId,
     required FailureReporter failureReporter,
   }) : _service = service,
@@ -69,14 +69,56 @@ class SessionListCubit extends Cubit<SessionListState> {
     try {
       if (isClosed) return;
       logd("[SessionList] event received: ${event.data.runtimeType}");
-      switch (event.data) {
+      final data = event.data;
+      switch (data) {
         case SesoriSessionCreated(:final info):
           _onSessionCreated(info);
         case SesoriSessionUpdated(:final info):
           _onSessionUpdated(info);
         case SesoriSessionDeleted(:final info):
           _onSessionDeleted(info);
-        default:
+        case SesoriServerConnected() ||
+            SesoriServerHeartbeat() ||
+            SesoriServerInstanceDisposed() ||
+            SesoriGlobalDisposed() ||
+            SesoriSessionDiff() ||
+            SesoriSessionError() ||
+            SesoriSessionCompacted() ||
+            SesoriSessionStatus() ||
+            // ignore: deprecated_member_use, legacy idle event is still emitted for backward compatibility
+            SesoriSessionIdle() ||
+            SesoriMessageUpdated() ||
+            SesoriMessageRemoved() ||
+            SesoriMessagePartUpdated() ||
+            SesoriMessagePartDelta() ||
+            SesoriMessagePartRemoved() ||
+            SesoriPtyCreated() ||
+            SesoriPtyUpdated() ||
+            SesoriPtyExited() ||
+            SesoriPtyDeleted() ||
+            SesoriPermissionAsked() ||
+            SesoriPermissionReplied() ||
+            SesoriPermissionUpdated() ||
+            SesoriQuestionAsked() ||
+            SesoriQuestionReplied() ||
+            SesoriQuestionRejected() ||
+            SesoriTodoUpdated() ||
+            SesoriProjectsSummary() ||
+            SesoriProjectUpdated() ||
+            SesoriVcsBranchUpdated() ||
+            SesoriFileEdited() ||
+            SesoriFileWatcherUpdated() ||
+            SesoriLspUpdated() ||
+            SesoriLspClientDiagnostics() ||
+            SesoriMcpToolsChanged() ||
+            SesoriMcpBrowserOpenFailed() ||
+            SesoriInstallationUpdated() ||
+            SesoriInstallationUpdateAvailable() ||
+            SesoriWorkspaceReady() ||
+            SesoriWorkspaceFailed() ||
+            SesoriTuiToastShow() ||
+            SesoriWorktreeReady() ||
+            SesoriWorktreeFailed():
           break;
       }
     } catch (e, st) {
@@ -86,7 +128,7 @@ class SessionListCubit extends Cubit<SessionListState> {
             .recordFailure(
               error: e,
               stackTrace: st,
-              uniqueIdentifier: "session_list_event:${event.data.runtimeType}",
+              uniqueIdentifier: "session_list_event:${event.data.runtimeType.toString()}",
               fatal: false,
               reason: "Failed to handle session list event",
               information: [event.data.runtimeType.toString()],
@@ -98,14 +140,16 @@ class SessionListCubit extends Cubit<SessionListState> {
 
   void _onSessionActivityUpdated(Map<String, Map<String, SessionActivityInfo>> activityByProjectId) {
     if (isClosed) return;
-    if (state is! SessionListLoaded) return;
-    final loaded = state as SessionListLoaded;
+    final current = state;
+    if (current is! SessionListLoaded) return;
+    final loaded = current;
     final projectActivity = activityByProjectId[_projectId] ?? <String, SessionActivityInfo>{};
     emit(
       SessionListState.loaded(
         sessions: loaded.sessions,
         showArchived: loaded.showArchived,
         activeSessionIds: projectActivity,
+        baseBranch: loaded.baseBranch,
       ),
     );
   }
@@ -193,8 +237,9 @@ class SessionListCubit extends Cubit<SessionListState> {
 
   void _onStaleReconnect() {
     if (isClosed) return;
-    if (state is! SessionListLoaded) return;
-    final loaded = state as SessionListLoaded;
+    final current = state;
+    if (current is! SessionListLoaded) return;
+    final loaded = current;
     emit(loaded.copyWith(isRefreshing: true));
     unawaited(
       refreshSessions().whenComplete(() {
@@ -256,7 +301,7 @@ class SessionListCubit extends Cubit<SessionListState> {
     return switch (response) {
       SuccessResponse() => true,
       ErrorResponse(:final error) => () {
-        loge("Failed to archive session: $error");
+        loge("Failed to archive session: ${error.toString()}");
         // Rollback — re-insert the original session.
         _rollbackLastAction();
         return false;
@@ -291,7 +336,7 @@ class SessionListCubit extends Cubit<SessionListState> {
         return true;
       }(),
       ErrorResponse(:final error) => () {
-        loge("Failed to unarchive session: $error");
+        loge("Failed to unarchive session: ${error.toString()}");
         _rollbackLastAction();
         return false;
       }(),
@@ -322,7 +367,7 @@ class SessionListCubit extends Cubit<SessionListState> {
         _reinsertSession(data);
         return true;
       case ErrorResponse(:final error):
-        loge("Failed to undo archive action: $error");
+        loge("Failed to undo archive action: ${error.toString()}");
         return false;
     }
   }
@@ -367,7 +412,7 @@ class SessionListCubit extends Cubit<SessionListState> {
 
     _lastCleanupRejection = null;
 
-    final ApiResponse<bool> response;
+    final ApiResponse<void> response;
     try {
       response = await _service.deleteSession(
         sessionId: sessionId,
@@ -386,7 +431,7 @@ class SessionListCubit extends Cubit<SessionListState> {
     return switch (response) {
       SuccessResponse() => true,
       ErrorResponse(:final error) => () {
-        loge("Failed to delete session: $error");
+        loge("Failed to delete session: ${error.toString()}");
         _reinsertSession(originalSession);
         return false;
       }(),
@@ -473,18 +518,18 @@ class SessionListCubit extends Cubit<SessionListState> {
     // Update cached base branch on success; silently ignore errors so
     // the session list still loads even if the endpoint is unavailable.
     if (baseBranchResponse case SuccessResponse(:final data)) {
-      _baseBranch = data;
+      _baseBranch = data.baseBranch;
     }
 
     switch (sessionsResponse) {
       case SuccessResponse(:final data):
-        _allSessions = data;
+        _allSessions = data.items;
         _emitFiltered();
         return true;
 
       case ErrorResponse(:final error):
         if (silent) {
-          logw("Failed to refresh sessions: $error");
+          logw("Failed to refresh sessions: ${error.toString()}");
         } else {
           emit(SessionListState.failed(error: error));
         }

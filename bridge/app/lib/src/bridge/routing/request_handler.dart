@@ -1,3 +1,5 @@
+import "dart:convert";
+
 import "package:sesori_shared/sesori_shared.dart";
 
 /// HTTP methods supported by [RequestHandler].
@@ -19,6 +21,117 @@ enum HttpMethod {
   }
 }
 
+abstract class GetRequestHandler<RES extends Object> extends RequestHandlerBase {
+  GetRequestHandler(
+    String path,
+  ) : super(HttpMethod.get, path);
+
+  Future<RES> handle(
+    RelayRequest request, {
+    required Map<String, String> pathParams,
+    required Map<String, String> queryParams,
+    required String? fragment,
+  });
+
+  @override
+  Future<RelayResponse> handleInternal(
+    RelayRequest request, {
+    required Map<String, String> pathParams,
+    required Map<String, String> queryParams,
+    required String? fragment,
+  }) async {
+    try {
+      final result = await handle(
+        request,
+        pathParams: pathParams,
+        queryParams: queryParams,
+        fragment: fragment,
+      );
+
+      return buildOkJsonResponse(request, result);
+    } on RelayResponse catch (err) {
+      if (err.status >= 200 && err.status < 300) {
+        // we don't expect to throw success responses from handleBody
+        // -- so we'll treat this as an internal server error
+        throw buildErrorResponse(request, 500, "Internal Server Error: threw success response");
+      } else {
+        // just return the error response
+        return err;
+      }
+    } catch (err) {
+      return buildErrorResponse(request, 500, "Internal Server Error: $err");
+    }
+  }
+}
+
+abstract class BodyRequestHandler<REQ, RES extends Object> extends RequestHandlerBase {
+  final REQ Function(Map<String, dynamic> json) _fromJson;
+
+  BodyRequestHandler(
+    super.method,
+    super.path, {
+    required REQ Function(Map<String, dynamic> json) fromJson,
+  }) : _fromJson = fromJson;
+
+  @override
+  Future<RelayResponse> handleInternal(
+    RelayRequest request, {
+    required Map<String, String> pathParams,
+    required Map<String, String> queryParams,
+    required String? fragment,
+  }) async {
+    final body = request.body;
+    if (body == null) {
+      return buildErrorResponse(request, 400, "Bad Request: missing JSON body");
+    }
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(body);
+    } catch (_) {
+      return buildErrorResponse(request, 400, "Bad Request: malformed JSON");
+    }
+    if (decoded is! Map<String, dynamic>) {
+      return buildErrorResponse(request, 400, "Bad Request: invalid JSON body");
+    }
+    final REQ bodyParsed;
+    try {
+      bodyParsed = _fromJson(decoded);
+    } catch (err) {
+      return buildErrorResponse(request, 400, "Bad Request: invalid JSON body: $err");
+    }
+    try {
+      final result = await handle(
+        request,
+        body: bodyParsed,
+        pathParams: pathParams,
+        queryParams: queryParams,
+        fragment: fragment,
+      );
+
+      return buildOkJsonResponse(request, result);
+    } on RelayResponse catch (err) {
+      if (err.status >= 200 && err.status < 300) {
+        // we don't expect to throw success responses from handleBody
+        // -- so we'll treat this as an internal server error
+        throw buildErrorResponse(request, 500, "Internal Server Error: threw success response");
+      } else {
+        // just return the error response
+        return err;
+      }
+    } catch (err) {
+      return buildErrorResponse(request, 500, "Internal Server Error: $err");
+    }
+  }
+
+  Future<RES> handle(
+    RelayRequest request, {
+    required REQ body,
+    required Map<String, String> pathParams,
+    required Map<String, String> queryParams,
+    required String? fragment,
+  });
+}
+
 /// A single interceptor in the request routing chain.
 ///
 /// Subclasses declare their [method] and [path] pattern in the constructor.
@@ -33,7 +146,7 @@ enum HttpMethod {
 ///       : super(HttpMethod.get, "/session/:id/message");
 /// }
 /// ```
-abstract class RequestHandler {
+abstract class RequestHandlerBase {
   /// HTTP method this handler responds to.
   final HttpMethod method;
 
@@ -43,7 +156,7 @@ abstract class RequestHandler {
   /// Examples: `"/project"`, `"/session/:id/message"`.
   final String path;
 
-  const RequestHandler(this.method, this.path);
+  const RequestHandlerBase(this.method, this.path);
 
   // ── Matching ────────────────────────────────────────────────────────────────
 
@@ -83,11 +196,11 @@ abstract class RequestHandler {
   ///   e.g. `"/session/:id/message"` yields `{"id": "abc"}`.
   /// - [queryParams] — key/value pairs from the query string.
   /// - [fragment] — URL fragment (`#…`), or `null` if absent.
-  Future<RelayResponse> handle(
+  Future<RelayResponse> handleInternal(
     RelayRequest request, {
     required Map<String, String> pathParams,
     required Map<String, String> queryParams,
-    String? fragment,
+    required String? fragment,
   });
 
   // ── Shared helpers ──────────────────────────────────────────────────────────
@@ -101,11 +214,11 @@ abstract class RequestHandler {
   }
 
   /// Builds a 200 JSON response.
-  RelayResponse buildOkJsonResponse(RelayRequest request, String body) => RelayResponse(
+  RelayResponse buildOkJsonResponse(RelayRequest request, Object body) => RelayResponse(
     id: request.id,
     status: 200,
     headers: {"content-type": "application/json"},
-    body: body,
+    body: jsonEncode(body),
   );
 
   /// Builds an error response with the given [status] and plain-text [message].

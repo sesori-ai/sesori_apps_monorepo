@@ -7,6 +7,7 @@ part "update_session_archive_request.g.dart";
 @Freezed(fromJson: true, toJson: true)
 sealed class UpdateSessionArchiveRequest with _$UpdateSessionArchiveRequest {
   const factory UpdateSessionArchiveRequest({
+    required String sessionId,
     required bool archived,
     required bool deleteWorktree,
     required bool deleteBranch,

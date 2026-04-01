@@ -30,10 +30,10 @@ class SessionListScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => SessionListCubit(
-        getIt<SessionService>(),
-        getIt<ProjectService>(),
-        getIt<ConnectionService>(),
-        getIt<SseEventRepository>(),
+        service: getIt<SessionService>(),
+        projectService: getIt<ProjectService>(),
+        connectionService: getIt<ConnectionService>(),
+        sseEventRepository: getIt<SseEventRepository>(),
         projectId: projectId,
         failureReporter: getIt<FailureReporter>(),
       ),
@@ -69,7 +69,7 @@ class _SessionListBody extends StatelessWidget {
               leading: const Icon(Icons.edit_outlined),
               title: Text(loc.rename),
               onTap: () {
-                Navigator.pop(sheetContext);
+                sheetContext.pop();
                 showRenameSessionDialog(
                   context: context,
                   session: session,
@@ -81,7 +81,7 @@ class _SessionListBody extends StatelessWidget {
               leading: Icon(isArchived ? Icons.unarchive_outlined : Icons.archive_outlined),
               title: Text(isArchived ? loc.sessionListUnarchive : loc.sessionListArchive),
               onTap: () {
-                Navigator.pop(sheetContext);
+                sheetContext.pop();
                 if (isArchived) {
                   _unarchiveSession(context: context, cubit: cubit, sessionId: session.id);
                 } else {
@@ -96,7 +96,7 @@ class _SessionListBody extends StatelessWidget {
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
               onTap: () {
-                Navigator.pop(sheetContext);
+                sheetContext.pop();
                 _showDeleteSheet(context: context, cubit: cubit, session: session);
               },
             ),
@@ -110,7 +110,10 @@ class _SessionListBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final loc = context.loc;
     final state = context.watch<SessionListCubit>().state;
-    final title = projectName != null ? loc.sessionListTitleWithName(projectName!) : loc.sessionListTitle;
+    final title = switch (projectName) {
+      final name? => loc.sessionListTitleWithName(name),
+      null => loc.sessionListTitle,
+    };
 
     final showArchived = state is SessionListLoaded && state.showArchived;
     final baseBranch = state is SessionListLoaded ? state.baseBranch : null;

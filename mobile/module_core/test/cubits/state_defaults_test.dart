@@ -10,15 +10,26 @@ void main() {
       messages: [],
       streamingText: {},
       sessionStatus: SessionStatus.idle(),
+      pendingQuestions: [],
+      sessionTitle: null,
+      agent: null,
+      modelID: null,
+      providerID: null,
+      children: [],
+      childStatuses: {},
+      queuedMessages: [],
+      availableAgents: [],
+      availableProviders: [],
       selectedAgent: "build",
       selectedProviderID: "p",
       selectedModelID: "m",
+      isRefreshing: false,
     );
     expect((state as SessionDetailLoaded).isRefreshing, isFalse);
   });
 
   test("SessionListLoaded.isRefreshing defaults to false", () {
-    const state = SessionListState.loaded(sessions: []);
+    const state = SessionListState.loaded(sessions: [], baseBranch: null);
     expect((state as SessionListLoaded).isRefreshing, isFalse);
   });
 

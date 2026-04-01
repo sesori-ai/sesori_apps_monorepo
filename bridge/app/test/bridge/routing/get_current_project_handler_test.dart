@@ -1,7 +1,6 @@
-import "dart:convert";
-
 import "package:sesori_bridge/src/bridge/routing/get_current_project_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "routing_test_helpers.dart";
@@ -18,39 +17,41 @@ void main() {
 
     tearDown(() => plugin.close());
 
-    test("canHandle GET /project/current", () {
-      expect(handler.canHandle(makeRequest("GET", "/project/current")), isTrue);
+    test("canHandle POST /project/current", () {
+      expect(handler.canHandle(makeRequest("POST", "/project/current")), isTrue);
     });
 
-    test("does not handle GET /project", () {
-      expect(handler.canHandle(makeRequest("GET", "/project")), isFalse);
+    test("does not handle GET /project/current", () {
+      expect(handler.canHandle(makeRequest("GET", "/project/current")), isFalse);
     });
 
-    test("returns 400 without x-project-id header", () async {
-      final response = await handler.handle(
-        makeRequest("GET", "/project/current"),
-        pathParams: {},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("x-project-id"));
+    test("does not handle POST /project", () {
+      expect(handler.canHandle(makeRequest("POST", "/project")), isFalse);
     });
 
-    test("returns JSON", () async {
-      final response = await handler.handle(
-        makeRequest(
-          "GET",
-          "/project/current",
-          headers: {"x-project-id": "/tmp/project"},
+    test("rejects empty project id", () async {
+      expect(
+        () => handler.handle(
+          makeRequest("POST", "/project/current"),
+          body: const ProjectIdRequest(projectId: ""),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
         ),
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", 400)),
+      );
+    });
+
+    test("returns typed project", () async {
+      final response = await handler.handle(
+        makeRequest("POST", "/project/current"),
+        body: const ProjectIdRequest(projectId: "/tmp/project"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      expect(response.status, equals(200));
-      expect(response.headers["content-type"], equals("application/json"));
-      expect(jsonDecode(response.body!), isA<Map<String, dynamic>>());
+      expect(response, isA<Project>());
     });
 
     test("maps fields", () async {
@@ -61,24 +62,19 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest(
-          "GET",
-          "/project/current",
-          headers: {"x-project-id": "/tmp/project"},
-        ),
+        makeRequest("POST", "/project/current"),
+        body: const ProjectIdRequest(projectId: "/tmp/project"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(plugin.lastGetCurrentProjectProjectId, equals("/tmp/project"));
 
-      final project = jsonDecode(response.body!) as Map<String, dynamic>;
-      expect(project["id"], equals("p1"));
-      expect(project["name"], equals("My Project"));
-
-      final time = project["time"] as Map<String, dynamic>;
-      expect(time["created"], equals(11));
-      expect(time["updated"], equals(22));
+      expect(response.id, equals("p1"));
+      expect(response.name, equals("My Project"));
+      expect(response.time?.created, equals(11));
+      expect(response.time?.updated, equals(22));
     });
   });
 }

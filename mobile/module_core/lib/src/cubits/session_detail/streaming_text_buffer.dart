@@ -19,7 +19,7 @@ class StreamingTextBuffer {
        _throttle = throttle;
 
   /// Append a text delta for [partId], scheduling a throttled flush.
-  void appendDelta(String partId, String delta) {
+  void appendDelta({required String partId, required String delta}) {
     _buffers.putIfAbsent(partId, StringBuffer.new).write(delta);
     _scheduleFlush();
   }

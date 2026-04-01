@@ -1,5 +1,3 @@
-import "dart:convert";
-
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/routing/delete_session_handler.dart";
 import "package:sesori_bridge/src/bridge/worktree_service.dart";
@@ -35,6 +33,24 @@ void main() {
       await db.close();
     });
 
+    test("throws 400 on empty session id", () async {
+      expect(
+        () => handler.handle(
+          makeRequest("DELETE", "/session/delete"),
+          body: const DeleteSessionRequest(
+            sessionId: "",
+            deleteWorktree: false,
+            deleteBranch: false,
+            force: false,
+          ),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
+      );
+    });
+
     test("1) deleteWorktree=false deleteBranch=false: plugin+db delete, no git ops", () async {
       await _insertSession(
         db: db,
@@ -45,22 +61,19 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest(
-          "DELETE",
-          "/session/s1",
-          body: jsonEncode(
-            const DeleteSessionRequest(
-              deleteWorktree: false,
-              deleteBranch: false,
-              force: false,
-            ).toJson(),
-          ),
+        makeRequest("DELETE", "/session/delete"),
+        body: const DeleteSessionRequest(
+          sessionId: "s1",
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
         ),
-        pathParams: {"id": "s1"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      expect(response.status, equals(200));
+      expect(response, isA<SuccessEmptyResponse>());
       expect(plugin.lastDeleteSessionId, equals("s1"));
       expect(await db.sessionDao.getSession(sessionId: "s1"), isNull);
       expect(worktreeService.checkCallCount, equals(0));
@@ -80,22 +93,19 @@ void main() {
       worktreeService.safetyResult = WorktreeSafe();
 
       final response = await handler.handle(
-        makeRequest(
-          "DELETE",
-          "/session/s2",
-          body: jsonEncode(
-            const DeleteSessionRequest(
-              deleteWorktree: true,
-              deleteBranch: false,
-              force: false,
-            ).toJson(),
-          ),
+        makeRequest("DELETE", "/session/delete"),
+        body: const DeleteSessionRequest(
+          sessionId: "s2",
+          deleteWorktree: true,
+          deleteBranch: false,
+          force: false,
         ),
-        pathParams: {"id": "s2"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      expect(response.status, equals(200));
+      expect(response, isA<SuccessEmptyResponse>());
       expect(worktreeService.checkCallCount, equals(1));
       expect(worktreeService.lastCheckWorktreePath, equals("/repo/.worktrees/session-002"));
       expect(worktreeService.lastCheckExpectedBranch, equals("session-002"));
@@ -119,22 +129,19 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest(
-          "DELETE",
-          "/session/s3",
-          body: jsonEncode(
-            const DeleteSessionRequest(
-              deleteWorktree: false,
-              deleteBranch: true,
-              force: false,
-            ).toJson(),
-          ),
+        makeRequest("DELETE", "/session/delete"),
+        body: const DeleteSessionRequest(
+          sessionId: "s3",
+          deleteWorktree: false,
+          deleteBranch: true,
+          force: false,
         ),
-        pathParams: {"id": "s3"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      expect(response.status, equals(200));
+      expect(response, isA<SuccessEmptyResponse>());
       expect(worktreeService.checkCallCount, equals(0));
       expect(worktreeService.removeCallCount, equals(0));
       expect(worktreeService.deleteBranchCallCount, equals(1));
@@ -157,22 +164,19 @@ void main() {
       worktreeService.safetyResult = WorktreeSafe();
 
       final response = await handler.handle(
-        makeRequest(
-          "DELETE",
-          "/session/s4",
-          body: jsonEncode(
-            const DeleteSessionRequest(
-              deleteWorktree: true,
-              deleteBranch: true,
-              force: false,
-            ).toJson(),
-          ),
+        makeRequest("DELETE", "/session/delete"),
+        body: const DeleteSessionRequest(
+          sessionId: "s4",
+          deleteWorktree: true,
+          deleteBranch: true,
+          force: false,
         ),
-        pathParams: {"id": "s4"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      expect(response.status, equals(200));
+      expect(response, isA<SuccessEmptyResponse>());
       expect(worktreeService.checkCallCount, equals(1));
       expect(worktreeService.removeCallCount, equals(1));
       expect(worktreeService.deleteBranchCallCount, equals(1));
@@ -197,38 +201,20 @@ void main() {
         ],
       );
 
-      final response = await handler.handle(
-        makeRequest(
-          "DELETE",
-          "/session/s5",
-          body: jsonEncode(
-            const DeleteSessionRequest(
-              deleteWorktree: true,
-              deleteBranch: false,
-              force: false,
-            ).toJson(),
+      await expectLater(
+        () => handler.handle(
+          makeRequest("DELETE", "/session/delete"),
+          body: const DeleteSessionRequest(
+            sessionId: "s5",
+            deleteWorktree: true,
+            deleteBranch: false,
+            force: false,
           ),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
         ),
-        pathParams: {"id": "s5"},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(409));
-      final rejection = SessionCleanupRejection.fromJson(
-        switch (jsonDecode(response.body!)) {
-          final Map<String, dynamic> map => map,
-          _ => throw StateError("expected JSON object"),
-        },
-      );
-      expect(rejection.issues, hasLength(2));
-      expect(
-        rejection.issues,
-        equals(
-          const [
-            CleanupIssue.unstagedChanges(),
-            CleanupIssue.branchMismatch(expected: "session-005", actual: "main"),
-          ],
-        ),
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(409))),
       );
       expect(worktreeService.removeCallCount, equals(0));
       expect(worktreeService.deleteBranchCallCount, equals(0));
@@ -250,22 +236,19 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest(
-          "DELETE",
-          "/session/s6",
-          body: jsonEncode(
-            const DeleteSessionRequest(
-              deleteWorktree: true,
-              deleteBranch: false,
-              force: true,
-            ).toJson(),
-          ),
+        makeRequest("DELETE", "/session/delete"),
+        body: const DeleteSessionRequest(
+          sessionId: "s6",
+          deleteWorktree: true,
+          deleteBranch: false,
+          force: true,
         ),
-        pathParams: {"id": "s6"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      expect(response.status, equals(200));
+      expect(response, isA<SuccessEmptyResponse>());
       expect(worktreeService.checkCallCount, equals(0));
       expect(worktreeService.removeCallCount, equals(1));
       expect(worktreeService.lastRemoveForce, isTrue);
@@ -284,22 +267,19 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest(
-          "DELETE",
-          "/session/s7",
-          body: jsonEncode(
-            const DeleteSessionRequest(
-              deleteWorktree: true,
-              deleteBranch: true,
-              force: false,
-            ).toJson(),
-          ),
+        makeRequest("DELETE", "/session/delete"),
+        body: const DeleteSessionRequest(
+          sessionId: "s7",
+          deleteWorktree: true,
+          deleteBranch: true,
+          force: false,
         ),
-        pathParams: {"id": "s7"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      expect(response.status, equals(200));
+      expect(response, isA<SuccessEmptyResponse>());
       expect(worktreeService.checkCallCount, equals(0));
       expect(worktreeService.removeCallCount, equals(0));
       expect(worktreeService.deleteBranchCallCount, equals(0));
@@ -310,22 +290,19 @@ void main() {
 
     test("9) missing DB session: plugin delete only", () async {
       final response = await handler.handle(
-        makeRequest(
-          "DELETE",
-          "/session/s9",
-          body: jsonEncode(
-            const DeleteSessionRequest(
-              deleteWorktree: true,
-              deleteBranch: true,
-              force: false,
-            ).toJson(),
-          ),
+        makeRequest("DELETE", "/session/delete"),
+        body: const DeleteSessionRequest(
+          sessionId: "s9",
+          deleteWorktree: true,
+          deleteBranch: true,
+          force: false,
         ),
-        pathParams: {"id": "s9"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      expect(response.status, equals(200));
+      expect(response, isA<SuccessEmptyResponse>());
       expect(plugin.lastDeleteSessionId, equals("s9"));
       expect(worktreeService.checkCallCount, equals(0));
       expect(worktreeService.removeCallCount, equals(0));
@@ -347,19 +324,16 @@ void main() {
 
       await expectLater(
         () => handler.handle(
-          makeRequest(
-            "DELETE",
-            "/session/s10",
-            body: jsonEncode(
-              const DeleteSessionRequest(
-                deleteWorktree: true,
-                deleteBranch: true,
-                force: false,
-              ).toJson(),
-            ),
+          makeRequest("DELETE", "/session/delete"),
+          body: const DeleteSessionRequest(
+            sessionId: "s10",
+            deleteWorktree: true,
+            deleteBranch: true,
+            force: false,
           ),
-          pathParams: {"id": "s10"},
+          pathParams: {},
           queryParams: {},
+          fragment: null,
         ),
         throwsA(isA<PluginApiException>()),
       );

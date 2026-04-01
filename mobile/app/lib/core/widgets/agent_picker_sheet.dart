@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:go_router/go_router.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../extensions/build_context_x.dart";
@@ -34,7 +35,7 @@ class AgentPickerSheet extends StatelessWidget {
         selectedAgent: selectedAgent,
         onAgentChanged: (agent) {
           onAgentChanged(agent);
-          Navigator.of(context).pop();
+          context.pop();
         },
       ),
     );
@@ -51,7 +52,7 @@ class AgentPickerSheet extends StatelessWidget {
         // Drag handle
         Center(
           child: Container(
-            margin: const EdgeInsets.only(top: 12, bottom: 8),
+            margin: const EdgeInsetsDirectional.only(top: 12, bottom: 8),
             width: 32,
             height: 4,
             decoration: BoxDecoration(
@@ -71,7 +72,10 @@ class AgentPickerSheet extends StatelessWidget {
           ListTile(
             dense: true,
             title: Text(agent.name),
-            subtitle: agent.description != null ? Text(agent.description!, maxLines: 1, overflow: .ellipsis) : null,
+            subtitle: switch (agent.description) {
+              final description? => Text(description, maxLines: 1, overflow: .ellipsis),
+              null => null,
+            },
             leading: agent.name == selectedAgent
                 ? Icon(Icons.radio_button_checked, color: theme.colorScheme.primary)
                 : Icon(Icons.radio_button_unchecked, color: theme.colorScheme.outline),

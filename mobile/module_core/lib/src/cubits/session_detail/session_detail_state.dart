@@ -12,27 +12,27 @@ sealed class SessionDetailState with _$SessionDetailState {
     required List<MessageWithParts> messages,
     required Map<String, String> streamingText,
     required SessionStatus sessionStatus,
-    @Default([]) List<SesoriQuestionAsked> pendingQuestions,
+    required List<SesoriQuestionAsked> pendingQuestions,
     // Session title — updated reactively via SSE `session.updated` events.
-    String? sessionTitle,
+    required String? sessionTitle,
     // Agent/model from the latest assistant message.
-    String? agent,
-    String? modelID,
-    String? providerID,
+    required String? agent,
+    required String? modelID,
+    required String? providerID,
     // Background tasks (child sessions).
-    @Default([]) List<Session> children,
-    @Default({}) Map<String, SessionStatus> childStatuses,
+    required List<Session> children,
+    required Map<String, SessionStatus> childStatuses,
     // Queued messages (waiting to be sent when connection is restored).
-    @Default([]) List<String> queuedMessages,
+    required List<String> queuedMessages,
     // Available agents and providers for selection.
-    @Default([]) List<AgentInfo> availableAgents,
-    @Default([]) List<ProviderInfo> availableProviders,
+    required List<AgentInfo> availableAgents,
+    required List<ProviderInfo> availableProviders,
 
     // Currently selected agent and model (pre-populated from defaults, never null once loaded).
     required String selectedAgent,
     required String selectedProviderID,
     required String selectedModelID,
-    @Default(false) bool isRefreshing,
+    required bool isRefreshing,
   }) = SessionDetailLoaded;
 
   const factory SessionDetailState.failed({required ApiError error}) = SessionDetailFailed;

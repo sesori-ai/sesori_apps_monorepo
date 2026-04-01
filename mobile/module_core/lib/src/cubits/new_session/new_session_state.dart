@@ -6,28 +6,28 @@ part "new_session_state.freezed.dart";
 @Freezed()
 sealed class NewSessionState with _$NewSessionState {
   const factory NewSessionState.idle({
-    @Default([]) List<AgentInfo> availableAgents,
-    @Default([]) List<ProviderInfo> availableProviders,
-    String? selectedAgent,
-    String? selectedProviderID,
-    String? selectedModelID,
+    required List<AgentInfo> availableAgents,
+    required List<ProviderInfo> availableProviders,
+    required String? selectedAgent,
+    required String? selectedProviderID,
+    required String? selectedModelID,
   }) = NewSessionIdle;
 
   const factory NewSessionState.sending({
-    @Default([]) List<AgentInfo> availableAgents,
-    @Default([]) List<ProviderInfo> availableProviders,
-    String? selectedAgent,
-    String? selectedProviderID,
-    String? selectedModelID,
+    required List<AgentInfo> availableAgents,
+    required List<ProviderInfo> availableProviders,
+    required String? selectedAgent,
+    required String? selectedProviderID,
+    required String? selectedModelID,
   }) = NewSessionSending;
 
   const factory NewSessionState.error({
     required String message,
-    @Default([]) List<AgentInfo> availableAgents,
-    @Default([]) List<ProviderInfo> availableProviders,
-    String? selectedAgent,
-    String? selectedProviderID,
-    String? selectedModelID,
+    required List<AgentInfo> availableAgents,
+    required List<ProviderInfo> availableProviders,
+    required String? selectedAgent,
+    required String? selectedProviderID,
+    required String? selectedModelID,
   }) = NewSessionError;
 
   const factory NewSessionState.created({required Session session}) = NewSessionCreated;

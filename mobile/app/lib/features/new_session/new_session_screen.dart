@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
+import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../../core/di/injection.dart";
@@ -40,6 +41,10 @@ class _NewSessionBody extends StatefulWidget {
 class _NewSessionBodyState extends State<_NewSessionBody> {
   bool _dedicatedWorktree = true;
 
+  void _dismissScreen() {
+    context.pop();
+  }
+
   void _openAgentPicker(AgentModelData data) {
     final cubit = context.read<NewSessionCubit>();
     AgentPickerSheet.show(
@@ -63,10 +68,11 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
 
   Widget? _buildHeader(NewSessionState state) {
     final data = state.agentModelData;
-    final agentButtons = data != null && data.agents.isNotEmpty && data.agent != null
+    final selectedAgent = data?.agent;
+    final agentButtons = data != null && data.agents.isNotEmpty && selectedAgent != null
         ? AgentModelButtons(
             providers: data.providers,
-            selectedAgent: data.agent!,
+            selectedAgent: selectedAgent,
             selectedProviderID: data.providerID ?? "",
             selectedModelID: data.modelID ?? "",
             onAgentTap: () => _openAgentPicker(data),
@@ -76,7 +82,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
 
     final errorBanner = switch (state) {
       NewSessionError(:final message) => Padding(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+        padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 12, 4),
         child: Row(
           children: [
             Expanded(
@@ -88,7 +94,9 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
           ],
         ),
       ),
-      _ => null,
+      NewSessionIdle() => null,
+      NewSessionSending() => null,
+      NewSessionCreated() => null,
     };
 
     if (agentButtons == null && errorBanner == null) return null;
@@ -108,7 +116,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
       listenWhen: (_, current) => current is NewSessionCreated,
       listener: (context, state) {
         if (state case NewSessionCreated(:final session)) {
-          Navigator.of(context).pop();
+          _dismissScreen();
           context.pushRoute(
             AppRoute.sessionDetail(
               projectId: session.projectID,
@@ -152,7 +160,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                   dedicatedWorktree: _dedicatedWorktree,
                 );
               },
-              onAbort: () => Navigator.of(context).pop(),
+              onAbort: _dismissScreen,
               header: _buildHeader(state),
             ),
           ],

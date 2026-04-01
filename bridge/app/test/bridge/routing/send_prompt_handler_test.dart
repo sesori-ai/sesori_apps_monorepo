@@ -1,5 +1,3 @@
-import "dart:convert";
-
 import "package:sesori_bridge/src/bridge/routing/send_prompt_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -19,35 +17,32 @@ void main() {
 
     tearDown(() => plugin.close());
 
-    test("canHandle POST /session/:id/prompt_async", () {
+    test("canHandle POST /session/prompt_async", () {
       expect(
-        handler.canHandle(makeRequest("POST", "/session/s1/prompt_async")),
+        handler.canHandle(makeRequest("POST", "/session/prompt_async")),
         isTrue,
       );
     });
 
-    test("does not handle GET /session/:id/prompt_async", () {
+    test("does not handle GET /session/prompt_async", () {
       expect(
-        handler.canHandle(makeRequest("GET", "/session/s1/prompt_async")),
+        handler.canHandle(makeRequest("GET", "/session/prompt_async")),
         isFalse,
       );
     });
 
-    test("extracts id", () async {
+    test("extracts session id", () async {
       await handler.handle(
-        makeRequest(
-          "POST",
-          "/session/s1/prompt_async",
-          body: jsonEncode(
-            const SendPromptRequest(
-              parts: [PromptPart.text(text: "Hello")],
-              agent: null,
-              model: null,
-            ).toJson(),
-          ),
+        makeRequest("POST", "/session/prompt_async"),
+        body: const SendPromptRequest(
+          sessionId: "s1",
+          parts: [PromptPart.text(text: "Hello")],
+          agent: null,
+          model: null,
         ),
-        pathParams: {"id": "s1"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(plugin.lastSendPromptSessionId, equals("s1"));
@@ -55,22 +50,19 @@ void main() {
 
     test("parses parts", () async {
       await handler.handle(
-        makeRequest(
-          "POST",
-          "/session/s1/prompt_async",
-          body: jsonEncode(
-            const SendPromptRequest(
-              parts: [
-                PromptPart.text(text: "Hello"),
-                PromptPart.text(text: "World"),
-              ],
-              agent: null,
-              model: null,
-            ).toJson(),
-          ),
+        makeRequest("POST", "/session/prompt_async"),
+        body: const SendPromptRequest(
+          sessionId: "s1",
+          parts: [
+            PromptPart.text(text: "Hello"),
+            PromptPart.text(text: "World"),
+          ],
+          agent: null,
+          model: null,
         ),
-        pathParams: {"id": "s1"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(plugin.lastSendPromptParts, isNotNull);
@@ -81,19 +73,16 @@ void main() {
 
     test("parses agent + model", () async {
       await handler.handle(
-        makeRequest(
-          "POST",
-          "/session/s1/prompt_async",
-          body: jsonEncode(
-            const SendPromptRequest(
-              parts: [PromptPart.text(text: "Hello")],
-              agent: "planner",
-              model: PromptModel(providerID: "openai", modelID: "gpt-4o"),
-            ).toJson(),
-          ),
+        makeRequest("POST", "/session/prompt_async"),
+        body: const SendPromptRequest(
+          sessionId: "s1",
+          parts: [PromptPart.text(text: "Hello")],
+          agent: "planner",
+          model: PromptModel(providerID: "openai", modelID: "gpt-4o"),
         ),
-        pathParams: {"id": "s1"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(plugin.lastSendPromptAgent, equals("planner"));
@@ -103,22 +92,19 @@ void main() {
 
     test("records correct args", () async {
       await handler.handle(
-        makeRequest(
-          "POST",
-          "/session/s42/prompt_async",
-          body: jsonEncode(
-            const SendPromptRequest(
-              parts: [PromptPart.text(text: "Ship it")],
-              agent: "coder",
-              model: PromptModel(
-                providerID: "anthropic",
-                modelID: "claude-3-5-sonnet",
-              ),
-            ).toJson(),
+        makeRequest("POST", "/session/prompt_async"),
+        body: const SendPromptRequest(
+          sessionId: "s42",
+          parts: [PromptPart.text(text: "Ship it")],
+          agent: "coder",
+          model: PromptModel(
+            providerID: "anthropic",
+            modelID: "claude-3-5-sonnet",
           ),
         ),
-        pathParams: {"id": "s42"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(plugin.lastSendPromptSessionId, equals("s42"));
@@ -131,23 +117,37 @@ void main() {
 
     test("returns 200", () async {
       final response = await handler.handle(
-        makeRequest(
-          "POST",
-          "/session/s1/prompt_async",
-          body: jsonEncode(
-            const SendPromptRequest(
-              parts: [PromptPart.text(text: "Hello")],
-              agent: null,
-              model: null,
-            ).toJson(),
-          ),
+        makeRequest("POST", "/session/prompt_async"),
+        body: const SendPromptRequest(
+          sessionId: "s1",
+          parts: [PromptPart.text(text: "Hello")],
+          agent: null,
+          model: null,
         ),
-        pathParams: {"id": "s1"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      expect(response.status, equals(200));
-      expect(response.body, isNull);
+      expect(response, equals(const SuccessEmptyResponse()));
+    });
+
+    test("throws 400 on empty session id", () async {
+      expect(
+        () => handler.handle(
+          makeRequest("POST", "/session/prompt_async"),
+          body: const SendPromptRequest(
+            sessionId: "",
+            parts: [PromptPart.text(text: "Hello")],
+            agent: null,
+            model: null,
+          ),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
+      );
     });
   });
 }

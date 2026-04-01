@@ -43,7 +43,7 @@ void main() {
         () => mockClient.post<Project>(
           "/project/create",
           fromJson: any(named: "fromJson"),
-          body: {"path": "/home/user/project"},
+          body: const ProjectPathRequest(path: "/home/user/project"),
         ),
       ).called(1);
     });
@@ -76,7 +76,7 @@ void main() {
         () => mockClient.post<Project>(
           "/project/open",
           fromJson: any(named: "fromJson"),
-          body: {"path": "/home/user/discovered"},
+          body: const ProjectPathRequest(path: "/home/user/discovered"),
         ),
       ).called(1);
     });
@@ -86,40 +86,39 @@ void main() {
     // -------------------------------------------------------------------------
 
     test("getFilesystemSuggestions sends GET with correct query params", () async {
-      const mockSuggestions = [
-        FilesystemSuggestion(
-          path: "/home/user/project1",
-          name: "project1",
-          isGitRepo: true,
-        ),
-        FilesystemSuggestion(
-          path: "/home/user/project2",
-          name: "project2",
-          isGitRepo: false,
-        ),
-      ];
+      const mockSuggestions = FilesystemSuggestions(
+        data: [
+          FilesystemSuggestion(
+            path: "/home/user/project1",
+            name: "project1",
+            isGitRepo: true,
+          ),
+          FilesystemSuggestion(
+            path: "/home/user/project2",
+            name: "project2",
+            isGitRepo: false,
+          ),
+        ],
+      );
 
       when(
-        () => mockClient.get<List<FilesystemSuggestion>>(
+        () => mockClient.post<FilesystemSuggestions>(
           "/filesystem/suggestions",
           fromJson: any(named: "fromJson"),
-          queryParameters: any(named: "queryParameters"),
+          body: any(named: "body"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(mockSuggestions));
 
       final result = await service.getFilesystemSuggestions(prefix: "/home/user");
 
-      expect(result, isA<SuccessResponse<List<FilesystemSuggestion>>>());
-      expect(
-        (result as SuccessResponse<List<FilesystemSuggestion>>).data,
-        equals(mockSuggestions),
-      );
+      expect(result, isA<SuccessResponse<FilesystemSuggestions>>());
+      expect((result as SuccessResponse<FilesystemSuggestions>).data, equals(mockSuggestions));
 
       verify(
-        () => mockClient.get<List<FilesystemSuggestion>>(
+        () => mockClient.post<FilesystemSuggestions>(
           "/filesystem/suggestions",
           fromJson: any(named: "fromJson"),
-          queryParameters: {"prefix": "/home/user"},
+          body: const FilesystemSuggestionsRequest(prefix: "/home/user", maxResults: 50),
         ),
       ).called(1);
     });
@@ -145,7 +144,7 @@ void main() {
         () => mockClient.post<void>(
           "/project/hide",
           fromJson: any(named: "fromJson"),
-          body: {"projectId": "proj-1"},
+          body: const ProjectIdRequest(projectId: "proj-1"),
         ),
       ).called(1);
     });
@@ -213,17 +212,17 @@ void main() {
     test("getFilesystemSuggestions error response maps to ErrorResponse", () async {
       final error = ApiError.generic();
       when(
-        () => mockClient.get<List<FilesystemSuggestion>>(
+        () => mockClient.post<FilesystemSuggestions>(
           "/filesystem/suggestions",
           fromJson: any(named: "fromJson"),
-          queryParameters: any(named: "queryParameters"),
+          body: any(named: "body"),
         ),
       ).thenAnswer((_) async => ApiResponse.error(error));
 
       final result = await service.getFilesystemSuggestions(prefix: "/home/user");
 
-      expect(result, isA<ErrorResponse<List<FilesystemSuggestion>>>());
-      expect((result as ErrorResponse<List<FilesystemSuggestion>>).error, equals(error));
+      expect(result, isA<ErrorResponse<FilesystemSuggestions>>());
+      expect((result as ErrorResponse<FilesystemSuggestions>).error, equals(error));
     });
 
     // -------------------------------------------------------------------------
@@ -254,7 +253,7 @@ void main() {
         () => mockClient.patch<Project>(
           "/project/name",
           fromJson: any(named: "fromJson"),
-          body: const RenameProjectRequest(projectId: "proj-1", name: "New Name").toJson(),
+          body: const RenameProjectRequest(projectId: "proj-1", name: "New Name"),
         ),
       ).called(1);
     });

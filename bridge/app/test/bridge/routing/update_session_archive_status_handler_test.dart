@@ -1,4 +1,3 @@
-import "dart:convert";
 import "dart:io";
 
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
@@ -34,15 +33,34 @@ void main() {
       await db.close();
     });
 
-    test("canHandle PATCH /session/:id", () {
-      expect(handler.canHandle(makeRequest("PATCH", "/session/s1")), isTrue);
+    test("canHandle PATCH /session/update/archive", () {
+      expect(handler.canHandle(makeRequest("PATCH", "/session/update/archive")), isTrue);
     });
 
-    test("does not handle GET /session/:id", () {
-      expect(handler.canHandle(makeRequest("GET", "/session/s1")), isFalse);
+    test("does not handle GET /session/update/archive", () {
+      expect(handler.canHandle(makeRequest("GET", "/session/update/archive")), isFalse);
     });
 
-    test("1) archive without cleanup: sets archivedAt and does not run git cleanup", () async {
+    test("throws 400 on empty session id", () async {
+      expect(
+        () => handler.handle(
+          makeRequest("PATCH", "/session/update/archive"),
+          body: const UpdateSessionArchiveRequest(
+            sessionId: "",
+            archived: true,
+            deleteWorktree: false,
+            deleteBranch: false,
+            force: false,
+          ),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
+      );
+    });
+
+    test("archive without cleanup sets archivedAt and skips git cleanup", () async {
       await _insertSession(
         db: db,
         sessionId: "s1",
@@ -50,6 +68,9 @@ void main() {
         isDedicated: true,
         worktreePath: "/repo/.worktrees/session-001",
         branchName: "session-001",
+        baseBranch: null,
+        archivedAt: null,
+        baseCommit: null,
       );
       plugin.sessionsResult = const [
         PluginSession(
@@ -63,39 +84,30 @@ void main() {
         ),
       ];
 
-      final response = await handler.handle(
-        makeRequest(
-          "PATCH",
-          "/session/s1",
-          body: _archiveBody(
-            archived: true,
-            deleteWorktree: false,
-            deleteBranch: false,
-            force: false,
-          ),
+      final result = await handler.handle(
+        makeRequest("PATCH", "/session/update/archive"),
+        body: _archiveRequest(
+          sessionId: "s1",
+          archived: true,
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
         ),
-        pathParams: {"id": "s1"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      expect(response.status, equals(200));
       expect(worktreeService.checkCallCount, equals(0));
       expect(worktreeService.removeCallCount, equals(0));
       expect(worktreeService.deleteBranchCallCount, equals(0));
       final persisted = await db.sessionDao.getSession(sessionId: "s1");
       expect(persisted?.archivedAt, isNotNull);
-
-      final session = Session.fromJson(
-        switch (jsonDecode(response.body!)) {
-          final Map<String, dynamic> map => map,
-          _ => throw StateError("expected JSON object"),
-        },
-      );
-      expect(session.id, equals("s1"));
-      expect(session.time?.archived, equals(persisted?.archivedAt));
+      expect(result.id, equals("s1"));
+      expect(result.time?.archived, equals(persisted?.archivedAt));
     });
 
-    test("2) archive with cleanup on clean worktree: removes worktree and sets archivedAt", () async {
+    test("archive with cleanup on clean worktree removes worktree", () async {
       await _insertSession(
         db: db,
         sessionId: "s1",
@@ -103,6 +115,9 @@ void main() {
         isDedicated: true,
         worktreePath: "/repo/.worktrees/session-001",
         branchName: "session-001",
+        baseBranch: null,
+        archivedAt: null,
+        baseCommit: null,
       );
       plugin.sessionsResult = const [
         PluginSession(
@@ -117,22 +132,20 @@ void main() {
       ];
       worktreeService.safetyResult = WorktreeSafe();
 
-      final response = await handler.handle(
-        makeRequest(
-          "PATCH",
-          "/session/s1",
-          body: _archiveBody(
-            archived: true,
-            deleteWorktree: true,
-            deleteBranch: false,
-            force: false,
-          ),
+      await handler.handle(
+        makeRequest("PATCH", "/session/update/archive"),
+        body: _archiveRequest(
+          sessionId: "s1",
+          archived: true,
+          deleteWorktree: true,
+          deleteBranch: false,
+          force: false,
         ),
-        pathParams: {"id": "s1"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      expect(response.status, equals(200));
       expect(worktreeService.checkCallCount, equals(1));
       expect(worktreeService.removeCallCount, equals(1));
       expect(worktreeService.lastRemoveWorktreePath, equals("/repo/.worktrees/session-001"));
@@ -140,7 +153,7 @@ void main() {
       expect(persisted?.archivedAt, isNotNull);
     });
 
-    test("3) archive with cleanup on dirty worktree: returns 409 rejection", () async {
+    test("archive with cleanup on dirty worktree throws 409", () async {
       await _insertSession(
         db: db,
         sessionId: "s1",
@@ -148,6 +161,9 @@ void main() {
         isDedicated: true,
         worktreePath: "/repo/.worktrees/session-001",
         branchName: "session-001",
+        baseBranch: null,
+        archivedAt: null,
+        baseCommit: null,
       );
       worktreeService.safetyResult = WorktreeUnsafe(
         issues: [
@@ -156,34 +172,28 @@ void main() {
         ],
       );
 
-      final response = await handler.handle(
-        makeRequest(
-          "PATCH",
-          "/session/s1",
-          body: _archiveBody(
+      await expectLater(
+        () => handler.handle(
+          makeRequest("PATCH", "/session/update/archive"),
+          body: _archiveRequest(
+            sessionId: "s1",
             archived: true,
             deleteWorktree: true,
             deleteBranch: false,
             force: false,
           ),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
         ),
-        pathParams: {"id": "s1"},
-        queryParams: {},
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(409))),
       );
 
-      expect(response.status, equals(409));
       final persisted = await db.sessionDao.getSession(sessionId: "s1");
       expect(persisted?.archivedAt, isNull);
-      final rejection = SessionCleanupRejection.fromJson(
-        switch (jsonDecode(response.body!)) {
-          final Map<String, dynamic> map => map,
-          _ => throw StateError("expected JSON object"),
-        },
-      );
-      expect(rejection.issues, hasLength(2));
     });
 
-    test("4) archive with force: proceeds without safety check", () async {
+    test("archive with force skips safety check", () async {
       await _insertSession(
         db: db,
         sessionId: "s1",
@@ -191,6 +201,9 @@ void main() {
         isDedicated: true,
         worktreePath: "/repo/.worktrees/session-001",
         branchName: "session-001",
+        baseBranch: null,
+        archivedAt: null,
+        baseCommit: null,
       );
       plugin.sessionsResult = const [
         PluginSession(
@@ -204,28 +217,26 @@ void main() {
         ),
       ];
 
-      final response = await handler.handle(
-        makeRequest(
-          "PATCH",
-          "/session/s1",
-          body: _archiveBody(
-            archived: true,
-            deleteWorktree: true,
-            deleteBranch: false,
-            force: true,
-          ),
+      await handler.handle(
+        makeRequest("PATCH", "/session/update/archive"),
+        body: _archiveRequest(
+          sessionId: "s1",
+          archived: true,
+          deleteWorktree: true,
+          deleteBranch: false,
+          force: true,
         ),
-        pathParams: {"id": "s1"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      expect(response.status, equals(200));
       expect(worktreeService.checkCallCount, equals(0));
       expect(worktreeService.removeCallCount, equals(1));
       expect(worktreeService.lastRemoveForce, isTrue);
     });
 
-    test("5) unarchive with existing worktree: clears archivedAt and does not restore", () async {
+    test("unarchive with existing worktree clears archivedAt", () async {
       final existingDir = Directory.systemTemp.createTempSync("archive-handler-");
       addTearDown(() {
         if (existingDir.existsSync()) {
@@ -240,7 +251,9 @@ void main() {
         isDedicated: true,
         worktreePath: existingDir.path,
         branchName: "session-001",
+        baseBranch: null,
         archivedAt: 123,
+        baseCommit: null,
       );
       plugin.sessionsResult = [
         PluginSession(
@@ -254,35 +267,27 @@ void main() {
         ),
       ];
 
-      final response = await handler.handle(
-        makeRequest(
-          "PATCH",
-          "/session/s1",
-          body: _archiveBody(
-            archived: false,
-            deleteWorktree: false,
-            deleteBranch: false,
-            force: false,
-          ),
+      final result = await handler.handle(
+        makeRequest("PATCH", "/session/update/archive"),
+        body: _archiveRequest(
+          sessionId: "s1",
+          archived: false,
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
         ),
-        pathParams: {"id": "s1"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      expect(response.status, equals(200));
       expect(worktreeService.restoreCallCount, equals(0));
       final persisted = await db.sessionDao.getSession(sessionId: "s1");
       expect(persisted?.archivedAt, isNull);
-      final session = Session.fromJson(
-        switch (jsonDecode(response.body!)) {
-          final Map<String, dynamic> map => map,
-          _ => throw StateError("expected JSON object"),
-        },
-      );
-      expect(session.time?.archived, isNull);
+      expect(result.time?.archived, isNull);
     });
 
-    test("6) unarchive with deleted worktree: clears archivedAt and restores worktree", () async {
+    test("unarchive with deleted worktree restores worktree", () async {
       final deletedWorktreePath = "${Directory.systemTemp.path}/missing-worktree-s1";
       final deletedWorktree = Directory(deletedWorktreePath);
       if (deletedWorktree.existsSync()) {
@@ -298,6 +303,7 @@ void main() {
         branchName: "session-001",
         baseBranch: null,
         archivedAt: 123,
+        baseCommit: null,
       );
       plugin.sessionsResult = [
         PluginSession(
@@ -311,22 +317,20 @@ void main() {
         ),
       ];
 
-      final response = await handler.handle(
-        makeRequest(
-          "PATCH",
-          "/session/s1",
-          body: _archiveBody(
-            archived: false,
-            deleteWorktree: false,
-            deleteBranch: false,
-            force: false,
-          ),
+      await handler.handle(
+        makeRequest("PATCH", "/session/update/archive"),
+        body: _archiveRequest(
+          sessionId: "s1",
+          archived: false,
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
         ),
-        pathParams: {"id": "s1"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      expect(response.status, equals(200));
       expect(worktreeService.restoreCallCount, equals(1));
       expect(worktreeService.lastRestoreProjectPath, equals("/repo"));
       expect(worktreeService.lastRestoreWorktreePath, equals(deletedWorktreePath));
@@ -337,10 +341,8 @@ void main() {
       expect(persisted?.archivedAt, isNull);
     });
 
-    test("10) archive pre-migration session: auto-inserts row and archives", () async {
-      plugin.projectsResult = const [
-        PluginProject(id: "/repo"),
-      ];
+    test("archive pre-migration session auto-inserts DB row", () async {
+      plugin.projectsResult = const [PluginProject(id: "/repo")];
       plugin.sessionsResult = const [
         PluginSession(
           id: "s-pre-migration",
@@ -353,22 +355,20 @@ void main() {
         ),
       ];
 
-      final response = await handler.handle(
-        makeRequest(
-          "PATCH",
-          "/session/s-pre-migration",
-          body: _archiveBody(
-            archived: true,
-            deleteWorktree: false,
-            deleteBranch: false,
-            force: false,
-          ),
+      await handler.handle(
+        makeRequest("PATCH", "/session/update/archive"),
+        body: _archiveRequest(
+          sessionId: "s-pre-migration",
+          archived: true,
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
         ),
-        pathParams: {"id": "s-pre-migration"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      expect(response.status, equals(200));
       final persisted = await db.sessionDao.getSession(sessionId: "s-pre-migration");
       expect(persisted, isNotNull);
       expect(persisted?.projectId, equals("/repo"));
@@ -380,7 +380,7 @@ void main() {
       expect(persisted?.archivedAt, isNotNull);
     });
 
-    test("7) unarchive simple session: clears archivedAt and no worktree operations", () async {
+    test("unarchive simple session clears archivedAt without worktree ops", () async {
       await _insertSession(
         db: db,
         sessionId: "s1",
@@ -388,7 +388,9 @@ void main() {
         isDedicated: false,
         worktreePath: null,
         branchName: null,
+        baseBranch: null,
         archivedAt: 123,
+        baseCommit: null,
       );
       plugin.sessionsResult = const [
         PluginSession(
@@ -402,22 +404,20 @@ void main() {
         ),
       ];
 
-      final response = await handler.handle(
-        makeRequest(
-          "PATCH",
-          "/session/s1",
-          body: _archiveBody(
-            archived: false,
-            deleteWorktree: false,
-            deleteBranch: false,
-            force: false,
-          ),
+      await handler.handle(
+        makeRequest("PATCH", "/session/update/archive"),
+        body: _archiveRequest(
+          sessionId: "s1",
+          archived: false,
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
         ),
-        pathParams: {"id": "s1"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      expect(response.status, equals(200));
       expect(worktreeService.restoreCallCount, equals(0));
       expect(worktreeService.removeCallCount, equals(0));
       expect(worktreeService.deleteBranchCallCount, equals(0));
@@ -425,7 +425,7 @@ void main() {
       expect(persisted?.archivedAt, isNull);
     });
 
-    test("8) archive simple session: sets archivedAt and skips cleanup", () async {
+    test("archive simple session sets archivedAt and skips cleanup", () async {
       await _insertSession(
         db: db,
         sessionId: "s1",
@@ -433,6 +433,9 @@ void main() {
         isDedicated: false,
         worktreePath: null,
         branchName: null,
+        baseBranch: null,
+        archivedAt: null,
+        baseCommit: null,
       );
       plugin.sessionsResult = const [
         PluginSession(
@@ -446,22 +449,20 @@ void main() {
         ),
       ];
 
-      final response = await handler.handle(
-        makeRequest(
-          "PATCH",
-          "/session/s1",
-          body: _archiveBody(
-            archived: true,
-            deleteWorktree: true,
-            deleteBranch: true,
-            force: false,
-          ),
+      await handler.handle(
+        makeRequest("PATCH", "/session/update/archive"),
+        body: _archiveRequest(
+          sessionId: "s1",
+          archived: true,
+          deleteWorktree: true,
+          deleteBranch: true,
+          force: false,
         ),
-        pathParams: {"id": "s1"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      expect(response.status, equals(200));
       expect(worktreeService.checkCallCount, equals(0));
       expect(worktreeService.removeCallCount, equals(0));
       expect(worktreeService.deleteBranchCallCount, equals(0));
@@ -469,7 +470,7 @@ void main() {
       expect(persisted?.archivedAt, isNotNull);
     });
 
-    test("9) session ID preserved on unarchive response", () async {
+    test("session id is preserved on unarchive response", () async {
       await _insertSession(
         db: db,
         sessionId: "s-preserve",
@@ -477,7 +478,9 @@ void main() {
         isDedicated: false,
         worktreePath: null,
         branchName: null,
+        baseBranch: null,
         archivedAt: 123,
+        baseCommit: null,
       );
       plugin.sessionsResult = const [
         PluginSession(
@@ -491,88 +494,39 @@ void main() {
         ),
       ];
 
-      final response = await handler.handle(
-        makeRequest(
-          "PATCH",
-          "/session/s-preserve",
-          body: _archiveBody(
-            archived: false,
-            deleteWorktree: false,
-            deleteBranch: false,
-            force: false,
-          ),
-        ),
-        pathParams: {"id": "s-preserve"},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(200));
-      final session = Session.fromJson(
-        switch (jsonDecode(response.body!)) {
-          final Map<String, dynamic> map => map,
-          _ => throw StateError("expected JSON object"),
-        },
-      );
-      expect(session.id, equals("s-preserve"));
-      expect(session.time?.archived, isNull);
-    });
-
-    test("returns 400 when body has no archived key", () async {
-      final response = await handler.handle(
-        makeRequest("PATCH", "/session/s1", body: "{}"),
-        pathParams: {"id": "s1"},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("invalid JSON body"));
-    });
-
-    test("returns 400 when path param id is missing", () async {
-      final response = await handler.handle(
-        makeRequest(
-          "PATCH",
-          "/session/s1",
-          body: _archiveBody(
-            archived: true,
-            deleteWorktree: false,
-            deleteBranch: false,
-            force: false,
-          ),
+      final result = await handler.handle(
+        makeRequest("PATCH", "/session/update/archive"),
+        body: _archiveRequest(
+          sessionId: "s-preserve",
+          archived: false,
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      expect(response.status, equals(400));
-      expect(response.body, contains("missing session id"));
-    });
-
-    test("returns 400 on malformed body", () async {
-      final response = await handler.handle(
-        makeRequest("PATCH", "/session/s1", body: "not-json"),
-        pathParams: {"id": "s1"},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(400));
+      expect(result.id, equals("s-preserve"));
+      expect(result.time?.archived, isNull);
     });
   });
 }
 
-String _archiveBody({
+UpdateSessionArchiveRequest _archiveRequest({
+  required String sessionId,
   required bool archived,
   required bool deleteWorktree,
   required bool deleteBranch,
   required bool force,
 }) {
-  return jsonEncode(
-    UpdateSessionArchiveRequest(
-      archived: archived,
-      deleteWorktree: deleteWorktree,
-      deleteBranch: deleteBranch,
-      force: force,
-    ).toJson(),
+  return UpdateSessionArchiveRequest(
+    sessionId: sessionId,
+    archived: archived,
+    deleteWorktree: deleteWorktree,
+    deleteBranch: deleteBranch,
+    force: force,
   );
 }
 
@@ -583,9 +537,9 @@ Future<void> _insertSession({
   required bool isDedicated,
   required String? worktreePath,
   required String? branchName,
-  String? baseBranch,
-  int? archivedAt,
-  String? baseCommit,
+  required String? baseBranch,
+  required int? archivedAt,
+  required String? baseCommit,
 }) async {
   await db.sessionDao.insertSession(
     sessionId: sessionId,

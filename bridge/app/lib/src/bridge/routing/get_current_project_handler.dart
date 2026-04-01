@@ -1,27 +1,30 @@
-import "dart:convert";
-
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "request_handler.dart";
 
-/// Handles `GET /project/current` — returns project for a given project id.
-class GetCurrentProjectHandler extends RequestHandler {
-  static const _projectIdHeader = "x-project-id";
+/// Handles `POST /project/current` — returns project for a given project id.
+class GetCurrentProjectHandler extends BodyRequestHandler<ProjectIdRequest, Project> {
   final BridgePlugin _plugin;
 
-  GetCurrentProjectHandler(this._plugin) : super(HttpMethod.get, "/project/current");
+  GetCurrentProjectHandler(this._plugin)
+    : super(
+        HttpMethod.post,
+        "/project/current",
+        fromJson: ProjectIdRequest.fromJson,
+      );
 
   @override
-  Future<RelayResponse> handle(
+  Future<Project> handle(
     RelayRequest request, {
+    required ProjectIdRequest body,
     required Map<String, String> pathParams,
     required Map<String, String> queryParams,
-    String? fragment,
+    required String? fragment,
   }) async {
-    final projectId = findHeader(request.headers, _projectIdHeader);
-    if (projectId == null || projectId.isEmpty) {
-      return buildErrorResponse(request, 400, "missing $_projectIdHeader header");
+    final projectId = body.projectId;
+    if (projectId.isEmpty) {
+      throw buildErrorResponse(request, 400, "empty project id");
     }
 
     final pluginProject = await _plugin.getProject(projectId);
@@ -38,6 +41,6 @@ class GetCurrentProjectHandler extends RequestHandler {
       },
     );
 
-    return buildOkJsonResponse(request, jsonEncode(project.toJson()));
+    return project;
   }
 }

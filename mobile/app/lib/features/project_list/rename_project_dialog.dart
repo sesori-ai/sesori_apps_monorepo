@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -42,6 +43,10 @@ class _RenameProjectDialogState extends State<RenameProjectDialog> {
   late final TextEditingController _nameController;
   bool _actionLoading = false;
 
+  void _dismissDialog() {
+    context.pop();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -58,7 +63,6 @@ class _RenameProjectDialogState extends State<RenameProjectDialog> {
     final name = _nameController.text.trim();
     if (name.isEmpty) return;
 
-    final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final loc = context.loc;
 
@@ -73,7 +77,7 @@ class _RenameProjectDialogState extends State<RenameProjectDialog> {
     setState(() => _actionLoading = false);
 
     if (success) {
-      navigator.pop();
+      _dismissDialog();
       messenger.showSnackBar(
         SnackBar(
           content: Text(loc.renameProjectSuccess),
@@ -95,7 +99,7 @@ class _RenameProjectDialogState extends State<RenameProjectDialog> {
     final loc = context.loc;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

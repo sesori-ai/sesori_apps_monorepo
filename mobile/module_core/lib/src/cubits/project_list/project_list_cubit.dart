@@ -27,6 +27,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   final FailureReporter _failureReporter;
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
+  // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
   ProjectListCubit(
     ProjectService projectService,
     ConnectionService connectionService,
@@ -97,14 +98,15 @@ class ProjectListCubit extends Cubit<ProjectListState> {
 
   void _onActivityUpdated(Map<String, int> activityById) {
     try {
-      if (state is! ProjectListLoaded) return;
-      if (isClosed) return;
-      emit(
-        ProjectListState.loaded(
-          projects: (state as ProjectListLoaded).projects,
-          activityById: activityById,
-        ),
-      );
+      if (state case final ProjectListLoaded loaded) {
+        if (isClosed) return;
+        emit(
+          ProjectListState.loaded(
+            projects: loaded.projects,
+            activityById: activityById,
+          ),
+        );
+      }
     } catch (e, st) {
       loge("Activity update handler error", e, st);
       unawaited(
@@ -139,18 +141,18 @@ class ProjectListCubit extends Cubit<ProjectListState> {
 
   void _onStaleReconnect() {
     if (isClosed) return;
-    if (state is! ProjectListLoaded) return;
-    final loaded = state as ProjectListLoaded;
-    emit(loaded.copyWith(isRefreshing: true));
-    unawaited(
-      refreshProjects().whenComplete(() {
-        if (isClosed) return;
-        final current = state;
-        if (current is ProjectListLoaded) {
-          emit(current.copyWith(isRefreshing: false));
-        }
-      }),
-    );
+    if (state case final ProjectListLoaded loaded) {
+      emit(loaded.copyWith(isRefreshing: true));
+      unawaited(
+        refreshProjects().whenComplete(() {
+          if (isClosed) return;
+          final current = state;
+          if (current is ProjectListLoaded) {
+            emit(current.copyWith(isRefreshing: false));
+          }
+        }),
+      );
+    }
   }
 
   Future<void> loadProjects() async {
@@ -174,14 +176,14 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     final response = await _projectService.hideProject(projectId: projectId);
     if (isClosed) return;
     if (response is! SuccessResponse) return;
-    if (state is! ProjectListLoaded) return;
-    final loaded = state as ProjectListLoaded;
-    emit(
-      ProjectListState.loaded(
-        projects: loaded.projects.where((p) => p.id != projectId).toList(),
-        activityById: loaded.activityById,
-      ),
-    );
+    if (state case final ProjectListLoaded loaded) {
+      emit(
+        ProjectListState.loaded(
+          projects: loaded.projects.where((p) => p.id != projectId).toList(),
+          activityById: loaded.activityById,
+        ),
+      );
+    }
   }
 
   /// Creates a new project at [path].
@@ -231,11 +233,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     if (isClosed) return false;
 
     switch (projectResponse) {
-      case SuccessResponse(:final data):
-        final projects = data.toList();
-        projects.sort(
-          (a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0),
-        );
+      case SuccessResponse(data: Projects(data: final projects)):
         emit(
           ProjectListState.loaded(
             projects: projects,
@@ -246,7 +244,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
 
       case ErrorResponse(:final error):
         if (silent) {
-          logw("Failed to refresh projects: $error");
+          logw("Failed to refresh projects: ${error.toString()}");
         } else {
           emit(ProjectListState.failed(error: error));
         }
