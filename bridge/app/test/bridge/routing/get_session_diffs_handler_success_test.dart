@@ -84,10 +84,11 @@ void main() {
         throw StateError("Unexpected git call: $arguments");
       };
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest("GET", "/session/s1/diff"),
         pathParams: {"id": "s1"},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -156,10 +157,11 @@ void main() {
         throw StateError("Unexpected git call: $arguments");
       };
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest("GET", "/session/s1/diff"),
         pathParams: {"id": "s1"},
         queryParams: {},
+        fragment: null,
       );
 
       final body = switch (jsonDecode(response.body!)) {
@@ -202,10 +204,11 @@ void main() {
         throw StateError("Unexpected git call: $arguments");
       };
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest("GET", "/session/s1/diff"),
         pathParams: {"id": "s1"},
         queryParams: {},
+        fragment: null,
       );
 
       final body = switch (jsonDecode(response.body!)) {
@@ -254,10 +257,11 @@ void main() {
         throw StateError("Unexpected git call: $arguments");
       };
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest("GET", "/session/s1/diff"),
         pathParams: {"id": "s1"},
         queryParams: {},
+        fragment: null,
       );
 
       final body = switch (jsonDecode(response.body!)) {

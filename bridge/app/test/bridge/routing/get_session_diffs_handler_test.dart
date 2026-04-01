@@ -42,10 +42,11 @@ void main() {
     });
 
     test("returns 404 when session is missing", () async {
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest("GET", "/session/missing/diff"),
         pathParams: {"id": "missing"},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(404));
@@ -65,10 +66,11 @@ void main() {
         baseCommit: "abc123",
       );
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest("GET", "/session/s1/diff"),
         pathParams: {"id": "s1"},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -88,10 +90,11 @@ void main() {
         baseCommit: null,
       );
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest("GET", "/session/s1/diff"),
         pathParams: {"id": "s1"},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -111,10 +114,11 @@ void main() {
         baseCommit: "abc123",
       );
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest("GET", "/session/s1/diff"),
         pathParams: {"id": "s1"},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -141,10 +145,11 @@ void main() {
         throw StateError("Unexpected git call: $arguments");
       };
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest("GET", "/session/s1/diff"),
         pathParams: {"id": "s1"},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(422));
@@ -173,10 +178,11 @@ void main() {
         throw StateError("Unexpected git call: $arguments");
       };
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest("GET", "/session/s1/diff"),
         pathParams: {"id": "s1"},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(500));
@@ -184,10 +190,11 @@ void main() {
     });
 
     test("returns 400 when session id is missing", () async {
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest("GET", "/session//diff"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(400));
