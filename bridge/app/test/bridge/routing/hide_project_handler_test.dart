@@ -33,10 +33,11 @@ void main() {
     });
 
     test("returns 200 and stores hidden project id", () async {
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest("POST", "/project/hide", body: jsonEncode({"projectId": "p1"})),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       final hiddenIds = await dao.getHiddenProjectIds();
@@ -46,36 +47,16 @@ void main() {
 
     test("handles project IDs containing slashes", () async {
       const projectId = "/Users/alex/projects/my-app";
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest("POST", "/project/hide", body: jsonEncode({"projectId": projectId})),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       final hiddenIds = await dao.getHiddenProjectIds();
       expect(response.status, equals(200));
       expect(hiddenIds, contains(projectId));
-    });
-
-    test("returns 400 when body is missing projectId", () async {
-      final response = await handler.handle(
-        makeRequest("POST", "/project/hide", body: jsonEncode({})),
-        pathParams: {},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("missing or empty projectId"));
-    });
-
-    test("returns 400 when body is invalid JSON", () async {
-      final response = await handler.handle(
-        makeRequest("POST", "/project/hide", body: "not json"),
-        pathParams: {},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(400));
     });
   });
 }

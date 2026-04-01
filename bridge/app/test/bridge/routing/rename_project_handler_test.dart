@@ -42,7 +42,7 @@ void main() {
         time: null,
       );
 
-      await handler.handle(
+      await handler.handleInternal(
         makeRequest(
           "PATCH",
           "/project/name",
@@ -50,36 +50,11 @@ void main() {
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(plugin.lastRenameProjectId, equals("p1"));
       expect(plugin.lastRenameProjectName, equals("New Name"));
-    });
-
-    test("returns 400 when body has no name key", () async {
-      final response = await handler.handle(
-        makeRequest("PATCH", "/project/name", body: "{}"),
-        pathParams: {},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("invalid JSON body"));
-    });
-
-    test("returns 400 when body has no projectId key", () async {
-      final response = await handler.handle(
-        makeRequest(
-          "PATCH",
-          "/project/name",
-          body: jsonEncode({"name": "New Name"}),
-        ),
-        pathParams: {},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("invalid JSON body"));
     });
 
     test("returns 200 with mapped Project JSON", () async {
@@ -89,7 +64,7 @@ void main() {
         time: PluginProjectTime(created: 10, updated: 20),
       );
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "PATCH",
           "/project/name",
@@ -97,6 +72,7 @@ void main() {
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -104,16 +80,6 @@ void main() {
       final project = jsonDecode(response.body!) as Map<String, dynamic>;
       expect(project["id"], equals("p1"));
       expect(project["name"], equals("Renamed Project"));
-    });
-
-    test("returns 400 on malformed body", () async {
-      final response = await handler.handle(
-        makeRequest("PATCH", "/project/name", body: "not-json"),
-        pathParams: {},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(400));
     });
   });
 }

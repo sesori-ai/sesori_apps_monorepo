@@ -1,3 +1,5 @@
+import "dart:convert";
+
 import "package:sesori_bridge/src/bridge/routing/reject_question_handler.dart";
 import "package:test/test.dart";
 
@@ -15,29 +17,31 @@ void main() {
 
     tearDown(() => plugin.close());
 
-    test("canHandle POST /question/:id/reject", () {
-      expect(handler.canHandle(makeRequest("POST", "/question/q1/reject")), isTrue);
+    test("canHandle POST /question/reject", () {
+      expect(handler.canHandle(makeRequest("POST", "/question/reject")), isTrue);
     });
 
-    test("extracts id and records reject call", () async {
-      await handler.handle(
-        makeRequest("POST", "/question/q1/reject"),
-        pathParams: {"id": "q1"},
+    test("extracts requestId and records reject call", () async {
+      await handler.handleInternal(
+        makeRequest("POST", "/question/reject", body: jsonEncode({"requestId": "q1"})),
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(plugin.lastRejectQuestionId, equals("q1"));
     });
 
     test("returns 200", () async {
-      final response = await handler.handle(
-        makeRequest("POST", "/question/q1/reject"),
-        pathParams: {"id": "q1"},
+      final response = await handler.handleInternal(
+        makeRequest("POST", "/question/reject", body: jsonEncode({"requestId": "q1"})),
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(200));
-      expect(response.body, isNull);
+      expect(response.body, equals("{}"));
     });
   });
 }

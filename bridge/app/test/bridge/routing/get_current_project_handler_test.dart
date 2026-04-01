@@ -26,26 +26,16 @@ void main() {
       expect(handler.canHandle(makeRequest("GET", "/project")), isFalse);
     });
 
-    test("returns 400 without x-project-id header", () async {
-      final response = await handler.handle(
-        makeRequest("GET", "/project/current"),
-        pathParams: {},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("x-project-id"));
-    });
-
     test("returns JSON", () async {
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "GET",
           "/project/current",
-          headers: {"x-project-id": "/tmp/project"},
+          body: jsonEncode({"projectId": "/tmp/project"}),
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -60,14 +50,15 @@ void main() {
         time: PluginProjectTime(created: 11, updated: 22),
       );
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "GET",
           "/project/current",
-          headers: {"x-project-id": "/tmp/project"},
+          body: jsonEncode({"projectId": "/tmp/project"}),
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(plugin.lastGetCurrentProjectProjectId, equals("/tmp/project"));

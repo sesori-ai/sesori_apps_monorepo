@@ -39,46 +39,51 @@ void main() {
     // ── Query parameter handling ────────────────────────────────────────────
 
     test("connectedOnly defaults to true when absent", () async {
-      await handler.handle(
+      await handler.handleInternal(
         makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
       expect(plugin.lastGetProvidersConnectedOnly, isTrue);
     });
 
-    test("connectedOnly is false when explicitly set to false", () async {
-      await handler.handle(
+    test("connectedOnly remains true when explicitly set to false", () async {
+      await handler.handleInternal(
         makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {"connectedOnly": "false"},
-      );
-      expect(plugin.lastGetProvidersConnectedOnly, isFalse);
-    });
-
-    test("connectedOnly is true when explicitly set to true", () async {
-      await handler.handle(
-        makeRequest("GET", "/provider"),
-        pathParams: {},
-        queryParams: {"connectedOnly": "true"},
+        fragment: null,
       );
       expect(plugin.lastGetProvidersConnectedOnly, isTrue);
     });
 
-    test("connectedOnly is case-insensitive (FALSE -> false)", () async {
-      await handler.handle(
+    test("connectedOnly is true when explicitly set to true", () async {
+      await handler.handleInternal(
+        makeRequest("GET", "/provider"),
+        pathParams: {},
+        queryParams: {"connectedOnly": "true"},
+        fragment: null,
+      );
+      expect(plugin.lastGetProvidersConnectedOnly, isTrue);
+    });
+
+    test("connectedOnly remains true for uppercase FALSE", () async {
+      await handler.handleInternal(
         makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {"connectedOnly": "FALSE"},
+        fragment: null,
       );
-      expect(plugin.lastGetProvidersConnectedOnly, isFalse);
+      expect(plugin.lastGetProvidersConnectedOnly, isTrue);
     });
 
-    test("connectedOnly defaults to true for invalid values", () async {
-      await handler.handle(
+    test("connectedOnly remains true for invalid values", () async {
+      await handler.handleInternal(
         makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {"connectedOnly": "maybe"},
+        fragment: null,
       );
       expect(plugin.lastGetProvidersConnectedOnly, isTrue);
     });
@@ -86,43 +91,47 @@ void main() {
     // ── Response format ─────────────────────────────────────────────────────
 
     test("returns 200 with application/json content-type", () async {
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
       expect(response.status, equals(200));
       expect(response.headers["content-type"], equals("application/json"));
     });
 
     test("returns empty items list when plugin has no providers", () async {
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
       final body = jsonDecode(response.body!) as Map<String, dynamic>;
       expect(body["items"] as List, isEmpty);
     });
 
     test("response includes connectedOnly flag set to true by default", () async {
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
       final body = jsonDecode(response.body!) as Map<String, dynamic>;
       expect(body["connectedOnly"], isTrue);
     });
 
-    test("response includes connectedOnly flag set to false when specified", () async {
-      final response = await handler.handle(
+    test("response includes connectedOnly flag set to true when specified false", () async {
+      final response = await handler.handleInternal(
         makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {"connectedOnly": "false"},
+        fragment: null,
       );
       final body = jsonDecode(response.body!) as Map<String, dynamic>;
-      expect(body["connectedOnly"], isFalse);
+      expect(body["connectedOnly"], isTrue);
     });
 
     // ── Data transformation ─────────────────────────────────────────────────
@@ -140,10 +149,11 @@ void main() {
         ],
       );
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       final body = jsonDecode(response.body!) as Map<String, dynamic>;
@@ -167,10 +177,11 @@ void main() {
         ],
       );
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       final body = jsonDecode(response.body!) as Map<String, dynamic>;
@@ -192,10 +203,11 @@ void main() {
         ],
       );
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       final body = jsonDecode(response.body!) as Map<String, dynamic>;
@@ -220,10 +232,11 @@ void main() {
         ],
       );
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       final body = jsonDecode(response.body!) as Map<String, dynamic>;
@@ -258,10 +271,11 @@ void main() {
         ],
       );
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       final body = jsonDecode(response.body!) as Map<String, dynamic>;
@@ -297,10 +311,11 @@ void main() {
         ],
       );
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       final body = jsonDecode(response.body!) as Map<String, dynamic>;

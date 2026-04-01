@@ -31,7 +31,7 @@ void main() {
       expect(handler.canHandle(makeRequest("POST", "/project/create")), isTrue);
     });
 
-    test("valid new path creates directory, runs git init, calls plugin, returns 201", () async {
+    test("valid new path creates directory, runs git init, calls plugin, returns 200", () async {
       final path = "${tempDir.path}/new-project";
       plugin.currentProjectResult = const PluginProject(
         id: "p-1",
@@ -39,20 +39,21 @@ void main() {
         time: PluginProjectTime(created: 10, updated: 20),
       );
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "POST",
-          "/project",
-          body: jsonEncode(CreateProjectRequest(path: path).toJson()),
+          "/project/create",
+          body: jsonEncode(ProjectPathRequest(path: path).toJson()),
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(Directory(path).existsSync(), isTrue);
       expect(Directory("$path/.git").existsSync(), isTrue);
       expect(plugin.lastGetCurrentProjectProjectId, equals(path));
-      expect(response.status, equals(201));
+      expect(response.status, equals(200));
       expect(response.headers["content-type"], equals("application/json"));
 
       final body = switch (jsonDecode(response.body!)) {
@@ -74,17 +75,18 @@ void main() {
         time: PluginProjectTime(created: 30, updated: 40),
       );
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "POST",
-          "/project",
-          body: jsonEncode(CreateProjectRequest(path: path).toJson()),
+          "/project/create",
+          body: jsonEncode(ProjectPathRequest(path: path).toJson()),
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      expect(response.status, equals(201));
+      expect(response.status, equals(200));
 
       final gitignoreFile = File("$path/.gitignore");
       expect(gitignoreFile.existsSync(), isTrue);
@@ -96,14 +98,15 @@ void main() {
     test("path that already exists as directory returns 409", () async {
       final existing = Directory("${tempDir.path}/existing")..createSync();
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "POST",
-          "/project",
-          body: jsonEncode(CreateProjectRequest(path: existing.path).toJson()),
+          "/project/create",
+          body: jsonEncode(ProjectPathRequest(path: existing.path).toJson()),
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(409));
@@ -111,14 +114,15 @@ void main() {
     });
 
     test("empty path returns 400", () async {
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "POST",
-          "/project",
-          body: jsonEncode(const CreateProjectRequest(path: "").toJson()),
+          "/project/create",
+          body: jsonEncode(const ProjectPathRequest(path: "").toJson()),
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(400));
@@ -126,14 +130,15 @@ void main() {
     });
 
     test("relative path returns 400", () async {
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "POST",
-          "/project",
-          body: jsonEncode(const CreateProjectRequest(path: "relative/project").toJson()),
+          "/project/create",
+          body: jsonEncode(const ProjectPathRequest(path: "relative/project").toJson()),
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(400));
@@ -141,14 +146,15 @@ void main() {
     });
 
     test("path traversal returns 400", () async {
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "POST",
-          "/project",
-          body: jsonEncode(CreateProjectRequest(path: "${tempDir.path}/../escape").toJson()),
+          "/project/create",
+          body: jsonEncode(ProjectPathRequest(path: "${tempDir.path}/../escape").toJson()),
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(400));
@@ -158,36 +164,38 @@ void main() {
     test("parent directory does not exist returns 400", () async {
       final path = "${tempDir.path}/missing-parent/project";
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "POST",
-          "/project",
-          body: jsonEncode(CreateProjectRequest(path: path).toJson()),
+          "/project/create",
+          body: jsonEncode(ProjectPathRequest(path: path).toJson()),
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(400));
       expect(response.body, contains("parent directory does not exist"));
     });
 
-    test("plugin getProject PluginApiException is forwarded", () async {
+    test("plugin getProject PluginApiException returns 500", () async {
       final path = "${tempDir.path}/plugin-error";
       plugin.injectGetProjectError = PluginApiException("/project", 503);
 
-      await expectLater(
-        () => handler.handle(
-          makeRequest(
-            "POST",
-            "/project",
-            body: jsonEncode(CreateProjectRequest(path: path).toJson()),
-          ),
-          pathParams: {},
-          queryParams: {},
+      final response = await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/project/create",
+          body: jsonEncode(ProjectPathRequest(path: path).toJson()),
         ),
-        throwsA(isA<PluginApiException>()),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
       );
+
+      expect(response.status, equals(500));
+      expect(response.body, contains("Internal Server Error"));
     });
   });
 }

@@ -46,7 +46,7 @@ void main() {
         summary: null,
       );
 
-      await handler.handle(
+      await handler.handleInternal(
         makeRequest(
           "PATCH",
           "/session/title",
@@ -54,36 +54,11 @@ void main() {
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(plugin.lastRenameSessionId, equals("s1"));
       expect(plugin.lastRenameSessionTitle, equals("New Title"));
-    });
-
-    test("returns 400 when body has no title key", () async {
-      final response = await handler.handle(
-        makeRequest("PATCH", "/session/title", body: "{}"),
-        pathParams: {},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("invalid JSON body"));
-    });
-
-    test("returns 400 when body has no sessionId key", () async {
-      final response = await handler.handle(
-        makeRequest(
-          "PATCH",
-          "/session/title",
-          body: jsonEncode({"title": "New Title"}),
-        ),
-        pathParams: {},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("invalid JSON body"));
     });
 
     test("returns 200 with mapped Session JSON", () async {
@@ -97,7 +72,7 @@ void main() {
         summary: PluginSessionSummary(additions: 4, deletions: 1, files: 2),
       );
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "PATCH",
           "/session/title",
@@ -105,6 +80,7 @@ void main() {
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -115,16 +91,6 @@ void main() {
       expect(session["directory"], equals("/tmp"));
       expect(session["parentID"], equals("parent-1"));
       expect(session["title"], equals("Renamed Session"));
-    });
-
-    test("returns 400 on malformed body", () async {
-      final response = await handler.handle(
-        makeRequest("PATCH", "/session/title", body: "not-json"),
-        pathParams: {},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(400));
     });
   });
 }

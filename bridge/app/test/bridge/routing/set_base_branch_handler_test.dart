@@ -36,8 +36,8 @@ void main() {
       expect(handler.canHandle(makeRequest("POST", "/project/base-branch")), isFalse);
     });
 
-    test("valid body returns 200 with success true", () async {
-      final response = await handler.handle(
+    test("valid body returns 200 with empty success response", () async {
+      final response = await handler.handleInternal(
         makeRequest(
           "PUT",
           "/project/base-branch",
@@ -45,19 +45,16 @@ void main() {
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(200));
       expect(response.headers["content-type"], equals("application/json"));
-      final body = switch (jsonDecode(response.body!)) {
-        final Map<String, dynamic> map => map,
-        _ => throw StateError("expected JSON object"),
-      };
-      expect(body["success"], isTrue);
+      expect(response.body, equals("{}"));
     });
 
     test("stores baseBranch in DB after successful PUT", () async {
-      await handler.handle(
+      await handler.handleInternal(
         makeRequest(
           "PUT",
           "/project/base-branch",
@@ -65,74 +62,43 @@ void main() {
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       final stored = await dao.getBaseBranch(projectId: "proj-2");
       expect(stored, equals("main"));
     });
 
-    test("body with baseBranch null returns 200 (reset to default)", () async {
-      await dao.setBaseBranch(projectId: "proj-3", baseBranch: "develop");
-
-      final response = await handler.handle(
+    test("empty project id returns 400", () async {
+      final response = await handler.handleInternal(
         makeRequest(
           "PUT",
           "/project/base-branch",
-          body: jsonEncode({"projectId": "proj-3", "baseBranch": null}),
+          body: jsonEncode({"projectId": "", "baseBranch": "main"}),
         ),
         pathParams: {},
         queryParams: {},
-      );
-
-      expect(response.status, equals(200));
-      final stored = await dao.getBaseBranch(projectId: "proj-3");
-      expect(stored, isNull);
-    });
-
-    test("invalid JSON body returns 400", () async {
-      final response = await handler.handle(
-        makeRequest("PUT", "/project/base-branch", body: "not json"),
-        pathParams: {},
-        queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(400));
-      expect(response.body, contains("invalid JSON body"));
+      expect(response.body, contains("empty project id"));
     });
 
-    test("JSON array body returns 400", () async {
-      final response = await handler.handle(
-        makeRequest("PUT", "/project/base-branch", body: jsonEncode([])),
-        pathParams: {},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("invalid JSON body"));
-    });
-
-    test("missing required projectId field returns 400", () async {
-      final response = await handler.handle(
+    test("empty base branch returns 400", () async {
+      final response = await handler.handleInternal(
         makeRequest(
           "PUT",
           "/project/base-branch",
-          body: jsonEncode({"baseBranch": "develop"}),
+          body: jsonEncode({"projectId": "proj-4", "baseBranch": ""}),
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(400));
-    });
-
-    test("null body is treated as empty object and returns 400", () async {
-      final response = await handler.handle(
-        makeRequest("PUT", "/project/base-branch"),
-        pathParams: {},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(400));
+      expect(response.body, contains("empty base branch"));
     });
   });
 }

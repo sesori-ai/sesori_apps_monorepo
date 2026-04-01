@@ -18,17 +18,18 @@ void main() {
 
     tearDown(() => plugin.close());
 
-    test("canHandle POST /question/:id/reply", () {
-      expect(handler.canHandle(makeRequest("POST", "/question/q1/reply")), isTrue);
+    test("canHandle POST /question/reply", () {
+      expect(handler.canHandle(makeRequest("POST", "/question/reply")), isTrue);
     });
 
-    test("extracts id, sessionId, and parses answers", () async {
-      await handler.handle(
+    test("extracts requestId, sessionId, and parses answers", () async {
+      await handler.handleInternal(
         makeRequest(
           "POST",
-          "/question/q1/reply",
+          "/question/reply",
           body: jsonEncode(
             const ReplyToQuestionRequest(
+              requestId: "q1",
               sessionId: "ses-1",
               answers: [
                 ReplyAnswer(values: ["yes"]),
@@ -37,8 +38,9 @@ void main() {
             ).toJson(),
           ),
         ),
-        pathParams: {"id": "q1"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(plugin.lastReplyQuestionId, equals("q1"));
@@ -53,44 +55,13 @@ void main() {
     });
 
     test("returns 200", () async {
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "POST",
-          "/question/q1/reply",
+          "/question/reply",
           body: jsonEncode(
             const ReplyToQuestionRequest(
-              sessionId: "ses-1",
-              answers: [
-                ReplyAnswer(values: ["ok"]),
-              ],
-            ).toJson(),
-          ),
-        ),
-        pathParams: {"id": "q1"},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(200));
-      expect(response.body, isNull);
-    });
-
-    test("returns 400 on missing answers", () async {
-      final response = await handler.handle(
-        makeRequest("POST", "/question/q1/reply", body: "{}"),
-        pathParams: {"id": "q1"},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(400));
-    });
-
-    test("returns 400 when path param id is missing", () async {
-      final response = await handler.handle(
-        makeRequest(
-          "POST",
-          "/question/q1/reply",
-          body: jsonEncode(
-            const ReplyToQuestionRequest(
+              requestId: "q1",
               sessionId: "ses-1",
               answers: [
                 ReplyAnswer(values: ["ok"]),
@@ -100,10 +71,22 @@ void main() {
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
+      );
+
+      expect(response.status, equals(200));
+      expect(response.body, equals("{}"));
+    });
+
+    test("returns 400 on missing answers", () async {
+      final response = await handler.handleInternal(
+        makeRequest("POST", "/question/reply", body: "{}"),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(400));
-      expect(response.body, contains("missing question id"));
     });
   });
 }

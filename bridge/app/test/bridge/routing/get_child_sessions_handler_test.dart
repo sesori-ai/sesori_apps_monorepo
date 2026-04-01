@@ -18,36 +18,38 @@ void main() {
 
     tearDown(() => plugin.close());
 
-    test("canHandle GET /session/:id/children", () {
-      expect(handler.canHandle(makeRequest("GET", "/session/s1/children")), isTrue);
+    test("canHandle POST /session/children", () {
+      expect(handler.canHandle(makeRequest("POST", "/session/children")), isTrue);
     });
 
-    test("does not handle GET /session/:id/message", () {
-      expect(handler.canHandle(makeRequest("GET", "/session/s1/message")), isFalse);
+    test("does not handle GET /session/children", () {
+      expect(handler.canHandle(makeRequest("GET", "/session/children")), isFalse);
     });
 
-    test("extracts id", () async {
-      await handler.handle(
-        makeRequest("GET", "/session/s1/children"),
-        pathParams: {"id": "s1"},
+    test("extracts sessionId from body", () async {
+      await handler.handleInternal(
+        makeRequest("POST", "/session/children", body: jsonEncode({"sessionId": "s1"})),
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(plugin.lastGetChildSessionsSessionId, equals("s1"));
     });
 
-    test("returns 400 when path param id is missing", () async {
-      final response = await handler.handle(
-        makeRequest("GET", "/session/s1/children"),
+    test("returns 400 when session id is empty", () async {
+      final response = await handler.handleInternal(
+        makeRequest("POST", "/session/children", body: jsonEncode({"sessionId": ""})),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(400));
-      expect(response.body, contains("missing session id"));
+      expect(response.body, contains("empty session id"));
     });
 
-    test("returns JSON list", () async {
+    test("returns JSON wrapper", () async {
       plugin.childSessionsResult = const [
         PluginSession(
           id: "c1",
@@ -60,15 +62,17 @@ void main() {
         ),
       ];
 
-      final response = await handler.handle(
-        makeRequest("GET", "/session/s1/children"),
-        pathParams: {"id": "s1"},
+      final response = await handler.handleInternal(
+        makeRequest("POST", "/session/children", body: jsonEncode({"sessionId": "s1"})),
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(200));
       expect(response.headers["content-type"], equals("application/json"));
-      final body = jsonDecode(response.body!) as List<dynamic>;
+      final json = jsonDecode(response.body!) as Map<String, dynamic>;
+      final body = json["items"] as List<dynamic>;
       expect(body, hasLength(1));
     });
 
@@ -85,13 +89,15 @@ void main() {
         ),
       ];
 
-      final response = await handler.handle(
-        makeRequest("GET", "/session/parent-1/children"),
-        pathParams: {"id": "parent-1"},
+      final response = await handler.handleInternal(
+        makeRequest("POST", "/session/children", body: jsonEncode({"sessionId": "parent-1"})),
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      final body = jsonDecode(response.body!) as List<dynamic>;
+      final json = jsonDecode(response.body!) as Map<String, dynamic>;
+      final body = json["items"] as List<dynamic>;
       final session = body[0] as Map<String, dynamic>;
       expect(session["id"], equals("child-1"));
       expect(session["projectID"], equals("project-1"));

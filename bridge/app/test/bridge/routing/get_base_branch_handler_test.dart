@@ -24,45 +24,24 @@ void main() {
       await db.close();
     });
 
-    test("canHandle GET /project/base-branch", () {
-      expect(handler.canHandle(makeRequest("GET", "/project/base-branch")), isTrue);
+    test("canHandle POST /project/base-branch", () {
+      expect(handler.canHandle(makeRequest("POST", "/project/base-branch")), isTrue);
     });
 
-    test("does not match POST /project/base-branch", () {
-      expect(handler.canHandle(makeRequest("POST", "/project/base-branch")), isFalse);
+    test("does not match GET /project/base-branch", () {
+      expect(handler.canHandle(makeRequest("GET", "/project/base-branch")), isFalse);
     });
 
-    test("does not match GET /project/base-branch/extra", () {
-      expect(handler.canHandle(makeRequest("GET", "/project/base-branch/extra")), isFalse);
-    });
-
-    test("returns 400 when x-project-id header is missing", () async {
-      final response = await handler.handle(
-        makeRequest("GET", "/project/base-branch"),
-        pathParams: {},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("x-project-id"));
-    });
-
-    test("returns 400 when x-project-id header is empty", () async {
-      final response = await handler.handle(
-        makeRequest("GET", "/project/base-branch", headers: {"x-project-id": ""}),
-        pathParams: {},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("x-project-id"));
+    test("does not match POST /project/base-branch/extra", () {
+      expect(handler.canHandle(makeRequest("POST", "/project/base-branch/extra")), isFalse);
     });
 
     test("returns baseBranch null for unknown project", () async {
-      final response = await handler.handle(
-        makeRequest("GET", "/project/base-branch", headers: {"x-project-id": "unknown-project"}),
+      final response = await handler.handleInternal(
+        makeRequest("POST", "/project/base-branch", body: jsonEncode({"projectId": "unknown-project"})),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -78,10 +57,11 @@ void main() {
     test("returns configured baseBranch after it has been set", () async {
       await dao.setBaseBranch(projectId: "/Users/dev/my-app", baseBranch: "develop");
 
-      final response = await handler.handle(
-        makeRequest("GET", "/project/base-branch", headers: {"x-project-id": "/Users/dev/my-app"}),
+      final response = await handler.handleInternal(
+        makeRequest("POST", "/project/base-branch", body: jsonEncode({"projectId": "/Users/dev/my-app"})),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -92,13 +72,14 @@ void main() {
       expect(body["baseBranch"], equals("develop"));
     });
 
-    test("header lookup is case-insensitive", () async {
+    test("returns baseBranch for another project", () async {
       await dao.setBaseBranch(projectId: "proj-1", baseBranch: "main");
 
-      final response = await handler.handle(
-        makeRequest("GET", "/project/base-branch", headers: {"X-Project-Id": "proj-1"}),
+      final response = await handler.handleInternal(
+        makeRequest("POST", "/project/base-branch", body: jsonEncode({"projectId": "proj-1"})),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(200));

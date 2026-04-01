@@ -1,3 +1,5 @@
+import "dart:convert";
+
 import "package:sesori_bridge/src/bridge/routing/abort_session_handler.dart";
 import "package:test/test.dart";
 
@@ -15,35 +17,39 @@ void main() {
 
     tearDown(() => plugin.close());
 
-    test("canHandle POST /session/:id/abort", () {
-      expect(handler.canHandle(makeRequest("POST", "/session/s1/abort")), isTrue);
+    test("canHandle POST /session/abort", () {
+      expect(handler.canHandle(makeRequest("POST", "/session/abort")), isTrue);
     });
 
-    test("extracts id", () async {
-      await handler.handle(
-        makeRequest("POST", "/session/s1/abort"),
-        pathParams: {"id": "s1"},
+    test("extracts sessionId from request body", () async {
+      await handler.handleInternal(
+        makeRequest("POST", "/session/abort", body: jsonEncode({"sessionId": "s1"})),
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(plugin.lastAbortSessionId, equals("s1"));
     });
 
     test("returns 200", () async {
-      final response = await handler.handle(
-        makeRequest("POST", "/session/s1/abort"),
-        pathParams: {"id": "s1"},
+      final response = await handler.handleInternal(
+        makeRequest("POST", "/session/abort", body: jsonEncode({"sessionId": "s1"})),
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(200));
+      expect(response.body, equals("{}"));
     });
 
     test("records id", () async {
-      await handler.handle(
-        makeRequest("POST", "/session/session-xyz/abort"),
-        pathParams: {"id": "session-xyz"},
+      await handler.handleInternal(
+        makeRequest("POST", "/session/abort", body: jsonEncode({"sessionId": "session-xyz"})),
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(plugin.lastAbortSessionId, equals("session-xyz"));

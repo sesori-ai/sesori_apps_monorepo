@@ -23,15 +23,17 @@ void main() {
     });
 
     test("returns JSON list", () async {
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest("GET", "/agent"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(200));
       expect(response.headers["content-type"], equals("application/json"));
-      expect(jsonDecode(response.body!), isA<List<dynamic>>());
+      final body = jsonDecode(response.body!) as Map<String, dynamic>;
+      expect(body["agents"], isA<List<dynamic>>());
     });
 
     test("maps all fields correctly", () async {
@@ -46,13 +48,15 @@ void main() {
         ),
       ];
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest("GET", "/agent"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      final body = jsonDecode(response.body!) as List<dynamic>;
+      final json = jsonDecode(response.body!) as Map<String, dynamic>;
+      final body = json["agents"] as List<dynamic>;
       final agent = body[0] as Map<String, dynamic>;
       expect(agent["name"], equals("planner"));
       expect(agent["description"], equals("Plans tasks"));
@@ -85,13 +89,15 @@ void main() {
         ),
       ];
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest("GET", "/agent"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      final body = jsonDecode(response.body!) as List<dynamic>;
+      final json = jsonDecode(response.body!) as Map<String, dynamic>;
+      final body = json["agents"] as List<dynamic>;
       expect((body[0] as Map<String, dynamic>)["model"], isNotNull);
       expect((body[1] as Map<String, dynamic>)["model"], isNull);
     });

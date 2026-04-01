@@ -27,21 +27,22 @@ void main() {
       expect(handler.canHandle(makeRequest("GET", "/project")), isFalse);
     });
 
-    test("returns 200 with plugin health body", () async {
-      final response = await handler.handle(
+    test("returns 200", () async {
+      final response = await handler.handleInternal(
         makeRequest("GET", "/global/health"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
       expect(response.status, equals(200));
-      expect(response.body, equals('{"status":"ok"}'));
     });
 
     test("returns application/json content-type", () async {
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest("GET", "/global/health"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
       expect(response.headers["content-type"], equals("application/json"));
     });

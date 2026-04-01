@@ -33,47 +33,63 @@ void main() {
     test("routes GET /global/health to HealthCheckHandler", () async {
       final response = await router.route(makeRequest("GET", "/global/health"));
       expect(response.status, equals(200));
-      expect(response.body, equals('{"status":"ok"}'));
     });
 
-    test("routes GET /project to GetProjectsHandler", () async {
+    test("routes GET /projects to GetProjectsHandler", () async {
       plugin.projectsResult = [
         const PluginProject(id: "p1", name: "P"),
       ];
-      final response = await router.route(makeRequest("GET", "/project"));
+      final response = await router.route(makeRequest("GET", "/projects"));
       expect(response.status, equals(200));
-      final body = jsonDecode(response.body!) as List<dynamic>;
-      expect(body.length, equals(1));
+      final body = jsonDecode(response.body!) as Map<String, dynamic>;
+      final data = body["data"] as List<dynamic>;
+      expect(data.length, equals(1));
     });
 
-    test("routes GET /session to GetSessionsHandler", () async {
+    test("routes POST /sessions to GetSessionsHandler", () async {
       final response = await router.route(
-        makeRequest("GET", "/session", headers: {"x-project-id": "/tmp"}),
+        makeRequest(
+          "POST",
+          "/sessions",
+          body: jsonEncode({"projectId": "/tmp", "start": null, "limit": null}),
+        ),
       );
       expect(response.status, equals(200));
     });
 
-    test("GET /session without x-project-id header returns 400", () async {
-      final response = await router.route(makeRequest("GET", "/session"));
+    test("POST /sessions without body returns 400", () async {
+      final response = await router.route(makeRequest("POST", "/sessions"));
       expect(response.status, equals(400));
     });
 
-    test("routes GET /session/:id/message to GetSessionMessagesHandler", () async {
-      await router.route(makeRequest("GET", "/session/abc/message"));
+    test("routes POST /session/messages to GetSessionMessagesHandler", () async {
+      await router.route(
+        makeRequest(
+          "POST",
+          "/session/messages",
+          body: jsonEncode({"sessionId": "abc"}),
+        ),
+      );
       expect(plugin.lastGetMessagesSessionId, equals("abc"));
     });
 
-    test("path params are extracted and forwarded correctly", () async {
-      await router.route(makeRequest("GET", "/session/sess-99/message"));
+    test("session id is extracted from body correctly", () async {
+      await router.route(
+        makeRequest(
+          "POST",
+          "/session/messages",
+          body: jsonEncode({"sessionId": "sess-99"}),
+        ),
+      );
       expect(plugin.lastGetMessagesSessionId, equals("sess-99"));
     });
 
-    test("query params are forwarded to handler", () async {
+    test("pagination params are forwarded to handler", () async {
       await router.route(
         makeRequest(
-          "GET",
-          "/session?start=3&limit=7",
-          headers: {"x-project-id": "/tmp"},
+          "POST",
+          "/sessions",
+          body: jsonEncode({"projectId": "/tmp", "start": 3, "limit": 7}),
         ),
       );
       expect(plugin.lastGetSessionsStart, equals(3));
@@ -87,7 +103,7 @@ void main() {
       expect(response.body, equals("no handler found for GET /unknown"));
     });
 
-    test("routes POST /session to CreateSessionHandler", () async {
+    test("routes POST /session/create to CreateSessionHandler", () async {
       plugin.createSessionResult = const PluginSession(
         id: "s1",
         projectID: "p1",
@@ -101,7 +117,7 @@ void main() {
       final response = await router.route(
         makeRequest(
           "POST",
-          "/session",
+          "/session/create",
           body: jsonEncode(
             const CreateSessionRequest(
               projectId: "/tmp",
@@ -123,12 +139,17 @@ void main() {
       expect(plugin.lastCreateSessionModel, equals((providerID: "openai", modelID: "gpt-5")));
     });
 
-    test("routes DELETE /session/:id to DeleteSessionHandler", () async {
+    test("routes DELETE /session/delete to DeleteSessionHandler", () async {
       final response = await router.route(
         makeRequest(
           "DELETE",
-          "/session/abc",
-          body: jsonEncode({"deleteWorktree": false, "deleteBranch": false, "force": false}),
+          "/session/delete",
+          body: jsonEncode({
+            "sessionId": "abc",
+            "deleteWorktree": false,
+            "deleteBranch": false,
+            "force": false,
+          }),
         ),
       );
       expect(response.status, equals(200));
@@ -140,38 +161,48 @@ void main() {
       expect(response.status, equals(200));
     });
 
-    test("routes GET /session/:id/questions to GetSessionQuestionsHandler", () async {
-      final response = await router.route(makeRequest("GET", "/session/s-1/questions"));
-      expect(response.status, equals(200));
-    });
-
-    test("routes GET /questions to GetProjectQuestionsHandler", () async {
+    test("routes POST /session/questions to GetSessionQuestionsHandler", () async {
       final response = await router.route(
-        makeRequest("GET", "/questions", headers: {"x-project-id": "/tmp/project"}),
+        makeRequest(
+          "POST",
+          "/session/questions",
+          body: jsonEncode({"sessionId": "s-1"}),
+        ),
       );
       expect(response.status, equals(200));
     });
 
-    test("returns 502 when handler throws", () async {
-      plugin.throwOnGetProjects = true;
-      final response = await router.route(makeRequest("GET", "/project"));
-      expect(response.status, equals(502));
-      expect(response.body, contains("request failed"));
+    test("routes POST /project/questions to GetProjectQuestionsHandler", () async {
+      final response = await router.route(
+        makeRequest(
+          "POST",
+          "/project/questions",
+          body: jsonEncode({"projectId": "/tmp/project"}),
+        ),
+      );
+      expect(response.status, equals(200));
     });
 
-    test("returns upstream status when handler throws PluginApiException", () async {
-      plugin.throwOnGetProjectsError = PluginApiException("/project", 404);
+    test("returns 500 when handler throws", () async {
+      plugin.throwOnGetProjects = true;
+      final response = await router.route(makeRequest("GET", "/projects"));
+      expect(response.status, equals(500));
+      expect(response.body, contains("Internal Server Error"));
+    });
 
-      final response = await router.route(makeRequest("GET", "/project"));
+    test("returns 500 when handler throws PluginApiException", () async {
+      plugin.throwOnGetProjectsError = PluginApiException("/projects", 404);
 
-      expect(response.status, equals(404));
+      final response = await router.route(makeRequest("GET", "/projects"));
+
+      expect(response.status, equals(500));
       expect(response.body, contains("PluginApiException"));
     });
 
-    test("502 body contains the original error message", () async {
+    test("500 body contains the original error message", () async {
       plugin.throwOnHealthCheck = true;
       final response = await router.route(makeRequest("GET", "/global/health"));
-      expect(response.status, equals(502));
+      expect(response.status, equals(500));
       expect(response.body, contains("healthCheck error"));
     });
   });

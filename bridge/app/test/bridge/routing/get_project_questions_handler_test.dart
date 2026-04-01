@@ -19,46 +19,26 @@ void main() {
 
     tearDown(() => plugin.close());
 
-    test("canHandle GET /questions", () {
-      expect(handler.canHandle(makeRequest("GET", "/questions")), isTrue);
+    test("canHandle POST /project/questions", () {
+      expect(handler.canHandle(makeRequest("POST", "/project/questions")), isTrue);
     });
 
-    test("does not handle POST /questions", () {
-      expect(handler.canHandle(makeRequest("POST", "/questions")), isFalse);
+    test("does not handle GET /project/questions", () {
+      expect(handler.canHandle(makeRequest("GET", "/project/questions")), isFalse);
     });
 
-    test("returns 400 when x-project-id header is missing", () async {
-      final response = await handler.handle(
-        makeRequest("GET", "/questions"),
+    test("returns JSON object on success", () async {
+      final response = await handler.handleInternal(
+        makeRequest("POST", "/project/questions", body: jsonEncode({"projectId": "/tmp/project"})),
         pathParams: {},
         queryParams: {},
-      );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("missing x-project-id header"));
-    });
-
-    test("returns 400 when x-project-id header is empty", () async {
-      final response = await handler.handle(
-        makeRequest("GET", "/questions", headers: {"x-project-id": ""}),
-        pathParams: {},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("missing x-project-id header"));
-    });
-
-    test("returns JSON list on success", () async {
-      final response = await handler.handle(
-        makeRequest("GET", "/questions", headers: {"x-project-id": "/tmp/project"}),
-        pathParams: {},
-        queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(200));
       expect(response.headers["content-type"], equals("application/json"));
-      expect(jsonDecode(response.body!), isA<List<dynamic>>());
+      final body = jsonDecode(response.body!) as Map<String, dynamic>;
+      expect(body["data"], isA<List<dynamic>>());
     });
 
     test("maps fields including nested question info and options", () async {
@@ -81,13 +61,15 @@ void main() {
         ),
       ];
 
-      final response = await handler.handle(
-        makeRequest("GET", "/questions", headers: {"x-project-id": "/tmp/project"}),
+      final response = await handler.handleInternal(
+        makeRequest("POST", "/project/questions", body: jsonEncode({"projectId": "/tmp/project"})),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      final body = jsonDecode(response.body!) as List<dynamic>;
+      final json = jsonDecode(response.body!) as Map<String, dynamic>;
+      final body = json["data"] as List<dynamic>;
       final questions = body.map((q) => PendingQuestion.fromJson(q as Map<String, dynamic>)).toList();
 
       final item = questions.first;

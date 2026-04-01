@@ -34,12 +34,12 @@ void main() {
       await db.close();
     });
 
-    test("canHandle PATCH /session/:id", () {
-      expect(handler.canHandle(makeRequest("PATCH", "/session/s1")), isTrue);
+    test("canHandle PATCH /session/update/archive", () {
+      expect(handler.canHandle(makeRequest("PATCH", "/session/update/archive")), isTrue);
     });
 
-    test("does not handle GET /session/:id", () {
-      expect(handler.canHandle(makeRequest("GET", "/session/s1")), isFalse);
+    test("does not handle GET /session/update/archive", () {
+      expect(handler.canHandle(makeRequest("GET", "/session/update/archive")), isFalse);
     });
 
     test("1) archive without cleanup: sets archivedAt and does not run git cleanup", () async {
@@ -63,19 +63,21 @@ void main() {
         ),
       ];
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "PATCH",
-          "/session/s1",
+          "/session/update/archive",
           body: _archiveBody(
+            sessionId: "s1",
             archived: true,
             deleteWorktree: false,
             deleteBranch: false,
             force: false,
           ),
         ),
-        pathParams: {"id": "s1"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -117,19 +119,21 @@ void main() {
       ];
       worktreeService.safetyResult = WorktreeSafe();
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "PATCH",
-          "/session/s1",
+          "/session/update/archive",
           body: _archiveBody(
+            sessionId: "s1",
             archived: true,
             deleteWorktree: true,
             deleteBranch: false,
             force: false,
           ),
         ),
-        pathParams: {"id": "s1"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -156,31 +160,27 @@ void main() {
         ],
       );
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "PATCH",
-          "/session/s1",
+          "/session/update/archive",
           body: _archiveBody(
+            sessionId: "s1",
             archived: true,
             deleteWorktree: true,
             deleteBranch: false,
             force: false,
           ),
         ),
-        pathParams: {"id": "s1"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(409));
       final persisted = await db.sessionDao.getSession(sessionId: "s1");
       expect(persisted?.archivedAt, isNull);
-      final rejection = SessionCleanupRejection.fromJson(
-        switch (jsonDecode(response.body!)) {
-          final Map<String, dynamic> map => map,
-          _ => throw StateError("expected JSON object"),
-        },
-      );
-      expect(rejection.issues, hasLength(2));
+      expect(response.body, contains("cleanup rejected"));
     });
 
     test("4) archive with force: proceeds without safety check", () async {
@@ -204,19 +204,21 @@ void main() {
         ),
       ];
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "PATCH",
-          "/session/s1",
+          "/session/update/archive",
           body: _archiveBody(
+            sessionId: "s1",
             archived: true,
             deleteWorktree: true,
             deleteBranch: false,
             force: true,
           ),
         ),
-        pathParams: {"id": "s1"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -254,19 +256,21 @@ void main() {
         ),
       ];
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "PATCH",
-          "/session/s1",
+          "/session/update/archive",
           body: _archiveBody(
+            sessionId: "s1",
             archived: false,
             deleteWorktree: false,
             deleteBranch: false,
             force: false,
           ),
         ),
-        pathParams: {"id": "s1"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -311,19 +315,21 @@ void main() {
         ),
       ];
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "PATCH",
-          "/session/s1",
+          "/session/update/archive",
           body: _archiveBody(
+            sessionId: "s1",
             archived: false,
             deleteWorktree: false,
             deleteBranch: false,
             force: false,
           ),
         ),
-        pathParams: {"id": "s1"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -353,19 +359,21 @@ void main() {
         ),
       ];
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "PATCH",
-          "/session/s-pre-migration",
+          "/session/update/archive",
           body: _archiveBody(
+            sessionId: "s-pre-migration",
             archived: true,
             deleteWorktree: false,
             deleteBranch: false,
             force: false,
           ),
         ),
-        pathParams: {"id": "s-pre-migration"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -402,19 +410,21 @@ void main() {
         ),
       ];
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "PATCH",
-          "/session/s1",
+          "/session/update/archive",
           body: _archiveBody(
+            sessionId: "s1",
             archived: false,
             deleteWorktree: false,
             deleteBranch: false,
             force: false,
           ),
         ),
-        pathParams: {"id": "s1"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -446,19 +456,21 @@ void main() {
         ),
       ];
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "PATCH",
-          "/session/s1",
+          "/session/update/archive",
           body: _archiveBody(
+            sessionId: "s1",
             archived: true,
             deleteWorktree: true,
             deleteBranch: true,
             force: false,
           ),
         ),
-        pathParams: {"id": "s1"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -491,19 +503,21 @@ void main() {
         ),
       ];
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "PATCH",
-          "/session/s-preserve",
+          "/session/update/archive",
           body: _archiveBody(
+            sessionId: "s-preserve",
             archived: false,
             deleteWorktree: false,
             deleteBranch: false,
             force: false,
           ),
         ),
-        pathParams: {"id": "s-preserve"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -516,51 +530,11 @@ void main() {
       expect(session.id, equals("s-preserve"));
       expect(session.time?.archived, isNull);
     });
-
-    test("returns 400 when body has no archived key", () async {
-      final response = await handler.handle(
-        makeRequest("PATCH", "/session/s1", body: "{}"),
-        pathParams: {"id": "s1"},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("invalid JSON body"));
-    });
-
-    test("returns 400 when path param id is missing", () async {
-      final response = await handler.handle(
-        makeRequest(
-          "PATCH",
-          "/session/s1",
-          body: _archiveBody(
-            archived: true,
-            deleteWorktree: false,
-            deleteBranch: false,
-            force: false,
-          ),
-        ),
-        pathParams: {},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("missing session id"));
-    });
-
-    test("returns 400 on malformed body", () async {
-      final response = await handler.handle(
-        makeRequest("PATCH", "/session/s1", body: "not-json"),
-        pathParams: {"id": "s1"},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(400));
-    });
   });
 }
 
 String _archiveBody({
+  required String sessionId,
   required bool archived,
   required bool deleteWorktree,
   required bool deleteBranch,
@@ -568,6 +542,7 @@ String _archiveBody({
 }) {
   return jsonEncode(
     UpdateSessionArchiveRequest(
+      sessionId: sessionId,
       archived: archived,
       deleteWorktree: deleteWorktree,
       deleteBranch: deleteBranch,

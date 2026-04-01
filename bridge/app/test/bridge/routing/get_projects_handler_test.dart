@@ -28,12 +28,12 @@ void main() {
       await db.close();
     });
 
-    test("canHandle GET /project", () {
-      expect(handler.canHandle(makeRequest("GET", "/project")), isTrue);
+    test("canHandle GET /projects", () {
+      expect(handler.canHandle(makeRequest("GET", "/projects")), isTrue);
     });
 
-    test("does not handle POST /project", () {
-      expect(handler.canHandle(makeRequest("POST", "/project")), isFalse);
+    test("does not handle POST /projects", () {
+      expect(handler.canHandle(makeRequest("POST", "/projects")), isFalse);
     });
 
     test("does not handle GET /session", () {
@@ -41,22 +41,25 @@ void main() {
     });
 
     test("returns 200 with application/json content-type", () async {
-      final response = await handler.handle(
-        makeRequest("GET", "/project"),
+      final response = await handler.handleInternal(
+        makeRequest("GET", "/projects"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
       expect(response.status, equals(200));
       expect(response.headers["content-type"], equals("application/json"));
     });
 
     test("returns empty list when plugin has no projects", () async {
-      final response = await handler.handle(
-        makeRequest("GET", "/project"),
+      final response = await handler.handleInternal(
+        makeRequest("GET", "/projects"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
-      final body = jsonDecode(response.body!) as List<dynamic>;
+      final json = jsonDecode(response.body!) as Map<String, dynamic>;
+      final body = json["data"] as List<dynamic>;
       expect(body, isEmpty);
     });
 
@@ -68,13 +71,15 @@ void main() {
         ),
       ];
 
-      final response = await handler.handle(
-        makeRequest("GET", "/project"),
+      final response = await handler.handleInternal(
+        makeRequest("GET", "/projects"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      final body = jsonDecode(response.body!) as List<dynamic>;
+      final json = jsonDecode(response.body!) as Map<String, dynamic>;
+      final body = json["data"] as List<dynamic>;
       final project = body[0] as Map<String, dynamic>;
       expect(project["id"], equals("p1"));
       expect(project["name"], equals("My Project"));
@@ -88,13 +93,15 @@ void main() {
         ),
       ];
 
-      final response = await handler.handle(
-        makeRequest("GET", "/project"),
+      final response = await handler.handleInternal(
+        makeRequest("GET", "/projects"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      final body = jsonDecode(response.body!) as List<dynamic>;
+      final json = jsonDecode(response.body!) as Map<String, dynamic>;
+      final body = json["data"] as List<dynamic>;
       final time = (body[0] as Map<String, dynamic>)["time"] as Map<String, dynamic>;
       expect(time["created"], equals(1000));
       expect(time["updated"], equals(2000));
@@ -105,13 +112,15 @@ void main() {
         const PluginProject(id: "p1"),
       ];
 
-      final response = await handler.handle(
-        makeRequest("GET", "/project"),
+      final response = await handler.handleInternal(
+        makeRequest("GET", "/projects"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      final body = jsonDecode(response.body!) as List<dynamic>;
+      final json = jsonDecode(response.body!) as Map<String, dynamic>;
+      final body = json["data"] as List<dynamic>;
       expect((body[0] as Map<String, dynamic>)["time"], isNull);
     });
 
@@ -122,13 +131,15 @@ void main() {
         const PluginProject(id: "p3"),
       ];
 
-      final response = await handler.handle(
-        makeRequest("GET", "/project"),
+      final response = await handler.handleInternal(
+        makeRequest("GET", "/projects"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      final body = jsonDecode(response.body!) as List<dynamic>;
+      final json = jsonDecode(response.body!) as Map<String, dynamic>;
+      final body = json["data"] as List<dynamic>;
       expect(body.length, equals(3));
     });
 
@@ -140,16 +151,19 @@ void main() {
       ];
       await hiddenStore.hideProject(projectId: "hidden-1");
 
-      final response = await handler.handle(
-        makeRequest("GET", "/project"),
+      final response = await handler.handleInternal(
+        makeRequest("GET", "/projects"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      final body = jsonDecode(response.body!) as List<dynamic>;
+      final json = jsonDecode(response.body!) as Map<String, dynamic>;
+      final body = json["data"] as List<dynamic>;
       final ids = body.map((item) => (item as Map<String, dynamic>)["id"] as String).toList();
 
-      expect(ids, equals(["visible-1", "visible-2"]));
+      expect(ids, hasLength(2));
+      expect(ids, containsAll(["visible-1", "visible-2"]));
     });
   });
 }

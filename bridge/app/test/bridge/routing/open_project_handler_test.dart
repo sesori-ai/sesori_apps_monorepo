@@ -51,10 +51,11 @@ void main() {
     // ── Path validation ──────────────────────────────────────────────────────
 
     test("returns 400 when path is empty", () async {
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest("POST", "/project/open", body: jsonEncode({"path": ""})),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(400));
@@ -62,10 +63,11 @@ void main() {
     });
 
     test("returns 400 when path is relative", () async {
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest("POST", "/project/open", body: jsonEncode({"path": "relative/path"})),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(400));
@@ -73,7 +75,7 @@ void main() {
     });
 
     test("returns 400 when path contains path traversal (..) segment", () async {
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "POST",
           "/project/open",
@@ -81,31 +83,11 @@ void main() {
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(400));
       expect(response.body, contains("traversal"));
-    });
-
-    test("returns 400 when body is invalid JSON", () async {
-      final response = await handler.handle(
-        makeRequest("POST", "/project/open", body: "not-json"),
-        pathParams: {},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("invalid JSON body"));
-    });
-
-    test("returns 400 when body is missing", () async {
-      final response = await handler.handle(
-        makeRequest("POST", "/project/open"),
-        pathParams: {},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(400));
     });
 
     // ── Filesystem validation ────────────────────────────────────────────────
@@ -113,7 +95,7 @@ void main() {
     test("returns 404 when path does not exist", () async {
       final nonExistent = "${tempDir.path}/nonexistent-path-xyz";
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "POST",
           "/project/open",
@@ -121,13 +103,14 @@ void main() {
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(404));
     });
 
     test("returns 400 when path points to a file not a directory", () async {
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "POST",
           "/project/open",
@@ -135,6 +118,7 @@ void main() {
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(400));
@@ -146,7 +130,7 @@ void main() {
     test("calls plugin.getProject with the given path", () async {
       plugin.currentProjectResult = PluginProject(id: tempDir.path);
 
-      await handler.handle(
+      await handler.handleInternal(
         makeRequest(
           "POST",
           "/project/open",
@@ -154,6 +138,7 @@ void main() {
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(plugin.lastGetCurrentProjectProjectId, equals(tempDir.path));
@@ -162,7 +147,7 @@ void main() {
     test("returns 200 with application/json content-type", () async {
       plugin.currentProjectResult = PluginProject(id: tempDir.path);
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "POST",
           "/project/open",
@@ -170,6 +155,7 @@ void main() {
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -182,7 +168,7 @@ void main() {
         name: "My Project",
       );
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "POST",
           "/project/open",
@@ -190,6 +176,7 @@ void main() {
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       final body = switch (jsonDecode(response.body!)) {
@@ -206,7 +193,7 @@ void main() {
         time: const PluginProjectTime(created: 1000, updated: 2000),
       );
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "POST",
           "/project/open",
@@ -214,6 +201,7 @@ void main() {
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       final body = jsonDecode(response.body!) as Map<String, dynamic>;
@@ -225,7 +213,7 @@ void main() {
     test("time is null when plugin returns no time", () async {
       plugin.currentProjectResult = PluginProject(id: tempDir.path);
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "POST",
           "/project/open",
@@ -233,6 +221,7 @@ void main() {
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       final body = jsonDecode(response.body!) as Map<String, dynamic>;
@@ -241,21 +230,22 @@ void main() {
 
     // ── Plugin error propagation ─────────────────────────────────────────────
 
-    test("propagates PluginApiException when plugin.getProject() throws", () async {
+    test("returns 500 when plugin.getProject() throws", () async {
       plugin.throwOnGetProjectError = PluginApiException("/project/open", 404);
 
-      await expectLater(
-        handler.handle(
-          makeRequest(
-            "POST",
-            "/project/open",
-            body: jsonEncode({"path": tempDir.path}),
-          ),
-          pathParams: {},
-          queryParams: {},
+      final response = await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/project/open",
+          body: jsonEncode({"path": tempDir.path}),
         ),
-        throwsA(isA<PluginApiException>()),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
       );
+
+      expect(response.status, equals(500));
+      expect(response.body, contains("Internal Server Error"));
     });
 
     // ── Idempotency ──────────────────────────────────────────────────────────
@@ -266,7 +256,7 @@ void main() {
         name: "Stable Project",
       );
 
-      final first = await handler.handle(
+      final first = await handler.handleInternal(
         makeRequest(
           "POST",
           "/project/open",
@@ -274,9 +264,10 @@ void main() {
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      final second = await handler.handle(
+      final second = await handler.handleInternal(
         makeRequest(
           "POST",
           "/project/open",
@@ -284,6 +275,7 @@ void main() {
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(first.status, equals(200));
@@ -295,7 +287,7 @@ void main() {
       plugin.currentProjectResult = PluginProject(id: tempDir.path);
       await hiddenStore.hideProject(projectId: tempDir.path);
 
-      await handler.handle(
+      await handler.handleInternal(
         makeRequest(
           "POST",
           "/project/open",
@@ -303,6 +295,7 @@ void main() {
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       final hiddenIds = await hiddenStore.getHiddenProjectIds();

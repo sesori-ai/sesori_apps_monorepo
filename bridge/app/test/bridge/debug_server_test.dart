@@ -119,7 +119,7 @@ void main() {
       await db.close();
     });
 
-    test("GET /project returns project list as JSON", () async {
+    test("GET /projects returns project list as JSON", () async {
       plugin.projectsResult = [
         const PluginProject(id: "p1", name: "My Project"),
       ];
@@ -128,31 +128,32 @@ void main() {
       addTearDown(client.close);
 
       final request = await client.getUrl(
-        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/project"),
+        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/projects"),
       );
       final response = await request.close();
       final body = await utf8.decoder.bind(response).join();
 
       expect(response.statusCode, equals(HttpStatus.ok));
-      final decoded = jsonDecode(body) as List<dynamic>;
-      expect(decoded.length, equals(1));
-      final project = decoded[0] as Map<String, dynamic>;
+      final decoded = jsonDecode(body) as Map<String, dynamic>;
+      final data = decoded["data"] as List<dynamic>;
+      expect(data.length, equals(1));
+      final project = data[0] as Map<String, dynamic>;
       expect(project["id"], equals("p1"));
       expect(project["name"], equals("My Project"));
     });
 
-    test("GET /session without directory header returns 400", () async {
+    test("POST /sessions without body returns 400", () async {
       final client = HttpClient();
       addTearDown(client.close);
 
-      final request = await client.getUrl(
-        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/session"),
+      final request = await client.postUrl(
+        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/sessions"),
       );
       final response = await request.close();
       expect(response.statusCode, equals(HttpStatus.badRequest));
     });
 
-    test("GET /session with directory header returns session list", () async {
+    test("POST /sessions with body returns session list", () async {
       plugin.sessionsResult = [
         const PluginSession(
           id: "s1",
@@ -168,21 +169,23 @@ void main() {
       final client = HttpClient();
       addTearDown(client.close);
 
-      final request = await client.getUrl(
-        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/session"),
+      final request = await client.postUrl(
+        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/sessions"),
       );
-      request.headers.set("x-project-id", "/tmp/test");
+      request.headers.contentType = ContentType.json;
+      request.write(jsonEncode({"projectId": "/tmp/test", "start": null, "limit": null}));
       final response = await request.close();
       final body = await utf8.decoder.bind(response).join();
 
       expect(response.statusCode, equals(HttpStatus.ok));
-      final decoded = jsonDecode(body) as List<dynamic>;
-      expect(decoded.length, equals(1));
-      final session = decoded[0] as Map<String, dynamic>;
+      final decoded = jsonDecode(body) as Map<String, dynamic>;
+      final items = decoded["items"] as List<dynamic>;
+      expect(items.length, equals(1));
+      final session = items[0] as Map<String, dynamic>;
       expect(session["id"], equals("s1"));
     });
 
-    test("GET /session/{id}/message returns messages", () async {
+    test("POST /session/messages returns messages", () async {
       plugin.messagesResult = [
         const PluginMessageWithParts(
           info: PluginMessage(
@@ -200,33 +203,36 @@ void main() {
       final client = HttpClient();
       addTearDown(client.close);
 
-      final request = await client.getUrl(
+      final request = await client.postUrl(
         Uri.parse(
-          "http://127.0.0.1:${debugServer.boundPort!}/session/s1/message",
+          "http://127.0.0.1:${debugServer.boundPort!}/session/messages",
         ),
       );
+      request.headers.contentType = ContentType.json;
+      request.write(jsonEncode({"sessionId": "s1"}));
       final response = await request.close();
       final body = await utf8.decoder.bind(response).join();
 
       expect(response.statusCode, equals(HttpStatus.ok));
-      final decoded = jsonDecode(body) as List<dynamic>;
-      expect(decoded.length, equals(1));
+      final decoded = jsonDecode(body) as Map<String, dynamic>;
+      final messages = decoded["messages"] as List<dynamic>;
+      expect(messages.length, equals(1));
     });
 
-    test("returns 502 on plugin error", () async {
+    test("returns 500 on plugin error", () async {
       plugin.throwOnGetProjects = true;
 
       final client = HttpClient();
       addTearDown(client.close);
 
       final request = await client.getUrl(
-        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/project"),
+        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/projects"),
       );
       final response = await request.close();
       final body = await utf8.decoder.bind(response).join();
 
-      expect(response.statusCode, equals(HttpStatus.badGateway));
-      expect(body, contains("request failed"));
+      expect(response.statusCode, equals(HttpStatus.internalServerError));
+      expect(body, contains("Internal Server Error"));
     });
   });
 }

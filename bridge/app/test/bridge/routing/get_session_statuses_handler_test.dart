@@ -31,16 +31,18 @@ void main() {
         "s1": const PluginSessionStatus.idle(),
       };
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest("GET", "/session/status"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(200));
       expect(response.headers["content-type"], equals("application/json"));
       final body = jsonDecode(response.body!) as Map<String, dynamic>;
-      expect(body.containsKey("s1"), isTrue);
+      final statuses = body["statuses"] as Map<String, dynamic>;
+      expect(statuses.containsKey("s1"), isTrue);
     });
 
     test("maps idle, busy, and retry correctly", () async {
@@ -54,21 +56,23 @@ void main() {
         ),
       };
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest("GET", "/session/status"),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       final body = jsonDecode(response.body!) as Map<String, dynamic>;
+      final statuses = body["statuses"] as Map<String, dynamic>;
 
-      final idle = body["idle-session"] as Map<String, dynamic>;
+      final idle = statuses["idle-session"] as Map<String, dynamic>;
       expect(idle["type"], equals("idle"));
 
-      final busy = body["busy-session"] as Map<String, dynamic>;
+      final busy = statuses["busy-session"] as Map<String, dynamic>;
       expect(busy["type"], equals("busy"));
 
-      final retry = body["retry-session"] as Map<String, dynamic>;
+      final retry = statuses["retry-session"] as Map<String, dynamic>;
       expect(retry["type"], equals("retry"));
       expect(retry["attempt"], equals(2));
       expect(retry["message"], equals("Rate limited"));

@@ -21,80 +21,86 @@ void main() {
 
     tearDown(() => plugin.close());
 
-    test("canHandle GET /session", () {
-      expect(handler.canHandle(makeRequest("GET", "/session")), isTrue);
+    test("canHandle POST /sessions", () {
+      expect(handler.canHandle(makeRequest("POST", "/sessions")), isTrue);
     });
 
-    test("does not handle POST /session", () {
-      expect(handler.canHandle(makeRequest("POST", "/session")), isFalse);
+    test("does not handle GET /sessions", () {
+      expect(handler.canHandle(makeRequest("GET", "/sessions")), isFalse);
     });
 
     test("does not handle GET /session/:id/message", () {
       expect(handler.canHandle(makeRequest("GET", "/session/abc/message")), isFalse);
     });
 
-    test("returns 400 when x-project-id header is missing", () async {
-      final response = await handler.handle(
-        makeRequest("GET", "/session"),
+    test("returns 400 when projectId is empty", () async {
+      final response = await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/sessions",
+          body: jsonEncode({"projectId": "", "start": null, "limit": null}),
+        ),
         pathParams: {},
         queryParams: {},
-      );
-      expect(response.status, equals(400));
-      expect(response.body, contains("x-project-id"));
-    });
-
-    test("returns 400 when x-project-id header is empty", () async {
-      final response = await handler.handle(
-        makeRequest("GET", "/session", headers: {"x-project-id": ""}),
-        pathParams: {},
-        queryParams: {},
+        fragment: null,
       );
       expect(response.status, equals(400));
     });
 
-    test("accepts x-project-id header", () async {
-      final response = await handler.handle(
-        makeRequest("GET", "/session", headers: {"x-project-id": "/tmp"}),
+    test("forwards projectId to plugin.getSessions", () async {
+      await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/sessions",
+          body: jsonEncode({"projectId": "/home/user/proj", "start": null, "limit": null}),
+        ),
         pathParams: {},
         queryParams: {},
-      );
-      expect(response.status, equals(200));
-    });
-
-    test("forwards x-project-id header to plugin.getSessions", () async {
-      await handler.handle(
-        makeRequest("GET", "/session", headers: {"x-project-id": "/home/user/proj"}),
-        pathParams: {},
-        queryParams: {},
+        fragment: null,
       );
       expect(plugin.lastGetSessionsWorktree, equals("/home/user/proj"));
     });
 
-    test("forwards start and limit from queryParams as ints", () async {
-      await handler.handle(
-        makeRequest("GET", "/session", headers: {"x-project-id": "/tmp"}),
+    test("forwards start and limit from body as ints", () async {
+      await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/sessions",
+          body: jsonEncode({"projectId": "/tmp", "start": 5, "limit": 20}),
+        ),
         pathParams: {},
-        queryParams: {"start": "5", "limit": "20"},
+        queryParams: {},
+        fragment: null,
       );
       expect(plugin.lastGetSessionsStart, equals(5));
       expect(plugin.lastGetSessionsLimit, equals(20));
     });
 
-    test("start and limit are null when absent from queryParams", () async {
-      await handler.handle(
-        makeRequest("GET", "/session", headers: {"x-project-id": "/tmp"}),
+    test("start and limit are null when absent from body", () async {
+      await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/sessions",
+          body: jsonEncode({"projectId": "/tmp", "start": null, "limit": null}),
+        ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
       expect(plugin.lastGetSessionsStart, isNull);
       expect(plugin.lastGetSessionsLimit, isNull);
     });
 
     test("returns 200 with application/json content-type", () async {
-      final response = await handler.handle(
-        makeRequest("GET", "/session", headers: {"x-project-id": "/tmp"}),
+      final response = await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/sessions",
+          body: jsonEncode({"projectId": "/tmp", "start": null, "limit": null}),
+        ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
       expect(response.status, equals(200));
       expect(response.headers["content-type"], equals("application/json"));
@@ -113,14 +119,19 @@ void main() {
         ),
       ];
 
-      final response = await handler.handle(
-        makeRequest("GET", "/session", headers: {"x-project-id": "/tmp"}),
+      final response = await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/sessions",
+          body: jsonEncode({"projectId": "/tmp", "start": null, "limit": null}),
+        ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      final body = jsonDecode(response.body!) as List<dynamic>;
-      final session = body[0] as Map<String, dynamic>;
+      final body = jsonDecode(response.body!) as Map<String, dynamic>;
+      final session = (body["items"] as List<dynamic>)[0] as Map<String, dynamic>;
       expect(session["id"], equals("s1"));
       expect(session["projectID"], equals("p1"));
       expect(session["directory"], equals("/tmp"));
@@ -140,14 +151,20 @@ void main() {
         ),
       ];
 
-      final response = await handler.handle(
-        makeRequest("GET", "/session", headers: {"x-project-id": "/tmp"}),
+      final response = await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/sessions",
+          body: jsonEncode({"projectId": "/tmp", "start": null, "limit": null}),
+        ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      final body = jsonDecode(response.body!) as List<dynamic>;
-      final time = (body[0] as Map<String, dynamic>)["time"] as Map<String, dynamic>;
+      final body = jsonDecode(response.body!) as Map<String, dynamic>;
+      final items = body["items"] as List<dynamic>;
+      final time = (items[0] as Map<String, dynamic>)["time"] as Map<String, dynamic>;
       expect(time["created"], equals(100));
       expect(time["updated"], equals(200));
       expect(time["archived"], isNull);
@@ -166,14 +183,20 @@ void main() {
         ),
       ];
 
-      final response = await handler.handle(
-        makeRequest("GET", "/session", headers: {"x-project-id": "/tmp"}),
+      final response = await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/sessions",
+          body: jsonEncode({"projectId": "/tmp", "start": null, "limit": null}),
+        ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      final body = jsonDecode(response.body!) as List<dynamic>;
-      final summary = (body[0] as Map<String, dynamic>)["summary"] as Map<String, dynamic>;
+      final body = jsonDecode(response.body!) as Map<String, dynamic>;
+      final items = body["items"] as List<dynamic>;
+      final summary = (items[0] as Map<String, dynamic>)["summary"] as Map<String, dynamic>;
       expect(summary["additions"], equals(10));
       expect(summary["deletions"], equals(3));
       expect(summary["files"], equals(2));
@@ -192,14 +215,19 @@ void main() {
         ),
       ];
 
-      final response = await handler.handle(
-        makeRequest("GET", "/session", headers: {"x-project-id": "/tmp"}),
+      final response = await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/sessions",
+          body: jsonEncode({"projectId": "/tmp", "start": null, "limit": null}),
+        ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      final body = jsonDecode(response.body!) as List<dynamic>;
-      final session = body[0] as Map<String, dynamic>;
+      final body = jsonDecode(response.body!) as Map<String, dynamic>;
+      final session = (body["items"] as List<dynamic>)[0] as Map<String, dynamic>;
       expect(session["time"], isNull);
       expect(session["summary"], isNull);
     });
@@ -232,14 +260,20 @@ void main() {
         ),
       );
 
-      final response = await handler.handle(
-        makeRequest("GET", "/session", headers: {"x-project-id": "/tmp"}),
+      final response = await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/sessions",
+          body: jsonEncode({"projectId": "/tmp", "start": null, "limit": null}),
+        ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      final body = jsonDecode(response.body!) as List<dynamic>;
-      final time = (body[0] as Map<String, dynamic>)["time"] as Map<String, dynamic>;
+      final body = jsonDecode(response.body!) as Map<String, dynamic>;
+      final items = body["items"] as List<dynamic>;
+      final time = (items[0] as Map<String, dynamic>)["time"] as Map<String, dynamic>;
       expect(time["created"], equals(100));
       expect(time["updated"], equals(200));
       expect(time["archived"], equals(999)); // DB value overrides plugin value
@@ -260,14 +294,20 @@ void main() {
 
       // No DB record for this session
 
-      final response = await handler.handle(
-        makeRequest("GET", "/session", headers: {"x-project-id": "/tmp"}),
+      final response = await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/sessions",
+          body: jsonEncode({"projectId": "/tmp", "start": null, "limit": null}),
+        ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      final body = jsonDecode(response.body!) as List<dynamic>;
-      final time = (body[0] as Map<String, dynamic>)["time"] as Map<String, dynamic>;
+      final body = jsonDecode(response.body!) as Map<String, dynamic>;
+      final items = body["items"] as List<dynamic>;
+      final time = (items[0] as Map<String, dynamic>)["time"] as Map<String, dynamic>;
       expect(time["created"], equals(100));
       expect(time["updated"], equals(200));
       expect(time["archived"], equals(300)); // Plugin value preserved
@@ -301,14 +341,20 @@ void main() {
         ),
       );
 
-      final response = await handler.handle(
-        makeRequest("GET", "/session", headers: {"x-project-id": "/tmp"}),
+      final response = await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/sessions",
+          body: jsonEncode({"projectId": "/tmp", "start": null, "limit": null}),
+        ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      final body = jsonDecode(response.body!) as List<dynamic>;
-      final time = (body[0] as Map<String, dynamic>)["time"] as Map<String, dynamic>;
+      final body = jsonDecode(response.body!) as Map<String, dynamic>;
+      final items = body["items"] as List<dynamic>;
+      final time = (items[0] as Map<String, dynamic>)["time"] as Map<String, dynamic>;
       expect(time["created"], equals(100));
       expect(time["updated"], equals(200));
       expect(time["archived"], isNull); // DB null value preserved
@@ -375,22 +421,28 @@ void main() {
       );
       // s3: No DB record
 
-      final response = await handler.handle(
-        makeRequest("GET", "/session", headers: {"x-project-id": "/tmp"}),
+      final response = await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/sessions",
+          body: jsonEncode({"projectId": "/tmp", "start": null, "limit": null}),
+        ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      final body = jsonDecode(response.body!) as List<dynamic>;
-      expect(body.length, equals(3));
+      final body = jsonDecode(response.body!) as Map<String, dynamic>;
+      final items = body["items"] as List<dynamic>;
+      expect(items.length, equals(3));
 
-      final time1 = (body[0] as Map<String, dynamic>)["time"] as Map<String, dynamic>;
+      final time1 = (items[0] as Map<String, dynamic>)["time"] as Map<String, dynamic>;
       expect(time1["archived"], equals(999)); // DB override
 
-      final time2 = (body[1] as Map<String, dynamic>)["time"] as Map<String, dynamic>;
+      final time2 = (items[1] as Map<String, dynamic>)["time"] as Map<String, dynamic>;
       expect(time2["archived"], isNull); // DB null
 
-      final time3 = (body[2] as Map<String, dynamic>)["time"] as Map<String, dynamic>;
+      final time3 = (items[2] as Map<String, dynamic>)["time"] as Map<String, dynamic>;
       expect(time3["archived"], equals(500)); // Plugin value
     });
   });

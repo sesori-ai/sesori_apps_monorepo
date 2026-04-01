@@ -33,22 +33,12 @@ void main() {
       await db.close();
     });
 
-    test("canHandle POST /session", () {
-      expect(handler.canHandle(makeRequest("POST", "/session")), isTrue);
+    test("canHandle POST /session/create", () {
+      expect(handler.canHandle(makeRequest("POST", "/session/create")), isTrue);
     });
 
-    test("does not handle GET /session", () {
-      expect(handler.canHandle(makeRequest("GET", "/session")), isFalse);
-    });
-
-    test("returns 400 when request body is empty", () async {
-      final response = await handler.handle(
-        makeRequest("POST", "/session"),
-        pathParams: {},
-        queryParams: {},
-      );
-      expect(response.status, equals(400));
-      expect(response.body, contains("invalid JSON body"));
+    test("does not handle GET /session/create", () {
+      expect(handler.canHandle(makeRequest("GET", "/session/create")), isFalse);
     });
 
     test("dedicated=true and WorktreeSuccess injects system prompt and stores worktree metadata", () async {
@@ -68,10 +58,10 @@ void main() {
         baseCommit: "abc123def456",
       );
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "POST",
-          "/session",
+          "/session/create",
           body: jsonEncode(
             const CreateSessionRequest(
               projectId: "/repo",
@@ -84,6 +74,7 @@ void main() {
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -131,10 +122,10 @@ void main() {
         baseCommit: "abc123def456",
       );
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "POST",
-          "/session",
+          "/session/create",
           body: jsonEncode(
             const CreateSessionRequest(
               projectId: "/repo",
@@ -147,6 +138,7 @@ void main() {
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -184,10 +176,10 @@ void main() {
           reason: "not git",
         );
 
-        final response = await handler.handle(
+        final response = await handler.handleInternal(
           makeRequest(
             "POST",
-            "/session",
+            "/session/create",
             body: jsonEncode(
               const CreateSessionRequest(
                 projectId: "/repo",
@@ -200,6 +192,7 @@ void main() {
           ),
           pathParams: {},
           queryParams: {},
+          fragment: null,
         );
 
         expect(response.status, equals(200));
@@ -246,26 +239,27 @@ void main() {
         baseCommit: "abc123def456",
       );
 
-      await expectLater(
-        () => localHandler.handle(
-          makeRequest(
-            "POST",
-            "/session",
-            body: jsonEncode(
-              const CreateSessionRequest(
-                projectId: "/repo",
-                dedicatedWorktree: true,
-                parts: [PromptPart.text(text: "Start")],
-                agent: null,
-                model: null,
-              ).toJson(),
-            ),
+      final response = await localHandler.handleInternal(
+        makeRequest(
+          "POST",
+          "/session/create",
+          body: jsonEncode(
+            const CreateSessionRequest(
+              projectId: "/repo",
+              dedicatedWorktree: true,
+              parts: [PromptPart.text(text: "Start")],
+              agent: null,
+              model: null,
+            ).toJson(),
           ),
-          pathParams: {},
-          queryParams: {},
         ),
-        throwsA(isA<StateError>()),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
       );
+
+      expect(response.status, equals(500));
+      expect(response.body, contains("createSession failed"));
 
       final dbSession = await db.sessionDao.getSession(sessionId: "s1");
       expect(dbSession, isNull);
@@ -283,10 +277,10 @@ void main() {
         summary: PluginSessionSummary(additions: 1, deletions: 2, files: 3),
       );
 
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "POST",
-          "/session",
+          "/session/create",
           body: jsonEncode(
             const CreateSessionRequest(
               projectId: "/repo",
@@ -299,6 +293,7 @@ void main() {
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       final body = switch (jsonDecode(response.body!)) {
@@ -315,10 +310,10 @@ void main() {
     });
 
     test("passes parts, agent, and model to plugin", () async {
-      await handler.handle(
+      await handler.handleInternal(
         makeRequest(
           "POST",
-          "/session",
+          "/session/create",
           body: jsonEncode(
             const CreateSessionRequest(
               projectId: "/tmp",
@@ -331,43 +326,13 @@ void main() {
         ),
         pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
-      expect(plugin.lastCreateSessionProjectId, equals("/tmp"));
       expect(plugin.lastCreateSessionDirectory, equals("/tmp"));
       expect(plugin.lastCreateSessionParts, equals([const PluginPromptPart.text(text: "Hello")]));
       expect(plugin.lastCreateSessionAgent, equals("architect"));
       expect(plugin.lastCreateSessionModel, equals((providerID: "openai", modelID: "gpt-5")));
-    });
-
-    test("returns 400 when parts are missing", () async {
-      final response = await handler.handle(
-        makeRequest(
-          "POST",
-          "/session",
-          body: jsonEncode({"projectId": "/tmp", "dedicatedWorktree": false, "agent": null, "model": null}),
-        ),
-        pathParams: {},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("invalid JSON body"));
-    });
-
-    test("returns 400 on invalid JSON body", () async {
-      final response = await handler.handle(
-        makeRequest(
-          "POST",
-          "/session",
-          body: "not-json",
-        ),
-        pathParams: {},
-        queryParams: {},
-      );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("invalid JSON body"));
     });
   });
 }

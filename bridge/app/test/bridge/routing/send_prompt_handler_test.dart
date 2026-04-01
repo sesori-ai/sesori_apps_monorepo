@@ -19,47 +19,50 @@ void main() {
 
     tearDown(() => plugin.close());
 
-    test("canHandle POST /session/:id/prompt_async", () {
+    test("canHandle POST /session/prompt_async", () {
       expect(
-        handler.canHandle(makeRequest("POST", "/session/s1/prompt_async")),
+        handler.canHandle(makeRequest("POST", "/session/prompt_async")),
         isTrue,
       );
     });
 
-    test("does not handle GET /session/:id/prompt_async", () {
+    test("does not handle GET /session/prompt_async", () {
       expect(
-        handler.canHandle(makeRequest("GET", "/session/s1/prompt_async")),
+        handler.canHandle(makeRequest("GET", "/session/prompt_async")),
         isFalse,
       );
     });
 
-    test("extracts id", () async {
-      await handler.handle(
+    test("extracts session id", () async {
+      await handler.handleInternal(
         makeRequest(
           "POST",
-          "/session/s1/prompt_async",
+          "/session/prompt_async",
           body: jsonEncode(
             const SendPromptRequest(
+              sessionId: "s1",
               parts: [PromptPart.text(text: "Hello")],
               agent: null,
               model: null,
             ).toJson(),
           ),
         ),
-        pathParams: {"id": "s1"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(plugin.lastSendPromptSessionId, equals("s1"));
     });
 
     test("parses parts", () async {
-      await handler.handle(
+      await handler.handleInternal(
         makeRequest(
           "POST",
-          "/session/s1/prompt_async",
+          "/session/prompt_async",
           body: jsonEncode(
             const SendPromptRequest(
+              sessionId: "s1",
               parts: [
                 PromptPart.text(text: "Hello"),
                 PromptPart.text(text: "World"),
@@ -69,8 +72,9 @@ void main() {
             ).toJson(),
           ),
         ),
-        pathParams: {"id": "s1"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(plugin.lastSendPromptParts, isNotNull);
@@ -80,20 +84,22 @@ void main() {
     });
 
     test("parses agent + model", () async {
-      await handler.handle(
+      await handler.handleInternal(
         makeRequest(
           "POST",
-          "/session/s1/prompt_async",
+          "/session/prompt_async",
           body: jsonEncode(
             const SendPromptRequest(
+              sessionId: "s1",
               parts: [PromptPart.text(text: "Hello")],
               agent: "planner",
               model: PromptModel(providerID: "openai", modelID: "gpt-4o"),
             ).toJson(),
           ),
         ),
-        pathParams: {"id": "s1"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(plugin.lastSendPromptAgent, equals("planner"));
@@ -102,12 +108,13 @@ void main() {
     });
 
     test("records correct args", () async {
-      await handler.handle(
+      await handler.handleInternal(
         makeRequest(
           "POST",
-          "/session/s42/prompt_async",
+          "/session/prompt_async",
           body: jsonEncode(
             const SendPromptRequest(
+              sessionId: "s42",
               parts: [PromptPart.text(text: "Ship it")],
               agent: "coder",
               model: PromptModel(
@@ -117,8 +124,9 @@ void main() {
             ).toJson(),
           ),
         ),
-        pathParams: {"id": "s42"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(plugin.lastSendPromptSessionId, equals("s42"));
@@ -130,24 +138,26 @@ void main() {
     });
 
     test("returns 200", () async {
-      final response = await handler.handle(
+      final response = await handler.handleInternal(
         makeRequest(
           "POST",
-          "/session/s1/prompt_async",
+          "/session/prompt_async",
           body: jsonEncode(
             const SendPromptRequest(
+              sessionId: "s1",
               parts: [PromptPart.text(text: "Hello")],
               agent: null,
               model: null,
             ).toJson(),
           ),
         ),
-        pathParams: {"id": "s1"},
+        pathParams: {},
         queryParams: {},
+        fragment: null,
       );
 
       expect(response.status, equals(200));
-      expect(response.body, isNull);
+      expect(response.body, equals("{}"));
     });
   });
 }

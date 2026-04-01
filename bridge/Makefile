@@ -1,5 +1,6 @@
-DART_VERSION := $(shell grep '^dart' .tool-versions | awk '{print $$2}')
-DART := $(HOME)/.asdf/installs/dart/$(DART_VERSION)/bin/dart
+TOOL_VERSIONS := $(shell git rev-parse --show-toplevel)/.tool-versions
+FLUTTER_VERSION := $(shell grep '^flutter' $(TOOL_VERSIONS) | awk '{print $$2}')
+DART := $(HOME)/.asdf/installs/flutter/$(FLUTTER_VERSION)/bin/cache/dart-sdk/bin/dart
 
 MODULES := sesori_plugin_interface sesori_plugin_opencode app
 
