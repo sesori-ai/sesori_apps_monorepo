@@ -118,6 +118,25 @@ SesoriSessionIdle _$SesoriSessionIdleFromJson(Map json) => SesoriSessionIdle(
 Map<String, dynamic> _$SesoriSessionIdleToJson(SesoriSessionIdle instance) =>
     <String, dynamic>{'sessionID': instance.sessionID, 'type': instance.$type};
 
+SesoriCommandExecuted _$SesoriCommandExecutedFromJson(Map json) =>
+    SesoriCommandExecuted(
+      name: json['name'] as String,
+      sessionID: json['sessionID'] as String,
+      arguments: json['arguments'] as String,
+      messageID: json['messageID'] as String,
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$SesoriCommandExecutedToJson(
+  SesoriCommandExecuted instance,
+) => <String, dynamic>{
+  'name': instance.name,
+  'sessionID': instance.sessionID,
+  'arguments': instance.arguments,
+  'messageID': instance.messageID,
+  'type': instance.$type,
+};
+
 SesoriMessageUpdated _$SesoriMessageUpdatedFromJson(Map json) =>
     SesoriMessageUpdated(
       info: Message.fromJson(Map<String, dynamic>.from(json['info'] as Map)),

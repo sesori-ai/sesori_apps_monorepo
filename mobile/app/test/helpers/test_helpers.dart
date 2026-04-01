@@ -320,6 +320,19 @@ AgentInfo testAgentInfo() {
   );
 }
 
+CommandInfo testCommandInfo({
+  String name = "review",
+  String template = "/review {{file}}",
+}) {
+  return CommandInfo(
+    name: name,
+    template: template,
+    hints: const ["Optional arguments"],
+    description: "Run $name",
+    source: CommandSource.command,
+  );
+}
+
 /// Returns a realistic [ProviderListResponse] with one provider and one model.
 ProviderListResponse testProviderListResponse() {
   return const ProviderListResponse(

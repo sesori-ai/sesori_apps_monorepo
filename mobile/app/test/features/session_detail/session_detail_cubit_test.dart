@@ -7,6 +7,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/conne
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
+import "package:sesori_dart_core/src/cubits/session_detail/session_launch_command_store.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -186,6 +187,67 @@ void main() {
             modelID: "claude-3-5-sonnet",
           ),
         ).called(1);
+      },
+    );
+
+    blocTest<SessionDetailCubit, SessionDetailState>(
+      "sendCommand when connected delegates to service",
+      build: () => SessionDetailCubit(
+        mockSessionService,
+        mockConnectionService,
+        sessionId: sessionId,
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: mockFailureReporter,
+      ),
+      act: (cubit) async {
+        await _awaitLoaded(cubit);
+        await cubit.sendCommand(command: "review", arguments: "lib/main.dart");
+      },
+      expect: () => [
+        isA<SessionDetailLoaded>(),
+      ],
+      verify: (_) {
+        verify(
+          () => mockSessionService.sendCommand(
+            sessionId: sessionId,
+            command: "review",
+            arguments: "lib/main.dart",
+          ),
+        ).called(1);
+      },
+    );
+
+    blocTest<SessionDetailCubit, SessionDetailState>(
+      "consumes a staged launch command after initial load",
+      build: () {
+        final store = SessionLaunchCommandStore.instance;
+        store.clear(sessionId);
+        store.save(
+          sessionId: sessionId,
+          command: testCommandInfo(name: "review"),
+          arguments: "lib/main.dart",
+        );
+        return SessionDetailCubit(
+          mockSessionService,
+          mockConnectionService,
+          sessionId: sessionId,
+          notificationCanceller: mockNotificationCanceller,
+          failureReporter: mockFailureReporter,
+          launchCommandStore: store,
+        );
+      },
+      expect: () => [
+        isA<SessionDetailLoaded>(),
+      ],
+      verify: (_) {
+        verify(
+          () => mockSessionService.sendCommand(
+            sessionId: sessionId,
+            command: "review",
+            arguments: "lib/main.dart",
+          ),
+        ).called(1);
+        expect(SessionLaunchCommandStore.instance.take(sessionId), isNull);
       },
     );
 
@@ -707,7 +769,7 @@ void main() {
       expect: () => [
         isA<SessionDetailLoaded>(),
         isA<SessionDetailLoaded>().having(
-          (state) => state.queuedMessages,
+          (state) => state.queuedMessages.map((message) => message.displayText).toList(),
           "queuedMessages",
           ["hello"],
         ),
@@ -750,7 +812,7 @@ void main() {
       expect: () => [
         isA<SessionDetailLoaded>(),
         isA<SessionDetailLoaded>().having(
-          (state) => state.queuedMessages,
+          (state) => state.queuedMessages.map((message) => message.displayText).toList(),
           "queuedMessages",
           ["hello"],
         ),
@@ -799,7 +861,7 @@ void main() {
         isA<SessionDetailLoaded>(),
         // Message re-queued after failed send.
         isA<SessionDetailLoaded>().having(
-          (state) => state.queuedMessages,
+          (state) => state.queuedMessages.map((message) => message.displayText).toList(),
           "queuedMessages",
           ["hello"],
         ),
@@ -864,14 +926,18 @@ void main() {
         isA<SessionDetailLoaded>(),
         // Message queued.
         isA<SessionDetailLoaded>().having(
-          (state) => state.queuedMessages,
+          (state) => state.queuedMessages.map((message) => message.displayText).toList(),
           "queuedMessages",
           ["queued msg"],
         ),
         // Session idle — queue NOT drained because disconnected.
         isA<SessionDetailLoaded>()
             .having((state) => state.sessionStatus, "sessionStatus", const SessionStatus.idle())
-            .having((state) => state.queuedMessages, "queuedMessages", ["queued msg"]),
+            .having(
+              (state) => state.queuedMessages.map((message) => message.displayText).toList(),
+              "queuedMessages",
+              ["queued msg"],
+            ),
       ],
       verify: (_) {
         verifyNever(
@@ -930,13 +996,13 @@ void main() {
         isA<SessionDetailLoaded>(),
         // Message queued.
         isA<SessionDetailLoaded>().having(
-          (state) => state.queuedMessages,
+          (state) => state.queuedMessages.map((message) => message.displayText).toList(),
           "queuedMessages",
           ["retry me"],
         ),
         // Queue drained after reconnection.
         isA<SessionDetailLoaded>().having(
-          (state) => state.queuedMessages,
+          (state) => state.queuedMessages.map((message) => message.displayText).toList(),
           "queuedMessages",
           isEmpty,
         ),
@@ -1076,19 +1142,19 @@ void main() {
         isA<SessionDetailLoaded>(),
         // Message queued.
         isA<SessionDetailLoaded>().having(
-          (state) => state.queuedMessages,
+          (state) => state.queuedMessages.map((message) => message.displayText).toList(),
           "queuedMessages",
           ["will fail"],
         ),
         // Dequeued (optimistic).
         isA<SessionDetailLoaded>().having(
-          (state) => state.queuedMessages,
+          (state) => state.queuedMessages.map((message) => message.displayText).toList(),
           "queuedMessages",
           isEmpty,
         ),
         // Re-queued after failure.
         isA<SessionDetailLoaded>().having(
-          (state) => state.queuedMessages,
+          (state) => state.queuedMessages.map((message) => message.displayText).toList(),
           "queuedMessages",
           ["will fail"],
         ),
@@ -1166,6 +1232,13 @@ void _stubAllDefaults(
       ApiResponse.success(testProviderListResponse()),
     ),
   );
+  when(
+    () => service.listCommands(projectId: any(named: "projectId")),
+  ).thenAnswer(
+    (_) => Future<ApiResponse<CommandListResponse>>.value(
+      ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
+    ),
+  );
 
   when(
     () => connectionService.sessionEvents(sessionId),
@@ -1201,6 +1274,13 @@ void _stubAllDefaults(
       modelID: any(named: "modelID"),
     ),
   ).thenAnswer((_) async => ApiResponse<void>.success(null));
+  when(
+    () => service.sendCommand(
+      sessionId: any(named: "sessionId"),
+      command: any(named: "command"),
+      arguments: any(named: "arguments"),
+    ),
+  ).thenAnswer((_) async => ApiResponse.success(null));
   when(
     () => service.abortSession(any()),
   ).thenAnswer((_) async => ApiResponse.success(const SuccessEmptyResponse()));

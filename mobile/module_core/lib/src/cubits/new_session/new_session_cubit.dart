@@ -3,35 +3,42 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../capabilities/session/session_service.dart";
+import "../session_detail/session_launch_command_store.dart";
 import "new_session_state.dart";
 
 class NewSessionCubit extends Cubit<NewSessionState> {
   final SessionService _sessionService;
   final String _projectId;
+  final SessionLaunchCommandStore _launchCommandStore;
 
   NewSessionCubit({
     required SessionService sessionService,
     required String projectId,
+    SessionLaunchCommandStore? launchCommandStore,
   }) : _sessionService = sessionService,
        _projectId = projectId,
+       _launchCommandStore = launchCommandStore ?? SessionLaunchCommandStore.instance,
        super(
          const NewSessionState.idle(
            availableAgents: [],
            availableProviders: [],
+           availableCommands: [],
            selectedAgent: null,
            selectedProviderID: null,
            selectedModelID: null,
+           stagedCommand: null,
          ),
        ) {
-    _loadAgentModelData();
+    _loadComposerData();
   }
 
-  Future<void> _loadAgentModelData() async {
+  Future<void> _loadComposerData() async {
     try {
-      final (agentsResponse, providersResponse) = await (
+      final (agentsResponse, providersResponse, commandsResponse) = await wait3(
         _sessionService.listAgents(),
         _sessionService.listProviders(),
-      ).wait;
+        _sessionService.listCommands(projectId: _projectId),
+      );
 
       if (isClosed) return;
 
@@ -43,6 +50,10 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       final providers = switch (providersResponse) {
         SuccessResponse(:final data) => data.items,
         ErrorResponse() => <ProviderInfo>[],
+      };
+      final commands = switch (commandsResponse) {
+        SuccessResponse(:final data) => data.items,
+        ErrorResponse() => <CommandInfo>[],
       };
 
       final defaultAgent = agents.isNotEmpty ? agents.first.name : "build";
@@ -67,6 +78,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       _emitAgentModelUpdate(
         availableAgents: agents,
         availableProviders: providers,
+        availableCommands: commands,
         selectedAgent: defaultAgent,
         selectedProviderID: defaultProviderID,
         selectedModelID: defaultModelID,
@@ -82,6 +94,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   void _emitAgentModelUpdate({
     List<AgentInfo>? availableAgents,
     List<ProviderInfo>? availableProviders,
+    List<CommandInfo>? availableCommands,
     String? selectedAgent,
     String? selectedProviderID,
     String? selectedModelID,
@@ -94,6 +107,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
           current.copyWith(
             availableAgents: availableAgents ?? current.availableAgents,
             availableProviders: availableProviders ?? current.availableProviders,
+            availableCommands: availableCommands ?? current.availableCommands,
             selectedAgent: selectedAgent ?? current.selectedAgent,
             selectedProviderID: selectedProviderID ?? current.selectedProviderID,
             selectedModelID: selectedModelID ?? current.selectedModelID,
@@ -104,6 +118,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
           current.copyWith(
             availableAgents: availableAgents ?? current.availableAgents,
             availableProviders: availableProviders ?? current.availableProviders,
+            availableCommands: availableCommands ?? current.availableCommands,
             selectedAgent: selectedAgent ?? current.selectedAgent,
             selectedProviderID: selectedProviderID ?? current.selectedProviderID,
             selectedModelID: selectedModelID ?? current.selectedModelID,
@@ -114,6 +129,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
           current.copyWith(
             availableAgents: availableAgents ?? current.availableAgents,
             availableProviders: availableProviders ?? current.availableProviders,
+            availableCommands: availableCommands ?? current.availableCommands,
             selectedAgent: selectedAgent ?? current.selectedAgent,
             selectedProviderID: selectedProviderID ?? current.selectedProviderID,
             selectedModelID: selectedModelID ?? current.selectedModelID,
@@ -126,6 +142,34 @@ class NewSessionCubit extends Cubit<NewSessionState> {
 
   void selectAgent(String agent) {
     _emitAgentModelUpdate(selectedAgent: agent);
+  }
+
+  void stageCommand(CommandInfo command) {
+    final current = state;
+    switch (current) {
+      case NewSessionIdle():
+        emit(current.copyWith(stagedCommand: command));
+      case NewSessionSending():
+        emit(current.copyWith(stagedCommand: command));
+      case NewSessionError():
+        emit(current.copyWith(stagedCommand: command));
+      case NewSessionCreated():
+        break;
+    }
+  }
+
+  void clearStagedCommand() {
+    final current = state;
+    switch (current) {
+      case NewSessionIdle():
+        emit(current.copyWith(stagedCommand: null));
+      case NewSessionSending():
+        emit(current.copyWith(stagedCommand: null));
+      case NewSessionError():
+        emit(current.copyWith(stagedCommand: null));
+      case NewSessionCreated():
+        break;
+    }
   }
 
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit API consumed by UI layer
@@ -157,9 +201,11 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       NewSessionState.sending(
         availableAgents: config?.agents ?? const [],
         availableProviders: config?.providers ?? const [],
+        availableCommands: config?.commands ?? const [],
         selectedAgent: config?.agent,
         selectedProviderID: selectedProviderID,
         selectedModelID: selectedModelID,
+        stagedCommand: config?.stagedCommand,
       ),
     );
 
@@ -186,9 +232,66 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             message: _describeError(error: error),
             availableAgents: current?.agents ?? const [],
             availableProviders: current?.providers ?? const [],
+            availableCommands: current?.commands ?? const [],
             selectedAgent: current?.agent,
             selectedProviderID: current?.providerID,
             selectedModelID: current?.modelID,
+            stagedCommand: current?.stagedCommand,
+          ),
+        );
+    }
+  }
+
+  Future<void> createSessionWithCommand({
+    required CommandInfo command,
+    required String arguments,
+    required bool dedicatedWorktree,
+  }) async {
+    if (state is NewSessionSending) return;
+
+    final config = state.agentModelData;
+
+    emit(
+      NewSessionState.sending(
+        availableAgents: config?.agents ?? const [],
+        availableProviders: config?.providers ?? const [],
+        availableCommands: config?.commands ?? const [],
+        selectedAgent: config?.agent,
+        selectedProviderID: config?.providerID,
+        selectedModelID: config?.modelID,
+        stagedCommand: command,
+      ),
+    );
+
+    final response = await _sessionService.createEmptySession(
+      projectId: _projectId,
+      agent: null,
+      model: null,
+      dedicatedWorktree: dedicatedWorktree,
+    );
+
+    if (isClosed) return;
+
+    switch (response) {
+      case SuccessResponse(:final data):
+        _launchCommandStore.save(
+          sessionId: data.id,
+          command: command,
+          arguments: arguments,
+        );
+        emit(NewSessionState.created(session: data));
+      case ErrorResponse(:final error):
+        final current = state.agentModelData;
+        emit(
+          NewSessionState.error(
+            message: _describeError(error: error),
+            availableAgents: current?.agents ?? const [],
+            availableProviders: current?.providers ?? const [],
+            availableCommands: current?.commands ?? const [],
+            selectedAgent: current?.agent,
+            selectedProviderID: current?.providerID,
+            selectedModelID: current?.modelID,
+            stagedCommand: current?.stagedCommand,
           ),
         );
     }

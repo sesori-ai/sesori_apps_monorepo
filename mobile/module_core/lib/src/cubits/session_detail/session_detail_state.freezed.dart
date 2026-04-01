@@ -78,7 +78,7 @@ String toString() {
 
 
 class SessionDetailLoaded implements SessionDetailState {
-  const SessionDetailLoaded({required final  List<MessageWithParts> messages, required final  Map<String, String> streamingText, required this.sessionStatus, required final  List<SesoriQuestionAsked> pendingQuestions, required final  List<SesoriPermissionAsked> pendingPermissions, required this.sessionTitle, required this.agent, required this.modelID, required this.providerID, required final  List<Session> children, required final  Map<String, SessionStatus> childStatuses, required final  List<String> queuedMessages, required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required this.selectedAgent, required this.selectedProviderID, required this.selectedModelID, required this.isRefreshing}): _messages = messages,_streamingText = streamingText,_pendingQuestions = pendingQuestions,_pendingPermissions = pendingPermissions,_children = children,_childStatuses = childStatuses,_queuedMessages = queuedMessages,_availableAgents = availableAgents,_availableProviders = availableProviders;
+  const SessionDetailLoaded({required final  List<MessageWithParts> messages, required final  Map<String, String> streamingText, required this.sessionStatus, required final  List<SesoriQuestionAsked> pendingQuestions, required final  List<SesoriPermissionAsked> pendingPermissions, required this.sessionTitle, required this.agent, required this.modelID, required this.providerID, required final  List<Session> children, required final  Map<String, SessionStatus> childStatuses, required final  List<QueuedSessionSubmission> queuedMessages, required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required final  List<CommandInfo> availableCommands, required this.selectedAgent, required this.selectedProviderID, required this.selectedModelID, required this.stagedCommand, required this.isRefreshing}): _messages = messages,_streamingText = streamingText,_pendingQuestions = pendingQuestions,_pendingPermissions = pendingPermissions,_children = children,_childStatuses = childStatuses,_queuedMessages = queuedMessages,_availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands;
   
 
  final  List<MessageWithParts> _messages;
@@ -133,9 +133,9 @@ class SessionDetailLoaded implements SessionDetailState {
 }
 
 // Queued messages (waiting to be sent when connection is restored).
- final  List<String> _queuedMessages;
+ final  List<QueuedSessionSubmission> _queuedMessages;
 // Queued messages (waiting to be sent when connection is restored).
- List<String> get queuedMessages {
+ List<QueuedSessionSubmission> get queuedMessages {
   if (_queuedMessages is EqualUnmodifiableListView) return _queuedMessages;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_queuedMessages);
@@ -157,10 +157,18 @@ class SessionDetailLoaded implements SessionDetailState {
   return EqualUnmodifiableListView(_availableProviders);
 }
 
+ final  List<CommandInfo> _availableCommands;
+ List<CommandInfo> get availableCommands {
+  if (_availableCommands is EqualUnmodifiableListView) return _availableCommands;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_availableCommands);
+}
+
 // Currently selected agent and model (pre-populated from defaults, never null once loaded).
  final  String selectedAgent;
  final  String selectedProviderID;
  final  String selectedModelID;
+ final  CommandInfo? stagedCommand;
  final  bool isRefreshing;
 
 /// Create a copy of SessionDetailState
@@ -173,16 +181,16 @@ $SessionDetailLoadedCopyWith<SessionDetailLoaded> get copyWith => _$SessionDetai
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailLoaded&&const DeepCollectionEquality().equals(other._messages, _messages)&&const DeepCollectionEquality().equals(other._streamingText, _streamingText)&&(identical(other.sessionStatus, sessionStatus) || other.sessionStatus == sessionStatus)&&const DeepCollectionEquality().equals(other._pendingQuestions, _pendingQuestions)&&const DeepCollectionEquality().equals(other._pendingPermissions, _pendingPermissions)&&(identical(other.sessionTitle, sessionTitle) || other.sessionTitle == sessionTitle)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&const DeepCollectionEquality().equals(other._children, _children)&&const DeepCollectionEquality().equals(other._childStatuses, _childStatuses)&&const DeepCollectionEquality().equals(other._queuedMessages, _queuedMessages)&&const DeepCollectionEquality().equals(other._availableAgents, _availableAgents)&&const DeepCollectionEquality().equals(other._availableProviders, _availableProviders)&&(identical(other.selectedAgent, selectedAgent) || other.selectedAgent == selectedAgent)&&(identical(other.selectedProviderID, selectedProviderID) || other.selectedProviderID == selectedProviderID)&&(identical(other.selectedModelID, selectedModelID) || other.selectedModelID == selectedModelID)&&(identical(other.isRefreshing, isRefreshing) || other.isRefreshing == isRefreshing));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailLoaded&&const DeepCollectionEquality().equals(other._messages, _messages)&&const DeepCollectionEquality().equals(other._streamingText, _streamingText)&&(identical(other.sessionStatus, sessionStatus) || other.sessionStatus == sessionStatus)&&const DeepCollectionEquality().equals(other._pendingQuestions, _pendingQuestions)&&const DeepCollectionEquality().equals(other._pendingPermissions, _pendingPermissions)&&(identical(other.sessionTitle, sessionTitle) || other.sessionTitle == sessionTitle)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&const DeepCollectionEquality().equals(other._children, _children)&&const DeepCollectionEquality().equals(other._childStatuses, _childStatuses)&&const DeepCollectionEquality().equals(other._queuedMessages, _queuedMessages)&&const DeepCollectionEquality().equals(other._availableAgents, _availableAgents)&&const DeepCollectionEquality().equals(other._availableProviders, _availableProviders)&&const DeepCollectionEquality().equals(other._availableCommands, _availableCommands)&&(identical(other.selectedAgent, selectedAgent) || other.selectedAgent == selectedAgent)&&(identical(other.selectedProviderID, selectedProviderID) || other.selectedProviderID == selectedProviderID)&&(identical(other.selectedModelID, selectedModelID) || other.selectedModelID == selectedModelID)&&(identical(other.stagedCommand, stagedCommand) || other.stagedCommand == stagedCommand)&&(identical(other.isRefreshing, isRefreshing) || other.isRefreshing == isRefreshing));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_messages),const DeepCollectionEquality().hash(_streamingText),sessionStatus,const DeepCollectionEquality().hash(_pendingQuestions),const DeepCollectionEquality().hash(_pendingPermissions),sessionTitle,agent,modelID,providerID,const DeepCollectionEquality().hash(_children),const DeepCollectionEquality().hash(_childStatuses),const DeepCollectionEquality().hash(_queuedMessages),const DeepCollectionEquality().hash(_availableAgents),const DeepCollectionEquality().hash(_availableProviders),selectedAgent,selectedProviderID,selectedModelID,isRefreshing);
+int get hashCode => Object.hashAll([runtimeType,const DeepCollectionEquality().hash(_messages),const DeepCollectionEquality().hash(_streamingText),sessionStatus,const DeepCollectionEquality().hash(_pendingQuestions),const DeepCollectionEquality().hash(_pendingPermissions),sessionTitle,agent,modelID,providerID,const DeepCollectionEquality().hash(_children),const DeepCollectionEquality().hash(_childStatuses),const DeepCollectionEquality().hash(_queuedMessages),const DeepCollectionEquality().hash(_availableAgents),const DeepCollectionEquality().hash(_availableProviders),const DeepCollectionEquality().hash(_availableCommands),selectedAgent,selectedProviderID,selectedModelID,stagedCommand,isRefreshing]);
 
 @override
 String toString() {
-  return 'SessionDetailState.loaded(messages: $messages, streamingText: $streamingText, sessionStatus: $sessionStatus, pendingQuestions: $pendingQuestions, pendingPermissions: $pendingPermissions, sessionTitle: $sessionTitle, agent: $agent, modelID: $modelID, providerID: $providerID, children: $children, childStatuses: $childStatuses, queuedMessages: $queuedMessages, availableAgents: $availableAgents, availableProviders: $availableProviders, selectedAgent: $selectedAgent, selectedProviderID: $selectedProviderID, selectedModelID: $selectedModelID, isRefreshing: $isRefreshing)';
+  return 'SessionDetailState.loaded(messages: $messages, streamingText: $streamingText, sessionStatus: $sessionStatus, pendingQuestions: $pendingQuestions, pendingPermissions: $pendingPermissions, sessionTitle: $sessionTitle, agent: $agent, modelID: $modelID, providerID: $providerID, children: $children, childStatuses: $childStatuses, queuedMessages: $queuedMessages, availableAgents: $availableAgents, availableProviders: $availableProviders, availableCommands: $availableCommands, selectedAgent: $selectedAgent, selectedProviderID: $selectedProviderID, selectedModelID: $selectedModelID, stagedCommand: $stagedCommand, isRefreshing: $isRefreshing)';
 }
 
 
@@ -193,11 +201,11 @@ abstract mixin class $SessionDetailLoadedCopyWith<$Res> implements $SessionDetai
   factory $SessionDetailLoadedCopyWith(SessionDetailLoaded value, $Res Function(SessionDetailLoaded) _then) = _$SessionDetailLoadedCopyWithImpl;
 @useResult
 $Res call({
- List<MessageWithParts> messages, Map<String, String> streamingText, SessionStatus sessionStatus, List<SesoriQuestionAsked> pendingQuestions, List<SesoriPermissionAsked> pendingPermissions, String? sessionTitle, String? agent, String? modelID, String? providerID, List<Session> children, Map<String, SessionStatus> childStatuses, List<String> queuedMessages, List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, String selectedAgent, String selectedProviderID, String selectedModelID, bool isRefreshing
+ List<MessageWithParts> messages, Map<String, String> streamingText, SessionStatus sessionStatus, List<SesoriQuestionAsked> pendingQuestions, List<SesoriPermissionAsked> pendingPermissions, String? sessionTitle, String? agent, String? modelID, String? providerID, List<Session> children, Map<String, SessionStatus> childStatuses, List<QueuedSessionSubmission> queuedMessages, List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, List<CommandInfo> availableCommands, String selectedAgent, String selectedProviderID, String selectedModelID, CommandInfo? stagedCommand, bool isRefreshing
 });
 
 
-$SessionStatusCopyWith<$Res> get sessionStatus;
+$SessionStatusCopyWith<$Res> get sessionStatus;$CommandInfoCopyWith<$Res>? get stagedCommand;
 
 }
 /// @nodoc
@@ -210,7 +218,7 @@ class _$SessionDetailLoadedCopyWithImpl<$Res>
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? messages = null,Object? streamingText = null,Object? sessionStatus = null,Object? pendingQuestions = null,Object? pendingPermissions = null,Object? sessionTitle = freezed,Object? agent = freezed,Object? modelID = freezed,Object? providerID = freezed,Object? children = null,Object? childStatuses = null,Object? queuedMessages = null,Object? availableAgents = null,Object? availableProviders = null,Object? selectedAgent = null,Object? selectedProviderID = null,Object? selectedModelID = null,Object? isRefreshing = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? messages = null,Object? streamingText = null,Object? sessionStatus = null,Object? pendingQuestions = null,Object? pendingPermissions = null,Object? sessionTitle = freezed,Object? agent = freezed,Object? modelID = freezed,Object? providerID = freezed,Object? children = null,Object? childStatuses = null,Object? queuedMessages = null,Object? availableAgents = null,Object? availableProviders = null,Object? availableCommands = null,Object? selectedAgent = null,Object? selectedProviderID = null,Object? selectedModelID = null,Object? stagedCommand = freezed,Object? isRefreshing = null,}) {
   return _then(SessionDetailLoaded(
 messages: null == messages ? _self._messages : messages // ignore: cast_nullable_to_non_nullable
 as List<MessageWithParts>,streamingText: null == streamingText ? _self._streamingText : streamingText // ignore: cast_nullable_to_non_nullable
@@ -224,12 +232,14 @@ as String?,providerID: freezed == providerID ? _self.providerID : providerID // 
 as String?,children: null == children ? _self._children : children // ignore: cast_nullable_to_non_nullable
 as List<Session>,childStatuses: null == childStatuses ? _self._childStatuses : childStatuses // ignore: cast_nullable_to_non_nullable
 as Map<String, SessionStatus>,queuedMessages: null == queuedMessages ? _self._queuedMessages : queuedMessages // ignore: cast_nullable_to_non_nullable
-as List<String>,availableAgents: null == availableAgents ? _self._availableAgents : availableAgents // ignore: cast_nullable_to_non_nullable
+as List<QueuedSessionSubmission>,availableAgents: null == availableAgents ? _self._availableAgents : availableAgents // ignore: cast_nullable_to_non_nullable
 as List<AgentInfo>,availableProviders: null == availableProviders ? _self._availableProviders : availableProviders // ignore: cast_nullable_to_non_nullable
-as List<ProviderInfo>,selectedAgent: null == selectedAgent ? _self.selectedAgent : selectedAgent // ignore: cast_nullable_to_non_nullable
+as List<ProviderInfo>,availableCommands: null == availableCommands ? _self._availableCommands : availableCommands // ignore: cast_nullable_to_non_nullable
+as List<CommandInfo>,selectedAgent: null == selectedAgent ? _self.selectedAgent : selectedAgent // ignore: cast_nullable_to_non_nullable
 as String,selectedProviderID: null == selectedProviderID ? _self.selectedProviderID : selectedProviderID // ignore: cast_nullable_to_non_nullable
 as String,selectedModelID: null == selectedModelID ? _self.selectedModelID : selectedModelID // ignore: cast_nullable_to_non_nullable
-as String,isRefreshing: null == isRefreshing ? _self.isRefreshing : isRefreshing // ignore: cast_nullable_to_non_nullable
+as String,stagedCommand: freezed == stagedCommand ? _self.stagedCommand : stagedCommand // ignore: cast_nullable_to_non_nullable
+as CommandInfo?,isRefreshing: null == isRefreshing ? _self.isRefreshing : isRefreshing // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -242,6 +252,18 @@ $SessionStatusCopyWith<$Res> get sessionStatus {
   
   return $SessionStatusCopyWith<$Res>(_self.sessionStatus, (value) {
     return _then(_self.copyWith(sessionStatus: value));
+  });
+}/// Create a copy of SessionDetailState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$CommandInfoCopyWith<$Res>? get stagedCommand {
+    if (_self.stagedCommand == null) {
+    return null;
+  }
+
+  return $CommandInfoCopyWith<$Res>(_self.stagedCommand!, (value) {
+    return _then(_self.copyWith(stagedCommand: value));
   });
 }
 }

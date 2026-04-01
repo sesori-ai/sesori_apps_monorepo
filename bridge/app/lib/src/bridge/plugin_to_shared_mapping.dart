@@ -34,6 +34,28 @@ extension PluginToolStateMapping on PluginToolState {
   );
 }
 
+extension PluginCommandSourceMapping on PluginCommandSource {
+  CommandSource toShared() => switch (this) {
+    PluginCommandSource.command => CommandSource.command,
+    PluginCommandSource.mcp => CommandSource.mcp,
+    PluginCommandSource.skill => CommandSource.skill,
+    PluginCommandSource.unknown => CommandSource.unknown,
+  };
+}
+
+extension PluginCommandMapping on PluginCommand {
+  CommandInfo toShared() => CommandInfo(
+    name: name,
+    template: template,
+    hints: hints,
+    description: description,
+    agent: agent,
+    model: model,
+    source: source?.toShared(),
+    subtask: subtask,
+  );
+}
+
 /// Maps [PluginMessagePart] to the shared [MessagePart].
 extension PluginMessagePartMapping on PluginMessagePart {
   MessagePart toShared() => MessagePart(

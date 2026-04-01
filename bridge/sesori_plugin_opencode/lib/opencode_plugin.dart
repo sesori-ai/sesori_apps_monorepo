@@ -2,6 +2,7 @@
 export "src/active_session_tracker.dart";
 export "src/models/agent_info.dart";
 export "src/models/agent_mode.dart";
+export "src/models/command.dart";
 export "src/models/file_diff.dart";
 export "src/models/health_response.dart";
 export "src/models/message.dart";
@@ -13,6 +14,7 @@ export "src/models/pending_question.dart";
 export "src/models/project.dart";
 export "src/models/provider_info.dart";
 export "src/models/question.dart";
+export "src/models/send_command_body.dart";
 export "src/models/send_prompt_body.dart";
 export "src/models/session.dart";
 export "src/models/session_status.dart";

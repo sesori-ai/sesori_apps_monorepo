@@ -66,21 +66,8 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     );
   }
 
-  Widget? _buildHeader(NewSessionState state) {
-    final data = state.agentModelData;
-    final selectedAgent = data?.agent;
-    final agentButtons = data != null && data.agents.isNotEmpty && selectedAgent != null
-        ? AgentModelButtons(
-            providers: data.providers,
-            selectedAgent: selectedAgent,
-            selectedProviderID: data.providerID ?? "",
-            selectedModelID: data.modelID ?? "",
-            onAgentTap: () => _openAgentPicker(data),
-            onModelTap: () => _openModelPicker(data),
-          )
-        : null;
-
-    final errorBanner = switch (state) {
+  Widget? _buildErrorBanner(NewSessionState state) {
+    return switch (state) {
       NewSessionError(:final message) => Padding(
         padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 12, 4),
         child: Row(
@@ -98,12 +85,20 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
       NewSessionSending() => null,
       NewSessionCreated() => null,
     };
+  }
 
-    if (agentButtons == null && errorBanner == null) return null;
+  Widget? _buildComposerHeader(NewSessionState state) {
+    final data = state.agentModelData;
+    final selectedAgent = data?.agent;
+    if (data == null || data.agents.isEmpty || selectedAgent == null) return null;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [agentButtons, errorBanner].whereType<Widget>().toList(),
+    return AgentModelButtons(
+      providers: data.providers,
+      selectedAgent: selectedAgent,
+      selectedProviderID: data.providerID ?? "",
+      selectedModelID: data.modelID ?? "",
+      onAgentTap: () => _openAgentPicker(data),
+      onModelTap: () => _openModelPicker(data),
     );
   }
 
@@ -154,14 +149,26 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
             ),
             PromptInput(
               isBusy: state is NewSessionSending,
-              onSend: (text) {
+              onSendPrompt: (text) {
                 context.read<NewSessionCubit>().createSessionWithMessage(
                   text: text,
                   dedicatedWorktree: _dedicatedWorktree,
                 );
               },
+              onSendCommand: (command, arguments) {
+                context.read<NewSessionCubit>().createSessionWithCommand(
+                  command: command,
+                  arguments: arguments,
+                  dedicatedWorktree: _dedicatedWorktree,
+                );
+              },
               onAbort: _dismissScreen,
-              header: _buildHeader(state),
+              header: _buildErrorBanner(state),
+              composerHeader: _buildComposerHeader(state),
+              availableCommands: state.agentModelData?.commands ?? const [],
+              stagedCommand: state.agentModelData?.stagedCommand,
+              onCommandSelected: context.read<NewSessionCubit>().stageCommand,
+              onCommandCleared: context.read<NewSessionCubit>().clearStagedCommand,
             ),
           ],
         ),

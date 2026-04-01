@@ -5,6 +5,8 @@ import "package:http/io_client.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../opencode_plugin.dart";
+import "models/command.dart";
+import "models/send_command_body.dart";
 import "sse/sse_connection.dart";
 import "sse_event_mapper.dart";
 
@@ -127,6 +129,32 @@ class OpenCodePlugin implements BridgePlugin {
   }
 
   @override
+  Future<List<PluginCommand>> getCommands({required String? projectId}) async {
+    final commands = await _call(
+      () => _service.repository.api.listCommands(directory: projectId),
+    );
+    return commands
+        .map(
+          (command) => PluginCommand(
+            name: command.name,
+            template: command.template,
+            hints: command.hints,
+            description: command.description,
+            agent: command.agent,
+            model: command.model,
+            source: switch (command.source) {
+              CommandSource.command => PluginCommandSource.command,
+              CommandSource.mcp => PluginCommandSource.mcp,
+              CommandSource.skill => PluginCommandSource.skill,
+              CommandSource.unknown || null => PluginCommandSource.unknown,
+            },
+            subtask: command.subtask,
+          ),
+        )
+        .toList();
+  }
+
+  @override
   Future<PluginSession> createSession({
     required String directory,
     required String? parentSessionId,
@@ -147,13 +175,15 @@ class OpenCodePlugin implements BridgePlugin {
 
     final body = SendPromptBody(parts: parts, agent: agent, model: model);
 
-    await _call(
-      () => _service.repository.api.sendPrompt(
-        sessionId: session.id,
-        directory: session.directory,
-        body: body,
-      ),
-    );
+    if (parts.isNotEmpty) {
+      await _call(
+        () => _service.repository.api.sendPrompt(
+          sessionId: session.id,
+          directory: session.directory,
+          body: body,
+        ),
+      );
+    }
 
     return session.toPlugin();
   }
@@ -242,6 +272,29 @@ class OpenCodePlugin implements BridgePlugin {
 
     return _call(
       () => _service.repository.api.sendPrompt(
+        sessionId: sessionId,
+        directory: directory,
+        body: body,
+      ),
+    );
+  }
+
+  @override
+  Future<void> sendCommand({
+    required String sessionId,
+    required String command,
+    required String arguments,
+  }) {
+    final directory = _service.tracker.getSessionDirectory(sessionId: sessionId);
+
+    if (directory == null) {
+      Log.w("directory missing for session $sessionId. Defaulting to bridge CWD as directory.");
+    }
+
+    final body = SendCommandBody(command: command, arguments: arguments);
+
+    return _call(
+      () => _service.repository.api.sendCommand(
         sessionId: sessionId,
         directory: directory,
         body: body,

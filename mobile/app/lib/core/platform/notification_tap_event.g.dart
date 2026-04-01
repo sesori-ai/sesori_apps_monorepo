@@ -6,11 +6,10 @@ part of 'notification_tap_event.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_NotificationTapEvent _$NotificationTapEventFromJson(Map json) =>
-    _NotificationTapEvent(
-      sessionId: json['sessionId'] as String?,
-      projectId: json['projectId'] as String?,
-    );
+_NotificationTapEvent _$NotificationTapEventFromJson(Map json) => _NotificationTapEvent(
+  sessionId: json['sessionId'] as String?,
+  projectId: json['projectId'] as String?,
+);
 
 Map<String, dynamic> _$NotificationTapEventToJson(
   _NotificationTapEvent instance,

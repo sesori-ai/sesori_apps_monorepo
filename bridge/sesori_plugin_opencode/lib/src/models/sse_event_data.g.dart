@@ -114,6 +114,23 @@ SseSessionIdle _$SseSessionIdleFromJson(Map json) => SseSessionIdle(
 Map<String, dynamic> _$SseSessionIdleToJson(SseSessionIdle instance) =>
     <String, dynamic>{'sessionID': instance.sessionID, 'type': instance.$type};
 
+SseCommandExecuted _$SseCommandExecutedFromJson(Map json) => SseCommandExecuted(
+  name: json['name'] as String,
+  sessionID: json['sessionID'] as String,
+  arguments: json['arguments'] as String,
+  messageID: json['messageID'] as String,
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$SseCommandExecutedToJson(SseCommandExecuted instance) =>
+    <String, dynamic>{
+      'name': instance.name,
+      'sessionID': instance.sessionID,
+      'arguments': instance.arguments,
+      'messageID': instance.messageID,
+      'type': instance.$type,
+    };
+
 SseMessageUpdated _$SseMessageUpdatedFromJson(Map json) => SseMessageUpdated(
   info: Message.fromJson(Map<String, dynamic>.from(json['info'] as Map)),
   $type: json['type'] as String?,

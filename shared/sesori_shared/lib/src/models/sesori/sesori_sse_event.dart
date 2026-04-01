@@ -100,6 +100,15 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
     required String sessionID,
   }) = SesoriSessionIdle;
 
+  @FreezedUnionValue("command.executed")
+  @Implements<SesoriSessionEvent>()
+  const factory SesoriSseEvent.commandExecuted({
+    required String name,
+    required String sessionID,
+    required String arguments,
+    required String messageID,
+  }) = SesoriCommandExecuted;
+
   // ---------------------------------------------------------------------------
   // Message — all implement SesoriSessionEvent
   // ---------------------------------------------------------------------------

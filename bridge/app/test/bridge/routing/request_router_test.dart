@@ -70,6 +70,59 @@ void main() {
       expect(response.status, equals(200));
     });
 
+    test("routes GET /command and forwards the project header", () async {
+      plugin.commandsResult = [
+        const PluginCommand(
+          name: "review",
+          template: "/review",
+          hints: <String>["file.dart"],
+          source: PluginCommandSource.command,
+        ),
+      ];
+
+      final response = await router.route(
+        makeRequest(
+          "GET",
+          "/command",
+          headers: const {"x-project-id": "/repo"},
+        ),
+      );
+
+      expect(response.status, equals(200));
+      expect(plugin.lastGetCommandsProjectId, equals("/repo"));
+      final body = jsonDecode(response.body!) as Map<String, dynamic>;
+      final items = body["items"] as List<dynamic>;
+      expect(items.single["name"], equals("review"));
+    });
+
+    test("routes POST /session/:id/command and forwards the command body", () async {
+      final response = await router.route(
+        makeRequest(
+          "POST",
+          "/session/s-1/command",
+          body: jsonEncode(const SendCommandRequest(command: "review", arguments: "lib/main.dart").toJson()),
+        ),
+      );
+
+      expect(response.status, equals(200));
+      expect(plugin.lastSendCommandSessionId, equals("s-1"));
+      expect(plugin.lastSendCommand, equals("review"));
+      expect(plugin.lastSendCommandArguments, equals("lib/main.dart"));
+    });
+
+    test("POST /session/:id/command with malformed JSON returns 400", () async {
+      final response = await router.route(
+        makeRequest(
+          "POST",
+          "/session/s-1/command",
+          body: "{not-json}",
+        ),
+      );
+
+      expect(response.status, equals(400));
+      expect(response.body, contains("malformed JSON"));
+    });
+
     test("POST /sessions without body returns 400", () async {
       final response = await router.route(makeRequest("POST", "/sessions"));
       expect(response.status, equals(400));

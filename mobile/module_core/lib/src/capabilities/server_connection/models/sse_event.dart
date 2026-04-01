@@ -20,6 +20,7 @@ class SseEvent {
     SesoriSessionStatus(:final sessionID) => sessionID,
     // ignore: deprecated_member_use, retained for backward-compatible SSE payloads
     SesoriSessionIdle(:final sessionID) => sessionID,
+    SesoriCommandExecuted(:final sessionID) => sessionID,
     SesoriMessageUpdated(:final info) => info.sessionID,
     SesoriMessageRemoved(:final sessionID) => sessionID,
     SesoriMessagePartUpdated(:final part) => part.sessionID,

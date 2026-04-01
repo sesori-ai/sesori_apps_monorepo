@@ -176,6 +176,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailPromptHint => 'Ask anything...';
 
   @override
+  String get sessionDetailCommandArgumentsHint => 'Optional arguments';
+
+  @override
+  String get sessionDetailCommandPickerTitle => 'Slash commands';
+
+  @override
+  String get sessionDetailCommandSearch => 'Search commands...';
+
+  @override
+  String get sessionDetailNoCommands => 'No slash commands are available for this project.';
+
+  @override
   String get sessionDetailSend => 'Send';
 
   @override
@@ -241,6 +253,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionDetailQueuedMessage => 'Queued';
+
+  @override
+  String get sessionDetailQueuedCommand => 'Queued command';
 
   @override
   String get sessionDetailCancelQueued => 'Cancel';

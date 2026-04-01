@@ -12,6 +12,7 @@ import "../../logging/logging.dart";
 import "../../platform/notification_canceller.dart";
 import "../../repositories/permission_repository.dart";
 import "prompt_send_service.dart";
+import "session_launch_command_store.dart";
 import "session_detail_state.dart";
 import "streaming_text_buffer.dart";
 
@@ -23,6 +24,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   final String? _projectId;
   final NotificationCanceller _notificationCanceller;
   final FailureReporter _failureReporter;
+  final SessionLaunchCommandStore _launchCommandStore;
   late final PromptSendService _sendService;
 
   late final StreamSubscription<SesoriSessionEvent> _eventSubscription;
@@ -52,6 +54,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     required String? projectId,
     required NotificationCanceller notificationCanceller,
     required FailureReporter failureReporter,
+    SessionLaunchCommandStore? launchCommandStore,
   }) : _service = service,
        _connectionService = connectionService,
        _permissionRepository = permissionRepository,
@@ -59,6 +62,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
        _projectId = projectId,
        _notificationCanceller = notificationCanceller,
        _failureReporter = failureReporter,
+       _launchCommandStore = launchCommandStore ?? SessionLaunchCommandStore.instance,
        super(const SessionDetailState.loading()) {
     _sendService = PromptSendService(
       service: _service,
@@ -162,12 +166,16 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           queuedMessages: const [],
           availableAgents: agents,
           availableProviders: providers,
+          availableCommands: snapshot.commands,
           selectedAgent: defaultAgent,
           selectedProviderID: defaultProviderID,
           selectedModelID: defaultModelID,
+          stagedCommand: null,
           isRefreshing: false,
         ),
       );
+
+      await _consumeLaunchCommand();
 
       // Drain any messages that were queued before load completed.
       _tryDrainQueue();
@@ -191,6 +199,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final preservedSelectedAgent = current.selectedAgent;
     final preservedSelectedProviderID = current.selectedProviderID;
     final preservedSelectedModelID = current.selectedModelID;
+    final preservedStagedCommand = current.stagedCommand;
 
     emit(current.copyWith(isRefreshing: true));
 
@@ -235,9 +244,14 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           childStatuses: childStatuses,
           availableAgents: availableAgents,
           availableProviders: availableProviders,
+          availableCommands: snapshot.commands,
           selectedAgent: preservedSelectedAgent,
           selectedProviderID: preservedSelectedProviderID,
           selectedModelID: preservedSelectedModelID,
+          stagedCommand: _resolveStagedCommand(
+            availableCommands: snapshot.commands,
+            stagedCommand: preservedStagedCommand,
+          ),
           isRefreshing: false,
         ),
       );
@@ -258,9 +272,21 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       Map<String, SessionStatus> statuses,
       List<AgentInfo?> agents,
       ProviderListResponse? providerData,
+      List<CommandInfo> commands,
     })
   >
   _fetchSessionSnapshot() async {
+    final (baseResponses, commandsResponse) = await (
+      wait6(
+        _service.getMessages(_sessionId),
+        _service.getPendingQuestions(_sessionId),
+        _service.getChildren(_sessionId),
+        _service.getSessionStatuses(),
+        _service.listAgents(),
+        _service.listProviders(),
+      ),
+      _service.listCommands(projectId: _projectId),
+    ).wait;
     final (
       messagesResponse,
       questionsResponse,
@@ -268,14 +294,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       statusesResponse,
       agentsResponse,
       providersResponse,
-    ) = await wait6(
-      _service.getMessages(_sessionId),
-      _service.getPendingQuestions(_sessionId),
-      _service.getChildren(_sessionId),
-      _service.getSessionStatuses(),
-      _service.listAgents(),
-      _service.listProviders(),
-    );
+    ) = baseResponses;
 
     final messages = switch (messagesResponse) {
       SuccessResponse(:final data) => data.messages,
@@ -308,6 +327,13 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         return null;
       }(),
     };
+    final commands = switch (commandsResponse) {
+      SuccessResponse(:final data) => data.items,
+      ErrorResponse(:final error) => () {
+        loge("Failed to load commands: ${error.toString()}");
+        return <CommandInfo>[];
+      }(),
+    };
 
     return (
       messages: messages,
@@ -316,7 +342,19 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       statuses: statuses,
       agents: agents,
       providerData: providerData,
+      commands: commands,
     );
+  }
+
+  CommandInfo? _resolveStagedCommand({
+    required List<CommandInfo> availableCommands,
+    required CommandInfo? stagedCommand,
+  }) {
+    if (stagedCommand == null) return null;
+    for (final command in availableCommands) {
+      if (command.name == stagedCommand.name) return command;
+    }
+    return null;
   }
 
   /// Returns the latest assistant [Message] from the list, or null if none.
@@ -356,6 +394,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           _onPermissionAsked(event);
         case SesoriSessionUpdated(:final info):
           _onSessionUpdated(info);
+        case SesoriCommandExecuted():
+          break;
         case SesoriSessionCreated() ||
             SesoriSessionDeleted() ||
             SesoriSessionDiff() ||
@@ -420,6 +460,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             SesoriQuestionAsked() ||
             SesoriQuestionReplied() ||
             SesoriQuestionRejected() ||
+            SesoriCommandExecuted() ||
             SesoriTodoUpdated() ||
             SesoriProjectsSummary() ||
             SesoriProjectUpdated() ||
@@ -675,6 +716,18 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     );
   }
 
+  Future<void> sendCommand({
+    required String command,
+    required String arguments,
+  }) async {
+    final current = state;
+    await _sendService.sendCommand(
+      command: command,
+      arguments: arguments,
+      isConnected: current is SessionDetailLoaded && _isConnected,
+    );
+  }
+
   void cancelQueuedMessage(int index) {
     final current = state;
     if (current is! SessionDetailLoaded) return;
@@ -845,6 +898,22 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     emit(current.copyWith(selectedProviderID: providerID, selectedModelID: modelID));
   }
 
+  void stageCommand(CommandInfo command) {
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
+
+    if (isClosed) return;
+    emit(current.copyWith(stagedCommand: command));
+  }
+
+  void clearStagedCommand() {
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
+
+    if (isClosed) return;
+    emit(current.copyWith(stagedCommand: null));
+  }
+
   Future<void> abort() async {
     try {
       final current = state;
@@ -864,6 +933,15 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     } on Object catch (e, st) {
       loge("Failed to abort session(s)", e, st);
     }
+  }
+
+  Future<void> _consumeLaunchCommand() async {
+    final action = _launchCommandStore.take(_sessionId);
+    if (action == null) return;
+    await sendCommand(
+      command: action.command.name,
+      arguments: action.arguments,
+    );
   }
 
   // ---------------------------------------------------------------------------

@@ -30,6 +30,12 @@ class SseEventMapper {
       ),
       // ignore: deprecated_member_use, forwards legacy idle event for backward compatibility
       SseSessionIdle(:final sessionID) => BridgeSseSessionIdle(sessionID: sessionID),
+      SseCommandExecuted(:final name, :final sessionID, :final arguments, :final messageID) => BridgeSseCommandExecuted(
+        name: name,
+        sessionID: sessionID,
+        arguments: arguments,
+        messageID: messageID,
+      ),
       SseMessageUpdated(:final info) => BridgeSseMessageUpdated(info: info.toJson()),
       SseMessageRemoved(:final sessionID, :final messageID) => BridgeSseMessageRemoved(
         sessionID: sessionID,

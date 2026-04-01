@@ -30,6 +30,24 @@ void main() {
       expect((result! as SesoriSessionDiff).sessionID, equals("s1"));
     });
 
+    test("maps command.executed events", () {
+      final result = mapper.map(
+        const BridgeSseCommandExecuted(
+          name: "review",
+          sessionID: "s1",
+          arguments: "lib/main.dart",
+          messageID: "m1",
+        ),
+      );
+
+      expect(result, isA<SesoriCommandExecuted>());
+      final event = result! as SesoriCommandExecuted;
+      expect(event.name, equals("review"));
+      expect(event.sessionID, equals("s1"));
+      expect(event.arguments, equals("lib/main.dart"));
+      expect(event.messageID, equals("m1"));
+    });
+
     test("filters file message part updates", () {
       final result = mapper.map(
         const BridgeSseMessagePartUpdated(

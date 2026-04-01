@@ -202,6 +202,50 @@ void main() {
       },
     );
 
+    test("empty parts keep dedicated worktree metadata but skip system prompt injection", () async {
+      plugin.createSessionResult = const PluginSession(
+        id: "empty-1",
+        projectID: "p1",
+        directory: "/repo/.worktrees/session-empty",
+        parentID: null,
+        title: "Empty",
+        time: null,
+        summary: null,
+      );
+      worktreeService.prepareResult = WorktreeSuccess(
+        path: "/repo/.worktrees/session-empty",
+        branchName: "session-empty",
+        baseBranch: "main",
+        baseCommit: "abc123def456",
+      );
+
+      final result = await handler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "/repo",
+          dedicatedWorktree: true,
+          parts: <PromptPart>[],
+          agent: null,
+          model: null,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.id, equals("empty-1"));
+      expect(plugin.lastCreateSessionDirectory, equals("/repo/.worktrees/session-empty"));
+      expect(plugin.lastCreateSessionParts, isEmpty);
+
+      final dbSession = await db.sessionDao.getSession(sessionId: "empty-1");
+      expect(dbSession, isNotNull);
+      expect(dbSession!.isDedicated, isTrue);
+      expect(dbSession.worktreePath, equals("/repo/.worktrees/session-empty"));
+      expect(dbSession.branchName, equals("session-empty"));
+      expect(dbSession.baseBranch, equals("main"));
+      expect(dbSession.baseCommit, equals("abc123def456"));
+    });
+
     test("buildWorktreeSystemPrompt includes branch, path, and base branch", () {
       final prompt = buildWorktreeSystemPrompt(
         branchName: "session-017",

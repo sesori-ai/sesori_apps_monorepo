@@ -1,5 +1,6 @@
 import "bridge_sse_event.dart";
 import "models/plugin_agent.dart";
+import "models/plugin_command.dart";
 import "models/plugin_message.dart";
 import "models/plugin_pending_question.dart";
 import "models/plugin_project.dart";
@@ -22,6 +23,9 @@ abstract class BridgePlugin {
 
   /// Get sessions for a project directory.
   Future<List<PluginSession>> getSessions(String projectId, {int? start, int? limit});
+
+  /// Get the slash commands available to the current project.
+  Future<List<PluginCommand>> getCommands({required String? projectId});
 
   /// Create a new session in the given directory and send the first prompt.
   ///
@@ -64,6 +68,12 @@ abstract class BridgePlugin {
     required List<PluginPromptPart> parts,
     required String? agent,
     required ({String providerID, String modelID})? model,
+  });
+
+  Future<void> sendCommand({
+    required String sessionId,
+    required String command,
+    required String arguments,
   });
 
   Future<void> abortSession({required String sessionId});

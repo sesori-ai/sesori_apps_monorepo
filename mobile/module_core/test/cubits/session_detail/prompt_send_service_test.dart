@@ -175,6 +175,52 @@ void main() {
         ),
       );
     });
+
+    test("queued commands drain through sendCommand when connection returns", () async {
+      const sessionId = "session-1";
+      var isConnected = false;
+
+      when(
+        () => mockSessionService.sendCommand(
+          sessionId: sessionId,
+          command: any(named: "command"),
+          arguments: any(named: "arguments"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(null));
+
+      final service = PromptSendService(
+        service: mockSessionService,
+        sessionId: sessionId,
+        onQueueChanged: () {},
+        stateProvider: () => (
+          agent: "agent",
+          providerID: "provider",
+          modelID: "model",
+          isConnected: isConnected,
+          isLoaded: true,
+        ),
+      );
+
+      await service.sendCommand(
+        command: "review",
+        arguments: "lib/main.dart",
+        isConnected: false,
+      );
+
+      expect(service.queuedMessages.single.displayText, "/review lib/main.dart");
+
+      isConnected = true;
+      service.drain();
+      await _waitFor(condition: () => service.isEmpty);
+
+      verify(
+        () => mockSessionService.sendCommand(
+          sessionId: sessionId,
+          command: "review",
+          arguments: "lib/main.dart",
+        ),
+      ).called(1);
+    });
   });
 }
 

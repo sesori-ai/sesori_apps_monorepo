@@ -5,11 +5,13 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeListMap, jsonDecodeMap;
 
 import "models/agent_info.dart";
+import "models/command.dart";
 import "models/message_with_parts.dart";
 import "models/pending_permission.dart";
 import "models/pending_question.dart";
 import "models/project.dart";
 import "models/provider_info.dart";
+import "models/send_command_body.dart";
 import "models/send_prompt_body.dart";
 import "models/session.dart";
 import "models/session_status.dart";
@@ -81,6 +83,22 @@ class OpenCodeApi {
 
     final decoded = jsonDecodeListMap(response.body);
     return decoded.map(Session.fromJson).toList();
+  }
+
+  Future<List<Command>> listCommands({required String? directory}) async {
+    final queryParameters = <String, String>{
+      if (directory != null && directory.isNotEmpty) "directory": directory,
+    };
+    final response = await http.get(
+      Uri.parse("$serverURL/command").replace(
+        queryParameters: queryParameters.isEmpty ? null : queryParameters,
+      ),
+      headers: _authHeaders,
+    );
+    _ensureSuccess(response, "GET /command");
+
+    final decoded = jsonDecode(response.body) as List<dynamic>;
+    return decoded.cast<Map<String, dynamic>>().map(Command.fromJson).toList();
   }
 
   Future<Session> createSession({
@@ -248,6 +266,28 @@ class OpenCodeApi {
       body: jsonEncode(body.toJson()),
     );
     _ensureSuccess(response, "POST /session/$sessionId/prompt_async");
+  }
+
+  Future<void> sendCommand({
+    required String sessionId,
+    required SendCommandBody body,
+    required String? directory,
+  }) async {
+    final client = http.Client();
+    try {
+      final response = await client.post(
+        Uri.parse("$serverURL/session/$sessionId/command"),
+        headers: {
+          ..._authHeaders,
+          "content-type": "application/json",
+          _directoryOpenCodeHeader: ?directory,
+        },
+        body: jsonEncode(body.toJson()),
+      );
+      _ensureSuccess(response, "POST /session/$sessionId/command");
+    } finally {
+      client.close();
+    }
   }
 
   Future<void> abortSession({

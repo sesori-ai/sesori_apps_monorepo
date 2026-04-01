@@ -451,6 +451,9 @@ void main() {
         () => mockSessionService.listAgents(),
       ).thenAnswer((_) async => ApiResponse.success(Agents(agents: _agents())));
       when(() => mockSessionService.listProviders()).thenAnswer((_) async => ApiResponse.success(_providers()));
+      when(() => mockSessionService.listCommands(projectId: any(named: "projectId"))).thenAnswer(
+        (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
+      );
 
       mockConnectionService.emitDataMayBeStale();
       mockConnectionService.emitDataMayBeStale();
@@ -505,6 +508,11 @@ void _stubLoadApis(MockSessionService service, {required String sessionId}) {
   );
   when(() => service.listProviders()).thenAnswer(
     (_) => Future<ApiResponse<ProviderListResponse>>.value(ApiResponse.success(_providers())),
+  );
+  when(() => service.listCommands(projectId: any(named: "projectId"))).thenAnswer(
+    (_) => Future<ApiResponse<CommandListResponse>>.value(
+      ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
+    ),
   );
 }
 

@@ -62,6 +62,19 @@ class BridgeSseSessionIdle extends BridgeSseEvent {
   const BridgeSseSessionIdle({required this.sessionID});
 }
 
+class BridgeSseCommandExecuted extends BridgeSseEvent {
+  final String name;
+  final String sessionID;
+  final String arguments;
+  final String messageID;
+  const BridgeSseCommandExecuted({
+    required this.name,
+    required this.sessionID,
+    required this.arguments,
+    required this.messageID,
+  });
+}
+
 class BridgeSseMessageUpdated extends BridgeSseEvent {
   final Map<String, dynamic> info;
   const BridgeSseMessageUpdated({required this.info});

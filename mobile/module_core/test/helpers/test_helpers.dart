@@ -106,3 +106,16 @@ Session testSession({String? id, String? title, DateTime? archivedAt}) {
 HealthResponse testHealthResponse() {
   return const HealthResponse(healthy: true, version: "0.1.200");
 }
+
+CommandInfo testCommandInfo({
+  String name = "review",
+  String template = "/review {{file}}",
+}) {
+  return CommandInfo(
+    name: name,
+    template: template,
+    hints: const ["Optional arguments"],
+    description: "Run $name",
+    source: CommandSource.command,
+  );
+}

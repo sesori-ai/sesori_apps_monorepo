@@ -18,6 +18,7 @@ import "create_session_handler.dart";
 import "delete_session_handler.dart";
 import "filesystem_suggestions_handler.dart";
 import "get_agents_handler.dart";
+import "get_commands_handler.dart";
 import "get_base_branch_handler.dart";
 import "get_child_sessions_handler.dart";
 import "get_current_project_handler.dart";
@@ -39,6 +40,7 @@ import "reply_to_permission_handler.dart";
 import "reply_to_question_handler.dart";
 import "request_handler.dart";
 import "send_prompt_handler.dart";
+import "send_command_handler.dart";
 import "set_base_branch_handler.dart";
 import "update_session_archive_status_handler.dart";
 
@@ -89,6 +91,7 @@ class RequestRouter {
       HealthCheckHandler(plugin),
       GetCurrentProjectHandler(plugin),
       GetProjectsHandler(plugin, hiddenStore),
+      GetCommandsHandler(plugin),
       GetSessionStatusesHandler(plugin),
       GetChildSessionsHandler(sessionRepository: sessionRepository),
       GetSessionMessagesHandler(plugin),
@@ -113,6 +116,7 @@ class RequestRouter {
         sessionRepository: sessionRepository,
       ),
       SendPromptHandler(plugin),
+      SendCommandHandler(plugin),
       AbortSessionHandler(plugin),
       GetProvidersHandler(ProviderRepository(plugin: plugin)),
       GetAgentsHandler(plugin),

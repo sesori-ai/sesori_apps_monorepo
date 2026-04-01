@@ -316,9 +316,11 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
           :final childStatuses,
           :final queuedMessages,
           :final availableProviders,
+          :final availableCommands,
           :final selectedAgent,
           :final selectedProviderID,
           :final selectedModelID,
+          :final stagedCommand,
           :final isRefreshing,
         ) =>
           Column(
@@ -359,9 +361,14 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
                   ),
                 PromptInput(
                   isBusy: _hasActiveWork(sessionStatus: sessionStatus, childStatuses: childStatuses),
-                  onSend: (text) => context.read<SessionDetailCubit>().sendMessage(text),
+                  onSendPrompt: (text) => context.read<SessionDetailCubit>().sendMessage(text),
+                  onSendCommand: (command, arguments) => context.read<SessionDetailCubit>().sendCommand(
+                    command: command.name,
+                    arguments: arguments,
+                  ),
                   onAbort: () => context.read<SessionDetailCubit>().abort(),
-                  header: AgentModelButtons(
+                  header: null,
+                  composerHeader: AgentModelButtons(
                     providers: availableProviders,
                     selectedAgent: selectedAgent,
                     selectedProviderID: selectedProviderID,
@@ -369,6 +376,10 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
                     onAgentTap: () => _openAgentPicker(state),
                     onModelTap: () => _openModelPicker(state),
                   ),
+                  availableCommands: availableCommands,
+                  stagedCommand: stagedCommand,
+                  onCommandSelected: context.read<SessionDetailCubit>().stageCommand,
+                  onCommandCleared: context.read<SessionDetailCubit>().clearStagedCommand,
                 ),
               ],
             ],
@@ -714,7 +725,7 @@ bool _hasActiveWork({
     );
 
 class _QueuedMessagesSection extends StatelessWidget {
-  final List<String> messages;
+  final List<QueuedSessionSubmission> messages;
   final ValueChanged<int> onCancel;
 
   const _QueuedMessagesSection({
@@ -729,7 +740,7 @@ class _QueuedMessagesSection extends StatelessWidget {
       children: [
         for (var i = 0; i < messages.length; i++)
           QueuedMessageBubble(
-            text: messages[i],
+            submission: messages[i],
             onCancel: () => onCancel(i),
           ),
       ],

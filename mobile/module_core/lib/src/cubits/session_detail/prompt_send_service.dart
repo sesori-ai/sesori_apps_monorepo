@@ -4,6 +4,7 @@ import "package:sesori_auth/sesori_auth.dart";
 
 import "../../capabilities/session/session_service.dart";
 import "prompt_send_queue.dart";
+import "queued_session_submission.dart";
 
 typedef PromptSendStateSnapshot = ({
   String? agent,
@@ -32,7 +33,7 @@ class PromptSendService {
        _onQueueChanged = onQueueChanged,
        _stateProvider = stateProvider;
 
-  List<String> get queuedMessages => _promptQueue.items;
+  List<QueuedSessionSubmission> get queuedMessages => _promptQueue.items;
 
   bool get isEmpty => _promptQueue.isEmpty;
 
@@ -45,9 +46,10 @@ class PromptSendService {
   }) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
+    final submission = QueuedPromptSubmission(text: trimmed);
 
     if (!isConnected) {
-      _promptQueue.enqueue(trimmed);
+      _promptQueue.enqueue(submission);
       _onQueueChanged();
       return;
     }
@@ -61,12 +63,41 @@ class PromptSendService {
     );
 
     if (result case ErrorResponse()) {
-      _promptQueue.requeue(trimmed);
+      _promptQueue.requeue(submission);
       _onQueueChanged();
     }
   }
 
-  String? cancelQueuedMessage(int index) {
+  Future<void> sendCommand({
+    required String command,
+    required String arguments,
+    required bool isConnected,
+  }) async {
+    if (command.trim().isEmpty) return;
+    final submission = QueuedCommandSubmission(
+      command: command,
+      arguments: arguments,
+    );
+
+    if (!isConnected) {
+      _promptQueue.enqueue(submission);
+      _onQueueChanged();
+      return;
+    }
+
+    final result = await _service.sendCommand(
+      sessionId: _sessionId,
+      command: command,
+      arguments: arguments,
+    );
+
+    if (result case ErrorResponse()) {
+      _promptQueue.requeue(submission);
+      _onQueueChanged();
+    }
+  }
+
+  QueuedSessionSubmission? cancelQueuedMessage(int index) {
     final removed = _promptQueue.cancel(index);
     if (removed != null) {
       _onQueueChanged();
@@ -89,24 +120,31 @@ class PromptSendService {
     if (!current.isConnected) return;
     if (!current.isLoaded) return;
 
-    final message = _promptQueue.dequeue();
-    if (message == null) return;
+    final submission = _promptQueue.dequeue();
+    if (submission == null) return;
 
     _isSending = true;
     _onQueueChanged();
 
     var sendSucceeded = false;
     try {
-      final result = await _service.sendMessage(
-        _sessionId,
-        message,
-        agent: current.agent,
-        providerID: current.providerID,
-        modelID: current.modelID,
-      );
+      final result = await switch (submission) {
+        QueuedPromptSubmission(:final text) => _service.sendMessage(
+          _sessionId,
+          text,
+          agent: current.agent,
+          providerID: current.providerID,
+          modelID: current.modelID,
+        ),
+        QueuedCommandSubmission(:final command, :final arguments) => _service.sendCommand(
+          sessionId: _sessionId,
+          command: command,
+          arguments: arguments,
+        ),
+      };
 
       if (result case ErrorResponse()) {
-        _promptQueue.requeue(message);
+        _promptQueue.requeue(submission);
         _onQueueChanged();
       } else {
         sendSucceeded = true;
@@ -116,7 +154,10 @@ class PromptSendService {
     }
 
     if (sendSucceeded) {
-      drain();
+      final current = _stateProvider();
+      if (!current.isConnected) return;
+      if (!current.isLoaded) return;
+      unawaited(_sendNextQueued());
     }
   }
 }

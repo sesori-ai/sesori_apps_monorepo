@@ -63,6 +63,10 @@ SseEventData _$SseEventDataFromJson(
           return SseSessionIdle.fromJson(
             json
           );
+                case 'command.executed':
+          return SseCommandExecuted.fromJson(
+            json
+          );
                 case 'message.updated':
           return SseMessageUpdated.fromJson(
             json
@@ -1045,6 +1049,85 @@ class _$SseSessionIdleCopyWithImpl<$Res>
 @pragma('vm:prefer-inline') $Res call({Object? sessionID = null,}) {
   return _then(SseSessionIdle(
 sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class SseCommandExecuted implements SseEventData, SseSessionEventData {
+  const SseCommandExecuted({required this.name, required this.sessionID, required this.arguments, required this.messageID, final  String? $type}): $type = $type ?? 'command.executed';
+  factory SseCommandExecuted.fromJson(Map<String, dynamic> json) => _$SseCommandExecutedFromJson(json);
+
+ final  String name;
+ final  String sessionID;
+ final  String arguments;
+ final  String messageID;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of SseEventData
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SseCommandExecutedCopyWith<SseCommandExecuted> get copyWith => _$SseCommandExecutedCopyWithImpl<SseCommandExecuted>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SseCommandExecutedToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SseCommandExecuted&&(identical(other.name, name) || other.name == name)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.arguments, arguments) || other.arguments == arguments)&&(identical(other.messageID, messageID) || other.messageID == messageID));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,name,sessionID,arguments,messageID);
+
+@override
+String toString() {
+  return 'SseEventData.commandExecuted(name: $name, sessionID: $sessionID, arguments: $arguments, messageID: $messageID)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SseCommandExecutedCopyWith<$Res> implements $SseEventDataCopyWith<$Res> {
+  factory $SseCommandExecutedCopyWith(SseCommandExecuted value, $Res Function(SseCommandExecuted) _then) = _$SseCommandExecutedCopyWithImpl;
+@useResult
+$Res call({
+ String name, String sessionID, String arguments, String messageID
+});
+
+
+
+
+}
+/// @nodoc
+class _$SseCommandExecutedCopyWithImpl<$Res>
+    implements $SseCommandExecutedCopyWith<$Res> {
+  _$SseCommandExecutedCopyWithImpl(this._self, this._then);
+
+  final SseCommandExecuted _self;
+  final $Res Function(SseCommandExecuted) _then;
+
+/// Create a copy of SseEventData
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? name = null,Object? sessionID = null,Object? arguments = null,Object? messageID = null,}) {
+  return _then(SseCommandExecuted(
+name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,arguments: null == arguments ? _self.arguments : arguments // ignore: cast_nullable_to_non_nullable
+as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }

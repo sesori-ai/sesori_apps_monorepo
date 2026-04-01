@@ -30,6 +30,15 @@ class SessionService {
     );
   }
 
+  Future<ApiResponse<CommandListResponse>> listCommands({required String? projectId}) {
+    final headers = projectId == null || projectId.isEmpty ? null : {"x-project-id": projectId};
+    return _client.get(
+      "/command",
+      fromJson: CommandListResponse.fromJson,
+      headers: headers,
+    );
+  }
+
   /// Lists sessions for the current project.
   Future<ApiResponse<SessionListResponse>> listSessions({required String projectId}) {
     return _client.post(
@@ -52,6 +61,25 @@ class SessionService {
       body: CreateSessionRequest(
         projectId: projectId,
         parts: [PromptPart.text(text: text)],
+        agent: agent,
+        model: model,
+        dedicatedWorktree: dedicatedWorktree,
+      ),
+    );
+  }
+
+  Future<ApiResponse<Session>> createEmptySession({
+    required String projectId,
+    required String? agent,
+    required PromptModel? model,
+    required bool dedicatedWorktree,
+  }) {
+    return _client.post(
+      "/session/create",
+      fromJson: Session.fromJson,
+      body: CreateSessionRequest(
+        projectId: projectId,
+        parts: const [],
         agent: agent,
         model: model,
         dedicatedWorktree: dedicatedWorktree,
@@ -199,6 +227,18 @@ class SessionService {
       "/session/abort",
       fromJson: SuccessEmptyResponse.fromJson,
       body: SessionIdRequest(sessionId: sessionId),
+    );
+  }
+
+  Future<ApiResponse<void>> sendCommand({
+    required String sessionId,
+    required String command,
+    required String arguments,
+  }) {
+    return _client.post(
+      "/session/$sessionId/command",
+      fromJson: SuccessEmptyResponse.fromJson,
+      body: SendCommandRequest(command: command, arguments: arguments),
     );
   }
 

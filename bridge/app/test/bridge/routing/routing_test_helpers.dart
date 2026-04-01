@@ -40,6 +40,7 @@ class FakeBridgePlugin implements BridgePlugin {
 
   List<PluginProject> projectsResult = [];
   List<PluginSession> sessionsResult = [];
+  List<PluginCommand> commandsResult = [];
   List<PluginMessageWithParts> messagesResult = [];
   PluginProvidersResult providersResult = const PluginProvidersResult(providers: []);
   PluginSession? createSessionResult;
@@ -56,6 +57,7 @@ class FakeBridgePlugin implements BridgePlugin {
   String? lastGetSessionsWorktree;
   int? lastGetSessionsStart;
   int? lastGetSessionsLimit;
+  String? lastGetCommandsProjectId;
 
   String? lastGetMessagesSessionId;
 
@@ -77,6 +79,9 @@ class FakeBridgePlugin implements BridgePlugin {
   List<PluginPromptPart>? lastSendPromptParts;
   String? lastSendPromptAgent;
   ({String providerID, String modelID})? lastSendPromptModel;
+  String? lastSendCommandSessionId;
+  String? lastSendCommand;
+  String? lastSendCommandArguments;
   String? lastAbortSessionId;
   String? lastReplyQuestionId;
   String? lastReplySessionId;
@@ -132,6 +137,12 @@ class FakeBridgePlugin implements BridgePlugin {
     lastGetSessionsStart = start;
     lastGetSessionsLimit = limit;
     return sessionsResult;
+  }
+
+  @override
+  Future<List<PluginCommand>> getCommands({required String? projectId}) async {
+    lastGetCommandsProjectId = projectId;
+    return commandsResult;
   }
 
   @override
@@ -236,6 +247,17 @@ class FakeBridgePlugin implements BridgePlugin {
     lastSendPromptParts = parts;
     lastSendPromptAgent = agent;
     lastSendPromptModel = model;
+  }
+
+  @override
+  Future<void> sendCommand({
+    required String sessionId,
+    required String command,
+    required String arguments,
+  }) async {
+    lastSendCommandSessionId = sessionId;
+    lastSendCommand = command;
+    lastSendCommandArguments = arguments;
   }
 
   @override

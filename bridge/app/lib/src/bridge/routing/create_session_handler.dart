@@ -89,14 +89,14 @@ class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Sess
     }
 
     final parts = body.parts.map((p) => p.toPlugin()).toList();
-    if (worktreeResult case WorktreeSuccess(:final path, :final branchName, :final baseBranch)) {
+    if (parts.isNotEmpty && worktreeResult is WorktreeSuccess) {
       parts.insert(
         0,
         PluginPromptPart.text(
           text: buildWorktreeSystemPrompt(
-            branchName: branchName,
-            worktreePath: path,
-            baseBranch: baseBranch,
+            branchName: worktreeResult.branchName,
+            worktreePath: worktreeResult.path,
+            baseBranch: worktreeResult.baseBranch,
           ),
         ),
       );
