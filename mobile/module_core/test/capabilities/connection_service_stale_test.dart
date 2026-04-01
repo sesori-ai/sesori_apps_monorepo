@@ -23,6 +23,14 @@ class MockLifecycleSource extends Mock implements LifecycleSource {}
 
 class MockFailureReporter extends Mock implements FailureReporter {}
 
+class _TestClockProvider extends ClockProvider {
+  final DateTime Function() _now;
+  _TestClockProvider(this._now);
+
+  @override
+  DateTime call() => _now();
+}
+
 void main() {
   group("ConnectionService stale reconnect", () {
     late MockRelayCryptoService cryptoService;
@@ -64,7 +72,7 @@ void main() {
         authSession,
         lifecycleSource,
         MockFailureReporter(),
-        clock: () => now,
+        clock: _TestClockProvider(() => now),
       );
     });
 
