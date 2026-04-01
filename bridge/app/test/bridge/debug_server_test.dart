@@ -398,6 +398,16 @@ class _FakeBridgePlugin implements BridgePlugin {
       const PluginProvidersResult(providers: []);
 
   @override
+  Future<List<PluginCommand>> getCommands({required String? projectId}) async => [];
+
+  @override
+  Future<void> sendCommand({
+    required String sessionId,
+    required String command,
+    required String arguments,
+  }) async {}
+
+  @override
   Future<void> dispose() async {}
 
   void add(BridgeSseEvent event) => _controller.add(event);
@@ -533,6 +543,16 @@ class _TrackingBridgePlugin implements BridgePlugin {
 
   @override
   List<PluginProjectActivitySummary> getActiveSessionsSummary() => [];
+
+  @override
+  Future<List<PluginCommand>> getCommands({required String? projectId}) async => [];
+
+  @override
+  Future<void> sendCommand({
+    required String sessionId,
+    required String command,
+    required String arguments,
+  }) async {}
 
   @override
   Future<PluginProvidersResult> getProviders({required bool connectedOnly}) async =>

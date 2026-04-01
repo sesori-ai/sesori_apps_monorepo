@@ -16,8 +16,8 @@ enum CommandSource {
 sealed class CommandInfo with _$CommandInfo {
   const factory CommandInfo({
     required String name,
-    required String template,
-    required List<String> hints,
+    String? template,
+    List<String>? hints,
     String? description,
     String? agent,
     String? model,

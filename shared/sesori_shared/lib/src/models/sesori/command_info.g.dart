@@ -8,8 +8,8 @@ part of 'command_info.dart';
 
 _CommandInfo _$CommandInfoFromJson(Map json) => _CommandInfo(
   name: json['name'] as String,
-  template: json['template'] as String,
-  hints: (json['hints'] as List<dynamic>).map((e) => e as String).toList(),
+  template: json['template'] as String?,
+  hints: (json['hints'] as List<dynamic>?)?.map((e) => e as String).toList(),
   description: json['description'] as String?,
   agent: json['agent'] as String?,
   model: json['model'] as String?,

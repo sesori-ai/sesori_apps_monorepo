@@ -8,8 +8,10 @@ part of 'command.dart';
 
 _Command _$CommandFromJson(Map json) => _Command(
   name: json['name'] as String,
-  template: json['template'] as String,
-  hints: (json['hints'] as List<dynamic>).map((e) => e as String).toList(),
+  template: _readTemplate(json, 'template') as String?,
+  hints:
+      (json['hints'] as List<dynamic>?)?.map((e) => e as String).toList() ??
+      const <String>[],
   description: json['description'] as String?,
   agent: json['agent'] as String?,
   model: json['model'] as String?,

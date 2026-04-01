@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$CommandInfo {
 
- String get name; String get template; List<String> get hints; String? get description; String? get agent; String? get model;@JsonKey(unknownEnumValue: CommandSource.unknown) CommandSource? get source; bool? get subtask;
+ String get name; String? get template; List<String>? get hints; String? get description; String? get agent; String? get model;@JsonKey(unknownEnumValue: CommandSource.unknown) CommandSource? get source; bool? get subtask;
 /// Create a copy of CommandInfo
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -48,7 +48,7 @@ abstract mixin class $CommandInfoCopyWith<$Res>  {
   factory $CommandInfoCopyWith(CommandInfo value, $Res Function(CommandInfo) _then) = _$CommandInfoCopyWithImpl;
 @useResult
 $Res call({
- String name, String template, List<String> hints, String? description, String? agent, String? model,@JsonKey(unknownEnumValue: CommandSource.unknown) CommandSource? source, bool? subtask
+ String name, String? template, List<String>? hints, String? description, String? agent, String? model,@JsonKey(unknownEnumValue: CommandSource.unknown) CommandSource? source, bool? subtask
 });
 
 
@@ -65,12 +65,12 @@ class _$CommandInfoCopyWithImpl<$Res>
 
 /// Create a copy of CommandInfo
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? template = null,Object? hints = null,Object? description = freezed,Object? agent = freezed,Object? model = freezed,Object? source = freezed,Object? subtask = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? template = freezed,Object? hints = freezed,Object? description = freezed,Object? agent = freezed,Object? model = freezed,Object? source = freezed,Object? subtask = freezed,}) {
   return _then(_self.copyWith(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,template: null == template ? _self.template : template // ignore: cast_nullable_to_non_nullable
-as String,hints: null == hints ? _self.hints : hints // ignore: cast_nullable_to_non_nullable
-as List<String>,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
+as String,template: freezed == template ? _self.template : template // ignore: cast_nullable_to_non_nullable
+as String?,hints: freezed == hints ? _self.hints : hints // ignore: cast_nullable_to_non_nullable
+as List<String>?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
 as String?,source: freezed == source ? _self.source : source // ignore: cast_nullable_to_non_nullable
@@ -87,16 +87,18 @@ as bool?,
 @JsonSerializable()
 
 class _CommandInfo implements CommandInfo {
-  const _CommandInfo({required this.name, required this.template, required final  List<String> hints, this.description, this.agent, this.model, @JsonKey(unknownEnumValue: CommandSource.unknown) this.source, this.subtask}): _hints = hints;
+  const _CommandInfo({required this.name, this.template, final  List<String>? hints, this.description, this.agent, this.model, @JsonKey(unknownEnumValue: CommandSource.unknown) this.source, this.subtask}): _hints = hints;
   factory _CommandInfo.fromJson(Map<String, dynamic> json) => _$CommandInfoFromJson(json);
 
 @override final  String name;
-@override final  String template;
- final  List<String> _hints;
-@override List<String> get hints {
+@override final  String? template;
+ final  List<String>? _hints;
+@override List<String>? get hints {
+  final value = _hints;
+  if (value == null) return null;
   if (_hints is EqualUnmodifiableListView) return _hints;
   // ignore: implicit_dynamic_type
-  return EqualUnmodifiableListView(_hints);
+  return EqualUnmodifiableListView(value);
 }
 
 @override final  String? description;
@@ -138,7 +140,7 @@ abstract mixin class _$CommandInfoCopyWith<$Res> implements $CommandInfoCopyWith
   factory _$CommandInfoCopyWith(_CommandInfo value, $Res Function(_CommandInfo) _then) = __$CommandInfoCopyWithImpl;
 @override @useResult
 $Res call({
- String name, String template, List<String> hints, String? description, String? agent, String? model,@JsonKey(unknownEnumValue: CommandSource.unknown) CommandSource? source, bool? subtask
+ String name, String? template, List<String>? hints, String? description, String? agent, String? model,@JsonKey(unknownEnumValue: CommandSource.unknown) CommandSource? source, bool? subtask
 });
 
 
@@ -155,12 +157,12 @@ class __$CommandInfoCopyWithImpl<$Res>
 
 /// Create a copy of CommandInfo
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? template = null,Object? hints = null,Object? description = freezed,Object? agent = freezed,Object? model = freezed,Object? source = freezed,Object? subtask = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? template = freezed,Object? hints = freezed,Object? description = freezed,Object? agent = freezed,Object? model = freezed,Object? source = freezed,Object? subtask = freezed,}) {
   return _then(_CommandInfo(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,template: null == template ? _self.template : template // ignore: cast_nullable_to_non_nullable
-as String,hints: null == hints ? _self._hints : hints // ignore: cast_nullable_to_non_nullable
-as List<String>,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
+as String,template: freezed == template ? _self.template : template // ignore: cast_nullable_to_non_nullable
+as String?,hints: freezed == hints ? _self._hints : hints // ignore: cast_nullable_to_non_nullable
+as List<String>?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
 as String?,source: freezed == source ? _self.source : source // ignore: cast_nullable_to_non_nullable

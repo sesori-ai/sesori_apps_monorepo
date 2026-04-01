@@ -207,7 +207,7 @@ class _PromptInputState extends State<PromptInput> {
   String _commandHintText(BuildContext context) {
     final command = widget.stagedCommand;
     if (command == null) return context.loc.sessionDetailPromptHint;
-    for (final hint in command.hints) {
+    for (final hint in command.hints ?? <String>[]) {
       final trimmed = hint.trim();
       if (trimmed.isNotEmpty) return trimmed;
     }

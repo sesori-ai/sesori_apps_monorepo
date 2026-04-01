@@ -1,6 +1,7 @@
 part of "session_list_screen.dart";
 
 class _SessionTile extends StatelessWidget {
+  final String projectId;
   final Session session;
   final bool isArchived;
   final bool isActive;
@@ -10,6 +11,7 @@ class _SessionTile extends StatelessWidget {
   final VoidCallback onSwipe;
 
   const _SessionTile({
+    required this.projectId,
     required this.session,
     required this.isArchived,
     required this.isActive,
@@ -87,7 +89,7 @@ class _SessionTile extends StatelessWidget {
         onTap: () {
           context.pushRoute(
             AppRoute.sessionDetail(
-              projectId: session.projectID,
+              projectId: projectId,
               sessionId: session.id,
               sessionTitle: session.title ?? "",
               readOnly: false,

@@ -44,9 +44,14 @@ extension PluginCommandSourceMapping on PluginCommandSource {
 }
 
 extension PluginCommandMapping on PluginCommand {
+  /// Maps to shared [CommandInfo] for the mobile client.
+  ///
+  /// The `template` field is intentionally excluded: it contains the full
+  /// prompt text (often thousands of characters) that the mobile UI never
+  /// displays.  Stripping it shrinks a typical response from ~400 KB to ~20 KB,
+  /// preventing relay timeouts and WebSocket frame issues.
   CommandInfo toShared() => CommandInfo(
     name: name,
-    template: template,
     hints: hints,
     description: description,
     agent: agent,

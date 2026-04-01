@@ -14,8 +14,8 @@ enum PluginCommandSource {
 sealed class PluginCommand with _$PluginCommand {
   const factory PluginCommand({
     required String name,
-    required String template,
-    required List<String> hints,
+    String? template,
+    @Default(<String>[]) List<String> hints,
     String? description,
     String? agent,
     String? model,

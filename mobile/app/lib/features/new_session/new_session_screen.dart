@@ -26,13 +26,15 @@ class NewSessionScreen extends StatelessWidget {
         sessionService: getIt<SessionService>(),
         projectId: projectId,
       ),
-      child: const _NewSessionBody(),
+      child: _NewSessionBody(projectId: projectId),
     );
   }
 }
 
 class _NewSessionBody extends StatefulWidget {
-  const _NewSessionBody();
+  final String projectId;
+
+  const _NewSessionBody({required this.projectId});
 
   @override
   State<_NewSessionBody> createState() => _NewSessionBodyState();
@@ -114,7 +116,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
           _dismissScreen();
           context.pushRoute(
             AppRoute.sessionDetail(
-              projectId: session.projectID,
+              projectId: widget.projectId,
               sessionId: session.id,
               sessionTitle: session.title ?? "",
               readOnly: false,

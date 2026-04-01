@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Command {
 
- String get name; String get template; List<String> get hints; String? get description; String? get agent; String? get model;@JsonKey(unknownEnumValue: CommandSource.unknown) CommandSource? get source; bool? get subtask;
+ String get name;@JsonKey(readValue: _readTemplate) String? get template; List<String> get hints; String? get description; String? get agent; String? get model;@JsonKey(unknownEnumValue: CommandSource.unknown) CommandSource? get source; bool? get subtask;
 /// Create a copy of Command
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -48,7 +48,7 @@ abstract mixin class $CommandCopyWith<$Res>  {
   factory $CommandCopyWith(Command value, $Res Function(Command) _then) = _$CommandCopyWithImpl;
 @useResult
 $Res call({
- String name, String template, List<String> hints, String? description, String? agent, String? model,@JsonKey(unknownEnumValue: CommandSource.unknown) CommandSource? source, bool? subtask
+ String name,@JsonKey(readValue: _readTemplate) String? template, List<String> hints, String? description, String? agent, String? model,@JsonKey(unknownEnumValue: CommandSource.unknown) CommandSource? source, bool? subtask
 });
 
 
@@ -65,11 +65,11 @@ class _$CommandCopyWithImpl<$Res>
 
 /// Create a copy of Command
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? template = null,Object? hints = null,Object? description = freezed,Object? agent = freezed,Object? model = freezed,Object? source = freezed,Object? subtask = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? template = freezed,Object? hints = null,Object? description = freezed,Object? agent = freezed,Object? model = freezed,Object? source = freezed,Object? subtask = freezed,}) {
   return _then(_self.copyWith(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,template: null == template ? _self.template : template // ignore: cast_nullable_to_non_nullable
-as String,hints: null == hints ? _self.hints : hints // ignore: cast_nullable_to_non_nullable
+as String,template: freezed == template ? _self.template : template // ignore: cast_nullable_to_non_nullable
+as String?,hints: null == hints ? _self.hints : hints // ignore: cast_nullable_to_non_nullable
 as List<String>,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
@@ -87,13 +87,13 @@ as bool?,
 @JsonSerializable()
 
 class _Command implements Command {
-  const _Command({required this.name, required this.template, required final  List<String> hints, this.description, this.agent, this.model, @JsonKey(unknownEnumValue: CommandSource.unknown) this.source, this.subtask}): _hints = hints;
+  const _Command({required this.name, @JsonKey(readValue: _readTemplate) this.template, final  List<String> hints = const <String>[], this.description, this.agent, this.model, @JsonKey(unknownEnumValue: CommandSource.unknown) this.source, this.subtask}): _hints = hints;
   factory _Command.fromJson(Map<String, dynamic> json) => _$CommandFromJson(json);
 
 @override final  String name;
-@override final  String template;
+@override@JsonKey(readValue: _readTemplate) final  String? template;
  final  List<String> _hints;
-@override List<String> get hints {
+@override@JsonKey() List<String> get hints {
   if (_hints is EqualUnmodifiableListView) return _hints;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_hints);
@@ -138,7 +138,7 @@ abstract mixin class _$CommandCopyWith<$Res> implements $CommandCopyWith<$Res> {
   factory _$CommandCopyWith(_Command value, $Res Function(_Command) _then) = __$CommandCopyWithImpl;
 @override @useResult
 $Res call({
- String name, String template, List<String> hints, String? description, String? agent, String? model,@JsonKey(unknownEnumValue: CommandSource.unknown) CommandSource? source, bool? subtask
+ String name,@JsonKey(readValue: _readTemplate) String? template, List<String> hints, String? description, String? agent, String? model,@JsonKey(unknownEnumValue: CommandSource.unknown) CommandSource? source, bool? subtask
 });
 
 
@@ -155,11 +155,11 @@ class __$CommandCopyWithImpl<$Res>
 
 /// Create a copy of Command
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? template = null,Object? hints = null,Object? description = freezed,Object? agent = freezed,Object? model = freezed,Object? source = freezed,Object? subtask = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? template = freezed,Object? hints = null,Object? description = freezed,Object? agent = freezed,Object? model = freezed,Object? source = freezed,Object? subtask = freezed,}) {
   return _then(_Command(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,template: null == template ? _self.template : template // ignore: cast_nullable_to_non_nullable
-as String,hints: null == hints ? _self._hints : hints // ignore: cast_nullable_to_non_nullable
+as String,template: freezed == template ? _self.template : template // ignore: cast_nullable_to_non_nullable
+as String?,hints: null == hints ? _self._hints : hints // ignore: cast_nullable_to_non_nullable
 as List<String>,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable

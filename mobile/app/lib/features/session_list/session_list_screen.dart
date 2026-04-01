@@ -191,6 +191,7 @@ class _SessionListBody extends StatelessWidget {
                           final isArchived = session.time?.archived != null;
                           final activityInfo = state.activeSessionIds[session.id];
                           return _SessionTile(
+                            projectId: cubit.projectId,
                             session: session,
                             isArchived: isArchived,
                             isActive: activityInfo != null,

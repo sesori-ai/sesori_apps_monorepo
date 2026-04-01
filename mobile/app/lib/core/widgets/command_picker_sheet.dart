@@ -47,7 +47,7 @@ class _CommandPickerSheetState extends State<CommandPickerSheet> {
     final query = _query.trim().toLowerCase();
     if (query.isEmpty) return sorted;
     return sorted.where((command) {
-      final hintsText = command.hints.join(" ").toLowerCase();
+      final hintsText = (command.hints ?? []).join(" ").toLowerCase();
       return command.name.toLowerCase().contains(query) ||
           (command.description?.toLowerCase().contains(query) ?? false) ||
           hintsText.contains(query);
@@ -130,7 +130,7 @@ class _CommandPickerSheetState extends State<CommandPickerSheet> {
               itemBuilder: (context, index) {
                 final command = commands[index];
                 final description = command.description?.trim();
-                final hints = command.hints.where((hint) => hint.trim().isNotEmpty).join("  •  ");
+                final hints = (command.hints ?? []).where((hint) => hint.trim().isNotEmpty).join("  •  ");
                 return ListTile(
                   title: Text("/${command.name}"),
                   subtitle: Column(

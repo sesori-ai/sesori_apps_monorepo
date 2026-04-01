@@ -8,8 +8,10 @@ part of 'plugin_command.dart';
 
 _PluginCommand _$PluginCommandFromJson(Map json) => _PluginCommand(
   name: json['name'] as String,
-  template: json['template'] as String,
-  hints: (json['hints'] as List<dynamic>).map((e) => e as String).toList(),
+  template: json['template'] as String?,
+  hints:
+      (json['hints'] as List<dynamic>?)?.map((e) => e as String).toList() ??
+      const <String>[],
   description: json['description'] as String?,
   agent: json['agent'] as String?,
   model: json['model'] as String?,

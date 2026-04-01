@@ -342,6 +342,7 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
                 child: messages.isEmpty
                     ? Center(child: Text(loc.sessionDetailEmpty))
                     : _MessageList(
+                        projectId: widget.projectId,
                         messages: messages,
                         streamingText: streamingText,
                         children: children,
@@ -350,6 +351,7 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
               ),
               if (children.isNotEmpty && !widget.readOnly)
                 BackgroundTasksBar(
+                  projectId: widget.projectId,
                   children: children,
                   childStatuses: childStatuses,
                 ),
@@ -496,12 +498,14 @@ class _PendingQuestionsBanner extends StatelessWidget {
 }
 
 class _MessageList extends StatefulWidget {
+  final String? projectId;
   final List<MessageWithParts> messages;
   final Map<String, String> streamingText;
   final List<Session> children;
   final Map<String, SessionStatus> childStatuses;
 
   const _MessageList({
+    required this.projectId,
     required this.messages,
     required this.streamingText,
     required this.children,
@@ -646,6 +650,7 @@ class _MessageListState extends State<_MessageList> {
     }
 
     return AssistantMessageCard(
+      projectId: widget.projectId,
       message: message,
       streamingText: widget.streamingText,
       children: widget.children,

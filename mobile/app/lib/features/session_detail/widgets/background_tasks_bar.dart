@@ -12,11 +12,13 @@ import "../../../l10n/app_localizations.dart";
 /// Running tasks are always shown first. Completed tasks are hidden behind a
 /// "Show N completed" toggle.
 class BackgroundTasksBar extends StatefulWidget {
+  final String? projectId;
   final List<Session> children;
   final Map<String, SessionStatus> childStatuses;
 
   const BackgroundTasksBar({
     super.key,
+    required this.projectId,
     required this.children,
     required this.childStatuses,
   });
@@ -67,6 +69,7 @@ class _BackgroundTasksBarState extends State<BackgroundTasksBar> {
           ),
           if (_expanded)
             _ExpandedTaskList(
+              projectId: widget.projectId,
               runningTasks: running,
               completedTasks: completed,
               childStatuses: widget.childStatuses,
@@ -142,6 +145,7 @@ class _CollapsedHeader extends StatelessWidget {
 }
 
 class _ExpandedTaskList extends StatelessWidget {
+  final String? projectId;
   final List<Session> runningTasks;
   final List<Session> completedTasks;
   final Map<String, SessionStatus> childStatuses;
@@ -149,6 +153,7 @@ class _ExpandedTaskList extends StatelessWidget {
   final VoidCallback onToggleCompleted;
 
   const _ExpandedTaskList({
+    required this.projectId,
     required this.runningTasks,
     required this.completedTasks,
     required this.childStatuses,
@@ -199,6 +204,7 @@ class _ExpandedTaskList extends StatelessWidget {
 
           final child = visibleTasks[index];
           return _TaskRow(
+            projectId: projectId,
             session: child,
             status: childStatuses[child.id],
           );
@@ -252,10 +258,12 @@ class _CompletedToggle extends StatelessWidget {
 }
 
 class _TaskRow extends StatelessWidget {
+  final String? projectId;
   final Session session;
   final SessionStatus? status;
 
   const _TaskRow({
+    required this.projectId,
     required this.session,
     this.status,
   });
@@ -270,7 +278,7 @@ class _TaskRow extends StatelessWidget {
       onTap: () {
         context.pushRoute(
           AppRoute.sessionDetail(
-            projectId: session.projectID,
+            projectId: projectId ?? session.projectID,
             sessionId: session.id,
             readOnly: true,
             sessionTitle: session.title,
