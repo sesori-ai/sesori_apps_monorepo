@@ -72,7 +72,8 @@ class LocalNotificationManager implements NotificationCanceller {
 
     try {
       final decoded = jsonDecode(payload);
-      if (decoded is! Map<String, Object?>) {
+      // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+      if (decoded is! Map<String, dynamic>) {
         throw const FormatException("Notification payload is not a JSON object");
       }
       _tapController.add(NotificationTapEvent.fromJson(decoded));

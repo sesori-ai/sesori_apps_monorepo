@@ -54,7 +54,8 @@ class VoiceApi {
 
   // ignore: no_slop_linter/avoid_dynamic_type, JSON parser callback signature requires dynamic input
   static String _parseTranscript(dynamic json) {
-    if (json is Map<String, Object?>) {
+    // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+    if (json is Map<String, dynamic>) {
       final textValue = json["text"];
       if (textValue case final String text when text.isNotEmpty) {
         return text;

@@ -180,7 +180,8 @@ class RelayClient {
         // Plaintext JSON from bridge — expect rekey_required.
         // ignore: no_slop_linter/avoid_dynamic_type, JSON decode requires dynamic values
         final decoded = jsonDecode(utf8.decode(responseBytes));
-        if (decoded is! Map<String, Object?>) {
+        // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+        if (decoded is! Map<String, dynamic>) {
           throw const FormatException("Plaintext resume response is not a JSON object");
         }
         final msg = RelayMessage.fromJson(decoded);
@@ -464,7 +465,8 @@ class RelayClient {
     final decryptedBytes = await encryptor.decrypt(encryptedPayload);
     // ignore: no_slop_linter/avoid_dynamic_type, JSON decode requires dynamic values
     final decoded = jsonDecode(utf8.decode(decryptedBytes));
-    if (decoded is! Map<String, Object?>) {
+    // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+    if (decoded is! Map<String, dynamic>) {
       throw const FormatException("Relay payload is not a JSON object");
     }
 
@@ -530,7 +532,8 @@ class RelayClient {
     try {
       // ignore: no_slop_linter/avoid_dynamic_type, JSON decode requires dynamic values
       final decoded = jsonDecode(message);
-      if (decoded is! Map<String, Object?>) {
+      // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+      if (decoded is! Map<String, dynamic>) {
         logw("Relay: text frame is not a JSON object");
         return;
       }

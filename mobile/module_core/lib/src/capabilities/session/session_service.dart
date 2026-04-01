@@ -26,7 +26,8 @@ class SessionService {
           list
               .map(
                 (e) => switch (e) {
-                  final Map<String, Object?> map => AgentInfo.fromJson(map),
+                  // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+                  final Map<String, dynamic> map => AgentInfo.fromJson(map),
                   _ => throw FormatException("expected map, got ${e.runtimeType.toString()}"),
                 },
               )
@@ -40,7 +41,8 @@ class SessionService {
     return _client.get(
       "/provider",
       fromJson: (json) => switch (json) {
-        final Map<String, Object?> map => ProviderListResponse.fromJson(map),
+        // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+        final Map<String, dynamic> map => ProviderListResponse.fromJson(map),
         _ => throw FormatException("expected map, got ${json.runtimeType.toString()}"),
       },
     );
@@ -57,7 +59,8 @@ class SessionService {
           list
               .map(
                 (e) => switch (e) {
-                  final Map<String, Object?> map => Session.fromJson(map),
+                  // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+                  final Map<String, dynamic> map => Session.fromJson(map),
                   _ => throw FormatException("expected map, got ${e.runtimeType.toString()}"),
                 },
               )
@@ -78,7 +81,8 @@ class SessionService {
     return _client.post(
       "/session",
       fromJson: (json) => switch (json) {
-        final Map<String, Object?> map => Session.fromJson(map),
+        // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+        final Map<String, dynamic> map => Session.fromJson(map),
         _ => throw FormatException("expected map, got ${json.runtimeType.toString()}"),
       },
       body: CreateSessionRequest(
@@ -100,7 +104,8 @@ class SessionService {
     final response = await _client.patch(
       "/session/$sessionId",
       fromJson: (json) => switch (json) {
-        final Map<String, Object?> map => Session.fromJson(map),
+        // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+        final Map<String, dynamic> map => Session.fromJson(map),
         _ => throw FormatException("expected map, got ${json.runtimeType.toString()}"),
       },
       body: UpdateSessionArchiveRequest(
@@ -119,7 +124,8 @@ class SessionService {
     return _client.patch(
       "/session/$sessionId",
       fromJson: (json) => switch (json) {
-        final Map<String, Object?> map => Session.fromJson(map),
+        // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+        final Map<String, dynamic> map => Session.fromJson(map),
         _ => throw FormatException("expected map, got ${json.runtimeType.toString()}"),
       },
       body: const UpdateSessionArchiveRequest(
@@ -135,7 +141,8 @@ class SessionService {
     return _client.patch(
       "/session/title",
       fromJson: (json) => switch (json) {
-        final Map<String, Object?> map => Session.fromJson(map),
+        // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+        final Map<String, dynamic> map => Session.fromJson(map),
         _ => throw FormatException("expected map, got ${json.runtimeType.toString()}"),
       },
       body: RenameSessionRequest(sessionId: sessionId, title: title).toJson(),
@@ -168,7 +175,8 @@ class SessionService {
         final decoded = jsonDecode(rawBody ?? "{}");
         final rejection = SessionCleanupRejection.fromJson(
           switch (decoded) {
-            final Map<String, Object?> map => map,
+            // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+            final Map<String, dynamic> map => map,
             _ => throw const FormatException("invalid cleanup rejection json"),
           },
         );
@@ -189,7 +197,8 @@ class SessionService {
           list
               .map(
                 (e) => switch (e) {
-                  final Map<String, Object?> map => Session.fromJson(map),
+                  // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+                  final Map<String, dynamic> map => Session.fromJson(map),
                   _ => throw FormatException("expected map, got ${e.runtimeType.toString()}"),
                 },
               )
@@ -203,11 +212,13 @@ class SessionService {
     return _client.get(
       "/session/status",
       fromJson: (json) => switch (json) {
-        final Map<String, Object?> map => map.map(
+        // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+        final Map<String, dynamic> map => map.map(
           (key, value) => MapEntry(
             key,
             switch (value) {
-              final Map<String, Object?> valueMap => SessionStatus.fromJson(valueMap),
+              // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+              final Map<String, dynamic> valueMap => SessionStatus.fromJson(valueMap),
               _ => throw FormatException("expected map value, got ${value.runtimeType.toString()}"),
             },
           ),
@@ -227,7 +238,8 @@ class SessionService {
           list
               .map(
                 (e) => switch (e) {
-                  final Map<String, Object?> map => MessageWithParts.fromJson(map),
+                  // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+                  final Map<String, dynamic> map => MessageWithParts.fromJson(map),
                   _ => throw FormatException("expected map, got ${e.runtimeType.toString()}"),
                 },
               )
@@ -272,7 +284,8 @@ class SessionService {
           list
               .map(
                 (e) => switch (e) {
-                  final Map<String, Object?> map => PendingQuestion.fromJson(map),
+                  // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+                  final Map<String, dynamic> map => PendingQuestion.fromJson(map),
                   _ => throw FormatException("expected map, got ${e.runtimeType.toString()}"),
                 },
               )

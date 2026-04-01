@@ -218,7 +218,8 @@ class ConnectionService {
       }
       // ignore: no_slop_linter/avoid_dynamic_type, JSON decode requires dynamic values
       final json = jsonDecode(responseBody);
-      if (json is! Map<String, Object?>) {
+      // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+      if (json is! Map<String, dynamic>) {
         throw const FormatException("Health response is not a JSON object");
       }
       final health = HealthResponse.fromJson(json);
@@ -336,16 +337,19 @@ class ConnectionService {
     try {
       // ignore: no_slop_linter/avoid_dynamic_type, JSON decode requires dynamic values
       final decoded = jsonDecode(rawData);
-      if (decoded is! Map<String, Object?>) return;
+      // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+      if (decoded is! Map<String, dynamic>) return;
 
       final payloadValue = decoded["payload"];
-      if (payloadValue is! Map<String, Object?>) return;
+      // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+      if (payloadValue is! Map<String, dynamic>) return;
 
       final typeValue = payloadValue["type"];
       if (typeValue is! String) return;
 
       final propertiesValue = payloadValue["properties"];
-      final properties = propertiesValue is Map<String, Object?> ? propertiesValue : <String, Object?>{};
+      // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+      final properties = propertiesValue is Map<String, dynamic> ? propertiesValue : <String, dynamic>{};
       final merged = <String, Object?>{"type": typeValue, ...properties};
 
       final SesoriSseEvent eventData;

@@ -18,7 +18,8 @@ class ProjectService {
           list
               .map(
                 (e) => switch (e) {
-                  final Map<String, Object?> map => Project.fromJson(map),
+                  // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+                  final Map<String, dynamic> map => Project.fromJson(map),
                   _ => throw FormatException("expected map, got ${e.runtimeType.toString()}"),
                 },
               )
@@ -33,7 +34,8 @@ class ProjectService {
     return _client.get(
       "/project/current",
       fromJson: (json) => switch (json) {
-        final Map<String, Object?> map => Project.fromJson(map),
+        // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+        final Map<String, dynamic> map => Project.fromJson(map),
         _ => throw FormatException("expected map, got ${json.runtimeType.toString()}"),
       },
       headers: {"x-project-id": projectId},
@@ -46,7 +48,8 @@ class ProjectService {
       "/project/create",
       body: {"path": path},
       fromJson: (json) => switch (json) {
-        final Map<String, Object?> map => Project.fromJson(map),
+        // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+        final Map<String, dynamic> map => Project.fromJson(map),
         _ => throw FormatException("expected map, got ${json.runtimeType.toString()}"),
       },
     );
@@ -58,7 +61,8 @@ class ProjectService {
       "/project/open",
       body: {"path": path},
       fromJson: (json) => switch (json) {
-        final Map<String, Object?> map => Project.fromJson(map),
+        // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+        final Map<String, dynamic> map => Project.fromJson(map),
         _ => throw FormatException("expected map, got ${json.runtimeType.toString()}"),
       },
     );
@@ -88,7 +92,8 @@ class ProjectService {
           list
               .map(
                 (e) => switch (e) {
-                  final Map<String, Object?> map => FilesystemSuggestion.fromJson(map),
+                  // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+                  final Map<String, dynamic> map => FilesystemSuggestion.fromJson(map),
                   _ => throw FormatException("expected map, got ${e.runtimeType.toString()}"),
                 },
               )
@@ -104,7 +109,8 @@ class ProjectService {
     return _client.get(
       "/project/base-branch",
       fromJson: (json) => switch (json) {
-        final Map<String, Object?> map => switch (map["baseBranch"]) {
+        // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+        final Map<String, dynamic> map => switch (map["baseBranch"]) {
           final String baseBranch => baseBranch,
           null => null,
           _ => throw const FormatException("expected baseBranch as string or null"),
@@ -124,7 +130,8 @@ class ProjectService {
       "/project/name",
       body: RenameProjectRequest(projectId: projectId, name: name).toJson(),
       fromJson: (json) => switch (json) {
-        final Map<String, Object?> map => Project.fromJson(map),
+        // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+        final Map<String, dynamic> map => Project.fromJson(map),
         _ => throw FormatException("expected map, got ${json.runtimeType.toString()}"),
       },
     );
