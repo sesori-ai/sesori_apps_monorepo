@@ -11,6 +11,5 @@ export "src/models/plugin_project_activity_summary.dart";
 export "src/models/plugin_prompt_part.dart";
 export "src/models/plugin_provider.dart";
 export "src/models/plugin_session.dart";
-export "src/models/plugin_session_metadata.dart";
 export "src/models/plugin_session_status.dart";
 export "src/plugin_api_exception.dart";

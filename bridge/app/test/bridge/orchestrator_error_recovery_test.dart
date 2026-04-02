@@ -306,12 +306,6 @@ class _ThrowingSummaryPlugin implements BridgePlugin {
   }) async => const PluginProvidersResult(providers: []);
 
   @override
-  Future<SessionMetadata?> generateSessionMetadata({
-    required String firstMessage,
-    required String directory,
-  }) async => null;
-
-  @override
   Future<void> dispose() async {}
 }
 

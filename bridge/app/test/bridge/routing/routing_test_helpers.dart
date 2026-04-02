@@ -41,7 +41,6 @@ class FakeBridgePlugin implements BridgePlugin {
   List<PluginAgent> agentsResult = [];
   List<PluginPendingQuestion> pendingQuestionsResult = [];
   PluginProject? currentProjectResult;
-  SessionMetadata? generateSessionMetadataResult;
 
   // ── Recorded call arguments ──────────────────────────────────────────────
 
@@ -75,8 +74,6 @@ class FakeBridgePlugin implements BridgePlugin {
   List<List<String>>? lastReplyAnswers;
   String? lastRejectQuestionId;
   String? lastGetCurrentProjectProjectId;
-  String? lastGenerateSessionMetadataMessage;
-  String? lastGenerateSessionMetadataDirectory;
 
   // ── Error injection ──────────────────────────────────────────────────────
 
@@ -275,16 +272,6 @@ class FakeBridgePlugin implements BridgePlugin {
   Future<PluginProvidersResult> getProviders({required bool connectedOnly}) async {
     lastGetProvidersConnectedOnly = connectedOnly;
     return providersResult;
-  }
-
-  @override
-  Future<SessionMetadata?> generateSessionMetadata({
-    required String firstMessage,
-    required String directory,
-  }) async {
-    lastGenerateSessionMetadataMessage = firstMessage;
-    lastGenerateSessionMetadataDirectory = directory;
-    return generateSessionMetadataResult;
   }
 
   @override
