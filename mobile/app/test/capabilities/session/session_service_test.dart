@@ -579,7 +579,7 @@ void main() {
           () => mockClient.post<SessionListResponse>(
             "/session/children",
             fromJson: any(named: "fromJson"),
-            body: SessionIdRequest(sessionId: sessionId),
+            body: const SessionIdRequest(sessionId: sessionId),
           ),
         ).called(1);
       });
@@ -602,7 +602,7 @@ void main() {
           () => mockClient.post<SessionListResponse>(
             "/session/children",
             fromJson: any(named: "fromJson"),
-            body: SessionIdRequest(sessionId: sessionId),
+            body: const SessionIdRequest(sessionId: sessionId),
           ),
         ).called(1);
       });
@@ -671,7 +671,7 @@ void main() {
           () => mockClient.post<MessageWithPartsResponse>(
             "/session/messages",
             fromJson: any(named: "fromJson"),
-            body: SessionIdRequest(sessionId: sessionId),
+            body: const SessionIdRequest(sessionId: sessionId),
           ),
         ).called(1);
       });
@@ -694,7 +694,7 @@ void main() {
           () => mockClient.post<MessageWithPartsResponse>(
             "/session/messages",
             fromJson: any(named: "fromJson"),
-            body: SessionIdRequest(sessionId: sessionId),
+            body: const SessionIdRequest(sessionId: sessionId),
           ),
         ).called(1);
       });
@@ -823,7 +823,7 @@ void main() {
           () => mockClient.post<SuccessEmptyResponse>(
             "/session/abort",
             fromJson: any(named: "fromJson"),
-            body: SessionIdRequest(sessionId: sessionId),
+            body: const SessionIdRequest(sessionId: sessionId),
           ),
         ).called(1);
       });
@@ -846,7 +846,7 @@ void main() {
           () => mockClient.post<SuccessEmptyResponse>(
             "/session/abort",
             fromJson: any(named: "fromJson"),
-            body: SessionIdRequest(sessionId: sessionId),
+            body: const SessionIdRequest(sessionId: sessionId),
           ),
         ).called(1);
       });
@@ -877,7 +877,7 @@ void main() {
           () => mockClient.post<PendingQuestionResponse>(
             "/session/questions",
             fromJson: any(named: "fromJson"),
-            body: SessionIdRequest(sessionId: sessionId),
+            body: const SessionIdRequest(sessionId: sessionId),
           ),
         ).called(1);
       });
@@ -900,7 +900,7 @@ void main() {
           () => mockClient.post<PendingQuestionResponse>(
             "/session/questions",
             fromJson: any(named: "fromJson"),
-            body: SessionIdRequest(sessionId: sessionId),
+            body: const SessionIdRequest(sessionId: sessionId),
           ),
         ).called(1);
       });

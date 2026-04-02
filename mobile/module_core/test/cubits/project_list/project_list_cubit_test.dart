@@ -106,7 +106,7 @@ void main() {
       build: () {
         when(
           () => mockProjectService.listProjects(),
-        ).thenAnswer((_) async => ApiResponse.success(Projects(data: <Project>[])));
+        ).thenAnswer((_) async => ApiResponse.success(const Projects(data: <Project>[])));
         return buildCubit();
       },
       expect: () => [
@@ -357,7 +357,7 @@ void main() {
       build: () {
         when(
           () => mockProjectService.listProjects(),
-        ).thenAnswer((_) async => ApiResponse.success(Projects(data: <Project>[])));
+        ).thenAnswer((_) async => ApiResponse.success(const Projects(data: <Project>[])));
         return buildCubit();
       },
       act: (cubit) => cubit.setActiveProject(testProject()),

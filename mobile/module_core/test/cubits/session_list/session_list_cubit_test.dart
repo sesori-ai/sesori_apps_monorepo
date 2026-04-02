@@ -130,7 +130,7 @@ void main() {
       build: () {
         when(
           () => mockSessionService.listSessions(projectId: projectId),
-        ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: <Session>[])));
+        ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: <Session>[])));
         return buildCubit();
       },
       expect: () => [
@@ -303,7 +303,7 @@ void main() {
             deleteBranch: any(named: "deleteBranch"),
             force: any(named: "force"),
           ),
-        ).thenAnswer((_) async => ApiResponse.success(const SuccessEmptyResponse()));
+        ).thenAnswer((_) async => ApiResponse<void>.success(null));
         return buildCubit();
       },
       act: (cubit) async {
@@ -863,7 +863,7 @@ void main() {
           time: SessionTime(created: 1, updated: 2, archived: null),
         );
         when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
-          (_) async => ApiResponse.success(SessionListResponse(items: [existing])),
+          (_) async => ApiResponse.success(const SessionListResponse(items: [existing])),
         );
         return buildCubit();
       },
@@ -1276,7 +1276,7 @@ void main() {
           ),
         ];
         when(() => mockSessionService.listSessions(projectId: "global")).thenAnswer(
-          (_) async => ApiResponse.success(SessionListResponse(items: sessions)),
+          (_) async => ApiResponse.success(const SessionListResponse(items: sessions)),
         );
         return SessionListCubit(
           service: mockSessionService,

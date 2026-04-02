@@ -32,5 +32,5 @@ test:
 analyze:
 	@for mod in $(MODULES); do \
 		echo "=== analyze: $$mod ==="; \
-		(cd $$mod && $(DART) analyze) || exit 1; \
+		(cd $$mod && $(DART) analyze --fatal-infos) || exit 1; \
 	done

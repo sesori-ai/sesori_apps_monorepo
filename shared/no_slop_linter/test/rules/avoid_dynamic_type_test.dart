@@ -17,77 +17,110 @@ class AvoidDynamicTypeTest extends AnalysisRuleTest {
   }
 
   void test_reportForDynamicVariable() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 dynamic foo;
-''', [lint(0, 7)]);
+''',
+      [lint(0, 7)],
+    );
   }
 
   void test_reportForDynamicParameter() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 void foo(dynamic x) {}
-''', [lint(9, 7)]);
+''',
+      [lint(9, 7)],
+    );
   }
 
   void test_reportForDynamicInListGeneric() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 List<dynamic> items = [];
-''', [lint(5, 7)]);
+''',
+      [lint(5, 7)],
+    );
   }
 
   void test_reportForDynamicAsMapKeyType() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 Map<dynamic, String> map = {};
-''', [lint(4, 7)]);
+''',
+      [lint(4, 7)],
+    );
   }
 
   void test_reportForDynamicReturnType() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 dynamic foo() => null;
-''', [lint(0, 7)]);
+''',
+      [lint(0, 7)],
+    );
   }
 
   void test_reportForDynamicInClassField() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 class Foo {
   dynamic bar;
 }
-''', [lint(14, 7)]);
+''',
+      [lint(14, 7)],
+    );
   }
 
   void test_reportForMapStringDynamicOutsideFromJson() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 void foo(Map<String, dynamic> json) {}
-''', [lint(21, 7)]);
+''',
+      [lint(21, 7)],
+    );
   }
 
   void test_reportForMapStringDynamicInRegularConstructor() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 class Foo {
   Foo(Map<String, dynamic> json);
 }
-''', [lint(30, 7)]);
+''',
+      [lint(30, 7)],
+    );
   }
 
   void test_reportForMapStringDynamicInRegularMethod() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 class Foo {
   static Foo parseJson(Map<String, dynamic> json) => Foo();
 }
-''', [lint(47, 7)]);
+''',
+      [lint(47, 7)],
+    );
   }
 
   void test_reportForNestedDynamicType() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 List<List<dynamic>> nestedList = [];
-''', [lint(10, 7)]);
+''',
+      [lint(10, 7)],
+    );
   }
 
   void test_reportForMapStringDynamicReturnTypeInNonToJson() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 class Foo {
   Map<String, dynamic> serialize() => {};
 }
-''', [lint(26, 7)]);
+''',
+      [lint(26, 7)],
+    );
   }
 
   void test_noErrorForFromJsonFactory() async {
@@ -130,18 +163,24 @@ Map<String, int> map = {};
 ''');
   }
 
-  void test_noErrorForObjectType() async {
-    await assertNoDiagnostics(r'''
+  void test_reportForObjectType() async {
+    await assertDiagnostics(
+      r'''
 Object foo = '';
 List<Object> items = [];
-''');
+''',
+      [lint(0, 6), lint(22, 6)],
+    );
   }
 
-  void test_noErrorForNullableObjectType() async {
-    await assertNoDiagnostics(r'''
+  void test_reportForNullableObjectType() async {
+    await assertDiagnostics(
+      r'''
 Object? foo;
 List<Object?> items = [];
-''');
+''',
+      [lint(0, 7), lint(18, 7)],
+    );
   }
 
   void test_noErrorForToJsonMethod() async {
@@ -183,7 +222,8 @@ class JsInterop {
   }
 
   void test_reportOnlyForBaseClassDynamicParameter() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 abstract class Base {
   void foo(dynamic value);
 }
@@ -192,11 +232,14 @@ class Child extends Base {
   @override
   void foo(dynamic value) {}
 }
-''', [lint(33, 7)]);
+''',
+      [lint(33, 7)],
+    );
   }
 
   void test_reportOnlyForBaseClassDynamicGenericParameter() async {
-    await assertDiagnostics(r'''
+    await assertDiagnostics(
+      r'''
 abstract class Base {
   void foo(List<dynamic> items);
 }
@@ -205,6 +248,8 @@ class Child extends Base {
   @override
   void foo(List<dynamic> items) {}
 }
-''', [lint(38, 7)]);
+''',
+      [lint(38, 7)],
+    );
   }
 }

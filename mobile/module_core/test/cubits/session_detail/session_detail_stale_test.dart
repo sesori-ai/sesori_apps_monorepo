@@ -236,7 +236,7 @@ void main() {
       ).thenAnswer((_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])));
       when(
         () => mockSessionService.getChildren(sessionId),
-      ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: <Session>[])));
+      ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: <Session>[])));
       when(
         () => mockSessionService.getSessionStatuses(),
       ).thenAnswer(
@@ -410,7 +410,7 @@ void main() {
       ).thenAnswer((_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])));
       when(
         () => mockSessionService.getChildren(sessionId),
-      ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: <Session>[])));
+      ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: <Session>[])));
       when(
         () => mockSessionService.getSessionStatuses(),
       ).thenAnswer(
@@ -459,7 +459,7 @@ void _stubLoadApis(MockSessionService service, {required String sessionId}) {
     () => service.getChildren(any()),
   ).thenAnswer(
     (_) => Future<ApiResponse<SessionListResponse>>.value(
-      ApiResponse.success(SessionListResponse(items: <Session>[])),
+      ApiResponse.success(const SessionListResponse(items: <Session>[])),
     ),
   );
   when(
