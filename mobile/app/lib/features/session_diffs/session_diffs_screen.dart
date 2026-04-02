@@ -5,10 +5,8 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../core/di/injection.dart";
 import "models/diff_file_view_model.dart";
-import "models/diff_list_builder.dart";
-import "models/diff_list_item.dart";
 import "models/diff_view_model_builder.dart";
-import "widgets/diff_file_widget.dart";
+import "widgets/diff_file_header_delegate.dart";
 import "widgets/diff_hunk_widget.dart";
 import "widgets/diff_line_widget.dart";
 
@@ -44,7 +42,6 @@ class _SessionDiffsBody extends StatefulWidget {
 class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
   List<DiffFileViewModel>? _viewModels;
   Set<int> _expandedFileIndices = <int>{};
-  List<DiffListItem> _flatItems = const [];
   bool _isComputing = false;
   Object? _computeError;
   List<FileDiff>? _lastFiles;
@@ -110,22 +107,41 @@ class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
     if (_computeError != null) {
       return Center(child: Text("Error computing diffs: $_computeError"));
     }
+    if (_viewModels == null) return const SizedBox.shrink();
 
-    return ListView.builder(
-      itemCount: _flatItems.length,
-      itemBuilder: (context, index) {
-        final item = _flatItems[index];
-        return switch (item) {
-          DiffListFileHeader() => DiffFileWidget(
-            viewModel: item.viewModel,
-            isExpanded: item.isExpanded,
-            onToggle: () => _toggleFile(item.fileIndex),
-          ),
-          DiffListHunkHeader() => DiffHunkWidget(viewModel: item.viewModel),
-          DiffListLine() => DiffLineWidget(viewModel: item.viewModel),
-          DiffListSkipPlaceholder() => _buildSkippedPlaceholder(item.reason),
-        };
-      },
+    return CustomScrollView(slivers: _buildSlivers(viewModels: _viewModels!));
+  }
+
+  List<Widget> _buildSlivers({required List<DiffFileViewModel> viewModels}) {
+    return [
+      for (var i = 0; i < viewModels.length; i++)
+        SliverMainAxisGroup(
+          slivers: [
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: DiffFileHeaderDelegate(
+                viewModel: viewModels[i],
+                isExpanded: _expandedFileIndices.contains(i),
+                onToggle: () => _toggleFile(i),
+              ),
+            ),
+            if (_expandedFileIndices.contains(i)) _buildFileContentSliver(viewModels[i]),
+          ],
+        ),
+    ];
+  }
+
+  Widget _buildFileContentSliver(DiffFileViewModel vm) {
+    if (vm.skipReason != null) {
+      return SliverToBoxAdapter(child: _buildSkippedPlaceholder(vm.skipReason!));
+    }
+    return SliverList(
+      delegate: SliverChildListDelegate([
+        for (final hunk in vm.hunks) ...[
+          DiffHunkWidget(viewModel: hunk),
+          for (final line in hunk.lines) DiffLineWidget(viewModel: line),
+        ],
+      ]),
     );
   }
 
@@ -150,7 +166,6 @@ class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
       _computeError = null;
       _viewModels = null;
       _expandedFileIndices = <int>{};
-      _flatItems = const [];
     });
 
     try {
@@ -168,15 +183,9 @@ class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
         }
       }
 
-      final flatItems = buildFlatList(
-        viewModels: viewModels,
-        expandedFileIndices: expanded,
-      );
-
       setState(() {
         _viewModels = viewModels;
         _expandedFileIndices = expanded;
-        _flatItems = flatItems;
         _isComputing = false;
       });
     } catch (error) {
@@ -191,24 +200,14 @@ class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
   }
 
   void _toggleFile(int fileIndex) {
-    final viewModels = _viewModels;
-    if (viewModels == null) {
-      return;
-    }
+    if (_viewModels == null) return;
     final expanded = Set<int>.from(_expandedFileIndices);
     if (expanded.contains(fileIndex)) {
       expanded.remove(fileIndex);
     } else {
       expanded.add(fileIndex);
     }
-
-    setState(() {
-      _expandedFileIndices = expanded;
-      _flatItems = buildFlatList(
-        viewModels: viewModels,
-        expandedFileIndices: expanded,
-      );
-    });
+    setState(() => _expandedFileIndices = expanded);
   }
 
   Widget _buildSkippedPlaceholder(FileDiffSkipReason reason) {
