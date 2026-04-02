@@ -1,0 +1,325 @@
+import "dart:async";
+import "dart:io";
+
+import "package:sesori_bridge/src/bridge/pr/gh_cli_service.dart";
+import "package:sesori_bridge/src/bridge/pr/gh_pull_request.dart";
+import "package:test/test.dart";
+
+void main() {
+  group("GhCliService.isAvailable", () {
+    late _FakeProcessRunner processRunner;
+    late GhCliService service;
+
+    setUp(() {
+      processRunner = _FakeProcessRunner();
+      service = GhCliService(processRunner: processRunner.call);
+    });
+
+    test("returns true when gh --version exits with code 0", () async {
+      processRunner.enqueueResult(result: _ok(stdout: "gh version 2.0.0\n"));
+
+      final isAvailable = await service.isAvailable();
+
+      expect(isAvailable, isTrue);
+      expect(processRunner.invocations, hasLength(1));
+      expect(processRunner.invocations.first.command, equals("gh"));
+      expect(processRunner.invocations.first.arguments, equals(["--version"]));
+      expect(processRunner.invocations.first.workingDirectory, isNull);
+    });
+
+    test("returns false on non-zero exit code", () async {
+      processRunner.enqueueResult(result: _fail(exitCode: 1));
+
+      final isAvailable = await service.isAvailable();
+
+      expect(isAvailable, isFalse);
+    });
+
+    test("returns false on timeout", () async {
+      processRunner.enqueueError(error: TimeoutException("timed out"));
+
+      final isAvailable = await service.isAvailable();
+
+      expect(isAvailable, isFalse);
+    });
+
+    test("returns false on ProcessException", () async {
+      processRunner.enqueueError(
+        error: const ProcessException("gh", <String>["--version"], "boom", 1),
+      );
+
+      final isAvailable = await service.isAvailable();
+
+      expect(isAvailable, isFalse);
+    });
+  });
+
+  group("GhCliService.isAuthenticated", () {
+    late _FakeProcessRunner processRunner;
+    late GhCliService service;
+
+    setUp(() {
+      processRunner = _FakeProcessRunner();
+      service = GhCliService(processRunner: processRunner.call);
+    });
+
+    test("returns true when gh auth status exits with code 0", () async {
+      processRunner.enqueueResult(result: _ok());
+
+      final isAuthenticated = await service.isAuthenticated();
+
+      expect(isAuthenticated, isTrue);
+      expect(processRunner.invocations, hasLength(1));
+      expect(processRunner.invocations.first.command, equals("gh"));
+      expect(processRunner.invocations.first.arguments, equals(["auth", "status"]));
+    });
+
+    test("returns false on non-zero exit code", () async {
+      processRunner.enqueueResult(result: _fail(exitCode: 1));
+
+      final isAuthenticated = await service.isAuthenticated();
+
+      expect(isAuthenticated, isFalse);
+    });
+  });
+
+  group("GhCliService.listOpenPrs", () {
+    late _FakeProcessRunner processRunner;
+    late GhCliService service;
+
+    setUp(() {
+      processRunner = _FakeProcessRunner();
+      service = GhCliService(processRunner: processRunner.call);
+    });
+
+    test("returns parsed PR list for valid JSON", () async {
+      processRunner.enqueueResult(
+        result: _ok(
+          stdout:
+              '[{"number":1,"url":"https://example/pr/1","title":"Add feature","state":"OPEN","headRefName":"feat/one","mergeable":"MERGEABLE","reviewDecision":"APPROVED","statusCheckRollup":"SUCCESS"}]',
+        ),
+      );
+
+      final prs = await service.listOpenPrs(workingDirectory: "/repo");
+
+      expect(
+        prs,
+        equals(
+          <GhPullRequest>[
+            const GhPullRequest(
+              number: 1,
+              url: "https://example/pr/1",
+              title: "Add feature",
+              state: "OPEN",
+              headRefName: "feat/one",
+              mergeable: "MERGEABLE",
+              reviewDecision: "APPROVED",
+              statusCheckRollup: "SUCCESS",
+            ),
+          ],
+        ),
+      );
+
+      expect(processRunner.invocations, hasLength(1));
+      expect(processRunner.invocations.first.command, equals("gh"));
+      expect(
+        processRunner.invocations.first.arguments,
+        equals(<String>[
+          "pr",
+          "list",
+          "--state",
+          "open",
+          "--json",
+          "number,url,title,state,headRefName,mergeable,reviewDecision,statusCheckRollup",
+          "--limit",
+          "100",
+        ]),
+      );
+      expect(processRunner.invocations.first.workingDirectory, equals("/repo"));
+    });
+
+    test("returns empty list for empty JSON array", () async {
+      processRunner.enqueueResult(result: _ok(stdout: "[]"));
+
+      final prs = await service.listOpenPrs(workingDirectory: "/repo");
+
+      expect(prs, isEmpty);
+    });
+
+    test("returns empty list for malformed JSON", () async {
+      processRunner.enqueueResult(result: _ok(stdout: "not-json"));
+
+      final prs = await service.listOpenPrs(workingDirectory: "/repo");
+
+      expect(prs, isEmpty);
+    });
+
+    test("returns empty list for non-zero exit code", () async {
+      processRunner.enqueueResult(result: _fail(exitCode: 1));
+
+      final prs = await service.listOpenPrs(workingDirectory: "/repo");
+
+      expect(prs, isEmpty);
+    });
+
+    test("returns empty list on timeout", () async {
+      processRunner.enqueueError(error: TimeoutException("timed out"));
+
+      final prs = await service.listOpenPrs(workingDirectory: "/repo");
+
+      expect(prs, isEmpty);
+    });
+
+    test("returns empty list on ProcessException", () async {
+      processRunner.enqueueError(
+        error: const ProcessException("gh", <String>["pr", "list"], "boom", 1),
+      );
+
+      final prs = await service.listOpenPrs(workingDirectory: "/repo");
+
+      expect(prs, isEmpty);
+    });
+  });
+
+  group("GhCliService.getPrByNumber", () {
+    late _FakeProcessRunner processRunner;
+    late GhCliService service;
+
+    setUp(() {
+      processRunner = _FakeProcessRunner();
+      service = GhCliService(processRunner: processRunner.call);
+    });
+
+    test("returns parsed PR for valid JSON", () async {
+      processRunner.enqueueResult(
+        result: _ok(
+          stdout:
+              '{"number":12,"url":"https://example/pr/12","title":"Fix bug","state":"OPEN","headRefName":"fix/two","mergeable":"CONFLICTING","reviewDecision":null,"statusCheckRollup":null}',
+        ),
+      );
+
+      final pr = await service.getPrByNumber(number: 12, workingDirectory: "/repo");
+
+      expect(
+        pr,
+        equals(
+          const GhPullRequest(
+            number: 12,
+            url: "https://example/pr/12",
+            title: "Fix bug",
+            state: "OPEN",
+            headRefName: "fix/two",
+            mergeable: "CONFLICTING",
+            reviewDecision: null,
+            statusCheckRollup: null,
+          ),
+        ),
+      );
+
+      expect(processRunner.invocations, hasLength(1));
+      expect(processRunner.invocations.first.command, equals("gh"));
+      expect(
+        processRunner.invocations.first.arguments,
+        equals(<String>[
+          "pr",
+          "view",
+          "12",
+          "--json",
+          "number,url,title,state,headRefName,mergeable,reviewDecision,statusCheckRollup",
+        ]),
+      );
+      expect(processRunner.invocations.first.workingDirectory, equals("/repo"));
+    });
+
+    test("returns null for malformed JSON", () async {
+      processRunner.enqueueResult(result: _ok(stdout: "{"));
+
+      final pr = await service.getPrByNumber(number: 1, workingDirectory: "/repo");
+
+      expect(pr, isNull);
+    });
+
+    test("returns null for non-zero exit code", () async {
+      processRunner.enqueueResult(result: _fail(exitCode: 1));
+
+      final pr = await service.getPrByNumber(number: 1, workingDirectory: "/repo");
+
+      expect(pr, isNull);
+    });
+
+    test("returns null on timeout", () async {
+      processRunner.enqueueError(error: TimeoutException("timed out"));
+
+      final pr = await service.getPrByNumber(number: 1, workingDirectory: "/repo");
+
+      expect(pr, isNull);
+    });
+
+    test("returns null on ProcessException", () async {
+      processRunner.enqueueError(
+        error: const ProcessException("gh", <String>["pr", "view", "1"], "boom", 1),
+      );
+
+      final pr = await service.getPrByNumber(number: 1, workingDirectory: "/repo");
+
+      expect(pr, isNull);
+    });
+  });
+}
+
+ProcessResult _ok({String stdout = "", String stderr = ""}) {
+  return ProcessResult(1, 0, stdout, stderr);
+}
+
+ProcessResult _fail({required int exitCode, String stderr = ""}) {
+  return ProcessResult(1, exitCode, "", stderr);
+}
+
+class _Invocation {
+  final String command;
+  final List<String> arguments;
+  final String? workingDirectory;
+
+  const _Invocation({
+    required this.command,
+    required this.arguments,
+    required this.workingDirectory,
+  });
+}
+
+class _FakeProcessRunner {
+  final List<_Invocation> invocations = <_Invocation>[];
+  final List<Object> _queue = <Object>[];
+
+  void enqueueResult({required ProcessResult result}) {
+    _queue.add(result);
+  }
+
+  void enqueueError({required Object error}) {
+    _queue.add(error);
+  }
+
+  Future<ProcessResult> call(
+    String executable,
+    List<String> arguments, {
+    String? workingDirectory,
+  }) async {
+    invocations.add(
+      _Invocation(
+        command: executable,
+        arguments: List<String>.from(arguments),
+        workingDirectory: workingDirectory,
+      ),
+    );
+
+    if (_queue.isEmpty) {
+      throw StateError("No queued process output for: $executable $arguments");
+    }
+
+    final output = _queue.removeAt(0);
+    if (output is ProcessResult) {
+      return output;
+    }
+    throw output;
+  }
+}
