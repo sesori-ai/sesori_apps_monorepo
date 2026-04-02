@@ -48,7 +48,7 @@ void main() {
           await allowFirstSendToComplete.future;
         }
 
-        return ApiResponse.success(true);
+        return ApiResponse<void>.success(null);
       });
 
       final service = PromptSendService(
@@ -117,7 +117,7 @@ void main() {
           await allowFirstSendToComplete.future;
         }
 
-        return ApiResponse.success(true);
+        return ApiResponse<void>.success(null);
       });
 
       final service = PromptSendService(

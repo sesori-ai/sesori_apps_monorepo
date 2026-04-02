@@ -1076,7 +1076,7 @@ void _stubAllDefaults(
     () => service.getChildren(any()),
   ).thenAnswer(
     (_) => Future<ApiResponse<SessionListResponse>>.value(
-      ApiResponse.success(SessionListResponse(items: <Session>[])),
+      ApiResponse.success(const SessionListResponse(items: <Session>[])),
     ),
   );
   when(

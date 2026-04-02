@@ -89,7 +89,7 @@ void main() {
       build: () {
         when(
           () => mockSessionService.getSessionDiffs(sessionId: sessionId),
-        ).thenAnswer((_) async => ApiResponse.success(SessionDiffsResponse(diffs: const [])));
+        ).thenAnswer((_) async => ApiResponse.success(const SessionDiffsResponse(diffs: [])));
         return buildCubit();
       },
       expect: () => [

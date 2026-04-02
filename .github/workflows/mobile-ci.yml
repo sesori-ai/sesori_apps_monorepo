@@ -37,15 +37,15 @@ jobs:
         working-directory: mobile
 
       - name: Analyze mobile/app
-        run: dart analyze
+        run: dart analyze --fatal-infos
         working-directory: mobile/app
 
       - name: Analyze module_core
-        run: dart analyze
+        run: dart analyze --fatal-infos
         working-directory: mobile/module_core
 
       - name: Analyze module_auth
-        run: dart analyze
+        run: dart analyze --fatal-infos
         working-directory: mobile/module_auth
 
       - name: Run tests for module_core
