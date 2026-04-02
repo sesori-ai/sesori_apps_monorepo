@@ -42,15 +42,9 @@ class SessionMetadataGenerator {
 
         final result = _parseResponse(response);
         if (result == null) {
-          final rawText = response.parts
-              .where((part) => part.type == "text")
-              .map((part) => part.text)
-              .whereType<String>()
-              .join();
           Log.w(
             "SessionMetadataGenerator: failed to parse response into metadata. "
-            "Model: ${model.providerID}/${model.modelID}. "
-            "Raw text response: $rawText",
+            "Model: ${model.providerID}/${model.modelID}.",
           );
         }
         return result;
