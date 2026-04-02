@@ -39,7 +39,15 @@ class SessionMetadataGenerator {
             model: model,
           ),
         );
-        return _parseResponse(response);
+
+        final result = _parseResponse(response);
+        if (result == null) {
+          Log.w(
+            "SessionMetadataGenerator: failed to parse response into metadata. "
+            "Model: ${model.providerID}/${model.modelID}.",
+          );
+        }
+        return result;
       } finally {
         try {
           await _api.deleteSession(
@@ -147,7 +155,11 @@ class SessionMetadataGenerator {
   }
 
   SessionMetadata? _parseResponse(MessageWithParts response) {
-    final mergedText = response.parts.map((part) => part.text).whereType<String>().join();
+    final mergedText = response.parts
+        .where((part) => part.type == "text")
+        .map((part) => part.text)
+        .whereType<String>()
+        .join();
 
     if (mergedText.isEmpty) {
       return null;
