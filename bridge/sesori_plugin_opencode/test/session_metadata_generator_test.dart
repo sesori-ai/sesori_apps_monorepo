@@ -27,8 +27,10 @@ void main() {
       expect(api.deleteSessionCalls, equals(1));
     });
 
-    test("returns null when config has no smallModel", () async {
-      final api = FakeOpenCodeApi(config: const OpenCodeConfig(smallModel: null));
+    test("returns null when config has neither smallModel nor model", () async {
+      final api = FakeOpenCodeApi(
+        config: const OpenCodeConfig(smallModel: null, model: null),
+      );
       final generator = SessionMetadataGenerator(api: api);
 
       final metadata = await generator.generate(

@@ -17,25 +17,12 @@ class SessionMetadataGenerator {
     required String directory,
   }) async {
     try {
-      final config = await _api.getConfig();
-      final smallModelStr = config.smallModel;
-      if (smallModelStr == null) {
-        Log.w("SessionMetadataGenerator: no small_model configured");
+      final model = await _resolveModel();
+      if (model == null) {
+        Log.w("SessionMetadataGenerator: no suitable model found");
         return null;
       }
 
-      final slashIndex = smallModelStr.indexOf("/");
-      if (slashIndex < 0) {
-        Log.w("SessionMetadataGenerator: invalid model format: $smallModelStr");
-        return null;
-      }
-
-      final providerID = smallModelStr.substring(0, slashIndex);
-      final modelID = smallModelStr.substring(slashIndex + 1);
-      if (providerID.isEmpty || modelID.isEmpty) {
-        Log.w("SessionMetadataGenerator: empty provider or model in: $smallModelStr");
-        return null;
-      }
       final truncated = firstMessage.length > 500 ? firstMessage.substring(0, 500) : firstMessage;
 
       final session = await _api.createSession(directory: directory);
@@ -48,7 +35,7 @@ class SessionMetadataGenerator {
               {"type": "text", "text": truncated},
             ],
             system: _systemPrompt,
-            model: (providerID: providerID, modelID: modelID),
+            model: model,
           ),
         );
 
@@ -69,6 +56,22 @@ class SessionMetadataGenerator {
       Log.w("SessionMetadataGenerator: failed to generate metadata: $e");
       return null;
     }
+  }
+
+  /// Resolves the model to use: prefers small_model, falls back to model.
+  Future<({String providerID, String modelID})?> _resolveModel() async {
+    final config = await _api.getConfig();
+    final modelStr = config.smallModel ?? config.model;
+    if (modelStr == null) return null;
+
+    final slashIndex = modelStr.indexOf("/");
+    if (slashIndex < 0) return null;
+
+    final providerID = modelStr.substring(0, slashIndex);
+    final modelID = modelStr.substring(slashIndex + 1);
+    if (providerID.isEmpty || modelID.isEmpty) return null;
+
+    return (providerID: providerID, modelID: modelID);
   }
 
   SessionMetadata? _parseResponse(MessageWithParts response) {
