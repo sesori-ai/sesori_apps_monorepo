@@ -40,7 +40,18 @@ class SessionMetadataGenerator {
           ),
         );
 
+        Log.d(
+          "SessionMetadataGenerator: model=${model.providerID}/${model.modelID}, "
+          "parts=${response.parts.length}, "
+          "partTypes=${response.parts.map((p) => p.type).toList()}",
+        );
+        final allText = response.parts.map((p) => p.text).whereType<String>().join();
+        final textOnly = response.parts.where((p) => p.type == "text").map((p) => p.text).whereType<String>().join();
+        Log.d("SessionMetadataGenerator: allText=$allText");
+        Log.d("SessionMetadataGenerator: textOnly=$textOnly");
+
         final result = _parseResponse(response);
+        Log.d("SessionMetadataGenerator: parseResult=$result");
         if (result == null) {
           Log.w(
             "SessionMetadataGenerator: failed to parse response into metadata. "
@@ -60,8 +71,8 @@ class SessionMetadataGenerator {
           );
         }
       }
-    } catch (e) {
-      Log.w("SessionMetadataGenerator: failed to generate metadata: $e");
+    } catch (e, st) {
+      Log.w("SessionMetadataGenerator: failed to generate metadata: $e\n$st");
       return null;
     }
   }

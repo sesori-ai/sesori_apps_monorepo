@@ -11,6 +11,7 @@ import "routing_test_helpers.dart";
 void main() {
   group("CreateSessionHandler", () {
     late FakeBridgePlugin plugin;
+    late FakeMetadataService metadataService;
     late _FakeWorktreeService worktreeService;
     late CreateSessionHandler handler;
     late AppDatabase db;
@@ -18,9 +19,11 @@ void main() {
     setUp(() {
       db = createTestDatabase();
       plugin = FakeBridgePlugin();
+      metadataService = FakeMetadataService();
       worktreeService = _FakeWorktreeService(database: db);
       handler = CreateSessionHandler(
         plugin: plugin,
+        metadataService: metadataService,
         worktreeService: worktreeService,
         sessionDao: db.sessionDao,
       );
@@ -212,6 +215,7 @@ void main() {
       final failingPlugin = _ThrowingCreateSessionPlugin();
       final localHandler = CreateSessionHandler(
         plugin: failingPlugin,
+        metadataService: metadataService,
         worktreeService: worktreeService,
         sessionDao: db.sessionDao,
       );
@@ -465,6 +469,7 @@ void main() {
       );
       final localHandler = CreateSessionHandler(
         plugin: throwingPlugin,
+        metadataService: metadataService,
         worktreeService: worktreeService,
         sessionDao: db.sessionDao,
       );

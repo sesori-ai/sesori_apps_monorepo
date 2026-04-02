@@ -1,5 +1,7 @@
 import "dart:async";
 
+import "package:sesori_bridge/src/bridge/metadata_service.dart";
+import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge_metadata;
 import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/routing/get_sessions_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -356,5 +358,17 @@ class FakeSessionDao implements SessionDaoLike {
 
   Future<void> deleteSession({required String sessionId}) async {
     _sessions.remove(sessionId);
+  }
+}
+
+/// Hand-written fake [MetadataService] for testing.
+class FakeMetadataService implements MetadataService {
+  bridge_metadata.SessionMetadata? generateResult;
+  String? lastGenerateMessage;
+
+  @override
+  Future<bridge_metadata.SessionMetadata?> generate({required String firstMessage}) async {
+    lastGenerateMessage = firstMessage;
+    return generateResult;
   }
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:http/http.dart' as http;
 import 'package:opencode_plugin/opencode_plugin.dart';
 import 'package:sesori_bridge/src/auth/login.dart';
 import 'package:sesori_bridge/src/auth/profile.dart';
@@ -11,6 +12,7 @@ import 'package:sesori_bridge/src/auth/validate.dart';
 import 'package:sesori_bridge/src/bridge/bandwidth_tracker.dart';
 import 'package:sesori_bridge/src/bridge/debug_server.dart';
 import 'package:sesori_bridge/src/bridge/log_failure_reporter.dart';
+import 'package:sesori_bridge/src/bridge/metadata_service.dart';
 import 'package:sesori_bridge/src/bridge/models/bridge_config.dart';
 import 'package:sesori_bridge/src/bridge/orchestrator.dart';
 import 'package:sesori_bridge/src/bridge/persistence/bridge_diagnostics.dart';
@@ -189,10 +191,17 @@ Future<void> main(List<String> args) async {
 
   final failureReporter = LogFailureReporter();
 
+  final metadataService = MetadataService(
+    client: http.Client(),
+    baseUrl: authBackendURL,
+    tokenRefresher: tokenManager,
+  );
+
   final orchestrator = Orchestrator(
     config: bridgeConfig,
     client: relayClient,
     plugin: plugin,
+    metadataService: metadataService,
     pushNotificationService: pushNotificationService,
     tokenRefresher: tokenManager,
     projectsDao: db.projectsDao,
@@ -208,6 +217,7 @@ Future<void> main(List<String> args) async {
   if (debugPort != null) {
     debugServer = DebugServer(
       plugin: plugin,
+      metadataService: metadataService,
       projectsDao: db.projectsDao,
       port: debugPort,
       failureReporter: failureReporter,
