@@ -18,26 +18,18 @@ class OpenCodeApi {
   final String serverURL;
   final String? _password;
   final http.Client _client;
-  final bool _isClientOwned;
 
   OpenCodeApi({
     required this.serverURL,
     required String? password,
-    http.Client? client,
+    required http.Client client,
   }) : _password = password,
-       _isClientOwned = client == null,
-       _client = client ?? http.Client();
+       _client = client;
 
   Map<String, String> get _authHeaders {
     if (_password == null) return const {};
     final creds = base64.encode(utf8.encode("opencode:$_password"));
     return {"Authorization": "Basic $creds"};
-  }
-
-  void close() {
-    if (_isClientOwned) {
-      _client.close();
-    }
   }
 
   Future<bool> healthCheck() async {

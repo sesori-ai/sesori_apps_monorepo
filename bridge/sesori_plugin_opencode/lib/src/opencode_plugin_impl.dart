@@ -1,5 +1,7 @@
 import "dart:async";
+import "dart:io" as io;
 
+import "package:http/io_client.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../opencode_plugin.dart";
@@ -10,13 +12,37 @@ class OpenCodePlugin implements BridgePlugin {
   final OpenCodeService _service;
   final SseEventParser _parser;
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
+  final io.HttpClient _httpClient;
   final SseEventMapper _mapper = SseEventMapper();
   late final SseConnection _sseConnection;
 
-  OpenCodePlugin({
+  factory OpenCodePlugin({
     required String serverUrl,
     String? password,
-  }) : _service = _createService(serverUrl, password),
+  }) {
+    final httpClient = io.HttpClient();
+    final api = OpenCodeApi(
+      serverURL: serverUrl,
+      password: password,
+      client: IOClient(httpClient),
+    );
+    final repository = OpenCodeRepository(api);
+    final tracker = ActiveSessionTracker(repository);
+    return OpenCodePlugin._(
+      service: OpenCodeService(repository, tracker),
+      httpClient: httpClient,
+      serverUrl: serverUrl,
+      password: password,
+    );
+  }
+
+  OpenCodePlugin._({
+    required OpenCodeService service,
+    required io.HttpClient httpClient,
+    required String serverUrl,
+    required String? password,
+  }) : _service = service,
+       _httpClient = httpClient,
        _parser = SseEventParser(),
        _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>() {
     _sseConnection = SseConnection(
@@ -30,13 +56,6 @@ class OpenCodePlugin implements BridgePlugin {
       },
     );
     unawaited(_initialize());
-  }
-
-  static OpenCodeService _createService(String serverUrl, String? password) {
-    final api = OpenCodeApi(serverURL: serverUrl, password: password);
-    final repository = OpenCodeRepository(api);
-    final tracker = ActiveSessionTracker(repository);
-    return OpenCodeService(repository, tracker);
   }
 
   Future<void> _initialize() async {
@@ -172,7 +191,7 @@ class OpenCodePlugin implements BridgePlugin {
   @override
   Future<void> dispose() async {
     _sseConnection.stop();
-    _service.repository.api.close();
+    _httpClient.close(force: true);
     await _eventBuffer.close();
   }
 
