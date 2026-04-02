@@ -363,10 +363,9 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
                   ),
                 PromptInput(
                   isBusy: _hasActiveWork(sessionStatus: sessionStatus, childStatuses: childStatuses),
-                  onSendPrompt: (text) => context.read<SessionDetailCubit>().sendMessage(text: text),
-                  onSendCommand: (command, arguments) => context.read<SessionDetailCubit>().sendMessage(
-                    text: arguments,
-                    command: command.name,
+                  onSend: (text, command) => context.read<SessionDetailCubit>().sendMessage(
+                    text: text,
+                    command: command,
                   ),
                   onAbort: () => context.read<SessionDetailCubit>().abort(),
                   header: null,

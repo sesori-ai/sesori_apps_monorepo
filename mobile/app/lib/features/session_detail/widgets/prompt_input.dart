@@ -15,8 +15,7 @@ enum _VoiceState { idle, recording, transcribing }
 
 class PromptInput extends StatefulWidget {
   final bool isBusy;
-  final ValueChanged<String> onSendPrompt;
-  final void Function(CommandInfo command, String arguments) onSendCommand;
+  final void Function(String text, String? command) onSend;
   final VoidCallback onAbort;
   final Widget? composerHeader;
   final List<CommandInfo> availableCommands;
@@ -31,8 +30,7 @@ class PromptInput extends StatefulWidget {
   const PromptInput({
     super.key,
     required this.isBusy,
-    required this.onSendPrompt,
-    required this.onSendCommand,
+    required this.onSend,
     required this.onAbort,
     required this.composerHeader,
     required this.availableCommands,
@@ -80,12 +78,12 @@ class _PromptInputState extends State<PromptInput> {
   void _handleSend() {
     final stagedCommand = widget.stagedCommand;
     if (stagedCommand != null) {
-      widget.onSendCommand(stagedCommand, _controller.text);
+      widget.onSend(_controller.text, stagedCommand.name);
       widget.onCommandCleared();
     } else {
       final text = _controller.text.trim();
       if (text.isEmpty) return;
-      widget.onSendPrompt(text);
+      widget.onSend(text, null);
     }
 
     _controller.clear();
