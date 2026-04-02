@@ -215,6 +215,43 @@ void main() {
       expect(response.body, contains("no common ancestor"));
     });
 
+    test("returns 500 when merge-base returns unexpected multi-line output", () async {
+      await sessionDao.insertSession(
+        sessionId: "s1",
+        projectId: "project-1",
+        isDedicated: true,
+        createdAt: 123,
+        worktreePath: tempDir.path,
+        branchName: "session-001",
+        baseBranch: "main",
+        baseCommit: "main",
+      );
+
+      processRunner.responder = ({required List<String> arguments}) {
+        if (arguments.length >= 2 && arguments[0] == "rev-parse" && arguments[1] == "--verify") {
+          return ProcessResult(1, 0, "abc123\n", "");
+        }
+        if (arguments.length >= 2 && arguments[0] == "merge-base") {
+          return ProcessResult(1, 0, "abc123\ndef456\n", "");
+        }
+        throw StateError("Unexpected git call: $arguments");
+      };
+
+      final response = await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/session/diffs",
+          body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response.status, equals(500));
+      expect(response.body, contains("unexpected output"));
+    });
+
     test("returns 500 when git diff fails", () async {
       await sessionDao.insertSession(
         sessionId: "s1",

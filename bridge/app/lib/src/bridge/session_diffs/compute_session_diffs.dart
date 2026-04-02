@@ -29,17 +29,20 @@ Future<List<FileDiff>> computeSessionDiffs({
   final mergeBaseResult = await _runGit(
     processRunner: processRunner,
     worktreePath: worktreePath,
-    arguments: ["merge-base", baseBranch, "HEAD"],
+    arguments: ["merge-base", "--", baseBranch, "HEAD"],
   );
   if (mergeBaseResult.exitCode != 0) {
+    final stderr = decodeOutput(mergeBaseResult.stderr).trim();
     if (mergeBaseResult.exitCode == 1) {
       throw BaseBranchUnreachableException(message: "no common ancestor between '$baseBranch' and HEAD");
     }
-    throw const GitDiffQueryException(message: "git merge-base failed");
+    throw GitDiffQueryException(
+      message: "git merge-base failed (exit ${mergeBaseResult.exitCode}): $stderr",
+    );
   }
-  final mergeBaseSha = decodeOutput(mergeBaseResult.stdout).trim();
-  if (mergeBaseSha.isEmpty) {
-    throw const GitDiffQueryException(message: "git merge-base returned empty result");
+  final mergeBaseSha = _parseSingleSha(decodeOutput(mergeBaseResult.stdout));
+  if (mergeBaseSha == null) {
+    throw const GitDiffQueryException(message: "git merge-base returned unexpected output");
   }
 
   final nameStatusResult = await _runGit(
@@ -138,6 +141,14 @@ Future<List<FileDiff>> computeSessionDiffs({
   }
 
   return diffs;
+}
+
+/// Parses stdout that should contain exactly one non-empty SHA line.
+/// Returns `null` if stdout is empty or contains multiple non-empty lines.
+String? _parseSingleSha(String stdout) {
+  final lines = stdout.split("\n").where((l) => l.trim().isNotEmpty).toList();
+  if (lines.length != 1) return null;
+  return lines.first.trim();
 }
 
 Future<ProcessResult> _runGit({
