@@ -309,6 +309,9 @@ class FakeOpenCodeApi implements OpenCodeApi {
   FakeOpenCodeApi({this.messages = const [], this.messagesError});
 
   @override
+  void close() {}
+
+  @override
   Future<bool> healthCheck() async => true;
 
   @override
