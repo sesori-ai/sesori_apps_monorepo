@@ -17,11 +17,14 @@ const _directoryOpenCodeHeader = "x-opencode-directory";
 class OpenCodeApi {
   final String serverURL;
   final String? _password;
+  final http.Client _client;
 
   OpenCodeApi({
     required this.serverURL,
     required String? password,
-  }) : _password = password;
+    http.Client? client,
+  }) : _password = password,
+       _client = client ?? http.Client();
 
   Map<String, String> get _authHeaders {
     if (_password == null) return const {};
@@ -29,8 +32,19 @@ class OpenCodeApi {
     return {"Authorization": "Basic $creds"};
   }
 
+  void close() {
+    _client.close();
+  }
+
+  Future<bool> healthCheck() async {
+    final response = await _client
+        .get(Uri.parse("$serverURL/global/health"), headers: _authHeaders)
+        .timeout(const Duration(seconds: 5));
+    return response.statusCode >= 200 && response.statusCode < 300;
+  }
+
   Future<List<Project>> listProjects() async {
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse("$serverURL/project"),
       headers: _authHeaders,
     );
@@ -41,7 +55,7 @@ class OpenCodeApi {
   }
 
   Future<List<Session>> listRootSessions() async {
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse("$serverURL/session?roots=true"),
       headers: _authHeaders,
     );
@@ -57,7 +71,7 @@ class OpenCodeApi {
       _directoryOpenCodeHeader: ?directory,
     };
 
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse("$serverURL/session"),
       headers: headers,
     );
@@ -71,33 +85,28 @@ class OpenCodeApi {
     required String directory,
     String? parentSessionId,
   }) async {
-    final client = http.Client();
-    try {
-      // Supported body:
-      //  {
-      //   "parentID": "<sessionID>",   // optional - set this to make it a child
-      //   "title": "string",           // optional - title gets auto-generated after first message
-      //   "permission": "...",         // optional
-      //   "workspaceID": "string"      // optional
-      // }
-      final body = <String, dynamic>{};
-      if (parentSessionId case final id?) {
-        body["parentID"] = id;
-      }
-      final response = await client.post(
-        Uri.parse("$serverURL/session"),
-        headers: {
-          ..._authHeaders,
-          "content-type": "application/json",
-          _directoryOpenCodeHeader: directory,
-        },
-        body: jsonEncode(body),
-      );
-      _ensureSuccess(response, "POST /session");
-      return Session.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
-    } finally {
-      client.close();
+    // Supported body:
+    //  {
+    //   "parentID": "<sessionID>",   // optional - set this to make it a child
+    //   "title": "string",           // optional - title gets auto-generated after first message
+    //   "permission": "...",         // optional
+    //   "workspaceID": "string"      // optional
+    // }
+    final body = <String, dynamic>{};
+    if (parentSessionId case final id?) {
+      body["parentID"] = id;
     }
+    final response = await _client.post(
+      Uri.parse("$serverURL/session"),
+      headers: {
+        ..._authHeaders,
+        "content-type": "application/json",
+        _directoryOpenCodeHeader: directory,
+      },
+      body: jsonEncode(body),
+    );
+    _ensureSuccess(response, "POST /session");
+    return Session.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }
 
   Future<Session> getSession({
@@ -108,7 +117,7 @@ class OpenCodeApi {
       ..._authHeaders,
       _directoryOpenCodeHeader: ?directory,
     };
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse("$serverURL/session/$sessionId"),
       headers: headers,
     );
@@ -121,22 +130,17 @@ class OpenCodeApi {
     required Map<String, dynamic> body,
     required String? directory,
   }) async {
-    final client = http.Client();
-    try {
-      final response = await client.patch(
-        Uri.parse("$serverURL/session/$sessionId"),
-        headers: {
-          ..._authHeaders,
-          "content-type": "application/json",
-          _directoryOpenCodeHeader: ?directory,
-        },
-        body: jsonEncode(body),
-      );
-      _ensureSuccess(response, "PATCH /session/$sessionId");
-      return Session.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
-    } finally {
-      client.close();
-    }
+    final response = await _client.patch(
+      Uri.parse("$serverURL/session/$sessionId"),
+      headers: {
+        ..._authHeaders,
+        "content-type": "application/json",
+        _directoryOpenCodeHeader: ?directory,
+      },
+      body: jsonEncode(body),
+    );
+    _ensureSuccess(response, "PATCH /session/$sessionId");
+    return Session.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }
 
   /// Updates a project by its OpenCode-assigned ID (NOT the worktree path
@@ -146,42 +150,32 @@ class OpenCodeApi {
     required String directory,
     required Map<String, dynamic> body,
   }) async {
-    final client = http.Client();
-    try {
-      final response = await client.patch(
-        Uri.parse("$serverURL/project/$projectId"),
-        headers: {
-          ..._authHeaders,
-          "content-type": "application/json",
-          _directoryOpenCodeHeader: directory,
-        },
-        body: jsonEncode(body),
-      );
-      _ensureSuccess(response, "PATCH /project/$projectId");
-      return Project.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
-    } finally {
-      client.close();
-    }
+    final response = await _client.patch(
+      Uri.parse("$serverURL/project/$projectId"),
+      headers: {
+        ..._authHeaders,
+        "content-type": "application/json",
+        _directoryOpenCodeHeader: directory,
+      },
+      body: jsonEncode(body),
+    );
+    _ensureSuccess(response, "PATCH /project/$projectId");
+    return Project.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }
 
   Future<void> deleteSession({
     required String sessionId,
     required String? directory,
   }) async {
-    final client = http.Client();
-    try {
-      final headers = <String, String>{
-        ..._authHeaders,
-        _directoryOpenCodeHeader: ?directory,
-      };
-      final response = await client.delete(
-        Uri.parse("$serverURL/session/$sessionId"),
-        headers: headers,
-      );
-      _ensureSuccess(response, "DELETE /session/$sessionId");
-    } finally {
-      client.close();
-    }
+    final headers = <String, String>{
+      ..._authHeaders,
+      _directoryOpenCodeHeader: ?directory,
+    };
+    final response = await _client.delete(
+      Uri.parse("$serverURL/session/$sessionId"),
+      headers: headers,
+    );
+    _ensureSuccess(response, "DELETE /session/$sessionId");
   }
 
   Future<List<Session>> getChildren({
@@ -192,7 +186,7 @@ class OpenCodeApi {
       ..._authHeaders,
       _directoryOpenCodeHeader: ?directory, // probably irrelevant for this endpoint
     };
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse("$serverURL/session/$sessionId/children"),
       headers: headers,
     );
@@ -206,20 +200,15 @@ class OpenCodeApi {
     required String sessionId,
     required String directory,
   }) async {
-    final client = http.Client();
-    try {
-      final response = await client.post(
-        Uri.parse("$serverURL/session/$sessionId/fork"),
-        headers: {
-          ..._authHeaders,
-          _directoryOpenCodeHeader: directory,
-        },
-      );
-      _ensureSuccess(response, "POST /session/$sessionId/fork");
-      return Session.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
-    } finally {
-      client.close();
-    }
+    final response = await _client.post(
+      Uri.parse("$serverURL/session/$sessionId/fork"),
+      headers: {
+        ..._authHeaders,
+        _directoryOpenCodeHeader: directory,
+      },
+    );
+    _ensureSuccess(response, "POST /session/$sessionId/fork");
+    return Session.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }
 
   Future<List<MessageWithParts>> getMessages({
@@ -230,7 +219,7 @@ class OpenCodeApi {
       ..._authHeaders,
       _directoryOpenCodeHeader: ?directory, // probably irrelevant for this endpoint
     };
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse("$serverURL/session/$sessionId/message"),
       headers: headers,
     );
@@ -247,46 +236,36 @@ class OpenCodeApi {
     // because otherwise it picks the CWD of where bridge is running
     required String? directory,
   }) async {
-    final client = http.Client();
-    try {
-      final response = await client.post(
-        Uri.parse("$serverURL/session/$sessionId/prompt_async"),
-        headers: {
-          ..._authHeaders,
-          "content-type": "application/json",
-          _directoryOpenCodeHeader: ?directory,
-        },
-        body: jsonEncode(body.toJson()),
-      );
-      _ensureSuccess(response, "POST /session/$sessionId/prompt_async");
-    } finally {
-      client.close();
-    }
+    final response = await _client.post(
+      Uri.parse("$serverURL/session/$sessionId/prompt_async"),
+      headers: {
+        ..._authHeaders,
+        "content-type": "application/json",
+        _directoryOpenCodeHeader: ?directory,
+      },
+      body: jsonEncode(body.toJson()),
+    );
+    _ensureSuccess(response, "POST /session/$sessionId/prompt_async");
   }
 
   Future<void> abortSession({
     required String sessionId,
     required String? directory,
   }) async {
-    final client = http.Client();
-    try {
-      final headers = <String, String>{
-        ..._authHeaders,
-        _directoryOpenCodeHeader: ?directory,
-      };
-      final response = await client.post(
-        Uri.parse("$serverURL/session/$sessionId/abort"),
-        headers: headers,
-        body: "",
-      );
-      _ensureSuccess(response, "POST /session/$sessionId/abort");
-    } finally {
-      client.close();
-    }
+    final headers = <String, String>{
+      ..._authHeaders,
+      _directoryOpenCodeHeader: ?directory,
+    };
+    final response = await _client.post(
+      Uri.parse("$serverURL/session/$sessionId/abort"),
+      headers: headers,
+      body: "",
+    );
+    _ensureSuccess(response, "POST /session/$sessionId/abort");
   }
 
   Future<List<AgentInfo>> listAgents() async {
-    final response = await http.get(Uri.parse("$serverURL/agent"), headers: _authHeaders);
+    final response = await _client.get(Uri.parse("$serverURL/agent"), headers: _authHeaders);
     _ensureSuccess(response, "GET /agent");
 
     final decoded = jsonDecode(response.body) as List;
@@ -300,7 +279,7 @@ class OpenCodeApi {
       ..._authHeaders,
       _directoryOpenCodeHeader: ?directory,
     };
-    final response = await http.get(Uri.parse("$serverURL/question"), headers: headers);
+    final response = await _client.get(Uri.parse("$serverURL/question"), headers: headers);
     Log.v("[getPendingQuestions] response: ${response.body}");
     _ensureSuccess(response, "GET /question");
 
@@ -313,48 +292,38 @@ class OpenCodeApi {
     required String? directory,
     required Map<String, dynamic> body,
   }) async {
-    final client = http.Client();
-    try {
-      final encodedBody = jsonEncode(body);
-      Log.d("[question-api] POST /question/$questionId/reply body=$encodedBody");
-      final response = await client.post(
-        Uri.parse("$serverURL/question/$questionId/reply"),
-        headers: {
-          ..._authHeaders,
-          _directoryOpenCodeHeader: ?directory, // doesn't work well with the directory header
-          "content-type": "application/json",
-        },
-        body: encodedBody,
-      );
-      Log.d("[question-api] POST /question/$questionId/reply => ${response.statusCode} body=${response.body}");
-      _ensureSuccess(response, "POST /question/$questionId/reply");
-    } finally {
-      client.close();
-    }
+    final encodedBody = jsonEncode(body);
+    Log.d("[question-api] POST /question/$questionId/reply body=$encodedBody");
+    final response = await _client.post(
+      Uri.parse("$serverURL/question/$questionId/reply"),
+      headers: {
+        ..._authHeaders,
+        _directoryOpenCodeHeader: ?directory, // doesn't work well with the directory header
+        "content-type": "application/json",
+      },
+      body: encodedBody,
+    );
+    Log.d("[question-api] POST /question/$questionId/reply => ${response.statusCode} body=${response.body}");
+    _ensureSuccess(response, "POST /question/$questionId/reply");
   }
 
   Future<void> rejectQuestion({
     required String questionId,
   }) async {
-    final client = http.Client();
-    try {
-      Log.d("[question-api] POST /question/$questionId/reject");
-      final response = await client.post(
-        Uri.parse("$serverURL/question/$questionId/reject"),
-        headers: _authHeaders,
-        body: "",
-      );
-      Log.d("[question-api] POST /question/$questionId/reject => ${response.statusCode} body=${response.body}");
-      _ensureSuccess(response, "POST /question/$questionId/reject");
-    } finally {
-      client.close();
-    }
+    Log.d("[question-api] POST /question/$questionId/reject");
+    final response = await _client.post(
+      Uri.parse("$serverURL/question/$questionId/reject"),
+      headers: _authHeaders,
+      body: "",
+    );
+    Log.d("[question-api] POST /question/$questionId/reject => ${response.statusCode} body=${response.body}");
+    _ensureSuccess(response, "POST /question/$questionId/reject");
   }
 
   Future<Project> getProject({
     required String directory,
   }) async {
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse("$serverURL/project/current"),
       headers: {
         ..._authHeaders,
@@ -393,7 +362,7 @@ class OpenCodeApi {
     final uri = Uri.parse(
       "$serverURL/experimental/session",
     ).replace(queryParameters: queryParams.isEmpty ? null : queryParams);
-    final response = await http.get(uri, headers: _authHeaders);
+    final response = await _client.get(uri, headers: _authHeaders);
     _ensureSuccess(response, "GET /experimental/session");
 
     final decoded = jsonDecode(response.body) as List;
@@ -401,7 +370,7 @@ class OpenCodeApi {
   }
 
   Future<ProviderListResponse> listProviders() async {
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse("$serverURL/provider"),
       headers: _authHeaders,
     );
@@ -410,7 +379,7 @@ class OpenCodeApi {
   }
 
   Future<Map<String, SessionStatus>> getSessionStatuses() async {
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse("$serverURL/session/status"),
       headers: _authHeaders,
     );
