@@ -26,10 +26,29 @@ Future<List<FileDiff>> computeSessionDiffs({
     throw BaseBranchUnreachableException(message: "base branch '$baseBranch' is not reachable");
   }
 
+  final mergeBaseResult = await _runGit(
+    processRunner: processRunner,
+    worktreePath: worktreePath,
+    arguments: ["merge-base", "--", baseBranch, "HEAD"],
+  );
+  if (mergeBaseResult.exitCode != 0) {
+    final stderr = decodeOutput(mergeBaseResult.stderr).trim();
+    if (mergeBaseResult.exitCode == 1) {
+      throw BaseBranchUnreachableException(message: "no common ancestor between '$baseBranch' and HEAD");
+    }
+    throw GitDiffQueryException(
+      message: "git merge-base failed (exit ${mergeBaseResult.exitCode}): $stderr",
+    );
+  }
+  final mergeBaseSha = _parseSingleSha(decodeOutput(mergeBaseResult.stdout));
+  if (mergeBaseSha == null) {
+    throw const GitDiffQueryException(message: "git merge-base returned unexpected output");
+  }
+
   final nameStatusResult = await _runGit(
     processRunner: processRunner,
     worktreePath: worktreePath,
-    arguments: ["diff", "--no-ext-diff", "--no-color", "--no-renames", "--name-status", baseBranch],
+    arguments: ["diff", "--no-ext-diff", "--no-color", "--no-renames", "--name-status", mergeBaseSha],
   );
   if (nameStatusResult.exitCode != 0) {
     throw const GitDiffQueryException(message: "git diff --name-status failed");
@@ -38,7 +57,7 @@ Future<List<FileDiff>> computeSessionDiffs({
   final numstatResult = await _runGit(
     processRunner: processRunner,
     worktreePath: worktreePath,
-    arguments: ["diff", "--no-ext-diff", "--no-color", "--no-renames", "--numstat", baseBranch],
+    arguments: ["diff", "--no-ext-diff", "--no-color", "--no-renames", "--numstat", mergeBaseSha],
   );
   if (numstatResult.exitCode != 0) {
     throw const GitDiffQueryException(message: "git diff --numstat failed");
@@ -53,7 +72,7 @@ Future<List<FileDiff>> computeSessionDiffs({
     final beforeResult = await readBefore(
       processRunner: processRunner,
       worktreePath: worktreePath,
-      baseBranch: baseBranch,
+      baseBranch: mergeBaseSha,
       file: entry.file,
       status: entry.status,
     );
@@ -122,6 +141,14 @@ Future<List<FileDiff>> computeSessionDiffs({
   }
 
   return diffs;
+}
+
+/// Parses stdout that should contain exactly one non-empty SHA line.
+/// Returns `null` if stdout is empty or contains multiple non-empty lines.
+String? _parseSingleSha(String stdout) {
+  final lines = stdout.split("\n").where((l) => l.trim().isNotEmpty).toList();
+  if (lines.length != 1) return null;
+  return lines.first.trim();
 }
 
 Future<ProcessResult> _runGit({

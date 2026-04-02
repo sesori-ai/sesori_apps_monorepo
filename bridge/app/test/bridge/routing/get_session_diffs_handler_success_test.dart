@@ -57,6 +57,9 @@ void main() {
         if (arguments.length >= 2 && arguments[0] == "rev-parse" && arguments[1] == "--verify") {
           return ProcessResult(1, 0, "abc123\n", "");
         }
+        if (arguments.length >= 2 && arguments[0] == "merge-base") {
+          return ProcessResult(1, 0, "abc123\n", "");
+        }
         if (arguments.contains("--name-status")) {
           return ProcessResult(
             1,
@@ -74,10 +77,10 @@ void main() {
           );
         }
         if (arguments.length >= 2 && arguments[0] == "show") {
-          if (arguments[1] == "main:lib/modified.dart") {
+          if (arguments[1] == "abc123:lib/modified.dart") {
             return ProcessResult(1, 0, "modified before\n", "");
           }
-          if (arguments[1] == "main:lib/deleted.dart") {
+          if (arguments[1] == "abc123:lib/deleted.dart") {
             return ProcessResult(1, 0, "deleted before\n", "");
           }
           return ProcessResult(1, 128, "", "fatal");
@@ -150,6 +153,9 @@ void main() {
         if (arguments.length >= 2 && arguments[0] == "rev-parse" && arguments[1] == "--verify") {
           return ProcessResult(1, 0, "abc123\n", "");
         }
+        if (arguments.length >= 2 && arguments[0] == "merge-base") {
+          return ProcessResult(1, 0, "abc123\n", "");
+        }
         if (arguments.contains("--name-status")) {
           return ProcessResult(1, 0, "M\tlib/kept.dart\nM\tlib/model.freezed.dart\n", "");
         }
@@ -202,6 +208,9 @@ void main() {
 
       processRunner.responder = ({required List<String> arguments}) {
         if (arguments.length >= 2 && arguments[0] == "rev-parse" && arguments[1] == "--verify") {
+          return ProcessResult(1, 0, "abc123\n", "");
+        }
+        if (arguments.length >= 2 && arguments[0] == "merge-base") {
           return ProcessResult(1, 0, "abc123\n", "");
         }
         if (arguments.contains("--name-status")) {
@@ -259,6 +268,9 @@ void main() {
 
       processRunner.responder = ({required List<String> arguments}) {
         if (arguments.length >= 2 && arguments[0] == "rev-parse" && arguments[1] == "--verify") {
+          return ProcessResult(1, 0, "abc123\n", "");
+        }
+        if (arguments.length >= 2 && arguments[0] == "merge-base") {
           return ProcessResult(1, 0, "abc123\n", "");
         }
         if (arguments.contains("--name-status")) {
