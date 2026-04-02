@@ -660,11 +660,770 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
   }
 }
 
+mixin $PullRequestsTableTableToColumns
+    implements Insertable<PullRequestsTableData> {
+  String get projectId;
+  String get branchName;
+  int get prNumber;
+  String get url;
+  String get title;
+  String get state;
+  String? get mergeableStatus;
+  String? get reviewDecision;
+  String? get checkStatus;
+  String? get sessionId;
+  int get lastCheckedAt;
+  int get createdAt;
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['project_id'] = Variable<String>(projectId);
+    map['branch_name'] = Variable<String>(branchName);
+    map['pr_number'] = Variable<int>(prNumber);
+    map['url'] = Variable<String>(url);
+    map['title'] = Variable<String>(title);
+    map['state'] = Variable<String>(state);
+    if (!nullToAbsent || mergeableStatus != null) {
+      map['mergeable_status'] = Variable<String>(mergeableStatus);
+    }
+    if (!nullToAbsent || reviewDecision != null) {
+      map['review_decision'] = Variable<String>(reviewDecision);
+    }
+    if (!nullToAbsent || checkStatus != null) {
+      map['check_status'] = Variable<String>(checkStatus);
+    }
+    if (!nullToAbsent || sessionId != null) {
+      map['session_id'] = Variable<String>(sessionId);
+    }
+    map['last_checked_at'] = Variable<int>(lastCheckedAt);
+    map['created_at'] = Variable<int>(createdAt);
+    return map;
+  }
+}
+
+class $PullRequestsTableTable extends PullRequestsTable
+    with TableInfo<$PullRequestsTableTable, PullRequestsTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PullRequestsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _projectIdMeta = const VerificationMeta(
+    'projectId',
+  );
+  @override
+  late final GeneratedColumn<String> projectId = GeneratedColumn<String>(
+    'project_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _branchNameMeta = const VerificationMeta(
+    'branchName',
+  );
+  @override
+  late final GeneratedColumn<String> branchName = GeneratedColumn<String>(
+    'branch_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _prNumberMeta = const VerificationMeta(
+    'prNumber',
+  );
+  @override
+  late final GeneratedColumn<int> prNumber = GeneratedColumn<int>(
+    'pr_number',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _urlMeta = const VerificationMeta('url');
+  @override
+  late final GeneratedColumn<String> url = GeneratedColumn<String>(
+    'url',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _stateMeta = const VerificationMeta('state');
+  @override
+  late final GeneratedColumn<String> state = GeneratedColumn<String>(
+    'state',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _mergeableStatusMeta = const VerificationMeta(
+    'mergeableStatus',
+  );
+  @override
+  late final GeneratedColumn<String> mergeableStatus = GeneratedColumn<String>(
+    'mergeable_status',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _reviewDecisionMeta = const VerificationMeta(
+    'reviewDecision',
+  );
+  @override
+  late final GeneratedColumn<String> reviewDecision = GeneratedColumn<String>(
+    'review_decision',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _checkStatusMeta = const VerificationMeta(
+    'checkStatus',
+  );
+  @override
+  late final GeneratedColumn<String> checkStatus = GeneratedColumn<String>(
+    'check_status',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sessionIdMeta = const VerificationMeta(
+    'sessionId',
+  );
+  @override
+  late final GeneratedColumn<String> sessionId = GeneratedColumn<String>(
+    'session_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES sessions_table (session_id)',
+    ),
+  );
+  static const VerificationMeta _lastCheckedAtMeta = const VerificationMeta(
+    'lastCheckedAt',
+  );
+  @override
+  late final GeneratedColumn<int> lastCheckedAt = GeneratedColumn<int>(
+    'last_checked_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    projectId,
+    branchName,
+    prNumber,
+    url,
+    title,
+    state,
+    mergeableStatus,
+    reviewDecision,
+    checkStatus,
+    sessionId,
+    lastCheckedAt,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'pull_requests_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PullRequestsTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('project_id')) {
+      context.handle(
+        _projectIdMeta,
+        projectId.isAcceptableOrUnknown(data['project_id']!, _projectIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_projectIdMeta);
+    }
+    if (data.containsKey('branch_name')) {
+      context.handle(
+        _branchNameMeta,
+        branchName.isAcceptableOrUnknown(data['branch_name']!, _branchNameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_branchNameMeta);
+    }
+    if (data.containsKey('pr_number')) {
+      context.handle(
+        _prNumberMeta,
+        prNumber.isAcceptableOrUnknown(data['pr_number']!, _prNumberMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_prNumberMeta);
+    }
+    if (data.containsKey('url')) {
+      context.handle(
+        _urlMeta,
+        url.isAcceptableOrUnknown(data['url']!, _urlMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_urlMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('state')) {
+      context.handle(
+        _stateMeta,
+        state.isAcceptableOrUnknown(data['state']!, _stateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_stateMeta);
+    }
+    if (data.containsKey('mergeable_status')) {
+      context.handle(
+        _mergeableStatusMeta,
+        mergeableStatus.isAcceptableOrUnknown(
+          data['mergeable_status']!,
+          _mergeableStatusMeta,
+        ),
+      );
+    }
+    if (data.containsKey('review_decision')) {
+      context.handle(
+        _reviewDecisionMeta,
+        reviewDecision.isAcceptableOrUnknown(
+          data['review_decision']!,
+          _reviewDecisionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('check_status')) {
+      context.handle(
+        _checkStatusMeta,
+        checkStatus.isAcceptableOrUnknown(
+          data['check_status']!,
+          _checkStatusMeta,
+        ),
+      );
+    }
+    if (data.containsKey('session_id')) {
+      context.handle(
+        _sessionIdMeta,
+        sessionId.isAcceptableOrUnknown(data['session_id']!, _sessionIdMeta),
+      );
+    }
+    if (data.containsKey('last_checked_at')) {
+      context.handle(
+        _lastCheckedAtMeta,
+        lastCheckedAt.isAcceptableOrUnknown(
+          data['last_checked_at']!,
+          _lastCheckedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_lastCheckedAtMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {projectId, branchName};
+  @override
+  PullRequestsTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PullRequestsTableData(
+      projectId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}project_id'],
+      )!,
+      branchName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_name'],
+      )!,
+      prNumber: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}pr_number'],
+      )!,
+      url: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}url'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      state: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}state'],
+      )!,
+      mergeableStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}mergeable_status'],
+      ),
+      reviewDecision: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}review_decision'],
+      ),
+      checkStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}check_status'],
+      ),
+      sessionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}session_id'],
+      ),
+      lastCheckedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_checked_at'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $PullRequestsTableTable createAlias(String alias) {
+    return $PullRequestsTableTable(attachedDatabase, alias);
+  }
+
+  @override
+  bool get withoutRowId => true;
+}
+
+class PullRequestsTableData extends DataClass
+    with $PullRequestsTableTableToColumns {
+  @override
+  final String projectId;
+  @override
+  final String branchName;
+  @override
+  final int prNumber;
+  @override
+  final String url;
+  @override
+  final String title;
+  @override
+  final String state;
+  @override
+  final String? mergeableStatus;
+  @override
+  final String? reviewDecision;
+  @override
+  final String? checkStatus;
+  @override
+  final String? sessionId;
+  @override
+  final int lastCheckedAt;
+  @override
+  final int createdAt;
+  const PullRequestsTableData({
+    required this.projectId,
+    required this.branchName,
+    required this.prNumber,
+    required this.url,
+    required this.title,
+    required this.state,
+    this.mergeableStatus,
+    this.reviewDecision,
+    this.checkStatus,
+    this.sessionId,
+    required this.lastCheckedAt,
+    required this.createdAt,
+  });
+  PullRequestsTableCompanion toCompanion(bool nullToAbsent) {
+    return PullRequestsTableCompanion(
+      projectId: Value(projectId),
+      branchName: Value(branchName),
+      prNumber: Value(prNumber),
+      url: Value(url),
+      title: Value(title),
+      state: Value(state),
+      mergeableStatus: mergeableStatus == null && nullToAbsent
+          ? const Value.absent()
+          : Value(mergeableStatus),
+      reviewDecision: reviewDecision == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reviewDecision),
+      checkStatus: checkStatus == null && nullToAbsent
+          ? const Value.absent()
+          : Value(checkStatus),
+      sessionId: sessionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sessionId),
+      lastCheckedAt: Value(lastCheckedAt),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory PullRequestsTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PullRequestsTableData(
+      projectId: serializer.fromJson<String>(json['projectId']),
+      branchName: serializer.fromJson<String>(json['branchName']),
+      prNumber: serializer.fromJson<int>(json['prNumber']),
+      url: serializer.fromJson<String>(json['url']),
+      title: serializer.fromJson<String>(json['title']),
+      state: serializer.fromJson<String>(json['state']),
+      mergeableStatus: serializer.fromJson<String?>(json['mergeableStatus']),
+      reviewDecision: serializer.fromJson<String?>(json['reviewDecision']),
+      checkStatus: serializer.fromJson<String?>(json['checkStatus']),
+      sessionId: serializer.fromJson<String?>(json['sessionId']),
+      lastCheckedAt: serializer.fromJson<int>(json['lastCheckedAt']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'projectId': serializer.toJson<String>(projectId),
+      'branchName': serializer.toJson<String>(branchName),
+      'prNumber': serializer.toJson<int>(prNumber),
+      'url': serializer.toJson<String>(url),
+      'title': serializer.toJson<String>(title),
+      'state': serializer.toJson<String>(state),
+      'mergeableStatus': serializer.toJson<String?>(mergeableStatus),
+      'reviewDecision': serializer.toJson<String?>(reviewDecision),
+      'checkStatus': serializer.toJson<String?>(checkStatus),
+      'sessionId': serializer.toJson<String?>(sessionId),
+      'lastCheckedAt': serializer.toJson<int>(lastCheckedAt),
+      'createdAt': serializer.toJson<int>(createdAt),
+    };
+  }
+
+  PullRequestsTableData copyWith({
+    String? projectId,
+    String? branchName,
+    int? prNumber,
+    String? url,
+    String? title,
+    String? state,
+    Value<String?> mergeableStatus = const Value.absent(),
+    Value<String?> reviewDecision = const Value.absent(),
+    Value<String?> checkStatus = const Value.absent(),
+    Value<String?> sessionId = const Value.absent(),
+    int? lastCheckedAt,
+    int? createdAt,
+  }) => PullRequestsTableData(
+    projectId: projectId ?? this.projectId,
+    branchName: branchName ?? this.branchName,
+    prNumber: prNumber ?? this.prNumber,
+    url: url ?? this.url,
+    title: title ?? this.title,
+    state: state ?? this.state,
+    mergeableStatus: mergeableStatus.present
+        ? mergeableStatus.value
+        : this.mergeableStatus,
+    reviewDecision: reviewDecision.present
+        ? reviewDecision.value
+        : this.reviewDecision,
+    checkStatus: checkStatus.present ? checkStatus.value : this.checkStatus,
+    sessionId: sessionId.present ? sessionId.value : this.sessionId,
+    lastCheckedAt: lastCheckedAt ?? this.lastCheckedAt,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  PullRequestsTableData copyWithCompanion(PullRequestsTableCompanion data) {
+    return PullRequestsTableData(
+      projectId: data.projectId.present ? data.projectId.value : this.projectId,
+      branchName: data.branchName.present
+          ? data.branchName.value
+          : this.branchName,
+      prNumber: data.prNumber.present ? data.prNumber.value : this.prNumber,
+      url: data.url.present ? data.url.value : this.url,
+      title: data.title.present ? data.title.value : this.title,
+      state: data.state.present ? data.state.value : this.state,
+      mergeableStatus: data.mergeableStatus.present
+          ? data.mergeableStatus.value
+          : this.mergeableStatus,
+      reviewDecision: data.reviewDecision.present
+          ? data.reviewDecision.value
+          : this.reviewDecision,
+      checkStatus: data.checkStatus.present
+          ? data.checkStatus.value
+          : this.checkStatus,
+      sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
+      lastCheckedAt: data.lastCheckedAt.present
+          ? data.lastCheckedAt.value
+          : this.lastCheckedAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PullRequestsTableData(')
+          ..write('projectId: $projectId, ')
+          ..write('branchName: $branchName, ')
+          ..write('prNumber: $prNumber, ')
+          ..write('url: $url, ')
+          ..write('title: $title, ')
+          ..write('state: $state, ')
+          ..write('mergeableStatus: $mergeableStatus, ')
+          ..write('reviewDecision: $reviewDecision, ')
+          ..write('checkStatus: $checkStatus, ')
+          ..write('sessionId: $sessionId, ')
+          ..write('lastCheckedAt: $lastCheckedAt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    projectId,
+    branchName,
+    prNumber,
+    url,
+    title,
+    state,
+    mergeableStatus,
+    reviewDecision,
+    checkStatus,
+    sessionId,
+    lastCheckedAt,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PullRequestsTableData &&
+          other.projectId == this.projectId &&
+          other.branchName == this.branchName &&
+          other.prNumber == this.prNumber &&
+          other.url == this.url &&
+          other.title == this.title &&
+          other.state == this.state &&
+          other.mergeableStatus == this.mergeableStatus &&
+          other.reviewDecision == this.reviewDecision &&
+          other.checkStatus == this.checkStatus &&
+          other.sessionId == this.sessionId &&
+          other.lastCheckedAt == this.lastCheckedAt &&
+          other.createdAt == this.createdAt);
+}
+
+class PullRequestsTableCompanion
+    extends UpdateCompanion<PullRequestsTableData> {
+  final Value<String> projectId;
+  final Value<String> branchName;
+  final Value<int> prNumber;
+  final Value<String> url;
+  final Value<String> title;
+  final Value<String> state;
+  final Value<String?> mergeableStatus;
+  final Value<String?> reviewDecision;
+  final Value<String?> checkStatus;
+  final Value<String?> sessionId;
+  final Value<int> lastCheckedAt;
+  final Value<int> createdAt;
+  const PullRequestsTableCompanion({
+    this.projectId = const Value.absent(),
+    this.branchName = const Value.absent(),
+    this.prNumber = const Value.absent(),
+    this.url = const Value.absent(),
+    this.title = const Value.absent(),
+    this.state = const Value.absent(),
+    this.mergeableStatus = const Value.absent(),
+    this.reviewDecision = const Value.absent(),
+    this.checkStatus = const Value.absent(),
+    this.sessionId = const Value.absent(),
+    this.lastCheckedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  PullRequestsTableCompanion.insert({
+    required String projectId,
+    required String branchName,
+    required int prNumber,
+    required String url,
+    required String title,
+    required String state,
+    this.mergeableStatus = const Value.absent(),
+    this.reviewDecision = const Value.absent(),
+    this.checkStatus = const Value.absent(),
+    this.sessionId = const Value.absent(),
+    required int lastCheckedAt,
+    required int createdAt,
+  }) : projectId = Value(projectId),
+       branchName = Value(branchName),
+       prNumber = Value(prNumber),
+       url = Value(url),
+       title = Value(title),
+       state = Value(state),
+       lastCheckedAt = Value(lastCheckedAt),
+       createdAt = Value(createdAt);
+  static Insertable<PullRequestsTableData> custom({
+    Expression<String>? projectId,
+    Expression<String>? branchName,
+    Expression<int>? prNumber,
+    Expression<String>? url,
+    Expression<String>? title,
+    Expression<String>? state,
+    Expression<String>? mergeableStatus,
+    Expression<String>? reviewDecision,
+    Expression<String>? checkStatus,
+    Expression<String>? sessionId,
+    Expression<int>? lastCheckedAt,
+    Expression<int>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (projectId != null) 'project_id': projectId,
+      if (branchName != null) 'branch_name': branchName,
+      if (prNumber != null) 'pr_number': prNumber,
+      if (url != null) 'url': url,
+      if (title != null) 'title': title,
+      if (state != null) 'state': state,
+      if (mergeableStatus != null) 'mergeable_status': mergeableStatus,
+      if (reviewDecision != null) 'review_decision': reviewDecision,
+      if (checkStatus != null) 'check_status': checkStatus,
+      if (sessionId != null) 'session_id': sessionId,
+      if (lastCheckedAt != null) 'last_checked_at': lastCheckedAt,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  PullRequestsTableCompanion copyWith({
+    Value<String>? projectId,
+    Value<String>? branchName,
+    Value<int>? prNumber,
+    Value<String>? url,
+    Value<String>? title,
+    Value<String>? state,
+    Value<String?>? mergeableStatus,
+    Value<String?>? reviewDecision,
+    Value<String?>? checkStatus,
+    Value<String?>? sessionId,
+    Value<int>? lastCheckedAt,
+    Value<int>? createdAt,
+  }) {
+    return PullRequestsTableCompanion(
+      projectId: projectId ?? this.projectId,
+      branchName: branchName ?? this.branchName,
+      prNumber: prNumber ?? this.prNumber,
+      url: url ?? this.url,
+      title: title ?? this.title,
+      state: state ?? this.state,
+      mergeableStatus: mergeableStatus ?? this.mergeableStatus,
+      reviewDecision: reviewDecision ?? this.reviewDecision,
+      checkStatus: checkStatus ?? this.checkStatus,
+      sessionId: sessionId ?? this.sessionId,
+      lastCheckedAt: lastCheckedAt ?? this.lastCheckedAt,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (projectId.present) {
+      map['project_id'] = Variable<String>(projectId.value);
+    }
+    if (branchName.present) {
+      map['branch_name'] = Variable<String>(branchName.value);
+    }
+    if (prNumber.present) {
+      map['pr_number'] = Variable<int>(prNumber.value);
+    }
+    if (url.present) {
+      map['url'] = Variable<String>(url.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (state.present) {
+      map['state'] = Variable<String>(state.value);
+    }
+    if (mergeableStatus.present) {
+      map['mergeable_status'] = Variable<String>(mergeableStatus.value);
+    }
+    if (reviewDecision.present) {
+      map['review_decision'] = Variable<String>(reviewDecision.value);
+    }
+    if (checkStatus.present) {
+      map['check_status'] = Variable<String>(checkStatus.value);
+    }
+    if (sessionId.present) {
+      map['session_id'] = Variable<String>(sessionId.value);
+    }
+    if (lastCheckedAt.present) {
+      map['last_checked_at'] = Variable<int>(lastCheckedAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PullRequestsTableCompanion(')
+          ..write('projectId: $projectId, ')
+          ..write('branchName: $branchName, ')
+          ..write('prNumber: $prNumber, ')
+          ..write('url: $url, ')
+          ..write('title: $title, ')
+          ..write('state: $state, ')
+          ..write('mergeableStatus: $mergeableStatus, ')
+          ..write('reviewDecision: $reviewDecision, ')
+          ..write('checkStatus: $checkStatus, ')
+          ..write('sessionId: $sessionId, ')
+          ..write('lastCheckedAt: $lastCheckedAt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $ProjectsTableTable projectsTable = $ProjectsTableTable(this);
   late final $SessionTableTable sessionTable = $SessionTableTable(this);
+  late final $PullRequestsTableTable pullRequestsTable =
+      $PullRequestsTableTable(this);
   late final ProjectsDao projectsDao = ProjectsDao(this as AppDatabase);
   late final SessionDao sessionDao = SessionDao(this as AppDatabase);
   @override
@@ -674,6 +1433,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     projectsTable,
     sessionTable,
+    pullRequestsTable,
   ];
 }
 
@@ -881,6 +1641,43 @@ typedef $$SessionTableTableUpdateCompanionBuilder =
       Value<int> createdAt,
     });
 
+final class $$SessionTableTableReferences
+    extends BaseReferences<_$AppDatabase, $SessionTableTable, SessionDto> {
+  $$SessionTableTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<
+    $PullRequestsTableTable,
+    List<PullRequestsTableData>
+  >
+  _pullRequestsTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.pullRequestsTable,
+        aliasName: $_aliasNameGenerator(
+          db.sessionTable.sessionId,
+          db.pullRequestsTable.sessionId,
+        ),
+      );
+
+  $$PullRequestsTableTableProcessedTableManager get pullRequestsTableRefs {
+    final manager =
+        $$PullRequestsTableTableTableManager(
+          $_db,
+          $_db.pullRequestsTable,
+        ).filter(
+          (f) => f.sessionId.sessionId.sqlEquals(
+            $_itemColumn<String>('session_id')!,
+          ),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _pullRequestsTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
 class $$SessionTableTableFilterComposer
     extends Composer<_$AppDatabase, $SessionTableTable> {
   $$SessionTableTableFilterComposer({
@@ -934,6 +1731,31 @@ class $$SessionTableTableFilterComposer
     column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
   );
+
+  Expression<bool> pullRequestsTableRefs(
+    Expression<bool> Function($$PullRequestsTableTableFilterComposer f) f,
+  ) {
+    final $$PullRequestsTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.pullRequestsTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PullRequestsTableTableFilterComposer(
+            $db: $db,
+            $table: $db.pullRequestsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$SessionTableTableOrderingComposer
@@ -1038,6 +1860,32 @@ class $$SessionTableTableAnnotationComposer
 
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  Expression<T> pullRequestsTableRefs<T extends Object>(
+    Expression<T> Function($$PullRequestsTableTableAnnotationComposer a) f,
+  ) {
+    final $$PullRequestsTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.pullRequestsTable,
+          getReferencedColumn: (t) => t.sessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PullRequestsTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.pullRequestsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$SessionTableTableTableManager
@@ -1051,12 +1899,9 @@ class $$SessionTableTableTableManager
           $$SessionTableTableAnnotationComposer,
           $$SessionTableTableCreateCompanionBuilder,
           $$SessionTableTableUpdateCompanionBuilder,
-          (
-            SessionDto,
-            BaseReferences<_$AppDatabase, $SessionTableTable, SessionDto>,
-          ),
+          (SessionDto, $$SessionTableTableReferences),
           SessionDto,
-          PrefetchHooks Function()
+          PrefetchHooks Function({bool pullRequestsTableRefs})
         > {
   $$SessionTableTableTableManager(_$AppDatabase db, $SessionTableTable table)
     : super(
@@ -1114,9 +1959,47 @@ class $$SessionTableTableTableManager
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$SessionTableTableReferences(db, table, e),
+                ),
+              )
               .toList(),
-          prefetchHooksCallback: null,
+          prefetchHooksCallback: ({pullRequestsTableRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (pullRequestsTableRefs) db.pullRequestsTable,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (pullRequestsTableRefs)
+                    await $_getPrefetchedData<
+                      SessionDto,
+                      $SessionTableTable,
+                      PullRequestsTableData
+                    >(
+                      currentTable: table,
+                      referencedTable: $$SessionTableTableReferences
+                          ._pullRequestsTableRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$SessionTableTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).pullRequestsTableRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where(
+                            (e) => e.sessionId == item.sessionId,
+                          ),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
         ),
       );
 }
@@ -1131,12 +2014,484 @@ typedef $$SessionTableTableProcessedTableManager =
       $$SessionTableTableAnnotationComposer,
       $$SessionTableTableCreateCompanionBuilder,
       $$SessionTableTableUpdateCompanionBuilder,
-      (
-        SessionDto,
-        BaseReferences<_$AppDatabase, $SessionTableTable, SessionDto>,
-      ),
+      (SessionDto, $$SessionTableTableReferences),
       SessionDto,
-      PrefetchHooks Function()
+      PrefetchHooks Function({bool pullRequestsTableRefs})
+    >;
+typedef $$PullRequestsTableTableCreateCompanionBuilder =
+    PullRequestsTableCompanion Function({
+      required String projectId,
+      required String branchName,
+      required int prNumber,
+      required String url,
+      required String title,
+      required String state,
+      Value<String?> mergeableStatus,
+      Value<String?> reviewDecision,
+      Value<String?> checkStatus,
+      Value<String?> sessionId,
+      required int lastCheckedAt,
+      required int createdAt,
+    });
+typedef $$PullRequestsTableTableUpdateCompanionBuilder =
+    PullRequestsTableCompanion Function({
+      Value<String> projectId,
+      Value<String> branchName,
+      Value<int> prNumber,
+      Value<String> url,
+      Value<String> title,
+      Value<String> state,
+      Value<String?> mergeableStatus,
+      Value<String?> reviewDecision,
+      Value<String?> checkStatus,
+      Value<String?> sessionId,
+      Value<int> lastCheckedAt,
+      Value<int> createdAt,
+    });
+
+final class $$PullRequestsTableTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $PullRequestsTableTable,
+          PullRequestsTableData
+        > {
+  $$PullRequestsTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $SessionTableTable _sessionIdTable(_$AppDatabase db) =>
+      db.sessionTable.createAlias(
+        $_aliasNameGenerator(
+          db.pullRequestsTable.sessionId,
+          db.sessionTable.sessionId,
+        ),
+      );
+
+  $$SessionTableTableProcessedTableManager? get sessionId {
+    final $_column = $_itemColumn<String>('session_id');
+    if ($_column == null) return null;
+    final manager = $$SessionTableTableTableManager(
+      $_db,
+      $_db.sessionTable,
+    ).filter((f) => f.sessionId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_sessionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$PullRequestsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $PullRequestsTableTable> {
+  $$PullRequestsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get projectId => $composableBuilder(
+    column: $table.projectId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branchName => $composableBuilder(
+    column: $table.branchName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get prNumber => $composableBuilder(
+    column: $table.prNumber,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get url => $composableBuilder(
+    column: $table.url,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mergeableStatus => $composableBuilder(
+    column: $table.mergeableStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reviewDecision => $composableBuilder(
+    column: $table.reviewDecision,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get checkStatus => $composableBuilder(
+    column: $table.checkStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastCheckedAt => $composableBuilder(
+    column: $table.lastCheckedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$SessionTableTableFilterComposer get sessionId {
+    final $$SessionTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableFilterComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PullRequestsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $PullRequestsTableTable> {
+  $$PullRequestsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get projectId => $composableBuilder(
+    column: $table.projectId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get branchName => $composableBuilder(
+    column: $table.branchName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get prNumber => $composableBuilder(
+    column: $table.prNumber,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get url => $composableBuilder(
+    column: $table.url,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mergeableStatus => $composableBuilder(
+    column: $table.mergeableStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reviewDecision => $composableBuilder(
+    column: $table.reviewDecision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get checkStatus => $composableBuilder(
+    column: $table.checkStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastCheckedAt => $composableBuilder(
+    column: $table.lastCheckedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$SessionTableTableOrderingComposer get sessionId {
+    final $$SessionTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PullRequestsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PullRequestsTableTable> {
+  $$PullRequestsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get projectId =>
+      $composableBuilder(column: $table.projectId, builder: (column) => column);
+
+  GeneratedColumn<String> get branchName => $composableBuilder(
+    column: $table.branchName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get prNumber =>
+      $composableBuilder(column: $table.prNumber, builder: (column) => column);
+
+  GeneratedColumn<String> get url =>
+      $composableBuilder(column: $table.url, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get state =>
+      $composableBuilder(column: $table.state, builder: (column) => column);
+
+  GeneratedColumn<String> get mergeableStatus => $composableBuilder(
+    column: $table.mergeableStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get reviewDecision => $composableBuilder(
+    column: $table.reviewDecision,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get checkStatus => $composableBuilder(
+    column: $table.checkStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get lastCheckedAt => $composableBuilder(
+    column: $table.lastCheckedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$SessionTableTableAnnotationComposer get sessionId {
+    final $$SessionTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PullRequestsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PullRequestsTableTable,
+          PullRequestsTableData,
+          $$PullRequestsTableTableFilterComposer,
+          $$PullRequestsTableTableOrderingComposer,
+          $$PullRequestsTableTableAnnotationComposer,
+          $$PullRequestsTableTableCreateCompanionBuilder,
+          $$PullRequestsTableTableUpdateCompanionBuilder,
+          (PullRequestsTableData, $$PullRequestsTableTableReferences),
+          PullRequestsTableData,
+          PrefetchHooks Function({bool sessionId})
+        > {
+  $$PullRequestsTableTableTableManager(
+    _$AppDatabase db,
+    $PullRequestsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PullRequestsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PullRequestsTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PullRequestsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> projectId = const Value.absent(),
+                Value<String> branchName = const Value.absent(),
+                Value<int> prNumber = const Value.absent(),
+                Value<String> url = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> state = const Value.absent(),
+                Value<String?> mergeableStatus = const Value.absent(),
+                Value<String?> reviewDecision = const Value.absent(),
+                Value<String?> checkStatus = const Value.absent(),
+                Value<String?> sessionId = const Value.absent(),
+                Value<int> lastCheckedAt = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+              }) => PullRequestsTableCompanion(
+                projectId: projectId,
+                branchName: branchName,
+                prNumber: prNumber,
+                url: url,
+                title: title,
+                state: state,
+                mergeableStatus: mergeableStatus,
+                reviewDecision: reviewDecision,
+                checkStatus: checkStatus,
+                sessionId: sessionId,
+                lastCheckedAt: lastCheckedAt,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                required String projectId,
+                required String branchName,
+                required int prNumber,
+                required String url,
+                required String title,
+                required String state,
+                Value<String?> mergeableStatus = const Value.absent(),
+                Value<String?> reviewDecision = const Value.absent(),
+                Value<String?> checkStatus = const Value.absent(),
+                Value<String?> sessionId = const Value.absent(),
+                required int lastCheckedAt,
+                required int createdAt,
+              }) => PullRequestsTableCompanion.insert(
+                projectId: projectId,
+                branchName: branchName,
+                prNumber: prNumber,
+                url: url,
+                title: title,
+                state: state,
+                mergeableStatus: mergeableStatus,
+                reviewDecision: reviewDecision,
+                checkStatus: checkStatus,
+                sessionId: sessionId,
+                lastCheckedAt: lastCheckedAt,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$PullRequestsTableTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({sessionId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (sessionId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.sessionId,
+                                referencedTable:
+                                    $$PullRequestsTableTableReferences
+                                        ._sessionIdTable(db),
+                                referencedColumn:
+                                    $$PullRequestsTableTableReferences
+                                        ._sessionIdTable(db)
+                                        .sessionId,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$PullRequestsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PullRequestsTableTable,
+      PullRequestsTableData,
+      $$PullRequestsTableTableFilterComposer,
+      $$PullRequestsTableTableOrderingComposer,
+      $$PullRequestsTableTableAnnotationComposer,
+      $$PullRequestsTableTableCreateCompanionBuilder,
+      $$PullRequestsTableTableUpdateCompanionBuilder,
+      (PullRequestsTableData, $$PullRequestsTableTableReferences),
+      PullRequestsTableData,
+      PrefetchHooks Function({bool sessionId})
     >;
 
 class $AppDatabaseManager {
@@ -1146,4 +2501,6 @@ class $AppDatabaseManager {
       $$ProjectsTableTableTableManager(_db, _db.projectsTable);
   $$SessionTableTableTableManager get sessionTable =>
       $$SessionTableTableTableManager(_db, _db.sessionTable);
+  $$PullRequestsTableTableTableManager get pullRequestsTable =>
+      $$PullRequestsTableTableTableManager(_db, _db.pullRequestsTable);
 }

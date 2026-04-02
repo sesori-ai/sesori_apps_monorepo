@@ -600,5 +600,6 @@ Session _session({
     title: title,
     time: null,
     summary: null,
+    pullRequest: null,
   );
 }

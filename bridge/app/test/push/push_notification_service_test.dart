@@ -15,7 +15,14 @@ void main() {
 
       harness.service.handleSseEvent(
         const SesoriSseEvent.messageUpdated(
-          info: Message(id: "msg-1", role: "user", sessionID: "session-a", agent: null, modelID: null, providerID: null),
+          info: Message(
+            id: "msg-1",
+            role: "user",
+            sessionID: "session-a",
+            agent: null,
+            modelID: null,
+            providerID: null,
+          ),
         ),
       );
 
@@ -27,7 +34,14 @@ void main() {
 
       harness.service.handleSseEvent(
         const SesoriSseEvent.messageUpdated(
-          info: Message(id: "msg-1", role: "assistant", sessionID: "session-a", agent: null, modelID: null, providerID: null),
+          info: Message(
+            id: "msg-1",
+            role: "assistant",
+            sessionID: "session-a",
+            agent: null,
+            modelID: null,
+            providerID: null,
+          ),
         ),
       );
 
@@ -148,7 +162,14 @@ void main() {
         );
         harness.service.handleSseEvent(
           const SesoriSseEvent.messageUpdated(
-            info: Message(id: "msg-1", role: "assistant", sessionID: "session-a", agent: null, modelID: null, providerID: null),
+            info: Message(
+              id: "msg-1",
+              role: "assistant",
+              sessionID: "session-a",
+              agent: null,
+              modelID: null,
+              providerID: null,
+            ),
           ),
         );
         harness.service.handleSseEvent(
@@ -341,7 +362,14 @@ void main() {
 
         harness.service.handleSseEvent(
           const SesoriSseEvent.messageUpdated(
-            info: Message(id: "msg-1", role: "assistant", sessionID: "session-a", agent: null, modelID: null, providerID: null),
+            info: Message(
+              id: "msg-1",
+              role: "assistant",
+              sessionID: "session-a",
+              agent: null,
+              modelID: null,
+              providerID: null,
+            ),
           ),
         );
         harness.service.handleSseEvent(
@@ -386,7 +414,14 @@ void main() {
 
         harness.service.handleSseEvent(
           const SesoriSseEvent.messageUpdated(
-            info: Message(id: "msg-1", role: "assistant", sessionID: "session-a", agent: null, modelID: null, providerID: null),
+            info: Message(
+              id: "msg-1",
+              role: "assistant",
+              sessionID: "session-a",
+              agent: null,
+              modelID: null,
+              providerID: null,
+            ),
           ),
         );
         harness.service.handleSseEvent(
@@ -795,5 +830,6 @@ Session _session({
     title: title,
     time: null,
     summary: null,
+    pullRequest: null,
   );
 }
