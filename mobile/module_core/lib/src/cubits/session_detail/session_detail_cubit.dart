@@ -271,17 +271,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     })
   >
   _fetchSessionSnapshot() async {
-    final (baseResponses, commandsResponse) = await (
-      wait6(
-        _service.getMessages(_sessionId),
-        _service.getPendingQuestions(_sessionId),
-        _service.getChildren(_sessionId),
-        _service.getSessionStatuses(),
-        _service.listAgents(),
-        _service.listProviders(),
-      ),
-      _service.listCommands(projectId: _projectId ?? ""),
-    ).wait;
     final (
       messagesResponse,
       questionsResponse,
@@ -289,7 +278,16 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       statusesResponse,
       agentsResponse,
       providersResponse,
-    ) = baseResponses;
+      commandsResponse,
+    ) = await (
+      _service.getMessages(_sessionId),
+      _service.getPendingQuestions(_sessionId),
+      _service.getChildren(_sessionId),
+      _service.getSessionStatuses(),
+      _service.listAgents(),
+      _service.listProviders(),
+      _service.listCommands(projectId: _projectId ?? ""),
+    ).wait;
 
     final messages = switch (messagesResponse) {
       SuccessResponse(:final data) => data.messages,
