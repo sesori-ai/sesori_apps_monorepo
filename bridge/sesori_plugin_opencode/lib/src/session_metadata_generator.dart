@@ -58,19 +58,34 @@ class SessionMetadataGenerator {
     }
   }
 
-  /// Resolves the model to use: prefers small_model, falls back to model.
+  /// Resolves the model to use for naming.
+  ///
+  /// Priority: small_model > model > first connected provider's default.
   Future<({String providerID, String modelID})?> _resolveModel() async {
     final config = await _api.getConfig();
-    final modelStr = config.smallModel ?? config.model;
-    if (modelStr == null) return null;
+    final configModel = _parseModelStr(config.smallModel) ?? _parseModelStr(config.model);
+    if (configModel != null) return configModel;
 
+    // Neither small_model nor model configured — pick the first
+    // connected provider's default model from the provider list.
+    final providers = await _api.listProviders();
+    for (final connectedId in providers.connected) {
+      final defaultModelId = providers.defaults[connectedId];
+      if (defaultModelId != null && defaultModelId.isNotEmpty) {
+        return (providerID: connectedId, modelID: defaultModelId);
+      }
+    }
+
+    return null;
+  }
+
+  static ({String providerID, String modelID})? _parseModelStr(String? modelStr) {
+    if (modelStr == null) return null;
     final slashIndex = modelStr.indexOf("/");
     if (slashIndex < 0) return null;
-
     final providerID = modelStr.substring(0, slashIndex);
     final modelID = modelStr.substring(slashIndex + 1);
     if (providerID.isEmpty || modelID.isEmpty) return null;
-
     return (providerID: providerID, modelID: modelID);
   }
 

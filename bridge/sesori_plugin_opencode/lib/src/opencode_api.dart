@@ -401,12 +401,9 @@ class OpenCodeApi {
         headers: _authHeaders,
       );
       _ensureSuccess(response, "GET /config");
-      final json = jsonDecode(response.body) as Map<String, dynamic>;
-      Log.d(
-        "getConfig raw: model=${json['model']?.runtimeType}:${json['model']}, "
-        "small_model=${json['small_model']?.runtimeType}:${json['small_model']}",
+      return OpenCodeConfig.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>,
       );
-      return OpenCodeConfig.fromJson(json);
     } finally {
       client.close();
     }
