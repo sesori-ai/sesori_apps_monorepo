@@ -71,7 +71,7 @@ void main() {
       expect(containerFinder, findsAtLeastNWidgets(1));
     });
 
-    testWidgets("renders old and new line numbers", (tester) async {
+    testWidgets("renders single line number for context line", (tester) async {
       final vm = DiffLineViewModel(
         line: const DiffLine(
           type: DiffLineType.context,
@@ -83,7 +83,7 @@ void main() {
 
       await tester.pumpWidget(buildTestWidget(vm));
 
-      expect(find.text("42"), findsOneWidget);
+      expect(find.text("42"), findsNothing);
       expect(find.text("55"), findsOneWidget);
     });
 
@@ -100,8 +100,6 @@ void main() {
       await tester.pumpWidget(buildTestWidget(vm));
 
       expect(find.text("7"), findsOneWidget);
-      // Old line number gutter should show empty string
-      // (two Text widgets exist: one for old number, one for new)
     });
 
     testWidgets("removed line shows only old line number", (tester) async {
@@ -149,13 +147,13 @@ void main() {
       expect(find.text("-"), findsOneWidget);
     });
 
-    testWidgets("content area has horizontal SingleChildScrollView", (tester) async {
+    testWidgets("long content wraps instead of scrolling horizontally", (tester) async {
       final vm = DiffLineViewModel(
         line: DiffLine(
           type: DiffLineType.context,
           oldLineNumber: 1,
           newLineNumber: 1,
-          content: "a" * 500, // very long line
+          content: "a" * 500,
         ),
       );
 
@@ -164,7 +162,7 @@ void main() {
       final scrollFinder = find.byWidgetPredicate(
         (widget) => widget is SingleChildScrollView && widget.scrollDirection == Axis.horizontal,
       );
-      expect(scrollFinder, findsOneWidget);
+      expect(scrollFinder, findsNothing);
     });
 
     testWidgets("renders line content text", (tester) async {
