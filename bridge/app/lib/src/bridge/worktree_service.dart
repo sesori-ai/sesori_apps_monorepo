@@ -50,8 +50,7 @@ class WorktreeService {
   Future<WorktreeResult> prepareWorktreeForSession({
     required String projectId,
     required String? parentSessionId,
-    String? preferredBranchName,
-    String? preferredWorktreeName,
+    ({String branchName, String worktreeName})? preferredBranchAndWorktreeName,
   }) async {
     if (parentSessionId != null) {
       final parentWorktree = await _sessionDao.getSession(sessionId: parentSessionId);
@@ -92,20 +91,21 @@ class WorktreeService {
     final baseCommit = baseBranchAndCommit.baseCommit;
 
     // 4.5. Try preferred branch name if provided.
-    if (preferredBranchName != null && parentSessionId == null) {
-      if (!await branchExists(projectPath: projectId, branchName: preferredBranchName)) {
-        final dirName = preferredWorktreeName ?? preferredBranchName;
-        final worktreePath = "$projectId/$_worktreeDir/$dirName";
+    if (preferredBranchAndWorktreeName != null && parentSessionId == null) {
+      final preferredBranch = preferredBranchAndWorktreeName.branchName;
+      final preferredWorktree = preferredBranchAndWorktreeName.worktreeName;
+      if (!await branchExists(projectPath: projectId, branchName: preferredBranch)) {
+        final worktreePath = "$projectId/$_worktreeDir/$preferredWorktree";
         final result = await createWorktree(
           projectPath: projectId,
           worktreePath: worktreePath,
-          branchName: preferredBranchName,
+          branchName: preferredBranch,
           baseBranch: baseBranch,
         );
         if (result.exitCode == 0) {
           return WorktreeSuccess(
             path: worktreePath,
-            branchName: preferredBranchName,
+            branchName: preferredBranch,
             baseBranch: baseBranch,
             baseCommit: baseCommit,
           );

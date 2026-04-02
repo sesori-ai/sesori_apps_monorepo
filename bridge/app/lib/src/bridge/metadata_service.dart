@@ -16,7 +16,7 @@ class MetadataService {
     required String baseUrl,
     required TokenRefresher tokenRefresher,
   }) : _client = client,
-       _baseUrl = baseUrl,
+       _baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl,
        _tokenRefresher = tokenRefresher;
 
   Future<SessionMetadata?> generate({required String firstMessage}) async {
@@ -49,10 +49,9 @@ class MetadataService {
     required String firstMessage,
     required String token,
   }) {
-    final base = _baseUrl.endsWith("/") ? _baseUrl.substring(0, _baseUrl.length - 1) : _baseUrl;
     return _client
         .post(
-          Uri.parse("$base/sessions/generate-metadata"),
+          Uri.parse("$_baseUrl/sessions/generate-metadata"),
           headers: {
             "Content-Type": "application/json",
             "Authorization": "Bearer $token",

@@ -80,8 +80,9 @@ class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Sess
       worktreeResult = await _worktreeService.prepareWorktreeForSession(
         projectId: projectId,
         parentSessionId: parentSessionId,
-        preferredBranchName: metadata?.branchName,
-        preferredWorktreeName: metadata?.worktreeName,
+        preferredBranchAndWorktreeName: metadata != null
+            ? (branchName: metadata.branchName, worktreeName: metadata.worktreeName)
+            : null,
       );
     } else {
       worktreeResult = null;

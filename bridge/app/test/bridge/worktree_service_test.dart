@@ -316,7 +316,7 @@ void main() {
       final result = await service.prepareWorktreeForSession(
         projectId: _projectId,
         parentSessionId: null,
-        preferredBranchName: "my-feature",
+        preferredBranchAndWorktreeName: (branchName: "my-feature", worktreeName: "my-feature"),
       );
 
       expect(result, isA<WorktreeSuccess>());
@@ -344,7 +344,7 @@ void main() {
       final result = await service.prepareWorktreeForSession(
         projectId: _projectId,
         parentSessionId: null,
-        preferredBranchName: "my-feature",
+        preferredBranchAndWorktreeName: (branchName: "my-feature", worktreeName: "my-feature"),
       );
 
       expect(result, isA<WorktreeSuccess>());
@@ -372,7 +372,7 @@ void main() {
       final result = await service.prepareWorktreeForSession(
         projectId: _projectId,
         parentSessionId: null,
-        preferredBranchName: "my-feature",
+        preferredBranchAndWorktreeName: (branchName: "my-feature", worktreeName: "my-feature"),
       );
 
       expect(result, isA<WorktreeSuccess>());
@@ -395,7 +395,7 @@ void main() {
       final result = await service.prepareWorktreeForSession(
         projectId: _projectId,
         parentSessionId: null,
-        preferredBranchName: null,
+        preferredBranchAndWorktreeName: null,
       );
 
       expect(result, isA<WorktreeSuccess>());
@@ -419,7 +419,7 @@ void main() {
       final result = await service.prepareWorktreeForSession(
         projectId: _projectId,
         parentSessionId: "parent-001",
-        preferredBranchName: "my-feature",
+        preferredBranchAndWorktreeName: (branchName: "my-feature", worktreeName: "my-feature"),
       );
 
       expect(result, isA<WorktreeSuccess>());

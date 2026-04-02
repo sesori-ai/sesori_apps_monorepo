@@ -522,13 +522,12 @@ class _FakeWorktreeService extends WorktreeService {
   Future<WorktreeResult> prepareWorktreeForSession({
     required String projectId,
     required String? parentSessionId,
-    String? preferredBranchName,
-    String? preferredWorktreeName,
+    ({String branchName, String worktreeName})? preferredBranchAndWorktreeName,
   }) async {
     prepareCallCount++;
     lastPrepareProjectId = projectId;
     lastPrepareParentSessionId = parentSessionId;
-    lastPreparePreferredBranchName = preferredBranchName;
+    lastPreparePreferredBranchName = preferredBranchAndWorktreeName?.branchName;
     return prepareResult;
   }
 
