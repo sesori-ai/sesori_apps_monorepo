@@ -24,48 +24,33 @@ class SessionMetadataGenerator {
         return null;
       }
 
-      Log.d(
-        "SessionMetadataGenerator: using model "
-        "${model.providerID}/${model.modelID}",
-      );
-
       final truncated = firstMessage.length > 500 ? firstMessage.substring(0, 500) : firstMessage;
 
       final session = await _api.createSession(directory: directory);
-      Log.d("SessionMetadataGenerator: created ephemeral session ${session.id}");
       try {
-        final body = SendMessageSyncBody(
-          parts: [
-            {"type": "text", "text": truncated},
-          ],
-          system: _systemPrompt,
-          model: model,
-        );
-        Log.d("SessionMetadataGenerator: sendMessageSync request body: ${body.toJson()}");
-
         final response = await _api.sendMessageSync(
           sessionId: session.id,
           directory: directory,
-          body: body,
-        );
-
-        final rawText = response.parts
-            .where((part) => part.type == "text")
-            .map((part) => part.text)
-            .whereType<String>()
-            .join();
-        Log.d(
-          "SessionMetadataGenerator: raw API response "
-          "(${response.parts.length} part(s)): $rawText",
+          body: SendMessageSyncBody(
+            parts: [
+              {"type": "text", "text": truncated},
+            ],
+            system: _systemPrompt,
+            model: model,
+          ),
         );
 
         final result = _parseResponse(response);
         if (result == null) {
-          Log.w("SessionMetadataGenerator: failed to parse response into metadata");
-        } else {
-          Log.d(
-            "SessionMetadataGenerator: generated metadata — "
-            'title="${result.title}", branch="${result.branchName}"',
+          final rawText = response.parts
+              .where((part) => part.type == "text")
+              .map((part) => part.text)
+              .whereType<String>()
+              .join();
+          Log.w(
+            "SessionMetadataGenerator: failed to parse response into metadata. "
+            "Model: ${model.providerID}/${model.modelID}. "
+            "Raw text response: $rawText",
           );
         }
         return result;
@@ -81,8 +66,8 @@ class SessionMetadataGenerator {
           );
         }
       }
-    } catch (e, st) {
-      Log.w("SessionMetadataGenerator: failed to generate metadata: $e\n$st");
+    } catch (e) {
+      Log.w("SessionMetadataGenerator: failed to generate metadata: $e");
       return null;
     }
   }
@@ -94,27 +79,12 @@ class SessionMetadataGenerator {
   Future<({String providerID, String modelID})?> _resolveModel() async {
     // 1. Explicit small_model in config — user's choice, always wins.
     final config = await _api.getConfig();
-    Log.d(
-      "SessionMetadataGenerator: config — "
-      'model="${config.model}", smallModel="${config.smallModel}"',
-    );
     final explicit = _parseModelStr(config.smallModel);
-    if (explicit != null) {
-      Log.d(
-        "SessionMetadataGenerator: using explicit small_model from config: "
-        "${explicit.providerID}/${explicit.modelID}",
-      );
-      return explicit;
-    }
+    if (explicit != null) return explicit;
 
     // 2. Scan connected providers for the cheapest/fastest model.
     final providers = await _api.listProviders();
     final connectedIds = providers.connected.toSet();
-    Log.d(
-      "SessionMetadataGenerator: connected providers: "
-      "${providers.connected}, "
-      "defaults: ${providers.defaults}",
-    );
 
     ({String providerID, String modelID})? best;
     var bestScore = -1;
@@ -125,14 +95,6 @@ class SessionMetadataGenerator {
       for (final model in provider.models.values) {
         if (model.status != "active") continue;
         final score = _smallModelScore(model: model);
-        if (score > 0) {
-          Log.d(
-            "SessionMetadataGenerator: candidate — "
-            "${provider.id}/${model.id} "
-            '(name="${model.name}", family="${model.family}", '
-            "score=$score, releaseDate=${model.releaseDate})",
-          );
-        }
         if (score > bestScore || (score == bestScore && _isNewer(model.releaseDate, bestReleaseDate))) {
           bestScore = score;
           best = (providerID: provider.id, modelID: model.id);
@@ -141,23 +103,12 @@ class SessionMetadataGenerator {
       }
     }
 
-    if (best != null) {
-      Log.d(
-        "SessionMetadataGenerator: best model by score: "
-        "${best.providerID}/${best.modelID} (score=$bestScore)",
-      );
-      return best;
-    }
+    if (best != null) return best;
 
     // 3. Last resort: first connected provider's default.
-    Log.d("SessionMetadataGenerator: no scored model found, trying provider defaults");
     for (final connectedId in providers.connected) {
       final defaultModelId = providers.defaults[connectedId];
       if (defaultModelId != null && defaultModelId.isNotEmpty) {
-        Log.d(
-          "SessionMetadataGenerator: falling back to default — "
-          "$connectedId/$defaultModelId",
-        );
         return (providerID: connectedId, modelID: defaultModelId);
       }
     }
