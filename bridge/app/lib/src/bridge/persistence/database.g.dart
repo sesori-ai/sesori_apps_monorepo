@@ -1426,6 +1426,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $PullRequestsTableTable(this);
   late final ProjectsDao projectsDao = ProjectsDao(this as AppDatabase);
   late final SessionDao sessionDao = SessionDao(this as AppDatabase);
+  late final PullRequestDao pullRequestDao = PullRequestDao(
+    this as AppDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();

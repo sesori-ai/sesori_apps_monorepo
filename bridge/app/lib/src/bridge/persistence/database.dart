@@ -5,9 +5,10 @@ import "package:drift/native.dart";
 
 import "database.steps.dart";
 import "daos/projects_dao.dart";
+import "daos/pull_request_dao.dart";
 import "daos/session_dao.dart";
-import "tables/pull_requests_table.dart";
 import "tables/projects_table.dart";
+import "tables/pull_requests_table.dart";
 import "tables/session_table.dart";
 
 part "database.g.dart";
@@ -17,7 +18,7 @@ part "database.g.dart";
 /// New tables and DAOs should be registered here as the persistence layer grows.
 @DriftDatabase(
   tables: [ProjectsTable, SessionTable, PullRequestsTable],
-  daos: [ProjectsDao, SessionDao],
+  daos: [ProjectsDao, SessionDao, PullRequestDao],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);

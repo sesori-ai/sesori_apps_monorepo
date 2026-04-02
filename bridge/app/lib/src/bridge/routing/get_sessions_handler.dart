@@ -1,6 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../persistence/database.dart";
 import "../persistence/tables/session_table.dart";
 import "plugin_session_mapper.dart";
 import "request_handler.dart";
@@ -80,4 +81,34 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
 /// Interface for session DAO operations needed by [GetSessionsHandler].
 abstract interface class SessionDaoLike {
   Future<Map<String, SessionDto>> getSessionsByIds({required List<String> sessionIds});
+}
+
+/// Interface for pull request DAO operations.
+abstract interface class PullRequestDaoLike {
+  Future<void> upsertPr({
+    required String projectId,
+    required String branchName,
+    required int prNumber,
+    required String url,
+    required String title,
+    required String state,
+    required String? mergeableStatus,
+    required String? reviewDecision,
+    required String? checkStatus,
+    required String? sessionId,
+    required int lastCheckedAt,
+    required int createdAt,
+  });
+
+  Future<List<PullRequestsTableData>> getPrsByProjectId({required String projectId});
+
+  Future<Map<String, PullRequestsTableData>> getPrsBySessionIds({
+    required List<String> sessionIds,
+  });
+
+  Future<List<PullRequestsTableData>> getActivePrsByProjectId({
+    required String projectId,
+  });
+
+  Future<void> deletePr({required String projectId, required String branchName});
 }
