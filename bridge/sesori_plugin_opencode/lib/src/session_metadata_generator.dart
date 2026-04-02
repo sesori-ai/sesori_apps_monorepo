@@ -80,14 +80,17 @@ class SessionMetadataGenerator {
 
     ({String providerID, String modelID})? best;
     var bestScore = -1;
+    String? bestReleaseDate;
 
     for (final provider in providers.all) {
       if (!connectedIds.contains(provider.id)) continue;
       for (final model in provider.models.values) {
+        if (model.status != "active") continue;
         final score = _smallModelScore(model: model);
-        if (score > bestScore) {
+        if (score > bestScore || (score == bestScore && _isNewer(model.releaseDate, bestReleaseDate))) {
           bestScore = score;
           best = (providerID: provider.id, modelID: model.id);
+          bestReleaseDate = model.releaseDate;
         }
       }
     }
@@ -129,6 +132,14 @@ class SessionMetadataGenerator {
     (RegExp("flash"), 80), // Google Flash
     (RegExp(r"\bmini\b"), 70), // OpenAI mini (not minimax)
   ];
+
+  /// Returns true if [a] is a more recent release date than [b].
+  /// Dates are ISO strings (e.g. "2025-07-10"). Null is treated as oldest.
+  static bool _isNewer(String? a, String? b) {
+    if (a == null) return false;
+    if (b == null) return true;
+    return a.compareTo(b) > 0;
+  }
 
   static ({String providerID, String modelID})? _parseModelStr(String? modelStr) {
     if (modelStr == null) return null;
