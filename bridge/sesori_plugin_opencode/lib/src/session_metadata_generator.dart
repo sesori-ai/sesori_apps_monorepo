@@ -28,6 +28,7 @@ class SessionMetadataGenerator {
       final truncated = firstMessage.length > 500 ? firstMessage.substring(0, 500) : firstMessage;
 
       final session = await _api.createSession(directory: directory);
+      Log.i("SessionMetadataGenerator: ephemeral session created: ${session.id}");
       try {
         final response = await _api.sendMessageSync(
           sessionId: session.id,
@@ -40,9 +41,11 @@ class SessionMetadataGenerator {
             model: model,
           ),
         );
+        Log.i("SessionMetadataGenerator: AI response received, parts=${response.parts.length}");
 
         return _parseResponse(response);
       } finally {
+        Log.i("SessionMetadataGenerator: deleting ephemeral session");
         try {
           await _api.deleteSession(
             sessionId: session.id,
@@ -54,8 +57,8 @@ class SessionMetadataGenerator {
           );
         }
       }
-    } catch (e) {
-      Log.w("SessionMetadataGenerator: failed to generate metadata: $e");
+    } catch (e, st) {
+      Log.i("SessionMetadataGenerator: FAILED: $e\n$st");
       return null;
     }
   }
@@ -139,6 +142,8 @@ class SessionMetadataGenerator {
 
   SessionMetadata? _parseResponse(MessageWithParts response) {
     final mergedText = response.parts.map((part) => part.text).whereType<String>().join();
+    final preview = mergedText.length > 200 ? mergedText.substring(0, 200) : mergedText;
+    Log.i("SessionMetadataGenerator: mergedText length=${mergedText.length}, preview='$preview'");
 
     if (mergedText.isEmpty) {
       return null;
@@ -148,6 +153,7 @@ class SessionMetadataGenerator {
         _tryParseJson(raw: mergedText) ??
         _tryParseMarkdownJson(raw: mergedText) ??
         _tryExtractEmbeddedJson(raw: mergedText);
+    Log.i("SessionMetadataGenerator: JSON parsed=${parsed != null}");
     if (parsed == null) {
       return null;
     }
