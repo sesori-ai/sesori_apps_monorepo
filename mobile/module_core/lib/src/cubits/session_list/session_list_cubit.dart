@@ -533,9 +533,7 @@ class SessionListCubit extends Cubit<SessionListState> {
 
     try {
       await _connectionService.status
-          .where(
-            (s) => s is ConnectionConnected || s is ConnectionLost || s is ConnectionDisconnected,
-          )
+          .where((s) => s is! ConnectionReconnecting)
           .first
           .timeout(const Duration(seconds: 15));
     } on TimeoutException catch (_) {
