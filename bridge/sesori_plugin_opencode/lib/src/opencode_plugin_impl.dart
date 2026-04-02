@@ -5,7 +5,6 @@ import "package:http/io_client.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../opencode_plugin.dart";
-import "models/send_command_body.dart";
 import "sse/sse_connection.dart";
 import "sse_event_mapper.dart";
 

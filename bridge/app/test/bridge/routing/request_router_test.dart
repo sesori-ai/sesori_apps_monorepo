@@ -93,7 +93,8 @@ void main() {
       expect(plugin.lastGetCommandsProjectId, equals("/repo"));
       final body = jsonDecode(response.body!) as Map<String, dynamic>;
       final items = body["items"] as List<dynamic>;
-      expect(items.single["name"], equals("review"));
+      final item = items.single as Map<String, dynamic>;
+      expect(item["name"], equals("review"));
     });
 
     test("routes POST /session/command and forwards the command body", () async {
@@ -195,7 +196,7 @@ void main() {
             CreateSessionRequest.fromJson({
               "projectId": "/tmp",
               "dedicatedWorktree": false,
-              "parts": [PromptPart.text(text: "Start").toJson()],
+              "parts": [const PromptPart.text(text: "Start").toJson()],
               "agent": "architect",
               "model": PromptModel.fromJson({"providerID": "openai", "modelID": "gpt-5"}).toJson(),
               "command": null,

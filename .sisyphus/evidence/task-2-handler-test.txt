@@ -1,0 +1,13 @@
+Bridge analysis:
+=== analyze: sesori_plugin_interface ===
+No issues found!
+=== analyze: sesori_plugin_opencode ===
+No issues found!
+=== analyze: app ===
+No issues found!
+
+Bridge tests:
+=== test: sesori_plugin_opencode ===
+All tests passed!
+=== test: app ===
+All tests passed!
