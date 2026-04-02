@@ -72,13 +72,13 @@ void main() {
 
     test("routes POST /command and forwards the project body", () async {
       plugin.commandsResult = [
-        const PluginCommand(
-          name: "review",
-          template: "/review",
-          hints: <String>["file.dart"],
-          provider: null,
-          source: PluginCommandSource.command,
-        ),
+        PluginCommand.fromJson({
+          "name": "review",
+          "template": "/review",
+          "hints": ["file.dart"],
+          "provider": null,
+          "source": "command",
+        }),
       ];
 
       final response = await router.route(
@@ -102,7 +102,11 @@ void main() {
           "POST",
           "/session/command",
           body: jsonEncode(
-            const SendCommandRequest(sessionId: "s-1", command: "review", arguments: "lib/main.dart").toJson(),
+            SendCommandRequest.fromJson({
+              "sessionId": "s-1",
+              "command": "review",
+              "arguments": "lib/main.dart",
+            }).toJson(),
           ),
         ),
       );
@@ -188,14 +192,14 @@ void main() {
           "POST",
           "/session/create",
           body: jsonEncode(
-            const CreateSessionRequest(
-              projectId: "/tmp",
-              dedicatedWorktree: false,
-              parts: [PromptPart.text(text: "Start")],
-              agent: "architect",
-              model: PromptModel(providerID: "openai", modelID: "gpt-5"),
-              command: null,
-            ).toJson(),
+            CreateSessionRequest.fromJson({
+              "projectId": "/tmp",
+              "dedicatedWorktree": false,
+              "parts": [PromptPart.text(text: "Start").toJson()],
+              "agent": "architect",
+              "model": PromptModel.fromJson({"providerID": "openai", "modelID": "gpt-5"}).toJson(),
+              "command": null,
+            }).toJson(),
           ),
         ),
       );
