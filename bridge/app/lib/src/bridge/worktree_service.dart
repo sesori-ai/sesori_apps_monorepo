@@ -1,4 +1,5 @@
 import "dart:io";
+import "dart:math";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
@@ -42,7 +43,10 @@ class WorktreeService {
        _projectsDao = projectsDao,
        _sessionDao = sessionDao;
 
+  static final _random = Random.secure();
   static final _safeNamePattern = RegExp(r'^[a-z0-9][a-z0-9-]*$');
+
+  static String _randomSuffix() => _random.nextInt(0xFFFFFF).toRadixString(16).padLeft(6, "0");
 
   static bool _isSafeGitName(String name) =>
       name.isNotEmpty &&
@@ -106,18 +110,23 @@ class WorktreeService {
       final preferredWorktree = preferredBranchAndWorktreeName.worktreeName;
       if (!_isSafeGitName(preferredBranch) || !_isSafeGitName(preferredWorktree)) {
         Log.w("WorktreeService: rejected unsafe preferred names: branch=$preferredBranch worktree=$preferredWorktree");
-      } else if (!await branchExists(projectPath: projectId, branchName: preferredBranch)) {
-        final worktreePath = "$projectId/$_worktreeDir/$preferredWorktree";
+      } else {
+        final suffix = await branchExists(projectPath: projectId, branchName: preferredBranch)
+            ? "-${_randomSuffix()}"
+            : "";
+        final branchName = "$preferredBranch$suffix";
+        final worktreeName = "$preferredWorktree$suffix";
+        final worktreePath = "$projectId/$_worktreeDir/$worktreeName";
         final result = await createWorktree(
           projectPath: projectId,
           worktreePath: worktreePath,
-          branchName: preferredBranch,
+          branchName: branchName,
           baseBranch: baseBranch,
         );
         if (result.exitCode == 0) {
           return WorktreeSuccess(
             path: worktreePath,
-            branchName: preferredBranch,
+            branchName: branchName,
             baseBranch: baseBranch,
             baseCommit: baseCommit,
           );
