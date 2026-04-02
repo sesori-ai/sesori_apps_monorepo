@@ -28,10 +28,18 @@ class DiffFileHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return DiffFileWidget(
-      viewModel: viewModel,
-      isExpanded: isExpanded,
-      onToggle: onToggle,
+    // SliverPersistentHeader gives the child BoxConstraints(minHeight: 0,
+    // maxHeight: maxExtent) — the child is NOT forced to fill the extent.
+    // If the child renders shorter than maxExtent, paintExtent < layoutExtent
+    // which is an invalid SliverGeometry (assertion failure in debug,
+    // rendering glitch in release). Forcing exact height prevents this.
+    return SizedBox(
+      height: maxExtent,
+      child: DiffFileWidget(
+        viewModel: viewModel,
+        isExpanded: isExpanded,
+        onToggle: onToggle,
+      ),
     );
   }
 
