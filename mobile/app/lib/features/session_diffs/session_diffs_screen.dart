@@ -5,10 +5,8 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../core/di/injection.dart";
 import "models/diff_file_view_model.dart";
-import "models/diff_list_builder.dart";
-import "models/diff_list_item.dart";
 import "models/diff_view_model_builder.dart";
-import "widgets/diff_file_widget.dart";
+import "widgets/diff_file_header_delegate.dart";
 import "widgets/diff_hunk_widget.dart";
 import "widgets/diff_line_widget.dart";
 
@@ -44,7 +42,6 @@ class _SessionDiffsBody extends StatefulWidget {
 class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
   List<DiffFileViewModel>? _viewModels;
   Set<int> _expandedFileIndices = <int>{};
-  List<DiffListItem> _flatItems = const [];
   bool _isComputing = false;
   Object? _computeError;
   List<FileDiff>? _lastFiles;
@@ -104,85 +101,101 @@ class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
 
   Widget _buildLoadedState(BuildContext context, List<FileDiff> files) {
     _maybeComputeViewModels(files: files);
-    if (_isComputing) {
+    if (_isComputing || _viewModels == null) {
       return const Center(child: CircularProgressIndicator());
     }
     if (_computeError != null) {
       return Center(child: Text("Error computing diffs: $_computeError"));
     }
+    return CustomScrollView(slivers: _buildSlivers(viewModels: _viewModels!));
+  }
 
-    return ListView.builder(
-      itemCount: _flatItems.length,
+  List<Widget> _buildSlivers({required List<DiffFileViewModel> viewModels}) {
+    return [
+      for (var i = 0; i < viewModels.length; i++)
+        SliverMainAxisGroup(
+          slivers: [
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: DiffFileHeaderDelegate(
+                viewModel: viewModels[i],
+                isExpanded: _expandedFileIndices.contains(i),
+                onToggle: () => _toggleFile(i),
+              ),
+            ),
+            if (_expandedFileIndices.contains(i)) _buildFileContentSliver(viewModels[i]),
+          ],
+        ),
+    ];
+  }
+
+  Widget _buildFileContentSliver(DiffFileViewModel vm) {
+    if (vm.skipReason != null) {
+      return SliverToBoxAdapter(child: _buildSkippedPlaceholder(vm.skipReason!));
+    }
+    final childCount = vm.hunks.fold<int>(0, (sum, h) => sum + 1 + h.lines.length);
+    return SliverList.builder(
+      itemCount: childCount,
       itemBuilder: (context, index) {
-        final item = _flatItems[index];
-        return switch (item) {
-          DiffListFileHeader() => DiffFileWidget(
-            viewModel: item.viewModel,
-            isExpanded: item.isExpanded,
-            onToggle: () => _toggleFile(item.fileIndex),
-          ),
-          DiffListHunkHeader() => DiffHunkWidget(viewModel: item.viewModel),
-          DiffListLine() => DiffLineWidget(viewModel: item.viewModel),
-          DiffListSkipPlaceholder() => _buildSkippedPlaceholder(item.reason),
-        };
+        var remaining = index;
+        for (final hunk in vm.hunks) {
+          if (remaining == 0) return DiffHunkWidget(viewModel: hunk);
+          remaining--;
+          if (remaining < hunk.lines.length) {
+            return DiffLineWidget(viewModel: hunk.lines[remaining]);
+          }
+          remaining -= hunk.lines.length;
+        }
+        return const SizedBox.shrink();
       },
     );
   }
 
   void _maybeComputeViewModels({required List<FileDiff> files}) {
     final brightness = Theme.of(context).brightness;
-    if (identical(files, _lastFiles) && brightness == _lastBrightness) {
-      return;
-    }
+    if (identical(files, _lastFiles) && brightness == _lastBrightness) return;
+    final preserveExpansion = identical(files, _lastFiles);
     _lastFiles = files;
     _lastBrightness = brightness;
 
     // Defer computation to avoid setState() during build.
     Future.microtask(() {
-      if (mounted) _computeViewModels(files: files);
+      if (mounted) {
+        _computeViewModels(files: files, preserveExpansion: preserveExpansion);
+      }
     });
   }
 
-  Future<void> _computeViewModels({required List<FileDiff> files}) async {
+  Future<void> _computeViewModels({
+    required List<FileDiff> files,
+    required bool preserveExpansion,
+  }) async {
     final token = ++_computeToken;
     setState(() {
       _isComputing = true;
       _computeError = null;
       _viewModels = null;
-      _expandedFileIndices = <int>{};
-      _flatItems = const [];
     });
-
     try {
       final viewModels = await DiffViewModelBuilder.build(
         files,
         brightness: Theme.of(context).brightness,
       );
-      if (!mounted || token != _computeToken) {
-        return;
-      }
-      final expanded = <int>{};
-      for (var i = 0; i < viewModels.length; i++) {
-        if (viewModels[i].isExpanded) {
-          expanded.add(i);
-        }
-      }
-
-      final flatItems = buildFlatList(
-        viewModels: viewModels,
-        expandedFileIndices: expanded,
-      );
+      if (!mounted || token != _computeToken) return;
+      final expanded = preserveExpansion
+          ? Set<int>.from(_expandedFileIndices)
+          : <int>{
+              for (var i = 0; i < viewModels.length; i++)
+                if (viewModels[i].isExpanded) i,
+            };
 
       setState(() {
         _viewModels = viewModels;
         _expandedFileIndices = expanded;
-        _flatItems = flatItems;
         _isComputing = false;
       });
     } catch (error) {
-      if (!mounted || token != _computeToken) {
-        return;
-      }
+      if (!mounted || token != _computeToken) return;
       setState(() {
         _computeError = error;
         _isComputing = false;
@@ -191,24 +204,14 @@ class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
   }
 
   void _toggleFile(int fileIndex) {
-    final viewModels = _viewModels;
-    if (viewModels == null) {
-      return;
-    }
+    if (_viewModels == null) return;
     final expanded = Set<int>.from(_expandedFileIndices);
     if (expanded.contains(fileIndex)) {
       expanded.remove(fileIndex);
     } else {
       expanded.add(fileIndex);
     }
-
-    setState(() {
-      _expandedFileIndices = expanded;
-      _flatItems = buildFlatList(
-        viewModels: viewModels,
-        expandedFileIndices: expanded,
-      );
-    });
+    setState(() => _expandedFileIndices = expanded);
   }
 
   Widget _buildSkippedPlaceholder(FileDiffSkipReason reason) {
