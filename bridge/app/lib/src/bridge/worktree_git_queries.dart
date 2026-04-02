@@ -73,7 +73,7 @@ extension WorktreeGitQueries on WorktreeService {
   }) {
     return _runGit(
       projectPath: projectPath,
-      arguments: ["worktree", "add", "--", worktreePath, "-b", branchName, baseBranch],
+      arguments: ["worktree", "add", "-b", branchName, "--", worktreePath, baseBranch],
     );
   }
 
