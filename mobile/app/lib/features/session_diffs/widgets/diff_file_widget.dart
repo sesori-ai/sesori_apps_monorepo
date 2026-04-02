@@ -67,7 +67,7 @@ class _DiffFileWidgetState extends State<DiffFileWidget> {
               vm.fileName,
               style: const TextStyle(
                 fontFamily: "monospace",
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: FontWeight.w500,
               ),
               overflow: TextOverflow.ellipsis,
@@ -79,7 +79,7 @@ class _DiffFileWidgetState extends State<DiffFileWidget> {
             "+${vm.additions}",
             style: TextStyle(
               fontFamily: "monospace",
-              fontSize: 11,
+              fontSize: 12,
               color: Colors.green.shade700,
             ),
           ),
@@ -89,7 +89,7 @@ class _DiffFileWidgetState extends State<DiffFileWidget> {
             "-${vm.deletions}",
             style: TextStyle(
               fontFamily: "monospace",
-              fontSize: 11,
+              fontSize: 12,
               color: Colors.red.shade700,
             ),
           ),
@@ -124,7 +124,7 @@ class _DiffFileWidgetState extends State<DiffFileWidget> {
         label,
         style: TextStyle(
           color: color.shade800,
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: FontWeight.w600,
         ),
       ),

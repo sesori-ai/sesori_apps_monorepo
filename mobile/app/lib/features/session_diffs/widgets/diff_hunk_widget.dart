@@ -13,7 +13,7 @@ class DiffHunkWidget extends StatelessWidget {
 
   static const _headerTextStyle = TextStyle(
     fontFamily: "monospace",
-    fontSize: 11,
+    fontSize: 12,
     height: 1.4,
   );
 
