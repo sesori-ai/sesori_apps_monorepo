@@ -195,7 +195,7 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
         ),
         ProjectListFailed(:final error) => _ErrorView(
           error: error,
-          onRetry: () => context.read<ProjectListCubit>().loadProjects(),
+          onRetry: () => context.read<ProjectListCubit>().retryLoadProjects(),
         ),
       },
     );

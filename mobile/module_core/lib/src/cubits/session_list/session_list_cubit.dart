@@ -230,8 +230,15 @@ class SessionListCubit extends Cubit<SessionListState> {
   void _onConnectionStatusChanged(ConnectionStatus status) {
     logd("[SessionList] connection status: ${status.runtimeType}");
     if (isClosed) return;
-    if (status is ConnectionConnected && state is SessionListLoaded) {
-      unawaited(refreshSessions());
+    if (status is ConnectionConnected) {
+      switch (state) {
+        case SessionListLoaded():
+          unawaited(refreshSessions());
+        case SessionListFailed():
+          unawaited(loadSessions());
+        case SessionListLoading() || SessionListStaleProject():
+          break;
+      }
     }
   }
 
@@ -496,6 +503,44 @@ class SessionListCubit extends Cubit<SessionListState> {
   Future<void> loadSessions() async {
     emit(const SessionListState.loading());
     await _fetchSessions();
+  }
+
+  /// Retries loading sessions after a failure.
+  ///
+  /// Unlike [loadSessions], this method triggers a relay reconnection
+  /// when the connection is not active, then waits for the result before
+  /// fetching. This ensures the retry actually reaches the bridge instead
+  /// of failing immediately with a "not connected" error.
+  Future<void> retryLoadSessions() async {
+    emit(const SessionListState.loading());
+    await Future<void>.delayed(Duration.zero);
+    if (isClosed) return;
+    await _reconnectIfNeeded();
+    if (isClosed) return;
+    await _fetchSessions();
+  }
+
+  /// Attempts to reconnect the relay when it is not in the
+  /// [ConnectionConnected] state. Returns once the connection resolves
+  /// (connected, lost, or timed out).
+  Future<void> _reconnectIfNeeded() async {
+    if (_connectionService.currentStatus is ConnectionConnected) return;
+
+    if (_connectionService.currentStatus is! ConnectionReconnecting) {
+      _connectionService.reconnect();
+    }
+    if (_connectionService.currentStatus is! ConnectionReconnecting) return;
+
+    try {
+      await _connectionService.status
+          .where(
+            (s) => s is ConnectionConnected || s is ConnectionLost || s is ConnectionDisconnected,
+          )
+          .first
+          .timeout(const Duration(seconds: 15));
+    } on TimeoutException catch (_) {
+      // Fall through — fetch will fail gracefully with a user-visible error.
+    }
   }
 
   /// In-flight silent refresh, used for coalescing.

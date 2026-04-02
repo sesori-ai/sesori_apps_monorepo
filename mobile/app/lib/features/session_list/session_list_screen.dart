@@ -208,7 +208,7 @@ class _SessionListBody extends StatelessWidget {
         ),
         SessionListFailed(:final error) => _ErrorView(
           error: error,
-          onRetry: () => context.read<SessionListCubit>().loadSessions(),
+          onRetry: () => context.read<SessionListCubit>().retryLoadSessions(),
         ),
       },
     );
