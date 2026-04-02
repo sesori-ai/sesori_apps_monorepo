@@ -723,9 +723,6 @@ class _FakeApi implements OpenCodeApi {
   String get serverURL => "http://fake";
 
   @override
-  void close() {}
-
-  @override
   Future<bool> healthCheck() async => true;
 
   @override
