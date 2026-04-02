@@ -49,6 +49,7 @@ class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
   Object? _computeError;
   List<FileDiff>? _lastFiles;
   int _computeToken = 0;
+  Brightness? _lastBrightness;
 
   @override
   Widget build(BuildContext context) {
@@ -88,27 +89,17 @@ class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
     );
   }
 
-  static (int fileCount, int additions, int deletions) _getStats(DiffState state) {
-    return switch (state) {
-      DiffStateLoaded(:final files) => (
-        files.length,
-        files.fold(
-          0,
-          (int sum, file) => switch (file) {
-            FileDiffContent(:final additions) => sum + additions,
-            _ => sum,
-          },
-        ),
-        files.fold(
-          0,
-          (int sum, file) => switch (file) {
-            FileDiffContent(:final deletions) => sum + deletions,
-            _ => sum,
-          },
-        ),
-      ),
-      _ => (0, 0, 0),
-    };
+  static (int, int, int) _getStats(DiffState state) {
+    if (state is! DiffStateLoaded) return (0, 0, 0);
+    var adds = 0;
+    var dels = 0;
+    for (final f in state.files) {
+      if (f is FileDiffContent) {
+        adds += f.additions;
+        dels += f.deletions;
+      }
+    }
+    return (state.files.length, adds, dels);
   }
 
   Widget _buildLoadedState(BuildContext context, List<FileDiff> files) {
@@ -139,11 +130,17 @@ class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
   }
 
   void _maybeComputeViewModels({required List<FileDiff> files}) {
-    if (identical(files, _lastFiles)) {
+    final brightness = Theme.of(context).brightness;
+    if (identical(files, _lastFiles) && brightness == _lastBrightness) {
       return;
     }
     _lastFiles = files;
-    _computeViewModels(files: files);
+    _lastBrightness = brightness;
+
+    // Defer computation to avoid setState() during build.
+    Future.microtask(() {
+      if (mounted) _computeViewModels(files: files);
+    });
   }
 
   Future<void> _computeViewModels({required List<FileDiff> files}) async {
