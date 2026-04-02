@@ -42,7 +42,7 @@ void main() {
           (_) async => ApiResponse.success(
             const CommandListResponse(
               items: <CommandInfo>[
-                CommandInfo(name: "review", template: "/review", hints: <String>["file.dart"]),
+                CommandInfo(name: "review", template: "/review", hints: <String>["file.dart"], provider: null),
               ],
             ),
           ),

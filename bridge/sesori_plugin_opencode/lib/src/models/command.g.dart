@@ -15,6 +15,7 @@ _Command _$CommandFromJson(Map json) => _Command(
   description: json['description'] as String?,
   agent: json['agent'] as String?,
   model: json['model'] as String?,
+  provider: json['provider'] as String?,
   source: $enumDecodeNullable(
     _$CommandSourceEnumMap,
     json['source'],
@@ -30,6 +31,7 @@ Map<String, dynamic> _$CommandToJson(_Command instance) => <String, dynamic>{
   'description': instance.description,
   'agent': instance.agent,
   'model': instance.model,
+  'provider': instance.provider,
   'source': _$CommandSourceEnumMap[instance.source],
   'subtask': instance.subtask,
 };

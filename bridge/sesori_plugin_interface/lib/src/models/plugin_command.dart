@@ -19,6 +19,7 @@ sealed class PluginCommand with _$PluginCommand {
     String? description,
     String? agent,
     String? model,
+    required String? provider,
     PluginCommandSource? source,
     bool? subtask,
   }) = _PluginCommand;

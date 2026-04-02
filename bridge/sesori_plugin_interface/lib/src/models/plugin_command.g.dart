@@ -15,6 +15,7 @@ _PluginCommand _$PluginCommandFromJson(Map json) => _PluginCommand(
   description: json['description'] as String?,
   agent: json['agent'] as String?,
   model: json['model'] as String?,
+  provider: json['provider'] as String?,
   source: $enumDecodeNullable(_$PluginCommandSourceEnumMap, json['source']),
   subtask: json['subtask'] as bool?,
 );
@@ -27,6 +28,7 @@ Map<String, dynamic> _$PluginCommandToJson(_PluginCommand instance) =>
       'description': instance.description,
       'agent': instance.agent,
       'model': instance.model,
+      'provider': instance.provider,
       'source': _$PluginCommandSourceEnumMap[instance.source],
       'subtask': instance.subtask,
     };

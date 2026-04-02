@@ -13,6 +13,7 @@ sealed class CreateSessionRequest with _$CreateSessionRequest {
     required List<PromptPart> parts,
     required String? agent,
     required PromptModel? model,
+    required String? command,
     required bool dedicatedWorktree,
   }) = _CreateSessionRequest;
 

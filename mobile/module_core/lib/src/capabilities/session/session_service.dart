@@ -63,6 +63,7 @@ class SessionService {
         parts: [PromptPart.text(text: text)],
         agent: agent,
         model: model,
+        command: null,
         dedicatedWorktree: dedicatedWorktree,
       ),
     );
@@ -82,6 +83,7 @@ class SessionService {
         parts: const [],
         agent: agent,
         model: model,
+        command: null,
         dedicatedWorktree: dedicatedWorktree,
       ),
     );
@@ -218,6 +220,7 @@ class SessionService {
         parts: [PromptPart.text(text: text)],
         agent: agent,
         model: providerID != null && modelID != null ? PromptModel(providerID: providerID, modelID: modelID) : null,
+        command: null,
       ),
     );
   }
@@ -238,7 +241,7 @@ class SessionService {
     return _client.post(
       "/session/$sessionId/command",
       fromJson: SuccessEmptyResponse.fromJson,
-      body: SendCommandRequest(command: command, arguments: arguments),
+      body: SendCommandRequest(sessionId: sessionId, command: command, arguments: arguments),
     );
   }
 

@@ -55,6 +55,7 @@ void main() {
             parts: [PromptPart.text(text: "hello")],
             agent: null,
             model: null,
+            command: null,
             dedicatedWorktree: true,
           ),
         ),
@@ -72,7 +73,7 @@ void main() {
         (_) async => ApiResponse.success(
           const CommandListResponse(
             items: <CommandInfo>[
-              CommandInfo(name: "review", template: "/review", hints: <String>["file.dart"]),
+              CommandInfo(name: "review", template: "/review", hints: <String>["file.dart"], provider: null),
             ],
           ),
         ),
@@ -126,6 +127,7 @@ void main() {
             parts: <PromptPart>[],
             agent: null,
             model: null,
+            command: null,
             dedicatedWorktree: true,
           ),
         ),
@@ -153,6 +155,7 @@ void main() {
           "/session/s1/command",
           fromJson: any(named: "fromJson"),
           body: const SendCommandRequest(
+            sessionId: "s1",
             command: "review",
             arguments: "lib/main.dart",
           ),

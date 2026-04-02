@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$CommandInfo {
 
- String get name; String? get template; List<String>? get hints; String? get description; String? get agent; String? get model;@JsonKey(unknownEnumValue: CommandSource.unknown) CommandSource? get source; bool? get subtask;
+ String get name; String? get template; List<String>? get hints; String? get description; String? get agent; String? get model; String? get provider;@JsonKey(unknownEnumValue: CommandSource.unknown) CommandSource? get source; bool? get subtask;
 /// Create a copy of CommandInfo
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $CommandInfoCopyWith<CommandInfo> get copyWith => _$CommandInfoCopyWithImpl<Comm
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CommandInfo&&(identical(other.name, name) || other.name == name)&&(identical(other.template, template) || other.template == template)&&const DeepCollectionEquality().equals(other.hints, hints)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.model, model) || other.model == model)&&(identical(other.source, source) || other.source == source)&&(identical(other.subtask, subtask) || other.subtask == subtask));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CommandInfo&&(identical(other.name, name) || other.name == name)&&(identical(other.template, template) || other.template == template)&&const DeepCollectionEquality().equals(other.hints, hints)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.model, model) || other.model == model)&&(identical(other.provider, provider) || other.provider == provider)&&(identical(other.source, source) || other.source == source)&&(identical(other.subtask, subtask) || other.subtask == subtask));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,template,const DeepCollectionEquality().hash(hints),description,agent,model,source,subtask);
+int get hashCode => Object.hash(runtimeType,name,template,const DeepCollectionEquality().hash(hints),description,agent,model,provider,source,subtask);
 
 @override
 String toString() {
-  return 'CommandInfo(name: $name, template: $template, hints: $hints, description: $description, agent: $agent, model: $model, source: $source, subtask: $subtask)';
+  return 'CommandInfo(name: $name, template: $template, hints: $hints, description: $description, agent: $agent, model: $model, provider: $provider, source: $source, subtask: $subtask)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $CommandInfoCopyWith<$Res>  {
   factory $CommandInfoCopyWith(CommandInfo value, $Res Function(CommandInfo) _then) = _$CommandInfoCopyWithImpl;
 @useResult
 $Res call({
- String name, String? template, List<String>? hints, String? description, String? agent, String? model,@JsonKey(unknownEnumValue: CommandSource.unknown) CommandSource? source, bool? subtask
+ String name, String? template, List<String>? hints, String? description, String? agent, String? model, String? provider,@JsonKey(unknownEnumValue: CommandSource.unknown) CommandSource? source, bool? subtask
 });
 
 
@@ -65,7 +65,7 @@ class _$CommandInfoCopyWithImpl<$Res>
 
 /// Create a copy of CommandInfo
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? template = freezed,Object? hints = freezed,Object? description = freezed,Object? agent = freezed,Object? model = freezed,Object? source = freezed,Object? subtask = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? template = freezed,Object? hints = freezed,Object? description = freezed,Object? agent = freezed,Object? model = freezed,Object? provider = freezed,Object? source = freezed,Object? subtask = freezed,}) {
   return _then(_self.copyWith(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,template: freezed == template ? _self.template : template // ignore: cast_nullable_to_non_nullable
@@ -73,6 +73,7 @@ as String?,hints: freezed == hints ? _self.hints : hints // ignore: cast_nullabl
 as List<String>?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
+as String?,provider: freezed == provider ? _self.provider : provider // ignore: cast_nullable_to_non_nullable
 as String?,source: freezed == source ? _self.source : source // ignore: cast_nullable_to_non_nullable
 as CommandSource?,subtask: freezed == subtask ? _self.subtask : subtask // ignore: cast_nullable_to_non_nullable
 as bool?,
@@ -87,7 +88,7 @@ as bool?,
 @JsonSerializable()
 
 class _CommandInfo implements CommandInfo {
-  const _CommandInfo({required this.name, this.template, final  List<String>? hints, this.description, this.agent, this.model, @JsonKey(unknownEnumValue: CommandSource.unknown) this.source, this.subtask}): _hints = hints;
+  const _CommandInfo({required this.name, this.template, final  List<String>? hints, this.description, this.agent, this.model, required this.provider, @JsonKey(unknownEnumValue: CommandSource.unknown) this.source, this.subtask}): _hints = hints;
   factory _CommandInfo.fromJson(Map<String, dynamic> json) => _$CommandInfoFromJson(json);
 
 @override final  String name;
@@ -104,6 +105,7 @@ class _CommandInfo implements CommandInfo {
 @override final  String? description;
 @override final  String? agent;
 @override final  String? model;
+@override final  String? provider;
 @override@JsonKey(unknownEnumValue: CommandSource.unknown) final  CommandSource? source;
 @override final  bool? subtask;
 
@@ -120,16 +122,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CommandInfo&&(identical(other.name, name) || other.name == name)&&(identical(other.template, template) || other.template == template)&&const DeepCollectionEquality().equals(other._hints, _hints)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.model, model) || other.model == model)&&(identical(other.source, source) || other.source == source)&&(identical(other.subtask, subtask) || other.subtask == subtask));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CommandInfo&&(identical(other.name, name) || other.name == name)&&(identical(other.template, template) || other.template == template)&&const DeepCollectionEquality().equals(other._hints, _hints)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.model, model) || other.model == model)&&(identical(other.provider, provider) || other.provider == provider)&&(identical(other.source, source) || other.source == source)&&(identical(other.subtask, subtask) || other.subtask == subtask));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,template,const DeepCollectionEquality().hash(_hints),description,agent,model,source,subtask);
+int get hashCode => Object.hash(runtimeType,name,template,const DeepCollectionEquality().hash(_hints),description,agent,model,provider,source,subtask);
 
 @override
 String toString() {
-  return 'CommandInfo(name: $name, template: $template, hints: $hints, description: $description, agent: $agent, model: $model, source: $source, subtask: $subtask)';
+  return 'CommandInfo(name: $name, template: $template, hints: $hints, description: $description, agent: $agent, model: $model, provider: $provider, source: $source, subtask: $subtask)';
 }
 
 
@@ -140,7 +142,7 @@ abstract mixin class _$CommandInfoCopyWith<$Res> implements $CommandInfoCopyWith
   factory _$CommandInfoCopyWith(_CommandInfo value, $Res Function(_CommandInfo) _then) = __$CommandInfoCopyWithImpl;
 @override @useResult
 $Res call({
- String name, String? template, List<String>? hints, String? description, String? agent, String? model,@JsonKey(unknownEnumValue: CommandSource.unknown) CommandSource? source, bool? subtask
+ String name, String? template, List<String>? hints, String? description, String? agent, String? model, String? provider,@JsonKey(unknownEnumValue: CommandSource.unknown) CommandSource? source, bool? subtask
 });
 
 
@@ -157,7 +159,7 @@ class __$CommandInfoCopyWithImpl<$Res>
 
 /// Create a copy of CommandInfo
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? template = freezed,Object? hints = freezed,Object? description = freezed,Object? agent = freezed,Object? model = freezed,Object? source = freezed,Object? subtask = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? template = freezed,Object? hints = freezed,Object? description = freezed,Object? agent = freezed,Object? model = freezed,Object? provider = freezed,Object? source = freezed,Object? subtask = freezed,}) {
   return _then(_CommandInfo(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,template: freezed == template ? _self.template : template // ignore: cast_nullable_to_non_nullable
@@ -165,6 +167,7 @@ as String?,hints: freezed == hints ? _self._hints : hints // ignore: cast_nullab
 as List<String>?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
+as String?,provider: freezed == provider ? _self.provider : provider // ignore: cast_nullable_to_non_nullable
 as String?,source: freezed == source ? _self.source : source // ignore: cast_nullable_to_non_nullable
 as CommandSource?,subtask: freezed == subtask ? _self.subtask : subtask // ignore: cast_nullable_to_non_nullable
 as bool?,

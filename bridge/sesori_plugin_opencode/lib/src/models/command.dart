@@ -27,6 +27,7 @@ sealed class Command with _$Command {
     String? description,
     String? agent,
     String? model,
+    required String? provider,
     @JsonKey(unknownEnumValue: CommandSource.unknown) CommandSource? source,
     bool? subtask,
   }) = _Command;

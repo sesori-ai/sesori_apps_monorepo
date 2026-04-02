@@ -7,6 +7,7 @@ part "send_command_request.g.dart";
 @Freezed(fromJson: true, toJson: true)
 sealed class SendCommandRequest with _$SendCommandRequest {
   const factory SendCommandRequest({
+    required String sessionId,
     required String command,
     required String arguments,
   }) = _SendCommandRequest;

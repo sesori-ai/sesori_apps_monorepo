@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$SendCommandRequest {
 
- String get command; String get arguments;
+ String get sessionId; String get command; String get arguments;
 /// Create a copy of SendCommandRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $SendCommandRequestCopyWith<SendCommandRequest> get copyWith => _$SendCommandReq
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SendCommandRequest&&(identical(other.command, command) || other.command == command)&&(identical(other.arguments, arguments) || other.arguments == arguments));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SendCommandRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.command, command) || other.command == command)&&(identical(other.arguments, arguments) || other.arguments == arguments));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,command,arguments);
+int get hashCode => Object.hash(runtimeType,sessionId,command,arguments);
 
 @override
 String toString() {
-  return 'SendCommandRequest(command: $command, arguments: $arguments)';
+  return 'SendCommandRequest(sessionId: $sessionId, command: $command, arguments: $arguments)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $SendCommandRequestCopyWith<$Res>  {
   factory $SendCommandRequestCopyWith(SendCommandRequest value, $Res Function(SendCommandRequest) _then) = _$SendCommandRequestCopyWithImpl;
 @useResult
 $Res call({
- String command, String arguments
+ String sessionId, String command, String arguments
 });
 
 
@@ -65,9 +65,10 @@ class _$SendCommandRequestCopyWithImpl<$Res>
 
 /// Create a copy of SendCommandRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? command = null,Object? arguments = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? command = null,Object? arguments = null,}) {
   return _then(_self.copyWith(
-command: null == command ? _self.command : command // ignore: cast_nullable_to_non_nullable
+sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
+as String,command: null == command ? _self.command : command // ignore: cast_nullable_to_non_nullable
 as String,arguments: null == arguments ? _self.arguments : arguments // ignore: cast_nullable_to_non_nullable
 as String,
   ));
@@ -81,9 +82,10 @@ as String,
 @JsonSerializable()
 
 class _SendCommandRequest implements SendCommandRequest {
-  const _SendCommandRequest({required this.command, required this.arguments});
+  const _SendCommandRequest({required this.sessionId, required this.command, required this.arguments});
   factory _SendCommandRequest.fromJson(Map<String, dynamic> json) => _$SendCommandRequestFromJson(json);
 
+@override final  String sessionId;
 @override final  String command;
 @override final  String arguments;
 
@@ -100,16 +102,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SendCommandRequest&&(identical(other.command, command) || other.command == command)&&(identical(other.arguments, arguments) || other.arguments == arguments));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SendCommandRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.command, command) || other.command == command)&&(identical(other.arguments, arguments) || other.arguments == arguments));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,command,arguments);
+int get hashCode => Object.hash(runtimeType,sessionId,command,arguments);
 
 @override
 String toString() {
-  return 'SendCommandRequest(command: $command, arguments: $arguments)';
+  return 'SendCommandRequest(sessionId: $sessionId, command: $command, arguments: $arguments)';
 }
 
 
@@ -120,7 +122,7 @@ abstract mixin class _$SendCommandRequestCopyWith<$Res> implements $SendCommandR
   factory _$SendCommandRequestCopyWith(_SendCommandRequest value, $Res Function(_SendCommandRequest) _then) = __$SendCommandRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String command, String arguments
+ String sessionId, String command, String arguments
 });
 
 
@@ -137,9 +139,10 @@ class __$SendCommandRequestCopyWithImpl<$Res>
 
 /// Create a copy of SendCommandRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? command = null,Object? arguments = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? command = null,Object? arguments = null,}) {
   return _then(_SendCommandRequest(
-command: null == command ? _self.command : command // ignore: cast_nullable_to_non_nullable
+sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
+as String,command: null == command ? _self.command : command // ignore: cast_nullable_to_non_nullable
 as String,arguments: null == arguments ? _self.arguments : arguments // ignore: cast_nullable_to_non_nullable
 as String,
   ));

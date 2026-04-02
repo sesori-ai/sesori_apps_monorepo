@@ -76,6 +76,7 @@ void main() {
           name: "review",
           template: "/review",
           hints: <String>["file.dart"],
+          provider: null,
           source: PluginCommandSource.command,
         ),
       ];
@@ -100,7 +101,9 @@ void main() {
         makeRequest(
           "POST",
           "/session/s-1/command",
-          body: jsonEncode(const SendCommandRequest(command: "review", arguments: "lib/main.dart").toJson()),
+          body: jsonEncode(
+            const SendCommandRequest(sessionId: "s-1", command: "review", arguments: "lib/main.dart").toJson(),
+          ),
         ),
       );
 
@@ -191,6 +194,7 @@ void main() {
               parts: [PromptPart.text(text: "Start")],
               agent: "architect",
               model: PromptModel(providerID: "openai", modelID: "gpt-5"),
+              command: null,
             ).toJson(),
           ),
         ),

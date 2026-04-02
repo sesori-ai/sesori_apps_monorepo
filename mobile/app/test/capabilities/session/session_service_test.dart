@@ -265,6 +265,7 @@ void main() {
               parts: [PromptPart.text(text: "first prompt")],
               agent: null,
               model: null,
+              command: null,
               dedicatedWorktree: true,
             ),
           ),

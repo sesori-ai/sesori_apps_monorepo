@@ -116,6 +116,7 @@ CommandInfo testCommandInfo({
     template: template,
     hints: const ["Optional arguments"],
     description: "Run $name",
+    provider: null,
     source: CommandSource.command,
   );
 }

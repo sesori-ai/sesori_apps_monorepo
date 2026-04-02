@@ -56,6 +56,7 @@ extension PluginCommandMapping on PluginCommand {
     description: description,
     agent: agent,
     model: model,
+    provider: provider,
     source: source?.toShared(),
     subtask: subtask,
   );

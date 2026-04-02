@@ -12,6 +12,7 @@ sealed class SendPromptRequest with _$SendPromptRequest {
     required List<PromptPart> parts,
     required String? agent,
     required PromptModel? model,
+    required String? command,
   }) = _SendPromptRequest;
 
   factory SendPromptRequest.fromJson(Map<String, dynamic> json) => _$SendPromptRequestFromJson(json);

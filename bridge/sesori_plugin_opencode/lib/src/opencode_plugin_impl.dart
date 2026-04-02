@@ -142,6 +142,7 @@ class OpenCodePlugin implements BridgePlugin {
             description: command.description,
             agent: command.agent,
             model: command.model,
+            provider: command.provider,
             source: switch (command.source) {
               CommandSource.command => PluginCommandSource.command,
               CommandSource.mcp => PluginCommandSource.mcp,
