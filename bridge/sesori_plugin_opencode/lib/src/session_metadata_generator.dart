@@ -105,24 +105,22 @@ class SessionMetadataGenerator {
     final name = model.name.toLowerCase();
     final family = model.family?.toLowerCase() ?? "";
     final id = model.id.toLowerCase();
+    final fields = [name, family, id];
 
-    // Match against known small/fast model indicators.
-    // Order matters: most specific first.
     for (final (pattern, score) in _smallModelPatterns) {
-      if (name.contains(pattern) || family.contains(pattern) || id.contains(pattern)) {
-        return score;
-      }
+      if (fields.any(pattern.hasMatch)) return score;
     }
     return 0;
   }
 
   /// Known small-model indicators ordered by preference.
-  /// Higher score = preferred (cheaper/faster).
-  static const _smallModelPatterns = [
-    ("haiku", 100), // Anthropic's smallest
-    ("nano", 90), // OpenAI nano
-    ("flash", 80), // Google Flash
-    ("mini", 70), // OpenAI mini
+  /// Uses RegExp for word-boundary matching to avoid false positives
+  /// (e.g. "minimax" should NOT match "mini").
+  static final _smallModelPatterns = [
+    (RegExp("haiku"), 100), // Anthropic's smallest
+    (RegExp(r"nano\b"), 90), // OpenAI nano
+    (RegExp("flash"), 80), // Google Flash
+    (RegExp(r"\bmini\b"), 70), // OpenAI mini (not minimax)
   ];
 
   static ({String providerID, String modelID})? _parseModelStr(String? modelStr) {
