@@ -173,25 +173,35 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     _emitAgentModelUpdate(selectedProviderID: providerID, selectedModelID: modelID);
   }
 
-  Future<void> createSessionWithMessage({
+  Future<void> createSession({
     required String text,
     required bool dedicatedWorktree,
+    String? command,
   }) async {
     if (state is NewSessionSending) return;
 
+    final hasCommand = command != null && command.isNotEmpty;
     final trimmed = text.trim();
-    if (trimmed.isEmpty) return;
+    if (trimmed.isEmpty && !hasCommand) return;
 
     final config = state.agentModelData;
-    final selectedProviderID = config?.providerID;
-    final selectedModelID = config?.modelID;
-    final model =
-        selectedProviderID != null &&
-            selectedProviderID.isNotEmpty &&
-            selectedModelID != null &&
-            selectedModelID.isNotEmpty
-        ? PromptModel(providerID: selectedProviderID, modelID: selectedModelID)
-        : null;
+
+    // When executing a command, agent/model selection is irrelevant.
+    final String? agent = hasCommand ? null : config?.agent;
+    final PromptModel? model;
+    if (hasCommand) {
+      model = null;
+    } else {
+      final selectedProviderID = config?.providerID;
+      final selectedModelID = config?.modelID;
+      model =
+          selectedProviderID != null &&
+              selectedProviderID.isNotEmpty &&
+              selectedModelID != null &&
+              selectedModelID.isNotEmpty
+          ? PromptModel(providerID: selectedProviderID, modelID: selectedModelID)
+          : null;
+    }
 
     emit(
       NewSessionState.sending(
@@ -199,8 +209,8 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         availableProviders: config?.providers ?? const [],
         availableCommands: config?.commands ?? const [],
         selectedAgent: config?.agent,
-        selectedProviderID: selectedProviderID,
-        selectedModelID: selectedModelID,
+        selectedProviderID: config?.providerID,
+        selectedModelID: config?.modelID,
         stagedCommand: config?.stagedCommand,
       ),
     );
@@ -208,9 +218,9 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     final response = await _sessionService.createSessionWithMessage(
       projectId: _projectId,
       text: trimmed,
-      agent: config?.agent,
+      agent: agent,
       model: model,
-      command: null,
+      command: command,
       dedicatedWorktree: dedicatedWorktree,
     );
 
@@ -223,58 +233,6 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         // Read from current state (not pre-request snapshot) so that any
         // agent/provider data loaded while the request was in-flight is
         // preserved.
-        final current = state.agentModelData;
-        emit(
-          NewSessionState.error(
-            message: _describeError(error: error),
-            availableAgents: current?.agents ?? const [],
-            availableProviders: current?.providers ?? const [],
-            availableCommands: current?.commands ?? const [],
-            selectedAgent: current?.agent,
-            selectedProviderID: current?.providerID,
-            selectedModelID: current?.modelID,
-            stagedCommand: current?.stagedCommand,
-          ),
-        );
-    }
-  }
-
-  Future<void> createSessionWithCommand({
-    required CommandInfo command,
-    required String arguments,
-    required bool dedicatedWorktree,
-  }) async {
-    if (state is NewSessionSending) return;
-
-    final config = state.agentModelData;
-
-    emit(
-      NewSessionState.sending(
-        availableAgents: config?.agents ?? const [],
-        availableProviders: config?.providers ?? const [],
-        availableCommands: config?.commands ?? const [],
-        selectedAgent: config?.agent,
-        selectedProviderID: config?.providerID,
-        selectedModelID: config?.modelID,
-        stagedCommand: command,
-      ),
-    );
-
-    final response = await _sessionService.createSessionWithMessage(
-      projectId: _projectId,
-      text: "",
-      agent: null,
-      model: null,
-      command: command.name,
-      dedicatedWorktree: dedicatedWorktree,
-    );
-
-    if (isClosed) return;
-
-    switch (response) {
-      case SuccessResponse(:final data):
-        emit(NewSessionState.created(session: data));
-      case ErrorResponse(:final error):
         final current = state.agentModelData;
         emit(
           NewSessionState.error(

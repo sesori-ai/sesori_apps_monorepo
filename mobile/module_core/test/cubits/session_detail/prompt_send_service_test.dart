@@ -204,10 +204,13 @@ void main() {
         ),
       );
 
-      await service.sendCommand(
-        command: "review",
-        arguments: "lib/main.dart",
+      await service.sendMessage(
+        text: "lib/main.dart",
+        agent: "agent",
+        providerID: "provider",
+        modelID: "model",
         isConnected: false,
+        command: "review",
       );
 
       expect(service.queuedMessages.single.displayText, "/review lib/main.dart");

@@ -152,15 +152,15 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
             PromptInput(
               isBusy: state is NewSessionSending,
               onSendPrompt: (text) {
-                context.read<NewSessionCubit>().createSessionWithMessage(
+                context.read<NewSessionCubit>().createSession(
                   text: text,
                   dedicatedWorktree: _dedicatedWorktree,
                 );
               },
               onSendCommand: (command, arguments) {
-                context.read<NewSessionCubit>().createSessionWithCommand(
-                  command: command,
-                  arguments: arguments,
+                context.read<NewSessionCubit>().createSession(
+                  text: "",
+                  command: command.name,
                   dedicatedWorktree: _dedicatedWorktree,
                 );
               },

@@ -55,7 +55,7 @@ void main() {
     );
 
     blocTest<NewSessionCubit, NewSessionState>(
-      "createSessionWithMessage forwards dedicatedWorktree to service",
+      "createSession forwards dedicatedWorktree to service",
       build: () {
         when(
           () => mockSessionService.createSessionWithMessage(
@@ -70,7 +70,7 @@ void main() {
         return buildCubit();
       },
       act: (cubit) async {
-        await cubit.createSessionWithMessage(
+        await cubit.createSession(
           text: "hello",
           dedicatedWorktree: false,
         );
@@ -95,7 +95,7 @@ void main() {
     );
 
     blocTest<NewSessionCubit, NewSessionState>(
-      "createSessionWithCommand creates a session with command via createSessionWithMessage",
+      "createSession with command passes command name to service",
       build: () {
         when(
           () => mockSessionService.createSessionWithMessage(
@@ -113,9 +113,9 @@ void main() {
         );
       },
       act: (cubit) async {
-        await cubit.createSessionWithCommand(
-          command: testCommandInfo(name: "review"),
-          arguments: "lib/main.dart",
+        await cubit.createSession(
+          text: "",
+          command: "review",
           dedicatedWorktree: true,
         );
       },

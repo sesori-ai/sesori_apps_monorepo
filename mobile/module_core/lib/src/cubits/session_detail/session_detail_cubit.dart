@@ -1,13 +1,10 @@
 import "dart:async";
 
 import "package:bloc/bloc.dart";
+import "package:collection/collection.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../../capabilities/server_connection/connection_service.dart";
-import "../../capabilities/server_connection/models/connection_status.dart";
-import "../../capabilities/server_connection/models/sse_event.dart";
-import "../../capabilities/session/session_service.dart";
 import "../../logging/logging.dart";
 import "../../platform/notification_canceller.dart";
 import "../../repositories/permission_repository.dart";
@@ -345,10 +342,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     required CommandInfo? stagedCommand,
   }) {
     if (stagedCommand == null) return null;
-    for (final command in availableCommands) {
-      if (command.name == stagedCommand.name) return command;
-    }
-    return null;
+    return availableCommands.firstWhereOrNull((c) => c.name == stagedCommand.name);
   }
 
   /// Returns the latest assistant [Message] from the list, or null if none.
@@ -699,7 +693,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     _sendService.drain();
   }
 
-  Future<void> sendMessage(String text) async {
+  Future<void> sendMessage({required String text, String? command}) async {
     final current = state;
     await _sendService.sendMessage(
       text: text,
@@ -707,18 +701,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       providerID: current is SessionDetailLoaded ? current.selectedProviderID : null,
       modelID: current is SessionDetailLoaded ? current.selectedModelID : null,
       isConnected: current is SessionDetailLoaded && _isConnected,
-    );
-  }
-
-  Future<void> sendCommand({
-    required String command,
-    required String arguments,
-  }) async {
-    final current = state;
-    await _sendService.sendCommand(
       command: command,
-      arguments: arguments,
-      isConnected: current is SessionDetailLoaded && _isConnected,
     );
   }
 

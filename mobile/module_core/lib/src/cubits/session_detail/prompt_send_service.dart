@@ -70,35 +70,6 @@ class PromptSendService {
     }
   }
 
-  Future<void> sendCommand({
-    required String command,
-    required String arguments,
-    required bool isConnected,
-  }) async {
-    if (command.trim().isEmpty) return;
-    final submission = QueuedSessionSubmission(
-      text: arguments,
-      command: command,
-    );
-
-    if (!isConnected) {
-      _promptQueue.enqueue(submission);
-      _onQueueChanged();
-      return;
-    }
-
-    final result = await _service.sendMessage(
-      _sessionId,
-      arguments,
-      command: command,
-    );
-
-    if (result case ErrorResponse()) {
-      _promptQueue.requeue(submission);
-      _onQueueChanged();
-    }
-  }
-
   QueuedSessionSubmission? cancelQueuedMessage(int index) {
     final removed = _promptQueue.cancel(index);
     if (removed != null) {
