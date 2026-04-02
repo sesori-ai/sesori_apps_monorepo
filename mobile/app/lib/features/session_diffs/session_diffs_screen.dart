@@ -101,11 +101,11 @@ class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
 
   Widget _buildLoadedState(BuildContext context, List<FileDiff> files) {
     _maybeComputeViewModels(files: files);
-    if (_isComputing || _viewModels == null) {
-      return const Center(child: CircularProgressIndicator());
-    }
     if (_computeError != null) {
       return Center(child: Text("Error computing diffs: $_computeError"));
+    }
+    if (_isComputing || _viewModels == null) {
+      return const Center(child: CircularProgressIndicator());
     }
     return CustomScrollView(slivers: _buildSlivers(viewModels: _viewModels!));
   }
@@ -123,7 +123,10 @@ class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
                 onToggle: () => _toggleFile(i),
               ),
             ),
-            if (_expandedFileIndices.contains(i)) _buildFileContentSliver(viewModels[i]),
+            if (_expandedFileIndices.contains(i))
+              _buildFileContentSliver(viewModels[i])
+            else
+              const SliverToBoxAdapter(child: SizedBox.shrink()),
           ],
         ),
     ];
