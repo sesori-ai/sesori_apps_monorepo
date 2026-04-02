@@ -83,8 +83,7 @@ Future<AuthUrlResponse> _requestGitHubAuth(
     );
   }
 
-  final jsonBody = jsonDecode(response.body) as Map<String, dynamic>;
-  final initResp = AuthUrlResponse.fromJson(jsonBody);
+  final initResp = AuthUrlResponse.fromJson(jsonDecodeMap(response.body));
 
   if (initResp.authUrl.isEmpty || initResp.state.isEmpty) {
     throw Exception("auth init response missing authUrl/state");
@@ -121,8 +120,7 @@ Future<(TokenData, String)> _exchangeCallback(
     );
   }
 
-  final jsonBody = jsonDecode(response.body) as Map<String, dynamic>;
-  final authResponse = AuthResponse.fromJson(jsonBody);
+  final authResponse = AuthResponse.fromJson(jsonDecodeMap(response.body));
 
   if (authResponse.accessToken.isEmpty || authResponse.refreshToken.isEmpty) {
     throw Exception("callback response missing tokens");

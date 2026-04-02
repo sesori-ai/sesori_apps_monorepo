@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:sesori_shared/sesori_shared.dart';
+
 /// TokenData holds authentication tokens for the Sesori Bridge.
 class TokenData {
   final String accessToken;
@@ -74,8 +76,8 @@ Future<TokenData> loadTokens() async {
 
   try {
     final content = await file.readAsString();
-    final json = jsonDecode(content) as Map<String, dynamic>;
-    return TokenData.fromJson(json);
+
+    return TokenData.fromJson(jsonDecodeMap(content));
   } on FileSystemException {
     rethrow;
   }

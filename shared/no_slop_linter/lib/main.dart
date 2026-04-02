@@ -21,11 +21,9 @@
 import 'package:analysis_server_plugin/plugin.dart';
 import 'package:analysis_server_plugin/registry.dart';
 // ignore: implementation_imports
-import 'package:analysis_server_plugin/src/plugin_server.dart'
-    show PluginServer;
+import 'package:analysis_server_plugin/src/plugin_server.dart' show PluginServer;
 // ignore: implementation_imports
-import 'package:analysis_server_plugin/src/registry.dart'
-    show PluginRegistryImpl;
+import 'package:analysis_server_plugin/src/registry.dart' show PluginRegistryImpl;
 
 import 'src/fixes/add_return_type_fix.dart';
 import 'src/fixes/dartz_tuple_to_record_fix.dart';
@@ -46,7 +44,6 @@ import 'src/rules/avoid_string_literals_in_widgets_rule.dart';
 import 'src/rules/prefer_edge_insets_directional_rule.dart';
 import 'src/rules/prefer_exhaustive_switch_rule.dart';
 import 'src/rules/prefer_required_named_parameters_rule.dart';
-import 'src/rules/prefer_size_const_rule.dart';
 import 'src/rules/prefer_text_align_directional_rule.dart';
 
 /// The analysis server plugin instance.

@@ -1,6 +1,5 @@
-import "dart:convert";
-
 import "package:http/http.dart" as http;
+import "package:sesori_shared/sesori_shared.dart";
 
 /// Fetches the authenticated user's GitHub username from [authBackendURL]/auth/me.
 ///
@@ -21,13 +20,6 @@ Future<String> fetchUsername(String authBackendURL, String accessToken) async {
     throw Exception("auth me returned status ${response.statusCode}");
   }
 
-  final jsonBody = jsonDecode(response.body) as Map<String, dynamic>;
-  final user = jsonBody["user"] as Map<String, dynamic>? ?? {};
-  final username = user["providerUsername"] as String? ?? "";
-
-  if (username.isNotEmpty) {
-    return username;
-  }
-
-  return "unknown-user";
+  final authMeResponse = AuthMeResponse.fromJson(jsonDecodeMap(response.body));
+  return authMeResponse.user.providerUsername ?? "unknown-user";
 }

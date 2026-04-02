@@ -72,17 +72,13 @@ modules/
   ```dart
   final FooRequest fooRequest;
   try {
-    final decoded = ;
     fooRequest = FooRequest.fromJson(
       jsonDecodeMap(request.body),
     );
-  } on FormatException {
-    return buildErrorResponse(request, 400, "invalid JSON body");
-  } on Object {
+  } catch {
     return buildErrorResponse(request, 400, "invalid JSON body");
   }
   ```
-  The `on Object` catch is intentional — Freezed's `fromJson` throws `TypeError` (not `FormatException`) for missing required fields.
 
 ## ANTI-PATTERNS
 
