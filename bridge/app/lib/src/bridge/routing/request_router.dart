@@ -4,6 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../metadata_service.dart";
+import "../persistence/dao_interfaces.dart";
 import "../persistence/daos/projects_dao.dart";
 import "../persistence/daos/pull_request_dao.dart";
 import "../persistence/daos/session_dao.dart";

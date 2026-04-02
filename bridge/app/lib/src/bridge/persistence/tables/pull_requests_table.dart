@@ -15,7 +15,7 @@ class PullRequestsTable extends Table {
   TextColumn get mergeableStatus => text().nullable()();
   TextColumn get reviewDecision => text().nullable()();
   TextColumn get checkStatus => text().nullable()();
-  TextColumn get sessionId => text().nullable().references(SessionTable, #sessionId)();
+  TextColumn get sessionId => text().nullable().references(SessionTable, #sessionId, onDelete: KeyAction.cascade)();
   IntColumn get lastCheckedAt => integer()();
   IntColumn get createdAt => integer()();
 

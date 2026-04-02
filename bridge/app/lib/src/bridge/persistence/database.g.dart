@@ -811,7 +811,7 @@ class $PullRequestsTableTable extends PullRequestsTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES sessions_table (session_id)',
+      'REFERENCES sessions_table (session_id) ON DELETE CASCADE',
     ),
   );
   static const VerificationMeta _lastCheckedAtMeta = const VerificationMeta(
@@ -1438,6 +1438,16 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     sessionTable,
     pullRequestsTable,
   ];
+  @override
+  StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'sessions_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('pull_requests_table', kind: UpdateKind.delete)],
+    ),
+  ]);
 }
 
 typedef $$ProjectsTableTableCreateCompanionBuilder =

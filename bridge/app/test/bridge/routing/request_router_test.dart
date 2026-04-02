@@ -266,6 +266,7 @@ void main() {
         sessionDao: db.sessionDao,
         pullRequestDao: fakePrDao,
         prRefreshCoordinator: coordinator,
+        metadataService: metadataService,
       );
 
       final response = await router.route(

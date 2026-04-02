@@ -1,6 +1,6 @@
 import "package:drift/drift.dart";
 
-import "../../routing/get_sessions_handler.dart";
+import "../dao_interfaces.dart";
 import "../database.dart";
 import "../tables/pull_requests_table.dart";
 import "../tables/session_table.dart";

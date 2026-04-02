@@ -1,11 +1,11 @@
 import "dart:async";
 
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/persistence/dao_interfaces.dart";
 import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/pr/gh_cli_service.dart";
 import "package:sesori_bridge/src/bridge/pr/gh_pull_request.dart";
 import "package:sesori_bridge/src/bridge/pr/pr_sync_service.dart";
-import "package:sesori_bridge/src/bridge/routing/get_sessions_handler.dart";
 import "package:test/test.dart";
 
 void main() {

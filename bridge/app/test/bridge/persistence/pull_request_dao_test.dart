@@ -439,5 +439,41 @@ void main() {
         expect(prs[0].prNumber, equals(43));
       });
     });
+
+    test("deleting a session cascades linked pull requests", () async {
+      await db.sessionDao.insertSession(
+        sessionId: "session-1",
+        projectId: "proj-1",
+        isDedicated: true,
+        createdAt: 900,
+        worktreePath: "/path/to/worktree",
+        branchName: "feature/auth",
+        baseBranch: "main",
+        baseCommit: "abc123",
+      );
+
+      await dao.upsertPr(
+        projectId: "proj-1",
+        branchName: "feature/auth",
+        prNumber: 42,
+        url: "https://github.com/org/repo/pull/42",
+        title: "Add authentication",
+        state: "OPEN",
+        mergeableStatus: null,
+        reviewDecision: null,
+        checkStatus: null,
+        sessionId: "session-1",
+        lastCheckedAt: 1000,
+        createdAt: 900,
+      );
+
+      await db.sessionDao.deleteSession(sessionId: "session-1");
+
+      final sessions = await db.sessionDao.getSessionsByIds(sessionIds: ["session-1"]);
+      expect(sessions, isEmpty);
+
+      final prs = await dao.getPrsByProjectId(projectId: "proj-1");
+      expect(prs, isEmpty);
+    });
   });
 }

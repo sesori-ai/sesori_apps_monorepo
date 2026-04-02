@@ -1,7 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "get_sessions_handler.dart";
+import "../persistence/dao_interfaces.dart";
 import "plugin_session_mapper.dart";
 import "request_handler.dart";
 

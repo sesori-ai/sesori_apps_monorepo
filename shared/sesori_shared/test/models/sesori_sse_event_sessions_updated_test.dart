@@ -44,10 +44,10 @@ void main() {
       expect(event1, isNot(event3));
     });
 
-    test("implements SesoriSessionEvent marker", () {
+    test("does not implement SesoriSessionEvent marker", () {
       const event = SesoriSseEvent.sessionsUpdated(projectID: "proj-test");
 
-      expect(event, isA<SesoriSessionEvent>());
+      expect(event, isNot(isA<SesoriSessionEvent>()));
     });
   });
 }

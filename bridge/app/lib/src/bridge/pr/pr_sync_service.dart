@@ -1,8 +1,8 @@
 import "dart:async";
 
+import "../persistence/dao_interfaces.dart";
 import "../persistence/database.dart";
 import "../persistence/tables/session_table.dart";
-import "../routing/get_sessions_handler.dart";
 import "gh_cli_service.dart";
 import "gh_pull_request.dart";
 
@@ -125,8 +125,8 @@ class PrSyncService {
       if (hasChanges) {
         _onPrDataChanged(projectId);
       }
-    } catch (_) {
-      // Ignore errors; next trigger attempts refresh again.
+    } catch (e, st) {
+      Zone.current.handleUncaughtError(e, st);
     } finally {
       _activeRefreshes.remove(projectId);
     }

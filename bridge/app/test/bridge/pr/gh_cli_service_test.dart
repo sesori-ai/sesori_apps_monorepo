@@ -179,6 +179,34 @@ void main() {
 
       expect(prs, isEmpty);
     });
+
+    test("extracts statusCheckRollup state from object", () async {
+      processRunner.enqueueResult(
+        result: _ok(
+          stdout:
+              '[{"number":1,"url":"https://example/pr/1","title":"Add feature","state":"OPEN","headRefName":"feat/one","mergeable":"MERGEABLE","reviewDecision":"APPROVED","statusCheckRollup":{"state":"SUCCESS","contexts":[]}}]',
+        ),
+      );
+
+      final prs = await service.listOpenPrs(workingDirectory: "/repo");
+
+      expect(prs, hasLength(1));
+      expect(prs.single.statusCheckRollup, equals("SUCCESS"));
+    });
+
+    test("returns null statusCheckRollup for unsupported rollup shape", () async {
+      processRunner.enqueueResult(
+        result: _ok(
+          stdout:
+              '[{"number":1,"url":"https://example/pr/1","title":"Add feature","state":"OPEN","headRefName":"feat/one","mergeable":"MERGEABLE","reviewDecision":"APPROVED","statusCheckRollup":["unexpected"]}]',
+        ),
+      );
+
+      final prs = await service.listOpenPrs(workingDirectory: "/repo");
+
+      expect(prs, hasLength(1));
+      expect(prs.single.statusCheckRollup, isNull);
+    });
   });
 
   group("GhCliService.getPrByNumber", () {

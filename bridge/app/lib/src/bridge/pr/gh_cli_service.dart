@@ -122,7 +122,7 @@ class GhCliService {
       headRefName: _requiredString(map: map, key: "headRefName"),
       mergeable: _nullableString(map: map, key: "mergeable"),
       reviewDecision: _nullableString(map: map, key: "reviewDecision"),
-      statusCheckRollup: _nullableString(map: map, key: "statusCheckRollup"),
+      statusCheckRollup: _extractRollupState(map: map, key: "statusCheckRollup"),
     );
   }
 
@@ -148,6 +148,16 @@ class GhCliService {
       null => null,
       final String stringValue => stringValue,
       _ => jsonEncode(value),
+    };
+  }
+
+  String? _extractRollupState({required Map<String, dynamic> map, required String key}) {
+    final value = map[key];
+    return switch (value) {
+      null => null,
+      final String stringValue => stringValue,
+      final Map<String, dynamic> object => object["state"]?.toString() ?? object["conclusion"]?.toString(),
+      _ => null,
     };
   }
 }

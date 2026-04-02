@@ -2334,7 +2334,7 @@ String toString() {
 /// @nodoc
 @JsonSerializable()
 
-class SesoriSessionsUpdated implements SesoriSseEvent, SesoriSessionEvent {
+class SesoriSessionsUpdated implements SesoriSseEvent {
   const SesoriSessionsUpdated({required this.projectID, final  String? $type}): $type = $type ?? 'sessions.updated';
   factory SesoriSessionsUpdated.fromJson(Map<String, dynamic> json) => _$SesoriSessionsUpdatedFromJson(json);
 

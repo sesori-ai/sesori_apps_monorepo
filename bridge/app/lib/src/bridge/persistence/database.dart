@@ -24,7 +24,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -80,6 +80,59 @@ class AppDatabase extends _$AppDatabase {
       },
       from3To4: (m, schema) async {
         await m.createTable(schema.pullRequestsTable);
+      },
+      from4To5: (m, schema) async {
+        await customStatement("""
+          CREATE TABLE pull_requests_table_new (
+            project_id TEXT NOT NULL,
+            branch_name TEXT NOT NULL,
+            pr_number INTEGER NOT NULL,
+            url TEXT NOT NULL,
+            title TEXT NOT NULL,
+            state TEXT NOT NULL,
+            mergeable_status TEXT NULL,
+            review_decision TEXT NULL,
+            check_status TEXT NULL,
+            session_id TEXT NULL REFERENCES sessions_table(session_id) ON DELETE CASCADE,
+            last_checked_at INTEGER NOT NULL,
+            created_at INTEGER NOT NULL,
+            PRIMARY KEY (project_id, branch_name)
+          ) WITHOUT ROWID
+        """);
+
+        await customStatement("""
+          INSERT INTO pull_requests_table_new (
+            project_id,
+            branch_name,
+            pr_number,
+            url,
+            title,
+            state,
+            mergeable_status,
+            review_decision,
+            check_status,
+            session_id,
+            last_checked_at,
+            created_at
+          )
+          SELECT
+            project_id,
+            branch_name,
+            pr_number,
+            url,
+            title,
+            state,
+            mergeable_status,
+            review_decision,
+            check_status,
+            session_id,
+            last_checked_at,
+            created_at
+          FROM pull_requests_table
+        """);
+
+        await customStatement("DROP TABLE pull_requests_table");
+        await customStatement("ALTER TABLE pull_requests_table_new RENAME TO pull_requests_table");
       },
     ),
     beforeOpen: (details) async {
