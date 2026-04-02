@@ -134,10 +134,12 @@ class SessionMetadataGenerator {
   ];
 
   /// Returns true if [a] is a more recent release date than [b].
-  /// Dates are ISO strings (e.g. "2025-07-10"). Null is treated as oldest.
+  /// Dates are ISO strings (e.g. "2025-07-10").
+  /// Null is treated as newest — latest model versions often omit the date.
   static bool _isNewer(String? a, String? b) {
-    if (a == null) return false;
-    if (b == null) return true;
+    if (a == null && b == null) return false;
+    if (a == null) return true; // no date = latest
+    if (b == null) return false; // current best has no date = latest
     return a.compareTo(b) > 0;
   }
 
