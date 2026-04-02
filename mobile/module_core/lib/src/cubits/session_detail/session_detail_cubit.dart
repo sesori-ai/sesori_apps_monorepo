@@ -279,7 +279,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         _service.listAgents(),
         _service.listProviders(),
       ),
-      _service.listCommands(projectId: _projectId),
+      _service.listCommands(projectId: _projectId ?? ""),
     ).wait;
     final (
       messagesResponse,

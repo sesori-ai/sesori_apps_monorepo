@@ -42,6 +42,7 @@ void main() {
         text: "hello",
         agent: null,
         model: null,
+        command: null,
         dedicatedWorktree: true,
       );
 
@@ -62,12 +63,12 @@ void main() {
       ).called(1);
     });
 
-    test("listCommands sends project header when projectId is provided", () async {
+    test("listCommands sends POST with ProjectIdRequest body", () async {
       when(
-        () => mockClient.get<CommandListResponse>(
+        () => mockClient.post<CommandListResponse>(
           "/command",
           fromJson: any(named: "fromJson"),
-          headers: any(named: "headers"),
+          body: any(named: "body"),
         ),
       ).thenAnswer(
         (_) async => ApiResponse.success(
@@ -83,82 +84,10 @@ void main() {
 
       expect(result, isA<SuccessResponse<CommandListResponse>>());
       verify(
-        () => mockClient.get<CommandListResponse>(
+        () => mockClient.post<CommandListResponse>(
           "/command",
           fromJson: any(named: "fromJson"),
-          headers: const {"x-project-id": "/repo"},
-        ),
-      ).called(1);
-    });
-
-    test("createEmptySession sends an empty parts list", () async {
-      const session = Session(
-        id: "s-empty",
-        projectID: "p1",
-        directory: "/tmp/project",
-        parentID: null,
-        title: "Session",
-        summary: null,
-        time: SessionTime(created: 1, updated: 1, archived: null),
-      );
-
-      when(
-        () => mockClient.post<Session>(
-          "/session/create",
-          fromJson: any(named: "fromJson"),
-          body: any(named: "body"),
-        ),
-      ).thenAnswer((_) async => ApiResponse.success(session));
-
-      final result = await service.createEmptySession(
-        projectId: "p1",
-        agent: null,
-        model: null,
-        dedicatedWorktree: true,
-      );
-
-      expect(result, isA<SuccessResponse<Session>>());
-      verify(
-        () => mockClient.post<Session>(
-          "/session/create",
-          fromJson: any(named: "fromJson"),
-          body: const CreateSessionRequest(
-            projectId: "p1",
-            parts: <PromptPart>[],
-            agent: null,
-            model: null,
-            command: null,
-            dedicatedWorktree: true,
-          ),
-        ),
-      ).called(1);
-    });
-
-    test("sendCommand posts the command body to the session command route", () async {
-      when(
-        () => mockClient.post<void>(
-          "/session/s1/command",
-          fromJson: any(named: "fromJson"),
-          body: any(named: "body"),
-        ),
-      ).thenAnswer((_) async => ApiResponse.success(null));
-
-      final result = await service.sendCommand(
-        sessionId: "s1",
-        command: "review",
-        arguments: "lib/main.dart",
-      );
-
-      expect(result, isA<SuccessResponse<void>>());
-      verify(
-        () => mockClient.post<void>(
-          "/session/s1/command",
-          fromJson: any(named: "fromJson"),
-          body: const SendCommandRequest(
-            sessionId: "s1",
-            command: "review",
-            arguments: "lib/main.dart",
-          ),
+          body: const ProjectIdRequest(projectId: "/repo"),
         ),
       ).called(1);
     });

@@ -210,6 +210,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       text: trimmed,
       agent: config?.agent,
       model: model,
+      command: null,
       dedicatedWorktree: dedicatedWorktree,
     );
 
@@ -259,10 +260,12 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       ),
     );
 
-    final response = await _sessionService.createEmptySession(
+    final response = await _sessionService.createSessionWithMessage(
       projectId: _projectId,
+      text: "",
       agent: null,
       model: null,
+      command: command.name,
       dedicatedWorktree: dedicatedWorktree,
     );
 

@@ -30,12 +30,11 @@ class SessionService {
     );
   }
 
-  Future<ApiResponse<CommandListResponse>> listCommands({required String? projectId}) {
-    final headers = projectId == null || projectId.isEmpty ? null : {"x-project-id": projectId};
-    return _client.get(
+  Future<ApiResponse<CommandListResponse>> listCommands({required String projectId}) {
+    return _client.post(
       "/command",
       fromJson: CommandListResponse.fromJson,
-      headers: headers,
+      body: ProjectIdRequest(projectId: projectId),
     );
   }
 
@@ -53,6 +52,7 @@ class SessionService {
     required String text,
     required String? agent,
     required PromptModel? model,
+    required String? command,
     required bool dedicatedWorktree,
   }) {
     return _client.post(
@@ -63,27 +63,7 @@ class SessionService {
         parts: [PromptPart.text(text: text)],
         agent: agent,
         model: model,
-        command: null,
-        dedicatedWorktree: dedicatedWorktree,
-      ),
-    );
-  }
-
-  Future<ApiResponse<Session>> createEmptySession({
-    required String projectId,
-    required String? agent,
-    required PromptModel? model,
-    required bool dedicatedWorktree,
-  }) {
-    return _client.post(
-      "/session/create",
-      fromJson: Session.fromJson,
-      body: CreateSessionRequest(
-        projectId: projectId,
-        parts: const [],
-        agent: agent,
-        model: model,
-        command: null,
+        command: command,
         dedicatedWorktree: dedicatedWorktree,
       ),
     );
@@ -211,6 +191,7 @@ class SessionService {
     String? agent,
     String? providerID,
     String? modelID,
+    String? command,
   }) {
     return _client.post(
       "/session/prompt_async",
@@ -220,7 +201,7 @@ class SessionService {
         parts: [PromptPart.text(text: text)],
         agent: agent,
         model: providerID != null && modelID != null ? PromptModel(providerID: providerID, modelID: modelID) : null,
-        command: null,
+        command: command,
       ),
     );
   }
@@ -230,18 +211,6 @@ class SessionService {
       "/session/abort",
       fromJson: SuccessEmptyResponse.fromJson,
       body: SessionIdRequest(sessionId: sessionId),
-    );
-  }
-
-  Future<ApiResponse<void>> sendCommand({
-    required String sessionId,
-    required String command,
-    required String arguments,
-  }) {
-    return _client.post(
-      "/session/$sessionId/command",
-      fromJson: SuccessEmptyResponse.fromJson,
-      body: SendCommandRequest(sessionId: sessionId, command: command, arguments: arguments),
     );
   }
 

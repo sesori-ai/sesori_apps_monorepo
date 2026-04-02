@@ -176,15 +176,18 @@ void main() {
       );
     });
 
-    test("queued commands drain through sendCommand when connection returns", () async {
+    test("queued commands drain through sendMessage with command when connection returns", () async {
       const sessionId = "session-1";
       var isConnected = false;
 
       when(
-        () => mockSessionService.sendCommand(
-          sessionId: sessionId,
+        () => mockSessionService.sendMessage(
+          sessionId,
+          any(),
+          agent: any(named: "agent"),
+          providerID: any(named: "providerID"),
+          modelID: any(named: "modelID"),
           command: any(named: "command"),
-          arguments: any(named: "arguments"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(null));
 
@@ -214,10 +217,13 @@ void main() {
       await _waitFor(condition: () => service.isEmpty);
 
       verify(
-        () => mockSessionService.sendCommand(
-          sessionId: sessionId,
+        () => mockSessionService.sendMessage(
+          sessionId,
+          "lib/main.dart",
+          agent: any(named: "agent"),
+          providerID: any(named: "providerID"),
+          modelID: any(named: "modelID"),
           command: "review",
-          arguments: "lib/main.dart",
         ),
       ).called(1);
     });

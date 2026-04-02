@@ -207,10 +207,10 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendCommand(
-            sessionId: sessionId,
+          () => mockSessionService.sendMessage(
+            sessionId,
+            "lib/main.dart",
             command: "review",
-            arguments: "lib/main.dart",
           ),
         ).called(1);
       },
@@ -1237,15 +1237,9 @@ void _stubAllDefaults(
       agent: any(named: "agent"),
       providerID: any(named: "providerID"),
       modelID: any(named: "modelID"),
+      command: any(named: "command"),
     ),
   ).thenAnswer((_) async => ApiResponse<void>.success(null));
-  when(
-    () => service.sendCommand(
-      sessionId: any(named: "sessionId"),
-      command: any(named: "command"),
-      arguments: any(named: "arguments"),
-    ),
-  ).thenAnswer((_) async => ApiResponse.success(null));
   when(
     () => service.abortSession(any()),
   ).thenAnswer((_) async => ApiResponse.success(const SuccessEmptyResponse()));

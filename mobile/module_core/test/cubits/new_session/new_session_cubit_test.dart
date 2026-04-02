@@ -63,6 +63,7 @@ void main() {
             text: any(named: "text"),
             agent: any(named: "agent"),
             model: any(named: "model"),
+            command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s1")));
@@ -86,6 +87,7 @@ void main() {
             text: "hello",
             agent: null,
             model: null,
+            command: null,
             dedicatedWorktree: false,
           ),
         ).called(1);
@@ -93,13 +95,15 @@ void main() {
     );
 
     blocTest<NewSessionCubit, NewSessionState>(
-      "createSessionWithCommand creates an empty session and stages the launch command",
+      "createSessionWithCommand creates a session with command via createSessionWithMessage",
       build: () {
         when(
-          () => mockSessionService.createEmptySession(
+          () => mockSessionService.createSessionWithMessage(
             projectId: any(named: "projectId"),
+            text: any(named: "text"),
             agent: any(named: "agent"),
             model: any(named: "model"),
+            command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s-command")));
@@ -122,10 +126,12 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.createEmptySession(
+          () => mockSessionService.createSessionWithMessage(
             projectId: "project-1",
+            text: "",
             agent: null,
             model: null,
+            command: "review",
             dedicatedWorktree: true,
           ),
         ).called(1);

@@ -188,6 +188,7 @@ void main() {
           text: "hello",
           agent: null,
           model: null,
+          command: null,
           dedicatedWorktree: true,
         );
 
@@ -217,6 +218,7 @@ void main() {
           text: "hello",
           agent: null,
           model: null,
+          command: null,
           dedicatedWorktree: true,
         );
 
@@ -245,6 +247,7 @@ void main() {
           text: "first prompt",
           agent: null,
           model: null,
+          command: null,
           dedicatedWorktree: true,
         );
 
