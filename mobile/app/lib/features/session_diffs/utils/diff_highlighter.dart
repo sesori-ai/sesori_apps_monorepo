@@ -24,7 +24,7 @@ class DiffHighlighter {
   static late Map<String, TextStyle> _theme;
   static bool _initialized = false;
 
-  static const _monoStyle = TextStyle(fontFamily: 'monospace', fontSize: 11);
+  static const _monoStyle = TextStyle(fontFamily: 'monospace', fontSize: 12);
 
   /// Language registrations keyed by the name [detectLanguage] returns.
   static final _languages = <String, Mode>{

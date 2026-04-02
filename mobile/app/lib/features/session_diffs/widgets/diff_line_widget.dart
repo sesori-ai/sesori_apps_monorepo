@@ -4,8 +4,8 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "../models/diff_file_view_model.dart";
 import "../utils/diff_theme.dart";
 
-/// Renders a single diff line with colored background, gutter line numbers,
-/// +/-/space prefix, and horizontally scrollable content.
+/// Renders a single diff line with colored background, single gutter line number,
+/// +/-/space prefix, and wrapping content.
 class DiffLineWidget extends StatelessWidget {
   final DiffLineViewModel viewModel;
 
@@ -13,7 +13,7 @@ class DiffLineWidget extends StatelessWidget {
 
   static const _monoStyle = TextStyle(
     fontFamily: "monospace",
-    fontSize: 11,
+    fontSize: 12,
     height: 1.4,
   );
 
@@ -40,30 +40,25 @@ class DiffLineWidget extends StatelessWidget {
       DiffLineType.context => " ",
     };
 
+    final lineNumber = switch (line.type) {
+      DiffLineType.context => line.newLineNumber,
+      DiffLineType.removed => line.oldLineNumber,
+      DiffLineType.added => line.newLineNumber,
+    };
+
     return ColoredBox(
       color: bg,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Gutter: old line number
+          // Gutter: single line number
           Container(
             color: gutterBg,
             width: 40,
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
             alignment: Alignment.centerRight,
             child: Text(
-              line.oldLineNumber != null ? "${line.oldLineNumber}" : "",
-              style: _monoStyle.copyWith(color: theme.lineNumberText),
-            ),
-          ),
-          // Gutter: new line number
-          Container(
-            color: gutterBg,
-            width: 40,
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-            alignment: Alignment.centerRight,
-            child: Text(
-              line.newLineNumber != null ? "${line.newLineNumber}" : "",
+              lineNumber != null ? "$lineNumber" : "",
               style: _monoStyle.copyWith(color: theme.lineNumberText),
             ),
           ),
@@ -78,19 +73,20 @@ class DiffLineWidget extends StatelessWidget {
               style: _monoStyle.copyWith(color: theme.prefixText),
             ),
           ),
-          // Content: horizontal scroll for long lines
+          // Content: wraps naturally
           Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                child: viewModel.highlightedSpan != null
-                    ? Text.rich(viewModel.highlightedSpan!)
-                    : Text(
-                        line.content,
-                        style: _monoStyle.copyWith(color: theme.codeText),
-                      ),
-              ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              child: viewModel.highlightedSpan != null
+                  ? Text.rich(
+                      viewModel.highlightedSpan!,
+                      softWrap: true,
+                    )
+                  : Text(
+                      line.content,
+                      style: _monoStyle.copyWith(color: theme.codeText),
+                      softWrap: true,
+                    ),
             ),
           ),
         ],

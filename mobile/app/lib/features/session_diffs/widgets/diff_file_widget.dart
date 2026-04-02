@@ -3,53 +3,31 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../models/diff_file_view_model.dart";
 import "../utils/diff_theme.dart";
-import "diff_hunk_widget.dart";
 
-/// Renders a single file diff: a tappable header with file name, +/- stats,
-/// status badge, and expand/collapse chevron. When expanded, shows either the
-/// diff hunks or a skipped-file placeholder.
-class DiffFileWidget extends StatefulWidget {
+/// Renders a single file diff header with file name, +/- stats,
+/// status badge, and expand/collapse chevron.
+class DiffFileWidget extends StatelessWidget {
   final DiffFileViewModel viewModel;
+  final bool isExpanded;
+  final VoidCallback onToggle;
 
-  const DiffFileWidget({super.key, required this.viewModel});
-
-  @override
-  State<DiffFileWidget> createState() => _DiffFileWidgetState();
-}
-
-class _DiffFileWidgetState extends State<DiffFileWidget> {
-  late bool _isExpanded;
-
-  @override
-  void initState() {
-    super.initState();
-    _isExpanded = widget.viewModel.isExpanded;
-  }
+  const DiffFileWidget({
+    super.key,
+    required this.viewModel,
+    required this.isExpanded,
+    required this.onToggle,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Header row — tappable to toggle expand/collapse
-        GestureDetector(
-          onTap: () => setState(() => _isExpanded = !_isExpanded),
-          child: _buildHeader(),
-        ),
-        // Body — visible when expanded
-        if (_isExpanded)
-          widget.viewModel.skipReason != null
-              ? _buildSkippedPlaceholder(widget.viewModel.skipReason!)
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: widget.viewModel.hunks.map((h) => DiffHunkWidget(viewModel: h)).toList(),
-                ),
-      ],
+    return GestureDetector(
+      onTap: onToggle,
+      child: _buildHeader(context),
     );
   }
 
-  Widget _buildHeader() {
-    final vm = widget.viewModel;
+  Widget _buildHeader(BuildContext context) {
+    final vm = viewModel;
     final theme = DiffTheme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -67,7 +45,7 @@ class _DiffFileWidgetState extends State<DiffFileWidget> {
               vm.fileName,
               style: const TextStyle(
                 fontFamily: "monospace",
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: FontWeight.w500,
               ),
               overflow: TextOverflow.ellipsis,
@@ -79,7 +57,7 @@ class _DiffFileWidgetState extends State<DiffFileWidget> {
             "+${vm.additions}",
             style: TextStyle(
               fontFamily: "monospace",
-              fontSize: 11,
+              fontSize: 12,
               color: Colors.green.shade700,
             ),
           ),
@@ -89,7 +67,7 @@ class _DiffFileWidgetState extends State<DiffFileWidget> {
             "-${vm.deletions}",
             style: TextStyle(
               fontFamily: "monospace",
-              fontSize: 11,
+              fontSize: 12,
               color: Colors.red.shade700,
             ),
           ),
@@ -99,7 +77,7 @@ class _DiffFileWidgetState extends State<DiffFileWidget> {
           const SizedBox(width: 4),
           // Chevron
           Icon(
-            _isExpanded ? Icons.expand_less : Icons.expand_more,
+            isExpanded ? Icons.expand_less : Icons.expand_more,
             size: 18,
             color: theme.chevronColor,
           ),
@@ -124,26 +102,8 @@ class _DiffFileWidgetState extends State<DiffFileWidget> {
         label,
         style: TextStyle(
           color: color.shade800,
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSkippedPlaceholder(FileDiffSkipReason reason) {
-    final message = switch (reason) {
-      FileDiffSkipReason.binary => "Binary file changed",
-      FileDiffSkipReason.tooLarge => "File diff too large to display",
-      FileDiffSkipReason.readError => "Could not read file",
-    };
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Text(
-        message,
-        style: const TextStyle(
-          color: Colors.grey,
-          fontStyle: FontStyle.italic,
         ),
       ),
     );
