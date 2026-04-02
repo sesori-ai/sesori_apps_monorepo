@@ -52,11 +52,28 @@ class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Sess
     final dedicatedWorktree = body.dedicatedWorktree;
     const String? parentSessionId = null;
 
+    final firstText = body.parts
+        .whereType<PromptPartText>()
+        .map((p) => p.text)
+        .where((t) => t.trim().isNotEmpty)
+        .firstOrNull;
+
+    final SessionMetadata? metadata;
+    if (firstText != null) {
+      metadata = await _plugin.generateSessionMetadata(
+        firstMessage: firstText,
+        directory: projectId,
+      );
+    } else {
+      metadata = null;
+    }
+
     final WorktreeResult? worktreeResult;
     if (dedicatedWorktree) {
       worktreeResult = await _worktreeService.prepareWorktreeForSession(
         projectId: projectId,
         parentSessionId: parentSessionId,
+        preferredBranchName: metadata?.branchName,
       );
     } else {
       worktreeResult = null;
@@ -97,6 +114,18 @@ class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Sess
       model: model,
     );
 
+    var finalSession = created;
+    if (metadata?.title case final title?) {
+      try {
+        finalSession = await _plugin.renameSession(
+          sessionId: created.id,
+          title: title,
+        );
+      } catch (e) {
+        Log.w("Failed to rename session ${created.id}: $e");
+      }
+    }
+
     String? worktreePath;
     String? branchName;
     String? baseBranch;
@@ -136,12 +165,12 @@ class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Sess
     );
 
     final session = Session(
-      id: created.id,
-      projectID: created.projectID,
-      directory: created.directory,
-      parentID: created.parentID,
-      title: created.title,
-      time: switch (created.time) {
+      id: finalSession.id,
+      projectID: finalSession.projectID,
+      directory: finalSession.directory,
+      parentID: finalSession.parentID,
+      title: finalSession.title,
+      time: switch (finalSession.time) {
         PluginSessionTime(:final created, :final updated, :final archived) => SessionTime(
           created: created,
           updated: updated,
@@ -149,7 +178,7 @@ class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Sess
         ),
         null => null,
       },
-      summary: switch (created.summary) {
+      summary: switch (finalSession.summary) {
         PluginSessionSummary(:final additions, :final deletions, :final files) => SessionSummary(
           additions: additions,
           deletions: deletions,

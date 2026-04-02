@@ -7,6 +7,7 @@ import "models/plugin_project_activity_summary.dart";
 import "models/plugin_prompt_part.dart";
 import "models/plugin_provider.dart";
 import "models/plugin_session.dart";
+import "models/plugin_session_metadata.dart";
 import "models/plugin_session_status.dart";
 
 abstract class BridgePlugin {
@@ -101,6 +102,17 @@ abstract class BridgePlugin {
 
   /// Build a summary of the active sessions for each project.
   List<PluginProjectActivitySummary> getActiveSessionsSummary();
+
+  /// Generate session metadata (title and branch name) from the first message and directory.
+  ///
+  /// [firstMessage] is the initial user prompt text.
+  /// [directory] is the working directory for the session.
+  ///
+  /// Returns [SessionMetadata] with suggested title and branch name, or null if generation fails.
+  Future<SessionMetadata?> generateSessionMetadata({
+    required String firstMessage,
+    required String directory,
+  });
 
   /// Stop the plugin and release resources (SSE connections, HTTP clients, etc.).
   Future<void> dispose();

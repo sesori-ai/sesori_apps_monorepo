@@ -50,6 +50,7 @@ class WorktreeService {
   Future<WorktreeResult> prepareWorktreeForSession({
     required String projectId,
     required String? parentSessionId,
+    String? preferredBranchName,
   }) async {
     if (parentSessionId != null) {
       final parentWorktree = await _sessionDao.getSession(sessionId: parentSessionId);
@@ -88,6 +89,28 @@ class WorktreeService {
     }
     final baseBranch = baseBranchAndCommit.baseBranch;
     final baseCommit = baseBranchAndCommit.baseCommit;
+
+    // 4.5. Try preferred branch name if provided.
+    if (preferredBranchName != null && parentSessionId == null) {
+      if (!await branchExists(projectPath: projectId, branchName: preferredBranchName)) {
+        final worktreePath = "$projectId/$_worktreeDir/$preferredBranchName";
+        final result = await createWorktree(
+          projectPath: projectId,
+          worktreePath: worktreePath,
+          branchName: preferredBranchName,
+          baseBranch: baseBranch,
+        );
+        if (result.exitCode == 0) {
+          return WorktreeSuccess(
+            path: worktreePath,
+            branchName: preferredBranchName,
+            baseBranch: baseBranch,
+            baseCommit: baseCommit,
+          );
+        }
+      }
+      // Preferred name failed — fall through to numbered naming.
+    }
 
     for (var attempt = 0; attempt < _maxWorktreeCreationAttempts; attempt++) {
       final counter = await _projectsDao.incrementAndGetWorktreeCounter(projectId: projectId);

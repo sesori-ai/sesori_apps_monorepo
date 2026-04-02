@@ -296,6 +296,139 @@ void main() {
       expect(worktreeAddArgs, contains("main"));
       expect(worktreeAddArgs, isNot(contains("old-branch")));
     });
+
+    // -----------------------------------------------------------------------
+    // Preferred branch name
+    // -----------------------------------------------------------------------
+
+    test("preferred branch name succeeds: creates worktree with preferred name", () async {
+      // rev-parse HEAD → ok
+      processRunner.enqueue(result: _ok());
+      // symbolic-ref → main
+      processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // git rev-parse main → base commit SHA
+      processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
+      // branch --list my-feature → empty (preferred name available)
+      processRunner.enqueue(result: _ok(stdout: ""));
+      // worktree add → success
+      processRunner.enqueue(result: _ok());
+
+      final result = await service.prepareWorktreeForSession(
+        projectId: _projectId,
+        parentSessionId: null,
+        preferredBranchName: "my-feature",
+      );
+
+      expect(result, isA<WorktreeSuccess>());
+      final success = result as WorktreeSuccess;
+      expect(success.branchName, equals("my-feature"));
+      expect(success.path, equals("$_projectId/.worktrees/my-feature"));
+      expect(success.baseBranch, equals("main"));
+      expect(success.baseCommit, equals("abc123def456"));
+    });
+
+    test("preferred branch name collides: falls through to numbered naming", () async {
+      // rev-parse HEAD → ok
+      processRunner.enqueue(result: _ok());
+      // symbolic-ref → main
+      processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // git rev-parse main → base commit SHA
+      processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
+      // branch --list my-feature → non-empty (collision!)
+      processRunner.enqueue(result: _ok(stdout: "  my-feature\n"));
+      // branch --list session-001 → empty (free)
+      processRunner.enqueue(result: _ok(stdout: ""));
+      // worktree add → success
+      processRunner.enqueue(result: _ok());
+
+      final result = await service.prepareWorktreeForSession(
+        projectId: _projectId,
+        parentSessionId: null,
+        preferredBranchName: "my-feature",
+      );
+
+      expect(result, isA<WorktreeSuccess>());
+      final success = result as WorktreeSuccess;
+      expect(success.branchName, equals("session-001"));
+      expect(success.path, equals("$_projectId/.worktrees/session-001"));
+    });
+
+    test("preferred branch name git fails: falls through to numbered naming", () async {
+      // rev-parse HEAD → ok
+      processRunner.enqueue(result: _ok());
+      // symbolic-ref → main
+      processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // git rev-parse main → base commit SHA
+      processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
+      // branch --list my-feature → empty (available)
+      processRunner.enqueue(result: _ok(stdout: ""));
+      // worktree add → failure
+      processRunner.enqueue(result: _fail(exitCode: 128, stderr: "error"));
+      // branch --list session-001 → empty (free)
+      processRunner.enqueue(result: _ok(stdout: ""));
+      // worktree add → success
+      processRunner.enqueue(result: _ok());
+
+      final result = await service.prepareWorktreeForSession(
+        projectId: _projectId,
+        parentSessionId: null,
+        preferredBranchName: "my-feature",
+      );
+
+      expect(result, isA<WorktreeSuccess>());
+      final success = result as WorktreeSuccess;
+      expect(success.branchName, equals("session-001"));
+    });
+
+    test("no preferred branch name: uses numbered naming", () async {
+      // rev-parse HEAD → ok
+      processRunner.enqueue(result: _ok());
+      // symbolic-ref → main
+      processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // git rev-parse main → base commit SHA
+      processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
+      // branch --list session-001 → empty
+      processRunner.enqueue(result: _ok(stdout: ""));
+      // worktree add → success
+      processRunner.enqueue(result: _ok());
+
+      final result = await service.prepareWorktreeForSession(
+        projectId: _projectId,
+        parentSessionId: null,
+        preferredBranchName: null,
+      );
+
+      expect(result, isA<WorktreeSuccess>());
+      final success = result as WorktreeSuccess;
+      expect(success.branchName, equals("session-001"));
+    });
+
+    test("preferred branch name with parent session: ignored, reuses parent worktree", () async {
+      // Insert a mapping for the parent session.
+      await sessionDao.insertSession(
+        sessionId: "parent-001",
+        projectId: _projectId,
+        isDedicated: true,
+        createdAt: 123,
+        worktreePath: "$_projectId/.worktrees/session-001",
+        branchName: "session-001",
+        baseBranch: "main",
+        baseCommit: "sha-parent",
+      );
+
+      final result = await service.prepareWorktreeForSession(
+        projectId: _projectId,
+        parentSessionId: "parent-001",
+        preferredBranchName: "my-feature",
+      );
+
+      expect(result, isA<WorktreeSuccess>());
+      final success = result as WorktreeSuccess;
+      expect(success.path, equals("$_projectId/.worktrees/session-001"));
+      expect(success.branchName, equals("session-001"));
+      // No git commands should have been called — worktree already exists.
+      expect(processRunner.invocations, isEmpty);
+    });
   });
 
   // -------------------------------------------------------------------------

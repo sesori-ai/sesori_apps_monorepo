@@ -302,12 +302,197 @@ void main() {
       expect(plugin.lastCreateSessionAgent, equals("architect"));
       expect(plugin.lastCreateSessionModel, equals((providerID: "openai", modelID: "gpt-5")));
     });
+
+    test("AI naming succeeds — preferred branch name and rename used", () async {
+      plugin.generateSessionMetadataResult = const SessionMetadata(
+        title: "Fix Login Bug",
+        branchName: "fix-login-bug",
+      );
+      plugin.createSessionResult = const PluginSession(
+        id: "s1",
+        projectID: "p1",
+        directory: "/repo/.worktrees/fix-login-bug",
+        parentID: null,
+        title: "Session",
+        time: null,
+        summary: null,
+      );
+      plugin.renameSessionResult = const PluginSession(
+        id: "s1",
+        projectID: "p1",
+        directory: "/repo/.worktrees/fix-login-bug",
+        parentID: null,
+        title: "Fix Login Bug",
+        time: null,
+        summary: null,
+      );
+      worktreeService.prepareResult = WorktreeSuccess(
+        path: "/repo/.worktrees/fix-login-bug",
+        branchName: "fix-login-bug",
+        baseBranch: "main",
+        baseCommit: "abc123",
+      );
+
+      final result = await handler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "/repo",
+          dedicatedWorktree: true,
+          parts: [PromptPart.text(text: "Fix the login bug")],
+          agent: null,
+          model: null,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.id, equals("s1"));
+      expect(plugin.lastGenerateSessionMetadataMessage, equals("Fix the login bug"));
+      expect(worktreeService.lastPreparePreferredBranchName, equals("fix-login-bug"));
+      expect(plugin.lastRenameSessionTitle, equals("Fix Login Bug"));
+    });
+
+    test("AI naming returns null — no preferred branch and no rename", () async {
+      plugin.generateSessionMetadataResult = null;
+      plugin.createSessionResult = const PluginSession(
+        id: "s1",
+        projectID: "p1",
+        directory: "/repo/.worktrees/session-001",
+        parentID: null,
+        title: "Session",
+        time: null,
+        summary: null,
+      );
+      worktreeService.prepareResult = WorktreeSuccess(
+        path: "/repo/.worktrees/session-001",
+        branchName: "session-001",
+        baseBranch: "main",
+        baseCommit: "abc123",
+      );
+
+      final result = await handler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "/repo",
+          dedicatedWorktree: true,
+          parts: [PromptPart.text(text: "Start")],
+          agent: null,
+          model: null,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.id, equals("s1"));
+      expect(worktreeService.lastPreparePreferredBranchName, isNull);
+      expect(plugin.lastRenameSessionId, isNull);
+    });
+
+    test("no text parts — generateSessionMetadata not called", () async {
+      plugin.createSessionResult = const PluginSession(
+        id: "s1",
+        projectID: "p1",
+        directory: "/repo",
+        parentID: null,
+        title: null,
+        time: null,
+        summary: null,
+      );
+
+      final result = await handler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "/repo",
+          dedicatedWorktree: false,
+          parts: [PromptPart.fileData(mime: "image/png", base64: "abc", filename: "img.png")],
+          agent: null,
+          model: null,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.id, equals("s1"));
+      expect(plugin.lastGenerateSessionMetadataMessage, isNull);
+    });
+
+    test("whitespace-only text parts skipped — generateSessionMetadata not called", () async {
+      plugin.createSessionResult = const PluginSession(
+        id: "s1",
+        projectID: "p1",
+        directory: "/repo",
+        parentID: null,
+        title: null,
+        time: null,
+        summary: null,
+      );
+
+      final result = await handler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "/repo",
+          dedicatedWorktree: false,
+          parts: [PromptPart.text(text: "   ")],
+          agent: null,
+          model: null,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.id, equals("s1"));
+      expect(plugin.lastGenerateSessionMetadataMessage, isNull);
+    });
+
+    test("rename fails — session still returned successfully", () async {
+      final throwingPlugin = _ThrowingRenameSessionPlugin();
+      throwingPlugin.generateSessionMetadataResult = const SessionMetadata(
+        title: "Fix Login Bug",
+        branchName: "fix-login-bug",
+      );
+      throwingPlugin.createSessionResult = const PluginSession(
+        id: "s1",
+        projectID: "p1",
+        directory: "/repo",
+        parentID: null,
+        title: "Session",
+        time: null,
+        summary: null,
+      );
+      final localHandler = CreateSessionHandler(
+        plugin: throwingPlugin,
+        worktreeService: worktreeService,
+        sessionDao: db.sessionDao,
+      );
+
+      final result = await localHandler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "/repo",
+          dedicatedWorktree: false,
+          parts: [PromptPart.text(text: "Fix the login bug")],
+          agent: null,
+          model: null,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.id, equals("s1"));
+      await throwingPlugin.close();
+    });
   });
 }
 
 class _FakeWorktreeService extends WorktreeService {
   String? lastPrepareProjectId;
   String? lastPrepareParentSessionId;
+  String? lastPreparePreferredBranchName;
   String? lastResolveBaseBranchProjectPath;
   int prepareCallCount = 0;
   int resolveBaseBranchAndCommitCallCount = 0;
@@ -327,10 +512,12 @@ class _FakeWorktreeService extends WorktreeService {
   Future<WorktreeResult> prepareWorktreeForSession({
     required String projectId,
     required String? parentSessionId,
+    String? preferredBranchName,
   }) async {
     prepareCallCount++;
     lastPrepareProjectId = projectId;
     lastPrepareParentSessionId = parentSessionId;
+    lastPreparePreferredBranchName = preferredBranchName;
     return prepareResult;
   }
 
@@ -354,5 +541,15 @@ class _ThrowingCreateSessionPlugin extends FakeBridgePlugin {
     required ({String providerID, String modelID})? model,
   }) {
     throw StateError("createSession failed");
+  }
+}
+
+class _ThrowingRenameSessionPlugin extends FakeBridgePlugin {
+  @override
+  Future<PluginSession> renameSession({
+    required String sessionId,
+    required String title,
+  }) {
+    throw StateError("renameSession failed");
   }
 }

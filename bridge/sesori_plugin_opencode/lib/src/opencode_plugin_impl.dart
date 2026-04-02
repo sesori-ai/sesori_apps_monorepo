@@ -14,6 +14,7 @@ class OpenCodePlugin implements BridgePlugin {
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
   final io.HttpClient _httpClient;
   final SseEventMapper _mapper = SseEventMapper();
+  late final SessionMetadataGenerator _metadataGenerator;
   late final SseConnection _sseConnection;
 
   factory OpenCodePlugin({
@@ -45,6 +46,9 @@ class OpenCodePlugin implements BridgePlugin {
        _httpClient = httpClient,
        _parser = SseEventParser(),
        _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>() {
+    _metadataGenerator = SessionMetadataGenerator(
+      api: _service.repository.api,
+    );
     _sseConnection = SseConnection(
       targetUrl: serverUrl,
       password: password,
@@ -504,4 +508,10 @@ class OpenCodePlugin implements BridgePlugin {
         )
         .toList();
   }
+
+  @override
+  Future<SessionMetadata?> generateSessionMetadata({
+    required String firstMessage,
+    required String directory,
+  }) => _metadataGenerator.generate(firstMessage: firstMessage, directory: directory);
 }
