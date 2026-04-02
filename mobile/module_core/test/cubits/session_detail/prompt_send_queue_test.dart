@@ -2,17 +2,17 @@ import "package:sesori_dart_core/src/cubits/session_detail/prompt_send_queue.dar
 import "package:sesori_dart_core/src/cubits/session_detail/queued_session_submission.dart";
 import "package:test/test.dart";
 
-const _first = QueuedPromptSubmission(text: "first");
-const _second = QueuedPromptSubmission(text: "second");
-const _same = QueuedPromptSubmission(text: "same");
-const _other = QueuedPromptSubmission(text: "other");
-const _a = QueuedPromptSubmission(text: "a");
-const _b = QueuedPromptSubmission(text: "b");
-const _c = QueuedPromptSubmission(text: "c");
-const _existing = QueuedPromptSubmission(text: "existing");
-const _retried = QueuedPromptSubmission(text: "retried");
-const _msg1 = QueuedPromptSubmission(text: "msg1");
-const _msg2 = QueuedPromptSubmission(text: "msg2");
+const _first = QueuedSessionSubmission(text: "first");
+const _second = QueuedSessionSubmission(text: "second");
+const _same = QueuedSessionSubmission(text: "same");
+const _other = QueuedSessionSubmission(text: "other");
+const _a = QueuedSessionSubmission(text: "a");
+const _b = QueuedSessionSubmission(text: "b");
+const _c = QueuedSessionSubmission(text: "c");
+const _existing = QueuedSessionSubmission(text: "existing");
+const _retried = QueuedSessionSubmission(text: "retried");
+const _msg1 = QueuedSessionSubmission(text: "msg1");
+const _msg2 = QueuedSessionSubmission(text: "msg2");
 
 void main() {
   group("PromptSendQueue", () {

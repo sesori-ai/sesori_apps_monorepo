@@ -3,7 +3,6 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_cubit.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_state.dart";
-import "package:sesori_dart_core/src/cubits/session_detail/session_launch_command_store.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -27,7 +26,6 @@ void main() {
       when(() => mockSessionService.listCommands(projectId: any(named: "projectId"))).thenAnswer(
         (_) async => ApiResponse<CommandListResponse>.success(const CommandListResponse(items: <CommandInfo>[])),
       );
-      SessionLaunchCommandStore.instance.clear("s-command");
     });
 
     NewSessionCubit buildCubit() => NewSessionCubit(
@@ -108,7 +106,6 @@ void main() {
         return NewSessionCubit(
           sessionService: mockSessionService,
           projectId: "project-1",
-          launchCommandStore: SessionLaunchCommandStore.instance,
         );
       },
       act: (cubit) async {
@@ -132,10 +129,6 @@ void main() {
             dedicatedWorktree: true,
           ),
         ).called(1);
-        final launchCommand = SessionLaunchCommandStore.instance.take("s-command");
-        expect(launchCommand, isNotNull);
-        expect(launchCommand!.command.name, "review");
-        expect(launchCommand.arguments, "lib/main.dart");
       },
     );
   });

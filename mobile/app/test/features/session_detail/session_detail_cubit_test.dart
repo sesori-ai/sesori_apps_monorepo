@@ -7,7 +7,6 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/conne
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
-import "package:sesori_dart_core/src/cubits/session_detail/session_launch_command_store.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -214,40 +213,6 @@ void main() {
             arguments: "lib/main.dart",
           ),
         ).called(1);
-      },
-    );
-
-    blocTest<SessionDetailCubit, SessionDetailState>(
-      "consumes a staged launch command after initial load",
-      build: () {
-        final store = SessionLaunchCommandStore.instance;
-        store.clear(sessionId);
-        store.save(
-          sessionId: sessionId,
-          command: testCommandInfo(name: "review"),
-          arguments: "lib/main.dart",
-        );
-        return SessionDetailCubit(
-          mockSessionService,
-          mockConnectionService,
-          sessionId: sessionId,
-          notificationCanceller: mockNotificationCanceller,
-          failureReporter: mockFailureReporter,
-          launchCommandStore: store,
-        );
-      },
-      expect: () => [
-        isA<SessionDetailLoaded>(),
-      ],
-      verify: (_) {
-        verify(
-          () => mockSessionService.sendCommand(
-            sessionId: sessionId,
-            command: "review",
-            arguments: "lib/main.dart",
-          ),
-        ).called(1);
-        expect(SessionLaunchCommandStore.instance.take(sessionId), isNull);
       },
     );
 
