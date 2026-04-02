@@ -1042,6 +1042,41 @@ void main() {
     );
 
     blocTest<SessionListCubit, SessionListState>(
+      "connection reconnect triggers loadSessions when state is SessionListFailed",
+      build: () {
+        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+          (_) async => ApiResponse.error(ApiError.generic()),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        // Switch mock to succeed so the reconnect-triggered load works.
+        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+          (_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])),
+        );
+        const config = ServerConnectionConfig(
+          relayHost: "relay.example.com",
+          authToken: "test-token",
+        );
+        const health = HealthResponse(healthy: true, version: "0.1.200");
+        statusController.add(
+          const ConnectionStatus.connected(config: config, health: health),
+        );
+        await Future<void>.delayed(Duration.zero);
+      },
+      skip: 1, // Skip the initial SessionListFailed from constructor.
+      expect: () => [
+        isA<SessionListLoading>(),
+        isA<SessionListLoaded>().having(
+          (s) => s.sessions.length,
+          "sessions count after reconnect retry",
+          1,
+        ),
+      ],
+    );
+
+    blocTest<SessionListCubit, SessionListState>(
       "rapid ConnectionConnected events coalesce into single refresh",
       build: () {
         when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(

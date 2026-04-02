@@ -160,6 +160,46 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     await _fetchProjects();
   }
 
+  /// Retries loading projects after a failure.
+  ///
+  /// Unlike [loadProjects], this method triggers a relay reconnection
+  /// when the connection is not active, then waits for the result before
+  /// fetching. This ensures the retry actually reaches the bridge instead
+  /// of failing immediately with a "not connected" error.
+  Future<void> retryLoadProjects() async {
+    emit(const ProjectListState.loading());
+    // Yield to the event loop so the loading indicator renders before
+    // the reconnection / fetch attempt (which may resolve synchronously
+    // when the relay is disconnected).
+    await Future<void>.delayed(Duration.zero);
+    if (isClosed) return;
+    await _reconnectIfNeeded();
+    if (isClosed) return;
+    await _fetchProjects();
+  }
+
+  /// Attempts to reconnect the relay when it is not in the
+  /// [ConnectionConnected] state. Returns once the connection resolves
+  /// (connected, lost, or timed out).
+  Future<void> _reconnectIfNeeded() async {
+    if (_connectionService.currentStatus is ConnectionConnected) return;
+
+    if (_connectionService.currentStatus is! ConnectionReconnecting) {
+      _connectionService.reconnect();
+    }
+    // If reconnect is now in progress, wait for the outcome.
+    if (_connectionService.currentStatus is! ConnectionReconnecting) return;
+
+    try {
+      await _connectionService.status
+          .where((s) => s is! ConnectionReconnecting)
+          .first
+          .timeout(const Duration(seconds: 15));
+    } on TimeoutException catch (_) {
+      // Fall through — fetch will fail gracefully with a user-visible error.
+    }
+  }
+
   /// In-flight silent refresh, used for coalescing.
   Future<bool>? _activeRefresh;
 

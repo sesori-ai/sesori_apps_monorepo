@@ -833,6 +833,100 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
+    // retryLoadProjects
+    // -------------------------------------------------------------------------
+
+    blocTest<ProjectListCubit, ProjectListState>(
+      "retryLoadProjects: reconnects and loads projects when connection is lost",
+      build: () {
+        when(() => mockProjectService.listProjects()).thenAnswer(
+          (_) async => ApiResponse.error(ApiError.generic()),
+        );
+        const config = ServerConnectionConfig(
+          relayHost: "relay.example.com",
+          authToken: "test-token",
+        );
+        when(() => mockConnectionService.currentStatus).thenReturn(
+          const ConnectionStatus.connectionLost(config: config),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        when(() => mockProjectService.listProjects()).thenAnswer(
+          (_) async => ApiResponse.success(Projects(data: [testProject()])),
+        );
+        const config = ServerConnectionConfig(
+          relayHost: "relay.example.com",
+          authToken: "test-token",
+        );
+        when(() => mockConnectionService.reconnect()).thenAnswer((_) {
+          when(() => mockConnectionService.currentStatus).thenReturn(
+            const ConnectionStatus.reconnecting(config: config),
+          );
+          statusController.add(const ConnectionStatus.reconnecting(config: config));
+        });
+        final retryFuture = cubit.retryLoadProjects();
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+        const health = HealthResponse(healthy: true, version: "0.1.200");
+        statusController.add(
+          const ConnectionStatus.connected(config: config, health: health),
+        );
+        await retryFuture;
+      },
+      skip: 1,
+      expect: () => [
+        isA<ProjectListLoading>(),
+        isA<ProjectListLoaded>().having(
+          (s) => s.projects.length,
+          "projects count after retry",
+          1,
+        ),
+      ],
+      verify: (_) {
+        verify(() => mockConnectionService.reconnect()).called(1);
+      },
+    );
+
+    blocTest<ProjectListCubit, ProjectListState>(
+      "retryLoadProjects: loads directly when already connected",
+      build: () {
+        when(() => mockProjectService.listProjects()).thenAnswer(
+          (_) async => ApiResponse.error(ApiError.generic()),
+        );
+        const config = ServerConnectionConfig(
+          relayHost: "relay.example.com",
+          authToken: "test-token",
+        );
+        const health = HealthResponse(healthy: true, version: "0.1.200");
+        when(() => mockConnectionService.currentStatus).thenReturn(
+          const ConnectionStatus.connected(config: config, health: health),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        when(() => mockProjectService.listProjects()).thenAnswer(
+          (_) async => ApiResponse.success(Projects(data: [testProject()])),
+        );
+        await cubit.retryLoadProjects();
+      },
+      skip: 1,
+      expect: () => [
+        isA<ProjectListLoading>(),
+        isA<ProjectListLoaded>().having(
+          (s) => s.projects.length,
+          "projects count after retry",
+          1,
+        ),
+      ],
+      verify: (_) {
+        verifyNever(() => mockConnectionService.reconnect());
+      },
+    );
+
+    // -------------------------------------------------------------------------
     // Stale reconnect
     // -------------------------------------------------------------------------
 
