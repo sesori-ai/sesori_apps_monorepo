@@ -81,6 +81,8 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
 /// Interface for session DAO operations needed by [GetSessionsHandler].
 abstract interface class SessionDaoLike {
   Future<Map<String, SessionDto>> getSessionsByIds({required List<String> sessionIds});
+
+  Future<List<SessionDto>> getSessionsByProject({required String projectId});
 }
 
 /// Interface for pull request DAO operations.

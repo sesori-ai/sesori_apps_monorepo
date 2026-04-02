@@ -51,6 +51,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin im
     );
   }
 
+  @override
   Future<List<SessionDto>> getSessionsByProject({required String projectId}) async {
     return (select(sessionTable)..where((t) => t.projectId.equals(projectId))).get();
   }

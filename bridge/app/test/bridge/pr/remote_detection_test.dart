@@ -119,10 +119,14 @@ void main() {
     });
 
     test("returns false on timeout", () async {
-      final mockRunner = (String executable, List<String> arguments, {String? workingDirectory}) async {
+      Future<ProcessResult> mockRunner(
+        String executable,
+        List<String> arguments, {
+        String? workingDirectory,
+      }) async {
         await Future<void>.delayed(const Duration(seconds: 10));
         return ProcessResult(0, 0, "https://github.com/org/repo.git", "");
-      };
+      }
 
       final result = await hasGitHubRemote(
         processRunner: mockRunner,
@@ -134,10 +138,14 @@ void main() {
 
     test("passes correct working directory to process runner", () async {
       String? capturedWorkdir;
-      final mockRunner = (String executable, List<String> arguments, {String? workingDirectory}) async {
+      Future<ProcessResult> mockRunner(
+        String executable,
+        List<String> arguments, {
+        String? workingDirectory,
+      }) async {
         capturedWorkdir = workingDirectory;
         return ProcessResult(0, 0, "https://github.com/org/repo.git", "");
-      };
+      }
 
       await hasGitHubRemote(
         processRunner: mockRunner,
@@ -150,11 +158,15 @@ void main() {
     test("passes correct git command to process runner", () async {
       String? capturedExecutable;
       List<String>? capturedArgs;
-      final mockRunner = (String executable, List<String> arguments, {String? workingDirectory}) async {
+      Future<ProcessResult> mockRunner(
+        String executable,
+        List<String> arguments, {
+        String? workingDirectory,
+      }) async {
         capturedExecutable = executable;
         capturedArgs = arguments;
         return ProcessResult(0, 0, "https://github.com/org/repo.git", "");
-      };
+      }
 
       await hasGitHubRemote(
         processRunner: mockRunner,
@@ -166,10 +178,14 @@ void main() {
     });
 
     test("handles exception from process runner", () async {
-      final mockRunner = (String executable, List<String> arguments, {String? workingDirectory}) async {
+      Future<ProcessResult> mockRunner(
+        String executable,
+        List<String> arguments, {
+        String? workingDirectory,
+      }) async {
         // Simulate an exception by returning a failed result
         return ProcessResult(0, 127, "", "command not found");
-      };
+      }
 
       final result = await hasGitHubRemote(
         processRunner: mockRunner,

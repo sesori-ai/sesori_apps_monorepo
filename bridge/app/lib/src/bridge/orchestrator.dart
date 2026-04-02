@@ -260,6 +260,10 @@ class OrchestratorSession {
     await _client.close();
   }
 
+  void emitBridgeEvent(SesoriSseEvent event) {
+    _sseManager.enqueueEvent(event);
+  }
+
   Future<void> _refreshAccessToken() async {
     try {
       await _tokenRefresher.getAccessToken(forceRefresh: true);

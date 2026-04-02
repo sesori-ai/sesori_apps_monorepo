@@ -339,6 +339,7 @@ class FakeSessionDao implements SessionDaoLike {
     }
   }
 
+  @override
   Future<List<SessionDto>> getSessionsByProject({required String projectId}) async {
     return _sessions.values.where((s) => s.projectId == projectId).toList();
   }
