@@ -195,8 +195,8 @@ class _SessionListBody extends StatelessWidget {
                             onLongPress: () => _showSessionActions(context: context, session: session),
                             onSwipe: () => isArchived
                                 ? _unarchiveSession(context: context, cubit: cubit, sessionId: session.id)
-                                : _archiveSession(context: context, cubit: cubit, sessionId: session.id),
-                          ); // swipe uses defaults: deleteWorktree=true, deleteBranch=true
+                                : _showArchiveSheet(context: context, cubit: cubit, session: session),
+                          );
                         },
                       ),
               ),
