@@ -5,6 +5,10 @@ import "package:collection/collection.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../capabilities/server_connection/connection_service.dart";
+import "../../capabilities/server_connection/models/connection_status.dart";
+import "../../capabilities/server_connection/models/sse_event.dart";
+import "../../capabilities/session/session_service.dart";
 import "../../logging/logging.dart";
 import "../../platform/notification_canceller.dart";
 import "../../repositories/permission_repository.dart";

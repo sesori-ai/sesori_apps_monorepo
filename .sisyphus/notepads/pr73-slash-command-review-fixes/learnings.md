@@ -30,3 +30,4 @@ BridgePlugin interface stays AS-IS. Handlers route commands by calling plugin.se
 ## 2026-04-02
 - `GetCommandsHandler` can follow the same `BodyRequestHandler<REQ, RES>` pattern as other POST handlers by deserializing `ProjectIdRequest` and reading `body.projectId`.
 - Bridge analyze is sensitive to import ordering and unused exports; fixing lint noise in neighboring files may be required before verification passes.
+- `PromptSendService` now stays unified around `sendMessage(text, command?)`; command submissions should be encoded via `QueuedSessionSubmission(command != null)` instead of a separate queue subtype or method.
