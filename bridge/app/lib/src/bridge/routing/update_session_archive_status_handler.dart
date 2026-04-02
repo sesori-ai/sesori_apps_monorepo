@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:convert";
 import "dart:io";
 
@@ -175,6 +176,14 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
     }
 
     await _sessionDao.setArchived(sessionId: sessionDto.sessionId, archivedAt: archivedAt);
+
+    // Fire-and-forget: notify the backend so it can reflect the archive state.
+    // The local DB is authoritative — we don't block on or fail for this.
+    unawaited(
+      _plugin.archiveSession(sessionId: sessionDto.sessionId).catchError((Object e) {
+        Log.w("[archive] failed to notify plugin for session ${sessionDto.sessionId}: $e");
+      }),
+    );
 
     final responseSession = _withArchivedTime(
       session: pluginSession.toSharedSession(),

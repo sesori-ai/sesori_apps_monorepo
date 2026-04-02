@@ -238,6 +238,9 @@ class _ThrowingSummaryPlugin implements BridgePlugin {
   Future<void> deleteSession(String sessionId) async {}
 
   @override
+  Future<void> archiveSession({required String sessionId}) async {}
+
+  @override
   Future<List<PluginSession>> getChildSessions(String sessionId) async => [];
 
   @override

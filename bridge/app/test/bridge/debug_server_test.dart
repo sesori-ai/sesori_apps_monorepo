@@ -304,6 +304,9 @@ class _FakeBridgePlugin implements BridgePlugin {
   Future<void> deleteSession(String sessionId) async {}
 
   @override
+  Future<void> archiveSession({required String sessionId}) async {}
+
+  @override
   Future<List<PluginSession>> getChildSessions(String sessionId) async => [];
 
   @override
@@ -439,6 +442,9 @@ class _TrackingBridgePlugin implements BridgePlugin {
 
   @override
   Future<void> deleteSession(String sessionId) async {}
+
+  @override
+  Future<void> archiveSession({required String sessionId}) async {}
 
   @override
   Future<List<PluginSession>> getChildSessions(String sessionId) async => [];

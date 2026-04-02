@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:io";
 
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
@@ -423,6 +424,186 @@ void main() {
       expect(worktreeService.deleteBranchCallCount, equals(0));
       final persisted = await db.sessionDao.getSession(sessionId: "s1");
       expect(persisted?.archivedAt, isNull);
+    });
+
+    test("archive fires plugin archiveSession", () async {
+      await _insertSession(
+        db: db,
+        sessionId: "s1",
+        projectId: "/repo",
+        isDedicated: false,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        archivedAt: null,
+        baseCommit: null,
+      );
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "/repo",
+          directory: "/repo",
+          parentID: null,
+          title: "Session 1",
+          time: PluginSessionTime(created: 10, updated: 20, archived: null),
+          summary: null,
+        ),
+      ];
+
+      await handler.handle(
+        makeRequest("PATCH", "/session/update/archive"),
+        body: _archiveRequest(
+          sessionId: "s1",
+          archived: true,
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      // Fire-and-forget — give the microtask a chance to run.
+      await Future<void>.delayed(Duration.zero);
+      expect(plugin.lastArchiveSessionId, equals("s1"));
+    });
+
+    test("unarchive does not fire plugin archiveSession", () async {
+      final existingDir = Directory.systemTemp.createTempSync("archive-handler-");
+      addTearDown(() {
+        if (existingDir.existsSync()) {
+          existingDir.deleteSync(recursive: true);
+        }
+      });
+
+      await _insertSession(
+        db: db,
+        sessionId: "s1",
+        projectId: "/repo",
+        isDedicated: true,
+        worktreePath: existingDir.path,
+        branchName: "session-001",
+        baseBranch: null,
+        archivedAt: 123,
+        baseCommit: null,
+      );
+      plugin.sessionsResult = [
+        PluginSession(
+          id: "s1",
+          projectID: "/repo",
+          directory: existingDir.path,
+          parentID: null,
+          title: "Session 1",
+          time: const PluginSessionTime(created: 10, updated: 20, archived: 123),
+          summary: null,
+        ),
+      ];
+
+      await handler.handle(
+        makeRequest("PATCH", "/session/update/archive"),
+        body: _archiveRequest(
+          sessionId: "s1",
+          archived: false,
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      await Future<void>.delayed(Duration.zero);
+      expect(plugin.lastArchiveSessionId, isNull);
+    });
+
+    test("archive succeeds even when plugin archiveSession throws", () async {
+      await _insertSession(
+        db: db,
+        sessionId: "s1",
+        projectId: "/repo",
+        isDedicated: false,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        archivedAt: null,
+        baseCommit: null,
+      );
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "/repo",
+          directory: "/repo",
+          parentID: null,
+          title: "Session 1",
+          time: PluginSessionTime(created: 10, updated: 20, archived: null),
+          summary: null,
+        ),
+      ];
+      plugin.throwOnArchiveSessionError = Exception("OpenCode unavailable");
+
+      final result = await handler.handle(
+        makeRequest("PATCH", "/session/update/archive"),
+        body: _archiveRequest(
+          sessionId: "s1",
+          archived: true,
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      final persisted = await db.sessionDao.getSession(sessionId: "s1");
+      expect(persisted?.archivedAt, isNotNull);
+      expect(result.time?.archived, equals(persisted?.archivedAt));
+    });
+
+    test("archive does not await plugin archiveSession", () async {
+      await _insertSession(
+        db: db,
+        sessionId: "s1",
+        projectId: "/repo",
+        isDedicated: false,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        archivedAt: null,
+        baseCommit: null,
+      );
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "/repo",
+          directory: "/repo",
+          parentID: null,
+          title: "Session 1",
+          time: PluginSessionTime(created: 10, updated: 20, archived: null),
+          summary: null,
+        ),
+      ];
+      // Plugin never completes — if handler awaited, this test would hang.
+      plugin.archiveSessionCompleter = Completer<void>();
+
+      final result = await handler.handle(
+        makeRequest("PATCH", "/session/update/archive"),
+        body: _archiveRequest(
+          sessionId: "s1",
+          archived: true,
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.id, equals("s1"));
+      expect(result.time?.archived, isNotNull);
     });
 
     test("archive simple session sets archivedAt and skips cleanup", () async {

@@ -61,6 +61,7 @@ class FakeBridgePlugin implements BridgePlugin {
   String? lastRenameProjectId;
   String? lastRenameProjectName;
   String? lastDeleteSessionId;
+  String? lastArchiveSessionId;
   String? lastGetChildSessionsSessionId;
   String? lastSendPromptSessionId;
   List<PluginPromptPart>? lastSendPromptParts;
@@ -83,6 +84,8 @@ class FakeBridgePlugin implements BridgePlugin {
   Object? throwOnGetProjectError;
   bool throwOnGetSessions = false;
   Object? throwOnDeleteSessionError;
+  Object? throwOnArchiveSessionError;
+  Completer<void>? archiveSessionCompleter;
 
   // ── BridgePlugin implementation ──────────────────────────────────────────
 
@@ -180,6 +183,17 @@ class FakeBridgePlugin implements BridgePlugin {
     lastDeleteSessionId = sessionId;
     if (throwOnDeleteSessionError case final error?) {
       throw error;
+    }
+  }
+
+  @override
+  Future<void> archiveSession({required String sessionId}) async {
+    lastArchiveSessionId = sessionId;
+    if (throwOnArchiveSessionError case final error?) {
+      throw error;
+    }
+    if (archiveSessionCompleter case final completer?) {
+      await completer.future;
     }
   }
 
