@@ -18,12 +18,14 @@ class OpenCodeApi {
   final String serverURL;
   final String? _password;
   final http.Client _client;
+  final bool _isClientOwned;
 
   OpenCodeApi({
     required this.serverURL,
     required String? password,
     http.Client? client,
   }) : _password = password,
+       _isClientOwned = client == null,
        _client = client ?? http.Client();
 
   Map<String, String> get _authHeaders {
@@ -33,14 +35,20 @@ class OpenCodeApi {
   }
 
   void close() {
-    _client.close();
+    if (_isClientOwned) {
+      _client.close();
+    }
   }
 
   Future<bool> healthCheck() async {
-    final response = await _client
-        .get(Uri.parse("$serverURL/global/health"), headers: _authHeaders)
-        .timeout(const Duration(seconds: 5));
-    return response.statusCode >= 200 && response.statusCode < 300;
+    try {
+      final response = await _client
+          .get(Uri.parse("$serverURL/global/health"), headers: _authHeaders)
+          .timeout(const Duration(seconds: 5));
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<List<Project>> listProjects() async {
