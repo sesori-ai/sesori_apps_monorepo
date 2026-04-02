@@ -274,6 +274,23 @@ void main() {
       });
     });
 
+    group("archiveSession", () {
+      test("sends PATCH with time.archived body", () async {
+        final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+        await server.waitForSseConnection();
+        server.requestLog.clear();
+
+        await plugin.archiveSession(sessionId: "s-root");
+
+        expect(server.requestLog, equals(["PATCH /session/s-root"]));
+
+        // Verify the fake server applied the archived timestamp.
+        final sessionTime = server.getSessionTime("s-root");
+        expect(sessionTime, isNotNull);
+        expect(sessionTime!["archived"], isA<int>());
+      });
+    });
+
     group("renameProject", () {
       test("resolves worktree to project UUID then sends PATCH with name", () async {
         final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
@@ -910,6 +927,12 @@ class _FakeOpenCodeServer {
       request.response.statusCode = HttpStatus.notFound;
       await request.response.close();
     });
+  }
+
+  Map<String, dynamic>? getSessionTime(String sessionId) {
+    final session = _sessions[sessionId];
+    if (session == null) return null;
+    return (session["time"] as Map?)?.cast<String, dynamic>();
   }
 
   Future<void> waitForSseConnection() => _firstSseClient.future;

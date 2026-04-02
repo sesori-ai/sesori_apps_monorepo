@@ -270,6 +270,19 @@ class OpenCodePlugin implements BridgePlugin {
   }
 
   @override
+  Future<PluginSession> renameSession({required String sessionId, required String title}) async {
+    final directory = _service.tracker.getSessionDirectory(sessionId: sessionId);
+    final session = await _call(
+      () => _service.repository.api.updateSession(
+        sessionId: sessionId,
+        directory: directory,
+        body: {"title": title},
+      ),
+    );
+    return session.toPlugin();
+  }
+
+  @override
   Future<List<PluginSession>> getChildSessions(String sessionId) async {
     final directory = _service.tracker.getSessionDirectory(sessionId: sessionId);
     final sessions = await _call(
@@ -419,16 +432,17 @@ class OpenCodePlugin implements BridgePlugin {
   }
 
   @override
-  Future<PluginSession> renameSession({required String sessionId, required String title}) async {
+  Future<void> archiveSession({required String sessionId}) async {
     final directory = _service.tracker.getSessionDirectory(sessionId: sessionId);
-    final session = await _call(
+    await _call(
       () => _service.repository.api.updateSession(
         sessionId: sessionId,
         directory: directory,
-        body: {"title": title},
+        body: {
+          "time": {"archived": DateTime.now().millisecondsSinceEpoch},
+        },
       ),
     );
-    return session.toPlugin();
   }
 
   @override

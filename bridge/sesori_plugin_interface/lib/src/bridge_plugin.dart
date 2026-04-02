@@ -46,6 +46,12 @@ abstract class BridgePlugin {
 
   Future<void> deleteSession(String sessionId);
 
+  /// Notify the backend that a session has been archived.
+  ///
+  /// This is best-effort — the local database archive state is authoritative.
+  /// Unarchive is not propagated to the backend; it only clears the local DB.
+  Future<void> archiveSession({required String sessionId});
+
   Future<List<PluginSession>> getChildSessions(String sessionId);
 
   Future<Map<String, PluginSessionStatus>> getSessionStatuses();
