@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -12,16 +14,22 @@ import "request_handler.dart";
 class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionListResponse> {
   final BridgePlugin _plugin;
   final SessionDaoLike _sessionDao;
+  final PullRequestDaoLike _prDao;
+  final Future<void> Function({required String projectId, required String projectPath})? _onSessionListRequested;
 
   GetSessionsHandler(
     this._plugin,
     SessionDaoLike sessionDao,
-  ) : _sessionDao = sessionDao,
-      super(
-        HttpMethod.post,
-        "/sessions",
-        fromJson: SessionListRequest.fromJson,
-      );
+    PullRequestDaoLike prDao, {
+    Future<void> Function({required String projectId, required String projectPath})? onSessionListRequested,
+  }) : _sessionDao = sessionDao,
+       _prDao = prDao,
+       _onSessionListRequested = onSessionListRequested,
+       super(
+         HttpMethod.post,
+         "/sessions",
+         fromJson: SessionListRequest.fromJson,
+       );
 
   @override
   Future<SessionListResponse> handle(
@@ -74,7 +82,33 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
       return session;
     }).toList();
 
-    return SessionListResponse(items: mergedSessions);
+    final sessionIdsForPr = mergedSessions.map((s) => s.id).toList();
+    final prsBySessionId = await _prDao.getPrsBySessionIds(sessionIds: sessionIdsForPr);
+
+    final mergedSessionsWithPr = mergedSessions.map((session) {
+      final pr = prsBySessionId[session.id];
+      if (pr == null) {
+        return session;
+      }
+      return session.copyWith(
+        pullRequest: PullRequestInfo(
+          number: pr.prNumber,
+          url: pr.url,
+          title: pr.title,
+          state: pr.state,
+          mergeableStatus: pr.mergeableStatus,
+          reviewDecision: pr.reviewDecision,
+          checkStatus: pr.checkStatus,
+        ),
+      );
+    }).toList();
+
+    final response = SessionListResponse(items: mergedSessionsWithPr);
+    final callback = _onSessionListRequested;
+    if (callback != null) {
+      unawaited(callback(projectId: projectId, projectPath: projectId));
+    }
+    return response;
   }
 }
 

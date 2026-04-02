@@ -1,9 +1,15 @@
+import "dart:io";
+
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../metadata_service.dart";
 import "../persistence/daos/projects_dao.dart";
+import "../persistence/daos/pull_request_dao.dart";
 import "../persistence/daos/session_dao.dart";
+import "../pr/gh_cli_service.dart";
+import "../pr/pr_refresh_coordinator.dart";
+import "../pr/pr_sync_service.dart";
 import "../worktree_service.dart";
 import "abort_session_handler.dart";
 import "create_project_handler.dart";
@@ -49,11 +55,23 @@ class RequestRouter {
     required MetadataService metadataService,
     required ProjectsDao projectsDao,
     required SessionDao sessionDao,
+    void Function(SesoriSseEvent event)? emitBridgeEvent,
+    ProcessRunner processRunner = Process.run,
+    PullRequestDaoLike? pullRequestDao,
+    GhCliService? ghCli,
+    PrSyncService? prSyncService,
+    PrRefreshCoordinator? prRefreshCoordinator,
   }) : _handlers = _buildHandlers(
          plugin: plugin,
          metadataService: metadataService,
          projectsDao: projectsDao,
          sessionDao: sessionDao,
+         emitBridgeEvent: emitBridgeEvent,
+         processRunner: processRunner,
+         pullRequestDao: pullRequestDao,
+         ghCli: ghCli,
+         prSyncService: prSyncService,
+         prRefreshCoordinator: prRefreshCoordinator,
        );
 
   static List<RequestHandlerBase> _buildHandlers({
@@ -61,8 +79,40 @@ class RequestRouter {
     required MetadataService metadataService,
     required ProjectsDao projectsDao,
     required SessionDao sessionDao,
+    required void Function(SesoriSseEvent event)? emitBridgeEvent,
+    required ProcessRunner processRunner,
+    required PullRequestDaoLike? pullRequestDao,
+    required GhCliService? ghCli,
+    required PrSyncService? prSyncService,
+    required PrRefreshCoordinator? prRefreshCoordinator,
   }) {
     final hiddenStore = projectsDao;
+    final prDao = pullRequestDao ?? PullRequestDao(sessionDao.attachedDatabase);
+    final effectiveGhCli = ghCli ?? GhCliService();
+    final effectiveEmitBridgeEvent = emitBridgeEvent ?? _noopEmitBridgeEvent;
+    final effectivePrRefreshCoordinator =
+        prRefreshCoordinator ??
+        (() {
+          late final PrRefreshCoordinator coordinator;
+          final effectivePrSyncService =
+              prSyncService ??
+              PrSyncService(
+                ghCli: effectiveGhCli,
+                prDao: prDao,
+                sessionDao: sessionDao,
+                onPrDataChanged: (String projectId) {
+                  coordinator.onPrDataChanged(projectId: projectId);
+                },
+              );
+          coordinator = PrRefreshCoordinator(
+            ghCli: effectiveGhCli,
+            prSyncService: effectivePrSyncService,
+            processRunner: processRunner,
+            emitBridgeEvent: effectiveEmitBridgeEvent,
+          );
+          return coordinator;
+        })();
+
     final worktreeService = WorktreeService(
       projectsDao: projectsDao,
       sessionDao: sessionDao,
@@ -72,9 +122,14 @@ class RequestRouter {
       GetCurrentProjectHandler(plugin),
       GetProjectsHandler(plugin, hiddenStore),
       GetSessionStatusesHandler(plugin),
-      GetChildSessionsHandler(plugin),
+      GetChildSessionsHandler(plugin, prDao),
       GetSessionMessagesHandler(plugin),
-      GetSessionsHandler(plugin, sessionDao),
+      GetSessionsHandler(
+        plugin,
+        sessionDao,
+        prDao,
+        onSessionListRequested: effectivePrRefreshCoordinator.onSessionListRequested,
+      ),
       CreateSessionHandler(
         plugin: plugin,
         metadataService: metadataService,
@@ -110,6 +165,8 @@ class RequestRouter {
       GetSessionDiffsHandler(sessionDao),
     ];
   }
+
+  static void _noopEmitBridgeEvent(SesoriSseEvent event) {}
 
   /// Routes [request] to the first matching handler and returns its response.
   Future<RelayResponse> route(RelayRequest request) async {

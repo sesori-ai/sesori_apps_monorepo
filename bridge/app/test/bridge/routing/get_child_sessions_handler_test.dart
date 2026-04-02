@@ -1,3 +1,4 @@
+import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/routing/get_child_sessions_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -8,11 +9,13 @@ import "routing_test_helpers.dart";
 void main() {
   group("GetChildSessionsHandler", () {
     late FakeBridgePlugin plugin;
+    late FakePullRequestDao prDao;
     late GetChildSessionsHandler handler;
 
     setUp(() {
       plugin = FakeBridgePlugin();
-      handler = GetChildSessionsHandler(plugin);
+      prDao = FakePullRequestDao();
+      handler = GetChildSessionsHandler(plugin, prDao);
     });
 
     tearDown(() => plugin.close());
@@ -107,6 +110,73 @@ void main() {
       expect(session.summary?.additions, equals(5));
       expect(session.summary?.deletions, equals(2));
       expect(session.summary?.files, equals(3));
+    });
+
+    test("populates pullRequest when child session has PR data", () async {
+      plugin.childSessionsResult = const [
+        PluginSession(
+          id: "child-1",
+          projectID: "project-1",
+          directory: "/tmp/project",
+          parentID: "parent-1",
+          title: "Child Session",
+          time: null,
+          summary: null,
+        ),
+      ];
+
+      prDao.setPr(
+        sessionId: "child-1",
+        pullRequest: const PullRequestsTableData(
+          projectId: "project-1",
+          branchName: "feature/child",
+          prNumber: 99,
+          url: "https://github.com/org/repo/pull/99",
+          title: "Child PR",
+          state: "OPEN",
+          mergeableStatus: "MERGEABLE",
+          reviewDecision: null,
+          checkStatus: "SUCCESS",
+          sessionId: "child-1",
+          lastCheckedAt: 1,
+          createdAt: 1,
+        ),
+      );
+
+      final response = await handler.handle(
+        makeRequest("POST", "/session/children"),
+        body: const SessionIdRequest(sessionId: "parent-1"),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response.items.single.pullRequest?.number, equals(99));
+      expect(response.items.single.pullRequest?.title, equals("Child PR"));
+    });
+
+    test("keeps pullRequest null when no PR data exists", () async {
+      plugin.childSessionsResult = const [
+        PluginSession(
+          id: "child-1",
+          projectID: "project-1",
+          directory: "/tmp/project",
+          parentID: "parent-1",
+          title: "Child Session",
+          time: null,
+          summary: null,
+        ),
+      ];
+
+      final response = await handler.handle(
+        makeRequest("POST", "/session/children"),
+        body: const SessionIdRequest(sessionId: "parent-1"),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response.items.single.pullRequest, isNull);
     });
   });
 }

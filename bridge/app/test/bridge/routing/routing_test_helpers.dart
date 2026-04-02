@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:sesori_bridge/src/bridge/metadata_service.dart";
 import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge_metadata;
+import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/routing/get_sessions_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -358,5 +359,70 @@ class FakeMetadataService implements MetadataService {
   Future<bridge_metadata.SessionMetadata?> generate({required String firstMessage}) async {
     lastGenerateMessage = firstMessage;
     return generateResult;
+  }
+}
+
+class FakePullRequestDao implements PullRequestDaoLike {
+  final Map<String, PullRequestsTableData> _prsBySessionId = <String, PullRequestsTableData>{};
+
+  void setPr({required String sessionId, required PullRequestsTableData pullRequest}) {
+    _prsBySessionId[sessionId] = pullRequest;
+  }
+
+  @override
+  Future<Map<String, PullRequestsTableData>> getPrsBySessionIds({required List<String> sessionIds}) async {
+    return <String, PullRequestsTableData>{
+      for (final sessionId in sessionIds)
+        if (_prsBySessionId.containsKey(sessionId)) sessionId: _prsBySessionId[sessionId]!,
+    };
+  }
+
+  @override
+  Future<List<PullRequestsTableData>> getPrsByProjectId({required String projectId}) async {
+    return _prsBySessionId.values.where((pr) => pr.projectId == projectId).toList();
+  }
+
+  @override
+  Future<List<PullRequestsTableData>> getActivePrsByProjectId({required String projectId}) async {
+    return _prsBySessionId.values.where((pr) => pr.projectId == projectId && pr.state.toUpperCase() == "OPEN").toList();
+  }
+
+  @override
+  Future<void> upsertPr({
+    required String projectId,
+    required String branchName,
+    required int prNumber,
+    required String url,
+    required String title,
+    required String state,
+    required String? mergeableStatus,
+    required String? reviewDecision,
+    required String? checkStatus,
+    required String? sessionId,
+    required int lastCheckedAt,
+    required int createdAt,
+  }) async {
+    if (sessionId == null) {
+      return;
+    }
+    _prsBySessionId[sessionId] = PullRequestsTableData(
+      projectId: projectId,
+      branchName: branchName,
+      prNumber: prNumber,
+      url: url,
+      title: title,
+      state: state,
+      mergeableStatus: mergeableStatus,
+      reviewDecision: reviewDecision,
+      checkStatus: checkStatus,
+      sessionId: sessionId,
+      lastCheckedAt: lastCheckedAt,
+      createdAt: createdAt,
+    );
+  }
+
+  @override
+  Future<void> deletePr({required String projectId, required String branchName}) async {
+    _prsBySessionId.removeWhere((_, value) => value.projectId == projectId && value.branchName == branchName);
   }
 }

@@ -126,6 +126,9 @@ class OrchestratorSession {
          metadataService: metadataService,
          projectsDao: projectsDao,
          sessionDao: projectsDao.attachedDatabase.sessionDao,
+         emitBridgeEvent: (SesoriSseEvent event) {
+           sseManager.enqueueEvent(event);
+         },
        ),
        _mapper = BridgeEventMapper(plugin: plugin, failureReporter: failureReporter);
 

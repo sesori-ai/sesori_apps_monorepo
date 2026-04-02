@@ -1,6 +1,10 @@
 import "dart:convert";
+import "dart:io";
 
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/pr/gh_cli_service.dart";
+import "package:sesori_bridge/src/bridge/pr/pr_refresh_coordinator.dart";
+import "package:sesori_bridge/src/bridge/pr/pr_sync_service.dart";
 import "package:sesori_bridge/src/bridge/routing/request_router.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -208,5 +212,106 @@ void main() {
       expect(response.status, equals(500));
       expect(response.body, contains("healthCheck error"));
     });
+
+    test("integrates PR merge and background refresh trigger for session list", () async {
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "/tmp/project",
+          directory: "/tmp/project",
+          parentID: null,
+          title: "session",
+          time: null,
+          summary: null,
+        ),
+      ];
+
+      final fakePrDao = FakePullRequestDao();
+      fakePrDao.setPr(
+        sessionId: "s1",
+        pullRequest: const PullRequestsTableData(
+          projectId: "/tmp/project",
+          branchName: "feature/test",
+          prNumber: 101,
+          url: "https://github.com/org/repo/pull/101",
+          title: "Integration PR",
+          state: "OPEN",
+          mergeableStatus: null,
+          reviewDecision: null,
+          checkStatus: null,
+          sessionId: "s1",
+          lastCheckedAt: 1,
+          createdAt: 1,
+        ),
+      );
+
+      final spyPrSyncService = _SpyPrSyncService();
+      final coordinator = PrRefreshCoordinator(
+        ghCli: _AlwaysReadyGhCliService(),
+        prSyncService: spyPrSyncService,
+        processRunner:
+            (
+              String executable,
+              List<String> arguments, {
+              String? workingDirectory,
+            }) async {
+              return ProcessResult(1, 0, "https://github.com/org/repo.git", "");
+            },
+        emitBridgeEvent: (SesoriSseEvent _) {},
+      );
+
+      router = RequestRouter(
+        plugin: plugin,
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        pullRequestDao: fakePrDao,
+        prRefreshCoordinator: coordinator,
+      );
+
+      final response = await router.route(
+        makeRequest(
+          "POST",
+          "/sessions",
+          body: jsonEncode({"projectId": "/tmp/project", "start": null, "limit": null}),
+        ),
+      );
+
+      final responseModel = SessionListResponse.fromJson(
+        jsonDecode(response.body!) as Map<String, dynamic>,
+      );
+
+      expect(responseModel.items.single.pullRequest?.number, equals(101));
+      expect(responseModel.items.single.pullRequest?.title, equals("Integration PR"));
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(spyPrSyncService.calls, hasLength(1));
+      expect(spyPrSyncService.calls.single, equals((projectId: "/tmp/project", projectPath: "/tmp/project")));
+    });
   });
+}
+
+class _AlwaysReadyGhCliService extends GhCliService {
+  _AlwaysReadyGhCliService() : super();
+
+  @override
+  Future<bool> isAvailable() async => true;
+
+  @override
+  Future<bool> isAuthenticated() async => true;
+}
+
+class _SpyPrSyncService extends PrSyncService {
+  final List<({String projectId, String projectPath})> calls = <({String projectId, String projectPath})>[];
+
+  _SpyPrSyncService()
+    : super(
+        ghCli: _AlwaysReadyGhCliService(),
+        prDao: FakePullRequestDao(),
+        sessionDao: FakeSessionDao(),
+        onPrDataChanged: (String _) {},
+      );
+
+  @override
+  void triggerRefreshForProject({required String projectId, required String projectPath}) {
+    calls.add((projectId: projectId, projectPath: projectPath));
+  }
 }
