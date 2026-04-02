@@ -6,8 +6,8 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../worktree_service.dart" show ProcessRunner;
 
-/// Maximum file size to read (100 KB). Larger files are treated as too-large.
-const maxFileContentBytes = 100 * 1024;
+/// Maximum file size to read (200 KB). Larger files are treated as too-large.
+const maxFileContentBytes = 200 * 1024;
 
 /// Binary file extensions — skip reading content for these.
 const _binaryExtensions = <String>{

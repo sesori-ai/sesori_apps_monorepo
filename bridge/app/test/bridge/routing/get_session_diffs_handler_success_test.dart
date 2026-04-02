@@ -248,9 +248,9 @@ void main() {
       expect(entry.containsKey("after"), isFalse);
     });
 
-    test("returns skipped diff when combined content exceeds 100KB", () async {
-      final beforeLarge = List.filled(60 * 1024, "a").join();
-      final afterLarge = List.filled(60 * 1024, "b").join();
+    test("returns skipped diff when combined content exceeds 200KB", () async {
+      final beforeLarge = List.filled(120 * 1024, "a").join();
+      final afterLarge = List.filled(120 * 1024, "b").join();
       File("${tempDir.path}/lib/too_large.dart")
         ..createSync(recursive: true)
         ..writeAsStringSync(afterLarge);
