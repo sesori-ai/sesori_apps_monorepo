@@ -1,34 +1,14 @@
-sealed class QueuedSessionSubmission {
-  const QueuedSessionSubmission();
-
-  String get displayText;
-  bool get isCommand;
-}
-
-class QueuedPromptSubmission extends QueuedSessionSubmission {
+class QueuedSessionSubmission {
   final String text;
+  final String? command;
 
-  const QueuedPromptSubmission({required this.text});
+  const QueuedSessionSubmission({required this.text, this.command});
 
-  @override
-  String get displayText => text;
+  String get displayText => command != null
+      ? text.trim().isEmpty
+            ? "/$command"
+            : "/$command ${text.trim()}"
+      : text;
 
-  @override
-  bool get isCommand => false;
-}
-
-class QueuedCommandSubmission extends QueuedSessionSubmission {
-  final String command;
-  final String arguments;
-
-  const QueuedCommandSubmission({
-    required this.command,
-    required this.arguments,
-  });
-
-  @override
-  String get displayText => arguments.trim().isEmpty ? "/$command" : "/$command ${arguments.trim()}";
-
-  @override
-  bool get isCommand => true;
+  bool get isCommand => command != null;
 }

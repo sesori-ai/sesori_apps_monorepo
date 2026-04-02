@@ -3,21 +3,17 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../capabilities/session/session_service.dart";
-import "../session_detail/session_launch_command_store.dart";
 import "new_session_state.dart";
 
 class NewSessionCubit extends Cubit<NewSessionState> {
   final SessionService _sessionService;
   final String _projectId;
-  final SessionLaunchCommandStore _launchCommandStore;
 
   NewSessionCubit({
     required SessionService sessionService,
     required String projectId,
-    SessionLaunchCommandStore? launchCommandStore,
   }) : _sessionService = sessionService,
        _projectId = projectId,
-       _launchCommandStore = launchCommandStore ?? SessionLaunchCommandStore.instance,
        super(
          const NewSessionState.idle(
            availableAgents: [],
@@ -274,11 +270,6 @@ class NewSessionCubit extends Cubit<NewSessionState> {
 
     switch (response) {
       case SuccessResponse(:final data):
-        _launchCommandStore.save(
-          sessionId: data.id,
-          command: command,
-          arguments: arguments,
-        );
         emit(NewSessionState.created(session: data));
       case ErrorResponse(:final error):
         final current = state.agentModelData;

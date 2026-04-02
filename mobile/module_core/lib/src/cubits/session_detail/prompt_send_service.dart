@@ -46,7 +46,7 @@ class PromptSendService {
   }) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
-    final submission = QueuedPromptSubmission(text: trimmed);
+    final submission = QueuedSessionSubmission(text: trimmed);
 
     if (!isConnected) {
       _promptQueue.enqueue(submission);
@@ -74,9 +74,9 @@ class PromptSendService {
     required bool isConnected,
   }) async {
     if (command.trim().isEmpty) return;
-    final submission = QueuedCommandSubmission(
+    final submission = QueuedSessionSubmission(
+      text: arguments,
       command: command,
-      arguments: arguments,
     );
 
     if (!isConnected) {
@@ -128,20 +128,19 @@ class PromptSendService {
 
     var sendSucceeded = false;
     try {
-      final result = await switch (submission) {
-        QueuedPromptSubmission(:final text) => _service.sendMessage(
-          _sessionId,
-          text,
-          agent: current.agent,
-          providerID: current.providerID,
-          modelID: current.modelID,
-        ),
-        QueuedCommandSubmission(:final command, :final arguments) => _service.sendCommand(
-          sessionId: _sessionId,
-          command: command,
-          arguments: arguments,
-        ),
-      };
+      final result = await (submission.isCommand
+          ? _service.sendCommand(
+              sessionId: _sessionId,
+              command: submission.command!,
+              arguments: submission.text,
+            )
+          : _service.sendMessage(
+              _sessionId,
+              submission.text,
+              agent: current.agent,
+              providerID: current.providerID,
+              modelID: current.modelID,
+            ));
 
       if (result case ErrorResponse()) {
         _promptQueue.requeue(submission);

@@ -12,7 +12,6 @@ import "../../logging/logging.dart";
 import "../../platform/notification_canceller.dart";
 import "../../repositories/permission_repository.dart";
 import "prompt_send_service.dart";
-import "session_launch_command_store.dart";
 import "session_detail_state.dart";
 import "streaming_text_buffer.dart";
 
@@ -24,7 +23,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   final String? _projectId;
   final NotificationCanceller _notificationCanceller;
   final FailureReporter _failureReporter;
-  final SessionLaunchCommandStore _launchCommandStore;
   late final PromptSendService _sendService;
 
   late final StreamSubscription<SesoriSessionEvent> _eventSubscription;
@@ -54,7 +52,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     required String? projectId,
     required NotificationCanceller notificationCanceller,
     required FailureReporter failureReporter,
-    SessionLaunchCommandStore? launchCommandStore,
   }) : _service = service,
        _connectionService = connectionService,
        _permissionRepository = permissionRepository,
@@ -62,7 +59,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
        _projectId = projectId,
        _notificationCanceller = notificationCanceller,
        _failureReporter = failureReporter,
-       _launchCommandStore = launchCommandStore ?? SessionLaunchCommandStore.instance,
        super(const SessionDetailState.loading()) {
     _sendService = PromptSendService(
       service: _service,
@@ -174,8 +170,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           isRefreshing: false,
         ),
       );
-
-      await _consumeLaunchCommand();
 
       // Drain any messages that were queued before load completed.
       _tryDrainQueue();
@@ -933,15 +927,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     } on Object catch (e, st) {
       loge("Failed to abort session(s)", e, st);
     }
-  }
-
-  Future<void> _consumeLaunchCommand() async {
-    final action = _launchCommandStore.take(_sessionId);
-    if (action == null) return;
-    await sendCommand(
-      command: action.command.name,
-      arguments: action.arguments,
-    );
   }
 
   // ---------------------------------------------------------------------------

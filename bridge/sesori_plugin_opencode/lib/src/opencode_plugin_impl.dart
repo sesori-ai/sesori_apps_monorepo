@@ -137,7 +137,7 @@ class OpenCodePlugin implements BridgePlugin {
         .map(
           (command) => PluginCommand(
             name: command.name,
-            template: command.template!,
+            template: command.template,
             hints: command.hints,
             description: command.description,
             agent: command.agent,
