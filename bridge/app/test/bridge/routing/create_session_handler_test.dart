@@ -396,7 +396,7 @@ void main() {
       expect(plugin.lastRenameSessionId, isNull);
     });
 
-    test("no text parts — generateSessionMetadata not called", () async {
+    test("no text parts — metadata generation skipped", () async {
       metadataService.lastGenerateMessage = null;
       plugin.createSessionResult = const PluginSession(
         id: "s1",
@@ -426,7 +426,7 @@ void main() {
       expect(metadataService.lastGenerateMessage, isNull);
     });
 
-    test("whitespace-only text parts skipped — generateSessionMetadata not called", () async {
+    test("whitespace-only text parts skipped — metadata generation skipped", () async {
       metadataService.lastGenerateMessage = null;
       plugin.createSessionResult = const PluginSession(
         id: "s1",

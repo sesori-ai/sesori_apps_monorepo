@@ -130,7 +130,7 @@ void main() {
       );
 
       expect(exists, isTrue);
-      expect(processRunner.invocations.single.arguments, equals(["branch", "--list", "main"]));
+      expect(processRunner.invocations.single.arguments, equals(["branch", "--list", "--", "main"]));
     });
 
     test("branchExists returns false for empty git branch --list output", () async {
@@ -160,7 +160,7 @@ void main() {
       expect(processRunner.invocations.single.command, equals("git"));
       expect(
         processRunner.invocations.single.arguments,
-        equals(["worktree", "add", "/repo/.worktrees/feature-x", "-b", "feature/x", "main"]),
+        equals(["worktree", "add", "--", "/repo/.worktrees/feature-x", "-b", "feature/x", "main"]),
       );
       expect(processRunner.invocations.single.workingDirectory, equals("/repo/project"));
     });

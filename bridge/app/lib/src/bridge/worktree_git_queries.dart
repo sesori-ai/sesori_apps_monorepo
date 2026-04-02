@@ -60,7 +60,7 @@ extension WorktreeGitQueries on WorktreeService {
   }) async {
     final result = await _runGit(
       projectPath: projectPath,
-      arguments: ["branch", "--list", branchName],
+      arguments: ["branch", "--list", "--", branchName],
     );
     return result.stdout.toString().trim().isNotEmpty;
   }
@@ -73,7 +73,7 @@ extension WorktreeGitQueries on WorktreeService {
   }) {
     return _runGit(
       projectPath: projectPath,
-      arguments: ["worktree", "add", worktreePath, "-b", branchName, baseBranch],
+      arguments: ["worktree", "add", "--", worktreePath, "-b", branchName, baseBranch],
     );
   }
 

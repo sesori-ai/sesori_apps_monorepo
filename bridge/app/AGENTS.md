@@ -72,12 +72,9 @@ modules/
   ```dart
   final FooRequest fooRequest;
   try {
-    final decoded = jsonDecode(request.body ?? "{}");
+    final decoded = ;
     fooRequest = FooRequest.fromJson(
-      switch (decoded) {
-        final Map<String, dynamic> map => map,
-        _ => throw const FormatException("invalid JSON body"),
-      },
+      jsonDecodeMap(request.body),
     );
   } on FormatException {
     return buildErrorResponse(request, 400, "invalid JSON body");

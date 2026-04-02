@@ -42,6 +42,16 @@ class WorktreeService {
        _projectsDao = projectsDao,
        _sessionDao = sessionDao;
 
+  static final _safeNamePattern = RegExp(r'^[a-z0-9][a-z0-9-]*$');
+
+  static bool _isSafeGitName(String name) =>
+      name.isNotEmpty &&
+      name.length <= 60 &&
+      !name.contains("..") &&
+      !name.contains("/") &&
+      !name.contains(r"\") &&
+      _safeNamePattern.hasMatch(name);
+
   // -------------------------------------------------------------------------
   // Orchestration
   // -------------------------------------------------------------------------
@@ -94,7 +104,9 @@ class WorktreeService {
     if (preferredBranchAndWorktreeName != null && parentSessionId == null) {
       final preferredBranch = preferredBranchAndWorktreeName.branchName;
       final preferredWorktree = preferredBranchAndWorktreeName.worktreeName;
-      if (!await branchExists(projectPath: projectId, branchName: preferredBranch)) {
+      if (!_isSafeGitName(preferredBranch) || !_isSafeGitName(preferredWorktree)) {
+        Log.w("WorktreeService: rejected unsafe preferred names: branch=$preferredBranch worktree=$preferredWorktree");
+      } else if (!await branchExists(projectPath: projectId, branchName: preferredBranch)) {
         final worktreePath = "$projectId/$_worktreeDir/$preferredWorktree";
         final result = await createWorktree(
           projectPath: projectId,

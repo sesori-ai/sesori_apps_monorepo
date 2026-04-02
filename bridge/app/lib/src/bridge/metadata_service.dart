@@ -2,6 +2,7 @@ import "dart:convert";
 
 import "package:http/http.dart" as http;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+import "package:sesori_shared/sesori_shared.dart";
 
 import "../auth/token_refresher.dart";
 import "models/session_metadata.dart";
@@ -69,25 +70,13 @@ class MetadataService {
       return null;
     }
 
-    final decoded = jsonDecode(response.body);
-    if (decoded is! Map<String, dynamic>) {
-      Log.w("[MetadataService] unexpected response body type");
+    try {
+      return SessionMetadata.fromJson(
+        jsonDecodeMap(response.body),
+      );
+    } on Object catch (e) {
+      Log.w("[MetadataService] failed to parse response: $e");
       return null;
     }
-
-    final title = decoded["title"];
-    final branchName = decoded["branchName"];
-    final worktreeName = decoded["worktreeName"];
-
-    if (title is! String || branchName is! String || worktreeName is! String) {
-      Log.w("[MetadataService] missing or invalid fields in response");
-      return null;
-    }
-
-    return SessionMetadata(
-      title: title,
-      branchName: branchName,
-      worktreeName: worktreeName,
-    );
   }
 }

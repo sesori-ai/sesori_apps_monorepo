@@ -191,8 +191,9 @@ Future<void> main(List<String> args) async {
 
   final failureReporter = LogFailureReporter();
 
+  final httpClient = http.Client();
   final metadataService = MetadataService(
-    client: http.Client(),
+    client: httpClient,
     baseUrl: authBackendURL,
     tokenRefresher: tokenManager,
   );
@@ -248,11 +249,11 @@ Future<void> main(List<String> args) async {
     await session.run();
   } catch (e) {
     Log.e('$e');
-    await _shutdown(cmd, sigintSub, sigtermSub, debugServer, db, bandwidthTracker);
+    await _shutdown(cmd, sigintSub, sigtermSub, debugServer, db, bandwidthTracker, httpClient);
     exit(1);
   }
 
-  await _shutdown(cmd, sigintSub, sigtermSub, debugServer, db, bandwidthTracker);
+  await _shutdown(cmd, sigintSub, sigtermSub, debugServer, db, bandwidthTracker, httpClient);
 }
 
 /// Performs graceful shutdown: stops the server and cancels signal listeners.
@@ -266,6 +267,7 @@ Future<void> _shutdown(
   DebugServer? debugServer,
   AppDatabase db,
   BandwidthTracker? bandwidthTracker,
+  http.Client httpClient,
 ) async {
   final safetyTimer = Timer(const Duration(seconds: 10), () {
     Log.e('Failed to finish gracefully');
@@ -273,6 +275,7 @@ Future<void> _shutdown(
   });
 
   bandwidthTracker?.dispose();
+  httpClient.close();
 
   await Future.wait([
     stopServer(serverProcess),
