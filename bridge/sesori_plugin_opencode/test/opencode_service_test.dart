@@ -309,6 +309,12 @@ class FakeOpenCodeApi implements OpenCodeApi {
   FakeOpenCodeApi({this.messages = const [], this.messagesError});
 
   @override
+  void close() {}
+
+  @override
+  Future<bool> healthCheck() async => true;
+
+  @override
   Future<List<MessageWithParts>> getMessages({required String sessionId, required String? directory}) async {
     lastRequestedSessionId = sessionId;
     lastRequestedDirectory = directory;

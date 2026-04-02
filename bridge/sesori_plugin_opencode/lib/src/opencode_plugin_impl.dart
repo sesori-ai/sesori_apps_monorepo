@@ -1,7 +1,5 @@
 import "dart:async";
-import "dart:convert";
 
-import "package:http/http.dart" as http;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../opencode_plugin.dart";
@@ -12,17 +10,13 @@ class OpenCodePlugin implements BridgePlugin {
   final OpenCodeService _service;
   final SseEventParser _parser;
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
-  final String _serverUrl;
-  final String? _password;
   final SseEventMapper _mapper = SseEventMapper();
   late final SseConnection _sseConnection;
 
   OpenCodePlugin({
     required String serverUrl,
     String? password,
-  }) : _serverUrl = serverUrl,
-       _password = password,
-       _service = _createService(serverUrl, password),
+  }) : _service = _createService(serverUrl, password),
        _parser = SseEventParser(),
        _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>() {
     _sseConnection = SseConnection(
@@ -70,21 +64,8 @@ class OpenCodePlugin implements BridgePlugin {
   Stream<BridgeSseEvent> get events => _eventBuffer.stream;
 
   @override
-  Future<bool> healthCheck() async {
-    final client = http.Client();
-    try {
-      final headers = <String, String>{};
-      if (_password != null) {
-        final creds = base64.encode(utf8.encode("opencode:$_password"));
-        headers["Authorization"] = "Basic $creds";
-      }
-      final response = await client
-          .get(Uri.parse("$_serverUrl/global/health"), headers: headers)
-          .timeout(const Duration(seconds: 5));
-      return response.statusCode >= 200 && response.statusCode < 300;
-    } finally {
-      client.close();
-    }
+  Future<bool> healthCheck() {
+    return _service.repository.api.healthCheck();
   }
 
   @override
@@ -191,6 +172,7 @@ class OpenCodePlugin implements BridgePlugin {
   @override
   Future<void> dispose() async {
     _sseConnection.stop();
+    _service.repository.api.close();
     await _eventBuffer.close();
   }
 
