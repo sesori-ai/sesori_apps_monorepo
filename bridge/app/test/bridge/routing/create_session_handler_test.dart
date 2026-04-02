@@ -312,6 +312,7 @@ void main() {
       metadataService.generateResult = const bridge_metadata.SessionMetadata(
         title: "Fix Login Bug",
         branchName: "fix-login-bug",
+        worktreeName: "fix-login-bug",
       );
       plugin.createSessionResult = const PluginSession(
         id: "s1",
@@ -460,6 +461,7 @@ void main() {
       metadataService.generateResult = const bridge_metadata.SessionMetadata(
         title: "Fix Login Bug",
         branchName: "fix-login-bug",
+        worktreeName: "fix-login-bug",
       );
       throwingPlugin.createSessionResult = const PluginSession(
         id: "s1",
@@ -521,6 +523,7 @@ class _FakeWorktreeService extends WorktreeService {
     required String projectId,
     required String? parentSessionId,
     String? preferredBranchName,
+    String? preferredWorktreeName,
   }) async {
     prepareCallCount++;
     lastPrepareProjectId = projectId;

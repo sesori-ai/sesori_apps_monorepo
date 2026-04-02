@@ -78,12 +78,17 @@ class MetadataService {
 
     final title = decoded["title"];
     final branchName = decoded["branchName"];
+    final worktreeName = decoded["worktreeName"];
 
-    if (title is! String || branchName is! String) {
+    if (title is! String || branchName is! String || worktreeName is! String) {
       Log.w("[MetadataService] missing or invalid fields in response");
       return null;
     }
 
-    return SessionMetadata(title: title, branchName: branchName);
+    return SessionMetadata(
+      title: title,
+      branchName: branchName,
+      worktreeName: worktreeName,
+    );
   }
 }

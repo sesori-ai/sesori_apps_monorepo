@@ -51,6 +51,7 @@ class WorktreeService {
     required String projectId,
     required String? parentSessionId,
     String? preferredBranchName,
+    String? preferredWorktreeName,
   }) async {
     if (parentSessionId != null) {
       final parentWorktree = await _sessionDao.getSession(sessionId: parentSessionId);
@@ -93,7 +94,8 @@ class WorktreeService {
     // 4.5. Try preferred branch name if provided.
     if (preferredBranchName != null && parentSessionId == null) {
       if (!await branchExists(projectPath: projectId, branchName: preferredBranchName)) {
-        final worktreePath = "$projectId/$_worktreeDir/$preferredBranchName";
+        final dirName = preferredWorktreeName ?? preferredBranchName;
+        final worktreePath = "$projectId/$_worktreeDir/$dirName";
         final result = await createWorktree(
           projectPath: projectId,
           worktreePath: worktreePath,
@@ -109,7 +111,6 @@ class WorktreeService {
           );
         }
       }
-      // Preferred name failed — fall through to numbered naming.
     }
 
     for (var attempt = 0; attempt < _maxWorktreeCreationAttempts; attempt++) {

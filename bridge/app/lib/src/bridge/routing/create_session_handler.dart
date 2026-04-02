@@ -81,6 +81,7 @@ class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Sess
         projectId: projectId,
         parentSessionId: parentSessionId,
         preferredBranchName: metadata?.branchName,
+        preferredWorktreeName: metadata?.worktreeName,
       );
     } else {
       worktreeResult = null;

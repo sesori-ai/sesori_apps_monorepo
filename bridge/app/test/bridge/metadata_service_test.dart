@@ -63,7 +63,7 @@ void main() {
           request.response.statusCode = HttpStatus.ok;
           request.response.headers.contentType = ContentType.json;
           request.response.write(
-            jsonEncode({"title": "My Session", "branchName": "feat/my-session"}),
+            jsonEncode({"title": "My Session", "branchName": "feat/my-session", "worktreeName": "my-session"}),
           );
           await request.response.close();
         }).asFuture<void>(),
@@ -79,6 +79,7 @@ void main() {
       expect(result, isA<SessionMetadata>());
       expect(result!.title, equals("My Session"));
       expect(result.branchName, equals("feat/my-session"));
+      expect(result.worktreeName, equals("my-session"));
     });
 
     test("non-200 status → returns null", () async {
@@ -158,7 +159,7 @@ void main() {
             request.response.statusCode = HttpStatus.ok;
             request.response.headers.contentType = ContentType.json;
             request.response.write(
-              jsonEncode({"title": "Retried", "branchName": "feat/retried"}),
+              jsonEncode({"title": "Retried", "branchName": "feat/retried", "worktreeName": "retried"}),
             );
           }
           await request.response.close();
@@ -230,7 +231,8 @@ void main() {
           await utf8.decoder.bind(request).join();
           request.response.statusCode = HttpStatus.ok;
           request.response.headers.contentType = ContentType.json;
-          request.response.write(jsonEncode({"title": "T", "branchName": "b"}));
+          request.response.write(jsonEncode({"title": "T", "branchName": "b", "worktreeName": "w"}));
+
           await request.response.close();
         }).asFuture<void>(),
       );
@@ -258,7 +260,8 @@ void main() {
           receivedBody.complete(jsonDecode(body) as Map<String, dynamic>);
           request.response.statusCode = HttpStatus.ok;
           request.response.headers.contentType = ContentType.json;
-          request.response.write(jsonEncode({"title": "T", "branchName": "b"}));
+          request.response.write(jsonEncode({"title": "T", "branchName": "b", "worktreeName": "w"}));
+
           await request.response.close();
         }).asFuture<void>(),
       );
