@@ -86,14 +86,13 @@ class OpenCodeApi {
   }
 
   Future<List<Command>> listCommands({required String? directory}) async {
-    final queryParameters = <String, String>{
-      if (directory != null && directory.isNotEmpty) "directory": directory,
+    final headers = <String, String>{
+      ..._authHeaders,
+      _directoryOpenCodeHeader: ?directory,
     };
-    final response = await http.get(
-      Uri.parse("$serverURL/command").replace(
-        queryParameters: queryParameters.isEmpty ? null : queryParameters,
-      ),
-      headers: _authHeaders,
+    final response = await _client.get(
+      Uri.parse("$serverURL/command"),
+      headers: headers,
     );
     _ensureSuccess(response, "GET /command");
 

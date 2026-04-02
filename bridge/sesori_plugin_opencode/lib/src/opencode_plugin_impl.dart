@@ -137,7 +137,7 @@ class OpenCodePlugin implements BridgePlugin {
         .map(
           (command) => PluginCommand(
             name: command.name,
-            template: command.template,
+            template: command.template!,
             hints: command.hints,
             description: command.description,
             agent: command.agent,
@@ -176,15 +176,13 @@ class OpenCodePlugin implements BridgePlugin {
 
     final body = SendPromptBody(parts: parts, agent: agent, model: model);
 
-    if (parts.isNotEmpty) {
-      await _call(
-        () => _service.repository.api.sendPrompt(
-          sessionId: session.id,
-          directory: session.directory,
-          body: body,
-        ),
-      );
-    }
+    await _call(
+      () => _service.repository.api.sendPrompt(
+        sessionId: session.id,
+        directory: session.directory,
+        body: body,
+      ),
+    );
 
     return session.toPlugin();
   }

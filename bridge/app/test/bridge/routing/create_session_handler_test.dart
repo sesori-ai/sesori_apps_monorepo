@@ -608,6 +608,68 @@ void main() {
       expect(metadataService.lastGenerateMessage, isNull);
     });
 
+    test("command dispatched after session creation with new session ID", () async {
+      plugin.createSessionResult = const PluginSession(
+        id: "cmd-session-1",
+        projectID: "p1",
+        directory: "/repo",
+        parentID: null,
+        title: "Command Session",
+        time: null,
+        summary: null,
+      );
+
+      final result = await handler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "/repo",
+          dedicatedWorktree: false,
+          parts: [PromptPart.text(text: "Review this code")],
+          agent: null,
+          model: null,
+          command: "review",
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.id, equals("cmd-session-1"));
+      expect(plugin.lastSendCommandSessionId, equals("cmd-session-1"));
+      expect(plugin.lastSendCommand, equals("review"));
+      expect(plugin.lastSendCommandArguments, equals("Review this code"));
+    });
+
+    test("no command — sendCommand not called", () async {
+      plugin.createSessionResult = const PluginSession(
+        id: "no-cmd-1",
+        projectID: "p1",
+        directory: "/repo",
+        parentID: null,
+        title: "No Command",
+        time: null,
+        summary: null,
+      );
+
+      await handler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "/repo",
+          dedicatedWorktree: false,
+          parts: [PromptPart.text(text: "Hello")],
+          agent: null,
+          model: null,
+          command: null,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(plugin.lastSendCommandSessionId, isNull);
+      expect(plugin.lastSendCommand, isNull);
+    });
+
     test("rename fails — session still returned successfully", () async {
       final throwingPlugin = _ThrowingRenameSessionPlugin();
       metadataService.generateResult = const bridge_metadata.SessionMetadata(

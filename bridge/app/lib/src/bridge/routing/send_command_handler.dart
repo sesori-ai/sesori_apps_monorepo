@@ -3,14 +3,14 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "request_handler.dart";
 
-/// Handles `POST /session/:id/command` — executes a slash command in a session.
+/// Handles `POST /session/command` — executes a slash command in a session.
 class SendCommandHandler extends BodyRequestHandler<SendCommandRequest, SuccessEmptyResponse> {
   final BridgePlugin _plugin;
 
   SendCommandHandler(this._plugin)
     : super(
         HttpMethod.post,
-        "/session/:id/command",
+        "/session/command",
         fromJson: SendCommandRequest.fromJson,
       );
 
@@ -22,7 +22,7 @@ class SendCommandHandler extends BodyRequestHandler<SendCommandRequest, SuccessE
     required Map<String, String> queryParams,
     required String? fragment,
   }) async {
-    final sessionId = pathParams["id"] ?? "";
+    final sessionId = body.sessionId;
     if (sessionId.isEmpty) {
       throw buildErrorResponse(request, 400, "empty session id");
     }

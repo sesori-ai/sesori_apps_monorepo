@@ -137,6 +137,69 @@ void main() {
       expect(response, equals(const SuccessEmptyResponse()));
     });
 
+    test("does not call sendCommand when command is null", () async {
+      await handler.handle(
+        makeRequest("POST", "/session/prompt_async"),
+        body: const SendPromptRequest(
+          sessionId: "s1",
+          parts: [PromptPart.text(text: "Hello")],
+          agent: null,
+          model: null,
+          command: null,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(plugin.lastSendPromptSessionId, equals("s1"));
+      expect(plugin.lastSendCommandSessionId, isNull);
+      expect(plugin.lastSendCommand, isNull);
+    });
+
+    test("calls sendCommand after sendPrompt when command is present", () async {
+      await handler.handle(
+        makeRequest("POST", "/session/prompt_async"),
+        body: const SendPromptRequest(
+          sessionId: "s7",
+          parts: [PromptPart.text(text: "review this")],
+          agent: null,
+          model: null,
+          command: "review",
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(plugin.lastSendPromptSessionId, equals("s7"));
+      expect(plugin.lastSendCommandSessionId, equals("s7"));
+      expect(plugin.lastSendCommand, equals("review"));
+      expect(plugin.lastSendCommandArguments, equals("review this"));
+    });
+
+    test("passes empty arguments when no text part present", () async {
+      await handler.handle(
+        makeRequest("POST", "/session/prompt_async"),
+        body: const SendPromptRequest(
+          sessionId: "s8",
+          parts: [
+            PromptPart.filePath(mime: "text/plain", path: "/tmp/f.txt", filename: null),
+          ],
+          agent: null,
+          model: null,
+          command: "attach",
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(plugin.lastSendCommandSessionId, equals("s8"));
+      expect(plugin.lastSendCommand, equals("attach"));
+      expect(plugin.lastSendCommandArguments, equals(""));
+    });
+
     test("throws 400 on empty session id", () async {
       expect(
         () => handler.handle(

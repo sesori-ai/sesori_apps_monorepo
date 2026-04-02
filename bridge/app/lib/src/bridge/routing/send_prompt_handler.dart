@@ -42,6 +42,16 @@ class SendPromptHandler extends BodyRequestHandler<SendPromptRequest, SuccessEmp
       model: model,
     );
 
+    final command = body.command;
+    if (command != null) {
+      final textPart = body.parts.whereType<PromptPartText>().firstOrNull;
+      await _plugin.sendCommand(
+        sessionId: sessionId,
+        command: command,
+        arguments: textPart?.text ?? '',
+      );
+    }
+
     return const SuccessEmptyResponse();
   }
 }

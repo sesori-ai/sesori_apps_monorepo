@@ -123,6 +123,15 @@ class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Sess
       model: model,
     );
 
+    final command = body.command;
+    if (command != null) {
+      await _plugin.sendCommand(
+        sessionId: created.id,
+        command: command,
+        arguments: firstText ?? '',
+      );
+    }
+
     var finalSession = created;
     if (metadata?.title case final title?) {
       try {
