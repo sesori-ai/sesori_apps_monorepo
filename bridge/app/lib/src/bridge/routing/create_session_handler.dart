@@ -1,6 +1,8 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../metadata_service.dart";
+import "../models/session_metadata.dart" as bridge_metadata;
 import "../persistence/daos/session_dao.dart";
 import "../worktree_service.dart";
 import "prompt_part_mapper.dart";
@@ -27,14 +29,17 @@ IMPORTANT: Do NOT create new worktrees, branches, or working directories for thi
 /// Handles `POST /session` — creates a session for a given project.
 class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Session> {
   final BridgePlugin _plugin;
+  final MetadataService _metadataService;
   final WorktreeService _worktreeService;
   final SessionDao _sessionDao;
 
   CreateSessionHandler({
     required BridgePlugin plugin,
+    required MetadataService metadataService,
     required WorktreeService worktreeService,
     required SessionDao sessionDao,
   }) : _plugin = plugin,
+       _metadataService = metadataService,
        _worktreeService = worktreeService,
        _sessionDao = sessionDao,
        super(
@@ -61,11 +66,10 @@ class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Sess
         .where((t) => t.trim().isNotEmpty)
         .firstOrNull;
 
-    final SessionMetadata? metadata;
+    final bridge_metadata.SessionMetadata? metadata;
     if (firstText != null) {
-      metadata = await _plugin.generateSessionMetadata(
+      metadata = await _metadataService.generate(
         firstMessage: firstText,
-        directory: projectId,
       );
     } else {
       metadata = null;
@@ -76,7 +80,9 @@ class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Sess
       worktreeResult = await _worktreeService.prepareWorktreeForSession(
         projectId: projectId,
         parentSessionId: parentSessionId,
-        preferredBranchName: metadata?.branchName,
+        preferredBranchAndWorktreeName: metadata != null
+            ? (branchName: metadata.branchName, worktreeName: metadata.worktreeName)
+            : null,
       );
     } else {
       worktreeResult = null;

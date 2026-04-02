@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:http/http.dart' as http;
 import 'package:opencode_plugin/opencode_plugin.dart';
 import 'package:sesori_bridge/src/auth/login.dart';
 import 'package:sesori_bridge/src/auth/profile.dart';
@@ -11,6 +12,7 @@ import 'package:sesori_bridge/src/auth/validate.dart';
 import 'package:sesori_bridge/src/bridge/bandwidth_tracker.dart';
 import 'package:sesori_bridge/src/bridge/debug_server.dart';
 import 'package:sesori_bridge/src/bridge/log_failure_reporter.dart';
+import 'package:sesori_bridge/src/bridge/metadata_service.dart';
 import 'package:sesori_bridge/src/bridge/models/bridge_config.dart';
 import 'package:sesori_bridge/src/bridge/orchestrator.dart';
 import 'package:sesori_bridge/src/bridge/persistence/bridge_diagnostics.dart';
@@ -189,10 +191,18 @@ Future<void> main(List<String> args) async {
 
   final failureReporter = LogFailureReporter();
 
+  final httpClient = http.Client();
+  final metadataService = MetadataService(
+    client: httpClient,
+    baseUrl: authBackendURL,
+    tokenRefresher: tokenManager,
+  );
+
   final orchestrator = Orchestrator(
     config: bridgeConfig,
     client: relayClient,
     plugin: plugin,
+    metadataService: metadataService,
     pushNotificationService: pushNotificationService,
     tokenRefresher: tokenManager,
     projectsDao: db.projectsDao,
@@ -208,6 +218,7 @@ Future<void> main(List<String> args) async {
   if (debugPort != null) {
     debugServer = DebugServer(
       plugin: plugin,
+      metadataService: metadataService,
       projectsDao: db.projectsDao,
       port: debugPort,
       failureReporter: failureReporter,
@@ -238,11 +249,11 @@ Future<void> main(List<String> args) async {
     await session.run();
   } catch (e) {
     Log.e('$e');
-    await _shutdown(cmd, sigintSub, sigtermSub, debugServer, db, bandwidthTracker);
+    await _shutdown(cmd, sigintSub, sigtermSub, debugServer, db, bandwidthTracker, httpClient);
     exit(1);
   }
 
-  await _shutdown(cmd, sigintSub, sigtermSub, debugServer, db, bandwidthTracker);
+  await _shutdown(cmd, sigintSub, sigtermSub, debugServer, db, bandwidthTracker, httpClient);
 }
 
 /// Performs graceful shutdown: stops the server and cancels signal listeners.
@@ -256,6 +267,7 @@ Future<void> _shutdown(
   DebugServer? debugServer,
   AppDatabase db,
   BandwidthTracker? bandwidthTracker,
+  http.Client httpClient,
 ) async {
   final safetyTimer = Timer(const Duration(seconds: 10), () {
     Log.e('Failed to finish gracefully');
@@ -263,6 +275,7 @@ Future<void> _shutdown(
   });
 
   bandwidthTracker?.dispose();
+  httpClient.close();
 
   await Future.wait([
     stopServer(serverProcess),

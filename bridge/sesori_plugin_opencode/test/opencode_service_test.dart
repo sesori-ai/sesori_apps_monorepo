@@ -403,16 +403,6 @@ class FakeOpenCodeApi implements OpenCodeApi {
     required String sessionId,
     required String directory,
   }) async => throw UnimplementedError();
-
-  @override
-  Future<OpenCodeConfig> getConfig() async => throw UnimplementedError();
-
-  @override
-  Future<MessageWithParts> sendMessageSync({
-    required String sessionId,
-    required String directory,
-    required SendMessageSyncBody body,
-  }) async => throw UnimplementedError();
 }
 
 class FakeOpenCodeRepository extends OpenCodeRepository {

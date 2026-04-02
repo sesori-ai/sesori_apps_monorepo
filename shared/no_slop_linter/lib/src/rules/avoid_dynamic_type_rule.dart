@@ -66,8 +66,9 @@ class AvoidDynamicTypeRule extends NoSlopRule {
     if (typeArguments[1] != dynamicNode) return false;
 
     final firstArg = typeArguments[0];
-    if (firstArg is! NamedType || firstArg.name.lexeme != 'String')
+    if (firstArg is! NamedType || firstArg.name.lexeme != 'String') {
       return false;
+    }
 
     final mapType = typeArgumentList.parent;
     if (mapType is! NamedType || mapType.name.lexeme != 'Map') return false;
@@ -86,16 +87,12 @@ class AvoidDynamicTypeRule extends NoSlopRule {
 
   bool _isToJsonReturnType(NamedType mapType) {
     final method = _findAncestorOfType<MethodDeclaration>(mapType);
-    if (method != null &&
-        method.returnType == mapType &&
-        method.name.lexeme == 'toJson') {
+    if (method != null && method.returnType == mapType && method.name.lexeme == 'toJson') {
       return true;
     }
 
     final function = _findAncestorOfType<FunctionDeclaration>(mapType);
-    if (function != null &&
-        function.returnType == mapType &&
-        function.name.lexeme == 'toJson') {
+    if (function != null && function.returnType == mapType && function.name.lexeme == 'toJson') {
       return true;
     }
 
@@ -105,8 +102,7 @@ class AvoidDynamicTypeRule extends NoSlopRule {
   bool _isInFromJsonMethod(FormalParameter parameter) {
     final constructor = _findAncestorOfType<ConstructorDeclaration>(parameter);
     if (constructor != null) {
-      if (constructor.factoryKeyword != null &&
-          constructor.name?.lexeme == 'fromJson') {
+      if (constructor.factoryKeyword != null && constructor.name?.lexeme == 'fromJson') {
         return true;
       }
     }

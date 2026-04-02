@@ -316,7 +316,7 @@ void main() {
       final result = await service.prepareWorktreeForSession(
         projectId: _projectId,
         parentSessionId: null,
-        preferredBranchName: "my-feature",
+        preferredBranchAndWorktreeName: (branchName: "my-feature", worktreeName: "my-feature"),
       );
 
       expect(result, isA<WorktreeSuccess>());
@@ -327,7 +327,7 @@ void main() {
       expect(success.baseCommit, equals("abc123def456"));
     });
 
-    test("preferred branch name collides: falls through to numbered naming", () async {
+    test("preferred branch name collides: retries with random suffix", () async {
       // rev-parse HEAD → ok
       processRunner.enqueue(result: _ok());
       // symbolic-ref → main
@@ -336,21 +336,20 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
       // branch --list my-feature → non-empty (collision!)
       processRunner.enqueue(result: _ok(stdout: "  my-feature\n"));
-      // branch --list session-001 → empty (free)
-      processRunner.enqueue(result: _ok(stdout: ""));
-      // worktree add → success
+      // worktree add with suffixed name → success
       processRunner.enqueue(result: _ok());
 
       final result = await service.prepareWorktreeForSession(
         projectId: _projectId,
         parentSessionId: null,
-        preferredBranchName: "my-feature",
+        preferredBranchAndWorktreeName: (branchName: "my-feature", worktreeName: "my-feature"),
       );
 
       expect(result, isA<WorktreeSuccess>());
       final success = result as WorktreeSuccess;
-      expect(success.branchName, equals("session-001"));
-      expect(success.path, equals("$_projectId/.worktrees/session-001"));
+      expect(success.branchName, startsWith("my-feature-"));
+      expect(success.branchName.length, equals("my-feature-".length + 6));
+      expect(success.path, startsWith("$_projectId/.worktrees/my-feature-"));
     });
 
     test("preferred branch name git fails: falls through to numbered naming", () async {
@@ -372,7 +371,7 @@ void main() {
       final result = await service.prepareWorktreeForSession(
         projectId: _projectId,
         parentSessionId: null,
-        preferredBranchName: "my-feature",
+        preferredBranchAndWorktreeName: (branchName: "my-feature", worktreeName: "my-feature"),
       );
 
       expect(result, isA<WorktreeSuccess>());
@@ -395,7 +394,7 @@ void main() {
       final result = await service.prepareWorktreeForSession(
         projectId: _projectId,
         parentSessionId: null,
-        preferredBranchName: null,
+        preferredBranchAndWorktreeName: null,
       );
 
       expect(result, isA<WorktreeSuccess>());
@@ -419,7 +418,7 @@ void main() {
       final result = await service.prepareWorktreeForSession(
         projectId: _projectId,
         parentSessionId: "parent-001",
-        preferredBranchName: "my-feature",
+        preferredBranchAndWorktreeName: (branchName: "my-feature", worktreeName: "my-feature"),
       );
 
       expect(result, isA<WorktreeSuccess>());

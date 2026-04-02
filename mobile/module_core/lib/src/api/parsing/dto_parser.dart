@@ -1,7 +1,7 @@
 import "dart:async";
-import "dart:convert";
 
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
 import "../../concurrency/impl/isolate/isolate.dart";
 import "../../concurrency/worker.dart";
@@ -24,8 +24,7 @@ class ParseJsonTask<T> implements IsolateTask<String, T> {
 
   @override
   FutureOr<T> Function(String arg) get staticFunction =>
-      // ignore: no_slop_linter/avoid_as_cast, no_slop_linter/avoid_dynamic_type, jsonDecode requires dynamic map casting
-      (arg) => fromJson((jsonDecode(arg) as Map).cast<String, dynamic>());
+      (arg) => fromJson(jsonDecodeMap(arg));
 }
 
 class JsonDtoParser {

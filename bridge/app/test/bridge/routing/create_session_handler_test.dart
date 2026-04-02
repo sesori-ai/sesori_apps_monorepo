@@ -1,3 +1,4 @@
+import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge_metadata;
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/routing/create_session_handler.dart";
 import "package:sesori_bridge/src/bridge/worktree_service.dart";
@@ -11,6 +12,7 @@ import "routing_test_helpers.dart";
 void main() {
   group("CreateSessionHandler", () {
     late FakeBridgePlugin plugin;
+    late FakeMetadataService metadataService;
     late _FakeWorktreeService worktreeService;
     late CreateSessionHandler handler;
     late AppDatabase db;
@@ -18,9 +20,11 @@ void main() {
     setUp(() {
       db = createTestDatabase();
       plugin = FakeBridgePlugin();
+      metadataService = FakeMetadataService();
       worktreeService = _FakeWorktreeService(database: db);
       handler = CreateSessionHandler(
         plugin: plugin,
+        metadataService: metadataService,
         worktreeService: worktreeService,
         sessionDao: db.sessionDao,
       );
@@ -212,6 +216,7 @@ void main() {
       final failingPlugin = _ThrowingCreateSessionPlugin();
       final localHandler = CreateSessionHandler(
         plugin: failingPlugin,
+        metadataService: metadataService,
         worktreeService: worktreeService,
         sessionDao: db.sessionDao,
       );
@@ -304,9 +309,10 @@ void main() {
     });
 
     test("AI naming succeeds — preferred branch name and rename used", () async {
-      plugin.generateSessionMetadataResult = const SessionMetadata(
+      metadataService.generateResult = const bridge_metadata.SessionMetadata(
         title: "Fix Login Bug",
         branchName: "fix-login-bug",
+        worktreeName: "fix-login-bug",
       );
       plugin.createSessionResult = const PluginSession(
         id: "s1",
@@ -348,13 +354,13 @@ void main() {
       );
 
       expect(result.id, equals("s1"));
-      expect(plugin.lastGenerateSessionMetadataMessage, equals("Fix the login bug"));
+      expect(metadataService.lastGenerateMessage, equals("Fix the login bug"));
       expect(worktreeService.lastPreparePreferredBranchName, equals("fix-login-bug"));
       expect(plugin.lastRenameSessionTitle, equals("Fix Login Bug"));
     });
 
     test("AI naming returns null — no preferred branch and no rename", () async {
-      plugin.generateSessionMetadataResult = null;
+      metadataService.generateResult = null;
       plugin.createSessionResult = const PluginSession(
         id: "s1",
         projectID: "p1",
@@ -390,7 +396,8 @@ void main() {
       expect(plugin.lastRenameSessionId, isNull);
     });
 
-    test("no text parts — generateSessionMetadata not called", () async {
+    test("no text parts — metadata generation skipped", () async {
+      metadataService.lastGenerateMessage = null;
       plugin.createSessionResult = const PluginSession(
         id: "s1",
         projectID: "p1",
@@ -416,10 +423,11 @@ void main() {
       );
 
       expect(result.id, equals("s1"));
-      expect(plugin.lastGenerateSessionMetadataMessage, isNull);
+      expect(metadataService.lastGenerateMessage, isNull);
     });
 
-    test("whitespace-only text parts skipped — generateSessionMetadata not called", () async {
+    test("whitespace-only text parts skipped — metadata generation skipped", () async {
+      metadataService.lastGenerateMessage = null;
       plugin.createSessionResult = const PluginSession(
         id: "s1",
         projectID: "p1",
@@ -445,14 +453,15 @@ void main() {
       );
 
       expect(result.id, equals("s1"));
-      expect(plugin.lastGenerateSessionMetadataMessage, isNull);
+      expect(metadataService.lastGenerateMessage, isNull);
     });
 
     test("rename fails — session still returned successfully", () async {
       final throwingPlugin = _ThrowingRenameSessionPlugin();
-      throwingPlugin.generateSessionMetadataResult = const SessionMetadata(
+      metadataService.generateResult = const bridge_metadata.SessionMetadata(
         title: "Fix Login Bug",
         branchName: "fix-login-bug",
+        worktreeName: "fix-login-bug",
       );
       throwingPlugin.createSessionResult = const PluginSession(
         id: "s1",
@@ -465,6 +474,7 @@ void main() {
       );
       final localHandler = CreateSessionHandler(
         plugin: throwingPlugin,
+        metadataService: metadataService,
         worktreeService: worktreeService,
         sessionDao: db.sessionDao,
       );
@@ -512,12 +522,12 @@ class _FakeWorktreeService extends WorktreeService {
   Future<WorktreeResult> prepareWorktreeForSession({
     required String projectId,
     required String? parentSessionId,
-    String? preferredBranchName,
+    ({String branchName, String worktreeName})? preferredBranchAndWorktreeName,
   }) async {
     prepareCallCount++;
     lastPrepareProjectId = projectId;
     lastPrepareParentSessionId = parentSessionId;
-    lastPreparePreferredBranchName = preferredBranchName;
+    lastPreparePreferredBranchName = preferredBranchAndWorktreeName?.branchName;
     return prepareResult;
   }
 

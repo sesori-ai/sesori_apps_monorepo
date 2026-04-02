@@ -10,7 +10,6 @@ OpenCode uses a **local client/server architecture** — the server runs on the 
 | -------------------------------------------------------- | ------------------------------------------------------ |
 | [API_REFERENCE.md](./API_REFERENCE.md)                   | Complete REST API endpoint reference with schemas      |
 | [SSE_EVENTS.md](./SSE_EVENTS.md)                         | Server-Sent Events catalog for real-time updates       |
-| [FLUTTER_GUIDE.md](./FLUTTER_GUIDE.md)                   | Flutter-specific integration patterns and architecture |
 | [ELECTRON_IPC_REFERENCE.md](./ELECTRON_IPC_REFERENCE.md) | Desktop app capabilities for feature parity planning   |
 | [openapi.json](./openapi.json)                           | OpenAPI 3.1.1 spec (machine-readable, use for codegen) |
 

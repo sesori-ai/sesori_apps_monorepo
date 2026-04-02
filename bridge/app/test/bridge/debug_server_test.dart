@@ -9,6 +9,7 @@ import "package:test/test.dart";
 
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
+import "routing/routing_test_helpers.dart";
 
 void main() {
   group("DebugServer SSE multi-client", () {
@@ -21,6 +22,7 @@ void main() {
       db = createTestDatabase();
       debugServer = DebugServer(
         plugin: plugin,
+        metadataService: FakeMetadataService(),
         projectsDao: db.projectsDao,
         port: 0,
         failureReporter: FakeFailureReporter(),
@@ -71,6 +73,7 @@ void main() {
       final trackingDb = createTestDatabase();
       final trackingServer = DebugServer(
         plugin: trackingPlugin,
+        metadataService: FakeMetadataService(),
         projectsDao: trackingDb.projectsDao,
         port: 0,
         failureReporter: FakeFailureReporter(),
@@ -106,6 +109,7 @@ void main() {
       db = createTestDatabase();
       debugServer = DebugServer(
         plugin: plugin,
+        metadataService: FakeMetadataService(),
         projectsDao: db.projectsDao,
         port: 0,
         failureReporter: FakeFailureReporter(),
@@ -361,12 +365,6 @@ class _FakeBridgePlugin implements BridgePlugin {
       const PluginProvidersResult(providers: []);
 
   @override
-  Future<SessionMetadata?> generateSessionMetadata({
-    required String firstMessage,
-    required String directory,
-  }) async => null;
-
-  @override
   Future<void> dispose() async {}
 
   void add(BridgeSseEvent event) => _controller.add(event);
@@ -499,12 +497,6 @@ class _TrackingBridgePlugin implements BridgePlugin {
   @override
   Future<PluginProvidersResult> getProviders({required bool connectedOnly}) async =>
       const PluginProvidersResult(providers: []);
-
-  @override
-  Future<SessionMetadata?> generateSessionMetadata({
-    required String firstMessage,
-    required String directory,
-  }) async => null;
 
   @override
   Future<void> dispose() async {}

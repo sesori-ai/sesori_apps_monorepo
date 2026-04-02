@@ -12,14 +12,17 @@ import "routing_test_helpers.dart";
 void main() {
   group("RequestRouter", () {
     late FakeBridgePlugin plugin;
+    late FakeMetadataService metadataService;
     late RequestRouter router;
     late AppDatabase db;
 
     setUp(() {
       plugin = FakeBridgePlugin();
+      metadataService = FakeMetadataService();
       db = createTestDatabase();
       router = RequestRouter(
         plugin: plugin,
+        metadataService: metadataService,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
       );

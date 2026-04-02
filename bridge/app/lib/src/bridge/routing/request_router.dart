@@ -1,6 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../metadata_service.dart";
 import "../persistence/daos/projects_dao.dart";
 import "../persistence/daos/session_dao.dart";
 import "../worktree_service.dart";
@@ -45,16 +46,19 @@ class RequestRouter {
 
   RequestRouter({
     required BridgePlugin plugin,
+    required MetadataService metadataService,
     required ProjectsDao projectsDao,
     required SessionDao sessionDao,
   }) : _handlers = _buildHandlers(
          plugin: plugin,
+         metadataService: metadataService,
          projectsDao: projectsDao,
          sessionDao: sessionDao,
        );
 
   static List<RequestHandlerBase> _buildHandlers({
     required BridgePlugin plugin,
+    required MetadataService metadataService,
     required ProjectsDao projectsDao,
     required SessionDao sessionDao,
   }) {
@@ -73,6 +77,7 @@ class RequestRouter {
       GetSessionsHandler(plugin, sessionDao),
       CreateSessionHandler(
         plugin: plugin,
+        metadataService: metadataService,
         worktreeService: worktreeService,
         sessionDao: sessionDao,
       ),

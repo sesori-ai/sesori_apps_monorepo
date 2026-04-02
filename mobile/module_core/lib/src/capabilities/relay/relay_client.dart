@@ -178,12 +178,7 @@ class RelayClient {
 
       if (responseBytes.first == RelayProtocol.jsonStartByte) {
         // Plaintext JSON from bridge — expect rekey_required.
-        // ignore: no_slop_linter/avoid_dynamic_type, JSON decode requires dynamic values
-        final decoded = jsonDecode(utf8.decode(responseBytes));
-        // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
-        if (decoded is! Map<String, dynamic>) {
-          throw const FormatException("Plaintext resume response is not a JSON object");
-        }
+        final decoded = jsonDecodeMap(utf8.decode(responseBytes));
         final msg = RelayMessage.fromJson(decoded);
         if (msg is RelayRekeyRequired) {
           logd("Relay rekey_required received, clearing stored room key");
@@ -463,13 +458,8 @@ class RelayClient {
 
     final encryptedPayload = message.sublist(1);
     final decryptedBytes = await encryptor.decrypt(encryptedPayload);
-    // ignore: no_slop_linter/avoid_dynamic_type, JSON decode requires dynamic values
-    final decoded = jsonDecode(utf8.decode(decryptedBytes));
-    // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
-    if (decoded is! Map<String, dynamic>) {
-      throw const FormatException("Relay payload is not a JSON object");
-    }
 
+    final decoded = jsonDecodeMap(utf8.decode(decryptedBytes));
     return RelayMessage.fromJson(decoded);
   }
 
@@ -530,13 +520,7 @@ class RelayClient {
   /// (not E2EE) sent by the relay itself, e.g. bridge_connected / bridge_disconnected.
   void _onTextFrame(String message) {
     try {
-      // ignore: no_slop_linter/avoid_dynamic_type, JSON decode requires dynamic values
-      final decoded = jsonDecode(message);
-      // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
-      if (decoded is! Map<String, dynamic>) {
-        logw("Relay: text frame is not a JSON object");
-        return;
-      }
+      final decoded = jsonDecodeMap(message);
       final typeValue = decoded["type"];
       final type = typeValue is String ? typeValue : null;
       switch (type) {

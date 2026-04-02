@@ -1,5 +1,7 @@
 import "dart:convert";
 
+import "../../sesori_shared.dart" show jsonDecodeMap;
+
 /// Parses a JWT token and extracts the expiry time from the `exp` claim.
 ///
 /// Returns a [DateTime] in UTC if the token is valid and contains an `exp` claim,
@@ -22,8 +24,7 @@ DateTime? parseJwtExpiry(String token) {
     }
 
     final decoded = utf8.decode(base64Url.decode(payload));
-    // ignore: no_slop_linter/avoid_as_cast, no_slop_linter/avoid_dynamic_type
-    final json = jsonDecode(decoded) as Map<String, dynamic>;
+    final json = jsonDecodeMap(decoded);
     final exp = json["exp"];
 
     if (exp is! int) return null;

@@ -5,6 +5,7 @@ import "dart:io";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "metadata_service.dart";
 import "persistence/daos/projects_dao.dart";
 import "routing/request_router.dart";
 import "sse/bridge_event_mapper.dart";
@@ -22,12 +23,14 @@ class DebugServer {
 
   DebugServer({
     required BridgePlugin plugin,
+    required MetadataService metadataService,
     required ProjectsDao projectsDao,
     required this.port,
     required FailureReporter failureReporter,
   }) : _plugin = plugin,
        _router = RequestRouter(
          plugin: plugin,
+         metadataService: metadataService,
          projectsDao: projectsDao,
          sessionDao: projectsDao.attachedDatabase.sessionDao,
        ),

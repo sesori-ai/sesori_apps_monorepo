@@ -2,14 +2,13 @@ import "dart:convert";
 
 import "package:http/http.dart" as http;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart" show jsonDecodeListMap, jsonDecodeMap;
 
 import "models/agent_info.dart";
 import "models/message_with_parts.dart";
-import "models/opencode_config.dart";
 import "models/pending_question.dart";
 import "models/project.dart";
 import "models/provider_info.dart";
-import "models/send_message_sync_body.dart";
 import "models/send_prompt_body.dart";
 import "models/session.dart";
 import "models/session_status.dart";
@@ -52,8 +51,8 @@ class OpenCodeApi {
     );
     _ensureSuccess(response, "GET /project");
 
-    final decoded = jsonDecode(response.body) as List;
-    return decoded.cast<Map<String, dynamic>>().map(Project.fromJson).toList();
+    final decoded = jsonDecodeListMap(response.body);
+    return decoded.map(Project.fromJson).toList();
   }
 
   Future<List<Session>> listRootSessions() async {
@@ -63,8 +62,8 @@ class OpenCodeApi {
     );
     _ensureSuccess(response, "GET /session?roots=true");
 
-    final decoded = jsonDecode(response.body) as List;
-    return decoded.cast<Map<String, dynamic>>().map(Session.fromJson).toList();
+    final decoded = jsonDecodeListMap(response.body);
+    return decoded.map(Session.fromJson).toList();
   }
 
   Future<List<Session>> listSessions({String? directory}) async {
@@ -79,8 +78,8 @@ class OpenCodeApi {
     );
     _ensureSuccess(response, "GET /session");
 
-    final decoded = jsonDecode(response.body) as List;
-    return decoded.cast<Map<String, dynamic>>().map(Session.fromJson).toList();
+    final decoded = jsonDecodeListMap(response.body);
+    return decoded.map(Session.fromJson).toList();
   }
 
   Future<Session> createSession({
@@ -108,7 +107,7 @@ class OpenCodeApi {
       body: jsonEncode(body),
     );
     _ensureSuccess(response, "POST /session");
-    return Session.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    return Session.fromJson(jsonDecodeMap(response.body));
   }
 
   Future<Session> getSession({
@@ -124,7 +123,7 @@ class OpenCodeApi {
       headers: headers,
     );
     _ensureSuccess(response, "GET /session/$sessionId");
-    return Session.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    return Session.fromJson(jsonDecodeMap(response.body));
   }
 
   Future<Session> updateSession({
@@ -142,7 +141,7 @@ class OpenCodeApi {
       body: jsonEncode(body),
     );
     _ensureSuccess(response, "PATCH /session/$sessionId");
-    return Session.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    return Session.fromJson(jsonDecodeMap(response.body));
   }
 
   /// Updates a project by its OpenCode-assigned ID (NOT the worktree path
@@ -162,7 +161,7 @@ class OpenCodeApi {
       body: jsonEncode(body),
     );
     _ensureSuccess(response, "PATCH /project/$projectId");
-    return Project.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    return Project.fromJson(jsonDecodeMap(response.body));
   }
 
   Future<void> deleteSession({
@@ -194,8 +193,8 @@ class OpenCodeApi {
     );
     _ensureSuccess(response, "GET /session/$sessionId/children");
 
-    final decoded = jsonDecode(response.body) as List;
-    return decoded.cast<Map<String, dynamic>>().map(Session.fromJson).toList();
+    final decoded = jsonDecodeListMap(response.body);
+    return decoded.map(Session.fromJson).toList();
   }
 
   Future<Session> forkSession({
@@ -210,7 +209,7 @@ class OpenCodeApi {
       },
     );
     _ensureSuccess(response, "POST /session/$sessionId/fork");
-    return Session.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    return Session.fromJson(jsonDecodeMap(response.body));
   }
 
   Future<List<MessageWithParts>> getMessages({
@@ -227,8 +226,8 @@ class OpenCodeApi {
     );
     _ensureSuccess(response, "GET /session/$sessionId/message");
 
-    final decoded = jsonDecode(response.body) as List<dynamic>;
-    return decoded.cast<Map<String, dynamic>>().map(MessageWithParts.fromJson).toList();
+    final decoded = jsonDecodeListMap(response.body);
+    return decoded.map(MessageWithParts.fromJson).toList();
   }
 
   Future<void> sendPrompt({
@@ -270,8 +269,8 @@ class OpenCodeApi {
     final response = await _client.get(Uri.parse("$serverURL/agent"), headers: _authHeaders);
     _ensureSuccess(response, "GET /agent");
 
-    final decoded = jsonDecode(response.body) as List;
-    return decoded.cast<Map<String, dynamic>>().map(AgentInfo.fromJson).toList();
+    final decoded = jsonDecodeListMap(response.body);
+    return decoded.map(AgentInfo.fromJson).toList();
   }
 
   Future<List<PendingQuestion>> getPendingQuestions({
@@ -285,8 +284,8 @@ class OpenCodeApi {
     Log.v("[getPendingQuestions] response: ${response.body}");
     _ensureSuccess(response, "GET /question");
 
-    final decoded = jsonDecode(response.body) as List;
-    return decoded.cast<Map<String, dynamic>>().map(PendingQuestion.fromJson).toList();
+    final decoded = jsonDecodeListMap(response.body);
+    return decoded.map(PendingQuestion.fromJson).toList();
   }
 
   Future<void> replyToQuestion({
@@ -333,7 +332,7 @@ class OpenCodeApi {
       },
     );
     _ensureSuccess(response, "GET /project/current");
-    return Project.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    return Project.fromJson(jsonDecodeMap(response.body));
   }
 
   /// Lists sessions across **all** projects via `GET /experimental/session`.
@@ -367,8 +366,8 @@ class OpenCodeApi {
     final response = await _client.get(uri, headers: _authHeaders);
     _ensureSuccess(response, "GET /experimental/session");
 
-    final decoded = jsonDecode(response.body) as List;
-    return decoded.cast<Map<String, dynamic>>().map(GlobalSession.fromJson).toList();
+    final decoded = jsonDecodeListMap(response.body);
+    return decoded.map(GlobalSession.fromJson).toList();
   }
 
   Future<ProviderListResponse> listProviders() async {
@@ -377,7 +376,7 @@ class OpenCodeApi {
       headers: _authHeaders,
     );
     _ensureSuccess(response, "GET /provider");
-    return ProviderListResponse.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    return ProviderListResponse.fromJson(jsonDecodeMap(response.body));
   }
 
   Future<Map<String, SessionStatus>> getSessionStatuses() async {
@@ -387,57 +386,10 @@ class OpenCodeApi {
     );
     _ensureSuccess(response, "GET /session/status");
 
-    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    final decoded = jsonDecodeMap(response.body);
     return decoded.map(
       (key, value) => MapEntry(key, SessionStatus.fromJson(value as Map<String, dynamic>)),
     );
-  }
-
-  Future<OpenCodeConfig> getConfig() async {
-    final client = http.Client();
-    try {
-      final response = await client.get(
-        Uri.parse("$serverURL/config"),
-        headers: _authHeaders,
-      );
-      _ensureSuccess(response, "GET /config");
-      return OpenCodeConfig.fromJson(
-        jsonDecode(response.body) as Map<String, dynamic>,
-      );
-    } finally {
-      client.close();
-    }
-  }
-
-  /// Sends a message to a session and blocks until the AI responds.
-  ///
-  /// Uses `POST /session/{id}/message` (synchronous variant) instead of
-  /// `prompt_async`. The response contains the assistant's message.
-  ///
-  /// Times out after 30 seconds.
-  Future<MessageWithParts> sendMessageSync({
-    required String sessionId,
-    required String directory,
-    required SendMessageSyncBody body,
-  }) async {
-    final client = http.Client();
-    try {
-      final response = await client
-          .post(
-            Uri.parse("$serverURL/session/$sessionId/message"),
-            headers: {
-              ..._authHeaders,
-              "content-type": "application/json",
-              _directoryOpenCodeHeader: directory,
-            },
-            body: jsonEncode(body.toJson()),
-          )
-          .timeout(const Duration(seconds: 30));
-      _ensureSuccess(response, "POST /session/$sessionId/message");
-      return MessageWithParts.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
-    } finally {
-      client.close();
-    }
   }
 
   static void _ensureSuccess(http.Response response, String endpoint) {

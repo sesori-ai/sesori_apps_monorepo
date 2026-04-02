@@ -16,6 +16,7 @@ import "package:test/test.dart";
 
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
+import "routing/routing_test_helpers.dart";
 
 void main() {
   group("OrchestratorSession SSE error recovery", () {
@@ -91,6 +92,8 @@ class _TestHarness {
       accessTokenProvider: FakeAccessTokenProvider(""),
     );
 
+    final metadataService = FakeMetadataService();
+
     final orchestrator = Orchestrator(
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
@@ -101,6 +104,7 @@ class _TestHarness {
       ),
       client: relayClient,
       plugin: plugin,
+      metadataService: metadataService,
       pushNotificationService: pushService,
       tokenRefresher: tokenRefresher,
       projectsDao: database.projectsDao,
@@ -300,12 +304,6 @@ class _ThrowingSummaryPlugin implements BridgePlugin {
   Future<PluginProvidersResult> getProviders({
     required bool connectedOnly,
   }) async => const PluginProvidersResult(providers: []);
-
-  @override
-  Future<SessionMetadata?> generateSessionMetadata({
-    required String firstMessage,
-    required String directory,
-  }) async => null;
 
   @override
   Future<void> dispose() async {}

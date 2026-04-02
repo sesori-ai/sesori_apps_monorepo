@@ -81,13 +81,8 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     final response = await _get(uri);
     _ensureSuccess(response, context: "Failed to get ${provider.label} auth URL");
 
-    final decodedBody = jsonDecode(response.body);
-    // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
-    if (decodedBody is! Map<String, dynamic>) {
-      throw const FormatException("Authorization URL response is not a JSON object");
-    }
-    final bodyJson = decodedBody;
-    final authUrlResponse = AuthUrlResponse.fromJson(bodyJson);
+    final decodedBody = jsonDecodeMap(response.body);
+    final authUrlResponse = AuthUrlResponse.fromJson(decodedBody);
     return authUrlResponse.authUrl;
   }
 
@@ -119,13 +114,8 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     );
     _ensureSuccess(response, context: "${provider.label} code exchange failed");
 
-    final decodedBody = jsonDecode(response.body);
-    // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
-    if (decodedBody is! Map<String, dynamic>) {
-      throw const FormatException("Code exchange response is not a JSON object");
-    }
-    final bodyJson = decodedBody;
-    final authResponse = AuthResponse.fromJson(bodyJson);
+    final decodedBody = jsonDecodeMap(response.body);
+    final authResponse = AuthResponse.fromJson(decodedBody);
 
     await _tokenStorage.saveTokens(
       accessToken: authResponse.accessToken,
@@ -156,13 +146,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
       );
       _ensureSuccess(response, context: "Failed to fetch current user");
 
-      final decodedBody = jsonDecode(response.body);
-      // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
-      if (decodedBody is! Map<String, dynamic>) {
-        throw const FormatException("Current user response is not a JSON object");
-      }
-      final bodyJson = decodedBody;
-      final authMeResponse = AuthMeResponse.fromJson(bodyJson);
+      final authMeResponse = AuthMeResponse.fromJson(jsonDecodeMap(response.body));
       return authMeResponse.user;
     } on http.ClientException catch (error, stackTrace) {
       developer.log(
@@ -253,13 +237,8 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
       );
       _ensureSuccess(response, context: "Token refresh failed");
 
-      final decodedBody = jsonDecode(response.body);
-      // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
-      if (decodedBody is! Map<String, dynamic>) {
-        throw const FormatException("Token refresh response is not a JSON object");
-      }
-      final bodyJson = decodedBody;
-      final authResponse = AuthResponse.fromJson(bodyJson);
+      final decodedBody = jsonDecodeMap(response.body);
+      final authResponse = AuthResponse.fromJson(decodedBody);
 
       await _tokenStorage.saveTokens(
         accessToken: authResponse.accessToken,

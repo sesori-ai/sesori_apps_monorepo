@@ -110,8 +110,7 @@ class TokenManager implements AccessTokenProvider, AccessTokenUpdater, TokenRefr
       throw TokenRefreshException("Token refresh failed with status ${response.statusCode}");
     }
 
-    final jsonBody = jsonDecode(response.body) as Map<String, dynamic>;
-    final authResponse = AuthResponse.fromJson(jsonBody);
+    final authResponse = AuthResponse.fromJson(jsonDecodeMap(response.body));
 
     _tokenSubject.add(authResponse.accessToken);
 

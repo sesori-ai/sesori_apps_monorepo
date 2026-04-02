@@ -1,5 +1,3 @@
-import "dart:convert";
-
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -132,14 +130,10 @@ class SessionService {
   void _throwIfCleanupRejected<T>(ApiResponse<T> response) {
     if (response case ErrorResponse(error: NonSuccessCodeError(errorCode: 409, rawErrorString: final rawBody))) {
       try {
-        final decoded = jsonDecode(rawBody ?? "{}");
-        final rejection = SessionCleanupRejection.fromJson(
-          switch (decoded) {
-            // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
-            final Map<String, dynamic> map => map,
-            _ => throw const FormatException("invalid cleanup rejection json"),
-          },
-        );
+        if (rawBody == null) {
+          throw const FormatException("invalid cleanup rejection json");
+        }
+        final rejection = SessionCleanupRejection.fromJson(jsonDecodeMap(rawBody));
         throw SessionCleanupRejectedException(rejection: rejection);
       } on SessionCleanupRejectedException {
         rethrow;

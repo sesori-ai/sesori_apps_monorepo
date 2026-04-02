@@ -84,14 +84,11 @@ abstract class BodyRequestHandler<REQ, RES extends Object> extends RequestHandle
     if (body == null) {
       return buildErrorResponse(request, 400, "Bad Request: missing JSON body");
     }
-    final Object? decoded;
+    final Map<String, dynamic>? decoded;
     try {
-      decoded = jsonDecode(body);
+      decoded = jsonDecodeMap(body);
     } catch (_) {
       return buildErrorResponse(request, 400, "Bad Request: malformed JSON");
-    }
-    if (decoded is! Map<String, dynamic>) {
-      return buildErrorResponse(request, 400, "Bad Request: invalid JSON body");
     }
     final REQ bodyParsed;
     try {

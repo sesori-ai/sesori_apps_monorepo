@@ -10,6 +10,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../auth/token_refresher.dart";
 import "../push/push_notification_service.dart";
 import "key_exchange.dart";
+import "metadata_service.dart";
 import "models/bridge_config.dart";
 import "persistence/daos/projects_dao.dart";
 import "relay_client.dart";
@@ -23,6 +24,7 @@ class Orchestrator {
   final BridgeConfig config;
   final RelayClient _client;
   final BridgePlugin _plugin;
+  final MetadataService _metadataService;
   final PushNotificationService _pushNotificationService;
   final TokenRefresher _tokenRefresher;
   final ProjectsDao _projectsDao;
@@ -32,12 +34,14 @@ class Orchestrator {
     required this.config,
     required RelayClient client,
     required BridgePlugin plugin,
+    required MetadataService metadataService,
     required PushNotificationService pushNotificationService,
     required TokenRefresher tokenRefresher,
     required ProjectsDao projectsDao,
     required FailureReporter failureReporter,
   }) : _client = client,
        _plugin = plugin,
+       _metadataService = metadataService,
        _pushNotificationService = pushNotificationService,
        _tokenRefresher = tokenRefresher,
        _projectsDao = projectsDao,
@@ -58,6 +62,7 @@ class Orchestrator {
       config: config,
       client: _client,
       plugin: _plugin,
+      metadataService: _metadataService,
       pushNotificationService: _pushNotificationService,
       tokenRefresher: _tokenRefresher,
       projectsDao: _projectsDao,
@@ -100,6 +105,7 @@ class OrchestratorSession {
     required this.config,
     required RelayClient client,
     required BridgePlugin plugin,
+    required MetadataService metadataService,
     required PushNotificationService pushNotificationService,
     required TokenRefresher tokenRefresher,
     required ProjectsDao projectsDao,
@@ -117,6 +123,7 @@ class OrchestratorSession {
        _failureReporter = failureReporter,
        _router = RequestRouter(
          plugin: plugin,
+         metadataService: metadataService,
          projectsDao: projectsDao,
          sessionDao: projectsDao.attachedDatabase.sessionDao,
        ),
@@ -277,7 +284,7 @@ class OrchestratorSession {
       if (msg.isText) {
         Map<String, dynamic> control;
         try {
-          control = jsonDecode(utf8.decode(msg.data)) as Map<String, dynamic>;
+          control = jsonDecodeMap(utf8.decode(msg.data));
         } catch (e) {
           Log.e("failed to parse control message: $e");
           continue;
@@ -327,7 +334,7 @@ class OrchestratorSession {
         RelayMessage relayMessage;
         try {
           relayMessage = RelayMessage.fromJson(
-            jsonDecode(utf8.decode(payload)) as Map<String, dynamic>,
+            jsonDecodeMap(utf8.decode(payload)),
           );
         } catch (e) {
           Log.v("[dbg] failed to parse relay JSON: $e");
@@ -412,7 +419,7 @@ class OrchestratorSession {
         RelayMessage parsedMessage;
         try {
           parsedMessage = RelayMessage.fromJson(
-            jsonDecode(utf8.decode(decrypted)) as Map<String, dynamic>,
+            jsonDecodeMap(utf8.decode(decrypted)),
           );
         } catch (_) {
           continue;
@@ -450,7 +457,7 @@ class OrchestratorSession {
     RelayMessage msg;
     try {
       msg = RelayMessage.fromJson(
-        jsonDecode(utf8.decode(decrypted)) as Map<String, dynamic>,
+        jsonDecodeMap(utf8.decode(decrypted)),
       );
     } catch (e) {
       Log.v("[dbg] failed to parse decrypted msg from connID=$connID: $e");

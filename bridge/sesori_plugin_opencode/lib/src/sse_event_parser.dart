@@ -1,6 +1,5 @@
-import "dart:convert";
-
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
 import "models/sse_event_data.dart";
 
@@ -36,7 +35,7 @@ class SseEventParser {
     }
 
     try {
-      final json = jsonDecode(rawData) as Map<String, dynamic>;
+      final json = jsonDecodeMap(rawData);
       final directory = json["directory"] as String?;
       final payload = json["payload"] as Map<String, dynamic>?;
       final type = payload?["type"] as String?;

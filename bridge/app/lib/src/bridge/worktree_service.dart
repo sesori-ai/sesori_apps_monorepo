@@ -1,4 +1,5 @@
 import "dart:io";
+import "dart:math";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
@@ -42,6 +43,19 @@ class WorktreeService {
        _projectsDao = projectsDao,
        _sessionDao = sessionDao;
 
+  static final _random = Random.secure();
+  static final _safeNamePattern = RegExp(r'^[a-z0-9][a-z0-9-]*$');
+
+  static String _randomSuffix() => _random.nextInt(0xFFFFFF).toRadixString(16).padLeft(6, "0");
+
+  static bool _isSafeGitName(String name) =>
+      name.isNotEmpty &&
+      name.length <= 60 &&
+      !name.contains("..") &&
+      !name.contains("/") &&
+      !name.contains(r"\") &&
+      _safeNamePattern.hasMatch(name);
+
   // -------------------------------------------------------------------------
   // Orchestration
   // -------------------------------------------------------------------------
@@ -50,7 +64,7 @@ class WorktreeService {
   Future<WorktreeResult> prepareWorktreeForSession({
     required String projectId,
     required String? parentSessionId,
-    String? preferredBranchName,
+    ({String branchName, String worktreeName})? preferredBranchAndWorktreeName,
   }) async {
     if (parentSessionId != null) {
       final parentWorktree = await _sessionDao.getSession(sessionId: parentSessionId);
@@ -91,25 +105,33 @@ class WorktreeService {
     final baseCommit = baseBranchAndCommit.baseCommit;
 
     // 4.5. Try preferred branch name if provided.
-    if (preferredBranchName != null && parentSessionId == null) {
-      if (!await branchExists(projectPath: projectId, branchName: preferredBranchName)) {
-        final worktreePath = "$projectId/$_worktreeDir/$preferredBranchName";
+    if (preferredBranchAndWorktreeName != null && parentSessionId == null) {
+      final preferredBranch = preferredBranchAndWorktreeName.branchName;
+      final preferredWorktree = preferredBranchAndWorktreeName.worktreeName;
+      if (!_isSafeGitName(preferredBranch) || !_isSafeGitName(preferredWorktree)) {
+        Log.w("WorktreeService: rejected unsafe preferred names: branch=$preferredBranch worktree=$preferredWorktree");
+      } else {
+        final suffix = await branchExists(projectPath: projectId, branchName: preferredBranch)
+            ? "-${_randomSuffix()}"
+            : "";
+        final branchName = "$preferredBranch$suffix";
+        final worktreeName = "$preferredWorktree$suffix";
+        final worktreePath = "$projectId/$_worktreeDir/$worktreeName";
         final result = await createWorktree(
           projectPath: projectId,
           worktreePath: worktreePath,
-          branchName: preferredBranchName,
+          branchName: branchName,
           baseBranch: baseBranch,
         );
         if (result.exitCode == 0) {
           return WorktreeSuccess(
             path: worktreePath,
-            branchName: preferredBranchName,
+            branchName: branchName,
             baseBranch: baseBranch,
             baseCommit: baseCommit,
           );
         }
       }
-      // Preferred name failed — fall through to numbered naming.
     }
 
     for (var attempt = 0; attempt < _maxWorktreeCreationAttempts; attempt++) {

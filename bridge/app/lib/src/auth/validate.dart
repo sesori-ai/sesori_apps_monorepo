@@ -74,8 +74,7 @@ Future<(TokenData, bool)> validateToken(
   // Parse refresh response
   late AuthResponse refreshed;
   try {
-    final jsonBody = jsonDecode(refreshResponse.body) as Map<String, dynamic>;
-    refreshed = AuthResponse.fromJson(jsonBody);
+    refreshed = AuthResponse.fromJson(jsonDecodeMap(refreshResponse.body));
   } catch (e) {
     throw Exception("decode refresh response: $e");
   }
