@@ -5,7 +5,6 @@ import "package:http/io_client.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../opencode_plugin.dart";
-import "models/command.dart";
 import "models/send_command_body.dart";
 import "sse/sse_connection.dart";
 import "sse_event_mapper.dart";
@@ -133,26 +132,7 @@ class OpenCodePlugin implements BridgePlugin {
     final commands = await _call(
       () => _service.repository.api.listCommands(directory: projectId),
     );
-    return commands
-        .map(
-          (command) => PluginCommand(
-            name: command.name,
-            template: command.template,
-            hints: command.hints,
-            description: command.description,
-            agent: command.agent,
-            model: command.model,
-            provider: command.provider,
-            source: switch (command.source) {
-              CommandSource.command => PluginCommandSource.command,
-              CommandSource.mcp => PluginCommandSource.mcp,
-              CommandSource.skill => PluginCommandSource.skill,
-              CommandSource.unknown || null => PluginCommandSource.unknown,
-            },
-            subtask: command.subtask,
-          ),
-        )
-        .toList();
+    return commands.map((command) => PluginCommand.fromJson(command.toJson())).toList();
   }
 
   @override
