@@ -1,3 +1,4 @@
+import "package:http/http.dart" as http;
 import "package:opencode_plugin/opencode_plugin.dart";
 
 MessageWithParts assistantMessage({required String text}) {
@@ -45,7 +46,7 @@ class FakeOpenCodeApi extends OpenCodeApi {
     this.sendMessageError,
     this.deleteSessionError,
   }) : sendMessageResponse = sendMessageResponse ?? assistantMessage(text: '{"title":"Fix","branchName":"fix"}'),
-       super(serverURL: "http://fake", password: null);
+       super(serverURL: "http://fake", password: null, client: http.Client());
 
   @override
   Future<OpenCodeConfig> getConfig() async {

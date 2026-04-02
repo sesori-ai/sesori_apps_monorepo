@@ -3,6 +3,7 @@ import "dart:convert";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "models/message_with_parts.dart";
+import "models/provider_info.dart";
 import "models/send_message_sync_body.dart";
 import "opencode_api.dart";
 import "sanitize_branch_name.dart";
@@ -60,15 +61,34 @@ class SessionMetadataGenerator {
 
   /// Resolves the model to use for naming.
   ///
-  /// Priority: small_model > model > first connected provider's default.
+  /// Priority: small_model from config > smallest available model from
+  /// connected providers (by name heuristic) > first provider's default.
   Future<({String providerID, String modelID})?> _resolveModel() async {
+    // 1. Explicit small_model in config — user's choice, always wins.
     final config = await _api.getConfig();
-    final configModel = _parseModelStr(config.smallModel) ?? _parseModelStr(config.model);
-    if (configModel != null) return configModel;
+    final explicit = _parseModelStr(config.smallModel);
+    if (explicit != null) return explicit;
 
-    // Neither small_model nor model configured — pick the first
-    // connected provider's default model from the provider list.
+    // 2. Scan connected providers for the cheapest/fastest model.
     final providers = await _api.listProviders();
+    final connectedIds = providers.connected.toSet();
+
+    ({String providerID, String modelID})? best;
+    var bestScore = -1;
+
+    for (final provider in providers.all) {
+      if (!connectedIds.contains(provider.id)) continue;
+      for (final model in provider.models.values) {
+        final score = _smallModelScore(model: model);
+        if (score > bestScore) {
+          bestScore = score;
+          best = (providerID: provider.id, modelID: model.id);
+        }
+      }
+    }
+    if (best != null) return best;
+
+    // 3. Last resort: first connected provider's default.
     for (final connectedId in providers.connected) {
       final defaultModelId = providers.defaults[connectedId];
       if (defaultModelId != null && defaultModelId.isNotEmpty) {
@@ -78,6 +98,32 @@ class SessionMetadataGenerator {
 
     return null;
   }
+
+  /// Scores a model by how "small" it is. Higher = more likely a small model.
+  /// Returns 0 for models that don't match any known small-model pattern.
+  static int _smallModelScore({required ProviderModel model}) {
+    final name = model.name.toLowerCase();
+    final family = model.family?.toLowerCase() ?? "";
+    final id = model.id.toLowerCase();
+
+    // Match against known small/fast model indicators.
+    // Order matters: most specific first.
+    for (final (pattern, score) in _smallModelPatterns) {
+      if (name.contains(pattern) || family.contains(pattern) || id.contains(pattern)) {
+        return score;
+      }
+    }
+    return 0;
+  }
+
+  /// Known small-model indicators ordered by preference.
+  /// Higher score = preferred (cheaper/faster).
+  static const _smallModelPatterns = [
+    ("haiku", 100), // Anthropic's smallest
+    ("nano", 90), // OpenAI nano
+    ("flash", 80), // Google Flash
+    ("mini", 70), // OpenAI mini
+  ];
 
   static ({String providerID, String modelID})? _parseModelStr(String? modelStr) {
     if (modelStr == null) return null;

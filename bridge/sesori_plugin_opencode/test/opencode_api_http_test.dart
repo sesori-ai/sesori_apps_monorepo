@@ -1,6 +1,7 @@
 import "dart:convert";
 import "dart:io";
 
+import "package:http/http.dart" as http;
 import "package:opencode_plugin/opencode_plugin.dart";
 import "package:test/test.dart";
 
@@ -24,7 +25,7 @@ void main() {
         "extra_field": "ignored",
       };
 
-      final api = OpenCodeApi(serverURL: server.baseUrl, password: null);
+      final api = OpenCodeApi(serverURL: server.baseUrl, password: null, client: http.Client());
       final config = await api.getConfig();
 
       expect(config.model, equals("claude-opus-4"));
@@ -34,7 +35,7 @@ void main() {
     test("handles config with missing model fields", () async {
       server.configResponse = {"some_other_field": "value"};
 
-      final api = OpenCodeApi(serverURL: server.baseUrl, password: null);
+      final api = OpenCodeApi(serverURL: server.baseUrl, password: null, client: http.Client());
       final config = await api.getConfig();
 
       expect(config.model, isNull);
@@ -44,7 +45,7 @@ void main() {
     test("throws OpenCodeApiException on non-2xx response", () async {
       server.configStatusCode = HttpStatus.internalServerError;
 
-      final api = OpenCodeApi(serverURL: server.baseUrl, password: null);
+      final api = OpenCodeApi(serverURL: server.baseUrl, password: null, client: http.Client());
 
       expect(api.getConfig(), throwsA(isA<OpenCodeApiException>()));
     });
@@ -80,7 +81,7 @@ void main() {
         ],
       };
 
-      final api = OpenCodeApi(serverURL: server.baseUrl, password: null);
+      final api = OpenCodeApi(serverURL: server.baseUrl, password: null, client: http.Client());
       const body = SendMessageSyncBody(
         parts: [
           {"type": "text", "text": "Hi"},
@@ -110,7 +111,7 @@ void main() {
         "parts": <dynamic>[],
       };
 
-      final api = OpenCodeApi(serverURL: server.baseUrl, password: null);
+      final api = OpenCodeApi(serverURL: server.baseUrl, password: null, client: http.Client());
       const body = SendMessageSyncBody(
         parts: [
           {"type": "text", "text": "test prompt"},
@@ -139,7 +140,7 @@ void main() {
     test("throws OpenCodeApiException on non-2xx response", () async {
       server.sendMessageStatusCode = HttpStatus.badRequest;
 
-      final api = OpenCodeApi(serverURL: server.baseUrl, password: null);
+      final api = OpenCodeApi(serverURL: server.baseUrl, password: null, client: http.Client());
       const body = SendMessageSyncBody(parts: [], system: null, model: null);
 
       expect(
