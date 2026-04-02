@@ -102,7 +102,7 @@ class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
   Widget _buildLoadedState(BuildContext context, List<FileDiff> files) {
     _maybeComputeViewModels(files: files);
     if (_computeError != null) {
-      return Center(child: Text("Error computing diffs: $_computeError"));
+      return _buildErrorState(context, _computeError!);
     }
     if (_isComputing || _viewModels == null) {
       return const Center(child: CircularProgressIndicator());
