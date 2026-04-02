@@ -58,6 +58,10 @@ class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Sess
         .where((t) => t.trim().isNotEmpty)
         .firstOrNull;
 
+    Log.i(
+      "CreateSessionHandler: firstText=${firstText != null ? '"${firstText.substring(0, firstText.length.clamp(0, 50))}..."' : 'null'}",
+    );
+
     final SessionMetadata? metadata;
     if (firstText != null) {
       metadata = await _plugin.generateSessionMetadata(
@@ -67,6 +71,10 @@ class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Sess
     } else {
       metadata = null;
     }
+
+    Log.i(
+      "CreateSessionHandler: metadata=${metadata != null ? 'title="${metadata.title}", branch="${metadata.branchName}"' : 'null'}",
+    );
 
     final WorktreeResult? worktreeResult;
     if (dedicatedWorktree) {

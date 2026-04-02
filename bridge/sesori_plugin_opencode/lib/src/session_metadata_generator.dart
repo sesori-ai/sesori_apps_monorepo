@@ -17,6 +17,7 @@ class SessionMetadataGenerator {
     required String firstMessage,
     required String directory,
   }) async {
+    Log.i("SessionMetadataGenerator: generate called for directory=$directory");
     try {
       final model = await _resolveModel();
       if (model == null) {
@@ -66,6 +67,7 @@ class SessionMetadataGenerator {
   Future<({String providerID, String modelID})?> _resolveModel() async {
     // 1. Explicit small_model in config — user's choice, always wins.
     final config = await _api.getConfig();
+    Log.i("SessionMetadataGenerator: config smallModel=${config.smallModel}, model=${config.model}");
     final explicit = _parseModelStr(config.smallModel);
     if (explicit != null) return explicit;
 
@@ -86,6 +88,8 @@ class SessionMetadataGenerator {
         }
       }
     }
+
+    Log.i("SessionMetadataGenerator: resolved model=${best?.providerID}/${best?.modelID} (score=$bestScore)");
     if (best != null) return best;
 
     // 3. Last resort: first connected provider's default.
