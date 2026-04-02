@@ -17,8 +17,8 @@ class DiffFileHeaderDelegate extends SliverPersistentHeaderDelegate {
   });
 
   /// Estimated height: 6px padding top + ~18px content + 6px padding bottom
-  /// + 0.5px border ≈ 30.5px. Rounded up for safety.
-  static const _kExtent = 34.0;
+  /// + 0.5px border ≈ 30.5px. Rounded up with headroom for text scaling.
+  static const _kExtent = 36.0;
 
   @override
   double get maxExtent => _kExtent;

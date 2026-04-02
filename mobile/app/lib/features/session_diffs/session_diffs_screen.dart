@@ -101,14 +101,12 @@ class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
 
   Widget _buildLoadedState(BuildContext context, List<FileDiff> files) {
     _maybeComputeViewModels(files: files);
-    if (_isComputing) {
+    if (_isComputing || _viewModels == null) {
       return const Center(child: CircularProgressIndicator());
     }
     if (_computeError != null) {
       return Center(child: Text("Error computing diffs: $_computeError"));
     }
-    if (_viewModels == null) return const SizedBox.shrink();
-
     return CustomScrollView(slivers: _buildSlivers(viewModels: _viewModels!));
   }
 
@@ -135,53 +133,61 @@ class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
     if (vm.skipReason != null) {
       return SliverToBoxAdapter(child: _buildSkippedPlaceholder(vm.skipReason!));
     }
-    return SliverList(
-      delegate: SliverChildListDelegate([
-        for (final hunk in vm.hunks) ...[
-          DiffHunkWidget(viewModel: hunk),
-          for (final line in hunk.lines) DiffLineWidget(viewModel: line),
-        ],
-      ]),
+    final childCount = vm.hunks.fold<int>(0, (sum, h) => sum + 1 + h.lines.length);
+    return SliverList.builder(
+      itemCount: childCount,
+      itemBuilder: (context, index) {
+        var remaining = index;
+        for (final hunk in vm.hunks) {
+          if (remaining == 0) return DiffHunkWidget(viewModel: hunk);
+          remaining--;
+          if (remaining < hunk.lines.length) {
+            return DiffLineWidget(viewModel: hunk.lines[remaining]);
+          }
+          remaining -= hunk.lines.length;
+        }
+        return const SizedBox.shrink();
+      },
     );
   }
 
   void _maybeComputeViewModels({required List<FileDiff> files}) {
     final brightness = Theme.of(context).brightness;
-    if (identical(files, _lastFiles) && brightness == _lastBrightness) {
-      return;
-    }
+    if (identical(files, _lastFiles) && brightness == _lastBrightness) return;
+    final preserveExpansion = identical(files, _lastFiles);
     _lastFiles = files;
     _lastBrightness = brightness;
 
     // Defer computation to avoid setState() during build.
     Future.microtask(() {
-      if (mounted) _computeViewModels(files: files);
+      if (mounted) {
+        _computeViewModels(files: files, preserveExpansion: preserveExpansion);
+      }
     });
   }
 
-  Future<void> _computeViewModels({required List<FileDiff> files}) async {
+  Future<void> _computeViewModels({
+    required List<FileDiff> files,
+    required bool preserveExpansion,
+  }) async {
     final token = ++_computeToken;
     setState(() {
       _isComputing = true;
       _computeError = null;
       _viewModels = null;
-      _expandedFileIndices = <int>{};
     });
-
     try {
       final viewModels = await DiffViewModelBuilder.build(
         files,
         brightness: Theme.of(context).brightness,
       );
-      if (!mounted || token != _computeToken) {
-        return;
-      }
-      final expanded = <int>{};
-      for (var i = 0; i < viewModels.length; i++) {
-        if (viewModels[i].isExpanded) {
-          expanded.add(i);
-        }
-      }
+      if (!mounted || token != _computeToken) return;
+      final expanded = preserveExpansion
+          ? Set<int>.from(_expandedFileIndices)
+          : <int>{
+              for (var i = 0; i < viewModels.length; i++)
+                if (viewModels[i].isExpanded) i,
+            };
 
       setState(() {
         _viewModels = viewModels;
@@ -189,9 +195,7 @@ class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
         _isComputing = false;
       });
     } catch (error) {
-      if (!mounted || token != _computeToken) {
-        return;
-      }
+      if (!mounted || token != _computeToken) return;
       setState(() {
         _computeError = error;
         _isComputing = false;
