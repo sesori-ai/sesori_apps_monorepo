@@ -434,8 +434,6 @@ class OpenCodeApi {
           )
           .timeout(const Duration(seconds: 30));
       _ensureSuccess(response, "POST /session/$sessionId/message");
-      final bodyPreview = response.body.length > 500 ? response.body.substring(0, 500) : response.body;
-      Log.i("sendMessageSync raw response (${response.body.length} chars): $bodyPreview");
       return MessageWithParts.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
     } finally {
       client.close();

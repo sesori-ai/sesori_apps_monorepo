@@ -17,7 +17,6 @@ class SessionMetadataGenerator {
     required String firstMessage,
     required String directory,
   }) async {
-    Log.i("SessionMetadataGenerator: generate called for directory=$directory");
     try {
       final model = await _resolveModel();
       if (model == null) {
@@ -28,7 +27,6 @@ class SessionMetadataGenerator {
       final truncated = firstMessage.length > 500 ? firstMessage.substring(0, 500) : firstMessage;
 
       final session = await _api.createSession(directory: directory);
-      Log.i("SessionMetadataGenerator: ephemeral session created: ${session.id}");
       try {
         final response = await _api.sendMessageSync(
           sessionId: session.id,
@@ -41,11 +39,8 @@ class SessionMetadataGenerator {
             model: model,
           ),
         );
-        Log.i("SessionMetadataGenerator: AI response received, parts=${response.parts.length}");
-
         return _parseResponse(response);
       } finally {
-        Log.i("SessionMetadataGenerator: deleting ephemeral session");
         try {
           await _api.deleteSession(
             sessionId: session.id,
@@ -57,8 +52,8 @@ class SessionMetadataGenerator {
           );
         }
       }
-    } catch (e, st) {
-      Log.i("SessionMetadataGenerator: FAILED: $e\n$st");
+    } catch (e) {
+      Log.w("SessionMetadataGenerator: failed to generate metadata: $e");
       return null;
     }
   }
@@ -70,7 +65,6 @@ class SessionMetadataGenerator {
   Future<({String providerID, String modelID})?> _resolveModel() async {
     // 1. Explicit small_model in config — user's choice, always wins.
     final config = await _api.getConfig();
-    Log.i("SessionMetadataGenerator: config smallModel=${config.smallModel}, model=${config.model}");
     final explicit = _parseModelStr(config.smallModel);
     if (explicit != null) return explicit;
 
@@ -95,7 +89,6 @@ class SessionMetadataGenerator {
       }
     }
 
-    Log.i("SessionMetadataGenerator: resolved model=${best?.providerID}/${best?.modelID} (score=$bestScore)");
     if (best != null) return best;
 
     // 3. Last resort: first connected provider's default.
@@ -155,8 +148,6 @@ class SessionMetadataGenerator {
 
   SessionMetadata? _parseResponse(MessageWithParts response) {
     final mergedText = response.parts.map((part) => part.text).whereType<String>().join();
-    final preview = mergedText.length > 200 ? mergedText.substring(0, 200) : mergedText;
-    Log.i("SessionMetadataGenerator: mergedText length=${mergedText.length}, preview='$preview'");
 
     if (mergedText.isEmpty) {
       return null;
@@ -166,7 +157,6 @@ class SessionMetadataGenerator {
         _tryParseJson(raw: mergedText) ??
         _tryParseMarkdownJson(raw: mergedText) ??
         _tryExtractEmbeddedJson(raw: mergedText);
-    Log.i("SessionMetadataGenerator: JSON parsed=${parsed != null}");
     if (parsed == null) {
       return null;
     }
