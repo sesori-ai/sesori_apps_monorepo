@@ -235,6 +235,12 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   @FreezedUnionValue("vcs.branch.updated")
   const factory SesoriSseEvent.vcsBranchUpdated() = SesoriVcsBranchUpdated;
 
+  @FreezedUnionValue("sessions.updated")
+  @Implements<SesoriSessionEvent>()
+  const factory SesoriSseEvent.sessionsUpdated({
+    required String projectID,
+  }) = SesoriSessionsUpdated;
+
   // ---------------------------------------------------------------------------
   // File
   // ---------------------------------------------------------------------------

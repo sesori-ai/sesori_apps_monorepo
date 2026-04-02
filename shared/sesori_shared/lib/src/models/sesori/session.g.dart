@@ -45,6 +45,11 @@ _Session _$SessionFromJson(Map json) => _Session(
       : SessionSummary.fromJson(
           Map<String, dynamic>.from(json['summary'] as Map),
         ),
+  pullRequest: json['pullRequest'] == null
+      ? null
+      : PullRequestInfo.fromJson(
+          Map<String, dynamic>.from(json['pullRequest'] as Map),
+        ),
 );
 
 Map<String, dynamic> _$SessionToJson(_Session instance) => <String, dynamic>{
@@ -55,6 +60,7 @@ Map<String, dynamic> _$SessionToJson(_Session instance) => <String, dynamic>{
   'title': instance.title,
   'time': instance.time?.toJson(),
   'summary': instance.summary?.toJson(),
+  'pullRequest': instance.pullRequest?.toJson(),
 };
 
 _SessionTime _$SessionTimeFromJson(Map json) => _SessionTime(

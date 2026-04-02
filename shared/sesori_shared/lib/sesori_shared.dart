@@ -31,6 +31,7 @@ export "src/models/sesori/notification_data.dart";
 export "src/models/sesori/pending_question.dart";
 export "src/models/sesori/project.dart";
 export "src/models/sesori/project_activity_summary.dart";
+export "src/models/sesori/pull_request_info.dart";
 export "src/models/sesori/provider_info.dart";
 export "src/models/sesori/question.dart";
 export "src/models/sesori/rename_project_request.dart";
