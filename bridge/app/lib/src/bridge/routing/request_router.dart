@@ -39,7 +39,6 @@ import "rename_session_handler.dart";
 import "reply_to_permission_handler.dart";
 import "reply_to_question_handler.dart";
 import "request_handler.dart";
-import "send_command_handler.dart";
 import "send_prompt_handler.dart";
 import "set_base_branch_handler.dart";
 import "update_session_archive_status_handler.dart";
@@ -116,7 +115,6 @@ class RequestRouter {
         sessionRepository: sessionRepository,
       ),
       SendPromptHandler(plugin),
-      SendCommandHandler(plugin),
       AbortSessionHandler(plugin),
       GetProvidersHandler(ProviderRepository(plugin: plugin)),
       GetAgentsHandler(plugin),

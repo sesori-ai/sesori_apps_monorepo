@@ -97,40 +97,6 @@ void main() {
       expect(item["name"], equals("review"));
     });
 
-    test("routes POST /session/command and forwards the command body", () async {
-      final response = await router.route(
-        makeRequest(
-          "POST",
-          "/session/command",
-          body: jsonEncode(
-            SendCommandRequest.fromJson({
-              "sessionId": "s-1",
-              "command": "review",
-              "arguments": "lib/main.dart",
-            }).toJson(),
-          ),
-        ),
-      );
-
-      expect(response.status, equals(200));
-      expect(plugin.lastSendCommandSessionId, equals("s-1"));
-      expect(plugin.lastSendCommand, equals("review"));
-      expect(plugin.lastSendCommandArguments, equals("lib/main.dart"));
-    });
-
-    test("POST /session/command with malformed JSON returns 400", () async {
-      final response = await router.route(
-        makeRequest(
-          "POST",
-          "/session/command",
-          body: "{not-json}",
-        ),
-      );
-
-      expect(response.status, equals(400));
-      expect(response.body, contains("malformed JSON"));
-    });
-
     test("POST /sessions without body returns 400", () async {
       final response = await router.route(makeRequest("POST", "/sessions"));
       expect(response.status, equals(400));
