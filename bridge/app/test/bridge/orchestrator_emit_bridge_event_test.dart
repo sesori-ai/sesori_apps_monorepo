@@ -283,14 +283,6 @@ class _NoopPlugin implements BridgePlugin {
   }
 
   @override
-  Future<SessionMetadata?> generateSessionMetadata({
-    required String firstMessage,
-    required String directory,
-  }) async {
-    return null;
-  }
-
-  @override
   Future<void> archiveSession({required String sessionId}) async {}
 
   @override

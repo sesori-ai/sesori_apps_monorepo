@@ -118,7 +118,8 @@ class SessionListCubit extends Cubit<SessionListState> {
             SesoriWorkspaceFailed() ||
             SesoriTuiToastShow() ||
             SesoriWorktreeReady() ||
-            SesoriWorktreeFailed():
+            SesoriWorktreeFailed() ||
+            SesoriSessionsUpdated():
           break;
       }
     } catch (e, st) {
