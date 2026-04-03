@@ -20,6 +20,185 @@ Understand these three hops when working on any module:
 
 **Event path:** AI assistant emits SSE event → bridge plugin receives → orchestrator maps to shared protocol type → SSE manager encrypts per-phone → relay forwards → phone decrypts and displays.
 
+## Mandatory Internal Layer Architecture
+
+All packages in this monorepo follow a strict layered architecture. **Much of the existing code was written before these rules and does NOT follow them.** This is expected — legacy code will be migrated over time. However, **all new code must fully comply with the layering described below. It is not acceptable to follow old patterns just because existing code does.**
+
+The full specification with detailed per-layer cross-dependency rules and diagrams is in `.opencode/agents/Aristotel (Architectural Reviewer).md`.
+
+### Layer Definitions
+
+Each layer has a specific responsibility, a naming convention for its classes, and a dedicated directory. Dependencies flow upward only — a lower layer must NEVER know about a higher layer. NO layer skipping.
+
+| Layer | Responsibility | Class suffix | Directory |
+|-------|---------------|-------------|-----------|
+| **Layer 0 — Foundation** | Transport primitives and base abstractions. HOW we communicate, not WHAT. No business logic, no decisions. | `Client` | `foundation/` |
+| **Layer 1 — API** | Dumb data-access classes that execute operations (HTTP calls, DB queries, shell commands). Parse responses into models. No decision-making logic. | `Api`, `Dao` | `api/` |
+| **Layer 2 — Repository** | Aggregates data from one or more Layer 1 sources. Maps API/DB DTOs to internal models. **MANDATORY** even when only one data source exists — it just delegates. All mapping logic lives here and nowhere else. | `Repository` | `repositories/` |
+| **Layer 3 — Service** | Business logic and coordination. Decision-making lives here. MUST use Repositories, NEVER call APIs directly. | `Service` | `services/` |
+| **Layer 4+ — Consumer** | Consumes services/repositories. Cubits (mobile), request handlers (bridge), orchestrators. | `Cubit`, handler classes | `cubits/`, `routing/`, `sse/` |
+
+**Core rules:**
+- A Service MUST NOT call an API directly — it goes through a Repository
+- A Consumer (cubit, handler) MUST NOT import from `api/` — it goes through repositories/services
+- Within a layer: NO cross-dependency between same-level classes (unless base classes/abstractions designed for reuse within that layer)
+- Directory structure MUST mirror layers — when you see `import '../api/...'` in a `services/` file, that is a violation
+- Do NOT use "Manager" as a class suffix — use `Service` instead
+
+### Bridge workspace (`bridge/`)
+
+**`bridge/app` — target directory structure:**
+```
+app/lib/src/
+├── foundation/              # Layer 0
+│   ├── relay_client.dart    #   WebSocket transport (connect, send, receive, E2E encrypt/decrypt)
+│   ├── key_exchange.dart    #   X25519 DH key exchange primitives
+│   └── ...                  #   ProcessRunner, BridgeConfig, base abstractions
+│
+├── api/                     # Layer 1
+│   ├── database/            #   Drift SQLite (transport abstracted by Drift)
+│   │   ├── database.dart    #     AppDatabase
+│   │   ├── tables/          #     ProjectsTable, SessionTable
+│   │   └── daos/            #     ProjectsDao, SessionDao
+│   ├── gh_cli_api.dart      #   git operations via shell (create worktree, query branches, compute diffs)
+│   └── sesori_server_api.dart  # auth server HTTP (generate session metadata, etc.)
+│
+├── repositories/            # Layer 2
+│   ├── project_repository.dart   # combines BridgePlugin.getProjects() + ProjectsDao
+│   ├── session_repository.dart   # combines BridgePlugin.getSessions() + SessionDao
+│   ├── worktree_repository.dart  # wraps GhCliApi + SessionDao
+│   └── mappers/                  # ALL mappers live here (PluginProject → Project, etc.)
+│
+├── services/                # Layer 3
+│   ├── metadata_service.dart     # session metadata generation logic
+│   └── worktree_service.dart     # worktree lifecycle decisions
+│
+├── routing/                 # Layer 4 — request handling
+│   ├── request_router.dart       # ordered handler chain (first match wins)
+│   ├── request_handler.dart      # base handler classes (Get/Body variants)
+│   └── handlers/                 # ~30 concrete handlers
+│
+├── sse/                     # Layer 4 — event delivery
+│   ├── sse_service.dart          # subscriber queues, orphan replay
+│   └── bridge_event_mapper.dart  # BridgeSseEvent → SesoriSseEvent
+│
+├── orchestrator.dart        # Layer 5 — composes everything (ONLY class that wires layers)
+│
+├── auth/                    # Subsystem (self-contained, no deps on core layers)
+│   ├── token_service.dart        # token lifecycle (implements TokenRefresher)
+│   └── login_service.dart        # login flow orchestration
+│
+├── push/                    # Subsystem (self-contained, no deps on core layers)
+│   ├── push_notification_service.dart
+│   ├── push_notification_client.dart
+│   └── ...
+│
+└── server/                  # Subsystem (minimal — process lifecycle)
+```
+
+- BridgePlugin is semantically a Layer 1 data source (it exposes a public API for projects/sessions/messages)
+- Routing handlers use Repositories/Services — they MUST NOT call APIs (Layer 1) directly
+- All mappers belong in `repositories/mappers/`, NOT in `routing/`
+- `auth/`, `push/`, `server/` are self-contained subsystems outside the layer hierarchy
+
+**`sesori_plugin_opencode` — internal layers:**
+```
+lib/src/
+├── models/                  # Layer 0 — OpenCode-specific Freezed data classes
+├── opencode_api.dart        # Layer 1 — HTTP client for OpenCode REST endpoints
+├── opencode_repository.dart # Layer 2 — merges API data, maps to plugin interface models
+├── active_session_tracker.dart  # Layer 2 — tracks session state from SSE
+├── opencode_service.dart    # Layer 3 — coordinates Repository + Tracker
+├── opencode_plugin_impl.dart    # Layer 4 — BridgePlugin implementation (top-level composition)
+└── sse/                     # SSE pipeline components (SseConnection, SseEventParser, SseEventMapper)
+```
+
+### Mobile workspace (`mobile/`)
+
+**Module dependency direction (never reverse, never skip):**
+```
+app → module_core → module_auth → sesori_shared
+```
+`app` has `module_auth` in pubspec only for DI wiring — it MUST NOT import `module_auth` types in source code.
+
+**`module_core` — target directory structure:**
+```
+module_core/lib/src/
+├── foundation/              # Layer 0
+│   ├── platform/            #   abstract interfaces: UrlLauncher, DeepLinkSource, LifecycleSource, etc.
+│   ├── transport/           #   relay stack: RelayClient → ConnectionService → RelayHttpApiClient
+│   ├── logging/             #   logd/logw/loge
+│   ├── concurrency/         #   isolate pool, message queue
+│   └── extensions/          #   Dart utility extensions
+│
+├── api/                     # Layer 1
+│   ├── session_api.dart     #   session CRUD endpoints (→ RelayHttpApiClient)
+│   ├── project_api.dart     #   project CRUD endpoints (→ RelayHttpApiClient)
+│   ├── voice_api.dart       #   audio upload (→ AuthenticatedHttpApiClient)
+│   └── notification_api.dart    # FCM token registration (→ AuthenticatedHttpApiClient)
+│
+├── repositories/            # Layer 2
+│   ├── session_repository.dart
+│   ├── project_repository.dart
+│   └── ...
+│
+├── services/                # Layer 3
+│   └── sse_event_service.dart   # processes real-time events from ConnectionService streams
+│
+├── cubits/                  # Layer 4 — state management (one cubit per feature)
+│   ├── login/
+│   ├── project_list/
+│   ├── session_list/
+│   ├── session_detail/
+│   └── ...
+│
+└── routing/                 # Layer 4 — navigation
+    ├── app_routes.dart          # AppRoute enum
+    └── auth_redirect_service.dart
+```
+
+- APIs talking to bridge use `RelayHttpApiClient`; APIs talking to auth server use `AuthenticatedHttpApiClient`
+- Cubits may depend on services (Layer 3), repositories (Layer 2 for simple CRUD), and ConnectionService streams (Layer 0, push-based only)
+- Cubits MUST NOT import from `api/` or depend on other cubits
+- No cross-dependency between repositories, between services, or between cubits
+
+**`app` (Flutter shell) — target directory structure:**
+```
+app/lib/
+├── core/platform/           # Layer 0 — concrete Flutter implementations of module_core interfaces
+│   ├── flutter_secure_storage_adapter.dart   # implements SecureStorage
+│   ├── flutter_url_launcher.dart             # implements UrlLauncher
+│   ├── app_lifecycle_observer.dart           # implements LifecycleSource
+│   └── ...
+├── core/di/                 # Infrastructure — DI wiring (3-phase: platform → auth → core)
+├── core/routing/            # Infrastructure — GoRouter config
+├── core/widgets/            # Shared UI — ConnectionOverlay, bottom sheets, etc.
+└── features/                # Screens — one dir per feature, BlocProvider creates cubits, getIt resolves services
+    ├── login/
+    ├── project_list/
+    ├── session_list/
+    └── ...
+```
+
+- Features NEVER instantiate services or call APIs directly — only through cubits
+- `module_core` MUST NOT import `package:flutter`
+- `module_auth` MUST NOT import `module_core`
+
+**`module_auth` — internal structure:**
+```
+module_auth/lib/src/
+├── interfaces/              # exported API: AuthTokenProvider, OAuthFlowProvider, AuthSession
+├── models/                  # AuthState sealed class
+├── platform/                # SecureStorage abstract interface
+├── storage/                 # Layer 1 — TokenStorageService, OAuthStorageService (→ SecureStorage)
+├── client/                  # Layer 1 — HttpApiClient (base), AuthenticatedHttpApiClient (decorator)
+├── auth_manager.dart        # Layer 2 — single owner of auth lifecycle (implements all 3 interfaces)
+└── di/                      # DI registration
+```
+
+- AuthService (currently named AuthManager) is the SINGLE writer of tokens
+- Only the 3 interfaces + AuthenticatedHttpApiClient are exported; everything else is internal
+
 ## Key Architectural Patterns
 
 - **Bridge plugin system:** `BridgePlugin` abstract class in `sesori_plugin_interface` defines the backend contract (projects, sessions, messages, events, health). `sesori_plugin_opencode` implements it for OpenCode. New backends implement this interface.
