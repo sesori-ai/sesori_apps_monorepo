@@ -335,9 +335,13 @@ class _FakeGhCliService extends GhCliService {
   }
 
   @override
-  Future<GhPullRequest?> getPrByNumber({required int number, required String workingDirectory}) async {
+  Future<GhPullRequest> getPrByNumber({required int number, required String workingDirectory}) async {
     getPrByNumberCalls.add(number);
-    return prByNumber[number];
+    final pr = prByNumber[number];
+    if (pr == null) {
+      throw Exception("PR #$number not found");
+    }
+    return pr;
   }
 }
 

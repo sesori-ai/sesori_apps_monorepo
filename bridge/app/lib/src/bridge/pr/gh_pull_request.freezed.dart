@@ -11,16 +11,19 @@ part of 'gh_pull_request.dart';
 
 // dart format off
 T _$identity<T>(T value) => value;
+
 /// @nodoc
 mixin _$GhPullRequest {
 
- int get number; String get url; String get title; String get state; String get headRefName; String? get mergeable; String? get reviewDecision; String? get statusCheckRollup;
+ int get number; String get url; String get title; String get state; String get headRefName; String? get mergeable; String? get reviewDecision;@JsonKey(fromJson: _extractRollupState) String? get statusCheckRollup;
 /// Create a copy of GhPullRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
 $GhPullRequestCopyWith<GhPullRequest> get copyWith => _$GhPullRequestCopyWithImpl<GhPullRequest>(this as GhPullRequest, _$identity);
 
+  /// Serializes this GhPullRequest to a JSON map.
+  Map<String, dynamic> toJson();
 
 
 @override
@@ -28,7 +31,7 @@ bool operator ==(Object other) {
   return identical(this, other) || (other.runtimeType == runtimeType&&other is GhPullRequest&&(identical(other.number, number) || other.number == number)&&(identical(other.url, url) || other.url == url)&&(identical(other.title, title) || other.title == title)&&(identical(other.state, state) || other.state == state)&&(identical(other.headRefName, headRefName) || other.headRefName == headRefName)&&(identical(other.mergeable, mergeable) || other.mergeable == mergeable)&&(identical(other.reviewDecision, reviewDecision) || other.reviewDecision == reviewDecision)&&(identical(other.statusCheckRollup, statusCheckRollup) || other.statusCheckRollup == statusCheckRollup));
 }
 
-
+@JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode => Object.hash(runtimeType,number,url,title,state,headRefName,mergeable,reviewDecision,statusCheckRollup);
 
@@ -45,7 +48,7 @@ abstract mixin class $GhPullRequestCopyWith<$Res>  {
   factory $GhPullRequestCopyWith(GhPullRequest value, $Res Function(GhPullRequest) _then) = _$GhPullRequestCopyWithImpl;
 @useResult
 $Res call({
- int number, String url, String title, String state, String headRefName, String? mergeable, String? reviewDecision, String? statusCheckRollup
+ int number, String url, String title, String state, String headRefName, String? mergeable, String? reviewDecision,@JsonKey(fromJson: _extractRollupState) String? statusCheckRollup
 });
 
 
@@ -81,11 +84,11 @@ as String?,
 
 
 /// @nodoc
-
+@JsonSerializable()
 
 class _GhPullRequest implements GhPullRequest {
-  const _GhPullRequest({required this.number, required this.url, required this.title, required this.state, required this.headRefName, required this.mergeable, required this.reviewDecision, required this.statusCheckRollup});
-  
+  const _GhPullRequest({required this.number, required this.url, required this.title, required this.state, required this.headRefName, required this.mergeable, required this.reviewDecision, @JsonKey(fromJson: _extractRollupState) required this.statusCheckRollup});
+  factory _GhPullRequest.fromJson(Map<String, dynamic> json) => _$GhPullRequestFromJson(json);
 
 @override final  int number;
 @override final  String url;
@@ -94,7 +97,7 @@ class _GhPullRequest implements GhPullRequest {
 @override final  String headRefName;
 @override final  String? mergeable;
 @override final  String? reviewDecision;
-@override final  String? statusCheckRollup;
+@override@JsonKey(fromJson: _extractRollupState) final  String? statusCheckRollup;
 
 /// Create a copy of GhPullRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -102,14 +105,17 @@ class _GhPullRequest implements GhPullRequest {
 @pragma('vm:prefer-inline')
 _$GhPullRequestCopyWith<_GhPullRequest> get copyWith => __$GhPullRequestCopyWithImpl<_GhPullRequest>(this, _$identity);
 
-
+@override
+Map<String, dynamic> toJson() {
+  return _$GhPullRequestToJson(this, );
+}
 
 @override
 bool operator ==(Object other) {
   return identical(this, other) || (other.runtimeType == runtimeType&&other is _GhPullRequest&&(identical(other.number, number) || other.number == number)&&(identical(other.url, url) || other.url == url)&&(identical(other.title, title) || other.title == title)&&(identical(other.state, state) || other.state == state)&&(identical(other.headRefName, headRefName) || other.headRefName == headRefName)&&(identical(other.mergeable, mergeable) || other.mergeable == mergeable)&&(identical(other.reviewDecision, reviewDecision) || other.reviewDecision == reviewDecision)&&(identical(other.statusCheckRollup, statusCheckRollup) || other.statusCheckRollup == statusCheckRollup));
 }
 
-
+@JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode => Object.hash(runtimeType,number,url,title,state,headRefName,mergeable,reviewDecision,statusCheckRollup);
 
@@ -126,7 +132,7 @@ abstract mixin class _$GhPullRequestCopyWith<$Res> implements $GhPullRequestCopy
   factory _$GhPullRequestCopyWith(_GhPullRequest value, $Res Function(_GhPullRequest) _then) = __$GhPullRequestCopyWithImpl;
 @override @useResult
 $Res call({
- int number, String url, String title, String state, String headRefName, String? mergeable, String? reviewDecision, String? statusCheckRollup
+ int number, String url, String title, String state, String headRefName, String? mergeable, String? reviewDecision,@JsonKey(fromJson: _extractRollupState) String? statusCheckRollup
 });
 
 

@@ -1,5 +1,7 @@
 import "dart:async";
 
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+
 import "../persistence/dao_interfaces.dart";
 import "../persistence/database.dart";
 import "../persistence/tables/session_table.dart";
@@ -93,40 +95,42 @@ class PrSyncService {
           .toList(growable: false);
 
       for (final disappeared in disappearedActivePrs) {
-        final finalPr = await _ghCli.getPrByNumber(
-          number: disappeared.prNumber,
-          workingDirectory: projectPath,
-        );
-        if (finalPr == null) {
+        try {
+          final finalPr = await _ghCli.getPrByNumber(
+            number: disappeared.prNumber,
+            workingDirectory: projectPath,
+          );
+
+          final session = sessionsByBranch[finalPr.headRefName];
+          if (_isMeaningfullyDifferent(existing: disappeared, pr: finalPr, sessionId: session?.sessionId)) {
+            hasChanges = true;
+          }
+
+          await _prDao.upsertPr(
+            projectId: projectId,
+            branchName: finalPr.headRefName,
+            prNumber: finalPr.number,
+            url: finalPr.url,
+            title: finalPr.title,
+            state: finalPr.state,
+            mergeableStatus: finalPr.mergeable,
+            reviewDecision: finalPr.reviewDecision,
+            checkStatus: finalPr.statusCheckRollup,
+            sessionId: session?.sessionId,
+            lastCheckedAt: nowEpochMs,
+            createdAt: disappeared.createdAt,
+          );
+        } catch (e) {
+          Log.w("[PrSync] failed to fetch PR #${disappeared.prNumber}: $e");
           continue;
         }
-
-        final session = sessionsByBranch[finalPr.headRefName];
-        if (_isMeaningfullyDifferent(existing: disappeared, pr: finalPr, sessionId: session?.sessionId)) {
-          hasChanges = true;
-        }
-
-        await _prDao.upsertPr(
-          projectId: projectId,
-          branchName: finalPr.headRefName,
-          prNumber: finalPr.number,
-          url: finalPr.url,
-          title: finalPr.title,
-          state: finalPr.state,
-          mergeableStatus: finalPr.mergeable,
-          reviewDecision: finalPr.reviewDecision,
-          checkStatus: finalPr.statusCheckRollup,
-          sessionId: session?.sessionId,
-          lastCheckedAt: nowEpochMs,
-          createdAt: disappeared.createdAt,
-        );
       }
 
       if (hasChanges) {
         _onPrDataChanged(projectId);
       }
-    } catch (e, st) {
-      Zone.current.handleUncaughtError(e, st);
+    } catch (e) {
+      Log.e("[PrSync] refresh failed for $projectId: $e");
     } finally {
       _activeRefreshes.remove(projectId);
     }

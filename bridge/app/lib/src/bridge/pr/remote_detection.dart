@@ -1,5 +1,7 @@
 import "dart:io";
 
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+
 import "../worktree_service.dart";
 
 /// Detects if a project has a GitHub remote.
@@ -44,6 +46,7 @@ Future<bool> hasGitHubRemote({
 
     return output.toLowerCase().contains("github.com");
   } catch (e) {
+    Log.w("[remote] failed to detect remote: $e");
     return false;
   }
 }

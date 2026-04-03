@@ -259,38 +259,42 @@ void main() {
       expect(processRunner.invocations.first.workingDirectory, equals("/repo"));
     });
 
-    test("returns null for malformed JSON", () async {
+    test("throws for malformed JSON", () async {
       processRunner.enqueueResult(result: _ok(stdout: "{"));
 
-      final pr = await service.getPrByNumber(number: 1, workingDirectory: "/repo");
-
-      expect(pr, isNull);
+      expect(
+        () => service.getPrByNumber(number: 1, workingDirectory: "/repo"),
+        throwsA(isA<FormatException>()),
+      );
     });
 
-    test("returns null for non-zero exit code", () async {
+    test("throws for non-zero exit code", () async {
       processRunner.enqueueResult(result: _fail(exitCode: 1));
 
-      final pr = await service.getPrByNumber(number: 1, workingDirectory: "/repo");
-
-      expect(pr, isNull);
+      expect(
+        () => service.getPrByNumber(number: 1, workingDirectory: "/repo"),
+        throwsA(isA<Exception>()),
+      );
     });
 
-    test("returns null on timeout", () async {
+    test("throws on timeout", () async {
       processRunner.enqueueError(error: TimeoutException("timed out"));
 
-      final pr = await service.getPrByNumber(number: 1, workingDirectory: "/repo");
-
-      expect(pr, isNull);
+      expect(
+        () => service.getPrByNumber(number: 1, workingDirectory: "/repo"),
+        throwsA(isA<TimeoutException>()),
+      );
     });
 
-    test("returns null on ProcessException", () async {
+    test("throws on ProcessException", () async {
       processRunner.enqueueError(
         error: const ProcessException("gh", <String>["pr", "view", "1"], "boom", 1),
       );
 
-      final pr = await service.getPrByNumber(number: 1, workingDirectory: "/repo");
-
-      expect(pr, isNull);
+      expect(
+        () => service.getPrByNumber(number: 1, workingDirectory: "/repo"),
+        throwsA(isA<ProcessException>()),
+      );
     });
   });
 }
