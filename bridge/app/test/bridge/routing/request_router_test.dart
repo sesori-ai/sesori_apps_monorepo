@@ -1,11 +1,7 @@
 import "dart:convert";
-import "dart:io";
 
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/persistence/tables/pull_requests_table.dart";
-import "package:sesori_bridge/src/bridge/pr/gh_cli_service.dart";
-import "package:sesori_bridge/src/bridge/pr/pr_refresh_coordinator.dart";
-import "package:sesori_bridge/src/bridge/pr/pr_sync_service.dart";
 import "package:sesori_bridge/src/bridge/routing/request_router.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -30,6 +26,8 @@ void main() {
         metadataService: metadataService,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
+        pullRequestDao: db.pullRequestDao,
+        prSyncService: FakePrSyncService(prDao: db.pullRequestDao, sessionDao: db.sessionDao),
       );
     });
 
@@ -215,6 +213,7 @@ void main() {
     });
 
     test("integrates PR merge and background refresh trigger for session list", () async {
+      plugin.currentProjectResult = const PluginProject(id: "/tmp/project");
       plugin.sessionsResult = const [
         PluginSession(
           id: "s1",
@@ -245,27 +244,14 @@ void main() {
         ),
       );
 
-      final spyPrSyncService = _SpyPrSyncService();
-      final coordinator = PrRefreshCoordinator(
-        ghCli: _AlwaysReadyGhCliService(),
-        prSyncService: spyPrSyncService,
-        processRunner:
-            (
-              String executable,
-              List<String> arguments, {
-              String? workingDirectory,
-            }) async {
-              return ProcessResult(1, 0, "https://github.com/org/repo.git", "");
-            },
-        emitBridgeEvent: (SesoriSseEvent _) {},
-      );
+      final spyPrSyncService = FakePrSyncService(prDao: fakePrDao);
 
       router = RequestRouter(
         plugin: plugin,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
         pullRequestDao: fakePrDao,
-        prRefreshCoordinator: coordinator,
+        prSyncService: spyPrSyncService,
         metadataService: metadataService,
       );
 
@@ -288,31 +274,4 @@ void main() {
       expect(spyPrSyncService.calls.single, equals((projectId: "/tmp/project", projectPath: "/tmp/project")));
     });
   });
-}
-
-class _AlwaysReadyGhCliService extends GhCliService {
-  _AlwaysReadyGhCliService() : super();
-
-  @override
-  Future<bool> isAvailable() async => true;
-
-  @override
-  Future<bool> isAuthenticated() async => true;
-}
-
-class _SpyPrSyncService extends PrSyncService {
-  final List<({String projectId, String projectPath})> calls = <({String projectId, String projectPath})>[];
-
-  _SpyPrSyncService()
-    : super(
-        ghCli: _AlwaysReadyGhCliService(),
-        prDao: FakePullRequestDao(),
-        sessionDao: FakeSessionDao(),
-        onPrDataChanged: (String _) {},
-      );
-
-  @override
-  void triggerRefreshForProject({required String projectId, required String projectPath}) {
-    calls.add((projectId: projectId, projectPath: projectPath));
-  }
 }

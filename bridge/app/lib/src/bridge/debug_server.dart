@@ -7,6 +7,8 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "metadata_service.dart";
 import "persistence/daos/projects_dao.dart";
+import "pr/gh_cli_service.dart";
+import "pr/pr_sync_service.dart";
 import "routing/request_router.dart";
 import "sse/bridge_event_mapper.dart";
 
@@ -28,12 +30,23 @@ class DebugServer {
     required this.port,
     required FailureReporter failureReporter,
   }) : _plugin = plugin,
-       _router = RequestRouter(
-         plugin: plugin,
-         metadataService: metadataService,
-         projectsDao: projectsDao,
-         sessionDao: projectsDao.attachedDatabase.sessionDao,
-       ),
+       _router = (() {
+         final database = projectsDao.attachedDatabase;
+         final prSyncService = PrSyncService(
+           ghCli: GhCliService(),
+           prDao: database.pullRequestDao,
+           sessionDao: database.sessionDao,
+           processRunner: Process.run,
+         );
+         return RequestRouter(
+           plugin: plugin,
+           metadataService: metadataService,
+           projectsDao: projectsDao,
+           sessionDao: database.sessionDao,
+           pullRequestDao: database.pullRequestDao,
+           prSyncService: prSyncService,
+         );
+       })(),
        _mapper = BridgeEventMapper(plugin: plugin, failureReporter: failureReporter);
 
   int? get boundPort => _server?.port;

@@ -12,13 +12,20 @@ void main() {
     late FakeBridgePlugin plugin;
     late FakeSessionDao sessionDao;
     late FakePullRequestDao prDao;
+    late FakePrSyncService prSyncService;
     late GetSessionsHandler handler;
 
     setUp(() {
       plugin = FakeBridgePlugin();
       sessionDao = FakeSessionDao();
       prDao = FakePullRequestDao();
-      handler = GetSessionsHandler(plugin, sessionDao, prDao);
+      prSyncService = FakePrSyncService(prDao: prDao, sessionDao: sessionDao);
+      handler = GetSessionsHandler(
+        plugin,
+        sessionDao,
+        prDao,
+        prSyncService: prSyncService,
+      );
     });
 
     tearDown(() => plugin.close());
@@ -505,6 +512,48 @@ void main() {
       expect(result.items, hasLength(2));
       expect(result.items[0].pullRequest?.number, equals(7));
       expect(result.items[1].pullRequest, isNull);
+    });
+
+    test("triggers PR refresh with project path resolved from plugin.getProject", () async {
+      plugin.currentProjectResult = const PluginProject(id: "/tmp/project");
+      await handler.handle(
+        makeRequest("POST", "/sessions"),
+        body: const SessionListRequest(projectId: "project-1", start: null, limit: null),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(prSyncService.calls, hasLength(1));
+      expect(prSyncService.calls.single, equals((projectId: "project-1", projectPath: "/tmp/project")));
+    });
+
+    test("falls back to session directory when plugin.getProject fails", () async {
+      plugin.throwOnGetProjectError = Exception("failed");
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "project-1",
+          directory: "/tmp/fallback-project",
+          parentID: null,
+          title: null,
+          time: null,
+          summary: null,
+        ),
+      ];
+
+      await handler.handle(
+        makeRequest("POST", "/sessions"),
+        body: const SessionListRequest(projectId: "project-1", start: null, limit: null),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(prSyncService.calls, hasLength(1));
+      expect(prSyncService.calls.single, equals((projectId: "project-1", projectPath: "/tmp/fallback-project")));
     });
   });
 }

@@ -6,16 +6,22 @@ import "../persistence/dao_interfaces.dart";
 import "../persistence/daos/pull_request_dao.dart";
 import "../persistence/tables/pull_requests_table.dart";
 import "../persistence/tables/session_table.dart";
+import "../worktree_service.dart";
 import "gh_cli_service.dart";
 import "gh_pull_request.dart";
+import "remote_detection.dart";
 
 class PrSyncService {
   final GhCliService _ghCli;
   final PullRequestDao _prDao;
   final SessionDaoLike _sessionDao;
-  final void Function(String projectId) _onPrDataChanged;
+  final ProcessRunner _processRunner;
   final Duration _debounceWindow;
+  final StreamController<String> _prChangesController = StreamController<String>.broadcast();
 
+  bool? _ghAvailable;
+  bool? _ghAuthenticated;
+  final Map<String, bool> _hasGitHubRemoteCache = <String, bool>{};
   final Map<String, DateTime> _lastRefreshTimes = <String, DateTime>{};
   final Set<String> _activeRefreshes = <String>{};
 
@@ -23,15 +29,37 @@ class PrSyncService {
     required GhCliService ghCli,
     required PullRequestDao prDao,
     required SessionDaoLike sessionDao,
-    required void Function(String projectId) onPrDataChanged,
+    required ProcessRunner processRunner,
     Duration debounceWindow = const Duration(seconds: 30),
   }) : _ghCli = ghCli,
        _prDao = prDao,
        _sessionDao = sessionDao,
-       _onPrDataChanged = onPrDataChanged,
+       _processRunner = processRunner,
        _debounceWindow = debounceWindow;
 
-  void triggerRefreshForProject({required String projectId, required String projectPath}) {
+  Stream<String> get prChanges => _prChangesController.stream;
+
+  Future<void> triggerRefresh({required String projectId, required String projectPath}) async {
+    _ghAvailable ??= await _ghCli.isAvailable();
+    if (!_ghAvailable!) {
+      return;
+    }
+
+    _ghAuthenticated ??= await _ghCli.isAuthenticated();
+    if (!_ghAuthenticated!) {
+      return;
+    }
+
+    if (!_hasGitHubRemoteCache.containsKey(projectPath)) {
+      _hasGitHubRemoteCache[projectPath] = await hasGitHubRemote(
+        processRunner: _processRunner,
+        projectPath: projectPath,
+      );
+    }
+    if (!_hasGitHubRemoteCache[projectPath]!) {
+      return;
+    }
+
     if (_activeRefreshes.contains(projectId)) {
       return;
     }
@@ -49,9 +77,11 @@ class PrSyncService {
 
   Future<void> _refresh({required String projectId, required String projectPath}) async {
     try {
-      final openPrs = await _ghCli.listOpenPrs(workingDirectory: projectPath);
-      final sessions = await _sessionDao.getSessionsByProject(projectId: projectId);
-      final activePrs = await _prDao.getActivePrsByProjectId(projectId: projectId);
+      final (openPrs, sessions, activePrs) = await (
+        _ghCli.listOpenPrs(workingDirectory: projectPath),
+        _sessionDao.getSessionsByProject(projectId: projectId),
+        _prDao.getActivePrsByProjectId(projectId: projectId),
+      ).wait;
 
       final sessionsByBranch = _indexSessionsByBranch(sessions: sessions);
       final activeByBranch = <String, PullRequestDto>{
@@ -124,13 +154,17 @@ class PrSyncService {
       }
 
       if (hasChanges) {
-        _onPrDataChanged(projectId);
+        _prChangesController.add(projectId);
       }
-    } catch (e) {
-      Log.e("[PrSync] refresh failed for $projectId: $e");
+    } catch (e, st) {
+      Log.e("[PrSync] refresh failed for $projectId: $e\n$st");
     } finally {
       _activeRefreshes.remove(projectId);
     }
+  }
+
+  void dispose() {
+    _prChangesController.close();
   }
 
   Map<String, SessionDto> _indexSessionsByBranch({required List<SessionDto> sessions}) {

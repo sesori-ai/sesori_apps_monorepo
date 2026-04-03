@@ -1,17 +1,14 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../persistence/daos/pull_request_dao.dart";
 import "plugin_session_mapper.dart";
-import "pr_enum_helpers.dart";
 import "request_handler.dart";
 
 /// Handles `GET /session/:id/children` — returns direct child sessions.
 class GetChildSessionsHandler extends BodyRequestHandler<SessionIdRequest, SessionListResponse> {
   final BridgePlugin _plugin;
-  final PullRequestDao _prDao;
 
-  GetChildSessionsHandler(this._plugin, this._prDao)
+  GetChildSessionsHandler(this._plugin)
     : super(
         HttpMethod.post,
         "/session/children",
@@ -32,29 +29,7 @@ class GetChildSessionsHandler extends BodyRequestHandler<SessionIdRequest, Sessi
     }
 
     final pluginSessions = await _plugin.getChildSessions(sessionId);
-
     final sessions = pluginSessions.map((s) => s.toSharedSession()).toList();
-    final sessionIds = sessions.map((s) => s.id).toList();
-    final prsBySessionId = await _prDao.getPrsBySessionIds(sessionIds: sessionIds);
-
-    final mergedSessions = sessions.map((session) {
-      final pr = prsBySessionId[session.id];
-      if (pr == null) {
-        return session;
-      }
-      return session.copyWith(
-        pullRequest: PullRequestInfo(
-          number: pr.prNumber,
-          url: pr.url,
-          title: pr.title,
-          state: stringToPrState(pr.state),
-          mergeableStatus: stringToPrMergeableStatus(pr.mergeableStatus),
-          reviewDecision: stringToPrReviewDecision(pr.reviewDecision),
-          checkStatus: stringToPrCheckStatus(pr.checkStatus),
-        ),
-      );
-    }).toList();
-
-    return SessionListResponse(items: mergedSessions);
+    return SessionListResponse(items: sessions);
   }
 }

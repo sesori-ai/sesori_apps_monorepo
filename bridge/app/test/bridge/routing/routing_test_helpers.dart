@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:io";
 
 import "package:sesori_bridge/src/bridge/metadata_service.dart";
 import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge_metadata;
@@ -6,6 +7,8 @@ import "package:sesori_bridge/src/bridge/persistence/dao_interfaces.dart";
 import "package:sesori_bridge/src/bridge/persistence/daos/pull_request_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
+import "package:sesori_bridge/src/bridge/pr/gh_cli_service.dart";
+import "package:sesori_bridge/src/bridge/pr/pr_sync_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -437,4 +440,39 @@ class FakePullRequestDao extends PullRequestDao {
   String _key({required String projectId, required int prNumber}) {
     return "$projectId::$prNumber";
   }
+}
+
+class FakePrSyncService extends PrSyncService {
+  final List<({String projectId, String projectPath})> calls = <({String projectId, String projectPath})>[];
+
+  FakePrSyncService({GhCliService? ghCli, PullRequestDao? prDao, SessionDaoLike? sessionDao})
+    : super(
+        ghCli: ghCli ?? _AlwaysReadyGhCliService(),
+        prDao: prDao ?? FakePullRequestDao(),
+        sessionDao: sessionDao ?? FakeSessionDao(),
+        processRunner: _unusedProcessRunner,
+      );
+
+  @override
+  Future<void> triggerRefresh({required String projectId, required String projectPath}) async {
+    calls.add((projectId: projectId, projectPath: projectPath));
+  }
+}
+
+class _AlwaysReadyGhCliService extends GhCliService {
+  _AlwaysReadyGhCliService() : super();
+
+  @override
+  Future<bool> isAvailable() async => true;
+
+  @override
+  Future<bool> isAuthenticated() async => true;
+}
+
+Future<ProcessResult> _unusedProcessRunner(
+  String executable,
+  List<String> arguments, {
+  String? workingDirectory,
+}) {
+  throw StateError("process runner should not be called");
 }

@@ -1,5 +1,6 @@
 import "dart:async";
 import "dart:convert";
+import "dart:io";
 import "dart:math";
 import "dart:typed_data";
 
@@ -13,6 +14,10 @@ import "key_exchange.dart";
 import "metadata_service.dart";
 import "models/bridge_config.dart";
 import "persistence/daos/projects_dao.dart";
+import "persistence/daos/pull_request_dao.dart";
+import "persistence/daos/session_dao.dart";
+import "pr/gh_cli_service.dart";
+import "pr/pr_sync_service.dart";
 import "relay_client.dart";
 import "routing/request_router.dart";
 import "sse/bridge_event_mapper.dart";
@@ -29,6 +34,11 @@ class Orchestrator {
   final TokenRefresher _tokenRefresher;
   final ProjectsDao _projectsDao;
   final FailureReporter _failureReporter;
+  final PrSyncService Function({
+    required PullRequestDao pullRequestDao,
+    required SessionDao sessionDao,
+  })
+  _prSyncServiceFactory;
 
   Orchestrator({
     required this.config,
@@ -39,13 +49,19 @@ class Orchestrator {
     required TokenRefresher tokenRefresher,
     required ProjectsDao projectsDao,
     required FailureReporter failureReporter,
+    PrSyncService Function({
+      required PullRequestDao pullRequestDao,
+      required SessionDao sessionDao,
+    })?
+    prSyncServiceFactory,
   }) : _client = client,
        _plugin = plugin,
        _metadataService = metadataService,
        _pushNotificationService = pushNotificationService,
        _tokenRefresher = tokenRefresher,
        _projectsDao = projectsDao,
-       _failureReporter = failureReporter;
+       _failureReporter = failureReporter,
+       _prSyncServiceFactory = prSyncServiceFactory ?? _defaultPrSyncServiceFactory;
 
   /// Creates a new session with a fresh room key and SSE manager.
   OrchestratorSession create() {
@@ -57,6 +73,10 @@ class Orchestrator {
       failureReporter: _failureReporter,
     );
     sseManager.setRoomKey(roomKey);
+    final prSyncService = _prSyncServiceFactory(
+      pullRequestDao: _projectsDao.attachedDatabase.pullRequestDao,
+      sessionDao: _projectsDao.attachedDatabase.sessionDao,
+    );
 
     return OrchestratorSession._(
       config: config,
@@ -70,6 +90,7 @@ class Orchestrator {
       sseManager: sseManager,
       bytesSentController: bytesSentController,
       failureReporter: _failureReporter,
+      prSyncService: prSyncService,
     );
   }
 
@@ -77,6 +98,18 @@ class Orchestrator {
     final random = Random.secure();
     return Uint8List.fromList(
       List<int>.generate(32, (_) => random.nextInt(256)),
+    );
+  }
+
+  static PrSyncService _defaultPrSyncServiceFactory({
+    required PullRequestDao pullRequestDao,
+    required SessionDao sessionDao,
+  }) {
+    return PrSyncService(
+      ghCli: GhCliService(),
+      prDao: pullRequestDao,
+      sessionDao: sessionDao,
+      processRunner: Process.run,
     );
   }
 }
@@ -97,6 +130,7 @@ class OrchestratorSession {
   final TokenRefresher _tokenRefresher;
   final StreamController<int> _bytesSentController;
   final FailureReporter _failureReporter;
+  final PrSyncService _prSyncService;
   StreamSubscription<BridgeSseEvent>? _eventSubscription;
 
   bool _cancelled = false;
@@ -113,6 +147,7 @@ class OrchestratorSession {
     required SSEManager sseManager,
     required StreamController<int> bytesSentController,
     required FailureReporter failureReporter,
+    required PrSyncService prSyncService,
   }) : _client = client,
        _plugin = plugin,
        _pushNotificationService = pushNotificationService,
@@ -121,14 +156,14 @@ class OrchestratorSession {
        _sseManager = sseManager,
        _bytesSentController = bytesSentController,
        _failureReporter = failureReporter,
+       _prSyncService = prSyncService,
        _router = RequestRouter(
          plugin: plugin,
          metadataService: metadataService,
          projectsDao: projectsDao,
          sessionDao: projectsDao.attachedDatabase.sessionDao,
-         emitBridgeEvent: (SesoriSseEvent event) {
-           sseManager.enqueueEvent(event);
-         },
+         pullRequestDao: projectsDao.attachedDatabase.pullRequestDao,
+         prSyncService: prSyncService,
        ),
        _mapper = BridgeEventMapper(plugin: plugin, failureReporter: failureReporter);
 
@@ -181,6 +216,9 @@ class OrchestratorSession {
       },
     );
     Log.d("[dbg] plugin event stream subscribed");
+    final prChangesSubscription = _prSyncService.prChanges.listen((String projectId) {
+      _sseManager.enqueueEvent(SesoriSseEvent.sessionsUpdated(projectID: projectId));
+    });
 
     try {
       Log.d("[dbg] connecting to relay...");
@@ -238,6 +276,8 @@ class OrchestratorSession {
       Log.d("[dbg] cancelling event subscription...");
       await _eventSubscription?.cancel();
       Log.d("[dbg] event subscription cancelled");
+      await prChangesSubscription.cancel();
+      _prSyncService.dispose();
       Log.d("[dbg] disposing plugin...");
       await _plugin.dispose();
       Log.d("[dbg] plugin disposed");
@@ -261,10 +301,6 @@ class OrchestratorSession {
   Future<void> cancel() async {
     _cancelled = true;
     await _client.close();
-  }
-
-  void emitBridgeEvent(SesoriSseEvent event) {
-    _sseManager.enqueueEvent(event);
   }
 
   Future<void> _refreshAccessToken() async {

@@ -5,6 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../persistence/dao_interfaces.dart";
 import "../persistence/daos/pull_request_dao.dart";
+import "../pr/pr_sync_service.dart";
 import "plugin_session_mapper.dart";
 import "pr_enum_helpers.dart";
 import "request_handler.dart";
@@ -16,16 +17,16 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
   final BridgePlugin _plugin;
   final SessionDaoLike _sessionDao;
   final PullRequestDao _prDao;
-  final Future<void> Function({required String projectId, required String projectPath})? _onSessionListRequested;
+  final PrSyncService _prSyncService;
 
   GetSessionsHandler(
     this._plugin,
     SessionDaoLike sessionDao,
     PullRequestDao prDao, {
-    Future<void> Function({required String projectId, required String projectPath})? onSessionListRequested,
+    required PrSyncService prSyncService,
   }) : _sessionDao = sessionDao,
        _prDao = prDao,
-       _onSessionListRequested = onSessionListRequested,
+       _prSyncService = prSyncService,
        super(
          HttpMethod.post,
          "/sessions",
@@ -105,10 +106,29 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
     }).toList();
 
     final response = SessionListResponse(items: mergedSessionsWithPr);
-    final callback = _onSessionListRequested;
-    if (callback != null) {
-      unawaited(callback(projectId: projectId, projectPath: projectId));
-    }
+
+    unawaited(_triggerPrRefresh(projectId: projectId, pluginSessions: pluginSessions));
     return response;
+  }
+
+  Future<void> _triggerPrRefresh({
+    required String projectId,
+    required List<PluginSession> pluginSessions,
+  }) async {
+    try {
+      final project = await _plugin.getProject(projectId);
+      if (project.id.isNotEmpty) {
+        unawaited(_prSyncService.triggerRefresh(projectId: projectId, projectPath: project.id));
+        return;
+      }
+    } catch (_) {
+      // Project lookup failed — fallback to first session directory.
+    }
+
+    final fallbackDirectory = pluginSessions.firstOrNull?.directory;
+    if (fallbackDirectory == null || fallbackDirectory.isEmpty) {
+      return;
+    }
+    unawaited(_prSyncService.triggerRefresh(projectId: projectId, projectPath: fallbackDirectory));
   }
 }

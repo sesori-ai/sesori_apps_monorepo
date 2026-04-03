@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:io";
 
 import "package:sesori_bridge/src/bridge/persistence/dao_interfaces.dart";
 import "package:sesori_bridge/src/bridge/persistence/daos/pull_request_dao.dart";
@@ -13,7 +14,7 @@ import "../../helpers/test_database.dart";
 
 void main() {
   group("PrSyncService", () {
-    test("calls callback when new matched PR is found", () async {
+    test("emits project id when a new matched PR is found", () async {
       final gh = _FakeGhCliService(
         listOpenPrsResult: const <GhPullRequest>[
           GhPullRequest(
@@ -36,35 +37,38 @@ void main() {
           ],
         },
       );
-      var callbackCount = 0;
-
       final service = PrSyncService(
         ghCli: gh,
         prDao: prDao,
         sessionDao: sessionDao,
-        onPrDataChanged: (String _) => callbackCount++,
+        processRunner: _githubRemoteProcessRunner,
         debounceWindow: const Duration(milliseconds: 1),
       );
+      addTearDown(service.dispose);
 
-      service.triggerRefreshForProject(projectId: "project-1", projectPath: "/tmp/project-1");
+      final emittedProjectIds = <String>[];
+      final sub = service.prChanges.listen(emittedProjectIds.add);
+      addTearDown(sub.cancel);
+
+      await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
       await _waitFor(() => prDao.upsertCalls == 1);
 
       final prs = await prDao.getPrsByProjectId(projectId: "project-1");
       expect(prs, hasLength(1));
       expect(prs.single.prNumber, equals(11));
       expect(prs.single.branchName, equals("feature/new-pr"));
-      expect(callbackCount, equals(1));
+      expect(emittedProjectIds, equals(<String>["project-1"]));
     });
 
-    test("calls callback when PR metadata changes", () async {
+    test("does not emit when PR data is unchanged", () async {
       final gh = _FakeGhCliService(
         listOpenPrsResult: const <GhPullRequest>[
           GhPullRequest(
-            number: 11,
-            url: "https://github.com/org/repo/pull/11",
-            title: "Updated PR title",
+            number: 33,
+            url: "https://github.com/org/repo/pull/33",
+            title: "No changes",
             state: "OPEN",
-            headRefName: "feature/updated",
+            headRefName: "feature/no-change",
             mergeable: "MERGEABLE",
             reviewDecision: "APPROVED",
             statusCheckRollup: "SUCCESS",
@@ -75,12 +79,12 @@ void main() {
         seed: <PullRequestDto>[
           _prData(
             projectId: "project-1",
-            branchName: "feature/updated",
-            prNumber: 11,
-            title: "Old title",
+            branchName: "feature/no-change",
+            prNumber: 33,
+            title: "No changes",
             state: "OPEN",
             mergeableStatus: "MERGEABLE",
-            reviewDecision: "",
+            reviewDecision: "APPROVED",
             checkStatus: "SUCCESS",
           ),
         ],
@@ -88,29 +92,29 @@ void main() {
       final sessionDao = _FakeSessionDao(
         sessionsByProject: <String, List<SessionDto>>{
           "project-1": <SessionDto>[
-            _session(sessionId: "session-1", projectId: "project-1", branchName: "feature/updated"),
+            _session(sessionId: "session-1", projectId: "project-1", branchName: "feature/no-change"),
           ],
         },
       );
-      var callbackCount = 0;
-
       final service = PrSyncService(
         ghCli: gh,
         prDao: prDao,
         sessionDao: sessionDao,
-        onPrDataChanged: (String _) => callbackCount++,
+        processRunner: _githubRemoteProcessRunner,
       );
+      addTearDown(service.dispose);
 
-      service.triggerRefreshForProject(projectId: "project-1", projectPath: "/tmp/project-1");
+      final emittedProjectIds = <String>[];
+      final sub = service.prChanges.listen(emittedProjectIds.add);
+      addTearDown(sub.cancel);
+
+      await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
       await _waitFor(() => prDao.upsertCalls == 1);
 
-      final prs = await prDao.getPrsByProjectId(projectId: "project-1");
-      expect(prs.single.title, equals("Updated PR title"));
-      expect(prs.single.reviewDecision, equals("APPROVED"));
-      expect(callbackCount, equals(1));
+      expect(emittedProjectIds, isEmpty);
     });
 
-    test("calls callback when active PR disappears and final state is fetched", () async {
+    test("fetches final PR state for disappeared active PR", () async {
       final gh = _FakeGhCliService(
         listOpenPrsResult: const <GhPullRequest>[],
         prByNumber: <int, GhPullRequest>{
@@ -147,73 +151,41 @@ void main() {
           ],
         },
       );
-      var callbackCount = 0;
-
       final service = PrSyncService(
         ghCli: gh,
         prDao: prDao,
         sessionDao: sessionDao,
-        onPrDataChanged: (String _) => callbackCount++,
+        processRunner: _githubRemoteProcessRunner,
       );
+      addTearDown(service.dispose);
 
-      service.triggerRefreshForProject(projectId: "project-1", projectPath: "/tmp/project-1");
+      await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
       await _waitFor(() => prDao.upsertCalls == 1);
 
       final prs = await prDao.getPrsByProjectId(projectId: "project-1");
       expect(prs.single.state, equals("MERGED"));
       expect(gh.getPrByNumberCalls, contains(22));
-      expect(callbackCount, equals(1));
     });
 
-    test("does not call callback when no data changed", () async {
+    test("caches gh availability and skips refresh when unavailable", () async {
       final gh = _FakeGhCliService(
-        listOpenPrsResult: const <GhPullRequest>[
-          GhPullRequest(
-            number: 33,
-            url: "https://github.com/org/repo/pull/33",
-            title: "No changes",
-            state: "OPEN",
-            headRefName: "feature/no-change",
-            mergeable: "MERGEABLE",
-            reviewDecision: "APPROVED",
-            statusCheckRollup: "SUCCESS",
-          ),
-        ],
+        listOpenPrsResult: const <GhPullRequest>[],
+        isAvailableResult: false,
       );
-      final prDao = _FakePullRequestDao(
-        seed: <PullRequestDto>[
-          _prData(
-            projectId: "project-1",
-            branchName: "feature/no-change",
-            prNumber: 33,
-            title: "No changes",
-            state: "OPEN",
-            mergeableStatus: "MERGEABLE",
-            reviewDecision: "APPROVED",
-            checkStatus: "SUCCESS",
-          ),
-        ],
-      );
-      final sessionDao = _FakeSessionDao(
-        sessionsByProject: <String, List<SessionDto>>{
-          "project-1": <SessionDto>[
-            _session(sessionId: "session-1", projectId: "project-1", branchName: "feature/no-change"),
-          ],
-        },
-      );
-      var callbackCount = 0;
-
       final service = PrSyncService(
         ghCli: gh,
-        prDao: prDao,
-        sessionDao: sessionDao,
-        onPrDataChanged: (String _) => callbackCount++,
+        prDao: _FakePullRequestDao(),
+        sessionDao: _FakeSessionDao(sessionsByProject: const <String, List<SessionDto>>{}),
+        processRunner: _unusedProcessRunner,
       );
+      addTearDown(service.dispose);
 
-      service.triggerRefreshForProject(projectId: "project-1", projectPath: "/tmp/project-1");
-      await _waitFor(() => prDao.upsertCalls == 1);
+      await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
+      await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
 
-      expect(callbackCount, equals(0));
+      expect(gh.isAvailableCallCount, equals(1));
+      expect(gh.isAuthenticatedCallCount, equals(0));
+      expect(gh.listOpenPrsCallCount, equals(0));
     });
 
     test("debounces repeated refreshes for same project", () async {
@@ -222,13 +194,14 @@ void main() {
         ghCli: gh,
         prDao: _FakePullRequestDao(),
         sessionDao: _FakeSessionDao(sessionsByProject: const <String, List<SessionDto>>{}),
-        onPrDataChanged: (String _) {},
+        processRunner: _githubRemoteProcessRunner,
         debounceWindow: const Duration(hours: 1),
       );
+      addTearDown(service.dispose);
 
-      service.triggerRefreshForProject(projectId: "project-1", projectPath: "/tmp/project-1");
+      await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
       await _waitFor(() => gh.listOpenPrsCallCount == 1);
-      service.triggerRefreshForProject(projectId: "project-1", projectPath: "/tmp/project-1");
+      await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
 
       await Future<void>.delayed(const Duration(milliseconds: 50));
       expect(gh.listOpenPrsCallCount, equals(1));
@@ -244,13 +217,14 @@ void main() {
         ghCli: gh,
         prDao: _FakePullRequestDao(),
         sessionDao: _FakeSessionDao(sessionsByProject: const <String, List<SessionDto>>{}),
-        onPrDataChanged: (String _) {},
+        processRunner: _githubRemoteProcessRunner,
         debounceWindow: Duration.zero,
       );
+      addTearDown(service.dispose);
 
-      service.triggerRefreshForProject(projectId: "project-1", projectPath: "/tmp/project-1");
+      await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
       await _waitFor(() => gh.listOpenPrsCallCount == 1);
-      service.triggerRefreshForProject(projectId: "project-1", projectPath: "/tmp/project-1");
+      await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
 
       await Future<void>.delayed(const Duration(milliseconds: 30));
       expect(gh.listOpenPrsCallCount, equals(1));
@@ -269,6 +243,22 @@ Future<void> _waitFor(bool Function() condition) async {
     }
     await Future<void>.delayed(const Duration(milliseconds: 10));
   }
+}
+
+Future<ProcessResult> _githubRemoteProcessRunner(
+  String executable,
+  List<String> arguments, {
+  String? workingDirectory,
+}) async {
+  return ProcessResult(1, 0, "https://github.com/org/repo.git", "");
+}
+
+Future<ProcessResult> _unusedProcessRunner(
+  String executable,
+  List<String> arguments, {
+  String? workingDirectory,
+}) {
+  throw StateError("process runner should not be called");
 }
 
 SessionDto _session({required String sessionId, required String projectId, required String branchName}) {
@@ -314,6 +304,10 @@ class _FakeGhCliService extends GhCliService {
   final List<GhPullRequest> listOpenPrsResult;
   final Map<int, GhPullRequest> prByNumber;
   final Future<void> Function()? onListOpenPrs;
+  final bool isAvailableResult;
+
+  int isAvailableCallCount = 0;
+  int isAuthenticatedCallCount = 0;
   int listOpenPrsCallCount = 0;
   final List<int> getPrByNumberCalls = <int>[];
 
@@ -321,7 +315,20 @@ class _FakeGhCliService extends GhCliService {
     required this.listOpenPrsResult,
     this.prByNumber = const <int, GhPullRequest>{},
     this.onListOpenPrs,
+    this.isAvailableResult = true,
   }) : super();
+
+  @override
+  Future<bool> isAvailable() async {
+    isAvailableCallCount++;
+    return isAvailableResult;
+  }
+
+  @override
+  Future<bool> isAuthenticated() async {
+    isAuthenticatedCallCount++;
+    return true;
+  }
 
   @override
   Future<List<GhPullRequest>> listOpenPrs({required String workingDirectory}) async {

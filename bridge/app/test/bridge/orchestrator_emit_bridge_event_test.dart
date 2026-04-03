@@ -1,5 +1,6 @@
 import "dart:async";
 import "dart:convert";
+import "dart:io";
 import "dart:typed_data";
 
 import "package:cryptography/cryptography.dart";
@@ -8,6 +9,14 @@ import "package:sesori_bridge/src/bridge/metadata_service.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/models/session_metadata.dart";
 import "package:sesori_bridge/src/bridge/orchestrator.dart";
+import "package:sesori_bridge/src/bridge/persistence/dao_interfaces.dart";
+import "package:sesori_bridge/src/bridge/persistence/daos/pull_request_dao.dart";
+import "package:sesori_bridge/src/bridge/persistence/daos/session_dao.dart";
+import "package:sesori_bridge/src/bridge/persistence/tables/pull_requests_table.dart";
+import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
+import "package:sesori_bridge/src/bridge/pr/gh_cli_service.dart";
+import "package:sesori_bridge/src/bridge/pr/gh_pull_request.dart";
+import "package:sesori_bridge/src/bridge/pr/pr_sync_service.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
 import "package:sesori_bridge/src/push/push_notification_client.dart";
@@ -22,10 +31,11 @@ import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
 
 void main() {
-  test("emitBridgeEvent enqueues SSE event for subscribers", () async {
+  test("pr sync stream enqueues sessions.updated SSE event for subscribers", () async {
     final relayServer = await TestRelayServer.start();
     final database = createTestDatabase();
     final plugin = _NoopPlugin();
+    final fakePrSyncService = _FakePrSyncService();
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
       accessTokenProvider: FakeAccessTokenProvider(""),
@@ -46,6 +56,9 @@ void main() {
       tokenRefresher: _FakeTokenRefresher(),
       projectsDao: database.projectsDao,
       failureReporter: FakeFailureReporter(),
+      prSyncServiceFactory: ({required PullRequestDao pullRequestDao, required SessionDao sessionDao}) {
+        return fakePrSyncService;
+      },
     );
 
     final session = orchestrator.create();
@@ -79,13 +92,12 @@ void main() {
     bridgeSocket.add(_withConnID(connID: connID, payload: subscribeFrame));
     await Future<void>.delayed(const Duration(milliseconds: 100));
 
-    const expectedEvent = SesoriSseEvent.installationUpdateAvailable(version: "9.9.9");
-    session.emitBridgeEvent(expectedEvent);
+    fakePrSyncService.emitProjectChange(projectId: "project-123");
 
     final found = await _waitForEventType(
       messages: messages,
       roomKey: roomKey,
-      expectedType: "installation.update-available",
+      expectedType: "sessions.updated",
     );
     expect(found, isTrue);
 
@@ -308,4 +320,101 @@ class _FakeMetadataService implements MetadataService {
 class _FakeTokenRefresher implements TokenRefresher {
   @override
   Future<String> getAccessToken({bool forceRefresh = false}) async => "token";
+}
+
+class _FakePrSyncService extends PrSyncService {
+  final StreamController<String> _controller = StreamController<String>.broadcast();
+
+  _FakePrSyncService()
+    : super(
+        ghCli: _NoopGhCliService(),
+        prDao: _NoopPullRequestDao(),
+        sessionDao: _NoopSessionDao(),
+        processRunner: _unusedProcessRunner,
+      );
+
+  @override
+  Stream<String> get prChanges => _controller.stream;
+
+  void emitProjectChange({required String projectId}) {
+    _controller.add(projectId);
+  }
+
+  @override
+  Future<void> triggerRefresh({required String projectId, required String projectPath}) async {}
+
+  @override
+  void dispose() {
+    _controller.close();
+  }
+}
+
+class _NoopGhCliService extends GhCliService {
+  _NoopGhCliService() : super();
+
+  @override
+  Future<bool> isAvailable() async => false;
+
+  @override
+  Future<bool> isAuthenticated() async => false;
+
+  @override
+  Future<List<GhPullRequest>> listOpenPrs({required String workingDirectory}) async => const <GhPullRequest>[];
+}
+
+class _NoopSessionDao implements SessionDaoLike {
+  @override
+  Future<Map<String, SessionDto>> getSessionsByIds({required List<String> sessionIds}) async {
+    return const <String, SessionDto>{};
+  }
+
+  @override
+  Future<List<SessionDto>> getSessionsByProject({required String projectId}) async {
+    return const <SessionDto>[];
+  }
+}
+
+class _NoopPullRequestDao extends PullRequestDao {
+  _NoopPullRequestDao() : super(createTestDatabase());
+
+  @override
+  Future<void> upsertPr({
+    required String projectId,
+    required String branchName,
+    required int prNumber,
+    required String url,
+    required String title,
+    required String state,
+    required String mergeableStatus,
+    required String reviewDecision,
+    required String checkStatus,
+    required int lastCheckedAt,
+    required int createdAt,
+  }) async {}
+
+  @override
+  Future<List<PullRequestDto>> getPrsByProjectId({required String projectId}) async {
+    return const <PullRequestDto>[];
+  }
+
+  @override
+  Future<Map<String, PullRequestDto>> getPrsBySessionIds({required List<String> sessionIds}) async {
+    return const <String, PullRequestDto>{};
+  }
+
+  @override
+  Future<List<PullRequestDto>> getActivePrsByProjectId({required String projectId}) async {
+    return const <PullRequestDto>[];
+  }
+
+  @override
+  Future<void> deletePr({required String projectId, required int prNumber}) async {}
+}
+
+Future<ProcessResult> _unusedProcessRunner(
+  String executable,
+  List<String> arguments, {
+  String? workingDirectory,
+}) {
+  throw StateError("process runner should not be called");
 }

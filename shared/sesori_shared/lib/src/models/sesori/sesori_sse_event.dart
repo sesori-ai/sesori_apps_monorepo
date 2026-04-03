@@ -235,6 +235,9 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   @FreezedUnionValue("vcs.branch.updated")
   const factory SesoriSseEvent.vcsBranchUpdated() = SesoriVcsBranchUpdated;
 
+  /// Notifies phones that PR data changed for sessions in this project.
+  /// Unlike [sessionUpdated] (single session content change), this triggers
+  /// a full session list re-fetch to pick up updated PR metadata.
   @FreezedUnionValue("sessions.updated")
   const factory SesoriSseEvent.sessionsUpdated({
     required String projectID,
