@@ -2,20 +2,19 @@ import "dart:async";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
-import "../persistence/dao_interfaces.dart";
-import "../persistence/daos/pull_request_dao.dart";
-import "../persistence/tables/pull_requests_table.dart";
-import "../persistence/tables/session_table.dart";
-import "../worktree_service.dart";
-import "gh_cli_service.dart";
-import "gh_pull_request.dart";
-import "remote_detection.dart";
+import "../api/gh_cli_api.dart";
+import "../api/gh_pull_request.dart";
+import "../api/git_remote_api.dart";
+import "../repositories/models/pull_request_record.dart";
+import "../repositories/models/stored_session.dart";
+import "../repositories/pull_request_repository.dart";
+import "../repositories/session_repository.dart";
 
 class PrSyncService {
-  final GhCliService _ghCli;
-  final PullRequestDao _prDao;
-  final SessionDaoLike _sessionDao;
-  final ProcessRunner _processRunner;
+  final GhCliApi _ghCli;
+  final GitRemoteApi _gitRemoteApi;
+  final PullRequestRepositoryLike _pullRequestRepository;
+  final SessionRepositoryLike _sessionRepository;
   final Duration _debounceWindow;
   final StreamController<String> _prChangesController = StreamController<String>.broadcast();
 
@@ -26,15 +25,15 @@ class PrSyncService {
   final Set<String> _activeRefreshes = <String>{};
 
   PrSyncService({
-    required GhCliService ghCli,
-    required PullRequestDao prDao,
-    required SessionDaoLike sessionDao,
-    required ProcessRunner processRunner,
+    required GhCliApi ghCli,
+    required GitRemoteApi gitRemoteApi,
+    required PullRequestRepositoryLike pullRequestRepository,
+    required SessionRepositoryLike sessionRepository,
     Duration debounceWindow = const Duration(seconds: 30),
   }) : _ghCli = ghCli,
-       _prDao = prDao,
-       _sessionDao = sessionDao,
-       _processRunner = processRunner,
+       _gitRemoteApi = gitRemoteApi,
+       _pullRequestRepository = pullRequestRepository,
+       _sessionRepository = sessionRepository,
        _debounceWindow = debounceWindow;
 
   Stream<String> get prChanges => _prChangesController.stream;
@@ -51,8 +50,7 @@ class PrSyncService {
     }
 
     if (!_hasGitHubRemoteCache.containsKey(projectPath)) {
-      _hasGitHubRemoteCache[projectPath] = await hasGitHubRemote(
-        processRunner: _processRunner,
+      _hasGitHubRemoteCache[projectPath] = await _gitRemoteApi.hasGitHubRemote(
         projectPath: projectPath,
       );
     }
@@ -77,14 +75,14 @@ class PrSyncService {
 
   Future<void> _refresh({required String projectId, required String projectPath}) async {
     try {
-      final (openPrs, sessions, activePrs) = await (
+      final (openPrs, storedSessions, activePrs) = await (
         _ghCli.listOpenPrs(workingDirectory: projectPath),
-        _sessionDao.getSessionsByProject(projectId: projectId),
-        _prDao.getActivePrsByProjectId(projectId: projectId),
+        _sessionRepository.getStoredSessionsByProjectId(projectId: projectId),
+        _pullRequestRepository.getActivePullRequestsByProjectId(projectId: projectId),
       ).wait;
 
-      final sessionsByBranch = _indexSessionsByBranch(sessions: sessions);
-      final activeByBranch = <String, PullRequestDto>{
+      final sessionsByBranch = _indexSessionsByBranch(sessions: storedSessions);
+      final activeByBranch = <String, PullRequestRecord>{
         for (final activePr in activePrs) activePr.branchName: activePr,
       };
 
@@ -103,24 +101,26 @@ class PrSyncService {
           hasChanges = true;
         }
 
-        await _prDao.upsertPr(
-          projectId: projectId,
-          branchName: pr.headRefName,
-          prNumber: pr.number,
-          url: pr.url,
-          title: pr.title,
-          state: pr.state,
-          mergeableStatus: pr.mergeable ?? "",
-          reviewDecision: pr.reviewDecision ?? "",
-          checkStatus: pr.statusCheckRollup ?? "",
-          lastCheckedAt: nowEpochMs,
-          createdAt: createdAt,
+        await _pullRequestRepository.upsertPullRequest(
+          record: PullRequestRecord(
+            projectId: projectId,
+            branchName: pr.headRefName,
+            prNumber: pr.number,
+            url: pr.url,
+            title: pr.title,
+            state: pr.state,
+            mergeableStatus: pr.mergeable ?? "",
+            reviewDecision: pr.reviewDecision ?? "",
+            checkStatus: pr.statusCheckRollup ?? "",
+            lastCheckedAt: nowEpochMs,
+            createdAt: createdAt,
+          ),
         );
       }
 
       final openPrNumbers = openPrs.map((GhPullRequest pr) => pr.number).toSet();
       final disappearedActivePrs = activePrs
-          .where((PullRequestDto activePr) => !openPrNumbers.contains(activePr.prNumber))
+          .where((PullRequestRecord activePr) => !openPrNumbers.contains(activePr.prNumber))
           .toList(growable: false);
 
       for (final disappeared in disappearedActivePrs) {
@@ -134,18 +134,20 @@ class PrSyncService {
             hasChanges = true;
           }
 
-          await _prDao.upsertPr(
-            projectId: projectId,
-            branchName: finalPr.headRefName,
-            prNumber: finalPr.number,
-            url: finalPr.url,
-            title: finalPr.title,
-            state: finalPr.state,
-            mergeableStatus: finalPr.mergeable ?? "",
-            reviewDecision: finalPr.reviewDecision ?? "",
-            checkStatus: finalPr.statusCheckRollup ?? "",
-            lastCheckedAt: nowEpochMs,
-            createdAt: disappeared.createdAt,
+          await _pullRequestRepository.upsertPullRequest(
+            record: PullRequestRecord(
+              projectId: projectId,
+              branchName: finalPr.headRefName,
+              prNumber: finalPr.number,
+              url: finalPr.url,
+              title: finalPr.title,
+              state: finalPr.state,
+              mergeableStatus: finalPr.mergeable ?? "",
+              reviewDecision: finalPr.reviewDecision ?? "",
+              checkStatus: finalPr.statusCheckRollup ?? "",
+              lastCheckedAt: nowEpochMs,
+              createdAt: disappeared.createdAt,
+            ),
           );
         } catch (e) {
           Log.w("[PrSync] failed to fetch PR #${disappeared.prNumber}: $e");
@@ -167,8 +169,8 @@ class PrSyncService {
     _prChangesController.close();
   }
 
-  Map<String, SessionDto> _indexSessionsByBranch({required List<SessionDto> sessions}) {
-    final result = <String, SessionDto>{};
+  Map<String, StoredSession> _indexSessionsByBranch({required List<StoredSession> sessions}) {
+    final result = <String, StoredSession>{};
     for (final session in sessions) {
       final branchName = session.branchName;
       if (branchName == null || branchName.isEmpty) {
@@ -180,7 +182,7 @@ class PrSyncService {
   }
 
   bool _isMeaningfullyDifferent({
-    required PullRequestDto? existing,
+    required PullRequestRecord? existing,
     required GhPullRequest pr,
   }) {
     if (existing == null) {
