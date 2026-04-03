@@ -4,7 +4,7 @@ import "dart:io";
 import "package:path/path.dart" as p;
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../worktree_service.dart" show ProcessRunner;
+import "../foundation/process_runner.dart";
 
 /// Maximum file size to read (200 KB). Larger files are treated as too-large.
 const maxFileContentBytes = 200 * 1024;

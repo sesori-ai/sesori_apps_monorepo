@@ -3,19 +3,13 @@ import "dart:math";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "foundation/process_runner.dart";
 import "persistence/daos/projects_dao.dart";
 import "persistence/daos/session_dao.dart";
 import "persistence/tables/session_table.dart";
 
 part "worktree_types.dart";
 part "worktree_git_queries.dart";
-
-typedef ProcessRunner =
-    Future<ProcessResult> Function(
-      String executable,
-      List<String> arguments, {
-      String? workingDirectory,
-    });
 
 typedef GitPathExistsChecker = bool Function({required String gitPath});
 

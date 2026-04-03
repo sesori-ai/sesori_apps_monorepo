@@ -2,10 +2,10 @@ import "dart:io";
 
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../foundation/process_runner.dart";
 import "../persistence/daos/session_dao.dart";
 import "../session_diffs/compute_session_diffs.dart";
 import "../session_diffs/exceptions.dart";
-import "../worktree_service.dart" show ProcessRunner;
 import "request_handler.dart";
 
 /// Returns file diffs for a session's worktree via bridge-side `git diff`.
