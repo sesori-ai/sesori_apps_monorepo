@@ -2,6 +2,7 @@ import "dart:convert";
 import "dart:io";
 
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/persistence/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/pr/gh_cli_service.dart";
 import "package:sesori_bridge/src/bridge/pr/pr_refresh_coordinator.dart";
 import "package:sesori_bridge/src/bridge/pr/pr_sync_service.dart";
@@ -229,17 +230,16 @@ void main() {
       final fakePrDao = FakePullRequestDao();
       fakePrDao.setPr(
         sessionId: "s1",
-        pullRequest: const PullRequestsTableData(
+        pullRequest: const PullRequestDto(
           projectId: "/tmp/project",
-          branchName: "feature/test",
           prNumber: 101,
+          branchName: "feature/test",
           url: "https://github.com/org/repo/pull/101",
           title: "Integration PR",
           state: "OPEN",
-          mergeableStatus: null,
-          reviewDecision: null,
-          checkStatus: null,
-          sessionId: "s1",
+          mergeableStatus: "",
+          reviewDecision: "",
+          checkStatus: "",
           lastCheckedAt: 1,
           createdAt: 1,
         ),

@@ -1,12 +1,15 @@
 import "dart:async";
 
-import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/persistence/dao_interfaces.dart";
+import "package:sesori_bridge/src/bridge/persistence/daos/pull_request_dao.dart";
+import "package:sesori_bridge/src/bridge/persistence/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/pr/gh_cli_service.dart";
 import "package:sesori_bridge/src/bridge/pr/gh_pull_request.dart";
 import "package:sesori_bridge/src/bridge/pr/pr_sync_service.dart";
 import "package:test/test.dart";
+
+import "../../helpers/test_database.dart";
 
 void main() {
   group("PrSyncService", () {
@@ -49,7 +52,7 @@ void main() {
       final prs = await prDao.getPrsByProjectId(projectId: "project-1");
       expect(prs, hasLength(1));
       expect(prs.single.prNumber, equals(11));
-      expect(prs.single.sessionId, equals("session-1"));
+      expect(prs.single.branchName, equals("feature/new-pr"));
       expect(callbackCount, equals(1));
     });
 
@@ -69,16 +72,15 @@ void main() {
         ],
       );
       final prDao = _FakePullRequestDao(
-        seed: <PullRequestsTableData>[
+        seed: <PullRequestDto>[
           _prData(
             projectId: "project-1",
             branchName: "feature/updated",
             prNumber: 11,
             title: "Old title",
             state: "OPEN",
-            sessionId: "session-1",
             mergeableStatus: "MERGEABLE",
-            reviewDecision: null,
+            reviewDecision: "",
             checkStatus: "SUCCESS",
           ),
         ],
@@ -125,16 +127,15 @@ void main() {
         },
       );
       final prDao = _FakePullRequestDao(
-        seed: <PullRequestsTableData>[
+        seed: <PullRequestDto>[
           _prData(
             projectId: "project-1",
             branchName: "feature/merged",
             prNumber: 22,
             title: "Merged PR",
             state: "OPEN",
-            sessionId: "session-1",
             mergeableStatus: "MERGEABLE",
-            reviewDecision: null,
+            reviewDecision: "",
             checkStatus: "PENDING",
           ),
         ],
@@ -180,14 +181,13 @@ void main() {
         ],
       );
       final prDao = _FakePullRequestDao(
-        seed: <PullRequestsTableData>[
+        seed: <PullRequestDto>[
           _prData(
             projectId: "project-1",
             branchName: "feature/no-change",
             prNumber: 33,
             title: "No changes",
             state: "OPEN",
-            sessionId: "session-1",
             mergeableStatus: "MERGEABLE",
             reviewDecision: "APPROVED",
             checkStatus: "SUCCESS",
@@ -285,28 +285,26 @@ SessionDto _session({required String sessionId, required String projectId, requi
   );
 }
 
-PullRequestsTableData _prData({
+PullRequestDto _prData({
   required String projectId,
   required String branchName,
   required int prNumber,
   required String title,
   required String state,
-  required String? sessionId,
-  required String? mergeableStatus,
-  required String? reviewDecision,
-  required String? checkStatus,
+  required String mergeableStatus,
+  required String reviewDecision,
+  required String checkStatus,
 }) {
-  return PullRequestsTableData(
+  return PullRequestDto(
     projectId: projectId,
-    branchName: branchName,
     prNumber: prNumber,
+    branchName: branchName,
     url: "https://github.com/org/repo/pull/$prNumber",
     title: title,
     state: state,
     mergeableStatus: mergeableStatus,
     reviewDecision: reviewDecision,
     checkStatus: checkStatus,
-    sessionId: sessionId,
     lastCheckedAt: 1,
     createdAt: 1,
   );
@@ -369,13 +367,13 @@ class _FakeSessionDao implements SessionDaoLike {
   }
 }
 
-class _FakePullRequestDao implements PullRequestDaoLike {
-  final Map<String, PullRequestsTableData> _byCompositeKey = <String, PullRequestsTableData>{};
+class _FakePullRequestDao extends PullRequestDao {
+  final Map<String, PullRequestDto> _byPrimaryKey = <String, PullRequestDto>{};
   int upsertCalls = 0;
 
-  _FakePullRequestDao({List<PullRequestsTableData> seed = const <PullRequestsTableData>[]}) {
+  _FakePullRequestDao({List<PullRequestDto> seed = const <PullRequestDto>[]}) : super(createTestDatabase()) {
     for (final pr in seed) {
-      _byCompositeKey[_key(projectId: pr.projectId, branchName: pr.branchName)] = pr;
+      _byPrimaryKey[_key(projectId: pr.projectId, prNumber: pr.prNumber)] = pr;
     }
   }
 
@@ -387,56 +385,51 @@ class _FakePullRequestDao implements PullRequestDaoLike {
     required String url,
     required String title,
     required String state,
-    required String? mergeableStatus,
-    required String? reviewDecision,
-    required String? checkStatus,
-    required String? sessionId,
+    required String mergeableStatus,
+    required String reviewDecision,
+    required String checkStatus,
     required int lastCheckedAt,
     required int createdAt,
   }) async {
     upsertCalls++;
-    _byCompositeKey[_key(projectId: projectId, branchName: branchName)] = PullRequestsTableData(
+    _byPrimaryKey[_key(projectId: projectId, prNumber: prNumber)] = PullRequestDto(
       projectId: projectId,
-      branchName: branchName,
       prNumber: prNumber,
+      branchName: branchName,
       url: url,
       title: title,
       state: state,
       mergeableStatus: mergeableStatus,
       reviewDecision: reviewDecision,
       checkStatus: checkStatus,
-      sessionId: sessionId,
       lastCheckedAt: lastCheckedAt,
       createdAt: createdAt,
     );
   }
 
   @override
-  Future<List<PullRequestsTableData>> getPrsByProjectId({required String projectId}) async {
-    return _byCompositeKey.values.where((PullRequestsTableData pr) => pr.projectId == projectId).toList();
+  Future<List<PullRequestDto>> getPrsByProjectId({required String projectId}) async {
+    return _byPrimaryKey.values.where((PullRequestDto pr) => pr.projectId == projectId).toList();
   }
 
   @override
-  Future<Map<String, PullRequestsTableData>> getPrsBySessionIds({required List<String> sessionIds}) async {
-    return <String, PullRequestsTableData>{
-      for (final pr in _byCompositeKey.values)
-        if (pr.sessionId != null && sessionIds.contains(pr.sessionId)) pr.sessionId!: pr,
-    };
+  Future<Map<String, PullRequestDto>> getPrsBySessionIds({required List<String> sessionIds}) async {
+    return const <String, PullRequestDto>{};
   }
 
   @override
-  Future<List<PullRequestsTableData>> getActivePrsByProjectId({required String projectId}) async {
-    return _byCompositeKey.values
-        .where((PullRequestsTableData pr) => pr.projectId == projectId && pr.state.toUpperCase() == "OPEN")
+  Future<List<PullRequestDto>> getActivePrsByProjectId({required String projectId}) async {
+    return _byPrimaryKey.values
+        .where((PullRequestDto pr) => pr.projectId == projectId && pr.state.toUpperCase() == "OPEN")
         .toList();
   }
 
   @override
-  Future<void> deletePr({required String projectId, required String branchName}) async {
-    _byCompositeKey.remove(_key(projectId: projectId, branchName: branchName));
+  Future<void> deletePr({required String projectId, required int prNumber}) async {
+    _byPrimaryKey.remove(_key(projectId: projectId, prNumber: prNumber));
   }
 
-  String _key({required String projectId, required String branchName}) {
-    return "$projectId::$branchName";
+  String _key({required String projectId, required int prNumber}) {
+    return "$projectId::$prNumber";
   }
 }

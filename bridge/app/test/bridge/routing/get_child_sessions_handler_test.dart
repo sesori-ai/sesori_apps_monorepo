@@ -1,4 +1,4 @@
-import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/persistence/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/routing/get_child_sessions_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -127,17 +127,16 @@ void main() {
 
       prDao.setPr(
         sessionId: "child-1",
-        pullRequest: const PullRequestsTableData(
+        pullRequest: const PullRequestDto(
           projectId: "project-1",
-          branchName: "feature/child",
           prNumber: 99,
+          branchName: "feature/child",
           url: "https://github.com/org/repo/pull/99",
           title: "Child PR",
           state: "OPEN",
           mergeableStatus: "MERGEABLE",
-          reviewDecision: null,
+          reviewDecision: "",
           checkStatus: "SUCCESS",
-          sessionId: "child-1",
           lastCheckedAt: 1,
           createdAt: 1,
         ),

@@ -1,4 +1,4 @@
-import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/persistence/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/routing/get_sessions_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -398,17 +398,16 @@ void main() {
 
       prDao.setPr(
         sessionId: "s1",
-        pullRequest: const PullRequestsTableData(
+        pullRequest: const PullRequestDto(
           projectId: "p1",
-          branchName: "feature/one",
           prNumber: 42,
+          branchName: "feature/one",
           url: "https://github.com/org/repo/pull/42",
           title: "Add PR merge support",
           state: "OPEN",
           mergeableStatus: "MERGEABLE",
           reviewDecision: "APPROVED",
           checkStatus: "SUCCESS",
-          sessionId: "s1",
           lastCheckedAt: 1,
           createdAt: 1,
         ),
@@ -480,17 +479,16 @@ void main() {
 
       prDao.setPr(
         sessionId: "s1",
-        pullRequest: const PullRequestsTableData(
+        pullRequest: const PullRequestDto(
           projectId: "p1",
-          branchName: "feature/one",
           prNumber: 7,
+          branchName: "feature/one",
           url: "https://github.com/org/repo/pull/7",
           title: "PR for one session",
           state: "OPEN",
-          mergeableStatus: null,
-          reviewDecision: null,
-          checkStatus: null,
-          sessionId: "s1",
+          mergeableStatus: "",
+          reviewDecision: "",
+          checkStatus: "",
           lastCheckedAt: 1,
           createdAt: 1,
         ),

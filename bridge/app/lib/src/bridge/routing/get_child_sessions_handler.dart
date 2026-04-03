@@ -1,7 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../persistence/dao_interfaces.dart";
+import "../persistence/daos/pull_request_dao.dart";
 import "plugin_session_mapper.dart";
 import "pr_enum_helpers.dart";
 import "request_handler.dart";
@@ -9,7 +9,7 @@ import "request_handler.dart";
 /// Handles `GET /session/:id/children` — returns direct child sessions.
 class GetChildSessionsHandler extends BodyRequestHandler<SessionIdRequest, SessionListResponse> {
   final BridgePlugin _plugin;
-  final PullRequestDaoLike _prDao;
+  final PullRequestDao _prDao;
 
   GetChildSessionsHandler(this._plugin, this._prDao)
     : super(

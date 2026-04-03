@@ -1,6 +1,5 @@
 import "package:drift/drift.dart";
 
-import "../dao_interfaces.dart";
 import "../database.dart";
 import "../tables/pull_requests_table.dart";
 import "../tables/session_table.dart";
@@ -8,10 +7,9 @@ import "../tables/session_table.dart";
 part "pull_request_dao.g.dart";
 
 @DriftAccessor(tables: [PullRequestsTable, SessionTable])
-class PullRequestDao extends DatabaseAccessor<AppDatabase> with _$PullRequestDaoMixin implements PullRequestDaoLike {
+class PullRequestDao extends DatabaseAccessor<AppDatabase> with _$PullRequestDaoMixin {
   PullRequestDao(super.attachedDatabase);
 
-  @override
   Future<void> upsertPr({
     required String projectId,
     required String branchName,
@@ -19,56 +17,90 @@ class PullRequestDao extends DatabaseAccessor<AppDatabase> with _$PullRequestDao
     required String url,
     required String title,
     required String state,
-    required String? mergeableStatus,
-    required String? reviewDecision,
-    required String? checkStatus,
-    required String? sessionId,
+    required String mergeableStatus,
+    required String reviewDecision,
+    required String checkStatus,
     required int lastCheckedAt,
     required int createdAt,
   }) async {
     await into(pullRequestsTable).insertOnConflictUpdate(
-      PullRequestsTableCompanion(
-        projectId: Value(projectId),
-        branchName: Value(branchName),
-        prNumber: Value(prNumber),
-        url: Value(url),
-        title: Value(title),
-        state: Value(state),
-        mergeableStatus: Value(mergeableStatus),
-        reviewDecision: Value(reviewDecision),
-        checkStatus: Value(checkStatus),
-        sessionId: Value(sessionId),
-        lastCheckedAt: Value(lastCheckedAt),
-        createdAt: Value(createdAt),
+      PullRequestDto(
+        projectId: projectId,
+        prNumber: prNumber,
+        branchName: branchName,
+        url: url,
+        title: title,
+        state: state,
+        mergeableStatus: mergeableStatus,
+        reviewDecision: reviewDecision,
+        checkStatus: checkStatus,
+        lastCheckedAt: lastCheckedAt,
+        createdAt: createdAt,
       ),
     );
   }
 
-  @override
-  Future<List<PullRequestsTableData>> getPrsByProjectId({
+  Future<List<PullRequestDto>> getPrsByProjectId({
     required String projectId,
   }) async {
     return (select(pullRequestsTable)..where((t) => t.projectId.equals(projectId))).get();
   }
 
-  @override
-  Future<Map<String, PullRequestsTableData>> getPrsBySessionIds({
+  Future<Map<String, PullRequestDto>> getPrsBySessionIds({
     required List<String> sessionIds,
   }) async {
     if (sessionIds.isEmpty) {
-      return <String, PullRequestsTableData>{};
+      return <String, PullRequestDto>{};
     }
 
-    final prs = await (select(pullRequestsTable)..where((t) => t.sessionId.isIn(sessionIds))).get();
+    final query = select(pullRequestsTable).join([
+      innerJoin(
+        sessionTable,
+        pullRequestsTable.projectId.equalsExp(sessionTable.projectId) &
+            pullRequestsTable.branchName.equalsExp(sessionTable.branchName),
+      ),
+    ])..where(sessionTable.sessionId.isIn(sessionIds));
 
-    return <String, PullRequestsTableData>{
-      for (final pr in prs)
-        if (pr.sessionId != null) pr.sessionId!: pr,
-    };
+    final joinedRows = await query.get();
+    final groupedBySessionId = <String, List<PullRequestDto>>{};
+
+    for (final row in joinedRows) {
+      final session = row.readTable(sessionTable);
+      final pr = row.readTable(pullRequestsTable);
+      groupedBySessionId.putIfAbsent(session.sessionId, () => <PullRequestDto>[]).add(pr);
+    }
+
+    final result = <String, PullRequestDto>{};
+    groupedBySessionId.forEach((String sessionId, List<PullRequestDto> prs) {
+      PullRequestDto? selected;
+      for (final pr in prs) {
+        if (selected == null) {
+          selected = pr;
+          continue;
+        }
+
+        final selectedIsOpen = selected.state.toUpperCase() == "OPEN";
+        final currentIsOpen = pr.state.toUpperCase() == "OPEN";
+
+        if (currentIsOpen && !selectedIsOpen) {
+          selected = pr;
+          continue;
+        }
+
+        if (currentIsOpen == selectedIsOpen && pr.prNumber > selected.prNumber) {
+          selected = pr;
+        }
+      }
+
+      if (selected != null) {
+        result[sessionId] = selected;
+      }
+    });
+
+    return result;
   }
 
-  @override
-  Future<List<PullRequestsTableData>> getActivePrsByProjectId({
+  Future<List<PullRequestDto>> getActivePrsByProjectId({
     required String projectId,
   }) async {
     return (select(
@@ -76,13 +108,12 @@ class PullRequestDao extends DatabaseAccessor<AppDatabase> with _$PullRequestDao
     )..where((t) => t.projectId.equals(projectId) & t.state.collate(Collate.noCase).equals("OPEN"))).get();
   }
 
-  @override
   Future<void> deletePr({
     required String projectId,
-    required String branchName,
+    required int prNumber,
   }) async {
     await (delete(
       pullRequestsTable,
-    )..where((t) => t.projectId.equals(projectId) & t.branchName.equals(branchName))).go();
+    )..where((t) => t.projectId.equals(projectId) & t.prNumber.equals(prNumber))).go();
   }
 }

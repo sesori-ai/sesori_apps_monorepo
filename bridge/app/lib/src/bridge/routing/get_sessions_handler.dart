@@ -4,6 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../persistence/dao_interfaces.dart";
+import "../persistence/daos/pull_request_dao.dart";
 import "plugin_session_mapper.dart";
 import "pr_enum_helpers.dart";
 import "request_handler.dart";
@@ -14,13 +15,13 @@ import "request_handler.dart";
 class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionListResponse> {
   final BridgePlugin _plugin;
   final SessionDaoLike _sessionDao;
-  final PullRequestDaoLike _prDao;
+  final PullRequestDao _prDao;
   final Future<void> Function({required String projectId, required String projectPath})? _onSessionListRequested;
 
   GetSessionsHandler(
     this._plugin,
     SessionDaoLike sessionDao,
-    PullRequestDaoLike prDao, {
+    PullRequestDao prDao, {
     Future<void> Function({required String projectId, required String projectPath})? onSessionListRequested,
   }) : _sessionDao = sessionDao,
        _prDao = prDao,

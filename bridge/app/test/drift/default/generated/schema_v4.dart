@@ -785,38 +785,28 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
 
 mixin PullRequestsTableToColumns implements Insertable<PullRequestsTableData> {
   String get projectId;
-  String get branchName;
   int get prNumber;
+  String get branchName;
   String get url;
   String get title;
   String get state;
-  String? get mergeableStatus;
-  String? get reviewDecision;
-  String? get checkStatus;
-  String? get sessionId;
+  String get mergeableStatus;
+  String get reviewDecision;
+  String get checkStatus;
   int get lastCheckedAt;
   int get createdAt;
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['project_id'] = Variable<String>(projectId);
-    map['branch_name'] = Variable<String>(branchName);
     map['pr_number'] = Variable<int>(prNumber);
+    map['branch_name'] = Variable<String>(branchName);
     map['url'] = Variable<String>(url);
     map['title'] = Variable<String>(title);
     map['state'] = Variable<String>(state);
-    if (!nullToAbsent || mergeableStatus != null) {
-      map['mergeable_status'] = Variable<String>(mergeableStatus);
-    }
-    if (!nullToAbsent || reviewDecision != null) {
-      map['review_decision'] = Variable<String>(reviewDecision);
-    }
-    if (!nullToAbsent || checkStatus != null) {
-      map['check_status'] = Variable<String>(checkStatus);
-    }
-    if (!nullToAbsent || sessionId != null) {
-      map['session_id'] = Variable<String>(sessionId);
-    }
+    map['mergeable_status'] = Variable<String>(mergeableStatus);
+    map['review_decision'] = Variable<String>(reviewDecision);
+    map['check_status'] = Variable<String>(checkStatus);
     map['last_checked_at'] = Variable<int>(lastCheckedAt);
     map['created_at'] = Variable<int>(createdAt);
     return map;
@@ -835,6 +825,15 @@ class PullRequestsTable extends Table
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
+    $customConstraints:
+        'NOT NULL REFERENCES projects_table(project_id)ON DELETE CASCADE',
+  );
+  late final GeneratedColumn<int> prNumber = GeneratedColumn<int>(
+    'pr_number',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
     $customConstraints: 'NOT NULL',
   );
   late final GeneratedColumn<String> branchName = GeneratedColumn<String>(
@@ -842,14 +841,6 @@ class PullRequestsTable extends Table
     aliasedName,
     false,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
-    $customConstraints: 'NOT NULL',
-  );
-  late final GeneratedColumn<int> prNumber = GeneratedColumn<int>(
-    'pr_number',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
     requiredDuringInsert: true,
     $customConstraints: 'NOT NULL',
   );
@@ -880,34 +871,26 @@ class PullRequestsTable extends Table
   late final GeneratedColumn<String> mergeableStatus = GeneratedColumn<String>(
     'mergeable_status',
     aliasedName,
-    true,
+    false,
     type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    $customConstraints: 'NULL',
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
   );
   late final GeneratedColumn<String> reviewDecision = GeneratedColumn<String>(
     'review_decision',
     aliasedName,
-    true,
+    false,
     type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    $customConstraints: 'NULL',
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
   );
   late final GeneratedColumn<String> checkStatus = GeneratedColumn<String>(
     'check_status',
     aliasedName,
-    true,
+    false,
     type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    $customConstraints: 'NULL',
-  );
-  late final GeneratedColumn<String> sessionId = GeneratedColumn<String>(
-    'session_id',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    $customConstraints: 'NULL REFERENCES sessions_table(session_id)',
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
   );
   late final GeneratedColumn<int> lastCheckedAt = GeneratedColumn<int>(
     'last_checked_at',
@@ -928,15 +911,14 @@ class PullRequestsTable extends Table
   @override
   List<GeneratedColumn> get $columns => [
     projectId,
-    branchName,
     prNumber,
+    branchName,
     url,
     title,
     state,
     mergeableStatus,
     reviewDecision,
     checkStatus,
-    sessionId,
     lastCheckedAt,
     createdAt,
   ];
@@ -946,7 +928,7 @@ class PullRequestsTable extends Table
   String get actualTableName => $name;
   static const String $name = 'pull_requests_table';
   @override
-  Set<GeneratedColumn> get $primaryKey => {projectId, branchName};
+  Set<GeneratedColumn> get $primaryKey => {projectId, prNumber};
   @override
   PullRequestsTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
@@ -955,13 +937,13 @@ class PullRequestsTable extends Table
         DriftSqlType.string,
         data['${effectivePrefix}project_id'],
       )!,
-      branchName: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}branch_name'],
-      )!,
       prNumber: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}pr_number'],
+      )!,
+      branchName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_name'],
       )!,
       url: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -978,19 +960,15 @@ class PullRequestsTable extends Table
       mergeableStatus: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}mergeable_status'],
-      ),
+      )!,
       reviewDecision: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}review_decision'],
-      ),
+      )!,
       checkStatus: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}check_status'],
-      ),
-      sessionId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}session_id'],
-      ),
+      )!,
       lastCheckedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}last_checked_at'],
@@ -1011,7 +989,7 @@ class PullRequestsTable extends Table
   bool get withoutRowId => true;
   @override
   List<String> get customConstraints => const [
-    'PRIMARY KEY(project_id, branch_name)',
+    'PRIMARY KEY(project_id, pr_number)',
   ];
   @override
   bool get dontWriteConstraints => true;
@@ -1021,9 +999,9 @@ class PullRequestsTableData extends DataClass with PullRequestsTableToColumns {
   @override
   final String projectId;
   @override
-  final String branchName;
-  @override
   final int prNumber;
+  @override
+  final String branchName;
   @override
   final String url;
   @override
@@ -1031,51 +1009,39 @@ class PullRequestsTableData extends DataClass with PullRequestsTableToColumns {
   @override
   final String state;
   @override
-  final String? mergeableStatus;
+  final String mergeableStatus;
   @override
-  final String? reviewDecision;
+  final String reviewDecision;
   @override
-  final String? checkStatus;
-  @override
-  final String? sessionId;
+  final String checkStatus;
   @override
   final int lastCheckedAt;
   @override
   final int createdAt;
   const PullRequestsTableData({
     required this.projectId,
-    required this.branchName,
     required this.prNumber,
+    required this.branchName,
     required this.url,
     required this.title,
     required this.state,
-    this.mergeableStatus,
-    this.reviewDecision,
-    this.checkStatus,
-    this.sessionId,
+    required this.mergeableStatus,
+    required this.reviewDecision,
+    required this.checkStatus,
     required this.lastCheckedAt,
     required this.createdAt,
   });
   PullRequestsTableCompanion toCompanion(bool nullToAbsent) {
     return PullRequestsTableCompanion(
       projectId: Value(projectId),
-      branchName: Value(branchName),
       prNumber: Value(prNumber),
+      branchName: Value(branchName),
       url: Value(url),
       title: Value(title),
       state: Value(state),
-      mergeableStatus: mergeableStatus == null && nullToAbsent
-          ? const Value.absent()
-          : Value(mergeableStatus),
-      reviewDecision: reviewDecision == null && nullToAbsent
-          ? const Value.absent()
-          : Value(reviewDecision),
-      checkStatus: checkStatus == null && nullToAbsent
-          ? const Value.absent()
-          : Value(checkStatus),
-      sessionId: sessionId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(sessionId),
+      mergeableStatus: Value(mergeableStatus),
+      reviewDecision: Value(reviewDecision),
+      checkStatus: Value(checkStatus),
       lastCheckedAt: Value(lastCheckedAt),
       createdAt: Value(createdAt),
     );
@@ -1088,15 +1054,14 @@ class PullRequestsTableData extends DataClass with PullRequestsTableToColumns {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return PullRequestsTableData(
       projectId: serializer.fromJson<String>(json['projectId']),
-      branchName: serializer.fromJson<String>(json['branchName']),
       prNumber: serializer.fromJson<int>(json['prNumber']),
+      branchName: serializer.fromJson<String>(json['branchName']),
       url: serializer.fromJson<String>(json['url']),
       title: serializer.fromJson<String>(json['title']),
       state: serializer.fromJson<String>(json['state']),
-      mergeableStatus: serializer.fromJson<String?>(json['mergeableStatus']),
-      reviewDecision: serializer.fromJson<String?>(json['reviewDecision']),
-      checkStatus: serializer.fromJson<String?>(json['checkStatus']),
-      sessionId: serializer.fromJson<String?>(json['sessionId']),
+      mergeableStatus: serializer.fromJson<String>(json['mergeableStatus']),
+      reviewDecision: serializer.fromJson<String>(json['reviewDecision']),
+      checkStatus: serializer.fromJson<String>(json['checkStatus']),
       lastCheckedAt: serializer.fromJson<int>(json['lastCheckedAt']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
     );
@@ -1106,15 +1071,14 @@ class PullRequestsTableData extends DataClass with PullRequestsTableToColumns {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'projectId': serializer.toJson<String>(projectId),
-      'branchName': serializer.toJson<String>(branchName),
       'prNumber': serializer.toJson<int>(prNumber),
+      'branchName': serializer.toJson<String>(branchName),
       'url': serializer.toJson<String>(url),
       'title': serializer.toJson<String>(title),
       'state': serializer.toJson<String>(state),
-      'mergeableStatus': serializer.toJson<String?>(mergeableStatus),
-      'reviewDecision': serializer.toJson<String?>(reviewDecision),
-      'checkStatus': serializer.toJson<String?>(checkStatus),
-      'sessionId': serializer.toJson<String?>(sessionId),
+      'mergeableStatus': serializer.toJson<String>(mergeableStatus),
+      'reviewDecision': serializer.toJson<String>(reviewDecision),
+      'checkStatus': serializer.toJson<String>(checkStatus),
       'lastCheckedAt': serializer.toJson<int>(lastCheckedAt),
       'createdAt': serializer.toJson<int>(createdAt),
     };
@@ -1122,42 +1086,36 @@ class PullRequestsTableData extends DataClass with PullRequestsTableToColumns {
 
   PullRequestsTableData copyWith({
     String? projectId,
-    String? branchName,
     int? prNumber,
+    String? branchName,
     String? url,
     String? title,
     String? state,
-    Value<String?> mergeableStatus = const Value.absent(),
-    Value<String?> reviewDecision = const Value.absent(),
-    Value<String?> checkStatus = const Value.absent(),
-    Value<String?> sessionId = const Value.absent(),
+    String? mergeableStatus,
+    String? reviewDecision,
+    String? checkStatus,
     int? lastCheckedAt,
     int? createdAt,
   }) => PullRequestsTableData(
     projectId: projectId ?? this.projectId,
-    branchName: branchName ?? this.branchName,
     prNumber: prNumber ?? this.prNumber,
+    branchName: branchName ?? this.branchName,
     url: url ?? this.url,
     title: title ?? this.title,
     state: state ?? this.state,
-    mergeableStatus: mergeableStatus.present
-        ? mergeableStatus.value
-        : this.mergeableStatus,
-    reviewDecision: reviewDecision.present
-        ? reviewDecision.value
-        : this.reviewDecision,
-    checkStatus: checkStatus.present ? checkStatus.value : this.checkStatus,
-    sessionId: sessionId.present ? sessionId.value : this.sessionId,
+    mergeableStatus: mergeableStatus ?? this.mergeableStatus,
+    reviewDecision: reviewDecision ?? this.reviewDecision,
+    checkStatus: checkStatus ?? this.checkStatus,
     lastCheckedAt: lastCheckedAt ?? this.lastCheckedAt,
     createdAt: createdAt ?? this.createdAt,
   );
   PullRequestsTableData copyWithCompanion(PullRequestsTableCompanion data) {
     return PullRequestsTableData(
       projectId: data.projectId.present ? data.projectId.value : this.projectId,
+      prNumber: data.prNumber.present ? data.prNumber.value : this.prNumber,
       branchName: data.branchName.present
           ? data.branchName.value
           : this.branchName,
-      prNumber: data.prNumber.present ? data.prNumber.value : this.prNumber,
       url: data.url.present ? data.url.value : this.url,
       title: data.title.present ? data.title.value : this.title,
       state: data.state.present ? data.state.value : this.state,
@@ -1170,7 +1128,6 @@ class PullRequestsTableData extends DataClass with PullRequestsTableToColumns {
       checkStatus: data.checkStatus.present
           ? data.checkStatus.value
           : this.checkStatus,
-      sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
       lastCheckedAt: data.lastCheckedAt.present
           ? data.lastCheckedAt.value
           : this.lastCheckedAt,
@@ -1182,15 +1139,14 @@ class PullRequestsTableData extends DataClass with PullRequestsTableToColumns {
   String toString() {
     return (StringBuffer('PullRequestsTableData(')
           ..write('projectId: $projectId, ')
-          ..write('branchName: $branchName, ')
           ..write('prNumber: $prNumber, ')
+          ..write('branchName: $branchName, ')
           ..write('url: $url, ')
           ..write('title: $title, ')
           ..write('state: $state, ')
           ..write('mergeableStatus: $mergeableStatus, ')
           ..write('reviewDecision: $reviewDecision, ')
           ..write('checkStatus: $checkStatus, ')
-          ..write('sessionId: $sessionId, ')
           ..write('lastCheckedAt: $lastCheckedAt, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
@@ -1200,15 +1156,14 @@ class PullRequestsTableData extends DataClass with PullRequestsTableToColumns {
   @override
   int get hashCode => Object.hash(
     projectId,
-    branchName,
     prNumber,
+    branchName,
     url,
     title,
     state,
     mergeableStatus,
     reviewDecision,
     checkStatus,
-    sessionId,
     lastCheckedAt,
     createdAt,
   );
@@ -1217,15 +1172,14 @@ class PullRequestsTableData extends DataClass with PullRequestsTableToColumns {
       identical(this, other) ||
       (other is PullRequestsTableData &&
           other.projectId == this.projectId &&
-          other.branchName == this.branchName &&
           other.prNumber == this.prNumber &&
+          other.branchName == this.branchName &&
           other.url == this.url &&
           other.title == this.title &&
           other.state == this.state &&
           other.mergeableStatus == this.mergeableStatus &&
           other.reviewDecision == this.reviewDecision &&
           other.checkStatus == this.checkStatus &&
-          other.sessionId == this.sessionId &&
           other.lastCheckedAt == this.lastCheckedAt &&
           other.createdAt == this.createdAt);
 }
@@ -1233,77 +1187,75 @@ class PullRequestsTableData extends DataClass with PullRequestsTableToColumns {
 class PullRequestsTableCompanion
     extends UpdateCompanion<PullRequestsTableData> {
   final Value<String> projectId;
-  final Value<String> branchName;
   final Value<int> prNumber;
+  final Value<String> branchName;
   final Value<String> url;
   final Value<String> title;
   final Value<String> state;
-  final Value<String?> mergeableStatus;
-  final Value<String?> reviewDecision;
-  final Value<String?> checkStatus;
-  final Value<String?> sessionId;
+  final Value<String> mergeableStatus;
+  final Value<String> reviewDecision;
+  final Value<String> checkStatus;
   final Value<int> lastCheckedAt;
   final Value<int> createdAt;
   const PullRequestsTableCompanion({
     this.projectId = const Value.absent(),
-    this.branchName = const Value.absent(),
     this.prNumber = const Value.absent(),
+    this.branchName = const Value.absent(),
     this.url = const Value.absent(),
     this.title = const Value.absent(),
     this.state = const Value.absent(),
     this.mergeableStatus = const Value.absent(),
     this.reviewDecision = const Value.absent(),
     this.checkStatus = const Value.absent(),
-    this.sessionId = const Value.absent(),
     this.lastCheckedAt = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   PullRequestsTableCompanion.insert({
     required String projectId,
-    required String branchName,
     required int prNumber,
+    required String branchName,
     required String url,
     required String title,
     required String state,
-    this.mergeableStatus = const Value.absent(),
-    this.reviewDecision = const Value.absent(),
-    this.checkStatus = const Value.absent(),
-    this.sessionId = const Value.absent(),
+    required String mergeableStatus,
+    required String reviewDecision,
+    required String checkStatus,
     required int lastCheckedAt,
     required int createdAt,
   }) : projectId = Value(projectId),
-       branchName = Value(branchName),
        prNumber = Value(prNumber),
+       branchName = Value(branchName),
        url = Value(url),
        title = Value(title),
        state = Value(state),
+       mergeableStatus = Value(mergeableStatus),
+       reviewDecision = Value(reviewDecision),
+       checkStatus = Value(checkStatus),
        lastCheckedAt = Value(lastCheckedAt),
        createdAt = Value(createdAt);
   static Insertable<PullRequestsTableData> custom({
     Expression<String>? projectId,
-    Expression<String>? branchName,
     Expression<int>? prNumber,
+    Expression<String>? branchName,
     Expression<String>? url,
     Expression<String>? title,
     Expression<String>? state,
     Expression<String>? mergeableStatus,
     Expression<String>? reviewDecision,
     Expression<String>? checkStatus,
-    Expression<String>? sessionId,
     Expression<int>? lastCheckedAt,
     Expression<int>? createdAt,
   }) {
     return RawValuesInsertable({
       if (projectId != null) 'project_id': projectId,
-      if (branchName != null) 'branch_name': branchName,
       if (prNumber != null) 'pr_number': prNumber,
+      if (branchName != null) 'branch_name': branchName,
       if (url != null) 'url': url,
       if (title != null) 'title': title,
       if (state != null) 'state': state,
       if (mergeableStatus != null) 'mergeable_status': mergeableStatus,
       if (reviewDecision != null) 'review_decision': reviewDecision,
       if (checkStatus != null) 'check_status': checkStatus,
-      if (sessionId != null) 'session_id': sessionId,
       if (lastCheckedAt != null) 'last_checked_at': lastCheckedAt,
       if (createdAt != null) 'created_at': createdAt,
     });
@@ -1311,29 +1263,27 @@ class PullRequestsTableCompanion
 
   PullRequestsTableCompanion copyWith({
     Value<String>? projectId,
-    Value<String>? branchName,
     Value<int>? prNumber,
+    Value<String>? branchName,
     Value<String>? url,
     Value<String>? title,
     Value<String>? state,
-    Value<String?>? mergeableStatus,
-    Value<String?>? reviewDecision,
-    Value<String?>? checkStatus,
-    Value<String?>? sessionId,
+    Value<String>? mergeableStatus,
+    Value<String>? reviewDecision,
+    Value<String>? checkStatus,
     Value<int>? lastCheckedAt,
     Value<int>? createdAt,
   }) {
     return PullRequestsTableCompanion(
       projectId: projectId ?? this.projectId,
-      branchName: branchName ?? this.branchName,
       prNumber: prNumber ?? this.prNumber,
+      branchName: branchName ?? this.branchName,
       url: url ?? this.url,
       title: title ?? this.title,
       state: state ?? this.state,
       mergeableStatus: mergeableStatus ?? this.mergeableStatus,
       reviewDecision: reviewDecision ?? this.reviewDecision,
       checkStatus: checkStatus ?? this.checkStatus,
-      sessionId: sessionId ?? this.sessionId,
       lastCheckedAt: lastCheckedAt ?? this.lastCheckedAt,
       createdAt: createdAt ?? this.createdAt,
     );
@@ -1345,11 +1295,11 @@ class PullRequestsTableCompanion
     if (projectId.present) {
       map['project_id'] = Variable<String>(projectId.value);
     }
-    if (branchName.present) {
-      map['branch_name'] = Variable<String>(branchName.value);
-    }
     if (prNumber.present) {
       map['pr_number'] = Variable<int>(prNumber.value);
+    }
+    if (branchName.present) {
+      map['branch_name'] = Variable<String>(branchName.value);
     }
     if (url.present) {
       map['url'] = Variable<String>(url.value);
@@ -1369,9 +1319,6 @@ class PullRequestsTableCompanion
     if (checkStatus.present) {
       map['check_status'] = Variable<String>(checkStatus.value);
     }
-    if (sessionId.present) {
-      map['session_id'] = Variable<String>(sessionId.value);
-    }
     if (lastCheckedAt.present) {
       map['last_checked_at'] = Variable<int>(lastCheckedAt.value);
     }
@@ -1385,15 +1332,14 @@ class PullRequestsTableCompanion
   String toString() {
     return (StringBuffer('PullRequestsTableCompanion(')
           ..write('projectId: $projectId, ')
-          ..write('branchName: $branchName, ')
           ..write('prNumber: $prNumber, ')
+          ..write('branchName: $branchName, ')
           ..write('url: $url, ')
           ..write('title: $title, ')
           ..write('state: $state, ')
           ..write('mergeableStatus: $mergeableStatus, ')
           ..write('reviewDecision: $reviewDecision, ')
           ..write('checkStatus: $checkStatus, ')
-          ..write('sessionId: $sessionId, ')
           ..write('lastCheckedAt: $lastCheckedAt, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
@@ -1415,6 +1361,16 @@ class DatabaseAtV4 extends GeneratedDatabase {
     sessionsTable,
     pullRequestsTable,
   ];
+  @override
+  StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'projects_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('pull_requests_table', kind: UpdateKind.delete)],
+    ),
+  ]);
   @override
   int get schemaVersion => 4;
 }

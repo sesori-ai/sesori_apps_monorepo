@@ -3,14 +3,15 @@ import "dart:async";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../persistence/dao_interfaces.dart";
-import "../persistence/database.dart";
+import "../persistence/daos/pull_request_dao.dart";
+import "../persistence/tables/pull_requests_table.dart";
 import "../persistence/tables/session_table.dart";
 import "gh_cli_service.dart";
 import "gh_pull_request.dart";
 
 class PrSyncService {
   final GhCliService _ghCli;
-  final PullRequestDaoLike _prDao;
+  final PullRequestDao _prDao;
   final SessionDaoLike _sessionDao;
   final void Function(String projectId) _onPrDataChanged;
   final Duration _debounceWindow;
@@ -20,7 +21,7 @@ class PrSyncService {
 
   PrSyncService({
     required GhCliService ghCli,
-    required PullRequestDaoLike prDao,
+    required PullRequestDao prDao,
     required SessionDaoLike sessionDao,
     required void Function(String projectId) onPrDataChanged,
     Duration debounceWindow = const Duration(seconds: 30),
@@ -53,7 +54,7 @@ class PrSyncService {
       final activePrs = await _prDao.getActivePrsByProjectId(projectId: projectId);
 
       final sessionsByBranch = _indexSessionsByBranch(sessions: sessions);
-      final activeByBranch = <String, PullRequestsTableData>{
+      final activeByBranch = <String, PullRequestDto>{
         for (final activePr in activePrs) activePr.branchName: activePr,
       };
 
@@ -65,11 +66,10 @@ class PrSyncService {
           .toList(growable: false);
 
       for (final pr in matchedOpenPrs) {
-        final session = sessionsByBranch[pr.headRefName];
         final existing = activeByBranch[pr.headRefName];
         final createdAt = existing?.createdAt ?? nowEpochMs;
 
-        if (_isMeaningfullyDifferent(existing: existing, pr: pr, sessionId: session?.sessionId)) {
+        if (_isMeaningfullyDifferent(existing: existing, pr: pr)) {
           hasChanges = true;
         }
 
@@ -80,10 +80,9 @@ class PrSyncService {
           url: pr.url,
           title: pr.title,
           state: pr.state,
-          mergeableStatus: pr.mergeable,
-          reviewDecision: pr.reviewDecision,
-          checkStatus: pr.statusCheckRollup,
-          sessionId: session?.sessionId,
+          mergeableStatus: pr.mergeable ?? "",
+          reviewDecision: pr.reviewDecision ?? "",
+          checkStatus: pr.statusCheckRollup ?? "",
           lastCheckedAt: nowEpochMs,
           createdAt: createdAt,
         );
@@ -91,7 +90,7 @@ class PrSyncService {
 
       final openPrNumbers = openPrs.map((GhPullRequest pr) => pr.number).toSet();
       final disappearedActivePrs = activePrs
-          .where((PullRequestsTableData activePr) => !openPrNumbers.contains(activePr.prNumber))
+          .where((PullRequestDto activePr) => !openPrNumbers.contains(activePr.prNumber))
           .toList(growable: false);
 
       for (final disappeared in disappearedActivePrs) {
@@ -101,8 +100,7 @@ class PrSyncService {
             workingDirectory: projectPath,
           );
 
-          final session = sessionsByBranch[finalPr.headRefName];
-          if (_isMeaningfullyDifferent(existing: disappeared, pr: finalPr, sessionId: session?.sessionId)) {
+          if (_isMeaningfullyDifferent(existing: disappeared, pr: finalPr)) {
             hasChanges = true;
           }
 
@@ -113,10 +111,9 @@ class PrSyncService {
             url: finalPr.url,
             title: finalPr.title,
             state: finalPr.state,
-            mergeableStatus: finalPr.mergeable,
-            reviewDecision: finalPr.reviewDecision,
-            checkStatus: finalPr.statusCheckRollup,
-            sessionId: session?.sessionId,
+            mergeableStatus: finalPr.mergeable ?? "",
+            reviewDecision: finalPr.reviewDecision ?? "",
+            checkStatus: finalPr.statusCheckRollup ?? "",
             lastCheckedAt: nowEpochMs,
             createdAt: disappeared.createdAt,
           );
@@ -149,9 +146,8 @@ class PrSyncService {
   }
 
   bool _isMeaningfullyDifferent({
-    required PullRequestsTableData? existing,
+    required PullRequestDto? existing,
     required GhPullRequest pr,
-    required String? sessionId,
   }) {
     if (existing == null) {
       return true;
@@ -161,9 +157,8 @@ class PrSyncService {
         existing.url != pr.url ||
         existing.title != pr.title ||
         existing.state != pr.state ||
-        existing.mergeableStatus != pr.mergeable ||
-        existing.reviewDecision != pr.reviewDecision ||
-        existing.checkStatus != pr.statusCheckRollup ||
-        existing.sessionId != sessionId;
+        existing.mergeableStatus != (pr.mergeable ?? "") ||
+        existing.reviewDecision != (pr.reviewDecision ?? "") ||
+        existing.checkStatus != (pr.statusCheckRollup ?? "");
   }
 }

@@ -182,7 +182,7 @@
     {
       "id": 2,
       "references": [
-        1
+        0
       ],
       "type": "table",
       "data": {
@@ -195,6 +195,32 @@
             "moor_type": "string",
             "nullable": false,
             "customConstraints": null,
+            "defaultConstraints": "REFERENCES projects_table (project_id) ON DELETE CASCADE",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "REFERENCES projects_table (project_id) ON DELETE CASCADE"
+            },
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "projects_table",
+                    "column": "project_id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": "cascade"
+                }
+              }
+            ]
+          },
+          {
+            "name": "pr_number",
+            "getter_name": "prNumber",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
             "default_dart": null,
             "default_client_dart": null,
             "dsl_features": []
@@ -203,16 +229,6 @@
             "name": "branch_name",
             "getter_name": "branchName",
             "moor_type": "string",
-            "nullable": false,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "pr_number",
-            "getter_name": "prNumber",
-            "moor_type": "int",
             "nullable": false,
             "customConstraints": null,
             "default_dart": null,
@@ -253,7 +269,7 @@
             "name": "mergeable_status",
             "getter_name": "mergeableStatus",
             "moor_type": "string",
-            "nullable": true,
+            "nullable": false,
             "customConstraints": null,
             "default_dart": null,
             "default_client_dart": null,
@@ -263,7 +279,7 @@
             "name": "review_decision",
             "getter_name": "reviewDecision",
             "moor_type": "string",
-            "nullable": true,
+            "nullable": false,
             "customConstraints": null,
             "default_dart": null,
             "default_client_dart": null,
@@ -273,37 +289,11 @@
             "name": "check_status",
             "getter_name": "checkStatus",
             "moor_type": "string",
-            "nullable": true,
+            "nullable": false,
             "customConstraints": null,
             "default_dart": null,
             "default_client_dart": null,
             "dsl_features": []
-          },
-          {
-            "name": "session_id",
-            "getter_name": "sessionId",
-            "moor_type": "string",
-            "nullable": true,
-            "customConstraints": null,
-            "defaultConstraints": "REFERENCES sessions_table (session_id)",
-            "dialectAwareDefaultConstraints": {
-              "sqlite": "REFERENCES sessions_table (session_id)"
-            },
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": [
-              {
-                "foreign_key": {
-                  "to": {
-                    "table": "sessions_table",
-                    "column": "session_id"
-                  },
-                  "initially_deferred": false,
-                  "on_update": null,
-                  "on_delete": null
-                }
-              }
-            ]
           },
           {
             "name": "last_checked_at",
@@ -331,7 +321,7 @@
         "constraints": [],
         "explicit_pk": [
           "project_id",
-          "branch_name"
+          "pr_number"
         ]
       }
     }
@@ -360,7 +350,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"pull_requests_table\" (\"project_id\" TEXT NOT NULL, \"branch_name\" TEXT NOT NULL, \"pr_number\" INTEGER NOT NULL, \"url\" TEXT NOT NULL, \"title\" TEXT NOT NULL, \"state\" TEXT NOT NULL, \"mergeable_status\" TEXT NULL, \"review_decision\" TEXT NULL, \"check_status\" TEXT NULL, \"session_id\" TEXT NULL REFERENCES sessions_table (session_id), \"last_checked_at\" INTEGER NOT NULL, \"created_at\" INTEGER NOT NULL, PRIMARY KEY (\"project_id\", \"branch_name\")) WITHOUT ROWID;"
+          "sql": "CREATE TABLE IF NOT EXISTS \"pull_requests_table\" (\"project_id\" TEXT NOT NULL REFERENCES projects_table (project_id) ON DELETE CASCADE, \"pr_number\" INTEGER NOT NULL, \"branch_name\" TEXT NOT NULL, \"url\" TEXT NOT NULL, \"title\" TEXT NOT NULL, \"state\" TEXT NOT NULL, \"mergeable_status\" TEXT NOT NULL, \"review_decision\" TEXT NOT NULL, \"check_status\" TEXT NOT NULL, \"last_checked_at\" INTEGER NOT NULL, \"created_at\" INTEGER NOT NULL, PRIMARY KEY (\"project_id\", \"pr_number\")) WITHOUT ROWID;"
         }
       ]
     }

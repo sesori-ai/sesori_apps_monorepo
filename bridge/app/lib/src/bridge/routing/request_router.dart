@@ -4,7 +4,6 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../metadata_service.dart";
-import "../persistence/dao_interfaces.dart";
 import "../persistence/daos/projects_dao.dart";
 import "../persistence/daos/pull_request_dao.dart";
 import "../persistence/daos/session_dao.dart";
@@ -58,7 +57,7 @@ class RequestRouter {
     required SessionDao sessionDao,
     void Function(SesoriSseEvent event)? emitBridgeEvent,
     ProcessRunner processRunner = Process.run,
-    PullRequestDaoLike? pullRequestDao,
+    PullRequestDao? pullRequestDao,
     GhCliService? ghCli,
     PrSyncService? prSyncService,
     PrRefreshCoordinator? prRefreshCoordinator,
@@ -82,7 +81,7 @@ class RequestRouter {
     required SessionDao sessionDao,
     required void Function(SesoriSseEvent event)? emitBridgeEvent,
     required ProcessRunner processRunner,
-    required PullRequestDaoLike? pullRequestDao,
+    required PullRequestDao? pullRequestDao,
     required GhCliService? ghCli,
     required PrSyncService? prSyncService,
     required PrRefreshCoordinator? prRefreshCoordinator,
@@ -105,13 +104,12 @@ class RequestRouter {
                   coordinator.onPrDataChanged(projectId: projectId);
                 },
               );
-          coordinator = PrRefreshCoordinator(
+          return coordinator = PrRefreshCoordinator(
             ghCli: effectiveGhCli,
             prSyncService: effectivePrSyncService,
             processRunner: processRunner,
             emitBridgeEvent: effectiveEmitBridgeEvent,
           );
-          return coordinator;
         })();
 
     final worktreeService = WorktreeService(

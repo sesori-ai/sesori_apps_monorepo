@@ -1,13 +1,16 @@
 import "dart:io";
 
-import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/persistence/dao_interfaces.dart";
+import "package:sesori_bridge/src/bridge/persistence/daos/pull_request_dao.dart";
+import "package:sesori_bridge/src/bridge/persistence/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/pr/gh_cli_service.dart";
 import "package:sesori_bridge/src/bridge/pr/pr_refresh_coordinator.dart";
 import "package:sesori_bridge/src/bridge/pr/pr_sync_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
+
+import "../../helpers/test_database.dart";
 
 void main() {
   group("PrRefreshCoordinator", () {
@@ -142,7 +145,9 @@ class _NoopSessionDao implements SessionDaoLike {
   Future<List<SessionDto>> getSessionsByProject({required String projectId}) async => const <SessionDto>[];
 }
 
-class _NoopPullRequestDao implements PullRequestDaoLike {
+class _NoopPullRequestDao extends PullRequestDao {
+  _NoopPullRequestDao() : super(createTestDatabase());
+
   @override
   Future<void> upsertPr({
     required String projectId,
@@ -151,29 +156,28 @@ class _NoopPullRequestDao implements PullRequestDaoLike {
     required String url,
     required String title,
     required String state,
-    required String? mergeableStatus,
-    required String? reviewDecision,
-    required String? checkStatus,
-    required String? sessionId,
+    required String mergeableStatus,
+    required String reviewDecision,
+    required String checkStatus,
     required int lastCheckedAt,
     required int createdAt,
   }) async {}
 
   @override
-  Future<List<PullRequestsTableData>> getPrsByProjectId({required String projectId}) async {
-    return const <PullRequestsTableData>[];
+  Future<List<PullRequestDto>> getPrsByProjectId({required String projectId}) async {
+    return const <PullRequestDto>[];
   }
 
   @override
-  Future<Map<String, PullRequestsTableData>> getPrsBySessionIds({required List<String> sessionIds}) async {
-    return const <String, PullRequestsTableData>{};
+  Future<Map<String, PullRequestDto>> getPrsBySessionIds({required List<String> sessionIds}) async {
+    return const <String, PullRequestDto>{};
   }
 
   @override
-  Future<List<PullRequestsTableData>> getActivePrsByProjectId({required String projectId}) async {
-    return const <PullRequestsTableData>[];
+  Future<List<PullRequestDto>> getActivePrsByProjectId({required String projectId}) async {
+    return const <PullRequestDto>[];
   }
 
   @override
-  Future<void> deletePr({required String projectId, required String branchName}) async {}
+  Future<void> deletePr({required String projectId, required int prNumber}) async {}
 }
