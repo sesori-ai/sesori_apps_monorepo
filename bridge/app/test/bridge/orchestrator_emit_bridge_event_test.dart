@@ -54,13 +54,7 @@ void main() {
       tokenRefresher: _FakeTokenRefresher(),
       projectsDao: database.projectsDao,
       failureReporter: FakeFailureReporter(),
-      prSyncServiceFactory:
-          ({
-            required PullRequestRepositoryLike pullRequestRepository,
-            required SessionRepositoryLike sessionRepository,
-          }) {
-            return fakePrSyncService;
-          },
+      prSyncService: fakePrSyncService,
     );
 
     final session = orchestrator.create();

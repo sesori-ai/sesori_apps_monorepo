@@ -8,5 +8,5 @@ abstract interface class SessionDaoLike {
 }
 
 abstract interface class PullRequestDaoLike {
-  Future<Map<String, PullRequestDto>> getPrsBySessionIds({required List<String> sessionIds});
+  Future<Map<String, List<PullRequestDto>>> getPrsBySessionIds({required List<String> sessionIds});
 }

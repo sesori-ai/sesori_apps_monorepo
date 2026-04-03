@@ -45,7 +45,7 @@ PrMergeableStatus _stringToPrMergeableStatus(String? value) {
   if (value == null) return PrMergeableStatus.unknown;
   return switch (value.toUpperCase()) {
     "MERGEABLE" => PrMergeableStatus.mergeable,
-    "CONFLICTED" => PrMergeableStatus.conflicted,
+    "CONFLICTED" || "CONFLICTING" => PrMergeableStatus.conflicted,
     "UNKNOWN" => PrMergeableStatus.unknown,
     _ => PrMergeableStatus.unknown,
   };

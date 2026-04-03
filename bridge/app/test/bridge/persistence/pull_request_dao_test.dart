@@ -108,7 +108,7 @@ void main() {
       expect(prs.map((pr) => pr.prNumber), containsAll(<int>[10, 11]));
     });
 
-    test("getPrsBySessionIds joins on projectId+branch and disambiguates OPEN first", () async {
+    test("getPrsBySessionIds joins on projectId+branch and returns all PRs grouped by session", () async {
       await insertProject(projectId: "proj-1");
       await insertSession(sessionId: "session-1", projectId: "proj-1", branchName: "feature/auth");
       await upsertPr(
@@ -128,10 +128,11 @@ void main() {
 
       final result = await dao.getPrsBySessionIds(sessionIds: <String>["session-1"]);
       expect(result, hasLength(1));
-      expect(result["session-1"]?.prNumber, equals(101));
+      expect(result["session-1"], hasLength(2));
+      expect(result["session-1"]!.map((pr) => pr.prNumber), unorderedEquals(<int>[100, 101]));
     });
 
-    test("getPrsBySessionIds picks highest prNumber when none are OPEN", () async {
+    test("getPrsBySessionIds returns all PRs for a session (selection is repository's job)", () async {
       await insertProject(projectId: "proj-1");
       await insertSession(sessionId: "session-1", projectId: "proj-1", branchName: "feature/auth");
       await upsertPr(
@@ -150,7 +151,9 @@ void main() {
       );
 
       final result = await dao.getPrsBySessionIds(sessionIds: <String>["session-1"]);
-      expect(result["session-1"]?.prNumber, equals(101));
+      expect(result, hasLength(1));
+      expect(result["session-1"], hasLength(2));
+      expect(result["session-1"]!.map((pr) => pr.prNumber), unorderedEquals([100, 101]));
     });
 
     test("getActivePrsByProjectId is case-insensitive for OPEN", () async {

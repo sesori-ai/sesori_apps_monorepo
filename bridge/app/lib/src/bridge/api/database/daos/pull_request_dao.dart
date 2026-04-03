@@ -48,11 +48,11 @@ class PullRequestDao extends DatabaseAccessor<AppDatabase> with _$PullRequestDao
   }
 
   @override
-  Future<Map<String, PullRequestDto>> getPrsBySessionIds({
+  Future<Map<String, List<PullRequestDto>>> getPrsBySessionIds({
     required List<String> sessionIds,
   }) async {
     if (sessionIds.isEmpty) {
-      return <String, PullRequestDto>{};
+      return <String, List<PullRequestDto>>{};
     }
 
     final query = select(pullRequestsTable).join([
@@ -72,34 +72,7 @@ class PullRequestDao extends DatabaseAccessor<AppDatabase> with _$PullRequestDao
       groupedBySessionId.putIfAbsent(session.sessionId, () => <PullRequestDto>[]).add(pr);
     }
 
-    final result = <String, PullRequestDto>{};
-    groupedBySessionId.forEach((String sessionId, List<PullRequestDto> prs) {
-      PullRequestDto? selected;
-      for (final pr in prs) {
-        if (selected == null) {
-          selected = pr;
-          continue;
-        }
-
-        final selectedIsOpen = selected.state.toUpperCase() == "OPEN";
-        final currentIsOpen = pr.state.toUpperCase() == "OPEN";
-
-        if (currentIsOpen && !selectedIsOpen) {
-          selected = pr;
-          continue;
-        }
-
-        if (currentIsOpen == selectedIsOpen && pr.prNumber > selected.prNumber) {
-          selected = pr;
-        }
-      }
-
-      if (selected != null) {
-        result[sessionId] = selected;
-      }
-    });
-
-    return result;
+    return groupedBySessionId;
   }
 
   Future<List<PullRequestDto>> getActivePrsByProjectId({

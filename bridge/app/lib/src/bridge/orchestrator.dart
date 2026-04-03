@@ -35,11 +35,9 @@ class Orchestrator {
   final TokenRefresher _tokenRefresher;
   final ProjectsDao _projectsDao;
   final FailureReporter _failureReporter;
-  final PrSyncService Function({
-    required PullRequestRepositoryLike pullRequestRepository,
-    required SessionRepositoryLike sessionRepository,
-  })
-  _prSyncServiceFactory;
+  final PrSyncService _prSyncService;
+  final PullRequestRepository _pullRequestRepository;
+  final SessionRepository _sessionRepository;
 
   Orchestrator({
     required this.config,
@@ -50,11 +48,7 @@ class Orchestrator {
     required TokenRefresher tokenRefresher,
     required ProjectsDao projectsDao,
     required FailureReporter failureReporter,
-    PrSyncService Function({
-      required PullRequestRepositoryLike pullRequestRepository,
-      required SessionRepositoryLike sessionRepository,
-    })?
-    prSyncServiceFactory,
+    PrSyncService? prSyncService,
   }) : _client = client,
        _plugin = plugin,
        _metadataService = metadataService,
@@ -62,7 +56,20 @@ class Orchestrator {
        _tokenRefresher = tokenRefresher,
        _projectsDao = projectsDao,
        _failureReporter = failureReporter,
-       _prSyncServiceFactory = prSyncServiceFactory ?? _defaultPrSyncServiceFactory;
+       _pullRequestRepository = PullRequestRepository(
+         pullRequestDao: projectsDao.attachedDatabase.pullRequestDao,
+       ),
+       _sessionRepository = SessionRepository(
+         plugin: plugin,
+         sessionDao: projectsDao.attachedDatabase.sessionDao,
+         pullRequestDao: projectsDao.attachedDatabase.pullRequestDao,
+       ),
+       _prSyncService = prSyncService ?? _defaultPrSyncService {
+    _prSyncService.setRepositories(
+      pullRequestRepository: _pullRequestRepository,
+      sessionRepository: _sessionRepository,
+    );
+  }
 
   /// Creates a new session with a fresh room key and SSE manager.
   OrchestratorSession create() {
@@ -74,19 +81,6 @@ class Orchestrator {
       failureReporter: _failureReporter,
     );
     sseManager.setRoomKey(roomKey);
-    final database = _projectsDao.attachedDatabase;
-    final pullRequestRepository = PullRequestRepository(
-      pullRequestDao: database.pullRequestDao,
-    );
-    final sessionRepository = SessionRepository(
-      plugin: _plugin,
-      sessionDao: database.sessionDao,
-      pullRequestDao: database.pullRequestDao,
-    );
-    final prSyncService = _prSyncServiceFactory(
-      pullRequestRepository: pullRequestRepository,
-      sessionRepository: sessionRepository,
-    );
 
     return OrchestratorSession._(
       config: config,
@@ -100,8 +94,8 @@ class Orchestrator {
       sseManager: sseManager,
       bytesSentController: bytesSentController,
       failureReporter: _failureReporter,
-      sessionRepository: sessionRepository,
-      prSyncService: prSyncService,
+      sessionRepository: _sessionRepository,
+      prSyncService: _prSyncService,
     );
   }
 
@@ -112,19 +106,12 @@ class Orchestrator {
     );
   }
 
-  static PrSyncService _defaultPrSyncServiceFactory({
-    required PullRequestRepositoryLike pullRequestRepository,
-    required SessionRepositoryLike sessionRepository,
-  }) {
-    return PrSyncService(
-      prSource: PrSourceRepository(
-        ghCli: GhCliApi(),
-        gitRemoteApi: GitRemoteApi(),
-      ),
-      pullRequestRepository: pullRequestRepository,
-      sessionRepository: sessionRepository,
-    );
-  }
+  static final PrSyncService _defaultPrSyncService = PrSyncService(
+    prSource: PrSourceRepository(
+      ghCli: GhCliApi(),
+      gitRemoteApi: GitRemoteApi(),
+    ),
+  );
 }
 
 /// A running bridge session with immutable runtime state.

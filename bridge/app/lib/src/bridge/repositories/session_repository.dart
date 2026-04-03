@@ -1,6 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../api/database/tables/pull_requests_table.dart";
 import "../persistence/dao_interfaces.dart";
 import "../repositories/mappers/plugin_session_mapper.dart";
 import "../repositories/mappers/pull_request_mapper.dart";
@@ -46,35 +47,60 @@ class SessionRepository implements SessionRepositoryLike {
     );
 
     final sessions = pluginSessions.map((s) => s.toSharedSession()).toList();
-
     final sessionIds = sessions.map((s) => s.id).toList();
-    final dbSessions = await _sessionDao.getSessionsByIds(sessionIds: sessionIds);
 
-    final mergedSessions = sessions.map((session) {
+    final (dbSessions, prsBySessionId) = await (
+      _sessionDao.getSessionsByIds(sessionIds: sessionIds),
+      _pullRequestDao.getPrsBySessionIds(sessionIds: sessionIds),
+    ).wait;
+
+    return sessions.map((session) {
+      var result = session;
+
       final dbSession = dbSessions[session.id];
       if (dbSession != null) {
         final currentTime = session.time;
         final mergedTime = currentTime != null
             ? currentTime.copyWith(archived: dbSession.archivedAt)
-            : SessionTime(
-                created: 0,
-                updated: 0,
-                archived: dbSession.archivedAt,
-              );
-        return session.copyWith(time: mergedTime);
+            : SessionTime(created: 0, updated: 0, archived: dbSession.archivedAt);
+        result = result.copyWith(time: mergedTime);
       }
-      return session;
-    }).toList();
 
-    final prsBySessionId = await _pullRequestDao.getPrsBySessionIds(sessionIds: sessionIds);
-
-    return mergedSessions.map((session) {
-      final pr = prsBySessionId[session.id];
-      if (pr == null) {
-        return session;
+      final pr = _selectBestPr(prsBySessionId[session.id]);
+      if (pr != null) {
+        result = result.copyWith(pullRequest: pullRequestInfoFromDto(pr));
       }
-      return session.copyWith(pullRequest: pullRequestInfoFromDto(pr));
+
+      return result;
     }).toList();
+  }
+
+  /// Selects the most relevant PR from a list of candidates.
+  /// Prefers OPEN PRs, then breaks ties by highest PR number.
+  static PullRequestDto? _selectBestPr(List<PullRequestDto>? prs) {
+    if (prs == null || prs.isEmpty) return null;
+
+    PullRequestDto? selected;
+    for (final pr in prs) {
+      if (selected == null) {
+        selected = pr;
+        continue;
+      }
+
+      final selectedIsOpen = selected.state.toUpperCase() == "OPEN";
+      final currentIsOpen = pr.state.toUpperCase() == "OPEN";
+
+      if (currentIsOpen && !selectedIsOpen) {
+        selected = pr;
+        continue;
+      }
+
+      if (currentIsOpen == selectedIsOpen && pr.prNumber > selected.prNumber) {
+        selected = pr;
+      }
+    }
+
+    return selected;
   }
 
   @override

@@ -372,19 +372,19 @@ class FakeMetadataService implements MetadataService {
 }
 
 class FakePullRequestDao implements PullRequestDaoLike {
-  final Map<String, PullRequestDto> _prsBySessionId = <String, PullRequestDto>{};
+  final Map<String, List<PullRequestDto>> _prsBySessionId = <String, List<PullRequestDto>>{};
   final Map<String, PullRequestDto> _prsByPrimaryKey = <String, PullRequestDto>{};
 
   FakePullRequestDao();
 
   void setPr({required String sessionId, required PullRequestDto pullRequest}) {
-    _prsBySessionId[sessionId] = pullRequest;
+    _prsBySessionId.putIfAbsent(sessionId, () => <PullRequestDto>[]).add(pullRequest);
     _prsByPrimaryKey[_key(projectId: pullRequest.projectId, prNumber: pullRequest.prNumber)] = pullRequest;
   }
 
   @override
-  Future<Map<String, PullRequestDto>> getPrsBySessionIds({required List<String> sessionIds}) async {
-    return <String, PullRequestDto>{
+  Future<Map<String, List<PullRequestDto>>> getPrsBySessionIds({required List<String> sessionIds}) async {
+    return <String, List<PullRequestDto>>{
       for (final sessionId in sessionIds)
         if (_prsBySessionId.containsKey(sessionId)) sessionId: _prsBySessionId[sessionId]!,
     };
@@ -431,8 +431,9 @@ class FakePullRequestDao implements PullRequestDaoLike {
 
   Future<void> deletePr({required String projectId, required int prNumber}) async {
     _prsByPrimaryKey.remove(_key(projectId: projectId, prNumber: prNumber));
-    _prsBySessionId.removeWhere(
-      (_, PullRequestDto value) => value.projectId == projectId && value.prNumber == prNumber,
+    _prsBySessionId.updateAll(
+      (_, List<PullRequestDto> list) =>
+          list.where((pr) => !(pr.projectId == projectId && pr.prNumber == prNumber)).toList(),
     );
   }
 
@@ -558,10 +559,32 @@ class FakeSessionRepository implements SessionRepositoryLike {
     }).toList();
     final prsBySessionId = await _pullRequestDao.getPrsBySessionIds(sessionIds: sessionIds);
     return mergedSessions.map((session) {
-      final pr = prsBySessionId[session.id];
+      final prs = prsBySessionId[session.id];
+      final pr = _selectBestPr(prs);
       if (pr == null) return session;
       return session.copyWith(pullRequest: pullRequestInfoFromDto(pr));
     }).toList();
+  }
+
+  static PullRequestDto? _selectBestPr(List<PullRequestDto>? prs) {
+    if (prs == null || prs.isEmpty) return null;
+    PullRequestDto? selected;
+    for (final pr in prs) {
+      if (selected == null) {
+        selected = pr;
+        continue;
+      }
+      final selectedIsOpen = selected.state.toUpperCase() == "OPEN";
+      final currentIsOpen = pr.state.toUpperCase() == "OPEN";
+      if (currentIsOpen && !selectedIsOpen) {
+        selected = pr;
+        continue;
+      }
+      if (currentIsOpen == selectedIsOpen && pr.prNumber > selected.prNumber) {
+        selected = pr;
+      }
+    }
+    return selected;
   }
 
   @override

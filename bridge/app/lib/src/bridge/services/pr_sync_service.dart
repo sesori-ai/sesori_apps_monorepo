@@ -11,10 +11,11 @@ import "../repositories/session_repository.dart";
 
 class PrSyncService {
   final PrSourceRepositoryLike _prSource;
-  final PullRequestRepositoryLike _pullRequestRepository;
-  final SessionRepositoryLike _sessionRepository;
   final Duration _debounceWindow;
   final StreamController<String> _prChangesController = StreamController<String>.broadcast();
+
+  PullRequestRepositoryLike? _pullRequestRepository;
+  SessionRepositoryLike? _sessionRepository;
 
   bool? _ghAvailable;
   bool? _ghAuthenticated;
@@ -24,13 +25,27 @@ class PrSyncService {
 
   PrSyncService({
     required PrSourceRepositoryLike prSource,
-    required PullRequestRepositoryLike pullRequestRepository,
-    required SessionRepositoryLike sessionRepository,
+    PullRequestRepositoryLike? pullRequestRepository,
+    SessionRepositoryLike? sessionRepository,
     Duration debounceWindow = const Duration(seconds: 30),
   }) : _prSource = prSource,
        _pullRequestRepository = pullRequestRepository,
        _sessionRepository = sessionRepository,
        _debounceWindow = debounceWindow;
+
+  void setRepositories({
+    required PullRequestRepositoryLike pullRequestRepository,
+    required SessionRepositoryLike sessionRepository,
+  }) {
+    _pullRequestRepository = pullRequestRepository;
+    _sessionRepository = sessionRepository;
+  }
+
+  /// Resets cached auth state so that a later `gh auth login` is picked up.
+  void resetAuthCache() {
+    _ghAvailable = null;
+    _ghAuthenticated = null;
+  }
 
   Stream<String> get prChanges => _prChangesController.stream;
 
@@ -70,11 +85,15 @@ class PrSyncService {
   }
 
   Future<void> _refresh({required String projectId, required String projectPath}) async {
+    final pullRequestRepo = _pullRequestRepository;
+    final sessionRepo = _sessionRepository;
+    if (pullRequestRepo == null || sessionRepo == null) return;
+
     try {
       final (openPrs, storedSessions, activePrs) = await (
         _prSource.listOpenPrs(workingDirectory: projectPath),
-        _sessionRepository.getStoredSessionsByProjectId(projectId: projectId),
-        _pullRequestRepository.getActivePullRequestsByProjectId(projectId: projectId),
+        sessionRepo.getStoredSessionsByProjectId(projectId: projectId),
+        pullRequestRepo.getActivePullRequestsByProjectId(projectId: projectId),
       ).wait;
 
       final sessionsByBranch = _indexSessionsByBranch(sessions: storedSessions);
@@ -97,7 +116,7 @@ class PrSyncService {
           hasChanges = true;
         }
 
-        await _pullRequestRepository.upsertPullRequest(
+        await pullRequestRepo.upsertPullRequest(
           record: PullRequestRecord(
             projectId: projectId,
             branchName: pr.headRefName,
@@ -130,7 +149,7 @@ class PrSyncService {
             hasChanges = true;
           }
 
-          await _pullRequestRepository.upsertPullRequest(
+          await pullRequestRepo.upsertPullRequest(
             record: PullRequestRecord(
               projectId: projectId,
               branchName: finalPr.headRefName,
@@ -188,9 +207,9 @@ class PrSyncService {
     return existing.prNumber != pr.number ||
         existing.url != pr.url ||
         existing.title != pr.title ||
-        existing.state != pr.state ||
-        existing.mergeableStatus != (pr.mergeable ?? "") ||
-        existing.reviewDecision != (pr.reviewDecision ?? "") ||
-        existing.checkStatus != (pr.statusCheckRollup ?? "");
+        existing.state.toUpperCase() != pr.state.toUpperCase() ||
+        existing.mergeableStatus.toUpperCase() != (pr.mergeable ?? "").toUpperCase() ||
+        existing.reviewDecision.toUpperCase() != (pr.reviewDecision ?? "").toUpperCase() ||
+        existing.checkStatus.toUpperCase() != (pr.statusCheckRollup ?? "").toUpperCase();
   }
 }
