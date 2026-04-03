@@ -47,6 +47,17 @@ When changing shared types, update in this order.
 - Plugin implementations must implement all 8 `BridgePlugin` methods — no partial implementations
 - SSE events use sealed classes (see `bridge_sse_event.dart`)
 
+## Architectural Rules
+
+### No Manual JSON Parsing
+Always create Freezed models with auto-generated `fromJson` when parsing JSON. Never use inline `jsonDecode` + manual field extraction. Use `jsonDecodeListMap`/`jsonDecodeMap` from `sesori_shared` as the decode step, then `Model.fromJson(map)`.
+
+### Streams Over Callbacks
+Use push-based communication (`StreamController`, `PublishSubject`) between services. Never pass `Function` callbacks for event notification. Services that produce events expose a `Stream`; consumers subscribe to it.
+
+### Orchestrator Owns SSE Decisions
+No component below the Orchestrator may emit SSE events directly. The Orchestrator subscribes to streams (`plugin.events`, `prSyncService.prChanges`) and decides what to emit to phones. No `emitBridgeEvent()` or similar public methods on the Orchestrator.
+
 ## Definition of Done
 
 - `dart pub get` exits 0
