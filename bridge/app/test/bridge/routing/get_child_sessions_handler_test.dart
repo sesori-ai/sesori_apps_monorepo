@@ -8,11 +8,13 @@ import "routing_test_helpers.dart";
 void main() {
   group("GetChildSessionsHandler", () {
     late FakeBridgePlugin plugin;
+    late FakeSessionRepository sessionRepository;
     late GetChildSessionsHandler handler;
 
     setUp(() {
       plugin = FakeBridgePlugin();
-      handler = GetChildSessionsHandler(plugin);
+      sessionRepository = FakeSessionRepository(plugin: plugin);
+      handler = GetChildSessionsHandler(sessionRepository: sessionRepository);
     });
 
     tearDown(() => plugin.close());

@@ -1,5 +1,6 @@
-import "package:sesori_bridge/src/bridge/persistence/tables/pull_requests_table.dart";
+import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/get_sessions_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -13,17 +14,21 @@ void main() {
     late FakeSessionDao sessionDao;
     late FakePullRequestDao prDao;
     late FakePrSyncService prSyncService;
+    late SessionRepository sessionRepository;
     late GetSessionsHandler handler;
 
     setUp(() {
       plugin = FakeBridgePlugin();
       sessionDao = FakeSessionDao();
       prDao = FakePullRequestDao();
-      prSyncService = FakePrSyncService(prDao: prDao, sessionDao: sessionDao);
+      prSyncService = FakePrSyncService();
+      sessionRepository = SessionRepository(
+        plugin: plugin,
+        sessionDao: sessionDao,
+        pullRequestDao: prDao,
+      );
       handler = GetSessionsHandler(
-        plugin,
-        sessionDao,
-        prDao,
+        sessionRepository: sessionRepository,
         prSyncService: prSyncService,
       );
     });

@@ -1,6 +1,5 @@
 import "dart:async";
 import "dart:convert";
-import "dart:io";
 import "dart:math";
 import "dart:typed_data";
 
@@ -10,16 +9,17 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../auth/token_refresher.dart";
 import "../push/push_notification_service.dart";
+import "api/gh_cli_api.dart";
+import "api/git_remote_api.dart";
 import "key_exchange.dart";
 import "metadata_service.dart";
 import "models/bridge_config.dart";
 import "persistence/daos/projects_dao.dart";
-import "persistence/daos/pull_request_dao.dart";
-import "persistence/daos/session_dao.dart";
-import "pr/gh_cli_service.dart";
-import "pr/pr_sync_service.dart";
 import "relay_client.dart";
+import "repositories/pull_request_repository.dart";
+import "repositories/session_repository.dart";
 import "routing/request_router.dart";
+import "services/pr_sync_service.dart";
 import "sse/bridge_event_mapper.dart";
 import "sse/sse_manager.dart";
 
@@ -35,8 +35,8 @@ class Orchestrator {
   final ProjectsDao _projectsDao;
   final FailureReporter _failureReporter;
   final PrSyncService Function({
-    required PullRequestDao pullRequestDao,
-    required SessionDao sessionDao,
+    required PullRequestRepositoryLike pullRequestRepository,
+    required SessionRepositoryLike sessionRepository,
   })
   _prSyncServiceFactory;
 
@@ -50,8 +50,8 @@ class Orchestrator {
     required ProjectsDao projectsDao,
     required FailureReporter failureReporter,
     PrSyncService Function({
-      required PullRequestDao pullRequestDao,
-      required SessionDao sessionDao,
+      required PullRequestRepositoryLike pullRequestRepository,
+      required SessionRepositoryLike sessionRepository,
     })?
     prSyncServiceFactory,
   }) : _client = client,
@@ -73,9 +73,18 @@ class Orchestrator {
       failureReporter: _failureReporter,
     );
     sseManager.setRoomKey(roomKey);
+    final database = _projectsDao.attachedDatabase;
+    final pullRequestRepository = PullRequestRepository(
+      pullRequestDao: database.pullRequestDao,
+    );
+    final sessionRepository = SessionRepository(
+      plugin: _plugin,
+      sessionDao: database.sessionDao,
+      pullRequestDao: database.pullRequestDao,
+    );
     final prSyncService = _prSyncServiceFactory(
-      pullRequestDao: _projectsDao.attachedDatabase.pullRequestDao,
-      sessionDao: _projectsDao.attachedDatabase.sessionDao,
+      pullRequestRepository: pullRequestRepository,
+      sessionRepository: sessionRepository,
     );
 
     return OrchestratorSession._(
@@ -90,6 +99,7 @@ class Orchestrator {
       sseManager: sseManager,
       bytesSentController: bytesSentController,
       failureReporter: _failureReporter,
+      sessionRepository: sessionRepository,
       prSyncService: prSyncService,
     );
   }
@@ -102,14 +112,14 @@ class Orchestrator {
   }
 
   static PrSyncService _defaultPrSyncServiceFactory({
-    required PullRequestDao pullRequestDao,
-    required SessionDao sessionDao,
+    required PullRequestRepositoryLike pullRequestRepository,
+    required SessionRepositoryLike sessionRepository,
   }) {
     return PrSyncService(
-      ghCli: GhCliService(),
-      prDao: pullRequestDao,
-      sessionDao: sessionDao,
-      processRunner: Process.run,
+      ghCli: GhCliApi(),
+      gitRemoteApi: GitRemoteApi(),
+      pullRequestRepository: pullRequestRepository,
+      sessionRepository: sessionRepository,
     );
   }
 }
@@ -147,6 +157,7 @@ class OrchestratorSession {
     required SSEManager sseManager,
     required StreamController<int> bytesSentController,
     required FailureReporter failureReporter,
+    required SessionRepositoryLike sessionRepository,
     required PrSyncService prSyncService,
   }) : _client = client,
        _plugin = plugin,
@@ -162,7 +173,7 @@ class OrchestratorSession {
          metadataService: metadataService,
          projectsDao: projectsDao,
          sessionDao: projectsDao.attachedDatabase.sessionDao,
-         pullRequestDao: projectsDao.attachedDatabase.pullRequestDao,
+         sessionRepository: sessionRepository,
          prSyncService: prSyncService,
        ),
        _mapper = BridgeEventMapper(plugin: plugin, failureReporter: failureReporter);

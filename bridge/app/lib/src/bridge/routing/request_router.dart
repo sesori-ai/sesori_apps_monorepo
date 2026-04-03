@@ -3,9 +3,9 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../metadata_service.dart";
 import "../persistence/daos/projects_dao.dart";
-import "../persistence/daos/pull_request_dao.dart";
 import "../persistence/daos/session_dao.dart";
-import "../pr/pr_sync_service.dart";
+import "../repositories/session_repository.dart";
+import "../services/pr_sync_service.dart";
 import "../worktree_service.dart";
 import "abort_session_handler.dart";
 import "create_project_handler.dart";
@@ -51,14 +51,14 @@ class RequestRouter {
     required MetadataService metadataService,
     required ProjectsDao projectsDao,
     required SessionDao sessionDao,
-    required PullRequestDao pullRequestDao,
+    required SessionRepositoryLike sessionRepository,
     required PrSyncService prSyncService,
   }) : _handlers = _buildHandlers(
          plugin: plugin,
          metadataService: metadataService,
          projectsDao: projectsDao,
          sessionDao: sessionDao,
-         pullRequestDao: pullRequestDao,
+         sessionRepository: sessionRepository,
          prSyncService: prSyncService,
        );
 
@@ -67,11 +67,10 @@ class RequestRouter {
     required MetadataService metadataService,
     required ProjectsDao projectsDao,
     required SessionDao sessionDao,
-    required PullRequestDao pullRequestDao,
+    required SessionRepositoryLike sessionRepository,
     required PrSyncService prSyncService,
   }) {
     final hiddenStore = projectsDao;
-    final prDao = pullRequestDao;
 
     final worktreeService = WorktreeService(
       projectsDao: projectsDao,
@@ -82,14 +81,9 @@ class RequestRouter {
       GetCurrentProjectHandler(plugin),
       GetProjectsHandler(plugin, hiddenStore),
       GetSessionStatusesHandler(plugin),
-      GetChildSessionsHandler(plugin),
+      GetChildSessionsHandler(sessionRepository: sessionRepository),
       GetSessionMessagesHandler(plugin),
-      GetSessionsHandler(
-        plugin,
-        sessionDao,
-        prDao,
-        prSyncService: prSyncService,
-      ),
+      GetSessionsHandler(sessionRepository: sessionRepository, prSyncService: prSyncService),
       CreateSessionHandler(
         plugin: plugin,
         metadataService: metadataService,

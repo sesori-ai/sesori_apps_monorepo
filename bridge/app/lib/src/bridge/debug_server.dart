@@ -5,11 +5,14 @@ import "dart:io";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "api/gh_cli_api.dart";
+import "api/git_remote_api.dart";
 import "metadata_service.dart";
 import "persistence/daos/projects_dao.dart";
-import "pr/gh_cli_service.dart";
-import "pr/pr_sync_service.dart";
+import "repositories/pull_request_repository.dart";
+import "repositories/session_repository.dart";
 import "routing/request_router.dart";
+import "services/pr_sync_service.dart";
 import "sse/bridge_event_mapper.dart";
 
 class DebugServer {
@@ -32,18 +35,26 @@ class DebugServer {
   }) : _plugin = plugin,
        _router = (() {
          final database = projectsDao.attachedDatabase;
-         final prSyncService = PrSyncService(
-           ghCli: GhCliService(),
-           prDao: database.pullRequestDao,
+         final pullRequestRepository = PullRequestRepository(
+           pullRequestDao: database.pullRequestDao,
+         );
+         final sessionRepository = SessionRepository(
+           plugin: plugin,
            sessionDao: database.sessionDao,
-           processRunner: Process.run,
+           pullRequestDao: database.pullRequestDao,
+         );
+         final prSyncService = PrSyncService(
+           ghCli: GhCliApi(),
+           gitRemoteApi: GitRemoteApi(),
+           pullRequestRepository: pullRequestRepository,
+           sessionRepository: sessionRepository,
          );
          return RequestRouter(
            plugin: plugin,
            metadataService: metadataService,
            projectsDao: projectsDao,
            sessionDao: database.sessionDao,
-           pullRequestDao: database.pullRequestDao,
+           sessionRepository: sessionRepository,
            prSyncService: prSyncService,
          );
        })(),

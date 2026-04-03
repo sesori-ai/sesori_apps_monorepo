@@ -1,23 +1,22 @@
 import "dart:async";
 import "dart:convert";
-import "dart:io";
 import "dart:typed_data";
 
 import "package:cryptography/cryptography.dart";
 import "package:sesori_bridge/src/auth/token_refresher.dart";
+import "package:sesori_bridge/src/bridge/api/gh_cli_api.dart";
+import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
+import "package:sesori_bridge/src/bridge/api/git_remote_api.dart";
 import "package:sesori_bridge/src/bridge/metadata_service.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/models/session_metadata.dart";
 import "package:sesori_bridge/src/bridge/orchestrator.dart";
-import "package:sesori_bridge/src/bridge/persistence/dao_interfaces.dart";
-import "package:sesori_bridge/src/bridge/persistence/daos/pull_request_dao.dart";
-import "package:sesori_bridge/src/bridge/persistence/daos/session_dao.dart";
-import "package:sesori_bridge/src/bridge/persistence/tables/pull_requests_table.dart";
-import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
-import "package:sesori_bridge/src/bridge/pr/gh_cli_service.dart";
-import "package:sesori_bridge/src/bridge/pr/gh_pull_request.dart";
-import "package:sesori_bridge/src/bridge/pr/pr_sync_service.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/pull_request_record.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
 import "package:sesori_bridge/src/push/push_notification_client.dart";
 import "package:sesori_bridge/src/push/push_notification_service.dart";
@@ -56,9 +55,13 @@ void main() {
       tokenRefresher: _FakeTokenRefresher(),
       projectsDao: database.projectsDao,
       failureReporter: FakeFailureReporter(),
-      prSyncServiceFactory: ({required PullRequestDao pullRequestDao, required SessionDao sessionDao}) {
-        return fakePrSyncService;
-      },
+      prSyncServiceFactory:
+          ({
+            required PullRequestRepositoryLike pullRequestRepository,
+            required SessionRepositoryLike sessionRepository,
+          }) {
+            return fakePrSyncService;
+          },
     );
 
     final session = orchestrator.create();
@@ -327,10 +330,10 @@ class _FakePrSyncService extends PrSyncService {
 
   _FakePrSyncService()
     : super(
-        ghCli: _NoopGhCliService(),
-        prDao: _NoopPullRequestDao(),
-        sessionDao: _NoopSessionDao(),
-        processRunner: _unusedProcessRunner,
+        ghCli: _NoopGhCliApi(),
+        gitRemoteApi: _NoopGitRemoteApi(),
+        pullRequestRepository: _NoopPullRequestRepository(),
+        sessionRepository: _NoopSessionRepository(),
       );
 
   @override
@@ -349,9 +352,7 @@ class _FakePrSyncService extends PrSyncService {
   }
 }
 
-class _NoopGhCliService extends GhCliService {
-  _NoopGhCliService() : super();
-
+class _NoopGhCliApi implements GhCliApi {
   @override
   Future<bool> isAvailable() async => false;
 
@@ -360,61 +361,48 @@ class _NoopGhCliService extends GhCliService {
 
   @override
   Future<List<GhPullRequest>> listOpenPrs({required String workingDirectory}) async => const <GhPullRequest>[];
-}
-
-class _NoopSessionDao implements SessionDaoLike {
-  @override
-  Future<Map<String, SessionDto>> getSessionsByIds({required List<String> sessionIds}) async {
-    return const <String, SessionDto>{};
-  }
 
   @override
-  Future<List<SessionDto>> getSessionsByProject({required String projectId}) async {
-    return const <SessionDto>[];
+  Future<GhPullRequest> getPrByNumber({required int number, required String workingDirectory}) async {
+    throw StateError("getPrByNumber should not be called");
   }
 }
 
-class _NoopPullRequestDao extends PullRequestDao {
-  _NoopPullRequestDao() : super(createTestDatabase());
+class _NoopGitRemoteApi implements GitRemoteApi {
+  @override
+  Future<bool> hasGitHubRemote({required String projectPath}) async => false;
+}
+
+class _NoopPullRequestRepository implements PullRequestRepositoryLike {
+  @override
+  Future<List<PullRequestRecord>> getActivePullRequestsByProjectId({required String projectId}) async {
+    return const <PullRequestRecord>[];
+  }
 
   @override
-  Future<void> upsertPr({
+  Future<void> upsertPullRequest({required PullRequestRecord record}) async {}
+}
+
+class _NoopSessionRepository implements SessionRepositoryLike {
+  @override
+  Future<List<Session>> getSessionsForProject({
     required String projectId,
-    required String branchName,
-    required int prNumber,
-    required String url,
-    required String title,
-    required String state,
-    required String mergeableStatus,
-    required String reviewDecision,
-    required String checkStatus,
-    required int lastCheckedAt,
-    required int createdAt,
-  }) async {}
-
-  @override
-  Future<List<PullRequestDto>> getPrsByProjectId({required String projectId}) async {
-    return const <PullRequestDto>[];
+    required int? start,
+    required int? limit,
+  }) async {
+    return const <Session>[];
   }
 
   @override
-  Future<Map<String, PullRequestDto>> getPrsBySessionIds({required List<String> sessionIds}) async {
-    return const <String, PullRequestDto>{};
+  Future<List<Session>> getChildSessions({required String sessionId}) async {
+    return const <Session>[];
   }
 
   @override
-  Future<List<PullRequestDto>> getActivePrsByProjectId({required String projectId}) async {
-    return const <PullRequestDto>[];
+  Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {
+    return const <StoredSession>[];
   }
 
   @override
-  Future<void> deletePr({required String projectId, required int prNumber}) async {}
-}
-
-Future<ProcessResult> _unusedProcessRunner(
-  String executable,
-  List<String> arguments, {
-  String? workingDirectory,
-}) {
-  throw StateError("process runner should not be called");
+  Future<String?> getProjectPath({required String projectId}) async => null;
 }

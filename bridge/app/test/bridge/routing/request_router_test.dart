@@ -1,7 +1,8 @@
 import "dart:convert";
 
+import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
-import "package:sesori_bridge/src/bridge/persistence/tables/pull_requests_table.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/request_router.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -21,13 +22,18 @@ void main() {
       plugin = FakeBridgePlugin();
       metadataService = FakeMetadataService();
       db = createTestDatabase();
+      final sessionRepository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestDao: db.pullRequestDao,
+      );
       router = RequestRouter(
         plugin: plugin,
         metadataService: metadataService,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
-        pullRequestDao: db.pullRequestDao,
-        prSyncService: FakePrSyncService(prDao: db.pullRequestDao, sessionDao: db.sessionDao),
+        sessionRepository: sessionRepository,
+        prSyncService: FakePrSyncService(),
       );
     });
 
@@ -244,13 +250,18 @@ void main() {
         ),
       );
 
-      final spyPrSyncService = FakePrSyncService(prDao: fakePrDao);
+      final spyPrSyncService = FakePrSyncService();
+      final sessionRepository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestDao: fakePrDao,
+      );
 
       router = RequestRouter(
         plugin: plugin,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
-        pullRequestDao: fakePrDao,
+        sessionRepository: sessionRepository,
         prSyncService: spyPrSyncService,
         metadataService: metadataService,
       );

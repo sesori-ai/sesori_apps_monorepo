@@ -1,15 +1,15 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "plugin_session_mapper.dart";
+import "../repositories/session_repository.dart";
 import "request_handler.dart";
 
 /// Handles `GET /session/:id/children` — returns direct child sessions.
 class GetChildSessionsHandler extends BodyRequestHandler<SessionIdRequest, SessionListResponse> {
-  final BridgePlugin _plugin;
+  final SessionRepositoryLike _sessionRepository;
 
-  GetChildSessionsHandler(this._plugin)
-    : super(
+  GetChildSessionsHandler({required SessionRepositoryLike sessionRepository})
+    : _sessionRepository = sessionRepository,
+      super(
         HttpMethod.post,
         "/session/children",
         fromJson: SessionIdRequest.fromJson,
@@ -28,8 +28,7 @@ class GetChildSessionsHandler extends BodyRequestHandler<SessionIdRequest, Sessi
       throw buildErrorResponse(request, 400, "empty session id");
     }
 
-    final pluginSessions = await _plugin.getChildSessions(sessionId);
-    final sessions = pluginSessions.map((s) => s.toSharedSession()).toList();
+    final sessions = await _sessionRepository.getChildSessions(sessionId: sessionId);
     return SessionListResponse(items: sessions);
   }
 }

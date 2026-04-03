@@ -1,18 +1,22 @@
 import "dart:async";
-import "dart:io";
 
+import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
+import "package:sesori_bridge/src/bridge/api/gh_cli_api.dart";
+import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
+import "package:sesori_bridge/src/bridge/api/git_remote_api.dart";
 import "package:sesori_bridge/src/bridge/metadata_service.dart";
 import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge_metadata;
 import "package:sesori_bridge/src/bridge/persistence/dao_interfaces.dart";
-import "package:sesori_bridge/src/bridge/persistence/daos/pull_request_dao.dart";
-import "package:sesori_bridge/src/bridge/persistence/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
-import "package:sesori_bridge/src/bridge/pr/gh_cli_service.dart";
-import "package:sesori_bridge/src/bridge/pr/pr_sync_service.dart";
+import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_session_mapper.dart";
+import "package:sesori_bridge/src/bridge/repositories/mappers/pull_request_mapper.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/pull_request_record.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
-
-import "../../helpers/test_database.dart";
 
 /// Convenience factory for [RelayRequest] instances in tests.
 RelayRequest makeRequest(
@@ -368,11 +372,11 @@ class FakeMetadataService implements MetadataService {
   }
 }
 
-class FakePullRequestDao extends PullRequestDao {
+class FakePullRequestDao implements PullRequestDaoLike {
   final Map<String, PullRequestDto> _prsBySessionId = <String, PullRequestDto>{};
   final Map<String, PullRequestDto> _prsByPrimaryKey = <String, PullRequestDto>{};
 
-  FakePullRequestDao() : super(createTestDatabase());
+  FakePullRequestDao();
 
   void setPr({required String sessionId, required PullRequestDto pullRequest}) {
     _prsBySessionId[sessionId] = pullRequest;
@@ -387,19 +391,16 @@ class FakePullRequestDao extends PullRequestDao {
     };
   }
 
-  @override
   Future<List<PullRequestDto>> getPrsByProjectId({required String projectId}) async {
     return _prsByPrimaryKey.values.where((pr) => pr.projectId == projectId).toList();
   }
 
-  @override
   Future<List<PullRequestDto>> getActivePrsByProjectId({required String projectId}) async {
     return _prsByPrimaryKey.values
         .where((pr) => pr.projectId == projectId && pr.state.toUpperCase() == "OPEN")
         .toList();
   }
 
-  @override
   Future<void> upsertPr({
     required String projectId,
     required String branchName,
@@ -429,7 +430,6 @@ class FakePullRequestDao extends PullRequestDao {
     _prsByPrimaryKey[_key(projectId: projectId, prNumber: prNumber)] = pr;
   }
 
-  @override
   Future<void> deletePr({required String projectId, required int prNumber}) async {
     _prsByPrimaryKey.remove(_key(projectId: projectId, prNumber: prNumber));
     _prsBySessionId.removeWhere(
@@ -445,13 +445,17 @@ class FakePullRequestDao extends PullRequestDao {
 class FakePrSyncService extends PrSyncService {
   final List<({String projectId, String projectPath})> calls = <({String projectId, String projectPath})>[];
 
-  FakePrSyncService({GhCliService? ghCli, PullRequestDao? prDao, SessionDaoLike? sessionDao})
-    : super(
-        ghCli: ghCli ?? _AlwaysReadyGhCliService(),
-        prDao: prDao ?? FakePullRequestDao(),
-        sessionDao: sessionDao ?? FakeSessionDao(),
-        processRunner: _unusedProcessRunner,
-      );
+  FakePrSyncService({
+    GhCliApi? ghCli,
+    GitRemoteApi? gitRemoteApi,
+    PullRequestRepositoryLike? pullRequestRepository,
+    SessionRepositoryLike? sessionRepository,
+  }) : super(
+         ghCli: ghCli ?? _AlwaysReadyGhCliApi(),
+         gitRemoteApi: gitRemoteApi ?? _AlwaysReadyGitRemoteApi(),
+         pullRequestRepository: pullRequestRepository ?? _NoopPullRequestRepository(),
+         sessionRepository: sessionRepository ?? _NoopSessionRepository(),
+       );
 
   @override
   Future<void> triggerRefresh({required String projectId, required String projectPath}) async {
@@ -459,20 +463,132 @@ class FakePrSyncService extends PrSyncService {
   }
 }
 
-class _AlwaysReadyGhCliService extends GhCliService {
-  _AlwaysReadyGhCliService() : super();
-
+class _AlwaysReadyGhCliApi implements GhCliApi {
   @override
   Future<bool> isAvailable() async => true;
 
   @override
   Future<bool> isAuthenticated() async => true;
+
+  @override
+  Future<List<GhPullRequest>> listOpenPrs({required String workingDirectory}) async {
+    return const <GhPullRequest>[];
+  }
+
+  @override
+  Future<GhPullRequest> getPrByNumber({required int number, required String workingDirectory}) async {
+    throw StateError("getPrByNumber should not be called");
+  }
 }
 
-Future<ProcessResult> _unusedProcessRunner(
-  String executable,
-  List<String> arguments, {
-  String? workingDirectory,
-}) {
-  throw StateError("process runner should not be called");
+class _AlwaysReadyGitRemoteApi implements GitRemoteApi {
+  @override
+  Future<bool> hasGitHubRemote({required String projectPath}) async => true;
+}
+
+class _NoopPullRequestRepository implements PullRequestRepositoryLike {
+  @override
+  Future<List<PullRequestRecord>> getActivePullRequestsByProjectId({required String projectId}) async {
+    return const <PullRequestRecord>[];
+  }
+
+  @override
+  Future<void> upsertPullRequest({required PullRequestRecord record}) async {}
+}
+
+class _NoopSessionRepository implements SessionRepositoryLike {
+  @override
+  Future<List<Session>> getSessionsForProject({
+    required String projectId,
+    required int? start,
+    required int? limit,
+  }) async {
+    return const <Session>[];
+  }
+
+  @override
+  Future<List<Session>> getChildSessions({required String sessionId}) async {
+    return const <Session>[];
+  }
+
+  @override
+  Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {
+    return const <StoredSession>[];
+  }
+
+  @override
+  Future<String?> getProjectPath({required String projectId}) async => null;
+}
+
+/// Test-friendly [SessionRepositoryLike] that delegates to a [FakeBridgePlugin]
+/// and [FakeSessionDao], so handler tests can configure plugin/DAO behaviour
+/// without needing real implementations.
+class FakeSessionRepository implements SessionRepositoryLike {
+  final FakeBridgePlugin _plugin;
+  final FakeSessionDao _sessionDao;
+  final FakePullRequestDao _pullRequestDao;
+
+  FakeSessionRepository({
+    required FakeBridgePlugin plugin,
+    FakeSessionDao? sessionDao,
+    FakePullRequestDao? pullRequestDao,
+  }) : _plugin = plugin,
+       _sessionDao = sessionDao ?? FakeSessionDao(),
+       _pullRequestDao = pullRequestDao ?? FakePullRequestDao();
+
+  @override
+  Future<List<Session>> getSessionsForProject({
+    required String projectId,
+    required int? start,
+    required int? limit,
+  }) async {
+    final pluginSessions = await _plugin.getSessions(
+      projectId,
+      start: start,
+      limit: limit,
+    );
+    final sessions = pluginSessions.map((s) => s.toSharedSession()).toList();
+    final sessionIds = sessions.map((s) => s.id).toList();
+    final dbSessions = await _sessionDao.getSessionsByIds(sessionIds: sessionIds);
+    final mergedSessions = sessions.map((session) {
+      final dbSession = dbSessions[session.id];
+      if (dbSession != null) {
+        final currentTime = session.time;
+        final mergedTime = currentTime != null
+            ? currentTime.copyWith(archived: dbSession.archivedAt)
+            : SessionTime(created: 0, updated: 0, archived: dbSession.archivedAt);
+        return session.copyWith(time: mergedTime);
+      }
+      return session;
+    }).toList();
+    final prsBySessionId = await _pullRequestDao.getPrsBySessionIds(sessionIds: sessionIds);
+    return mergedSessions.map((session) {
+      final pr = prsBySessionId[session.id];
+      if (pr == null) return session;
+      return session.copyWith(pullRequest: pullRequestInfoFromDto(pr));
+    }).toList();
+  }
+
+  @override
+  Future<List<Session>> getChildSessions({required String sessionId}) async {
+    final pluginSessions = await _plugin.getChildSessions(sessionId);
+    return pluginSessions.map((s) => s.toSharedSession()).toList();
+  }
+
+  @override
+  Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {
+    final sessions = await _sessionDao.getSessionsByProject(projectId: projectId);
+    return sessions.map((s) => StoredSession(id: s.sessionId, branchName: s.branchName)).toList(growable: false);
+  }
+
+  @override
+  Future<String?> getProjectPath({required String projectId}) async {
+    try {
+      final project = await _plugin.getProject(projectId);
+      if (project.id.isEmpty) return null;
+      return project.id;
+    } catch (_) {
+      return null;
+    }
+  }
 }
