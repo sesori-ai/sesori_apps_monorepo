@@ -3,6 +3,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../persistence/dao_interfaces.dart";
 import "plugin_session_mapper.dart";
+import "pr_enum_helpers.dart";
 import "request_handler.dart";
 
 /// Handles `GET /session/:id/children` — returns direct child sessions.
@@ -46,10 +47,10 @@ class GetChildSessionsHandler extends BodyRequestHandler<SessionIdRequest, Sessi
           number: pr.prNumber,
           url: pr.url,
           title: pr.title,
-          state: pr.state,
-          mergeableStatus: pr.mergeableStatus,
-          reviewDecision: pr.reviewDecision,
-          checkStatus: pr.checkStatus,
+          state: stringToPrState(pr.state),
+          mergeableStatus: stringToPrMergeableStatus(pr.mergeableStatus),
+          reviewDecision: stringToPrReviewDecision(pr.reviewDecision),
+          checkStatus: stringToPrCheckStatus(pr.checkStatus),
         ),
       );
     }).toList();

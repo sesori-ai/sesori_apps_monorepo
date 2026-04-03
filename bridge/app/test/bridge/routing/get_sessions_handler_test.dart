@@ -426,10 +426,10 @@ void main() {
       expect(pr?.number, equals(42));
       expect(pr?.url, equals("https://github.com/org/repo/pull/42"));
       expect(pr?.title, equals("Add PR merge support"));
-      expect(pr?.state, equals("OPEN"));
-      expect(pr?.mergeableStatus, equals("MERGEABLE"));
-      expect(pr?.reviewDecision, equals("APPROVED"));
-      expect(pr?.checkStatus, equals("SUCCESS"));
+      expect(pr?.state, equals(PrState.open));
+      expect(pr?.mergeableStatus, equals(PrMergeableStatus.mergeable));
+      expect(pr?.reviewDecision, equals(PrReviewDecision.approved));
+      expect(pr?.checkStatus, equals(PrCheckStatus.success));
     });
 
     test("keeps pullRequest null when session has no PR", () async {

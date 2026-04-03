@@ -5,6 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../persistence/dao_interfaces.dart";
 import "plugin_session_mapper.dart";
+import "pr_enum_helpers.dart";
 import "request_handler.dart";
 
 /// Handles `GET /sessions` — returns sessions for a given project.
@@ -94,10 +95,10 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
           number: pr.prNumber,
           url: pr.url,
           title: pr.title,
-          state: pr.state,
-          mergeableStatus: pr.mergeableStatus,
-          reviewDecision: pr.reviewDecision,
-          checkStatus: pr.checkStatus,
+          state: stringToPrState(pr.state),
+          mergeableStatus: stringToPrMergeableStatus(pr.mergeableStatus),
+          reviewDecision: stringToPrReviewDecision(pr.reviewDecision),
+          checkStatus: stringToPrCheckStatus(pr.checkStatus),
         ),
       );
     }).toList();

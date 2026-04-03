@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PullRequestInfo {
 
- int get number; String get url; String get title; String get state; String? get mergeableStatus; String? get reviewDecision; String? get checkStatus;
+ int get number; String get url; String get title;@JsonKey(unknownEnumValue: PrState.unknown) PrState get state;@JsonKey(unknownEnumValue: PrMergeableStatus.unknown) PrMergeableStatus get mergeableStatus;@JsonKey(unknownEnumValue: PrReviewDecision.unknown) PrReviewDecision get reviewDecision;@JsonKey(unknownEnumValue: PrCheckStatus.unknown) PrCheckStatus get checkStatus;
 /// Create a copy of PullRequestInfo
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -48,7 +48,7 @@ abstract mixin class $PullRequestInfoCopyWith<$Res>  {
   factory $PullRequestInfoCopyWith(PullRequestInfo value, $Res Function(PullRequestInfo) _then) = _$PullRequestInfoCopyWithImpl;
 @useResult
 $Res call({
- int number, String url, String title, String state, String? mergeableStatus, String? reviewDecision, String? checkStatus
+ int number, String url, String title,@JsonKey(unknownEnumValue: PrState.unknown) PrState state,@JsonKey(unknownEnumValue: PrMergeableStatus.unknown) PrMergeableStatus mergeableStatus,@JsonKey(unknownEnumValue: PrReviewDecision.unknown) PrReviewDecision reviewDecision,@JsonKey(unknownEnumValue: PrCheckStatus.unknown) PrCheckStatus checkStatus
 });
 
 
@@ -65,16 +65,16 @@ class _$PullRequestInfoCopyWithImpl<$Res>
 
 /// Create a copy of PullRequestInfo
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? number = null,Object? url = null,Object? title = null,Object? state = null,Object? mergeableStatus = freezed,Object? reviewDecision = freezed,Object? checkStatus = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? number = null,Object? url = null,Object? title = null,Object? state = null,Object? mergeableStatus = null,Object? reviewDecision = null,Object? checkStatus = null,}) {
   return _then(_self.copyWith(
 number: null == number ? _self.number : number // ignore: cast_nullable_to_non_nullable
 as int,url: null == url ? _self.url : url // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String,state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
-as String,mergeableStatus: freezed == mergeableStatus ? _self.mergeableStatus : mergeableStatus // ignore: cast_nullable_to_non_nullable
-as String?,reviewDecision: freezed == reviewDecision ? _self.reviewDecision : reviewDecision // ignore: cast_nullable_to_non_nullable
-as String?,checkStatus: freezed == checkStatus ? _self.checkStatus : checkStatus // ignore: cast_nullable_to_non_nullable
-as String?,
+as PrState,mergeableStatus: null == mergeableStatus ? _self.mergeableStatus : mergeableStatus // ignore: cast_nullable_to_non_nullable
+as PrMergeableStatus,reviewDecision: null == reviewDecision ? _self.reviewDecision : reviewDecision // ignore: cast_nullable_to_non_nullable
+as PrReviewDecision,checkStatus: null == checkStatus ? _self.checkStatus : checkStatus // ignore: cast_nullable_to_non_nullable
+as PrCheckStatus,
   ));
 }
 
@@ -86,16 +86,16 @@ as String?,
 @JsonSerializable()
 
 class _PullRequestInfo implements PullRequestInfo {
-  const _PullRequestInfo({required this.number, required this.url, required this.title, required this.state, required this.mergeableStatus, required this.reviewDecision, required this.checkStatus});
+  const _PullRequestInfo({required this.number, required this.url, required this.title, @JsonKey(unknownEnumValue: PrState.unknown) required this.state, @JsonKey(unknownEnumValue: PrMergeableStatus.unknown) required this.mergeableStatus, @JsonKey(unknownEnumValue: PrReviewDecision.unknown) required this.reviewDecision, @JsonKey(unknownEnumValue: PrCheckStatus.unknown) required this.checkStatus});
   factory _PullRequestInfo.fromJson(Map<String, dynamic> json) => _$PullRequestInfoFromJson(json);
 
 @override final  int number;
 @override final  String url;
 @override final  String title;
-@override final  String state;
-@override final  String? mergeableStatus;
-@override final  String? reviewDecision;
-@override final  String? checkStatus;
+@override@JsonKey(unknownEnumValue: PrState.unknown) final  PrState state;
+@override@JsonKey(unknownEnumValue: PrMergeableStatus.unknown) final  PrMergeableStatus mergeableStatus;
+@override@JsonKey(unknownEnumValue: PrReviewDecision.unknown) final  PrReviewDecision reviewDecision;
+@override@JsonKey(unknownEnumValue: PrCheckStatus.unknown) final  PrCheckStatus checkStatus;
 
 /// Create a copy of PullRequestInfo
 /// with the given fields replaced by the non-null parameter values.
@@ -130,7 +130,7 @@ abstract mixin class _$PullRequestInfoCopyWith<$Res> implements $PullRequestInfo
   factory _$PullRequestInfoCopyWith(_PullRequestInfo value, $Res Function(_PullRequestInfo) _then) = __$PullRequestInfoCopyWithImpl;
 @override @useResult
 $Res call({
- int number, String url, String title, String state, String? mergeableStatus, String? reviewDecision, String? checkStatus
+ int number, String url, String title,@JsonKey(unknownEnumValue: PrState.unknown) PrState state,@JsonKey(unknownEnumValue: PrMergeableStatus.unknown) PrMergeableStatus mergeableStatus,@JsonKey(unknownEnumValue: PrReviewDecision.unknown) PrReviewDecision reviewDecision,@JsonKey(unknownEnumValue: PrCheckStatus.unknown) PrCheckStatus checkStatus
 });
 
 
@@ -147,16 +147,16 @@ class __$PullRequestInfoCopyWithImpl<$Res>
 
 /// Create a copy of PullRequestInfo
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? number = null,Object? url = null,Object? title = null,Object? state = null,Object? mergeableStatus = freezed,Object? reviewDecision = freezed,Object? checkStatus = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? number = null,Object? url = null,Object? title = null,Object? state = null,Object? mergeableStatus = null,Object? reviewDecision = null,Object? checkStatus = null,}) {
   return _then(_PullRequestInfo(
 number: null == number ? _self.number : number // ignore: cast_nullable_to_non_nullable
 as int,url: null == url ? _self.url : url // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String,state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
-as String,mergeableStatus: freezed == mergeableStatus ? _self.mergeableStatus : mergeableStatus // ignore: cast_nullable_to_non_nullable
-as String?,reviewDecision: freezed == reviewDecision ? _self.reviewDecision : reviewDecision // ignore: cast_nullable_to_non_nullable
-as String?,checkStatus: freezed == checkStatus ? _self.checkStatus : checkStatus // ignore: cast_nullable_to_non_nullable
-as String?,
+as PrState,mergeableStatus: null == mergeableStatus ? _self.mergeableStatus : mergeableStatus // ignore: cast_nullable_to_non_nullable
+as PrMergeableStatus,reviewDecision: null == reviewDecision ? _self.reviewDecision : reviewDecision // ignore: cast_nullable_to_non_nullable
+as PrReviewDecision,checkStatus: null == checkStatus ? _self.checkStatus : checkStatus // ignore: cast_nullable_to_non_nullable
+as PrCheckStatus,
   ));
 }
 
