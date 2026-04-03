@@ -4,9 +4,7 @@ import "dart:typed_data";
 
 import "package:cryptography/cryptography.dart";
 import "package:sesori_bridge/src/auth/token_refresher.dart";
-import "package:sesori_bridge/src/bridge/api/gh_cli_api.dart";
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
-import "package:sesori_bridge/src/bridge/api/git_remote_api.dart";
 import "package:sesori_bridge/src/bridge/metadata_service.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/models/session_metadata.dart";
@@ -14,6 +12,7 @@ import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/pull_request_record.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
@@ -330,8 +329,7 @@ class _FakePrSyncService extends PrSyncService {
 
   _FakePrSyncService()
     : super(
-        ghCli: _NoopGhCliApi(),
-        gitRemoteApi: _NoopGitRemoteApi(),
+        prSource: _NoopPrSource(),
         pullRequestRepository: _NoopPullRequestRepository(),
         sessionRepository: _NoopSessionRepository(),
       );
@@ -352,12 +350,15 @@ class _FakePrSyncService extends PrSyncService {
   }
 }
 
-class _NoopGhCliApi implements GhCliApi {
+class _NoopPrSource implements PrSourceRepositoryLike {
   @override
-  Future<bool> isAvailable() async => false;
+  Future<bool> isGitHubAvailable() async => false;
 
   @override
-  Future<bool> isAuthenticated() async => false;
+  Future<bool> isGitHubAuthenticated() async => false;
+
+  @override
+  Future<bool> hasGitHubRemote({required String projectPath}) async => false;
 
   @override
   Future<List<GhPullRequest>> listOpenPrs({required String workingDirectory}) async => const <GhPullRequest>[];
@@ -366,11 +367,6 @@ class _NoopGhCliApi implements GhCliApi {
   Future<GhPullRequest> getPrByNumber({required int number, required String workingDirectory}) async {
     throw StateError("getPrByNumber should not be called");
   }
-}
-
-class _NoopGitRemoteApi implements GitRemoteApi {
-  @override
-  Future<bool> hasGitHubRemote({required String projectPath}) async => false;
 }
 
 class _NoopPullRequestRepository implements PullRequestRepositoryLike {

@@ -2,17 +2,15 @@ import "dart:async";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
-import "../api/gh_cli_api.dart";
 import "../api/gh_pull_request.dart";
-import "../api/git_remote_api.dart";
 import "../repositories/models/pull_request_record.dart";
 import "../repositories/models/stored_session.dart";
+import "../repositories/pr_source_repository.dart";
 import "../repositories/pull_request_repository.dart";
 import "../repositories/session_repository.dart";
 
 class PrSyncService {
-  final GhCliApi _ghCli;
-  final GitRemoteApi _gitRemoteApi;
+  final PrSourceRepositoryLike _prSource;
   final PullRequestRepositoryLike _pullRequestRepository;
   final SessionRepositoryLike _sessionRepository;
   final Duration _debounceWindow;
@@ -25,13 +23,11 @@ class PrSyncService {
   final Set<String> _activeRefreshes = <String>{};
 
   PrSyncService({
-    required GhCliApi ghCli,
-    required GitRemoteApi gitRemoteApi,
+    required PrSourceRepositoryLike prSource,
     required PullRequestRepositoryLike pullRequestRepository,
     required SessionRepositoryLike sessionRepository,
     Duration debounceWindow = const Duration(seconds: 30),
-  }) : _ghCli = ghCli,
-       _gitRemoteApi = gitRemoteApi,
+  }) : _prSource = prSource,
        _pullRequestRepository = pullRequestRepository,
        _sessionRepository = sessionRepository,
        _debounceWindow = debounceWindow;
@@ -39,18 +35,18 @@ class PrSyncService {
   Stream<String> get prChanges => _prChangesController.stream;
 
   Future<void> triggerRefresh({required String projectId, required String projectPath}) async {
-    _ghAvailable ??= await _ghCli.isAvailable();
+    _ghAvailable ??= await _prSource.isGitHubAvailable();
     if (!_ghAvailable!) {
       return;
     }
 
-    _ghAuthenticated ??= await _ghCli.isAuthenticated();
+    _ghAuthenticated ??= await _prSource.isGitHubAuthenticated();
     if (!_ghAuthenticated!) {
       return;
     }
 
     if (!_hasGitHubRemoteCache.containsKey(projectPath)) {
-      _hasGitHubRemoteCache[projectPath] = await _gitRemoteApi.hasGitHubRemote(
+      _hasGitHubRemoteCache[projectPath] = await _prSource.hasGitHubRemote(
         projectPath: projectPath,
       );
     }
@@ -76,7 +72,7 @@ class PrSyncService {
   Future<void> _refresh({required String projectId, required String projectPath}) async {
     try {
       final (openPrs, storedSessions, activePrs) = await (
-        _ghCli.listOpenPrs(workingDirectory: projectPath),
+        _prSource.listOpenPrs(workingDirectory: projectPath),
         _sessionRepository.getStoredSessionsByProjectId(projectId: projectId),
         _pullRequestRepository.getActivePullRequestsByProjectId(projectId: projectId),
       ).wait;
@@ -125,7 +121,7 @@ class PrSyncService {
 
       for (final disappeared in disappearedActivePrs) {
         try {
-          final finalPr = await _ghCli.getPrByNumber(
+          final finalPr = await _prSource.getPrByNumber(
             number: disappeared.prNumber,
             workingDirectory: projectPath,
           );

@@ -9,6 +9,7 @@ import "api/gh_cli_api.dart";
 import "api/git_remote_api.dart";
 import "metadata_service.dart";
 import "persistence/daos/projects_dao.dart";
+import "repositories/pr_source_repository.dart";
 import "repositories/pull_request_repository.dart";
 import "repositories/session_repository.dart";
 import "routing/request_router.dart";
@@ -44,8 +45,10 @@ class DebugServer {
            pullRequestDao: database.pullRequestDao,
          );
          final prSyncService = PrSyncService(
-           ghCli: GhCliApi(),
-           gitRemoteApi: GitRemoteApi(),
+           prSource: PrSourceRepository(
+             ghCli: GhCliApi(),
+             gitRemoteApi: GitRemoteApi(),
+           ),
            pullRequestRepository: pullRequestRepository,
            sessionRepository: sessionRepository,
          );

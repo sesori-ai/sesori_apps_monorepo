@@ -1,10 +1,9 @@
 import "dart:async";
 
-import "package:sesori_bridge/src/bridge/api/gh_cli_api.dart";
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
-import "package:sesori_bridge/src/bridge/api/git_remote_api.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/pull_request_record.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
@@ -14,7 +13,7 @@ import "package:test/test.dart";
 void main() {
   group("PrSyncService", () {
     test("emits project id when a new matched PR is found", () async {
-      final gh = _FakeGhCliApi(
+      final prSource = _FakePrSource(
         listOpenPrsResult: <GhPullRequest>[
           _ghPr(number: 11, branch: "feature/new-pr", title: "New PR"),
         ],
@@ -26,8 +25,7 @@ void main() {
         },
       );
       final service = PrSyncService(
-        ghCli: gh,
-        gitRemoteApi: _FakeGitRemoteApi(hasRemoteResult: true),
+        prSource: prSource,
         pullRequestRepository: pullRequestRepository,
         sessionRepository: sessionRepository,
         debounceWindow: const Duration(milliseconds: 1),
@@ -49,7 +47,7 @@ void main() {
     });
 
     test("does not emit when PR data is unchanged", () async {
-      final gh = _FakeGhCliApi(
+      final prSource = _FakePrSource(
         listOpenPrsResult: <GhPullRequest>[
           _ghPr(number: 33, branch: "feature/no-change", title: "No changes", reviewDecision: "APPROVED"),
         ],
@@ -74,8 +72,7 @@ void main() {
         },
       );
       final service = PrSyncService(
-        ghCli: gh,
-        gitRemoteApi: _FakeGitRemoteApi(hasRemoteResult: true),
+        prSource: prSource,
         pullRequestRepository: pullRequestRepository,
         sessionRepository: sessionRepository,
       );
@@ -92,7 +89,7 @@ void main() {
     });
 
     test("fetches final PR state for disappeared active PR", () async {
-      final gh = _FakeGhCliApi(
+      final prSource = _FakePrSource(
         listOpenPrsResult: <GhPullRequest>[],
         prByNumber: <int, GhPullRequest>{
           22: _ghPr(number: 22, branch: "feature/merged", title: "Merged PR", state: "MERGED"),
@@ -118,8 +115,7 @@ void main() {
         },
       );
       final service = PrSyncService(
-        ghCli: gh,
-        gitRemoteApi: _FakeGitRemoteApi(hasRemoteResult: true),
+        prSource: prSource,
         pullRequestRepository: pullRequestRepository,
         sessionRepository: sessionRepository,
       );
@@ -130,17 +126,16 @@ void main() {
 
       final prs = pullRequestRepository.getByProjectId(projectId: "project-1");
       expect(prs.single.state, equals("MERGED"));
-      expect(gh.getPrByNumberCalls, contains(22));
+      expect(prSource.getPrByNumberCalls, contains(22));
     });
 
     test("caches gh availability and skips refresh when unavailable", () async {
-      final gh = _FakeGhCliApi(
+      final prSource = _FakePrSource(
         listOpenPrsResult: <GhPullRequest>[],
         isAvailableResult: false,
       );
       final service = PrSyncService(
-        ghCli: gh,
-        gitRemoteApi: _FakeGitRemoteApi(hasRemoteResult: true),
+        prSource: prSource,
         pullRequestRepository: _FakePullRequestRepository(),
         sessionRepository: _FakeSessionRepository(sessionsByProject: const <String, List<StoredSession>>{}),
       );
@@ -149,16 +144,15 @@ void main() {
       await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
       await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
 
-      expect(gh.isAvailableCallCount, equals(1));
-      expect(gh.isAuthenticatedCallCount, equals(0));
-      expect(gh.listOpenPrsCallCount, equals(0));
+      expect(prSource.isAvailableCallCount, equals(1));
+      expect(prSource.isAuthenticatedCallCount, equals(0));
+      expect(prSource.listOpenPrsCallCount, equals(0));
     });
 
     test("debounces repeated refreshes for same project", () async {
-      final gh = _FakeGhCliApi(listOpenPrsResult: <GhPullRequest>[]);
+      final prSource = _FakePrSource(listOpenPrsResult: <GhPullRequest>[]);
       final service = PrSyncService(
-        ghCli: gh,
-        gitRemoteApi: _FakeGitRemoteApi(hasRemoteResult: true),
+        prSource: prSource,
         pullRequestRepository: _FakePullRequestRepository(),
         sessionRepository: _FakeSessionRepository(sessionsByProject: const <String, List<StoredSession>>{}),
         debounceWindow: const Duration(hours: 1),
@@ -166,22 +160,21 @@ void main() {
       addTearDown(service.dispose);
 
       await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
-      await _waitFor(() => gh.listOpenPrsCallCount == 1);
+      await _waitFor(() => prSource.listOpenPrsCallCount == 1);
       await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
 
       await Future<void>.delayed(const Duration(milliseconds: 50));
-      expect(gh.listOpenPrsCallCount, equals(1));
+      expect(prSource.listOpenPrsCallCount, equals(1));
     });
 
     test("skips concurrent refresh while one is already active", () async {
       final block = Completer<void>();
-      final gh = _FakeGhCliApi(
+      final prSource = _FakePrSource(
         listOpenPrsResult: <GhPullRequest>[],
         onListOpenPrs: () => block.future,
       );
       final service = PrSyncService(
-        ghCli: gh,
-        gitRemoteApi: _FakeGitRemoteApi(hasRemoteResult: true),
+        prSource: prSource,
         pullRequestRepository: _FakePullRequestRepository(),
         sessionRepository: _FakeSessionRepository(sessionsByProject: const <String, List<StoredSession>>{}),
         debounceWindow: Duration.zero,
@@ -189,11 +182,11 @@ void main() {
       addTearDown(service.dispose);
 
       await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
-      await _waitFor(() => gh.listOpenPrsCallCount == 1);
+      await _waitFor(() => prSource.listOpenPrsCallCount == 1);
       await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
 
       await Future<void>.delayed(const Duration(milliseconds: 30));
-      expect(gh.listOpenPrsCallCount, equals(1));
+      expect(prSource.listOpenPrsCallCount, equals(1));
 
       block.complete();
       await Future<void>.delayed(const Duration(milliseconds: 30));
@@ -257,7 +250,7 @@ PullRequestRecord _record({
   );
 }
 
-class _FakeGhCliApi implements GhCliApi {
+class _FakePrSource implements PrSourceRepositoryLike {
   final List<GhPullRequest> listOpenPrsResult;
   final Map<int, GhPullRequest> prByNumber;
   final Future<void> Function()? onListOpenPrs;
@@ -268,7 +261,7 @@ class _FakeGhCliApi implements GhCliApi {
   int listOpenPrsCallCount = 0;
   final List<int> getPrByNumberCalls = <int>[];
 
-  _FakeGhCliApi({
+  _FakePrSource({
     required this.listOpenPrsResult,
     this.prByNumber = const <int, GhPullRequest>{},
     this.onListOpenPrs,
@@ -276,14 +269,19 @@ class _FakeGhCliApi implements GhCliApi {
   });
 
   @override
-  Future<bool> isAvailable() async {
+  Future<bool> isGitHubAvailable() async {
     isAvailableCallCount++;
     return isAvailableResult;
   }
 
   @override
-  Future<bool> isAuthenticated() async {
+  Future<bool> isGitHubAuthenticated() async {
     isAuthenticatedCallCount++;
+    return true;
+  }
+
+  @override
+  Future<bool> hasGitHubRemote({required String projectPath}) async {
     return true;
   }
 
@@ -304,19 +302,6 @@ class _FakeGhCliApi implements GhCliApi {
       throw Exception("PR #$number not found");
     }
     return pr;
-  }
-}
-
-class _FakeGitRemoteApi implements GitRemoteApi {
-  final bool hasRemoteResult;
-  int callCount = 0;
-
-  _FakeGitRemoteApi({required this.hasRemoteResult});
-
-  @override
-  Future<bool> hasGitHubRemote({required String projectPath}) async {
-    callCount++;
-    return hasRemoteResult;
   }
 }
 

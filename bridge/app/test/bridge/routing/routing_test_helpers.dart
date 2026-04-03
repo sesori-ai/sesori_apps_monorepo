@@ -1,9 +1,7 @@
 import "dart:async";
 
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
-import "package:sesori_bridge/src/bridge/api/gh_cli_api.dart";
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
-import "package:sesori_bridge/src/bridge/api/git_remote_api.dart";
 import "package:sesori_bridge/src/bridge/metadata_service.dart";
 import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge_metadata;
 import "package:sesori_bridge/src/bridge/persistence/dao_interfaces.dart";
@@ -12,6 +10,7 @@ import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_session_map
 import "package:sesori_bridge/src/bridge/repositories/mappers/pull_request_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/pull_request_record.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
@@ -446,13 +445,11 @@ class FakePrSyncService extends PrSyncService {
   final List<({String projectId, String projectPath})> calls = <({String projectId, String projectPath})>[];
 
   FakePrSyncService({
-    GhCliApi? ghCli,
-    GitRemoteApi? gitRemoteApi,
+    PrSourceRepositoryLike? prSource,
     PullRequestRepositoryLike? pullRequestRepository,
     SessionRepositoryLike? sessionRepository,
   }) : super(
-         ghCli: ghCli ?? _AlwaysReadyGhCliApi(),
-         gitRemoteApi: gitRemoteApi ?? _AlwaysReadyGitRemoteApi(),
+         prSource: prSource ?? _AlwaysReadyPrSource(),
          pullRequestRepository: pullRequestRepository ?? _NoopPullRequestRepository(),
          sessionRepository: sessionRepository ?? _NoopSessionRepository(),
        );
@@ -463,12 +460,15 @@ class FakePrSyncService extends PrSyncService {
   }
 }
 
-class _AlwaysReadyGhCliApi implements GhCliApi {
+class _AlwaysReadyPrSource implements PrSourceRepositoryLike {
   @override
-  Future<bool> isAvailable() async => true;
+  Future<bool> isGitHubAvailable() async => true;
 
   @override
-  Future<bool> isAuthenticated() async => true;
+  Future<bool> isGitHubAuthenticated() async => true;
+
+  @override
+  Future<bool> hasGitHubRemote({required String projectPath}) async => true;
 
   @override
   Future<List<GhPullRequest>> listOpenPrs({required String workingDirectory}) async {
@@ -479,11 +479,6 @@ class _AlwaysReadyGhCliApi implements GhCliApi {
   Future<GhPullRequest> getPrByNumber({required int number, required String workingDirectory}) async {
     throw StateError("getPrByNumber should not be called");
   }
-}
-
-class _AlwaysReadyGitRemoteApi implements GitRemoteApi {
-  @override
-  Future<bool> hasGitHubRemote({required String projectPath}) async => true;
 }
 
 class _NoopPullRequestRepository implements PullRequestRepositoryLike {
