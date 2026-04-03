@@ -11,6 +11,7 @@ analyzer:
       scripts/**,
       modules/no_slop_linter/test/**,
       drift_schemas/**,
+      test/drift/default/generated/**,
       "**.freezed.dart",
       "**.config.dart",
       "**.g.dart",
