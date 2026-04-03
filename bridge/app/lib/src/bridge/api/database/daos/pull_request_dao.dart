@@ -1,13 +1,14 @@
 import "package:drift/drift.dart";
 
-import "../database.dart";
+import "../../../persistence/dao_interfaces.dart";
+import "../../../persistence/database.dart";
+import "../../../persistence/tables/session_table.dart";
 import "../tables/pull_requests_table.dart";
-import "../tables/session_table.dart";
 
 part "pull_request_dao.g.dart";
 
 @DriftAccessor(tables: [PullRequestsTable, SessionTable])
-class PullRequestDao extends DatabaseAccessor<AppDatabase> with _$PullRequestDaoMixin {
+class PullRequestDao extends DatabaseAccessor<AppDatabase> with _$PullRequestDaoMixin implements PullRequestDaoLike {
   PullRequestDao(super.attachedDatabase);
 
   Future<void> upsertPr({
@@ -46,6 +47,7 @@ class PullRequestDao extends DatabaseAccessor<AppDatabase> with _$PullRequestDao
     return (select(pullRequestsTable)..where((t) => t.projectId.equals(projectId))).get();
   }
 
+  @override
   Future<Map<String, PullRequestDto>> getPrsBySessionIds({
     required List<String> sessionIds,
   }) async {

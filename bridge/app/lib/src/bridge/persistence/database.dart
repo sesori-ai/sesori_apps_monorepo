@@ -3,12 +3,12 @@ import "dart:io";
 import "package:drift/drift.dart";
 import "package:drift/native.dart";
 
+import "../api/database/daos/pull_request_dao.dart";
+import "../api/database/tables/pull_requests_table.dart";
 import "daos/projects_dao.dart";
-import "daos/pull_request_dao.dart";
 import "daos/session_dao.dart";
 import "database.steps.dart";
 import "tables/projects_table.dart";
-import "tables/pull_requests_table.dart";
 import "tables/session_table.dart";
 
 part "database.g.dart";

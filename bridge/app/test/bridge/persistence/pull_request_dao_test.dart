@@ -1,4 +1,4 @@
-import "package:sesori_bridge/src/bridge/persistence/daos/pull_request_dao.dart";
+import "package:sesori_bridge/src/bridge/api/database/daos/pull_request_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:test/test.dart";
 

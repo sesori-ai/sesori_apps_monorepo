@@ -1,8 +1,8 @@
 import "package:drift/drift.dart" hide JsonKey;
 import "package:freezed_annotation/freezed_annotation.dart";
 
-import "../database.dart";
-import "projects_table.dart";
+import "../../../persistence/database.dart";
+import "../../../persistence/tables/projects_table.dart";
 
 part "pull_requests_table.freezed.dart";
 
