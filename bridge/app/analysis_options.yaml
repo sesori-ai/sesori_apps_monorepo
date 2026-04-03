@@ -10,6 +10,7 @@ analyzer:
       docs/**,
       scripts/**,
       modules/no_slop_linter/test/**,
+      drift_schemas/**,
       "**.freezed.dart",
       "**.config.dart",
       "**.g.dart",
