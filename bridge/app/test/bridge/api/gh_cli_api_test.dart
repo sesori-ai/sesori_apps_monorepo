@@ -1,18 +1,18 @@
 import "dart:async";
 import "dart:io";
 
-import "package:sesori_bridge/src/bridge/pr/gh_cli_service.dart";
-import "package:sesori_bridge/src/bridge/pr/gh_pull_request.dart";
+import "package:sesori_bridge/src/bridge/api/gh_cli_api.dart";
+import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
 import "package:test/test.dart";
 
 void main() {
-  group("GhCliService.isAvailable", () {
+  group("GhCliApi.isAvailable", () {
     late _FakeProcessRunner processRunner;
-    late GhCliService service;
+    late GhCliApi service;
 
     setUp(() {
       processRunner = _FakeProcessRunner();
-      service = GhCliService(processRunner: processRunner.call);
+      service = GhCliApi(processRunner: processRunner.call);
     });
 
     test("returns true when gh --version exits with code 0", () async {
@@ -54,13 +54,13 @@ void main() {
     });
   });
 
-  group("GhCliService.isAuthenticated", () {
+  group("GhCliApi.isAuthenticated", () {
     late _FakeProcessRunner processRunner;
-    late GhCliService service;
+    late GhCliApi service;
 
     setUp(() {
       processRunner = _FakeProcessRunner();
-      service = GhCliService(processRunner: processRunner.call);
+      service = GhCliApi(processRunner: processRunner.call);
     });
 
     test("returns true when gh auth status exits with code 0", () async {
@@ -83,13 +83,13 @@ void main() {
     });
   });
 
-  group("GhCliService.listOpenPrs", () {
+  group("GhCliApi.listOpenPrs", () {
     late _FakeProcessRunner processRunner;
-    late GhCliService service;
+    late GhCliApi service;
 
     setUp(() {
       processRunner = _FakeProcessRunner();
-      service = GhCliService(processRunner: processRunner.call);
+      service = GhCliApi(processRunner: processRunner.call);
     });
 
     test("returns parsed PR list for valid JSON", () async {
@@ -209,13 +209,13 @@ void main() {
     });
   });
 
-  group("GhCliService.getPrByNumber", () {
+  group("GhCliApi.getPrByNumber", () {
     late _FakeProcessRunner processRunner;
-    late GhCliService service;
+    late GhCliApi service;
 
     setUp(() {
       processRunner = _FakeProcessRunner();
-      service = GhCliService(processRunner: processRunner.call);
+      service = GhCliApi(processRunner: processRunner.call);
     });
 
     test("returns parsed PR for valid JSON", () async {

@@ -4,15 +4,15 @@ import "dart:io";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeListMap, jsonDecodeMap;
 
-import "../worktree_service.dart";
+import "../foundation/process_runner.dart";
 import "gh_pull_request.dart";
 
 const _ghCommandTimeout = Duration(seconds: 15);
 
-class GhCliService {
+class GhCliApi {
   final ProcessRunner _processRunner;
 
-  GhCliService({ProcessRunner processRunner = Process.run}) : _processRunner = processRunner;
+  GhCliApi({ProcessRunner processRunner = Process.run}) : _processRunner = processRunner;
 
   Future<bool> isAvailable() async {
     try {
