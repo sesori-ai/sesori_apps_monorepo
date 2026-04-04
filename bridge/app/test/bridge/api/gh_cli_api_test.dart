@@ -246,7 +246,7 @@ void main() {
             headRefName: "fix/two",
             mergeable: PrMergeableStatus.conflicting,
             reviewDecision: PrReviewDecision.unknown,
-            statusCheckRollup: PrCheckStatus.unknown,
+            statusCheckRollup: PrCheckStatus.none,
           ),
         ),
       );

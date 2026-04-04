@@ -67,5 +67,6 @@ const _$PrCheckStatusEnumMap = {
   PrCheckStatus.success: 'SUCCESS',
   PrCheckStatus.failure: 'FAILURE',
   PrCheckStatus.pending: 'PENDING',
+  PrCheckStatus.none: 'NONE',
   PrCheckStatus.unknown: 'unknown',
 };
