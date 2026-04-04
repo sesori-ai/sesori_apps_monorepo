@@ -8,9 +8,9 @@ class PrSourceRepository {
 
   PrSourceRepository({required GhCliApi ghCli, required GitCliApi gitCli}) : _ghCli = ghCli, _gitCli = gitCli;
 
-  Future<bool> isGhAvailable() => _ghCli.isAvailable();
+  Future<bool> isGithubCliAvailable() => _ghCli.isAvailable();
 
-  Future<bool> isGhAuthenticated() => _ghCli.isAuthenticated();
+  Future<bool> isGithubCliAuthenticated() => _ghCli.isAuthenticated();
 
   Future<bool> hasGitHubRemote({required String projectPath}) => _gitCli.hasGitHubRemote(projectPath: projectPath);
 

@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/session_repository.dart";
@@ -60,16 +61,20 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
     required String projectId,
     required List<Session> sessions,
   }) async {
-    final projectPath = await _sessionRepository.getProjectPath(projectId: projectId);
-    if (projectPath != null && projectPath.isNotEmpty) {
-      unawaited(_prSyncService.triggerRefresh(projectId: projectId, projectPath: projectPath));
-      return;
-    }
+    try {
+      final projectPath = await _sessionRepository.getProjectPath(projectId: projectId);
+      if (projectPath != null) {
+        unawaited(_prSyncService.triggerRefresh(projectId: projectId, projectPath: projectPath));
+        return;
+      }
 
-    final fallbackDirectory = sessions.firstOrNull?.directory;
-    if (fallbackDirectory == null || fallbackDirectory.isEmpty) {
-      return;
+      final fallbackDirectory = sessions.firstOrNull?.directory;
+      if (fallbackDirectory == null || fallbackDirectory.isEmpty) {
+        return;
+      }
+      unawaited(_prSyncService.triggerRefresh(projectId: projectId, projectPath: fallbackDirectory));
+    } on Object catch (e, st) {
+      Log.w("[GetSessionsHandler] PR refresh trigger failed for $projectId: $e\n$st");
     }
-    unawaited(_prSyncService.triggerRefresh(projectId: projectId, projectPath: fallbackDirectory));
   }
 }

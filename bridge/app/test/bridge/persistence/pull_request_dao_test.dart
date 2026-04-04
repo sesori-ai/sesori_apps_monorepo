@@ -1,4 +1,5 @@
 import "package:sesori_bridge/src/bridge/api/database/daos/pull_request_dao.dart";
+import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:test/test.dart";
 
@@ -47,17 +48,19 @@ void main() {
       required String title,
     }) {
       return dao.upsertPr(
-        projectId: projectId,
-        branchName: branchName,
-        prNumber: prNumber,
-        url: "https://github.com/org/repo/pull/$prNumber",
-        title: title,
-        state: state,
-        mergeableStatus: "",
-        reviewDecision: "",
-        checkStatus: "",
-        lastCheckedAt: 1000,
-        createdAt: 900,
+        pullRequest: PullRequestDto(
+          projectId: projectId,
+          branchName: branchName,
+          prNumber: prNumber,
+          url: "https://github.com/org/repo/pull/$prNumber",
+          title: title,
+          state: state,
+          mergeableStatus: "",
+          reviewDecision: "",
+          checkStatus: "",
+          lastCheckedAt: 1000,
+          createdAt: 900,
+        ),
       );
     }
 

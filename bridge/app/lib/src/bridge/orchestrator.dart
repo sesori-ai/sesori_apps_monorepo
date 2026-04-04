@@ -9,15 +9,11 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../auth/token_refresher.dart";
 import "../push/push_notification_service.dart";
-import "api/gh_cli_api.dart";
-import "api/git_cli_api.dart";
 import "key_exchange.dart";
 import "metadata_service.dart";
 import "models/bridge_config.dart";
 import "persistence/daos/projects_dao.dart";
 import "relay_client.dart";
-import "repositories/pr_source_repository.dart";
-import "repositories/pull_request_repository.dart";
 import "repositories/session_repository.dart";
 import "routing/request_router.dart";
 import "services/pr_sync_service.dart";
@@ -47,7 +43,8 @@ class Orchestrator {
     required TokenRefresher tokenRefresher,
     required ProjectsDao projectsDao,
     required FailureReporter failureReporter,
-    PrSyncService? prSyncService,
+    required PrSyncService prSyncService,
+    required SessionRepository sessionRepository,
   }) : _client = client,
        _plugin = plugin,
        _metadataService = metadataService,
@@ -55,27 +52,8 @@ class Orchestrator {
        _tokenRefresher = tokenRefresher,
        _projectsDao = projectsDao,
        _failureReporter = failureReporter,
-       _sessionRepository = SessionRepository(
-         plugin: plugin,
-         sessionDao: projectsDao.attachedDatabase.sessionDao,
-         pullRequestDao: projectsDao.attachedDatabase.pullRequestDao,
-       ),
-       _prSyncService =
-           prSyncService ??
-           PrSyncService(
-             prSource: PrSourceRepository(
-               ghCli: GhCliApi(),
-               gitCli: GitCliApi(),
-             ),
-             pullRequestRepository: PullRequestRepository(
-               pullRequestDao: projectsDao.attachedDatabase.pullRequestDao,
-             ),
-             sessionRepository: SessionRepository(
-               plugin: plugin,
-               sessionDao: projectsDao.attachedDatabase.sessionDao,
-               pullRequestDao: projectsDao.attachedDatabase.pullRequestDao,
-             ),
-           );
+       _sessionRepository = sessionRepository,
+       _prSyncService = prSyncService;
 
   /// Creates a new session with a fresh room key and SSE manager.
   OrchestratorSession create() {

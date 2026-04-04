@@ -26,7 +26,7 @@ DebugServer _createDebugServer({
   final sessionRepository = SessionRepository(
     plugin: plugin,
     sessionDao: db.sessionDao,
-    pullRequestDao: db.pullRequestDao,
+    pullRequestRepository: pullRequestRepository,
   );
   final prSyncService = PrSyncService(
     prSource: PrSourceRepository(ghCli: GhCliApi(), gitCli: GitCliApi()),

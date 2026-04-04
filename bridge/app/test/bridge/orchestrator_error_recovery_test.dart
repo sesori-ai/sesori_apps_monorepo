@@ -1,10 +1,15 @@
 import "dart:async";
 
 import "package:sesori_bridge/src/auth/token_refresher.dart";
+import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
+import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
 import "package:sesori_bridge/src/push/push_notification_client.dart";
 import "package:sesori_bridge/src/push/push_notification_service.dart";
@@ -93,6 +98,17 @@ class _TestHarness {
     );
 
     final metadataService = FakeMetadataService();
+    final pullRequestRepository = PullRequestRepository(pullRequestDao: database.pullRequestDao);
+    final sessionRepository = SessionRepository(
+      plugin: plugin,
+      sessionDao: database.sessionDao,
+      pullRequestRepository: pullRequestRepository,
+    );
+    final prSyncService = PrSyncService(
+      prSource: _NoopPrSource(),
+      pullRequestRepository: pullRequestRepository,
+      sessionRepository: sessionRepository,
+    );
 
     final orchestrator = Orchestrator(
       config: BridgeConfig(
@@ -109,6 +125,8 @@ class _TestHarness {
       tokenRefresher: tokenRefresher,
       projectsDao: database.projectsDao,
       failureReporter: failureReporter,
+      prSyncService: prSyncService,
+      sessionRepository: sessionRepository,
     );
 
     final session = orchestrator.create();
@@ -323,4 +341,23 @@ class _NoopPushNotificationClient extends PushNotificationClient {
 class _FakeTokenRefresher implements TokenRefresher {
   @override
   Future<String> getAccessToken({bool forceRefresh = false}) async => "token";
+}
+
+class _NoopPrSource implements PrSourceRepository {
+  @override
+  Future<bool> isGithubCliAvailable() async => false;
+
+  @override
+  Future<bool> isGithubCliAuthenticated() async => false;
+
+  @override
+  Future<bool> hasGitHubRemote({required String projectPath}) async => false;
+
+  @override
+  Future<List<GhPullRequest>> listOpenPrs({required String workingDirectory}) async => const <GhPullRequest>[];
+
+  @override
+  Future<GhPullRequest> getPrByNumber({required int number, required String workingDirectory}) async {
+    throw StateError("getPrByNumber should not be called");
+  }
 }

@@ -2,6 +2,7 @@ import "dart:convert";
 
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/request_router.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -25,7 +26,7 @@ void main() {
       final sessionRepository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
-        pullRequestDao: db.pullRequestDao,
+        pullRequestRepository: PullRequestRepository(pullRequestDao: db.pullRequestDao),
       );
       router = RequestRouter(
         plugin: plugin,
@@ -232,8 +233,8 @@ void main() {
         ),
       ];
 
-      final fakePrDao = FakePullRequestDao();
-      fakePrDao.setPr(
+      final fakePullRequestRepository = FakePullRequestRepository();
+      fakePullRequestRepository.setPr(
         sessionId: "s1",
         pullRequest: const PullRequestDto(
           projectId: "/tmp/project",
@@ -254,7 +255,7 @@ void main() {
       final sessionRepository = FakeSessionRepository(
         plugin: plugin,
         sessionDao: FakeSessionDao(),
-        pullRequestDao: fakePrDao,
+        pullRequestRepository: fakePullRequestRepository,
       );
 
       router = RequestRouter(

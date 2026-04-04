@@ -34,6 +34,12 @@ void main() {
     final database = createTestDatabase();
     final plugin = _NoopPlugin();
     final fakePrSyncService = _FakePrSyncService();
+    final pullRequestRepository = PullRequestRepository(pullRequestDao: database.pullRequestDao);
+    final sessionRepository = SessionRepository(
+      plugin: plugin,
+      sessionDao: database.sessionDao,
+      pullRequestRepository: pullRequestRepository,
+    );
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
       accessTokenProvider: FakeAccessTokenProvider(""),
@@ -55,6 +61,7 @@ void main() {
       projectsDao: database.projectsDao,
       failureReporter: FakeFailureReporter(),
       prSyncService: fakePrSyncService,
+      sessionRepository: sessionRepository,
     );
 
     final session = orchestrator.create();
@@ -346,9 +353,9 @@ class _FakePrSyncService extends PrSyncService {
 
 class _NoopPrSource implements PrSourceRepository {
   @override
-  Future<bool> isGhAvailable() async => false;
+  Future<bool> isGithubCliAvailable() async => false;
   @override
-  Future<bool> isGhAuthenticated() async => false;
+  Future<bool> isGithubCliAuthenticated() async => false;
   @override
   Future<bool> hasGitHubRemote({required String projectPath}) async => false;
   @override
@@ -363,6 +370,25 @@ class _NoopPullRequestRepository implements PullRequestRepository {
   @override
   Future<List<PullRequestDto>> getActivePullRequestsByProjectId({required String projectId}) async =>
       const <PullRequestDto>[];
+
+  @override
+  Future<Map<String, List<PullRequestDto>>> getPrsBySessionIds({required List<String> sessionIds}) async {
+    return <String, List<PullRequestDto>>{};
+  }
+
+  @override
+  Future<bool> hasChanged({required String projectId, required int prNumber, required GhPullRequest pr}) async {
+    return true;
+  }
+
+  @override
+  Future<void> upsertFromGhPr({
+    required String projectId,
+    required GhPullRequest pr,
+    required int createdAt,
+    required int lastCheckedAt,
+  }) async {}
+
   @override
   Future<void> upsertPullRequest({required PullRequestDto record}) async {}
 }

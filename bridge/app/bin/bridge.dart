@@ -210,7 +210,7 @@ Future<void> main(List<String> args) async {
   final sessionRepository = SessionRepository(
     plugin: plugin,
     sessionDao: db.sessionDao,
-    pullRequestDao: db.pullRequestDao,
+    pullRequestRepository: pullRequestRepository,
   );
   final prSyncService = PrSyncService(
     prSource: PrSourceRepository(ghCli: GhCliApi(), gitCli: GitCliApi()),
@@ -228,6 +228,7 @@ Future<void> main(List<String> args) async {
     projectsDao: db.projectsDao,
     failureReporter: failureReporter,
     prSyncService: prSyncService,
+    sessionRepository: sessionRepository,
   );
   final session = orchestrator.create();
 

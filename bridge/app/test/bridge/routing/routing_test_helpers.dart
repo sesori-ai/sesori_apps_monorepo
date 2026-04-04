@@ -368,26 +368,23 @@ class FakeMetadataService implements MetadataService {
   }
 }
 
-class FakePullRequestDao {
+class FakePullRequestRepository implements PullRequestRepository {
   final Map<String, List<PullRequestDto>> _prsBySessionId = <String, List<PullRequestDto>>{};
   final Map<String, PullRequestDto> _prsByPrimaryKey = <String, PullRequestDto>{};
 
-  FakePullRequestDao();
+  FakePullRequestRepository();
 
   void setPr({required String sessionId, required PullRequestDto pullRequest}) {
     _prsBySessionId.putIfAbsent(sessionId, () => <PullRequestDto>[]).add(pullRequest);
     _prsByPrimaryKey[_key(projectId: pullRequest.projectId, prNumber: pullRequest.prNumber)] = pullRequest;
   }
 
+  @override
   Future<Map<String, List<PullRequestDto>>> getPrsBySessionIds({required List<String> sessionIds}) async {
     return <String, List<PullRequestDto>>{
       for (final sessionId in sessionIds)
         if (_prsBySessionId.containsKey(sessionId)) sessionId: _prsBySessionId[sessionId]!,
     };
-  }
-
-  Future<List<PullRequestDto>> getPrsByProjectId({required String projectId}) async {
-    return _prsByPrimaryKey.values.where((pr) => pr.projectId == projectId).toList();
   }
 
   Future<List<PullRequestDto>> getActivePrsByProjectId({required String projectId}) async {
@@ -396,33 +393,53 @@ class FakePullRequestDao {
         .toList();
   }
 
-  Future<void> upsertPr({
+  @override
+  Future<List<PullRequestDto>> getActivePullRequestsByProjectId({required String projectId}) {
+    return getActivePrsByProjectId(projectId: projectId);
+  }
+
+  @override
+  Future<void> upsertPullRequest({required PullRequestDto record}) async {
+    _prsByPrimaryKey[_key(projectId: record.projectId, prNumber: record.prNumber)] = record;
+  }
+
+  @override
+  Future<void> upsertFromGhPr({
     required String projectId,
-    required String branchName,
-    required int prNumber,
-    required String url,
-    required String title,
-    required String state,
-    required String mergeableStatus,
-    required String reviewDecision,
-    required String checkStatus,
-    required int lastCheckedAt,
+    required GhPullRequest pr,
     required int createdAt,
-  }) async {
-    final pr = PullRequestDto(
-      projectId: projectId,
-      prNumber: prNumber,
-      branchName: branchName,
-      url: url,
-      title: title,
-      state: state,
-      mergeableStatus: mergeableStatus,
-      reviewDecision: reviewDecision,
-      checkStatus: checkStatus,
-      lastCheckedAt: lastCheckedAt,
-      createdAt: createdAt,
+    required int lastCheckedAt,
+  }) {
+    return upsertPullRequest(
+      record: PullRequestDto(
+        projectId: projectId,
+        prNumber: pr.number,
+        branchName: pr.headRefName,
+        url: pr.url,
+        title: pr.title,
+        state: pr.state.name.toUpperCase(),
+        mergeableStatus: pr.mergeable.name.toUpperCase(),
+        reviewDecision: pr.reviewDecision.name.toUpperCase(),
+        checkStatus: pr.statusCheckRollup.name.toUpperCase(),
+        lastCheckedAt: lastCheckedAt,
+        createdAt: createdAt,
+      ),
     );
-    _prsByPrimaryKey[_key(projectId: projectId, prNumber: prNumber)] = pr;
+  }
+
+  @override
+  Future<bool> hasChanged({required String projectId, required int prNumber, required GhPullRequest pr}) async {
+    final existing = _prsByPrimaryKey[_key(projectId: projectId, prNumber: prNumber)];
+    if (existing == null) {
+      return true;
+    }
+    return existing.prNumber != pr.number ||
+        existing.url != pr.url ||
+        existing.title != pr.title ||
+        existing.state != pr.state.name.toUpperCase() ||
+        existing.mergeableStatus != pr.mergeable.name.toUpperCase() ||
+        existing.reviewDecision != pr.reviewDecision.name.toUpperCase() ||
+        existing.checkStatus != pr.statusCheckRollup.name.toUpperCase();
   }
 
   Future<void> deletePr({required String projectId, required int prNumber}) async {
@@ -459,9 +476,9 @@ class FakePrSyncService extends PrSyncService {
 
 class _AlwaysReadyPrSource implements PrSourceRepository {
   @override
-  Future<bool> isGhAvailable() async => true;
+  Future<bool> isGithubCliAvailable() async => true;
   @override
-  Future<bool> isGhAuthenticated() async => true;
+  Future<bool> isGithubCliAuthenticated() async => true;
   @override
   Future<bool> hasGitHubRemote({required String projectPath}) async => true;
   @override
@@ -475,6 +492,25 @@ class _NoopPullRequestRepository implements PullRequestRepository {
   @override
   Future<List<PullRequestDto>> getActivePullRequestsByProjectId({required String projectId}) async =>
       const <PullRequestDto>[];
+
+  @override
+  Future<Map<String, List<PullRequestDto>>> getPrsBySessionIds({required List<String> sessionIds}) async {
+    return <String, List<PullRequestDto>>{};
+  }
+
+  @override
+  Future<bool> hasChanged({required String projectId, required int prNumber, required GhPullRequest pr}) async {
+    return true;
+  }
+
+  @override
+  Future<void> upsertFromGhPr({
+    required String projectId,
+    required GhPullRequest pr,
+    required int createdAt,
+    required int lastCheckedAt,
+  }) async {}
+
   @override
   Future<void> upsertPullRequest({required PullRequestDto record}) async {}
 }
@@ -501,15 +537,15 @@ class _NoopSessionRepository implements SessionRepository {
 class FakeSessionRepository implements SessionRepository {
   final FakeBridgePlugin _plugin;
   final FakeSessionDao _sessionDao;
-  final FakePullRequestDao _pullRequestDao;
+  final FakePullRequestRepository _pullRequestRepository;
 
   FakeSessionRepository({
     required FakeBridgePlugin plugin,
     FakeSessionDao? sessionDao,
-    FakePullRequestDao? pullRequestDao,
+    FakePullRequestRepository? pullRequestRepository,
   }) : _plugin = plugin,
        _sessionDao = sessionDao ?? FakeSessionDao(),
-       _pullRequestDao = pullRequestDao ?? FakePullRequestDao();
+       _pullRequestRepository = pullRequestRepository ?? FakePullRequestRepository();
 
   @override
   Future<List<Session>> getSessionsForProject({
@@ -536,7 +572,7 @@ class FakeSessionRepository implements SessionRepository {
       }
       return session;
     }).toList();
-    final prsBySessionId = await _pullRequestDao.getPrsBySessionIds(sessionIds: sessionIds);
+    final prsBySessionId = await _pullRequestRepository.getPrsBySessionIds(sessionIds: sessionIds);
     return mergedSessions.map((session) {
       final prs = prsBySessionId[session.id];
       final pr = _selectBestPr(prs);
@@ -553,8 +589,8 @@ class FakeSessionRepository implements SessionRepository {
         selected = pr;
         continue;
       }
-      final selectedIsOpen = selected.state.toUpperCase() == "OPEN";
-      final currentIsOpen = pr.state.toUpperCase() == "OPEN";
+      final selectedIsOpen = selected.state.toUpperCase() == PrState.open.name.toUpperCase();
+      final currentIsOpen = pr.state.toUpperCase() == PrState.open.name.toUpperCase();
       if (currentIsOpen && !selectedIsOpen) {
         selected = pr;
         continue;

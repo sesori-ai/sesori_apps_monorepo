@@ -79,22 +79,7 @@ class AppDatabase extends _$AppDatabase {
         await customStatement("DROP TABLE session_worktrees_table");
       },
       from3To4: (m, schema) async {
-        await customStatement("""
-          CREATE TABLE pull_requests_table(
-            project_id TEXT NOT NULL REFERENCES projects_table(project_id) ON DELETE CASCADE,
-            pr_number INTEGER NOT NULL,
-            branch_name TEXT NOT NULL,
-            url TEXT NOT NULL,
-            title TEXT NOT NULL,
-            state TEXT NOT NULL,
-            mergeable_status TEXT NOT NULL,
-            review_decision TEXT NOT NULL,
-            check_status TEXT NOT NULL,
-            last_checked_at INTEGER NOT NULL,
-            created_at INTEGER NOT NULL,
-            PRIMARY KEY(project_id, pr_number)
-          ) WITHOUT ROWID;
-        """);
+        await m.createTable(schema.pullRequestsTable);
       },
     ),
     beforeOpen: (details) async {

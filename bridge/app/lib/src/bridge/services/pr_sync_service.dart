@@ -2,8 +2,6 @@ import "dart:async";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
-import "../api/database/tables/pull_requests_table.dart";
-import "../api/gh_pull_request.dart";
 import "../repositories/models/stored_session.dart";
 import "../repositories/pr_source_repository.dart";
 import "../repositories/pull_request_repository.dart";
@@ -16,8 +14,6 @@ class PrSyncService {
   final Duration _debounceWindow;
   final StreamController<String> _prChangesController = StreamController<String>.broadcast();
 
-  bool? _ghAvailable;
-  bool? _ghAuthenticated;
   final Map<String, bool> _hasGitHubRemoteCache = <String, bool>{};
   final Map<String, DateTime> _lastRefreshTimes = <String, DateTime>{};
   final Set<String> _activeRefreshes = <String>{};
@@ -32,22 +28,16 @@ class PrSyncService {
        _sessionRepository = sessionRepository,
        _debounceWindow = debounceWindow;
 
-  /// Resets cached auth state so that a later `gh auth login` is picked up.
-  void resetAuthCache() {
-    _ghAvailable = null;
-    _ghAuthenticated = null;
-  }
-
   Stream<String> get prChanges => _prChangesController.stream;
 
   Future<void> triggerRefresh({required String projectId, required String projectPath}) async {
-    _ghAvailable ??= await _prSource.isGhAvailable();
-    if (!_ghAvailable!) {
+    final ghAvailable = await _prSource.isGithubCliAvailable();
+    if (!ghAvailable) {
       return;
     }
 
-    _ghAuthenticated ??= await _prSource.isGhAuthenticated();
-    if (!_ghAuthenticated!) {
+    final ghAuthenticated = await _prSource.isGithubCliAuthenticated();
+    if (!ghAuthenticated) {
       return;
     }
 
@@ -84,45 +74,33 @@ class PrSyncService {
       ).wait;
 
       final sessionsByBranch = _indexSessionsByBranch(sessions: storedSessions);
-      final activeByBranch = <String, PullRequestDto>{
-        for (final activePr in activePrs) activePr.branchName: activePr,
-      };
 
       var hasChanges = false;
       final nowEpochMs = DateTime.now().millisecondsSinceEpoch;
 
       final matchedOpenPrs = openPrs
-          .where((GhPullRequest pr) => sessionsByBranch.containsKey(pr.headRefName))
+          .where((pr) => sessionsByBranch.containsKey(pr.headRefName))
           .toList(growable: false);
 
       for (final pr in matchedOpenPrs) {
-        final existing = activeByBranch[pr.headRefName];
+        final existing = activePrs.where((activePr) => activePr.branchName == pr.headRefName).firstOrNull;
         final createdAt = existing?.createdAt ?? nowEpochMs;
 
-        if (_isMeaningfullyDifferent(existing: existing, pr: pr)) {
+        if (await _pullRequestRepository.hasChanged(projectId: projectId, prNumber: pr.number, pr: pr)) {
           hasChanges = true;
         }
 
-        await _pullRequestRepository.upsertPullRequest(
-          record: PullRequestDto(
-            projectId: projectId,
-            branchName: pr.headRefName,
-            prNumber: pr.number,
-            url: pr.url,
-            title: pr.title,
-            state: pr.state.name.toUpperCase(),
-            mergeableStatus: pr.mergeable.name.toUpperCase(),
-            reviewDecision: pr.reviewDecision.name.toUpperCase(),
-            checkStatus: pr.statusCheckRollup.name.toUpperCase(),
-            lastCheckedAt: nowEpochMs,
-            createdAt: createdAt,
-          ),
+        await _pullRequestRepository.upsertFromGhPr(
+          projectId: projectId,
+          pr: pr,
+          createdAt: createdAt,
+          lastCheckedAt: nowEpochMs,
         );
       }
 
-      final openPrNumbers = openPrs.map((GhPullRequest pr) => pr.number).toSet();
+      final openPrNumbers = openPrs.map((pr) => pr.number).toSet();
       final disappearedActivePrs = activePrs
-          .where((PullRequestDto activePr) => !openPrNumbers.contains(activePr.prNumber))
+          .where((activePr) => !openPrNumbers.contains(activePr.prNumber))
           .toList(growable: false);
 
       for (final disappeared in disappearedActivePrs) {
@@ -132,28 +110,18 @@ class PrSyncService {
             workingDirectory: projectPath,
           );
 
-          if (_isMeaningfullyDifferent(existing: disappeared, pr: finalPr)) {
+          if (await _pullRequestRepository.hasChanged(projectId: projectId, prNumber: finalPr.number, pr: finalPr)) {
             hasChanges = true;
           }
 
-          await _pullRequestRepository.upsertPullRequest(
-            record: PullRequestDto(
-              projectId: projectId,
-              branchName: finalPr.headRefName,
-              prNumber: finalPr.number,
-              url: finalPr.url,
-              title: finalPr.title,
-              state: finalPr.state.name.toUpperCase(),
-              mergeableStatus: finalPr.mergeable.name.toUpperCase(),
-              reviewDecision: finalPr.reviewDecision.name.toUpperCase(),
-              checkStatus: finalPr.statusCheckRollup.name.toUpperCase(),
-              lastCheckedAt: nowEpochMs,
-              createdAt: disappeared.createdAt,
-            ),
+          await _pullRequestRepository.upsertFromGhPr(
+            projectId: projectId,
+            pr: finalPr,
+            createdAt: disappeared.createdAt,
+            lastCheckedAt: nowEpochMs,
           );
         } catch (e) {
           Log.w("[PrSync] failed to fetch PR #${disappeared.prNumber}: $e");
-          continue;
         }
       }
 
@@ -181,22 +149,5 @@ class PrSyncService {
       result[branchName] = session;
     }
     return result;
-  }
-
-  bool _isMeaningfullyDifferent({
-    required PullRequestDto? existing,
-    required GhPullRequest pr,
-  }) {
-    if (existing == null) {
-      return true;
-    }
-
-    return existing.prNumber != pr.number ||
-        existing.url != pr.url ||
-        existing.title != pr.title ||
-        existing.state != pr.state.name.toUpperCase() ||
-        existing.mergeableStatus != pr.mergeable.name.toUpperCase() ||
-        existing.reviewDecision != pr.reviewDecision.name.toUpperCase() ||
-        existing.checkStatus != pr.statusCheckRollup.name.toUpperCase();
   }
 }

@@ -134,7 +134,7 @@ void main() {
       expect(prSource.getPrByNumberCalls, contains(22));
     });
 
-    test("caches gh availability and skips refresh when unavailable", () async {
+    test("re-checks gh availability and skips refresh when unavailable", () async {
       final prSource = _FakePrSource(
         listOpenPrsResult: <GhPullRequest>[],
         isAvailableResult: false,
@@ -149,7 +149,7 @@ void main() {
       await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
       await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
 
-      expect(prSource.isAvailableCallCount, equals(1));
+      expect(prSource.isAvailableCallCount, equals(2));
       expect(prSource.isAuthenticatedCallCount, equals(0));
       expect(prSource.listOpenPrsCallCount, equals(0));
     });
@@ -274,13 +274,13 @@ class _FakePrSource implements PrSourceRepository {
   });
 
   @override
-  Future<bool> isGhAvailable() async {
+  Future<bool> isGithubCliAvailable() async {
     isAvailableCallCount++;
     return isAvailableResult;
   }
 
   @override
-  Future<bool> isGhAuthenticated() async {
+  Future<bool> isGithubCliAuthenticated() async {
     isAuthenticatedCallCount++;
     return true;
   }
@@ -321,6 +321,52 @@ class _FakePullRequestRepository implements PullRequestRepository {
   @override
   Future<List<PullRequestDto>> getActivePullRequestsByProjectId({required String projectId}) async {
     return List<PullRequestDto>.from(_recordsByProject[projectId] ?? const <PullRequestDto>[]);
+  }
+
+  @override
+  Future<Map<String, List<PullRequestDto>>> getPrsBySessionIds({required List<String> sessionIds}) async {
+    return <String, List<PullRequestDto>>{};
+  }
+
+  @override
+  Future<bool> hasChanged({required String projectId, required int prNumber, required GhPullRequest pr}) async {
+    final existing = (_recordsByProject[projectId] ?? const <PullRequestDto>[])
+        .where((dto) => dto.prNumber == prNumber)
+        .firstOrNull;
+    if (existing == null) {
+      return true;
+    }
+    return existing.prNumber != pr.number ||
+        existing.url != pr.url ||
+        existing.title != pr.title ||
+        existing.state != pr.state.name.toUpperCase() ||
+        existing.mergeableStatus != pr.mergeable.name.toUpperCase() ||
+        existing.reviewDecision != pr.reviewDecision.name.toUpperCase() ||
+        existing.checkStatus != pr.statusCheckRollup.name.toUpperCase();
+  }
+
+  @override
+  Future<void> upsertFromGhPr({
+    required String projectId,
+    required GhPullRequest pr,
+    required int createdAt,
+    required int lastCheckedAt,
+  }) async {
+    await upsertPullRequest(
+      record: PullRequestDto(
+        projectId: projectId,
+        prNumber: pr.number,
+        branchName: pr.headRefName,
+        url: pr.url,
+        title: pr.title,
+        state: pr.state.name.toUpperCase(),
+        mergeableStatus: pr.mergeable.name.toUpperCase(),
+        reviewDecision: pr.reviewDecision.name.toUpperCase(),
+        checkStatus: pr.statusCheckRollup.name.toUpperCase(),
+        lastCheckedAt: lastCheckedAt,
+        createdAt: createdAt,
+      ),
+    );
   }
 
   @override

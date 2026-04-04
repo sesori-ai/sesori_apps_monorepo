@@ -73,8 +73,14 @@ API methods must **throw** on unexpected errors. Never return empty lists, `null
 ### No Redundant Model Layers
 If a DTO and a "Record" model have the same fields and no meaningful transformation between them, **use the DTO directly**. Don't create parallel data classes just to rename things.
 
-### API Classes Are Per-Client, Not Per-Use-Case
-An API class wraps a single external client/tool (e.g., `GitCliApi` for `gh` CLI). Don't split into `GhCliApi` + `GitRemoteApi` — they both wrap the same tool. One class, all operations.
+### API Classes Are Per-Tool, Not Per-Use-Case
+An API class wraps a single external tool/binary. Different tools get separate API classes even if they serve related purposes. For example:
+- `GhCliApi` — wraps the `gh` CLI (GitHub-specific: PRs, auth, etc.)
+- `GitCliApi` — wraps the `git` CLI (generic git operations: remotes, config, etc.)
+
+These are separate tools with different binaries, different capabilities, and different scopes. `git` works with any git host; `gh` is GitHub-specific. Don't merge them into one class.
+
+Within a single tool, don't split by use-case — keep all operations for that tool in one class.
 
 ### DebugServer Shares Instances
 `DebugServer` must receive the same service/repository instances as the main `Orchestrator`. Never create new instances inside `DebugServer` — it must be wired with injected dependencies.

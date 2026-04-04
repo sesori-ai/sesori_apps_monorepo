@@ -7,8 +7,8 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../persistence/daos/session_dao.dart";
 import "../persistence/tables/session_table.dart";
+import "../repositories/mappers/plugin_session_mapper.dart";
 import "../worktree_service.dart";
-import "plugin_session_mapper.dart";
 import "request_handler.dart";
 import "worktree_cleanup.dart";
 

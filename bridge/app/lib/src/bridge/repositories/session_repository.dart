@@ -1,25 +1,25 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart";
+import "package:sesori_shared/sesori_shared.dart" show PrState, Session, SessionTime;
 
-import "../api/database/daos/pull_request_dao.dart";
 import "../api/database/tables/pull_requests_table.dart";
 import "../persistence/daos/session_dao.dart";
-import "../repositories/mappers/plugin_session_mapper.dart";
-import "../repositories/mappers/pull_request_mapper.dart";
-import "../repositories/models/stored_session.dart";
+import "mappers/plugin_session_mapper.dart";
+import "mappers/pull_request_mapper.dart";
+import "models/stored_session.dart";
+import "pull_request_repository.dart";
 
 class SessionRepository {
   final BridgePlugin _plugin;
   final SessionDao _sessionDao;
-  final PullRequestDao _pullRequestDao;
+  final PullRequestRepository _pullRequestRepository;
 
   SessionRepository({
     required BridgePlugin plugin,
     required SessionDao sessionDao,
-    required PullRequestDao pullRequestDao,
+    required PullRequestRepository pullRequestRepository,
   }) : _plugin = plugin,
        _sessionDao = sessionDao,
-       _pullRequestDao = pullRequestDao;
+       _pullRequestRepository = pullRequestRepository;
 
   Future<List<Session>> getSessionsForProject({
     required String projectId,
@@ -37,7 +37,7 @@ class SessionRepository {
 
     final (dbSessions, prsBySessionId) = await (
       _sessionDao.getSessionsByIds(sessionIds: sessionIds),
-      _pullRequestDao.getPrsBySessionIds(sessionIds: sessionIds),
+      _pullRequestRepository.getPrsBySessionIds(sessionIds: sessionIds),
     ).wait;
 
     return sessions.map((session) {
@@ -73,8 +73,8 @@ class SessionRepository {
         continue;
       }
 
-      final selectedIsOpen = selected.state.toUpperCase() == "OPEN";
-      final currentIsOpen = pr.state.toUpperCase() == "OPEN";
+      final selectedIsOpen = selected.state.toUpperCase() == PrState.open.name.toUpperCase();
+      final currentIsOpen = pr.state.toUpperCase() == PrState.open.name.toUpperCase();
 
       if (currentIsOpen && !selectedIsOpen) {
         selected = pr;
@@ -104,7 +104,7 @@ class SessionRepository {
   Future<String?> getProjectPath({required String projectId}) async {
     try {
       final project = await _plugin.getProject(projectId);
-      if (project.id.isEmpty) {
+      if (project.id.trim().isEmpty) {
         return null;
       }
       return project.id;

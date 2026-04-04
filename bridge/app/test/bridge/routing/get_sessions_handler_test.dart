@@ -11,7 +11,7 @@ void main() {
   group("GetSessionsHandler", () {
     late FakeBridgePlugin plugin;
     late FakeSessionDao sessionDao;
-    late FakePullRequestDao prDao;
+    late FakePullRequestRepository pullRequestRepository;
     late FakePrSyncService prSyncService;
     late FakeSessionRepository sessionRepository;
     late GetSessionsHandler handler;
@@ -19,12 +19,12 @@ void main() {
     setUp(() {
       plugin = FakeBridgePlugin();
       sessionDao = FakeSessionDao();
-      prDao = FakePullRequestDao();
+      pullRequestRepository = FakePullRequestRepository();
       prSyncService = FakePrSyncService();
       sessionRepository = FakeSessionRepository(
         plugin: plugin,
         sessionDao: sessionDao,
-        pullRequestDao: prDao,
+        pullRequestRepository: pullRequestRepository,
       );
       handler = GetSessionsHandler(
         sessionRepository: sessionRepository,
@@ -407,7 +407,7 @@ void main() {
         ),
       ];
 
-      prDao.setPr(
+      pullRequestRepository.setPr(
         sessionId: "s1",
         pullRequest: const PullRequestDto(
           projectId: "p1",
@@ -488,7 +488,7 @@ void main() {
         ),
       ];
 
-      prDao.setPr(
+      pullRequestRepository.setPr(
         sessionId: "s1",
         pullRequest: const PullRequestDto(
           projectId: "p1",
