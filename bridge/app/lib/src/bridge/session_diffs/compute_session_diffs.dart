@@ -2,7 +2,7 @@ import "dart:io";
 
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../worktree_service.dart" show ProcessRunner;
+import "../foundation/process_runner.dart";
 import "exceptions.dart";
 import "file_content_reader.dart";
 import "git_diff_parser.dart";
@@ -156,5 +156,5 @@ Future<ProcessResult> _runGit({
   required String worktreePath,
   required List<String> arguments,
 }) {
-  return processRunner("git", arguments, workingDirectory: worktreePath);
+  return processRunner.run("git", arguments, workingDirectory: worktreePath);
 }

@@ -1,3 +1,4 @@
+import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/routing/get_sessions_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -10,12 +11,25 @@ void main() {
   group("GetSessionsHandler", () {
     late FakeBridgePlugin plugin;
     late FakeSessionDao sessionDao;
+    late FakePullRequestRepository pullRequestRepository;
+    late FakePrSyncService prSyncService;
+    late FakeSessionRepository sessionRepository;
     late GetSessionsHandler handler;
 
     setUp(() {
       plugin = FakeBridgePlugin();
       sessionDao = FakeSessionDao();
-      handler = GetSessionsHandler(plugin, sessionDao);
+      pullRequestRepository = FakePullRequestRepository();
+      prSyncService = FakePrSyncService();
+      sessionRepository = FakeSessionRepository(
+        plugin: plugin,
+        sessionDao: sessionDao,
+        pullRequestRepository: pullRequestRepository,
+      );
+      handler = GetSessionsHandler(
+        sessionRepository: sessionRepository,
+        prSyncService: prSyncService,
+      );
     });
 
     tearDown(() => plugin.close());
@@ -378,6 +392,172 @@ void main() {
       expect(result.items[0].time?.archived, equals(999));
       expect(result.items[1].time?.archived, isNull);
       expect(result.items[2].time?.archived, equals(500));
+    });
+
+    test("merges pull request metadata when session has a PR", () async {
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "p1",
+          directory: "/tmp",
+          parentID: null,
+          title: "session with pr",
+          time: null,
+          summary: null,
+        ),
+      ];
+
+      pullRequestRepository.setPr(
+        sessionId: "s1",
+        pullRequest: const PullRequestDto(
+          projectId: "p1",
+          prNumber: 42,
+          branchName: "feature/one",
+          url: "https://github.com/org/repo/pull/42",
+          title: "Add PR merge support",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.mergeable,
+          reviewDecision: PrReviewDecision.approved,
+          checkStatus: PrCheckStatus.success,
+          lastCheckedAt: 1,
+          createdAt: 1,
+        ),
+      );
+
+      final result = await handler.handle(
+        makeRequest("POST", "/sessions"),
+        body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      final pr = result.items.single.pullRequest;
+      expect(pr?.number, equals(42));
+      expect(pr?.url, equals("https://github.com/org/repo/pull/42"));
+      expect(pr?.title, equals("Add PR merge support"));
+      expect(pr?.state, equals(PrState.open));
+      expect(pr?.mergeableStatus, equals(PrMergeableStatus.mergeable));
+      expect(pr?.reviewDecision, equals(PrReviewDecision.approved));
+      expect(pr?.checkStatus, equals(PrCheckStatus.success));
+    });
+
+    test("keeps pullRequest null when session has no PR", () async {
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "p1",
+          directory: "/tmp",
+          parentID: null,
+          title: "session without pr",
+          time: null,
+          summary: null,
+        ),
+      ];
+
+      final result = await handler.handle(
+        makeRequest("POST", "/sessions"),
+        body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.items.single.pullRequest, isNull);
+    });
+
+    test("merges PR data for mixed session batches", () async {
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "p1",
+          directory: "/tmp",
+          parentID: null,
+          title: "has pr",
+          time: null,
+          summary: null,
+        ),
+        PluginSession(
+          id: "s2",
+          projectID: "p1",
+          directory: "/tmp",
+          parentID: null,
+          title: "no pr",
+          time: null,
+          summary: null,
+        ),
+      ];
+
+      pullRequestRepository.setPr(
+        sessionId: "s1",
+        pullRequest: const PullRequestDto(
+          projectId: "p1",
+          prNumber: 7,
+          branchName: "feature/one",
+          url: "https://github.com/org/repo/pull/7",
+          title: "PR for one session",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.unknown,
+          reviewDecision: PrReviewDecision.unknown,
+          checkStatus: PrCheckStatus.unknown,
+          lastCheckedAt: 1,
+          createdAt: 1,
+        ),
+      );
+
+      final result = await handler.handle(
+        makeRequest("POST", "/sessions"),
+        body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.items, hasLength(2));
+      expect(result.items[0].pullRequest?.number, equals(7));
+      expect(result.items[1].pullRequest, isNull);
+    });
+
+    test("triggers PR refresh with project path resolved from plugin.getProject", () async {
+      plugin.currentProjectResult = const PluginProject(id: "/tmp/project");
+      await handler.handle(
+        makeRequest("POST", "/sessions"),
+        body: const SessionListRequest(projectId: "project-1", start: null, limit: null),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(prSyncService.calls, hasLength(1));
+      expect(prSyncService.calls.single, equals((projectId: "project-1", projectPath: "/tmp/project")));
+    });
+
+    test("falls back to session directory when plugin.getProject fails", () async {
+      plugin.throwOnGetProjectError = Exception("failed");
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "project-1",
+          directory: "/tmp/fallback-project",
+          parentID: null,
+          title: null,
+          time: null,
+          summary: null,
+        ),
+      ];
+
+      await handler.handle(
+        makeRequest("POST", "/sessions"),
+        body: const SessionListRequest(projectId: "project-1", start: null, limit: null),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(prSyncService.calls, hasLength(1));
+      expect(prSyncService.calls.single, equals((projectId: "project-1", projectPath: "/tmp/fallback-project")));
     });
   });
 }

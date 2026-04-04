@@ -81,7 +81,7 @@ extension WorktreeGitQueries on WorktreeService {
     required String projectPath,
     required List<String> arguments,
   }) {
-    return _processRunner("git", arguments, workingDirectory: projectPath);
+    return _processRunner.run("git", arguments, workingDirectory: projectPath);
   }
 
   String? _extractBranchName({required Object? output, required String prefix}) {

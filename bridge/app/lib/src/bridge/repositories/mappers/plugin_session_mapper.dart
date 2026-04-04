@@ -26,6 +26,7 @@ extension PluginSessionMapper on PluginSession {
         ),
         null => null,
       },
+      pullRequest: null,
     );
   }
 }

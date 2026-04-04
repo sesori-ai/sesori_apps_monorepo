@@ -1,13 +1,12 @@
 import "package:drift/drift.dart";
 
-import "../../routing/get_sessions_handler.dart";
 import "../database.dart";
 import "../tables/session_table.dart";
 
 part "session_dao.g.dart";
 
 @DriftAccessor(tables: [SessionTable])
-class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin implements SessionDaoLike {
+class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   SessionDao(super.attachedDatabase);
 
   Future<void> insertSession({
@@ -55,7 +54,6 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin im
     return (select(sessionTable)..where((t) => t.projectId.equals(projectId))).get();
   }
 
-  @override
   Future<Map<String, SessionDto>> getSessionsByIds({required List<String> sessionIds}) async {
     if (sessionIds.isEmpty) {
       return <String, SessionDto>{};

@@ -1,5 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "pull_request_info.dart";
+
 part "session.freezed.dart";
 
 part "session.g.dart";
@@ -36,6 +38,7 @@ sealed class Session with _$Session {
     required String? title,
     required SessionTime? time,
     required SessionSummary? summary,
+    required PullRequestInfo? pullRequest,
   }) = _Session;
 
   factory Session.fromJson(Map<String, dynamic> json) => _$SessionFromJson(json);

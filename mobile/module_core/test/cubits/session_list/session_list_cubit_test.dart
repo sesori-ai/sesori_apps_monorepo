@@ -861,6 +861,7 @@ void main() {
           title: "Existing",
           summary: null,
           time: SessionTime(created: 1, updated: 2, archived: null),
+          pullRequest: null,
         );
         when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success(const SessionListResponse(items: [existing])),
@@ -880,6 +881,7 @@ void main() {
                 title: "New",
                 summary: null,
                 time: SessionTime(created: 3, updated: 4, archived: null),
+                pullRequest: null,
               ),
             ),
           ),
@@ -988,6 +990,7 @@ void main() {
                 title: "Child Session",
                 summary: null,
                 time: SessionTime(created: 1, updated: 2, archived: null),
+                pullRequest: null,
               ),
             ),
           ),
@@ -1172,6 +1175,7 @@ void main() {
                 title: "Foreign Session",
                 summary: null,
                 time: SessionTime(created: 1, updated: 2, archived: null),
+                pullRequest: null,
               ),
             ),
           ),
@@ -1206,6 +1210,7 @@ void main() {
                 title: "Foreign Session Updated",
                 summary: null,
                 time: SessionTime(created: 1, updated: 3, archived: null),
+                pullRequest: null,
               ),
             ),
           ),
@@ -1238,6 +1243,7 @@ void main() {
                 title: null,
                 summary: null,
                 time: SessionTime(created: 1, updated: 2, archived: null),
+                pullRequest: null,
               ),
             ),
           ),
@@ -1264,6 +1270,7 @@ void main() {
             title: "Under /tmp/foo",
             summary: null,
             time: SessionTime(created: 1, updated: 2, archived: null),
+            pullRequest: null,
           ),
           Session(
             id: "s2",
@@ -1273,6 +1280,7 @@ void main() {
             title: "Under /home/bar",
             summary: null,
             time: SessionTime(created: 3, updated: 4, archived: null),
+            pullRequest: null,
           ),
         ];
         when(() => mockSessionService.listSessions(projectId: "global")).thenAnswer(

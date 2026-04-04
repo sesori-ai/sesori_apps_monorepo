@@ -2,7 +2,10 @@ import "dart:io";
 
 import "package:drift/drift.dart";
 import "package:drift/native.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
+import "../api/database/daos/pull_request_dao.dart";
+import "../api/database/tables/pull_requests_table.dart";
 import "daos/projects_dao.dart";
 import "daos/session_dao.dart";
 import "database.steps.dart";
@@ -14,12 +17,15 @@ part "database.g.dart";
 /// Central Drift database for the bridge CLI.
 ///
 /// New tables and DAOs should be registered here as the persistence layer grows.
-@DriftDatabase(tables: [ProjectsTable, SessionTable], daos: [ProjectsDao, SessionDao])
+@DriftDatabase(
+  tables: [ProjectsTable, SessionTable, PullRequestsTable],
+  daos: [ProjectsDao, SessionDao, PullRequestDao],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -72,6 +78,9 @@ class AppDatabase extends _$AppDatabase {
         """);
 
         await customStatement("DROP TABLE session_worktrees_table");
+      },
+      from3To4: (m, schema) async {
+        await m.createTable(schema.pullRequestsTable);
       },
     ),
     beforeOpen: (details) async {

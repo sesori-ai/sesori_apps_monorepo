@@ -1,3 +1,6 @@
+import "dart:io";
+
+import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/routing/worktree_cleanup.dart";
 import "package:sesori_bridge/src/bridge/worktree_service.dart";
@@ -155,6 +158,8 @@ class _FakeWorktreeService extends WorktreeService {
     : super(
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
+        processRunner: _NoopProcessRunner(),
+        gitPathExists: ({required String gitPath}) => true,
       );
 
   @override
@@ -187,5 +192,17 @@ class _FakeWorktreeService extends WorktreeService {
     deleteBranchCallCount++;
     lastDeleteBranchForce = force;
     return deleteBranchResult;
+  }
+}
+
+class _NoopProcessRunner implements ProcessRunner {
+  @override
+  Future<ProcessResult> run(
+    String executable,
+    List<String> arguments, {
+    String? workingDirectory,
+    Duration timeout = const Duration(seconds: 15),
+  }) {
+    throw UnimplementedError("_NoopProcessRunner should never execute git commands");
   }
 }

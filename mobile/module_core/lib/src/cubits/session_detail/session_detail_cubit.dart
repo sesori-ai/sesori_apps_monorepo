@@ -422,6 +422,9 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             SesoriWorktreeReady() ||
             SesoriWorktreeFailed():
           break;
+        case SesoriSessionsUpdated():
+          // TODO: refresh detail snapshot to surface updated project/session PR metadata.
+          break;
       }
     } catch (e, st) {
       loge("SSE global event handler error", e, st);

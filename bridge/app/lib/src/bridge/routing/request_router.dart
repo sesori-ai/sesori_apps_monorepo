@@ -1,9 +1,14 @@
+import "dart:io";
+
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../foundation/process_runner.dart";
 import "../metadata_service.dart";
 import "../persistence/daos/projects_dao.dart";
 import "../persistence/daos/session_dao.dart";
+import "../repositories/session_repository.dart";
+import "../services/pr_sync_service.dart";
 import "../worktree_service.dart";
 import "abort_session_handler.dart";
 import "create_project_handler.dart";
@@ -49,11 +54,15 @@ class RequestRouter {
     required MetadataService metadataService,
     required ProjectsDao projectsDao,
     required SessionDao sessionDao,
+    required SessionRepository sessionRepository,
+    required PrSyncService prSyncService,
   }) : _handlers = _buildHandlers(
          plugin: plugin,
          metadataService: metadataService,
          projectsDao: projectsDao,
          sessionDao: sessionDao,
+         sessionRepository: sessionRepository,
+         prSyncService: prSyncService,
        );
 
   static List<RequestHandlerBase> _buildHandlers({
@@ -61,20 +70,25 @@ class RequestRouter {
     required MetadataService metadataService,
     required ProjectsDao projectsDao,
     required SessionDao sessionDao,
+    required SessionRepository sessionRepository,
+    required PrSyncService prSyncService,
   }) {
     final hiddenStore = projectsDao;
+
     final worktreeService = WorktreeService(
       projectsDao: projectsDao,
       sessionDao: sessionDao,
+      processRunner: ProcessRunner(),
+      gitPathExists: ({required String gitPath}) => FileSystemEntity.typeSync(gitPath) != FileSystemEntityType.notFound,
     );
     return [
       HealthCheckHandler(plugin),
       GetCurrentProjectHandler(plugin),
       GetProjectsHandler(plugin, hiddenStore),
       GetSessionStatusesHandler(plugin),
-      GetChildSessionsHandler(plugin),
+      GetChildSessionsHandler(sessionRepository: sessionRepository),
       GetSessionMessagesHandler(plugin),
-      GetSessionsHandler(plugin, sessionDao),
+      GetSessionsHandler(sessionRepository: sessionRepository, prSyncService: prSyncService),
       CreateSessionHandler(
         plugin: plugin,
         metadataService: metadataService,
@@ -107,7 +121,7 @@ class RequestRouter {
       GetBaseBranchHandler(projectsDao),
       SetBaseBranchHandler(projectsDao),
       FilesystemSuggestionsHandler(),
-      GetSessionDiffsHandler(sessionDao),
+      GetSessionDiffsHandler(sessionDao, processRunner: ProcessRunner()),
     ];
   }
 

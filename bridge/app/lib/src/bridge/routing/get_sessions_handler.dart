@@ -1,26 +1,29 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "dart:async";
+
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../persistence/tables/session_table.dart";
-import "plugin_session_mapper.dart";
+import "../repositories/session_repository.dart";
+import "../services/pr_sync_service.dart";
 import "request_handler.dart";
 
 /// Handles `GET /sessions` — returns sessions for a given project.
 ///
 /// Merges archive status from the database with plugin session data.
 class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionListResponse> {
-  final BridgePlugin _plugin;
-  final SessionDaoLike _sessionDao;
+  final SessionRepository _sessionRepository;
+  final PrSyncService _prSyncService;
 
-  GetSessionsHandler(
-    this._plugin,
-    SessionDaoLike sessionDao,
-  ) : _sessionDao = sessionDao,
-      super(
-        HttpMethod.post,
-        "/sessions",
-        fromJson: SessionListRequest.fromJson,
-      );
+  GetSessionsHandler({
+    required SessionRepository sessionRepository,
+    required PrSyncService prSyncService,
+  }) : _sessionRepository = sessionRepository,
+       _prSyncService = prSyncService,
+       super(
+         HttpMethod.post,
+         "/sessions",
+         fromJson: SessionListRequest.fromJson,
+       );
 
   @override
   Future<SessionListResponse> handle(
@@ -42,42 +45,36 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
     final start = body.start;
     final limit = body.limit;
 
-    final pluginSessions = await _plugin.getSessions(
-      projectId,
+    final sessions = await _sessionRepository.getSessionsForProject(
+      projectId: projectId,
       start: start,
       limit: limit,
     );
 
-    // Map plugin sessions to shared Session objects
-    final sessions = pluginSessions.map((s) => s.toSharedSession()).toList();
+    final response = SessionListResponse(items: sessions);
 
-    // Merge archive status from database
-    final sessionIds = sessions.map((s) => s.id).toList();
-    final dbSessions = await _sessionDao.getSessionsByIds(sessionIds: sessionIds);
-
-    final mergedSessions = sessions.map((session) {
-      final dbSession = dbSessions[session.id];
-      if (dbSession != null) {
-        // DB record exists: override archived time with database value (even if null)
-        final currentTime = session.time;
-        final mergedTime = currentTime != null
-            ? currentTime.copyWith(archived: dbSession.archivedAt)
-            : SessionTime(
-                created: 0,
-                updated: 0,
-                archived: dbSession.archivedAt,
-              );
-        return session.copyWith(time: mergedTime);
-      }
-      // No DB record: keep plugin's time.archived
-      return session;
-    }).toList();
-
-    return SessionListResponse(items: mergedSessions);
+    unawaited(_triggerPrRefresh(projectId: projectId, sessions: sessions));
+    return response;
   }
-}
 
-/// Interface for session DAO operations needed by [GetSessionsHandler].
-abstract interface class SessionDaoLike {
-  Future<Map<String, SessionDto>> getSessionsByIds({required List<String> sessionIds});
+  Future<void> _triggerPrRefresh({
+    required String projectId,
+    required List<Session> sessions,
+  }) async {
+    try {
+      final projectPath = await _sessionRepository.getProjectPath(projectId: projectId);
+      if (projectPath != null) {
+        unawaited(_prSyncService.triggerRefresh(projectId: projectId, projectPath: projectPath));
+        return;
+      }
+
+      final fallbackDirectory = sessions.firstOrNull?.directory;
+      if (fallbackDirectory == null || fallbackDirectory.isEmpty) {
+        return;
+      }
+      unawaited(_prSyncService.triggerRefresh(projectId: projectId, projectPath: fallbackDirectory));
+    } on Object catch (e, st) {
+      Log.w("[GetSessionsHandler] PR refresh trigger failed for $projectId: $e\n$st");
+    }
+  }
 }

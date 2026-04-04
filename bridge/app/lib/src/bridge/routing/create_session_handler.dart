@@ -195,6 +195,7 @@ class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Sess
         ),
         null => null,
       },
+      pullRequest: null,
     );
 
     return session;

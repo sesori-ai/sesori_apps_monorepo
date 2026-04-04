@@ -120,6 +120,9 @@ class SessionListCubit extends Cubit<SessionListState> {
             SesoriWorktreeReady() ||
             SesoriWorktreeFailed():
           break;
+        case SesoriSessionsUpdated():
+          // TODO: refresh session list to show updated PR metadata.
+          break;
       }
     } catch (e, st) {
       loge("SSE event handler error", e, st);

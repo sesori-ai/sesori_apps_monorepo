@@ -357,6 +357,16 @@ Map<String, dynamic> _$SesoriVcsBranchUpdatedToJson(
   SesoriVcsBranchUpdated instance,
 ) => <String, dynamic>{'type': instance.$type};
 
+SesoriSessionsUpdated _$SesoriSessionsUpdatedFromJson(Map json) =>
+    SesoriSessionsUpdated(
+      projectID: json['projectID'] as String,
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$SesoriSessionsUpdatedToJson(
+  SesoriSessionsUpdated instance,
+) => <String, dynamic>{'projectID': instance.projectID, 'type': instance.$type};
+
 SesoriFileEdited _$SesoriFileEditedFromJson(Map json) => SesoriFileEdited(
   file: json['file'] as String?,
   $type: json['type'] as String?,

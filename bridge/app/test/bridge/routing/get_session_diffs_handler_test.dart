@@ -23,7 +23,7 @@ void main() {
       db = createTestDatabase();
       sessionDao = db.sessionDao;
       processRunner = FakeProcessRunner();
-      handler = GetSessionDiffsHandler(sessionDao, processRunner: processRunner.call);
+      handler = GetSessionDiffsHandler(sessionDao, processRunner: processRunner);
       tempDir = await Directory.systemTemp.createTemp("session_diff_handler_test_");
     });
 

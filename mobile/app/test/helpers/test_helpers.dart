@@ -191,6 +191,7 @@ Session testSession({
     parentID: parentID,
     title: title,
     summary: null,
+    pullRequest: null,
     time: SessionTime(
       created: createdAt ?? 1700000000000,
       updated: updatedAt ?? 1700000000000,
@@ -310,7 +311,13 @@ SesoriQuestionAsked testMultiSseQuestionAsked({
 
 /// Returns a realistic [AgentInfo] instance.
 AgentInfo testAgentInfo() {
-  return const AgentInfo(name: "coder", description: "A coding assistant", model: null, variant: null, mode: AgentMode.primary);
+  return const AgentInfo(
+    name: "coder",
+    description: "A coding assistant",
+    model: null,
+    variant: null,
+    mode: AgentMode.primary,
+  );
 }
 
 /// Returns a realistic [ProviderListResponse] with one provider and one model.
@@ -344,5 +351,4 @@ AuthUser testAuthUser() {
     providerUserId: "12345678",
     providerUsername: "testuser",
   );
-
 }

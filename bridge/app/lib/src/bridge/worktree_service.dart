@@ -3,19 +3,13 @@ import "dart:math";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "foundation/process_runner.dart";
 import "persistence/daos/projects_dao.dart";
 import "persistence/daos/session_dao.dart";
 import "persistence/tables/session_table.dart";
 
 part "worktree_types.dart";
 part "worktree_git_queries.dart";
-
-typedef ProcessRunner =
-    Future<ProcessResult> Function(
-      String executable,
-      List<String> arguments, {
-      String? workingDirectory,
-    });
 
 typedef GitPathExistsChecker = bool Function({required String gitPath});
 
@@ -36,10 +30,10 @@ class WorktreeService {
   WorktreeService({
     required ProjectsDao projectsDao,
     required SessionDao sessionDao,
-    ProcessRunner processRunner = Process.run,
-    GitPathExistsChecker? gitPathExists,
+    required ProcessRunner processRunner,
+    required GitPathExistsChecker gitPathExists,
   }) : _processRunner = processRunner,
-       _gitPathExists = gitPathExists ?? _defaultGitPathExistsChecker,
+       _gitPathExists = gitPathExists,
        _projectsDao = projectsDao,
        _sessionDao = sessionDao;
 
@@ -208,7 +202,7 @@ class WorktreeService {
 
     final issues = <SafetyIssue>[];
 
-    final statusResult = await _processRunner(
+    final statusResult = await _processRunner.run(
       "git",
       ["status", "--porcelain"],
       workingDirectory: worktreePath,
@@ -217,7 +211,7 @@ class WorktreeService {
       issues.add(UnstagedChanges());
     }
 
-    final headResult = await _processRunner(
+    final headResult = await _processRunner.run(
       "git",
       ["rev-parse", "--abbrev-ref", "HEAD"],
       workingDirectory: worktreePath,
@@ -302,8 +296,4 @@ class WorktreeService {
     final expectedPrefix = "$projectPath/.worktrees/";
     return worktreePath.startsWith(expectedPrefix);
   }
-}
-
-bool _defaultGitPathExistsChecker({required String gitPath}) {
-  return FileSystemEntity.typeSync(gitPath) != FileSystemEntityType.notFound;
 }

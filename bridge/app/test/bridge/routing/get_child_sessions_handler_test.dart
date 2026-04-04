@@ -8,11 +8,13 @@ import "routing_test_helpers.dart";
 void main() {
   group("GetChildSessionsHandler", () {
     late FakeBridgePlugin plugin;
+    late FakeSessionRepository sessionRepository;
     late GetChildSessionsHandler handler;
 
     setUp(() {
       plugin = FakeBridgePlugin();
-      handler = GetChildSessionsHandler(plugin);
+      sessionRepository = FakeSessionRepository(plugin: plugin);
+      handler = GetChildSessionsHandler(sessionRepository: sessionRepository);
     });
 
     tearDown(() => plugin.close());
@@ -107,6 +109,30 @@ void main() {
       expect(session.summary?.additions, equals(5));
       expect(session.summary?.deletions, equals(2));
       expect(session.summary?.files, equals(3));
+    });
+
+    test("keeps pullRequest null for child sessions", () async {
+      plugin.childSessionsResult = const [
+        PluginSession(
+          id: "child-1",
+          projectID: "project-1",
+          directory: "/tmp/project",
+          parentID: "parent-1",
+          title: "Child Session",
+          time: null,
+          summary: null,
+        ),
+      ];
+
+      final response = await handler.handle(
+        makeRequest("POST", "/session/children"),
+        body: const SessionIdRequest(sessionId: "parent-1"),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response.items.single.pullRequest, isNull);
     });
   });
 }

@@ -81,6 +81,7 @@ void main() {
         title: null,
         time: null,
         summary: null,
+        pullRequest: null,
       );
       const event = SesoriSseEvent.sessionCreated(info: session);
       final json = event.toJson();
@@ -110,6 +111,7 @@ void main() {
         title: 'My Session',
         time: null,
         summary: null,
+        pullRequest: null,
       );
       const event = SesoriSseEvent.sessionUpdated(info: session);
       final json = event.toJson();
@@ -137,6 +139,7 @@ void main() {
         title: null,
         time: null,
         summary: null,
+        pullRequest: null,
       );
       const event = SesoriSseEvent.sessionDeleted(info: session);
       final json = event.toJson();
@@ -318,21 +321,48 @@ void main() {
   group('SesoriSessionEvent marker interface', () {
     test('sessionCreated implements SesoriSessionEvent', () {
       const created = SesoriSseEvent.sessionCreated(
-        info: Session(id: 'x', projectID: 'p', directory: '/d', parentID: null, title: null, time: null, summary: null),
+        info: Session(
+          id: 'x',
+          projectID: 'p',
+          directory: '/d',
+          parentID: null,
+          title: null,
+          time: null,
+          summary: null,
+          pullRequest: null,
+        ),
       );
       expect(created, isA<SesoriSessionEvent>());
     });
 
     test('sessionUpdated implements SesoriSessionEvent', () {
       const updated = SesoriSseEvent.sessionUpdated(
-        info: Session(id: 'x', projectID: 'p', directory: '/d', parentID: null, title: null, time: null, summary: null),
+        info: Session(
+          id: 'x',
+          projectID: 'p',
+          directory: '/d',
+          parentID: null,
+          title: null,
+          time: null,
+          summary: null,
+          pullRequest: null,
+        ),
       );
       expect(updated, isA<SesoriSessionEvent>());
     });
 
     test('sessionDeleted implements SesoriSessionEvent', () {
       const deleted = SesoriSseEvent.sessionDeleted(
-        info: Session(id: 'x', projectID: 'p', directory: '/d', parentID: null, title: null, time: null, summary: null),
+        info: Session(
+          id: 'x',
+          projectID: 'p',
+          directory: '/d',
+          parentID: null,
+          title: null,
+          time: null,
+          summary: null,
+          pullRequest: null,
+        ),
       );
       expect(deleted, isA<SesoriSessionEvent>());
     });
@@ -452,21 +482,48 @@ void main() {
   group('wire-format type strings', () {
     test('sessionCreated uses session.created', () {
       final json = const SesoriSseEvent.sessionCreated(
-        info: Session(id: 'i', projectID: 'p', directory: '/d', parentID: null, title: null, time: null, summary: null),
+        info: Session(
+          id: 'i',
+          projectID: 'p',
+          directory: '/d',
+          parentID: null,
+          title: null,
+          time: null,
+          summary: null,
+          pullRequest: null,
+        ),
       ).toJson();
       expect(json['type'], 'session.created');
     });
 
     test('sessionUpdated uses session.updated', () {
       final json = const SesoriSseEvent.sessionUpdated(
-        info: Session(id: 'i', projectID: 'p', directory: '/d', parentID: null, title: null, time: null, summary: null),
+        info: Session(
+          id: 'i',
+          projectID: 'p',
+          directory: '/d',
+          parentID: null,
+          title: null,
+          time: null,
+          summary: null,
+          pullRequest: null,
+        ),
       ).toJson();
       expect(json['type'], 'session.updated');
     });
 
     test('sessionDeleted uses session.deleted', () {
       final json = const SesoriSseEvent.sessionDeleted(
-        info: Session(id: 'i', projectID: 'p', directory: '/d', parentID: null, title: null, time: null, summary: null),
+        info: Session(
+          id: 'i',
+          projectID: 'p',
+          directory: '/d',
+          parentID: null,
+          title: null,
+          time: null,
+          summary: null,
+          pullRequest: null,
+        ),
       ).toJson();
       expect(json['type'], 'session.deleted');
     });

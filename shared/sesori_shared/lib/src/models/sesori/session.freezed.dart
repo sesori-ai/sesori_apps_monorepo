@@ -295,7 +295,7 @@ as int?,
 /// @nodoc
 mixin _$Session {
 
- String get id; String get projectID; String get directory; String? get parentID; String? get title; SessionTime? get time; SessionSummary? get summary;
+ String get id; String get projectID; String get directory; String? get parentID; String? get title; SessionTime? get time; SessionSummary? get summary; PullRequestInfo? get pullRequest;
 /// Create a copy of Session
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -308,16 +308,16 @@ $SessionCopyWith<Session> get copyWith => _$SessionCopyWithImpl<Session>(this as
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Session&&(identical(other.id, id) || other.id == id)&&(identical(other.projectID, projectID) || other.projectID == projectID)&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.parentID, parentID) || other.parentID == parentID)&&(identical(other.title, title) || other.title == title)&&(identical(other.time, time) || other.time == time)&&(identical(other.summary, summary) || other.summary == summary));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Session&&(identical(other.id, id) || other.id == id)&&(identical(other.projectID, projectID) || other.projectID == projectID)&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.parentID, parentID) || other.parentID == parentID)&&(identical(other.title, title) || other.title == title)&&(identical(other.time, time) || other.time == time)&&(identical(other.summary, summary) || other.summary == summary)&&(identical(other.pullRequest, pullRequest) || other.pullRequest == pullRequest));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,projectID,directory,parentID,title,time,summary);
+int get hashCode => Object.hash(runtimeType,id,projectID,directory,parentID,title,time,summary,pullRequest);
 
 @override
 String toString() {
-  return 'Session(id: $id, projectID: $projectID, directory: $directory, parentID: $parentID, title: $title, time: $time, summary: $summary)';
+  return 'Session(id: $id, projectID: $projectID, directory: $directory, parentID: $parentID, title: $title, time: $time, summary: $summary, pullRequest: $pullRequest)';
 }
 
 
@@ -328,11 +328,11 @@ abstract mixin class $SessionCopyWith<$Res>  {
   factory $SessionCopyWith(Session value, $Res Function(Session) _then) = _$SessionCopyWithImpl;
 @useResult
 $Res call({
- String id, String projectID, String directory, String? parentID, String? title, SessionTime? time, SessionSummary? summary
+ String id, String projectID, String directory, String? parentID, String? title, SessionTime? time, SessionSummary? summary, PullRequestInfo? pullRequest
 });
 
 
-$SessionTimeCopyWith<$Res>? get time;$SessionSummaryCopyWith<$Res>? get summary;
+$SessionTimeCopyWith<$Res>? get time;$SessionSummaryCopyWith<$Res>? get summary;$PullRequestInfoCopyWith<$Res>? get pullRequest;
 
 }
 /// @nodoc
@@ -345,7 +345,7 @@ class _$SessionCopyWithImpl<$Res>
 
 /// Create a copy of Session
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? projectID = null,Object? directory = null,Object? parentID = freezed,Object? title = freezed,Object? time = freezed,Object? summary = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? projectID = null,Object? directory = null,Object? parentID = freezed,Object? title = freezed,Object? time = freezed,Object? summary = freezed,Object? pullRequest = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,projectID: null == projectID ? _self.projectID : projectID // ignore: cast_nullable_to_non_nullable
@@ -354,7 +354,8 @@ as String,parentID: freezed == parentID ? _self.parentID : parentID // ignore: c
 as String?,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String?,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
 as SessionTime?,summary: freezed == summary ? _self.summary : summary // ignore: cast_nullable_to_non_nullable
-as SessionSummary?,
+as SessionSummary?,pullRequest: freezed == pullRequest ? _self.pullRequest : pullRequest // ignore: cast_nullable_to_non_nullable
+as PullRequestInfo?,
   ));
 }
 /// Create a copy of Session
@@ -381,6 +382,18 @@ $SessionSummaryCopyWith<$Res>? get summary {
   return $SessionSummaryCopyWith<$Res>(_self.summary!, (value) {
     return _then(_self.copyWith(summary: value));
   });
+}/// Create a copy of Session
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PullRequestInfoCopyWith<$Res>? get pullRequest {
+    if (_self.pullRequest == null) {
+    return null;
+  }
+
+  return $PullRequestInfoCopyWith<$Res>(_self.pullRequest!, (value) {
+    return _then(_self.copyWith(pullRequest: value));
+  });
 }
 }
 
@@ -390,7 +403,7 @@ $SessionSummaryCopyWith<$Res>? get summary {
 @JsonSerializable()
 
 class _Session implements Session {
-  const _Session({required this.id, required this.projectID, required this.directory, required this.parentID, required this.title, required this.time, required this.summary});
+  const _Session({required this.id, required this.projectID, required this.directory, required this.parentID, required this.title, required this.time, required this.summary, required this.pullRequest});
   factory _Session.fromJson(Map<String, dynamic> json) => _$SessionFromJson(json);
 
 @override final  String id;
@@ -400,6 +413,7 @@ class _Session implements Session {
 @override final  String? title;
 @override final  SessionTime? time;
 @override final  SessionSummary? summary;
+@override final  PullRequestInfo? pullRequest;
 
 /// Create a copy of Session
 /// with the given fields replaced by the non-null parameter values.
@@ -414,16 +428,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Session&&(identical(other.id, id) || other.id == id)&&(identical(other.projectID, projectID) || other.projectID == projectID)&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.parentID, parentID) || other.parentID == parentID)&&(identical(other.title, title) || other.title == title)&&(identical(other.time, time) || other.time == time)&&(identical(other.summary, summary) || other.summary == summary));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Session&&(identical(other.id, id) || other.id == id)&&(identical(other.projectID, projectID) || other.projectID == projectID)&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.parentID, parentID) || other.parentID == parentID)&&(identical(other.title, title) || other.title == title)&&(identical(other.time, time) || other.time == time)&&(identical(other.summary, summary) || other.summary == summary)&&(identical(other.pullRequest, pullRequest) || other.pullRequest == pullRequest));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,projectID,directory,parentID,title,time,summary);
+int get hashCode => Object.hash(runtimeType,id,projectID,directory,parentID,title,time,summary,pullRequest);
 
 @override
 String toString() {
-  return 'Session(id: $id, projectID: $projectID, directory: $directory, parentID: $parentID, title: $title, time: $time, summary: $summary)';
+  return 'Session(id: $id, projectID: $projectID, directory: $directory, parentID: $parentID, title: $title, time: $time, summary: $summary, pullRequest: $pullRequest)';
 }
 
 
@@ -434,11 +448,11 @@ abstract mixin class _$SessionCopyWith<$Res> implements $SessionCopyWith<$Res> {
   factory _$SessionCopyWith(_Session value, $Res Function(_Session) _then) = __$SessionCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String projectID, String directory, String? parentID, String? title, SessionTime? time, SessionSummary? summary
+ String id, String projectID, String directory, String? parentID, String? title, SessionTime? time, SessionSummary? summary, PullRequestInfo? pullRequest
 });
 
 
-@override $SessionTimeCopyWith<$Res>? get time;@override $SessionSummaryCopyWith<$Res>? get summary;
+@override $SessionTimeCopyWith<$Res>? get time;@override $SessionSummaryCopyWith<$Res>? get summary;@override $PullRequestInfoCopyWith<$Res>? get pullRequest;
 
 }
 /// @nodoc
@@ -451,7 +465,7 @@ class __$SessionCopyWithImpl<$Res>
 
 /// Create a copy of Session
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? projectID = null,Object? directory = null,Object? parentID = freezed,Object? title = freezed,Object? time = freezed,Object? summary = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? projectID = null,Object? directory = null,Object? parentID = freezed,Object? title = freezed,Object? time = freezed,Object? summary = freezed,Object? pullRequest = freezed,}) {
   return _then(_Session(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,projectID: null == projectID ? _self.projectID : projectID // ignore: cast_nullable_to_non_nullable
@@ -460,7 +474,8 @@ as String,parentID: freezed == parentID ? _self.parentID : parentID // ignore: c
 as String?,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String?,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
 as SessionTime?,summary: freezed == summary ? _self.summary : summary // ignore: cast_nullable_to_non_nullable
-as SessionSummary?,
+as SessionSummary?,pullRequest: freezed == pullRequest ? _self.pullRequest : pullRequest // ignore: cast_nullable_to_non_nullable
+as PullRequestInfo?,
   ));
 }
 
@@ -487,6 +502,18 @@ $SessionSummaryCopyWith<$Res>? get summary {
 
   return $SessionSummaryCopyWith<$Res>(_self.summary!, (value) {
     return _then(_self.copyWith(summary: value));
+  });
+}/// Create a copy of Session
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PullRequestInfoCopyWith<$Res>? get pullRequest {
+    if (_self.pullRequest == null) {
+    return null;
+  }
+
+  return $PullRequestInfoCopyWith<$Res>(_self.pullRequest!, (value) {
+    return _then(_self.copyWith(pullRequest: value));
   });
 }
 }

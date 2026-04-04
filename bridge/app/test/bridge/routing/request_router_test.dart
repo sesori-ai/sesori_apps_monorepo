@@ -1,6 +1,9 @@
 import "dart:convert";
 
+import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/request_router.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -20,11 +23,18 @@ void main() {
       plugin = FakeBridgePlugin();
       metadataService = FakeMetadataService();
       db = createTestDatabase();
+      final sessionRepository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(pullRequestDao: db.pullRequestDao),
+      );
       router = RequestRouter(
         plugin: plugin,
         metadataService: metadataService,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
+        sessionRepository: sessionRepository,
+        prSyncService: FakePrSyncService(),
       );
     });
 
@@ -207,6 +217,73 @@ void main() {
       final response = await router.route(makeRequest("GET", "/global/health"));
       expect(response.status, equals(500));
       expect(response.body, contains("healthCheck error"));
+    });
+
+    test("integrates PR merge and background refresh trigger for session list", () async {
+      plugin.currentProjectResult = const PluginProject(id: "/tmp/project");
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "/tmp/project",
+          directory: "/tmp/project",
+          parentID: null,
+          title: "session",
+          time: null,
+          summary: null,
+        ),
+      ];
+
+      final fakePullRequestRepository = FakePullRequestRepository();
+      fakePullRequestRepository.setPr(
+        sessionId: "s1",
+        pullRequest: const PullRequestDto(
+          projectId: "/tmp/project",
+          prNumber: 101,
+          branchName: "feature/test",
+          url: "https://github.com/org/repo/pull/101",
+          title: "Integration PR",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.unknown,
+          reviewDecision: PrReviewDecision.unknown,
+          checkStatus: PrCheckStatus.unknown,
+          lastCheckedAt: 1,
+          createdAt: 1,
+        ),
+      );
+
+      final spyPrSyncService = FakePrSyncService();
+      final sessionRepository = FakeSessionRepository(
+        plugin: plugin,
+        sessionDao: FakeSessionDao(),
+        pullRequestRepository: fakePullRequestRepository,
+      );
+
+      router = RequestRouter(
+        plugin: plugin,
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        sessionRepository: sessionRepository,
+        prSyncService: spyPrSyncService,
+        metadataService: metadataService,
+      );
+
+      final response = await router.route(
+        makeRequest(
+          "POST",
+          "/sessions",
+          body: jsonEncode({"projectId": "/tmp/project", "start": null, "limit": null}),
+        ),
+      );
+
+      final responseModel = SessionListResponse.fromJson(
+        jsonDecode(response.body!) as Map<String, dynamic>,
+      );
+
+      expect(responseModel.items.single.pullRequest?.number, equals(101));
+      expect(responseModel.items.single.pullRequest?.title, equals("Integration PR"));
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(spyPrSyncService.calls, hasLength(1));
+      expect(spyPrSyncService.calls.single, equals((projectId: "/tmp/project", projectPath: "/tmp/project")));
     });
   });
 }

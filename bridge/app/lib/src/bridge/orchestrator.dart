@@ -14,7 +14,9 @@ import "metadata_service.dart";
 import "models/bridge_config.dart";
 import "persistence/daos/projects_dao.dart";
 import "relay_client.dart";
+import "repositories/session_repository.dart";
 import "routing/request_router.dart";
+import "services/pr_sync_service.dart";
 import "sse/bridge_event_mapper.dart";
 import "sse/sse_manager.dart";
 
@@ -29,6 +31,8 @@ class Orchestrator {
   final TokenRefresher _tokenRefresher;
   final ProjectsDao _projectsDao;
   final FailureReporter _failureReporter;
+  final PrSyncService _prSyncService;
+  final SessionRepository _sessionRepository;
 
   Orchestrator({
     required this.config,
@@ -39,13 +43,17 @@ class Orchestrator {
     required TokenRefresher tokenRefresher,
     required ProjectsDao projectsDao,
     required FailureReporter failureReporter,
+    required PrSyncService prSyncService,
+    required SessionRepository sessionRepository,
   }) : _client = client,
        _plugin = plugin,
        _metadataService = metadataService,
        _pushNotificationService = pushNotificationService,
        _tokenRefresher = tokenRefresher,
        _projectsDao = projectsDao,
-       _failureReporter = failureReporter;
+       _failureReporter = failureReporter,
+       _sessionRepository = sessionRepository,
+       _prSyncService = prSyncService;
 
   /// Creates a new session with a fresh room key and SSE manager.
   OrchestratorSession create() {
@@ -70,6 +78,8 @@ class Orchestrator {
       sseManager: sseManager,
       bytesSentController: bytesSentController,
       failureReporter: _failureReporter,
+      sessionRepository: _sessionRepository,
+      prSyncService: _prSyncService,
     );
   }
 
@@ -97,6 +107,7 @@ class OrchestratorSession {
   final TokenRefresher _tokenRefresher;
   final StreamController<int> _bytesSentController;
   final FailureReporter _failureReporter;
+  final PrSyncService _prSyncService;
   StreamSubscription<BridgeSseEvent>? _eventSubscription;
 
   bool _cancelled = false;
@@ -113,6 +124,8 @@ class OrchestratorSession {
     required SSEManager sseManager,
     required StreamController<int> bytesSentController,
     required FailureReporter failureReporter,
+    required SessionRepository sessionRepository,
+    required PrSyncService prSyncService,
   }) : _client = client,
        _plugin = plugin,
        _pushNotificationService = pushNotificationService,
@@ -121,11 +134,14 @@ class OrchestratorSession {
        _sseManager = sseManager,
        _bytesSentController = bytesSentController,
        _failureReporter = failureReporter,
+       _prSyncService = prSyncService,
        _router = RequestRouter(
          plugin: plugin,
          metadataService: metadataService,
          projectsDao: projectsDao,
          sessionDao: projectsDao.attachedDatabase.sessionDao,
+         sessionRepository: sessionRepository,
+         prSyncService: prSyncService,
        ),
        _mapper = BridgeEventMapper(plugin: plugin, failureReporter: failureReporter);
 
@@ -134,6 +150,7 @@ class OrchestratorSession {
   /// Includes both API responses and SSE events. Subscribe to this stream to
   /// track bandwidth (e.g. with [BandwidthTracker]).
   Stream<int> get bytesSent => _bytesSentController.stream;
+  RequestRouter get router => _router;
 
   Future<void> run() async {
     final kxManager = KeyExchangeManager(_roomKey);
@@ -178,6 +195,9 @@ class OrchestratorSession {
       },
     );
     Log.d("[dbg] plugin event stream subscribed");
+    final prChangesSubscription = _prSyncService.prChanges.listen((String projectId) {
+      _sseManager.enqueueEvent(SesoriSseEvent.sessionsUpdated(projectID: projectId));
+    });
 
     try {
       Log.d("[dbg] connecting to relay...");
@@ -235,6 +255,8 @@ class OrchestratorSession {
       Log.d("[dbg] cancelling event subscription...");
       await _eventSubscription?.cancel();
       Log.d("[dbg] event subscription cancelled");
+      await prChangesSubscription.cancel();
+      _prSyncService.dispose();
       Log.d("[dbg] disposing plugin...");
       await _plugin.dispose();
       Log.d("[dbg] plugin disposed");

@@ -26,6 +26,7 @@ void main() {
         title: "Session",
         summary: null,
         time: SessionTime(created: 1, updated: 1, archived: null),
+        pullRequest: null,
       );
 
       when(
@@ -69,6 +70,7 @@ void main() {
         title: "Session",
         summary: null,
         time: SessionTime(created: 1, updated: 1, archived: null),
+        pullRequest: null,
       );
 
       when(

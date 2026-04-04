@@ -660,13 +660,537 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
   }
 }
 
+mixin $PullRequestsTableTableToColumns implements Insertable<PullRequestDto> {
+  String get projectId;
+  int get prNumber;
+  String get branchName;
+  String get url;
+  String get title;
+  PrState get state;
+  PrMergeableStatus get mergeableStatus;
+  PrReviewDecision get reviewDecision;
+  PrCheckStatus get checkStatus;
+  int get lastCheckedAt;
+  int get createdAt;
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['project_id'] = Variable<String>(projectId);
+    map['pr_number'] = Variable<int>(prNumber);
+    map['branch_name'] = Variable<String>(branchName);
+    map['url'] = Variable<String>(url);
+    map['title'] = Variable<String>(title);
+    {
+      map['state'] = Variable<String>(
+        $PullRequestsTableTable.$converterstate.toSql(state),
+      );
+    }
+    {
+      map['mergeable_status'] = Variable<String>(
+        $PullRequestsTableTable.$convertermergeableStatus.toSql(
+          mergeableStatus,
+        ),
+      );
+    }
+    {
+      map['review_decision'] = Variable<String>(
+        $PullRequestsTableTable.$converterreviewDecision.toSql(reviewDecision),
+      );
+    }
+    {
+      map['check_status'] = Variable<String>(
+        $PullRequestsTableTable.$convertercheckStatus.toSql(checkStatus),
+      );
+    }
+    map['last_checked_at'] = Variable<int>(lastCheckedAt);
+    map['created_at'] = Variable<int>(createdAt);
+    return map;
+  }
+}
+
+class $PullRequestsTableTable extends PullRequestsTable
+    with TableInfo<$PullRequestsTableTable, PullRequestDto> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PullRequestsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _projectIdMeta = const VerificationMeta(
+    'projectId',
+  );
+  @override
+  late final GeneratedColumn<String> projectId = GeneratedColumn<String>(
+    'project_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES projects_table (project_id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _prNumberMeta = const VerificationMeta(
+    'prNumber',
+  );
+  @override
+  late final GeneratedColumn<int> prNumber = GeneratedColumn<int>(
+    'pr_number',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _branchNameMeta = const VerificationMeta(
+    'branchName',
+  );
+  @override
+  late final GeneratedColumn<String> branchName = GeneratedColumn<String>(
+    'branch_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _urlMeta = const VerificationMeta('url');
+  @override
+  late final GeneratedColumn<String> url = GeneratedColumn<String>(
+    'url',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<PrState, String> state =
+      GeneratedColumn<String>(
+        'state',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<PrState>($PullRequestsTableTable.$converterstate);
+  @override
+  late final GeneratedColumnWithTypeConverter<PrMergeableStatus, String>
+  mergeableStatus =
+      GeneratedColumn<String>(
+        'mergeable_status',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<PrMergeableStatus>(
+        $PullRequestsTableTable.$convertermergeableStatus,
+      );
+  @override
+  late final GeneratedColumnWithTypeConverter<PrReviewDecision, String>
+  reviewDecision =
+      GeneratedColumn<String>(
+        'review_decision',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<PrReviewDecision>(
+        $PullRequestsTableTable.$converterreviewDecision,
+      );
+  @override
+  late final GeneratedColumnWithTypeConverter<PrCheckStatus, String>
+  checkStatus = GeneratedColumn<String>(
+    'check_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  ).withConverter<PrCheckStatus>($PullRequestsTableTable.$convertercheckStatus);
+  static const VerificationMeta _lastCheckedAtMeta = const VerificationMeta(
+    'lastCheckedAt',
+  );
+  @override
+  late final GeneratedColumn<int> lastCheckedAt = GeneratedColumn<int>(
+    'last_checked_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    projectId,
+    prNumber,
+    branchName,
+    url,
+    title,
+    state,
+    mergeableStatus,
+    reviewDecision,
+    checkStatus,
+    lastCheckedAt,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'pull_requests_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PullRequestDto> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('project_id')) {
+      context.handle(
+        _projectIdMeta,
+        projectId.isAcceptableOrUnknown(data['project_id']!, _projectIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_projectIdMeta);
+    }
+    if (data.containsKey('pr_number')) {
+      context.handle(
+        _prNumberMeta,
+        prNumber.isAcceptableOrUnknown(data['pr_number']!, _prNumberMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_prNumberMeta);
+    }
+    if (data.containsKey('branch_name')) {
+      context.handle(
+        _branchNameMeta,
+        branchName.isAcceptableOrUnknown(data['branch_name']!, _branchNameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_branchNameMeta);
+    }
+    if (data.containsKey('url')) {
+      context.handle(
+        _urlMeta,
+        url.isAcceptableOrUnknown(data['url']!, _urlMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_urlMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('last_checked_at')) {
+      context.handle(
+        _lastCheckedAtMeta,
+        lastCheckedAt.isAcceptableOrUnknown(
+          data['last_checked_at']!,
+          _lastCheckedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_lastCheckedAtMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {projectId, prNumber};
+  @override
+  PullRequestDto map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PullRequestDto(
+      projectId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}project_id'],
+      )!,
+      prNumber: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}pr_number'],
+      )!,
+      branchName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_name'],
+      )!,
+      url: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}url'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      state: $PullRequestsTableTable.$converterstate.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}state'],
+        )!,
+      ),
+      mergeableStatus: $PullRequestsTableTable.$convertermergeableStatus
+          .fromSql(
+            attachedDatabase.typeMapping.read(
+              DriftSqlType.string,
+              data['${effectivePrefix}mergeable_status'],
+            )!,
+          ),
+      reviewDecision: $PullRequestsTableTable.$converterreviewDecision.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}review_decision'],
+        )!,
+      ),
+      checkStatus: $PullRequestsTableTable.$convertercheckStatus.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}check_status'],
+        )!,
+      ),
+      lastCheckedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_checked_at'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $PullRequestsTableTable createAlias(String alias) {
+    return $PullRequestsTableTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<PrState, String, String> $converterstate =
+      const EnumNameConverter<PrState>(PrState.values);
+  static JsonTypeConverter2<PrMergeableStatus, String, String>
+  $convertermergeableStatus = const EnumNameConverter<PrMergeableStatus>(
+    PrMergeableStatus.values,
+  );
+  static JsonTypeConverter2<PrReviewDecision, String, String>
+  $converterreviewDecision = const EnumNameConverter<PrReviewDecision>(
+    PrReviewDecision.values,
+  );
+  static JsonTypeConverter2<PrCheckStatus, String, String>
+  $convertercheckStatus = const EnumNameConverter<PrCheckStatus>(
+    PrCheckStatus.values,
+  );
+  @override
+  bool get withoutRowId => true;
+}
+
+class PullRequestsTableCompanion extends UpdateCompanion<PullRequestDto> {
+  final Value<String> projectId;
+  final Value<int> prNumber;
+  final Value<String> branchName;
+  final Value<String> url;
+  final Value<String> title;
+  final Value<PrState> state;
+  final Value<PrMergeableStatus> mergeableStatus;
+  final Value<PrReviewDecision> reviewDecision;
+  final Value<PrCheckStatus> checkStatus;
+  final Value<int> lastCheckedAt;
+  final Value<int> createdAt;
+  const PullRequestsTableCompanion({
+    this.projectId = const Value.absent(),
+    this.prNumber = const Value.absent(),
+    this.branchName = const Value.absent(),
+    this.url = const Value.absent(),
+    this.title = const Value.absent(),
+    this.state = const Value.absent(),
+    this.mergeableStatus = const Value.absent(),
+    this.reviewDecision = const Value.absent(),
+    this.checkStatus = const Value.absent(),
+    this.lastCheckedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  PullRequestsTableCompanion.insert({
+    required String projectId,
+    required int prNumber,
+    required String branchName,
+    required String url,
+    required String title,
+    required PrState state,
+    required PrMergeableStatus mergeableStatus,
+    required PrReviewDecision reviewDecision,
+    required PrCheckStatus checkStatus,
+    required int lastCheckedAt,
+    required int createdAt,
+  }) : projectId = Value(projectId),
+       prNumber = Value(prNumber),
+       branchName = Value(branchName),
+       url = Value(url),
+       title = Value(title),
+       state = Value(state),
+       mergeableStatus = Value(mergeableStatus),
+       reviewDecision = Value(reviewDecision),
+       checkStatus = Value(checkStatus),
+       lastCheckedAt = Value(lastCheckedAt),
+       createdAt = Value(createdAt);
+  static Insertable<PullRequestDto> custom({
+    Expression<String>? projectId,
+    Expression<int>? prNumber,
+    Expression<String>? branchName,
+    Expression<String>? url,
+    Expression<String>? title,
+    Expression<String>? state,
+    Expression<String>? mergeableStatus,
+    Expression<String>? reviewDecision,
+    Expression<String>? checkStatus,
+    Expression<int>? lastCheckedAt,
+    Expression<int>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (projectId != null) 'project_id': projectId,
+      if (prNumber != null) 'pr_number': prNumber,
+      if (branchName != null) 'branch_name': branchName,
+      if (url != null) 'url': url,
+      if (title != null) 'title': title,
+      if (state != null) 'state': state,
+      if (mergeableStatus != null) 'mergeable_status': mergeableStatus,
+      if (reviewDecision != null) 'review_decision': reviewDecision,
+      if (checkStatus != null) 'check_status': checkStatus,
+      if (lastCheckedAt != null) 'last_checked_at': lastCheckedAt,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  PullRequestsTableCompanion copyWith({
+    Value<String>? projectId,
+    Value<int>? prNumber,
+    Value<String>? branchName,
+    Value<String>? url,
+    Value<String>? title,
+    Value<PrState>? state,
+    Value<PrMergeableStatus>? mergeableStatus,
+    Value<PrReviewDecision>? reviewDecision,
+    Value<PrCheckStatus>? checkStatus,
+    Value<int>? lastCheckedAt,
+    Value<int>? createdAt,
+  }) {
+    return PullRequestsTableCompanion(
+      projectId: projectId ?? this.projectId,
+      prNumber: prNumber ?? this.prNumber,
+      branchName: branchName ?? this.branchName,
+      url: url ?? this.url,
+      title: title ?? this.title,
+      state: state ?? this.state,
+      mergeableStatus: mergeableStatus ?? this.mergeableStatus,
+      reviewDecision: reviewDecision ?? this.reviewDecision,
+      checkStatus: checkStatus ?? this.checkStatus,
+      lastCheckedAt: lastCheckedAt ?? this.lastCheckedAt,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (projectId.present) {
+      map['project_id'] = Variable<String>(projectId.value);
+    }
+    if (prNumber.present) {
+      map['pr_number'] = Variable<int>(prNumber.value);
+    }
+    if (branchName.present) {
+      map['branch_name'] = Variable<String>(branchName.value);
+    }
+    if (url.present) {
+      map['url'] = Variable<String>(url.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (state.present) {
+      map['state'] = Variable<String>(
+        $PullRequestsTableTable.$converterstate.toSql(state.value),
+      );
+    }
+    if (mergeableStatus.present) {
+      map['mergeable_status'] = Variable<String>(
+        $PullRequestsTableTable.$convertermergeableStatus.toSql(
+          mergeableStatus.value,
+        ),
+      );
+    }
+    if (reviewDecision.present) {
+      map['review_decision'] = Variable<String>(
+        $PullRequestsTableTable.$converterreviewDecision.toSql(
+          reviewDecision.value,
+        ),
+      );
+    }
+    if (checkStatus.present) {
+      map['check_status'] = Variable<String>(
+        $PullRequestsTableTable.$convertercheckStatus.toSql(checkStatus.value),
+      );
+    }
+    if (lastCheckedAt.present) {
+      map['last_checked_at'] = Variable<int>(lastCheckedAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PullRequestsTableCompanion(')
+          ..write('projectId: $projectId, ')
+          ..write('prNumber: $prNumber, ')
+          ..write('branchName: $branchName, ')
+          ..write('url: $url, ')
+          ..write('title: $title, ')
+          ..write('state: $state, ')
+          ..write('mergeableStatus: $mergeableStatus, ')
+          ..write('reviewDecision: $reviewDecision, ')
+          ..write('checkStatus: $checkStatus, ')
+          ..write('lastCheckedAt: $lastCheckedAt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $ProjectsTableTable projectsTable = $ProjectsTableTable(this);
   late final $SessionTableTable sessionTable = $SessionTableTable(this);
+  late final $PullRequestsTableTable pullRequestsTable =
+      $PullRequestsTableTable(this);
   late final ProjectsDao projectsDao = ProjectsDao(this as AppDatabase);
   late final SessionDao sessionDao = SessionDao(this as AppDatabase);
+  late final PullRequestDao pullRequestDao = PullRequestDao(
+    this as AppDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -674,7 +1198,18 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     projectsTable,
     sessionTable,
+    pullRequestsTable,
   ];
+  @override
+  StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'projects_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('pull_requests_table', kind: UpdateKind.delete)],
+    ),
+  ]);
 }
 
 typedef $$ProjectsTableTableCreateCompanionBuilder =
@@ -691,6 +1226,44 @@ typedef $$ProjectsTableTableUpdateCompanionBuilder =
       Value<String?> baseBranch,
       Value<int> worktreeCounter,
     });
+
+final class $$ProjectsTableTableReferences
+    extends BaseReferences<_$AppDatabase, $ProjectsTableTable, ProjectDto> {
+  $$ProjectsTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static MultiTypedResultKey<$PullRequestsTableTable, List<PullRequestDto>>
+  _pullRequestsTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.pullRequestsTable,
+        aliasName: $_aliasNameGenerator(
+          db.projectsTable.projectId,
+          db.pullRequestsTable.projectId,
+        ),
+      );
+
+  $$PullRequestsTableTableProcessedTableManager get pullRequestsTableRefs {
+    final manager =
+        $$PullRequestsTableTableTableManager(
+          $_db,
+          $_db.pullRequestsTable,
+        ).filter(
+          (f) => f.projectId.projectId.sqlEquals(
+            $_itemColumn<String>('project_id')!,
+          ),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _pullRequestsTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
 
 class $$ProjectsTableTableFilterComposer
     extends Composer<_$AppDatabase, $ProjectsTableTable> {
@@ -720,6 +1293,31 @@ class $$ProjectsTableTableFilterComposer
     column: $table.worktreeCounter,
     builder: (column) => ColumnFilters(column),
   );
+
+  Expression<bool> pullRequestsTableRefs(
+    Expression<bool> Function($$PullRequestsTableTableFilterComposer f) f,
+  ) {
+    final $$PullRequestsTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.projectId,
+      referencedTable: $db.pullRequestsTable,
+      getReferencedColumn: (t) => t.projectId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PullRequestsTableTableFilterComposer(
+            $db: $db,
+            $table: $db.pullRequestsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$ProjectsTableTableOrderingComposer
@@ -776,6 +1374,32 @@ class $$ProjectsTableTableAnnotationComposer
     column: $table.worktreeCounter,
     builder: (column) => column,
   );
+
+  Expression<T> pullRequestsTableRefs<T extends Object>(
+    Expression<T> Function($$PullRequestsTableTableAnnotationComposer a) f,
+  ) {
+    final $$PullRequestsTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.projectId,
+          referencedTable: $db.pullRequestsTable,
+          getReferencedColumn: (t) => t.projectId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PullRequestsTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.pullRequestsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$ProjectsTableTableTableManager
@@ -789,12 +1413,9 @@ class $$ProjectsTableTableTableManager
           $$ProjectsTableTableAnnotationComposer,
           $$ProjectsTableTableCreateCompanionBuilder,
           $$ProjectsTableTableUpdateCompanionBuilder,
-          (
-            ProjectDto,
-            BaseReferences<_$AppDatabase, $ProjectsTableTable, ProjectDto>,
-          ),
+          (ProjectDto, $$ProjectsTableTableReferences),
           ProjectDto,
-          PrefetchHooks Function()
+          PrefetchHooks Function({bool pullRequestsTableRefs})
         > {
   $$ProjectsTableTableTableManager(_$AppDatabase db, $ProjectsTableTable table)
     : super(
@@ -832,9 +1453,47 @@ class $$ProjectsTableTableTableManager
                 worktreeCounter: worktreeCounter,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$ProjectsTableTableReferences(db, table, e),
+                ),
+              )
               .toList(),
-          prefetchHooksCallback: null,
+          prefetchHooksCallback: ({pullRequestsTableRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (pullRequestsTableRefs) db.pullRequestsTable,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (pullRequestsTableRefs)
+                    await $_getPrefetchedData<
+                      ProjectDto,
+                      $ProjectsTableTable,
+                      PullRequestDto
+                    >(
+                      currentTable: table,
+                      referencedTable: $$ProjectsTableTableReferences
+                          ._pullRequestsTableRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$ProjectsTableTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).pullRequestsTableRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where(
+                            (e) => e.projectId == item.projectId,
+                          ),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
         ),
       );
 }
@@ -849,12 +1508,9 @@ typedef $$ProjectsTableTableProcessedTableManager =
       $$ProjectsTableTableAnnotationComposer,
       $$ProjectsTableTableCreateCompanionBuilder,
       $$ProjectsTableTableUpdateCompanionBuilder,
-      (
-        ProjectDto,
-        BaseReferences<_$AppDatabase, $ProjectsTableTable, ProjectDto>,
-      ),
+      (ProjectDto, $$ProjectsTableTableReferences),
       ProjectDto,
-      PrefetchHooks Function()
+      PrefetchHooks Function({bool pullRequestsTableRefs})
     >;
 typedef $$SessionTableTableCreateCompanionBuilder =
     SessionTableCompanion Function({
@@ -1138,6 +1794,465 @@ typedef $$SessionTableTableProcessedTableManager =
       SessionDto,
       PrefetchHooks Function()
     >;
+typedef $$PullRequestsTableTableCreateCompanionBuilder =
+    PullRequestsTableCompanion Function({
+      required String projectId,
+      required int prNumber,
+      required String branchName,
+      required String url,
+      required String title,
+      required PrState state,
+      required PrMergeableStatus mergeableStatus,
+      required PrReviewDecision reviewDecision,
+      required PrCheckStatus checkStatus,
+      required int lastCheckedAt,
+      required int createdAt,
+    });
+typedef $$PullRequestsTableTableUpdateCompanionBuilder =
+    PullRequestsTableCompanion Function({
+      Value<String> projectId,
+      Value<int> prNumber,
+      Value<String> branchName,
+      Value<String> url,
+      Value<String> title,
+      Value<PrState> state,
+      Value<PrMergeableStatus> mergeableStatus,
+      Value<PrReviewDecision> reviewDecision,
+      Value<PrCheckStatus> checkStatus,
+      Value<int> lastCheckedAt,
+      Value<int> createdAt,
+    });
+
+final class $$PullRequestsTableTableReferences
+    extends
+        BaseReferences<_$AppDatabase, $PullRequestsTableTable, PullRequestDto> {
+  $$PullRequestsTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $ProjectsTableTable _projectIdTable(_$AppDatabase db) =>
+      db.projectsTable.createAlias(
+        $_aliasNameGenerator(
+          db.pullRequestsTable.projectId,
+          db.projectsTable.projectId,
+        ),
+      );
+
+  $$ProjectsTableTableProcessedTableManager get projectId {
+    final $_column = $_itemColumn<String>('project_id')!;
+
+    final manager = $$ProjectsTableTableTableManager(
+      $_db,
+      $_db.projectsTable,
+    ).filter((f) => f.projectId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_projectIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$PullRequestsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $PullRequestsTableTable> {
+  $$PullRequestsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get prNumber => $composableBuilder(
+    column: $table.prNumber,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branchName => $composableBuilder(
+    column: $table.branchName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get url => $composableBuilder(
+    column: $table.url,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<PrState, PrState, String> get state =>
+      $composableBuilder(
+        column: $table.state,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnWithTypeConverterFilters<PrMergeableStatus, PrMergeableStatus, String>
+  get mergeableStatus => $composableBuilder(
+    column: $table.mergeableStatus,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<PrReviewDecision, PrReviewDecision, String>
+  get reviewDecision => $composableBuilder(
+    column: $table.reviewDecision,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<PrCheckStatus, PrCheckStatus, String>
+  get checkStatus => $composableBuilder(
+    column: $table.checkStatus,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<int> get lastCheckedAt => $composableBuilder(
+    column: $table.lastCheckedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$ProjectsTableTableFilterComposer get projectId {
+    final $$ProjectsTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.projectId,
+      referencedTable: $db.projectsTable,
+      getReferencedColumn: (t) => t.projectId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ProjectsTableTableFilterComposer(
+            $db: $db,
+            $table: $db.projectsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PullRequestsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $PullRequestsTableTable> {
+  $$PullRequestsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get prNumber => $composableBuilder(
+    column: $table.prNumber,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get branchName => $composableBuilder(
+    column: $table.branchName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get url => $composableBuilder(
+    column: $table.url,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mergeableStatus => $composableBuilder(
+    column: $table.mergeableStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reviewDecision => $composableBuilder(
+    column: $table.reviewDecision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get checkStatus => $composableBuilder(
+    column: $table.checkStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastCheckedAt => $composableBuilder(
+    column: $table.lastCheckedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$ProjectsTableTableOrderingComposer get projectId {
+    final $$ProjectsTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.projectId,
+      referencedTable: $db.projectsTable,
+      getReferencedColumn: (t) => t.projectId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ProjectsTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.projectsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PullRequestsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PullRequestsTableTable> {
+  $$PullRequestsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get prNumber =>
+      $composableBuilder(column: $table.prNumber, builder: (column) => column);
+
+  GeneratedColumn<String> get branchName => $composableBuilder(
+    column: $table.branchName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get url =>
+      $composableBuilder(column: $table.url, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<PrState, String> get state =>
+      $composableBuilder(column: $table.state, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<PrMergeableStatus, String>
+  get mergeableStatus => $composableBuilder(
+    column: $table.mergeableStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<PrReviewDecision, String>
+  get reviewDecision => $composableBuilder(
+    column: $table.reviewDecision,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<PrCheckStatus, String> get checkStatus =>
+      $composableBuilder(
+        column: $table.checkStatus,
+        builder: (column) => column,
+      );
+
+  GeneratedColumn<int> get lastCheckedAt => $composableBuilder(
+    column: $table.lastCheckedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$ProjectsTableTableAnnotationComposer get projectId {
+    final $$ProjectsTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.projectId,
+      referencedTable: $db.projectsTable,
+      getReferencedColumn: (t) => t.projectId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ProjectsTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.projectsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PullRequestsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PullRequestsTableTable,
+          PullRequestDto,
+          $$PullRequestsTableTableFilterComposer,
+          $$PullRequestsTableTableOrderingComposer,
+          $$PullRequestsTableTableAnnotationComposer,
+          $$PullRequestsTableTableCreateCompanionBuilder,
+          $$PullRequestsTableTableUpdateCompanionBuilder,
+          (PullRequestDto, $$PullRequestsTableTableReferences),
+          PullRequestDto,
+          PrefetchHooks Function({bool projectId})
+        > {
+  $$PullRequestsTableTableTableManager(
+    _$AppDatabase db,
+    $PullRequestsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PullRequestsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PullRequestsTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PullRequestsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> projectId = const Value.absent(),
+                Value<int> prNumber = const Value.absent(),
+                Value<String> branchName = const Value.absent(),
+                Value<String> url = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<PrState> state = const Value.absent(),
+                Value<PrMergeableStatus> mergeableStatus = const Value.absent(),
+                Value<PrReviewDecision> reviewDecision = const Value.absent(),
+                Value<PrCheckStatus> checkStatus = const Value.absent(),
+                Value<int> lastCheckedAt = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+              }) => PullRequestsTableCompanion(
+                projectId: projectId,
+                prNumber: prNumber,
+                branchName: branchName,
+                url: url,
+                title: title,
+                state: state,
+                mergeableStatus: mergeableStatus,
+                reviewDecision: reviewDecision,
+                checkStatus: checkStatus,
+                lastCheckedAt: lastCheckedAt,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                required String projectId,
+                required int prNumber,
+                required String branchName,
+                required String url,
+                required String title,
+                required PrState state,
+                required PrMergeableStatus mergeableStatus,
+                required PrReviewDecision reviewDecision,
+                required PrCheckStatus checkStatus,
+                required int lastCheckedAt,
+                required int createdAt,
+              }) => PullRequestsTableCompanion.insert(
+                projectId: projectId,
+                prNumber: prNumber,
+                branchName: branchName,
+                url: url,
+                title: title,
+                state: state,
+                mergeableStatus: mergeableStatus,
+                reviewDecision: reviewDecision,
+                checkStatus: checkStatus,
+                lastCheckedAt: lastCheckedAt,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$PullRequestsTableTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({projectId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (projectId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.projectId,
+                                referencedTable:
+                                    $$PullRequestsTableTableReferences
+                                        ._projectIdTable(db),
+                                referencedColumn:
+                                    $$PullRequestsTableTableReferences
+                                        ._projectIdTable(db)
+                                        .projectId,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$PullRequestsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PullRequestsTableTable,
+      PullRequestDto,
+      $$PullRequestsTableTableFilterComposer,
+      $$PullRequestsTableTableOrderingComposer,
+      $$PullRequestsTableTableAnnotationComposer,
+      $$PullRequestsTableTableCreateCompanionBuilder,
+      $$PullRequestsTableTableUpdateCompanionBuilder,
+      (PullRequestDto, $$PullRequestsTableTableReferences),
+      PullRequestDto,
+      PrefetchHooks Function({bool projectId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -1146,4 +2261,6 @@ class $AppDatabaseManager {
       $$ProjectsTableTableTableManager(_db, _db.projectsTable);
   $$SessionTableTableTableManager get sessionTable =>
       $$SessionTableTableTableManager(_db, _db.sessionTable);
+  $$PullRequestsTableTableTableManager get pullRequestsTable =>
+      $$PullRequestsTableTableTableManager(_db, _db.pullRequestsTable);
 }
