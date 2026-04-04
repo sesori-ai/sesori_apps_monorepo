@@ -40,5 +40,7 @@ enum PrCheckStatus {
   failure,
   @JsonValue("PENDING")
   pending,
+  @JsonValue("NONE")
+  none,
   unknown,
 }
