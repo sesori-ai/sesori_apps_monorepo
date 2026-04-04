@@ -2,8 +2,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/database/daos/pull_request_dao.dart";
-import "../persistence/daos/session_dao.dart";
 import "../api/database/tables/pull_requests_table.dart";
+import "../persistence/daos/session_dao.dart";
 import "../repositories/mappers/plugin_session_mapper.dart";
 import "../repositories/mappers/pull_request_mapper.dart";
 import "../repositories/models/stored_session.dart";
