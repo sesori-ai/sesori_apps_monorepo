@@ -52,7 +52,7 @@ const _$PrStateEnumMap = {
 
 const _$PrMergeableStatusEnumMap = {
   PrMergeableStatus.mergeable: 'MERGEABLE',
-  PrMergeableStatus.conflicted: 'CONFLICTED',
+  PrMergeableStatus.conflicting: 'CONFLICTING',
   PrMergeableStatus.unknown: 'UNKNOWN',
 };
 

@@ -1,5 +1,5 @@
-import "package:test/test.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:test/test.dart";
 
 void main() {
   group("SesoriSseEvent.sessionsUpdated", () {

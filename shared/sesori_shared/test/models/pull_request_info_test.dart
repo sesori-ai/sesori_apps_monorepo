@@ -1,10 +1,10 @@
-import "package:test/test.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:test/test.dart";
 
 void main() {
   group("PullRequestInfo", () {
     test("creates instance with all required fields", () {
-      final pr = PullRequestInfo(
+      const pr = PullRequestInfo(
         number: 42,
         url: "https://github.com/org/repo/pull/42",
         title: "Add feature X",
@@ -24,7 +24,7 @@ void main() {
     });
 
     test("creates instance with unknown enum values", () {
-      final pr = PullRequestInfo(
+      const pr = PullRequestInfo(
         number: 1,
         url: "https://github.com/org/repo/pull/1",
         title: "Test PR",
@@ -42,12 +42,12 @@ void main() {
     });
 
     test("serializes to JSON correctly", () {
-      final pr = PullRequestInfo(
+      const pr = PullRequestInfo(
         number: 99,
         url: "https://example.com/pr/99",
         title: "Test",
         state: PrState.closed,
-        mergeableStatus: PrMergeableStatus.conflicted,
+        mergeableStatus: PrMergeableStatus.conflicting,
         reviewDecision: PrReviewDecision.changesRequested,
         checkStatus: PrCheckStatus.failure,
       );
@@ -58,7 +58,7 @@ void main() {
       expect(json["url"], "https://example.com/pr/99");
       expect(json["title"], "Test");
       expect(json["state"], "CLOSED");
-      expect(json["mergeableStatus"], "CONFLICTED");
+      expect(json["mergeableStatus"], "CONFLICTING");
       expect(json["reviewDecision"], "CHANGES_REQUESTED");
       expect(json["checkStatus"], "FAILURE");
     });
@@ -106,7 +106,7 @@ void main() {
     });
 
     test("supports equality comparison", () {
-      final pr1 = PullRequestInfo(
+      const pr1 = PullRequestInfo(
         number: 1,
         url: "https://example.com/pr/1",
         title: "Same PR",
@@ -116,7 +116,7 @@ void main() {
         checkStatus: PrCheckStatus.success,
       );
 
-      final pr2 = PullRequestInfo(
+      const pr2 = PullRequestInfo(
         number: 1,
         url: "https://example.com/pr/1",
         title: "Same PR",
@@ -126,7 +126,7 @@ void main() {
         checkStatus: PrCheckStatus.success,
       );
 
-      final pr3 = PullRequestInfo(
+      const pr3 = PullRequestInfo(
         number: 2,
         url: "https://example.com/pr/2",
         title: "Different PR",

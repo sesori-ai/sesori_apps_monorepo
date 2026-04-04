@@ -15,8 +15,8 @@ enum PrState {
 enum PrMergeableStatus {
   @JsonValue("MERGEABLE")
   mergeable,
-  @JsonValue("CONFLICTED")
-  conflicted,
+  @JsonValue("CONFLICTING")
+  conflicting,
   @JsonValue("UNKNOWN")
   unknown,
 }

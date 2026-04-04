@@ -244,7 +244,7 @@ void main() {
             title: "Fix bug",
             state: PrState.open,
             headRefName: "fix/two",
-            mergeable: PrMergeableStatus.conflicted,
+            mergeable: PrMergeableStatus.conflicting,
             reviewDecision: PrReviewDecision.unknown,
             statusCheckRollup: PrCheckStatus.unknown,
           ),
