@@ -76,7 +76,7 @@ sealed class SseEventData with _$SseEventData {
   @FreezedUnionValue("session.error")
   @Implements<SseSessionEventData>()
   const factory SseEventData.sessionError({
-    required String sessionID,
+    required String? sessionID,
   }) = SseSessionError;
 
   @FreezedUnionValue("session.compacted")

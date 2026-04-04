@@ -42,7 +42,7 @@ class BridgeSseSessionDiff extends BridgeSseEvent {
 }
 
 class BridgeSseSessionError extends BridgeSseEvent {
-  final String sessionID;
+  final String? sessionID;
   const BridgeSseSessionError({required this.sessionID});
 }
 

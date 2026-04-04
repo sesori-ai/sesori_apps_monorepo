@@ -756,7 +756,7 @@ class SseSessionError implements SseEventData, SseSessionEventData {
   const SseSessionError({required this.sessionID, final  String? $type}): $type = $type ?? 'session.error';
   factory SseSessionError.fromJson(Map<String, dynamic> json) => _$SseSessionErrorFromJson(json);
 
- final  String sessionID;
+ final  String? sessionID;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -795,7 +795,7 @@ abstract mixin class $SseSessionErrorCopyWith<$Res> implements $SseEventDataCopy
   factory $SseSessionErrorCopyWith(SseSessionError value, $Res Function(SseSessionError) _then) = _$SseSessionErrorCopyWithImpl;
 @useResult
 $Res call({
- String sessionID
+ String? sessionID
 });
 
 
@@ -812,10 +812,10 @@ class _$SseSessionErrorCopyWithImpl<$Res>
 
 /// Create a copy of SseEventData
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? sessionID = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? sessionID = freezed,}) {
   return _then(SseSessionError(
-sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
-as String,
+sessionID: freezed == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
