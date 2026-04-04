@@ -14,7 +14,7 @@ class GetSessionDiffsHandler extends BodyRequestHandler<SessionIdRequest, Sessio
   final ProcessRunner _processRunner;
 
   GetSessionDiffsHandler(this._sessionDao, {ProcessRunner? processRunner})
-    : _processRunner = processRunner ?? Process.run,
+    : _processRunner = processRunner ?? ProcessRunner(),
       super(
         HttpMethod.post,
         "/session/diffs",

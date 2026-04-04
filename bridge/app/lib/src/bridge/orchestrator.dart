@@ -150,6 +150,7 @@ class OrchestratorSession {
   /// Includes both API responses and SSE events. Subscribe to this stream to
   /// track bandwidth (e.g. with [BandwidthTracker]).
   Stream<int> get bytesSent => _bytesSentController.stream;
+  RequestRouter get router => _router;
 
   Future<void> run() async {
     final kxManager = KeyExchangeManager(_roomKey);

@@ -1,5 +1,4 @@
 import "dart:async";
-import "dart:io";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeListMap, jsonDecodeMap;
@@ -7,16 +6,14 @@ import "package:sesori_shared/sesori_shared.dart" show jsonDecodeListMap, jsonDe
 import "../foundation/process_runner.dart";
 import "gh_pull_request.dart";
 
-const _ghCommandTimeout = Duration(seconds: 15);
-
 class GhCliApi {
   final ProcessRunner _processRunner;
 
-  GhCliApi({ProcessRunner processRunner = Process.run}) : _processRunner = processRunner;
+  GhCliApi({ProcessRunner? processRunner}) : _processRunner = processRunner ?? ProcessRunner();
 
   Future<bool> isAvailable() async {
     try {
-      final result = await _runGh(arguments: const ["--version"]);
+      final result = await _processRunner.run("gh", const ["--version"]);
       return result.exitCode == 0;
     } on Object catch (e) {
       Log.w("[GhCli] gh --version failed: $e");
@@ -26,7 +23,7 @@ class GhCliApi {
 
   Future<bool> isAuthenticated() async {
     try {
-      final result = await _runGh(arguments: const ["auth", "status"]);
+      final result = await _processRunner.run("gh", const ["auth", "status"]);
       return result.exitCode == 0;
     } on Object catch (e) {
       Log.w("[GhCli] gh auth status failed: $e");
@@ -35,8 +32,9 @@ class GhCliApi {
   }
 
   Future<List<GhPullRequest>> listOpenPrs({required String workingDirectory}) async {
-    final result = await _runGh(
-      arguments: const <String>[
+    final result = await _processRunner.run(
+      "gh",
+      const <String>[
         "pr",
         "list",
         "--state",
@@ -60,8 +58,9 @@ class GhCliApi {
     required int number,
     required String workingDirectory,
   }) async {
-    final result = await _runGh(
-      arguments: <String>[
+    final result = await _processRunner.run(
+      "gh",
+      <String>[
         "pr",
         "view",
         number.toString(),
@@ -76,32 +75,5 @@ class GhCliApi {
 
     final map = jsonDecodeMap(result.stdout.toString());
     return GhPullRequest.fromJson(map);
-  }
-
-  /// Runs a `gh` command with timeout. Uses [Process.start] so the subprocess
-  /// can be killed on timeout (unlike [Process.run] + [Future.timeout] which
-  /// leaves the child running). Falls back to [_processRunner] when injected
-  /// for testing.
-  Future<ProcessResult> _runGh({
-    required List<String> arguments,
-    String? workingDirectory,
-  }) async {
-    // When a custom processRunner is injected (tests), use it directly.
-    // In production (Process.run default), use Process.start for kill-on-timeout.
-    if (_processRunner != Process.run) {
-      return _processRunner("gh", arguments, workingDirectory: workingDirectory).timeout(_ghCommandTimeout);
-    }
-
-    final process = await Process.start("gh", arguments, workingDirectory: workingDirectory);
-    final exitCode = await process.exitCode.timeout(
-      _ghCommandTimeout,
-      onTimeout: () {
-        process.kill();
-        throw TimeoutException("gh command timed out after $_ghCommandTimeout", _ghCommandTimeout);
-      },
-    );
-    final stdout = await process.stdout.transform(const SystemEncoding().decoder).join();
-    final stderr = await process.stderr.transform(const SystemEncoding().decoder).join();
-    return ProcessResult(process.pid, exitCode, stdout, stderr);
   }
 }

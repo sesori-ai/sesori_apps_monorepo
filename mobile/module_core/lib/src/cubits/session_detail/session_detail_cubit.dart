@@ -420,8 +420,10 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             SesoriWorkspaceFailed() ||
             SesoriTuiToastShow() ||
             SesoriWorktreeReady() ||
-            SesoriWorktreeFailed() ||
-            SesoriSessionsUpdated():
+            SesoriWorktreeFailed():
+          break;
+        case SesoriSessionsUpdated():
+          // TODO: refresh detail snapshot to surface updated project/session PR metadata.
           break;
       }
     } catch (e, st) {

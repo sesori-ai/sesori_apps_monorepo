@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:io";
 
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
@@ -7,7 +8,7 @@ import "package:test/test.dart";
 void main() {
   group("hasGitHubRemote", () {
     test("returns true for GitHub HTTPS URL", () async {
-      final mockRunner = _createMockRunner(
+      final mockRunner = FakeProcessRunner.result(
         exitCode: 0,
         stdout: "https://github.com/org/repo.git",
       );
@@ -20,7 +21,7 @@ void main() {
     });
 
     test("returns true for GitHub SSH URL", () async {
-      final mockRunner = _createMockRunner(
+      final mockRunner = FakeProcessRunner.result(
         exitCode: 0,
         stdout: "git@github.com:org/repo.git",
       );
@@ -33,7 +34,7 @@ void main() {
     });
 
     test("returns true for github.com with uppercase", () async {
-      final mockRunner = _createMockRunner(
+      final mockRunner = FakeProcessRunner.result(
         exitCode: 0,
         stdout: "https://GitHub.COM/org/repo.git",
       );
@@ -46,7 +47,7 @@ void main() {
     });
 
     test("returns false for GitLab URL", () async {
-      final mockRunner = _createMockRunner(
+      final mockRunner = FakeProcessRunner.result(
         exitCode: 0,
         stdout: "https://gitlab.com/org/repo.git",
       );
@@ -59,7 +60,7 @@ void main() {
     });
 
     test("returns false for local path", () async {
-      final mockRunner = _createMockRunner(
+      final mockRunner = FakeProcessRunner.result(
         exitCode: 0,
         stdout: "/path/to/local/repo",
       );
@@ -72,7 +73,7 @@ void main() {
     });
 
     test("returns false for empty output", () async {
-      final mockRunner = _createMockRunner(
+      final mockRunner = FakeProcessRunner.result(
         exitCode: 0,
         stdout: "",
       );
@@ -85,7 +86,7 @@ void main() {
     });
 
     test("returns false for whitespace-only output", () async {
-      final mockRunner = _createMockRunner(
+      final mockRunner = FakeProcessRunner.result(
         exitCode: 0,
         stdout: "   \n  \t  ",
       );
@@ -98,7 +99,7 @@ void main() {
     });
 
     test("returns false on non-zero exit code", () async {
-      final mockRunner = _createMockRunner(
+      final mockRunner = FakeProcessRunner.result(
         exitCode: 1,
         stdout: "https://github.com/org/repo.git",
       );
@@ -111,14 +112,14 @@ void main() {
     });
 
     test("returns false on timeout", () async {
-      Future<ProcessResult> mockRunner(
+      final mockRunner = FakeProcessRunner((
         String executable,
         List<String> arguments, {
         String? workingDirectory,
+        Duration timeout = const Duration(seconds: 15),
       }) async {
-        await Future<void>.delayed(const Duration(seconds: 10));
-        return ProcessResult(0, 0, "https://github.com/org/repo.git", "");
-      }
+        throw TimeoutException("timed out", timeout);
+      });
 
       final result = await GitCliApi(processRunner: mockRunner).hasGitHubRemote(
         projectPath: "/path/to/project",
@@ -128,53 +129,41 @@ void main() {
     });
 
     test("passes correct working directory to process runner", () async {
-      String? capturedWorkdir;
-      Future<ProcessResult> mockRunner(
-        String executable,
-        List<String> arguments, {
-        String? workingDirectory,
-      }) async {
-        capturedWorkdir = workingDirectory;
-        return ProcessResult(0, 0, "https://github.com/org/repo.git", "");
-      }
+      final mockRunner = FakeProcessRunner.result(
+        exitCode: 0,
+        stdout: "https://github.com/org/repo.git",
+      );
 
       await GitCliApi(processRunner: mockRunner).hasGitHubRemote(
         projectPath: "/my/project/path",
       );
 
-      expect(capturedWorkdir, equals("/my/project/path"));
+      expect(mockRunner.invocations.single.workingDirectory, equals("/my/project/path"));
     });
 
     test("passes correct git command to process runner", () async {
-      String? capturedExecutable;
-      List<String>? capturedArgs;
-      Future<ProcessResult> mockRunner(
-        String executable,
-        List<String> arguments, {
-        String? workingDirectory,
-      }) async {
-        capturedExecutable = executable;
-        capturedArgs = arguments;
-        return ProcessResult(0, 0, "https://github.com/org/repo.git", "");
-      }
+      final mockRunner = FakeProcessRunner.result(
+        exitCode: 0,
+        stdout: "https://github.com/org/repo.git",
+      );
 
       await GitCliApi(processRunner: mockRunner).hasGitHubRemote(
         projectPath: "/path/to/project",
       );
 
-      expect(capturedExecutable, equals("git"));
-      expect(capturedArgs, equals(["config", "--get", "remote.origin.url"]));
+      expect(mockRunner.invocations.single.executable, equals("git"));
+      expect(mockRunner.invocations.single.arguments, equals(["config", "--get", "remote.origin.url"]));
     });
 
     test("handles exception from process runner", () async {
-      Future<ProcessResult> mockRunner(
+      final mockRunner = FakeProcessRunner((
         String executable,
         List<String> arguments, {
         String? workingDirectory,
+        Duration timeout = const Duration(seconds: 15),
       }) async {
-        // Simulate an exception by returning a failed result
         return ProcessResult(0, 127, "", "command not found");
-      }
+      });
 
       final result = await GitCliApi(processRunner: mockRunner).hasGitHubRemote(
         projectPath: "/path/to/project",
@@ -184,7 +173,7 @@ void main() {
     });
 
     test("trims whitespace from output", () async {
-      final mockRunner = _createMockRunner(
+      final mockRunner = FakeProcessRunner.result(
         exitCode: 0,
         stdout: "  \n  https://github.com/org/repo.git  \n  ",
       );
@@ -198,11 +187,61 @@ void main() {
   });
 }
 
-ProcessRunner _createMockRunner({
-  required int exitCode,
-  required String stdout,
-}) {
-  return (String executable, List<String> arguments, {String? workingDirectory}) async {
-    return ProcessResult(0, exitCode, stdout, "");
-  };
+class Invocation {
+  final String executable;
+  final List<String> arguments;
+  final String? workingDirectory;
+
+  const Invocation({
+    required this.executable,
+    required this.arguments,
+    required this.workingDirectory,
+  });
+}
+
+class FakeProcessRunner implements ProcessRunner {
+  final Future<ProcessResult> Function(
+    String executable,
+    List<String> arguments, {
+    String? workingDirectory,
+    Duration timeout,
+  })
+  _runImpl;
+
+  final List<Invocation> invocations = <Invocation>[];
+
+  FakeProcessRunner(this._runImpl);
+
+  factory FakeProcessRunner.result({required int exitCode, required String stdout}) {
+    return FakeProcessRunner((
+      String executable,
+      List<String> arguments, {
+      String? workingDirectory,
+      Duration timeout = const Duration(seconds: 15),
+    }) async {
+      return ProcessResult(0, exitCode, stdout, "");
+    });
+  }
+
+  @override
+  Future<ProcessResult> run(
+    String executable,
+    List<String> arguments, {
+    String? workingDirectory,
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
+    invocations.add(
+      Invocation(
+        executable: executable,
+        arguments: List<String>.from(arguments),
+        workingDirectory: workingDirectory,
+      ),
+    );
+    return _runImpl(
+      executable,
+      arguments,
+      workingDirectory: workingDirectory,
+      timeout: timeout,
+    );
+  }
 }

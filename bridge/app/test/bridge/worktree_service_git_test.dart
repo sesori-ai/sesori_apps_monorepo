@@ -1,5 +1,6 @@
 import "dart:io";
 
+import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/worktree_service.dart";
 import "package:test/test.dart";
@@ -20,7 +21,7 @@ void main() {
       service = WorktreeService(
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
-        processRunner: processRunner.call,
+        processRunner: processRunner,
         gitPathExists: ({required String gitPath}) => gitDirectoryExists,
       );
     });
@@ -187,7 +188,7 @@ class _Invocation {
   });
 }
 
-class _FakeProcessRunner {
+class _FakeProcessRunner implements ProcessRunner {
   final List<_Invocation> invocations = <_Invocation>[];
   final List<ProcessResult> _results = <ProcessResult>[];
 
@@ -195,10 +196,12 @@ class _FakeProcessRunner {
     _results.add(result);
   }
 
-  Future<ProcessResult> call(
+  @override
+  Future<ProcessResult> run(
     String executable,
     List<String> arguments, {
     String? workingDirectory,
+    Duration timeout = const Duration(seconds: 15),
   }) async {
     invocations.add(
       _Invocation(

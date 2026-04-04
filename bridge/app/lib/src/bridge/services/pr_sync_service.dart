@@ -50,8 +50,10 @@ class PrSyncService {
       final hasRemote = await _prSource.hasGitHubRemote(projectPath: projectPath);
       _hasGitHubRemoteCache[projectPath] = (value: hasRemote, cachedAt: cacheCheckTime);
     }
-    if (!_hasGitHubRemoteCache[projectPath]!.value) {
-      return;
+    if (_hasGitHubRemoteCache[projectPath] case final cachedRemote?) {
+      if (!cachedRemote.value) {
+        return;
+      }
     }
 
     if (_activeRefreshes.contains(projectId)) {

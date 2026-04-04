@@ -240,12 +240,9 @@ Future<void> main(List<String> args) async {
   if (debugPort != null) {
     debugServer = DebugServer(
       plugin: plugin,
-      metadataService: metadataService,
-      projectsDao: db.projectsDao,
+      router: session.router,
       port: debugPort,
       failureReporter: failureReporter,
-      prSyncService: prSyncService,
-      sessionRepository: sessionRepository,
     );
     try {
       await debugServer.start();

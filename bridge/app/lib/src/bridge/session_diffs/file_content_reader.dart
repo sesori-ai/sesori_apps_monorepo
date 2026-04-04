@@ -78,7 +78,7 @@ Future<FileReadResult> readBefore({
 }) async {
   if (status == FileDiffStatus.added) return const FileContent(content: "", exists: false);
   if (_isBinaryExtension(file)) return const FileBinary();
-  final result = await processRunner("git", ["show", "$baseBranch:$file"], workingDirectory: worktreePath);
+  final result = await processRunner.run("git", ["show", "$baseBranch:$file"], workingDirectory: worktreePath);
   if (result.exitCode != 0) return const FileReadError();
   final stdout = decodeOutput(result.stdout);
   if (stdout.contains("\x00")) return const FileBinary();

@@ -16,6 +16,8 @@ class PullRequestsTable extends Table {
   TextColumn get branchName => text()();
   TextColumn get url => text()();
   TextColumn get title => text()();
+  // TODO: migrate to textEnum-backed columns once we add a schema migration that
+  // remaps persisted uppercase values (for example, OPEN) to enum names.
   TextColumn get state => text()();
   TextColumn get mergeableStatus => text()();
   TextColumn get reviewDecision => text()();

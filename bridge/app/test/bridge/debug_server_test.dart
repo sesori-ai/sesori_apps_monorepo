@@ -9,6 +9,7 @@ import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/routing/request_router.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
@@ -33,14 +34,19 @@ DebugServer _createDebugServer({
     pullRequestRepository: pullRequestRepository,
     sessionRepository: sessionRepository,
   );
-  return DebugServer(
+  final router = RequestRouter(
     plugin: plugin,
     metadataService: FakeMetadataService(),
     projectsDao: db.projectsDao,
+    sessionDao: db.sessionDao,
+    sessionRepository: sessionRepository,
+    prSyncService: prSyncService,
+  );
+  return DebugServer(
+    plugin: plugin,
+    router: router,
     port: port,
     failureReporter: FakeFailureReporter(),
-    prSyncService: prSyncService,
-    sessionRepository: sessionRepository,
   );
 }
 

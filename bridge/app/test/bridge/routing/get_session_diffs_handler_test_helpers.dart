@@ -1,5 +1,7 @@
 import "dart:io";
 
+import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
+
 class Invocation {
   final String executable;
   final List<String> arguments;
@@ -12,14 +14,16 @@ class Invocation {
   });
 }
 
-class FakeProcessRunner {
+class FakeProcessRunner implements ProcessRunner {
   ProcessResult Function({required List<String> arguments}) responder = _defaultResponder;
   final List<Invocation> invocations = <Invocation>[];
 
-  Future<ProcessResult> call(
+  @override
+  Future<ProcessResult> run(
     String executable,
     List<String> arguments, {
     String? workingDirectory,
+    Duration timeout = const Duration(seconds: 15),
   }) async {
     invocations.add(
       Invocation(

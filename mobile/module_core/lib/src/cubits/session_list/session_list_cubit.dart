@@ -118,8 +118,10 @@ class SessionListCubit extends Cubit<SessionListState> {
             SesoriWorkspaceFailed() ||
             SesoriTuiToastShow() ||
             SesoriWorktreeReady() ||
-            SesoriWorktreeFailed() ||
-            SesoriSessionsUpdated():
+            SesoriWorktreeFailed():
+          break;
+        case SesoriSessionsUpdated():
+          // TODO: refresh session list to show updated PR metadata.
           break;
       }
     } catch (e, st) {

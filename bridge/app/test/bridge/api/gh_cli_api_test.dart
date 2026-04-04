@@ -1,8 +1,10 @@
 import "dart:async";
+import "dart:collection";
 import "dart:io";
 
 import "package:sesori_bridge/src/bridge/api/gh_cli_api.dart";
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
+import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -13,7 +15,7 @@ void main() {
 
     setUp(() {
       processRunner = _FakeProcessRunner();
-      service = GhCliApi(processRunner: processRunner.call);
+      service = GhCliApi(processRunner: processRunner);
     });
 
     test("returns true when gh --version exits with code 0", () async {
@@ -61,7 +63,7 @@ void main() {
 
     setUp(() {
       processRunner = _FakeProcessRunner();
-      service = GhCliApi(processRunner: processRunner.call);
+      service = GhCliApi(processRunner: processRunner);
     });
 
     test("returns true when gh auth status exits with code 0", () async {
@@ -90,7 +92,7 @@ void main() {
 
     setUp(() {
       processRunner = _FakeProcessRunner();
-      service = GhCliApi(processRunner: processRunner.call);
+      service = GhCliApi(processRunner: processRunner);
     });
 
     test("returns parsed PR list for valid JSON", () async {
@@ -220,7 +222,7 @@ void main() {
 
     setUp(() {
       processRunner = _FakeProcessRunner();
-      service = GhCliApi(processRunner: processRunner.call);
+      service = GhCliApi(processRunner: processRunner);
     });
 
     test("returns parsed PR for valid JSON", () async {
@@ -324,9 +326,9 @@ class _Invocation {
   });
 }
 
-class _FakeProcessRunner {
+class _FakeProcessRunner implements ProcessRunner {
   final List<_Invocation> invocations = <_Invocation>[];
-  final List<Object> _queue = <Object>[];
+  final Queue<Object> _queue = Queue<Object>();
 
   void enqueueResult({required ProcessResult result}) {
     _queue.add(result);
@@ -336,10 +338,12 @@ class _FakeProcessRunner {
     _queue.add(error);
   }
 
-  Future<ProcessResult> call(
+  @override
+  Future<ProcessResult> run(
     String executable,
     List<String> arguments, {
     String? workingDirectory,
+    Duration timeout = const Duration(seconds: 15),
   }) async {
     invocations.add(
       _Invocation(
@@ -353,7 +357,7 @@ class _FakeProcessRunner {
       throw StateError("No queued process output for: $executable $arguments");
     }
 
-    final output = _queue.removeAt(0);
+    final output = _queue.removeFirst();
     if (output is ProcessResult) {
       return output;
     }

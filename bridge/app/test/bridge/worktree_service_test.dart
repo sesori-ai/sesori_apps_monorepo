@@ -1,5 +1,6 @@
 import "dart:io";
 
+import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/daos/session_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
@@ -28,7 +29,7 @@ void main() {
       service = WorktreeService(
         projectsDao: projectsDao,
         sessionDao: sessionDao,
-        processRunner: processRunner.call,
+        processRunner: processRunner,
         gitPathExists: ({required String gitPath}) => gitDirectoryExists,
       );
     });
@@ -446,7 +447,7 @@ void main() {
       service = WorktreeService(
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
-        processRunner: processRunner.call,
+        processRunner: processRunner,
         gitPathExists: ({required String gitPath}) => true,
       );
       tempDir = await Directory.systemTemp.createTemp("worktree_safety_test_");
@@ -559,7 +560,7 @@ void main() {
       service = WorktreeService(
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
-        processRunner: processRunner.call,
+        processRunner: processRunner,
         gitPathExists: ({required String gitPath}) => true,
       );
     });
@@ -763,7 +764,7 @@ class _Invocation {
   });
 }
 
-class _FakeProcessRunner {
+class _FakeProcessRunner implements ProcessRunner {
   final List<_Invocation> invocations = <_Invocation>[];
   final List<ProcessResult> _queue = <ProcessResult>[];
 
@@ -771,10 +772,12 @@ class _FakeProcessRunner {
     _queue.add(result);
   }
 
-  Future<ProcessResult> call(
+  @override
+  Future<ProcessResult> run(
     String executable,
     List<String> arguments, {
     String? workingDirectory,
+    Duration timeout = const Duration(seconds: 15),
   }) async {
     invocations.add(
       _Invocation(

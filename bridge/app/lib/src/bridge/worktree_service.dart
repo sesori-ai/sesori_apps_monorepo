@@ -30,9 +30,9 @@ class WorktreeService {
   WorktreeService({
     required ProjectsDao projectsDao,
     required SessionDao sessionDao,
-    ProcessRunner processRunner = Process.run,
+    ProcessRunner? processRunner,
     GitPathExistsChecker? gitPathExists,
-  }) : _processRunner = processRunner,
+  }) : _processRunner = processRunner ?? ProcessRunner(),
        _gitPathExists = gitPathExists ?? _defaultGitPathExistsChecker,
        _projectsDao = projectsDao,
        _sessionDao = sessionDao;
@@ -202,7 +202,7 @@ class WorktreeService {
 
     final issues = <SafetyIssue>[];
 
-    final statusResult = await _processRunner(
+    final statusResult = await _processRunner.run(
       "git",
       ["status", "--porcelain"],
       workingDirectory: worktreePath,
@@ -211,7 +211,7 @@ class WorktreeService {
       issues.add(UnstagedChanges());
     }
 
-    final headResult = await _processRunner(
+    final headResult = await _processRunner.run(
       "git",
       ["rev-parse", "--abbrev-ref", "HEAD"],
       workingDirectory: worktreePath,

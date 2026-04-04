@@ -156,5 +156,5 @@ Future<ProcessResult> _runGit({
   required String worktreePath,
   required List<String> arguments,
 }) {
-  return processRunner("git", arguments, workingDirectory: worktreePath);
+  return processRunner.run("git", arguments, workingDirectory: worktreePath);
 }
