@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PullRequestDto {
 
- String get projectId; int get prNumber; String get branchName; String get url; String get title; String get state; String get mergeableStatus; String get reviewDecision; String get checkStatus; int get lastCheckedAt; int get createdAt;
+ String get projectId; int get prNumber; String get branchName; String get url; String get title; PrState get state; PrMergeableStatus get mergeableStatus; PrReviewDecision get reviewDecision; PrCheckStatus get checkStatus; int get lastCheckedAt; int get createdAt;
 /// Create a copy of PullRequestDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -45,7 +45,7 @@ abstract mixin class $PullRequestDtoCopyWith<$Res>  {
   factory $PullRequestDtoCopyWith(PullRequestDto value, $Res Function(PullRequestDto) _then) = _$PullRequestDtoCopyWithImpl;
 @useResult
 $Res call({
- String projectId, int prNumber, String branchName, String url, String title, String state, String mergeableStatus, String reviewDecision, String checkStatus, int lastCheckedAt, int createdAt
+ String projectId, int prNumber, String branchName, String url, String title, PrState state, PrMergeableStatus mergeableStatus, PrReviewDecision reviewDecision, PrCheckStatus checkStatus, int lastCheckedAt, int createdAt
 });
 
 
@@ -70,10 +70,10 @@ as int,branchName: null == branchName ? _self.branchName : branchName // ignore:
 as String,url: null == url ? _self.url : url // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String,state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
-as String,mergeableStatus: null == mergeableStatus ? _self.mergeableStatus : mergeableStatus // ignore: cast_nullable_to_non_nullable
-as String,reviewDecision: null == reviewDecision ? _self.reviewDecision : reviewDecision // ignore: cast_nullable_to_non_nullable
-as String,checkStatus: null == checkStatus ? _self.checkStatus : checkStatus // ignore: cast_nullable_to_non_nullable
-as String,lastCheckedAt: null == lastCheckedAt ? _self.lastCheckedAt : lastCheckedAt // ignore: cast_nullable_to_non_nullable
+as PrState,mergeableStatus: null == mergeableStatus ? _self.mergeableStatus : mergeableStatus // ignore: cast_nullable_to_non_nullable
+as PrMergeableStatus,reviewDecision: null == reviewDecision ? _self.reviewDecision : reviewDecision // ignore: cast_nullable_to_non_nullable
+as PrReviewDecision,checkStatus: null == checkStatus ? _self.checkStatus : checkStatus // ignore: cast_nullable_to_non_nullable
+as PrCheckStatus,lastCheckedAt: null == lastCheckedAt ? _self.lastCheckedAt : lastCheckedAt // ignore: cast_nullable_to_non_nullable
 as int,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as int,
   ));
@@ -95,10 +95,10 @@ class _PullRequestDto extends PullRequestDto {
 @override final  String branchName;
 @override final  String url;
 @override final  String title;
-@override final  String state;
-@override final  String mergeableStatus;
-@override final  String reviewDecision;
-@override final  String checkStatus;
+@override final  PrState state;
+@override final  PrMergeableStatus mergeableStatus;
+@override final  PrReviewDecision reviewDecision;
+@override final  PrCheckStatus checkStatus;
 @override final  int lastCheckedAt;
 @override final  int createdAt;
 
@@ -132,7 +132,7 @@ abstract mixin class _$PullRequestDtoCopyWith<$Res> implements $PullRequestDtoCo
   factory _$PullRequestDtoCopyWith(_PullRequestDto value, $Res Function(_PullRequestDto) _then) = __$PullRequestDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String projectId, int prNumber, String branchName, String url, String title, String state, String mergeableStatus, String reviewDecision, String checkStatus, int lastCheckedAt, int createdAt
+ String projectId, int prNumber, String branchName, String url, String title, PrState state, PrMergeableStatus mergeableStatus, PrReviewDecision reviewDecision, PrCheckStatus checkStatus, int lastCheckedAt, int createdAt
 });
 
 
@@ -157,10 +157,10 @@ as int,branchName: null == branchName ? _self.branchName : branchName // ignore:
 as String,url: null == url ? _self.url : url // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String,state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
-as String,mergeableStatus: null == mergeableStatus ? _self.mergeableStatus : mergeableStatus // ignore: cast_nullable_to_non_nullable
-as String,reviewDecision: null == reviewDecision ? _self.reviewDecision : reviewDecision // ignore: cast_nullable_to_non_nullable
-as String,checkStatus: null == checkStatus ? _self.checkStatus : checkStatus // ignore: cast_nullable_to_non_nullable
-as String,lastCheckedAt: null == lastCheckedAt ? _self.lastCheckedAt : lastCheckedAt // ignore: cast_nullable_to_non_nullable
+as PrState,mergeableStatus: null == mergeableStatus ? _self.mergeableStatus : mergeableStatus // ignore: cast_nullable_to_non_nullable
+as PrMergeableStatus,reviewDecision: null == reviewDecision ? _self.reviewDecision : reviewDecision // ignore: cast_nullable_to_non_nullable
+as PrReviewDecision,checkStatus: null == checkStatus ? _self.checkStatus : checkStatus // ignore: cast_nullable_to_non_nullable
+as PrCheckStatus,lastCheckedAt: null == lastCheckedAt ? _self.lastCheckedAt : lastCheckedAt // ignore: cast_nullable_to_non_nullable
 as int,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as int,
   ));

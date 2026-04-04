@@ -5,6 +5,7 @@ import "dart:io";
 import "package:sesori_bridge/src/bridge/api/gh_cli_api.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/debug_server.dart";
+import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
@@ -24,13 +25,17 @@ DebugServer _createDebugServer({
   required int port,
 }) {
   final pullRequestRepository = PullRequestRepository(pullRequestDao: db.pullRequestDao);
+  final processRunner = ProcessRunner();
   final sessionRepository = SessionRepository(
     plugin: plugin,
     sessionDao: db.sessionDao,
     pullRequestRepository: pullRequestRepository,
   );
   final prSyncService = PrSyncService(
-    prSource: PrSourceRepository(ghCli: GhCliApi(), gitCli: GitCliApi()),
+    prSource: PrSourceRepository(
+      ghCli: GhCliApi(processRunner: processRunner),
+      gitCli: GitCliApi(processRunner: processRunner),
+    ),
     pullRequestRepository: pullRequestRepository,
     sessionRepository: sessionRepository,
   );

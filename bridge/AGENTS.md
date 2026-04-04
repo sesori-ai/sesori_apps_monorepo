@@ -78,6 +78,10 @@ One API class wraps one external binary/tool.
 Use separate classes for separate tools (for example, `GhCliApi` for `gh`, `GitCliApi` for `git`).
 Do not merge tool wrappers just because features are related.
 Within one tool wrapper, keep all operations together instead of splitting by use-case.
+This also applies to external providers — e.g., a `GithubApi` wrapping GitHub's web API is separate from `GhCliApi`.
+
+### No Default-Constructed Dependencies
+Constructor parameters for injected dependencies (services, runners, checkers) must be `required` with no default values. Never do `ProcessRunner? processRunner` with `?? ProcessRunner()` — if a test forgets to pass the dependency, it silently uses a real implementation instead of failing fast.
 
 ### DebugServer Shares Instances
 `DebugServer` must receive the same service/repository instances as the main `Orchestrator`. Never create new instances inside `DebugServer` — it must be wired with injected dependencies.

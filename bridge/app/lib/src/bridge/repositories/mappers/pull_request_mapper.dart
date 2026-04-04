@@ -7,48 +7,9 @@ PullRequestInfo pullRequestInfoFromDto(PullRequestDto dto) {
     number: dto.prNumber,
     url: dto.url,
     title: dto.title,
-    state: _stringToPrState(dto.state),
-    mergeableStatus: _stringToPrMergeableStatus(dto.mergeableStatus),
-    reviewDecision: _stringToPrReviewDecision(dto.reviewDecision),
-    checkStatus: _stringToPrCheckStatus(dto.checkStatus),
+    state: dto.state,
+    mergeableStatus: dto.mergeableStatus,
+    reviewDecision: dto.reviewDecision,
+    checkStatus: dto.checkStatus,
   );
-}
-
-PrState _stringToPrState(String? value) {
-  if (value == null) return PrState.unknown;
-  return switch (value.toUpperCase()) {
-    "OPEN" => PrState.open,
-    "CLOSED" => PrState.closed,
-    "MERGED" => PrState.merged,
-    _ => PrState.unknown,
-  };
-}
-
-PrMergeableStatus _stringToPrMergeableStatus(String? value) {
-  if (value == null) return PrMergeableStatus.unknown;
-  return switch (value.toUpperCase()) {
-    "MERGEABLE" => PrMergeableStatus.mergeable,
-    "CONFLICTED" || "CONFLICTING" => PrMergeableStatus.conflicted,
-    _ => PrMergeableStatus.unknown,
-  };
-}
-
-PrReviewDecision _stringToPrReviewDecision(String? value) {
-  if (value == null) return PrReviewDecision.unknown;
-  return switch (value.toUpperCase()) {
-    "APPROVED" => PrReviewDecision.approved,
-    "CHANGES_REQUESTED" => PrReviewDecision.changesRequested,
-    "REVIEW_REQUIRED" => PrReviewDecision.reviewRequired,
-    _ => PrReviewDecision.unknown,
-  };
-}
-
-PrCheckStatus _stringToPrCheckStatus(String? value) {
-  if (value == null) return PrCheckStatus.unknown;
-  return switch (value.toUpperCase()) {
-    "SUCCESS" => PrCheckStatus.success,
-    "FAILURE" => PrCheckStatus.failure,
-    "PENDING" => PrCheckStatus.pending,
-    _ => PrCheckStatus.unknown,
-  };
 }

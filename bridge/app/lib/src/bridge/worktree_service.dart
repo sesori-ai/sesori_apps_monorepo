@@ -30,10 +30,10 @@ class WorktreeService {
   WorktreeService({
     required ProjectsDao projectsDao,
     required SessionDao sessionDao,
-    ProcessRunner? processRunner,
-    GitPathExistsChecker? gitPathExists,
-  }) : _processRunner = processRunner ?? ProcessRunner(),
-       _gitPathExists = gitPathExists ?? _defaultGitPathExistsChecker,
+    required ProcessRunner processRunner,
+    required GitPathExistsChecker gitPathExists,
+  }) : _processRunner = processRunner,
+       _gitPathExists = gitPathExists,
        _projectsDao = projectsDao,
        _sessionDao = sessionDao;
 
@@ -296,8 +296,4 @@ class WorktreeService {
     final expectedPrefix = "$projectPath/.worktrees/";
     return worktreePath.startsWith(expectedPrefix);
   }
-}
-
-bool _defaultGitPathExistsChecker({required String gitPath}) {
-  return FileSystemEntity.typeSync(gitPath) != FileSystemEntityType.notFound;
 }

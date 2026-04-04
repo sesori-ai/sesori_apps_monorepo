@@ -388,9 +388,7 @@ class FakePullRequestRepository implements PullRequestRepository {
   }
 
   Future<List<PullRequestDto>> getActivePrsByProjectId({required String projectId}) async {
-    return _prsByPrimaryKey.values
-        .where((pr) => pr.projectId == projectId && pr.state.toUpperCase() == "OPEN")
-        .toList();
+    return _prsByPrimaryKey.values.where((pr) => pr.projectId == projectId && pr.state == PrState.open).toList();
   }
 
   @override
@@ -417,10 +415,10 @@ class FakePullRequestRepository implements PullRequestRepository {
         branchName: pr.headRefName,
         url: pr.url,
         title: pr.title,
-        state: pr.state.name.toUpperCase(),
-        mergeableStatus: pr.mergeable.name.toUpperCase(),
-        reviewDecision: pr.reviewDecision.name.toUpperCase(),
-        checkStatus: pr.statusCheckRollup.name.toUpperCase(),
+        state: pr.state,
+        mergeableStatus: pr.mergeable,
+        reviewDecision: pr.reviewDecision,
+        checkStatus: pr.statusCheckRollup,
         lastCheckedAt: lastCheckedAt,
         createdAt: createdAt,
       ),
@@ -434,10 +432,10 @@ class FakePullRequestRepository implements PullRequestRepository {
         existing.url != pr.url ||
         existing.title != pr.title ||
         existing.branchName != pr.headRefName ||
-        existing.state != pr.state.name.toUpperCase() ||
-        existing.mergeableStatus != pr.mergeable.name.toUpperCase() ||
-        existing.reviewDecision != pr.reviewDecision.name.toUpperCase() ||
-        existing.checkStatus != pr.statusCheckRollup.name.toUpperCase();
+        existing.state != pr.state ||
+        existing.mergeableStatus != pr.mergeable ||
+        existing.reviewDecision != pr.reviewDecision ||
+        existing.checkStatus != pr.statusCheckRollup;
   }
 
   String _key({required String projectId, required int prNumber}) {
@@ -589,8 +587,8 @@ class FakeSessionRepository implements SessionRepository {
         selected = pr;
         continue;
       }
-      final selectedIsOpen = selected.state.toUpperCase() == PrState.open.name.toUpperCase();
-      final currentIsOpen = pr.state.toUpperCase() == PrState.open.name.toUpperCase();
+      final selectedIsOpen = selected.state == PrState.open;
+      final currentIsOpen = pr.state == PrState.open;
       if (currentIsOpen && !selectedIsOpen) {
         selected = pr;
         continue;

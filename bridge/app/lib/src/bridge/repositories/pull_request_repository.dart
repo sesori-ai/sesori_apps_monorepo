@@ -25,10 +25,10 @@ class PullRequestRepository {
         existing.url != pr.url ||
         existing.title != pr.title ||
         existing.branchName != pr.headRefName ||
-        existing.state != pr.state.name.toUpperCase() ||
-        existing.mergeableStatus != pr.mergeable.name.toUpperCase() ||
-        existing.reviewDecision != pr.reviewDecision.name.toUpperCase() ||
-        existing.checkStatus != pr.statusCheckRollup.name.toUpperCase();
+        existing.state != pr.state ||
+        existing.mergeableStatus != pr.mergeable ||
+        existing.reviewDecision != pr.reviewDecision ||
+        existing.checkStatus != pr.statusCheckRollup;
   }
 
   Future<void> upsertFromGhPr({
@@ -44,10 +44,10 @@ class PullRequestRepository {
         prNumber: pr.number,
         url: pr.url,
         title: pr.title,
-        state: pr.state.name.toUpperCase(),
-        mergeableStatus: pr.mergeable.name.toUpperCase(),
-        reviewDecision: pr.reviewDecision.name.toUpperCase(),
-        checkStatus: pr.statusCheckRollup.name.toUpperCase(),
+        state: pr.state,
+        mergeableStatus: pr.mergeable,
+        reviewDecision: pr.reviewDecision,
+        checkStatus: pr.statusCheckRollup,
         lastCheckedAt: lastCheckedAt,
         createdAt: createdAt,
       ),

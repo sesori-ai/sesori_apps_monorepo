@@ -1,4 +1,5 @@
 import "package:drift/drift.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "../../../persistence/database.dart";
 import "../../../persistence/tables/session_table.dart";
@@ -52,7 +53,7 @@ class PullRequestDao extends DatabaseAccessor<AppDatabase> with _$PullRequestDao
   }) async {
     return (select(
       pullRequestsTable,
-    )..where((t) => t.projectId.equals(projectId) & t.state.collate(Collate.noCase).equals("OPEN"))).get();
+    )..where((t) => t.projectId.equals(projectId) & t.state.equals(PrState.open.name))).get();
   }
 
   Future<void> deletePr({

@@ -666,10 +666,10 @@ mixin $PullRequestsTableTableToColumns implements Insertable<PullRequestDto> {
   String get branchName;
   String get url;
   String get title;
-  String get state;
-  String get mergeableStatus;
-  String get reviewDecision;
-  String get checkStatus;
+  PrState get state;
+  PrMergeableStatus get mergeableStatus;
+  PrReviewDecision get reviewDecision;
+  PrCheckStatus get checkStatus;
   int get lastCheckedAt;
   int get createdAt;
   @override
@@ -680,10 +680,28 @@ mixin $PullRequestsTableTableToColumns implements Insertable<PullRequestDto> {
     map['branch_name'] = Variable<String>(branchName);
     map['url'] = Variable<String>(url);
     map['title'] = Variable<String>(title);
-    map['state'] = Variable<String>(state);
-    map['mergeable_status'] = Variable<String>(mergeableStatus);
-    map['review_decision'] = Variable<String>(reviewDecision);
-    map['check_status'] = Variable<String>(checkStatus);
+    {
+      map['state'] = Variable<String>(
+        $PullRequestsTableTable.$converterstate.toSql(state),
+      );
+    }
+    {
+      map['mergeable_status'] = Variable<String>(
+        $PullRequestsTableTable.$convertermergeableStatus.toSql(
+          mergeableStatus,
+        ),
+      );
+    }
+    {
+      map['review_decision'] = Variable<String>(
+        $PullRequestsTableTable.$converterreviewDecision.toSql(reviewDecision),
+      );
+    }
+    {
+      map['check_status'] = Variable<String>(
+        $PullRequestsTableTable.$convertercheckStatus.toSql(checkStatus),
+      );
+    }
     map['last_checked_at'] = Variable<int>(lastCheckedAt);
     map['created_at'] = Variable<int>(createdAt);
     return map;
@@ -750,48 +768,48 @@ class $PullRequestsTableTable extends PullRequestsTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _stateMeta = const VerificationMeta('state');
   @override
-  late final GeneratedColumn<String> state = GeneratedColumn<String>(
-    'state',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _mergeableStatusMeta = const VerificationMeta(
-    'mergeableStatus',
-  );
+  late final GeneratedColumnWithTypeConverter<PrState, String> state =
+      GeneratedColumn<String>(
+        'state',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<PrState>($PullRequestsTableTable.$converterstate);
   @override
-  late final GeneratedColumn<String> mergeableStatus = GeneratedColumn<String>(
-    'mergeable_status',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _reviewDecisionMeta = const VerificationMeta(
-    'reviewDecision',
-  );
+  late final GeneratedColumnWithTypeConverter<PrMergeableStatus, String>
+  mergeableStatus =
+      GeneratedColumn<String>(
+        'mergeable_status',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<PrMergeableStatus>(
+        $PullRequestsTableTable.$convertermergeableStatus,
+      );
   @override
-  late final GeneratedColumn<String> reviewDecision = GeneratedColumn<String>(
-    'review_decision',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _checkStatusMeta = const VerificationMeta(
-    'checkStatus',
-  );
+  late final GeneratedColumnWithTypeConverter<PrReviewDecision, String>
+  reviewDecision =
+      GeneratedColumn<String>(
+        'review_decision',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<PrReviewDecision>(
+        $PullRequestsTableTable.$converterreviewDecision,
+      );
   @override
-  late final GeneratedColumn<String> checkStatus = GeneratedColumn<String>(
+  late final GeneratedColumnWithTypeConverter<PrCheckStatus, String>
+  checkStatus = GeneratedColumn<String>(
     'check_status',
     aliasedName,
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
-  );
+  ).withConverter<PrCheckStatus>($PullRequestsTableTable.$convertercheckStatus);
   static const VerificationMeta _lastCheckedAtMeta = const VerificationMeta(
     'lastCheckedAt',
   );
@@ -880,47 +898,6 @@ class $PullRequestsTableTable extends PullRequestsTable
     } else if (isInserting) {
       context.missing(_titleMeta);
     }
-    if (data.containsKey('state')) {
-      context.handle(
-        _stateMeta,
-        state.isAcceptableOrUnknown(data['state']!, _stateMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_stateMeta);
-    }
-    if (data.containsKey('mergeable_status')) {
-      context.handle(
-        _mergeableStatusMeta,
-        mergeableStatus.isAcceptableOrUnknown(
-          data['mergeable_status']!,
-          _mergeableStatusMeta,
-        ),
-      );
-    } else if (isInserting) {
-      context.missing(_mergeableStatusMeta);
-    }
-    if (data.containsKey('review_decision')) {
-      context.handle(
-        _reviewDecisionMeta,
-        reviewDecision.isAcceptableOrUnknown(
-          data['review_decision']!,
-          _reviewDecisionMeta,
-        ),
-      );
-    } else if (isInserting) {
-      context.missing(_reviewDecisionMeta);
-    }
-    if (data.containsKey('check_status')) {
-      context.handle(
-        _checkStatusMeta,
-        checkStatus.isAcceptableOrUnknown(
-          data['check_status']!,
-          _checkStatusMeta,
-        ),
-      );
-    } else if (isInserting) {
-      context.missing(_checkStatusMeta);
-    }
     if (data.containsKey('last_checked_at')) {
       context.handle(
         _lastCheckedAtMeta,
@@ -969,22 +946,31 @@ class $PullRequestsTableTable extends PullRequestsTable
         DriftSqlType.string,
         data['${effectivePrefix}title'],
       )!,
-      state: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}state'],
-      )!,
-      mergeableStatus: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}mergeable_status'],
-      )!,
-      reviewDecision: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}review_decision'],
-      )!,
-      checkStatus: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}check_status'],
-      )!,
+      state: $PullRequestsTableTable.$converterstate.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}state'],
+        )!,
+      ),
+      mergeableStatus: $PullRequestsTableTable.$convertermergeableStatus
+          .fromSql(
+            attachedDatabase.typeMapping.read(
+              DriftSqlType.string,
+              data['${effectivePrefix}mergeable_status'],
+            )!,
+          ),
+      reviewDecision: $PullRequestsTableTable.$converterreviewDecision.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}review_decision'],
+        )!,
+      ),
+      checkStatus: $PullRequestsTableTable.$convertercheckStatus.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}check_status'],
+        )!,
+      ),
       lastCheckedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}last_checked_at'],
@@ -1001,6 +987,20 @@ class $PullRequestsTableTable extends PullRequestsTable
     return $PullRequestsTableTable(attachedDatabase, alias);
   }
 
+  static JsonTypeConverter2<PrState, String, String> $converterstate =
+      const EnumNameConverter<PrState>(PrState.values);
+  static JsonTypeConverter2<PrMergeableStatus, String, String>
+  $convertermergeableStatus = const EnumNameConverter<PrMergeableStatus>(
+    PrMergeableStatus.values,
+  );
+  static JsonTypeConverter2<PrReviewDecision, String, String>
+  $converterreviewDecision = const EnumNameConverter<PrReviewDecision>(
+    PrReviewDecision.values,
+  );
+  static JsonTypeConverter2<PrCheckStatus, String, String>
+  $convertercheckStatus = const EnumNameConverter<PrCheckStatus>(
+    PrCheckStatus.values,
+  );
   @override
   bool get withoutRowId => true;
 }
@@ -1011,10 +1011,10 @@ class PullRequestsTableCompanion extends UpdateCompanion<PullRequestDto> {
   final Value<String> branchName;
   final Value<String> url;
   final Value<String> title;
-  final Value<String> state;
-  final Value<String> mergeableStatus;
-  final Value<String> reviewDecision;
-  final Value<String> checkStatus;
+  final Value<PrState> state;
+  final Value<PrMergeableStatus> mergeableStatus;
+  final Value<PrReviewDecision> reviewDecision;
+  final Value<PrCheckStatus> checkStatus;
   final Value<int> lastCheckedAt;
   final Value<int> createdAt;
   const PullRequestsTableCompanion({
@@ -1036,10 +1036,10 @@ class PullRequestsTableCompanion extends UpdateCompanion<PullRequestDto> {
     required String branchName,
     required String url,
     required String title,
-    required String state,
-    required String mergeableStatus,
-    required String reviewDecision,
-    required String checkStatus,
+    required PrState state,
+    required PrMergeableStatus mergeableStatus,
+    required PrReviewDecision reviewDecision,
+    required PrCheckStatus checkStatus,
     required int lastCheckedAt,
     required int createdAt,
   }) : projectId = Value(projectId),
@@ -1087,10 +1087,10 @@ class PullRequestsTableCompanion extends UpdateCompanion<PullRequestDto> {
     Value<String>? branchName,
     Value<String>? url,
     Value<String>? title,
-    Value<String>? state,
-    Value<String>? mergeableStatus,
-    Value<String>? reviewDecision,
-    Value<String>? checkStatus,
+    Value<PrState>? state,
+    Value<PrMergeableStatus>? mergeableStatus,
+    Value<PrReviewDecision>? reviewDecision,
+    Value<PrCheckStatus>? checkStatus,
     Value<int>? lastCheckedAt,
     Value<int>? createdAt,
   }) {
@@ -1128,16 +1128,28 @@ class PullRequestsTableCompanion extends UpdateCompanion<PullRequestDto> {
       map['title'] = Variable<String>(title.value);
     }
     if (state.present) {
-      map['state'] = Variable<String>(state.value);
+      map['state'] = Variable<String>(
+        $PullRequestsTableTable.$converterstate.toSql(state.value),
+      );
     }
     if (mergeableStatus.present) {
-      map['mergeable_status'] = Variable<String>(mergeableStatus.value);
+      map['mergeable_status'] = Variable<String>(
+        $PullRequestsTableTable.$convertermergeableStatus.toSql(
+          mergeableStatus.value,
+        ),
+      );
     }
     if (reviewDecision.present) {
-      map['review_decision'] = Variable<String>(reviewDecision.value);
+      map['review_decision'] = Variable<String>(
+        $PullRequestsTableTable.$converterreviewDecision.toSql(
+          reviewDecision.value,
+        ),
+      );
     }
     if (checkStatus.present) {
-      map['check_status'] = Variable<String>(checkStatus.value);
+      map['check_status'] = Variable<String>(
+        $PullRequestsTableTable.$convertercheckStatus.toSql(checkStatus.value),
+      );
     }
     if (lastCheckedAt.present) {
       map['last_checked_at'] = Variable<int>(lastCheckedAt.value);
@@ -1789,10 +1801,10 @@ typedef $$PullRequestsTableTableCreateCompanionBuilder =
       required String branchName,
       required String url,
       required String title,
-      required String state,
-      required String mergeableStatus,
-      required String reviewDecision,
-      required String checkStatus,
+      required PrState state,
+      required PrMergeableStatus mergeableStatus,
+      required PrReviewDecision reviewDecision,
+      required PrCheckStatus checkStatus,
       required int lastCheckedAt,
       required int createdAt,
     });
@@ -1803,10 +1815,10 @@ typedef $$PullRequestsTableTableUpdateCompanionBuilder =
       Value<String> branchName,
       Value<String> url,
       Value<String> title,
-      Value<String> state,
-      Value<String> mergeableStatus,
-      Value<String> reviewDecision,
-      Value<String> checkStatus,
+      Value<PrState> state,
+      Value<PrMergeableStatus> mergeableStatus,
+      Value<PrReviewDecision> reviewDecision,
+      Value<PrCheckStatus> checkStatus,
       Value<int> lastCheckedAt,
       Value<int> createdAt,
     });
@@ -1872,24 +1884,28 @@ class $$PullRequestsTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get state => $composableBuilder(
-    column: $table.state,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnWithTypeConverterFilters<PrState, PrState, String> get state =>
+      $composableBuilder(
+        column: $table.state,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
 
-  ColumnFilters<String> get mergeableStatus => $composableBuilder(
+  ColumnWithTypeConverterFilters<PrMergeableStatus, PrMergeableStatus, String>
+  get mergeableStatus => $composableBuilder(
     column: $table.mergeableStatus,
-    builder: (column) => ColumnFilters(column),
+    builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
-  ColumnFilters<String> get reviewDecision => $composableBuilder(
+  ColumnWithTypeConverterFilters<PrReviewDecision, PrReviewDecision, String>
+  get reviewDecision => $composableBuilder(
     column: $table.reviewDecision,
-    builder: (column) => ColumnFilters(column),
+    builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
-  ColumnFilters<String> get checkStatus => $composableBuilder(
+  ColumnWithTypeConverterFilters<PrCheckStatus, PrCheckStatus, String>
+  get checkStatus => $composableBuilder(
     column: $table.checkStatus,
-    builder: (column) => ColumnFilters(column),
+    builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
   ColumnFilters<int> get lastCheckedAt => $composableBuilder(
@@ -2032,23 +2048,26 @@ class $$PullRequestsTableTableAnnotationComposer
   GeneratedColumn<String> get title =>
       $composableBuilder(column: $table.title, builder: (column) => column);
 
-  GeneratedColumn<String> get state =>
+  GeneratedColumnWithTypeConverter<PrState, String> get state =>
       $composableBuilder(column: $table.state, builder: (column) => column);
 
-  GeneratedColumn<String> get mergeableStatus => $composableBuilder(
+  GeneratedColumnWithTypeConverter<PrMergeableStatus, String>
+  get mergeableStatus => $composableBuilder(
     column: $table.mergeableStatus,
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get reviewDecision => $composableBuilder(
+  GeneratedColumnWithTypeConverter<PrReviewDecision, String>
+  get reviewDecision => $composableBuilder(
     column: $table.reviewDecision,
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get checkStatus => $composableBuilder(
-    column: $table.checkStatus,
-    builder: (column) => column,
-  );
+  GeneratedColumnWithTypeConverter<PrCheckStatus, String> get checkStatus =>
+      $composableBuilder(
+        column: $table.checkStatus,
+        builder: (column) => column,
+      );
 
   GeneratedColumn<int> get lastCheckedAt => $composableBuilder(
     column: $table.lastCheckedAt,
@@ -2120,10 +2139,10 @@ class $$PullRequestsTableTableTableManager
                 Value<String> branchName = const Value.absent(),
                 Value<String> url = const Value.absent(),
                 Value<String> title = const Value.absent(),
-                Value<String> state = const Value.absent(),
-                Value<String> mergeableStatus = const Value.absent(),
-                Value<String> reviewDecision = const Value.absent(),
-                Value<String> checkStatus = const Value.absent(),
+                Value<PrState> state = const Value.absent(),
+                Value<PrMergeableStatus> mergeableStatus = const Value.absent(),
+                Value<PrReviewDecision> reviewDecision = const Value.absent(),
+                Value<PrCheckStatus> checkStatus = const Value.absent(),
                 Value<int> lastCheckedAt = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
               }) => PullRequestsTableCompanion(
@@ -2146,10 +2165,10 @@ class $$PullRequestsTableTableTableManager
                 required String branchName,
                 required String url,
                 required String title,
-                required String state,
-                required String mergeableStatus,
-                required String reviewDecision,
-                required String checkStatus,
+                required PrState state,
+                required PrMergeableStatus mergeableStatus,
+                required PrReviewDecision reviewDecision,
+                required PrCheckStatus checkStatus,
                 required int lastCheckedAt,
                 required int createdAt,
               }) => PullRequestsTableCompanion.insert(

@@ -9,7 +9,7 @@ import "gh_pull_request.dart";
 class GhCliApi {
   final ProcessRunner _processRunner;
 
-  GhCliApi({ProcessRunner? processRunner}) : _processRunner = processRunner ?? ProcessRunner();
+  GhCliApi({required ProcessRunner processRunner}) : _processRunner = processRunner;
 
   Future<bool> isAvailable() async {
     try {

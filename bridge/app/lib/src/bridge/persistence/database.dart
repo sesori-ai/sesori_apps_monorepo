@@ -2,6 +2,7 @@ import "dart:io";
 
 import "package:drift/drift.dart";
 import "package:drift/native.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/database/daos/pull_request_dao.dart";
 import "../api/database/tables/pull_requests_table.dart";

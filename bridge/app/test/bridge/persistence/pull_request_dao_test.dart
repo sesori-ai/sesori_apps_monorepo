@@ -1,6 +1,7 @@
 import "package:sesori_bridge/src/bridge/api/database/daos/pull_request_dao.dart";
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_database.dart";
@@ -44,7 +45,7 @@ void main() {
       required String projectId,
       required String branchName,
       required int prNumber,
-      required String state,
+      required PrState state,
       required String title,
     }) {
       return dao.upsertPr(
@@ -55,9 +56,9 @@ void main() {
           url: "https://github.com/org/repo/pull/$prNumber",
           title: title,
           state: state,
-          mergeableStatus: "",
-          reviewDecision: "",
-          checkStatus: "",
+          mergeableStatus: PrMergeableStatus.unknown,
+          reviewDecision: PrReviewDecision.unknown,
+          checkStatus: PrCheckStatus.unknown,
           lastCheckedAt: 1000,
           createdAt: 900,
         ),
@@ -70,14 +71,14 @@ void main() {
         projectId: "proj-1",
         branchName: "feature/auth",
         prNumber: 42,
-        state: "OPEN",
+        state: PrState.open,
         title: "Initial",
       );
       await upsertPr(
         projectId: "proj-1",
         branchName: "feature/auth-renamed",
         prNumber: 42,
-        state: "DRAFT",
+        state: PrState.closed,
         title: "Updated",
       );
 
@@ -86,7 +87,7 @@ void main() {
       expect(prs.single.prNumber, equals(42));
       expect(prs.single.branchName, equals("feature/auth-renamed"));
       expect(prs.single.title, equals("Updated"));
-      expect(prs.single.state, equals("DRAFT"));
+      expect(prs.single.state, equals(PrState.closed));
     });
 
     test("upsertPr allows branch reuse across different PR numbers", () async {
@@ -95,14 +96,14 @@ void main() {
         projectId: "proj-1",
         branchName: "feature/reused",
         prNumber: 10,
-        state: "MERGED",
+        state: PrState.merged,
         title: "Old PR",
       );
       await upsertPr(
         projectId: "proj-1",
         branchName: "feature/reused",
         prNumber: 11,
-        state: "OPEN",
+        state: PrState.open,
         title: "New PR",
       );
 
@@ -118,14 +119,14 @@ void main() {
         projectId: "proj-1",
         branchName: "feature/auth",
         prNumber: 100,
-        state: "MERGED",
+        state: PrState.merged,
         title: "Merged PR",
       );
       await upsertPr(
         projectId: "proj-1",
         branchName: "feature/auth",
         prNumber: 101,
-        state: "OPEN",
+        state: PrState.open,
         title: "Open PR",
       );
 
@@ -142,14 +143,14 @@ void main() {
         projectId: "proj-1",
         branchName: "feature/auth",
         prNumber: 100,
-        state: "MERGED",
+        state: PrState.merged,
         title: "Old PR",
       );
       await upsertPr(
         projectId: "proj-1",
         branchName: "feature/auth",
         prNumber: 101,
-        state: "CLOSED",
+        state: PrState.closed,
         title: "Newest non-open PR",
       );
 
@@ -159,20 +160,20 @@ void main() {
       expect(result["session-1"]!.map((pr) => pr.prNumber), unorderedEquals([100, 101]));
     });
 
-    test("getActivePrsByProjectId is case-insensitive for OPEN", () async {
+    test("getActivePrsByProjectId returns only open pull requests", () async {
       await insertProject(projectId: "proj-1");
       await upsertPr(
         projectId: "proj-1",
         branchName: "feature/open",
         prNumber: 1,
-        state: "open",
+        state: PrState.open,
         title: "Open",
       );
       await upsertPr(
         projectId: "proj-1",
         branchName: "feature/closed",
         prNumber: 2,
-        state: "CLOSED",
+        state: PrState.closed,
         title: "Closed",
       );
 
@@ -187,14 +188,14 @@ void main() {
         projectId: "proj-1",
         branchName: "feature/a",
         prNumber: 1,
-        state: "OPEN",
+        state: PrState.open,
         title: "A",
       );
       await upsertPr(
         projectId: "proj-1",
         branchName: "feature/b",
         prNumber: 2,
-        state: "OPEN",
+        state: PrState.open,
         title: "B",
       );
 
@@ -211,7 +212,7 @@ void main() {
         projectId: "proj-1",
         branchName: "feature/auth",
         prNumber: 42,
-        state: "OPEN",
+        state: PrState.open,
         title: "PR",
       );
 

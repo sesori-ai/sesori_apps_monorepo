@@ -64,10 +64,10 @@ void main() {
             branchName: "feature/no-change",
             prNumber: 33,
             title: "No changes",
-            state: "OPEN",
-            mergeableStatus: "MERGEABLE",
-            reviewDecision: "APPROVED",
-            checkStatus: "SUCCESS",
+            state: PrState.open,
+            mergeableStatus: PrMergeableStatus.mergeable,
+            reviewDecision: PrReviewDecision.approved,
+            checkStatus: PrCheckStatus.success,
           ),
         ],
       );
@@ -107,10 +107,10 @@ void main() {
             branchName: "feature/merged",
             prNumber: 22,
             title: "Merged PR",
-            state: "OPEN",
-            mergeableStatus: "MERGEABLE",
-            reviewDecision: "",
-            checkStatus: "PENDING",
+            state: PrState.open,
+            mergeableStatus: PrMergeableStatus.mergeable,
+            reviewDecision: PrReviewDecision.unknown,
+            checkStatus: PrCheckStatus.pending,
           ),
         ],
       );
@@ -130,7 +130,7 @@ void main() {
       await _waitFor(() => pullRequestRepository.upsertCalls == 1);
 
       final prs = pullRequestRepository.getByProjectId(projectId: "project-1");
-      expect(prs.single.state, equals("MERGED"));
+      expect(prs.single.state, equals(PrState.merged));
       expect(prSource.getPrByNumberCalls, contains(22));
     });
 
@@ -235,10 +235,10 @@ PullRequestDto _dto({
   required String branchName,
   required int prNumber,
   required String title,
-  required String state,
-  required String mergeableStatus,
-  required String reviewDecision,
-  required String checkStatus,
+  required PrState state,
+  required PrMergeableStatus mergeableStatus,
+  required PrReviewDecision reviewDecision,
+  required PrCheckStatus checkStatus,
 }) {
   return PullRequestDto(
     projectId: projectId,
@@ -335,10 +335,10 @@ class _FakePullRequestRepository implements PullRequestRepository {
         existing.url != pr.url ||
         existing.title != pr.title ||
         existing.branchName != pr.headRefName ||
-        existing.state != pr.state.name.toUpperCase() ||
-        existing.mergeableStatus != pr.mergeable.name.toUpperCase() ||
-        existing.reviewDecision != pr.reviewDecision.name.toUpperCase() ||
-        existing.checkStatus != pr.statusCheckRollup.name.toUpperCase();
+        existing.state != pr.state ||
+        existing.mergeableStatus != pr.mergeable ||
+        existing.reviewDecision != pr.reviewDecision ||
+        existing.checkStatus != pr.statusCheckRollup;
   }
 
   @override
@@ -355,10 +355,10 @@ class _FakePullRequestRepository implements PullRequestRepository {
         branchName: pr.headRefName,
         url: pr.url,
         title: pr.title,
-        state: pr.state.name.toUpperCase(),
-        mergeableStatus: pr.mergeable.name.toUpperCase(),
-        reviewDecision: pr.reviewDecision.name.toUpperCase(),
-        checkStatus: pr.statusCheckRollup.name.toUpperCase(),
+        state: pr.state,
+        mergeableStatus: pr.mergeable,
+        reviewDecision: pr.reviewDecision,
+        checkStatus: pr.statusCheckRollup,
         lastCheckedAt: lastCheckedAt,
         createdAt: createdAt,
       ),

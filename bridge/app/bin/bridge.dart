@@ -13,6 +13,7 @@ import 'package:sesori_bridge/src/bridge/api/gh_cli_api.dart';
 import 'package:sesori_bridge/src/bridge/api/git_cli_api.dart';
 import 'package:sesori_bridge/src/bridge/bandwidth_tracker.dart';
 import 'package:sesori_bridge/src/bridge/debug_server.dart';
+import 'package:sesori_bridge/src/bridge/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/bridge/log_failure_reporter.dart';
 import 'package:sesori_bridge/src/bridge/metadata_service.dart';
 import 'package:sesori_bridge/src/bridge/models/bridge_config.dart';
@@ -191,6 +192,7 @@ Future<void> main(List<String> args) async {
   final relayClient = RelayClient(relayURL: relayURL, accessTokenProvider: tokenManager);
 
   final db = AppDatabase.create();
+  final processRunner = ProcessRunner();
 
   // Run startup diagnostics (non-blocking — logs warnings only)
   await BridgeDiagnostics().runAll();
@@ -213,7 +215,10 @@ Future<void> main(List<String> args) async {
     pullRequestRepository: pullRequestRepository,
   );
   final prSyncService = PrSyncService(
-    prSource: PrSourceRepository(ghCli: GhCliApi(), gitCli: GitCliApi()),
+    prSource: PrSourceRepository(
+      ghCli: GhCliApi(processRunner: processRunner),
+      gitCli: GitCliApi(processRunner: processRunner),
+    ),
     pullRequestRepository: pullRequestRepository,
     sessionRepository: sessionRepository,
   );

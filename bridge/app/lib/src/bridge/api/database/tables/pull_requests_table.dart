@@ -1,5 +1,6 @@
 import "package:drift/drift.dart" hide JsonKey;
 import "package:freezed_annotation/freezed_annotation.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "../../../persistence/database.dart";
 import "../../../persistence/tables/projects_table.dart";
@@ -16,12 +17,10 @@ class PullRequestsTable extends Table {
   TextColumn get branchName => text()();
   TextColumn get url => text()();
   TextColumn get title => text()();
-  // TODO: migrate to textEnum-backed columns once we add a schema migration that
-  // remaps persisted uppercase values (for example, OPEN) to enum names.
-  TextColumn get state => text()();
-  TextColumn get mergeableStatus => text()();
-  TextColumn get reviewDecision => text()();
-  TextColumn get checkStatus => text()();
+  Column<String> get state => textEnum<PrState>()();
+  Column<String> get mergeableStatus => textEnum<PrMergeableStatus>()();
+  Column<String> get reviewDecision => textEnum<PrReviewDecision>()();
+  Column<String> get checkStatus => textEnum<PrCheckStatus>()();
   IntColumn get lastCheckedAt => integer()();
   IntColumn get createdAt => integer()();
 
@@ -40,10 +39,10 @@ sealed class PullRequestDto with _$PullRequestDto, $PullRequestsTableTableToColu
     required String branchName,
     required String url,
     required String title,
-    required String state,
-    required String mergeableStatus,
-    required String reviewDecision,
-    required String checkStatus,
+    required PrState state,
+    required PrMergeableStatus mergeableStatus,
+    required PrReviewDecision reviewDecision,
+    required PrCheckStatus checkStatus,
     required int lastCheckedAt,
     required int createdAt,
   }) = _PullRequestDto;

@@ -1,5 +1,5 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" show Session, SessionTime;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePlugin, Log;
+import "package:sesori_shared/sesori_shared.dart" show PrState, Session, SessionTime;
 
 import "../api/database/tables/pull_requests_table.dart";
 import "../persistence/daos/session_dao.dart";
@@ -73,8 +73,8 @@ class SessionRepository {
         continue;
       }
 
-      final selectedIsOpen = selected.state == "OPEN";
-      final currentIsOpen = pr.state == "OPEN";
+      final selectedIsOpen = selected.state == PrState.open;
+      final currentIsOpen = pr.state == PrState.open;
 
       if (currentIsOpen && !selectedIsOpen) {
         selected = pr;

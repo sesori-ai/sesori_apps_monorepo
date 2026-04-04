@@ -1,6 +1,9 @@
+import "dart:io";
+
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../foundation/process_runner.dart";
 import "../metadata_service.dart";
 import "../persistence/daos/projects_dao.dart";
 import "../persistence/daos/session_dao.dart";
@@ -75,6 +78,8 @@ class RequestRouter {
     final worktreeService = WorktreeService(
       projectsDao: projectsDao,
       sessionDao: sessionDao,
+      processRunner: ProcessRunner(),
+      gitPathExists: ({required String gitPath}) => FileSystemEntity.typeSync(gitPath) != FileSystemEntityType.notFound,
     );
     return [
       HealthCheckHandler(plugin),
@@ -116,7 +121,7 @@ class RequestRouter {
       GetBaseBranchHandler(projectsDao),
       SetBaseBranchHandler(projectsDao),
       FilesystemSuggestionsHandler(),
-      GetSessionDiffsHandler(sessionDao),
+      GetSessionDiffsHandler(sessionDao, processRunner: ProcessRunner()),
     ];
   }
 

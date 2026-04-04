@@ -5,7 +5,7 @@ import "../foundation/process_runner.dart";
 class GitCliApi {
   final ProcessRunner _processRunner;
 
-  GitCliApi({ProcessRunner? processRunner}) : _processRunner = processRunner ?? ProcessRunner();
+  GitCliApi({required ProcessRunner processRunner}) : _processRunner = processRunner;
 
   Future<bool> hasGitHubRemote({required String projectPath}) async {
     try {
