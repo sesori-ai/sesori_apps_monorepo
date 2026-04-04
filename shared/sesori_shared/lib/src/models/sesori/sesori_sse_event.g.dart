@@ -76,7 +76,7 @@ Map<String, dynamic> _$SesoriSessionDiffToJson(SesoriSessionDiff instance) =>
     <String, dynamic>{'sessionID': instance.sessionID, 'type': instance.$type};
 
 SesoriSessionError _$SesoriSessionErrorFromJson(Map json) => SesoriSessionError(
-  sessionID: json['sessionID'] as String,
+  sessionID: json['sessionID'] as String?,
   $type: json['type'] as String?,
 );
 

@@ -756,7 +756,7 @@ class SesoriSessionError implements SesoriSseEvent, SesoriSessionEvent {
   const SesoriSessionError({required this.sessionID, final  String? $type}): $type = $type ?? 'session.error';
   factory SesoriSessionError.fromJson(Map<String, dynamic> json) => _$SesoriSessionErrorFromJson(json);
 
- final  String sessionID;
+ final  String? sessionID;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -795,7 +795,7 @@ abstract mixin class $SesoriSessionErrorCopyWith<$Res> implements $SesoriSseEven
   factory $SesoriSessionErrorCopyWith(SesoriSessionError value, $Res Function(SesoriSessionError) _then) = _$SesoriSessionErrorCopyWithImpl;
 @useResult
 $Res call({
- String sessionID
+ String? sessionID
 });
 
 
@@ -812,10 +812,10 @@ class _$SesoriSessionErrorCopyWithImpl<$Res>
 
 /// Create a copy of SesoriSseEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? sessionID = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? sessionID = freezed,}) {
   return _then(SesoriSessionError(
-sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
-as String,
+sessionID: freezed == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

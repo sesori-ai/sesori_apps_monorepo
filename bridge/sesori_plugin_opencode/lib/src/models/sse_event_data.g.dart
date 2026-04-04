@@ -74,7 +74,7 @@ Map<String, dynamic> _$SseSessionDiffToJson(SseSessionDiff instance) =>
     };
 
 SseSessionError _$SseSessionErrorFromJson(Map json) => SseSessionError(
-  sessionID: json['sessionID'] as String,
+  sessionID: json['sessionID'] as String?,
   $type: json['type'] as String?,
 );
 
