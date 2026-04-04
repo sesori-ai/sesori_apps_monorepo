@@ -2,14 +2,46 @@ import "dart:async";
 import "dart:convert";
 import "dart:io";
 
+import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/debug_server.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
 import "routing/routing_test_helpers.dart";
+
+DebugServer _createDebugServer({
+  required BridgePlugin plugin,
+  required AppDatabase db,
+  required int port,
+}) {
+  final pullRequestRepository = PullRequestRepository(pullRequestDao: db.pullRequestDao);
+  final sessionRepository = SessionRepository(
+    plugin: plugin,
+    sessionDao: db.sessionDao,
+    pullRequestDao: db.pullRequestDao,
+  );
+  final prSyncService = PrSyncService(
+    prSource: PrSourceRepository(gitCli: GitCliApi()),
+    pullRequestRepository: pullRequestRepository,
+    sessionRepository: sessionRepository,
+  );
+  return DebugServer(
+    plugin: plugin,
+    metadataService: FakeMetadataService(),
+    projectsDao: db.projectsDao,
+    port: port,
+    failureReporter: FakeFailureReporter(),
+    prSyncService: prSyncService,
+    sessionRepository: sessionRepository,
+  );
+}
 
 void main() {
   group("DebugServer SSE multi-client", () {
@@ -20,13 +52,7 @@ void main() {
     setUp(() async {
       plugin = _FakeBridgePlugin();
       db = createTestDatabase();
-      debugServer = DebugServer(
-        plugin: plugin,
-        metadataService: FakeMetadataService(),
-        projectsDao: db.projectsDao,
-        port: 0,
-        failureReporter: FakeFailureReporter(),
-      );
+      debugServer = _createDebugServer(plugin: plugin, db: db, port: 0);
       await debugServer.start();
     });
 
@@ -71,13 +97,7 @@ void main() {
     test("plugin subscription is released when last client disconnects", () async {
       final trackingPlugin = _TrackingBridgePlugin();
       final trackingDb = createTestDatabase();
-      final trackingServer = DebugServer(
-        plugin: trackingPlugin,
-        metadataService: FakeMetadataService(),
-        projectsDao: trackingDb.projectsDao,
-        port: 0,
-        failureReporter: FakeFailureReporter(),
-      );
+      final trackingServer = _createDebugServer(plugin: trackingPlugin, db: trackingDb, port: 0);
       await trackingServer.start();
       addTearDown(trackingServer.stop);
       addTearDown(trackingPlugin.close);
@@ -107,13 +127,7 @@ void main() {
     setUp(() async {
       plugin = _FakeBridgePlugin();
       db = createTestDatabase();
-      debugServer = DebugServer(
-        plugin: plugin,
-        metadataService: FakeMetadataService(),
-        projectsDao: db.projectsDao,
-        port: 0,
-        failureReporter: FakeFailureReporter(),
-      );
+      debugServer = _createDebugServer(plugin: plugin, db: db, port: 0);
       await debugServer.start();
     });
 

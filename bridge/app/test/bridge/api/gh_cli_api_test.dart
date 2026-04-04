@@ -1,24 +1,25 @@
 import "dart:async";
 import "dart:io";
 
-import "package:sesori_bridge/src/bridge/api/gh_cli_api.dart";
+import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
-  group("GhCliApi.isAvailable", () {
+  group("GitCliApi.isAvailable", () {
     late _FakeProcessRunner processRunner;
-    late GhCliApi service;
+    late GitCliApi service;
 
     setUp(() {
       processRunner = _FakeProcessRunner();
-      service = GhCliApi(processRunner: processRunner.call);
+      service = GitCliApi(processRunner: processRunner.call);
     });
 
     test("returns true when gh --version exits with code 0", () async {
       processRunner.enqueueResult(result: _ok(stdout: "gh version 2.0.0\n"));
 
-      final isAvailable = await service.isAvailable();
+      final isAvailable = await service.isGithubCliAvailable();
 
       expect(isAvailable, isTrue);
       expect(processRunner.invocations, hasLength(1));
@@ -30,7 +31,7 @@ void main() {
     test("returns false on non-zero exit code", () async {
       processRunner.enqueueResult(result: _fail(exitCode: 1));
 
-      final isAvailable = await service.isAvailable();
+      final isAvailable = await service.isGithubCliAvailable();
 
       expect(isAvailable, isFalse);
     });
@@ -38,7 +39,7 @@ void main() {
     test("returns false on timeout", () async {
       processRunner.enqueueError(error: TimeoutException("timed out"));
 
-      final isAvailable = await service.isAvailable();
+      final isAvailable = await service.isGithubCliAvailable();
 
       expect(isAvailable, isFalse);
     });
@@ -48,25 +49,25 @@ void main() {
         error: const ProcessException("gh", <String>["--version"], "boom", 1),
       );
 
-      final isAvailable = await service.isAvailable();
+      final isAvailable = await service.isGithubCliAvailable();
 
       expect(isAvailable, isFalse);
     });
   });
 
-  group("GhCliApi.isAuthenticated", () {
+  group("GitCliApi.isAuthenticated", () {
     late _FakeProcessRunner processRunner;
-    late GhCliApi service;
+    late GitCliApi service;
 
     setUp(() {
       processRunner = _FakeProcessRunner();
-      service = GhCliApi(processRunner: processRunner.call);
+      service = GitCliApi(processRunner: processRunner.call);
     });
 
     test("returns true when gh auth status exits with code 0", () async {
       processRunner.enqueueResult(result: _ok());
 
-      final isAuthenticated = await service.isAuthenticated();
+      final isAuthenticated = await service.isGithubCliAuthenticated();
 
       expect(isAuthenticated, isTrue);
       expect(processRunner.invocations, hasLength(1));
@@ -77,19 +78,19 @@ void main() {
     test("returns false on non-zero exit code", () async {
       processRunner.enqueueResult(result: _fail(exitCode: 1));
 
-      final isAuthenticated = await service.isAuthenticated();
+      final isAuthenticated = await service.isGithubCliAuthenticated();
 
       expect(isAuthenticated, isFalse);
     });
   });
 
-  group("GhCliApi.listOpenPrs", () {
+  group("GitCliApi.listOpenPrs", () {
     late _FakeProcessRunner processRunner;
-    late GhCliApi service;
+    late GitCliApi service;
 
     setUp(() {
       processRunner = _FakeProcessRunner();
-      service = GhCliApi(processRunner: processRunner.call);
+      service = GitCliApi(processRunner: processRunner.call);
     });
 
     test("returns parsed PR list for valid JSON", () async {
@@ -110,11 +111,11 @@ void main() {
               number: 1,
               url: "https://example/pr/1",
               title: "Add feature",
-              state: "OPEN",
+              state: PrState.open,
               headRefName: "feat/one",
-              mergeable: "MERGEABLE",
-              reviewDecision: "APPROVED",
-              statusCheckRollup: "SUCCESS",
+              mergeable: PrMergeableStatus.mergeable,
+              reviewDecision: PrReviewDecision.approved,
+              statusCheckRollup: PrCheckStatus.success,
             ),
           ],
         ),
@@ -146,38 +147,42 @@ void main() {
       expect(prs, isEmpty);
     });
 
-    test("returns empty list for malformed JSON", () async {
+    test("throws on malformed JSON", () async {
       processRunner.enqueueResult(result: _ok(stdout: "not-json"));
 
-      final prs = await service.listOpenPrs(workingDirectory: "/repo");
-
-      expect(prs, isEmpty);
+      expect(
+        () => service.listOpenPrs(workingDirectory: "/repo"),
+        throwsA(isA<FormatException>()),
+      );
     });
 
-    test("returns empty list for non-zero exit code", () async {
+    test("throws on non-zero exit code", () async {
       processRunner.enqueueResult(result: _fail(exitCode: 1));
 
-      final prs = await service.listOpenPrs(workingDirectory: "/repo");
-
-      expect(prs, isEmpty);
+      expect(
+        () => service.listOpenPrs(workingDirectory: "/repo"),
+        throwsA(isA<Exception>()),
+      );
     });
 
-    test("returns empty list on timeout", () async {
+    test("throws on timeout", () async {
       processRunner.enqueueError(error: TimeoutException("timed out"));
 
-      final prs = await service.listOpenPrs(workingDirectory: "/repo");
-
-      expect(prs, isEmpty);
+      expect(
+        () => service.listOpenPrs(workingDirectory: "/repo"),
+        throwsA(isA<TimeoutException>()),
+      );
     });
 
-    test("returns empty list on ProcessException", () async {
+    test("throws on ProcessException", () async {
       processRunner.enqueueError(
         error: const ProcessException("gh", <String>["pr", "list"], "boom", 1),
       );
 
-      final prs = await service.listOpenPrs(workingDirectory: "/repo");
-
-      expect(prs, isEmpty);
+      expect(
+        () => service.listOpenPrs(workingDirectory: "/repo"),
+        throwsA(isA<ProcessException>()),
+      );
     });
 
     test("extracts statusCheckRollup state from object", () async {
@@ -191,10 +196,10 @@ void main() {
       final prs = await service.listOpenPrs(workingDirectory: "/repo");
 
       expect(prs, hasLength(1));
-      expect(prs.single.statusCheckRollup, equals("SUCCESS"));
+      expect(prs.single.statusCheckRollup, equals(PrCheckStatus.success));
     });
 
-    test("returns null statusCheckRollup for unsupported rollup shape", () async {
+    test("returns unknown statusCheckRollup for unsupported rollup shape", () async {
       processRunner.enqueueResult(
         result: _ok(
           stdout:
@@ -205,17 +210,17 @@ void main() {
       final prs = await service.listOpenPrs(workingDirectory: "/repo");
 
       expect(prs, hasLength(1));
-      expect(prs.single.statusCheckRollup, isNull);
+      expect(prs.single.statusCheckRollup, equals(PrCheckStatus.unknown));
     });
   });
 
-  group("GhCliApi.getPrByNumber", () {
+  group("GitCliApi.getPrByNumber", () {
     late _FakeProcessRunner processRunner;
-    late GhCliApi service;
+    late GitCliApi service;
 
     setUp(() {
       processRunner = _FakeProcessRunner();
-      service = GhCliApi(processRunner: processRunner.call);
+      service = GitCliApi(processRunner: processRunner.call);
     });
 
     test("returns parsed PR for valid JSON", () async {
@@ -235,11 +240,11 @@ void main() {
             number: 12,
             url: "https://example/pr/12",
             title: "Fix bug",
-            state: "OPEN",
+            state: PrState.open,
             headRefName: "fix/two",
-            mergeable: "CONFLICTING",
-            reviewDecision: null,
-            statusCheckRollup: null,
+            mergeable: PrMergeableStatus.conflicted,
+            reviewDecision: PrReviewDecision.unknown,
+            statusCheckRollup: PrCheckStatus.unknown,
           ),
         ),
       );

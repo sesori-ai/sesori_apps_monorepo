@@ -1,40 +1,26 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../api/database/daos/pull_request_dao.dart";
+import "../persistence/daos/session_dao.dart";
 import "../api/database/tables/pull_requests_table.dart";
-import "../persistence/dao_interfaces.dart";
 import "../repositories/mappers/plugin_session_mapper.dart";
 import "../repositories/mappers/pull_request_mapper.dart";
 import "../repositories/models/stored_session.dart";
 
-abstract interface class SessionRepositoryLike {
-  Future<List<Session>> getSessionsForProject({
-    required String projectId,
-    required int? start,
-    required int? limit,
-  });
-
-  Future<List<Session>> getChildSessions({required String sessionId});
-
-  Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId});
-
-  Future<String?> getProjectPath({required String projectId});
-}
-
-class SessionRepository implements SessionRepositoryLike {
+class SessionRepository {
   final BridgePlugin _plugin;
-  final SessionDaoLike _sessionDao;
-  final PullRequestDaoLike _pullRequestDao;
+  final SessionDao _sessionDao;
+  final PullRequestDao _pullRequestDao;
 
   SessionRepository({
     required BridgePlugin plugin,
-    required SessionDaoLike sessionDao,
-    required PullRequestDaoLike pullRequestDao,
+    required SessionDao sessionDao,
+    required PullRequestDao pullRequestDao,
   }) : _plugin = plugin,
        _sessionDao = sessionDao,
        _pullRequestDao = pullRequestDao;
 
-  @override
   Future<List<Session>> getSessionsForProject({
     required String projectId,
     required int? start,
@@ -103,13 +89,11 @@ class SessionRepository implements SessionRepositoryLike {
     return selected;
   }
 
-  @override
   Future<List<Session>> getChildSessions({required String sessionId}) async {
     final pluginSessions = await _plugin.getChildSessions(sessionId);
     return pluginSessions.map((s) => s.toSharedSession()).toList();
   }
 
-  @override
   Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {
     final sessions = await _sessionDao.getSessionsByProject(projectId: projectId);
     return sessions
@@ -117,7 +101,6 @@ class SessionRepository implements SessionRepositoryLike {
         .toList(growable: false);
   }
 
-  @override
   Future<String?> getProjectPath({required String projectId}) async {
     try {
       final project = await _plugin.getProject(projectId);

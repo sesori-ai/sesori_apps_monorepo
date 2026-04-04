@@ -10,7 +10,7 @@ import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/models/session_metadata.dart";
 import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
-import "package:sesori_bridge/src/bridge/repositories/models/pull_request_record.dart";
+import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
@@ -344,55 +344,41 @@ class _FakePrSyncService extends PrSyncService {
   }
 }
 
-class _NoopPrSource implements PrSourceRepositoryLike {
+class _NoopPrSource implements PrSourceRepository {
   @override
-  Future<bool> isGitHubAvailable() async => false;
-
+  Future<bool> isGithubCliAvailable() async => false;
   @override
-  Future<bool> isGitHubAuthenticated() async => false;
-
+  Future<bool> isGithubCliAuthenticated() async => false;
   @override
   Future<bool> hasGitHubRemote({required String projectPath}) async => false;
-
   @override
   Future<List<GhPullRequest>> listOpenPrs({required String workingDirectory}) async => const <GhPullRequest>[];
-
   @override
   Future<GhPullRequest> getPrByNumber({required int number, required String workingDirectory}) async {
     throw StateError("getPrByNumber should not be called");
   }
 }
 
-class _NoopPullRequestRepository implements PullRequestRepositoryLike {
+class _NoopPullRequestRepository implements PullRequestRepository {
   @override
-  Future<List<PullRequestRecord>> getActivePullRequestsByProjectId({required String projectId}) async {
-    return const <PullRequestRecord>[];
-  }
-
+  Future<List<PullRequestDto>> getActivePullRequestsByProjectId({required String projectId}) async =>
+      const <PullRequestDto>[];
   @override
-  Future<void> upsertPullRequest({required PullRequestRecord record}) async {}
+  Future<void> upsertPullRequest({required PullRequestDto record}) async {}
 }
 
-class _NoopSessionRepository implements SessionRepositoryLike {
+class _NoopSessionRepository implements SessionRepository {
   @override
   Future<List<Session>> getSessionsForProject({
     required String projectId,
     required int? start,
     required int? limit,
-  }) async {
-    return const <Session>[];
-  }
-
+  }) async => const <Session>[];
   @override
-  Future<List<Session>> getChildSessions({required String sessionId}) async {
-    return const <Session>[];
-  }
-
+  Future<List<Session>> getChildSessions({required String sessionId}) async => const <Session>[];
   @override
-  Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {
-    return const <StoredSession>[];
-  }
-
+  Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async =>
+      const <StoredSession>[];
   @override
   Future<String?> getProjectPath({required String projectId}) async => null;
 }

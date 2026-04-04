@@ -4,11 +4,10 @@ import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
 import "package:sesori_bridge/src/bridge/metadata_service.dart";
 import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge_metadata;
-import "package:sesori_bridge/src/bridge/persistence/dao_interfaces.dart";
+import "package:sesori_bridge/src/bridge/persistence/daos/session_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_session_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/pull_request_mapper.dart";
-import "package:sesori_bridge/src/bridge/repositories/models/pull_request_record.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
@@ -291,7 +290,7 @@ class FakeBridgePlugin implements BridgePlugin {
 }
 
 /// Hand-written fake [SessionDao] for testing.
-class FakeSessionDao implements SessionDaoLike {
+class FakeSessionDao {
   final Map<String, SessionDto> _sessions = {};
 
   /// Set up a session in the fake database.
@@ -299,7 +298,6 @@ class FakeSessionDao implements SessionDaoLike {
     _sessions[session.sessionId] = session;
   }
 
-  @override
   Future<Map<String, SessionDto>> getSessionsByIds({required List<String> sessionIds}) async {
     final result = <String, SessionDto>{};
     for (final id in sessionIds) {
@@ -349,7 +347,6 @@ class FakeSessionDao implements SessionDaoLike {
     }
   }
 
-  @override
   Future<List<SessionDto>> getSessionsByProject({required String projectId}) async {
     return _sessions.values.where((s) => s.projectId == projectId).toList();
   }
@@ -371,7 +368,7 @@ class FakeMetadataService implements MetadataService {
   }
 }
 
-class FakePullRequestDao implements PullRequestDaoLike {
+class FakePullRequestDao {
   final Map<String, List<PullRequestDto>> _prsBySessionId = <String, List<PullRequestDto>>{};
   final Map<String, PullRequestDto> _prsByPrimaryKey = <String, PullRequestDto>{};
 
@@ -382,7 +379,6 @@ class FakePullRequestDao implements PullRequestDaoLike {
     _prsByPrimaryKey[_key(projectId: pullRequest.projectId, prNumber: pullRequest.prNumber)] = pullRequest;
   }
 
-  @override
   Future<Map<String, List<PullRequestDto>>> getPrsBySessionIds({required List<String> sessionIds}) async {
     return <String, List<PullRequestDto>>{
       for (final sessionId in sessionIds)
@@ -446,9 +442,9 @@ class FakePrSyncService extends PrSyncService {
   final List<({String projectId, String projectPath})> calls = <({String projectId, String projectPath})>[];
 
   FakePrSyncService({
-    PrSourceRepositoryLike? prSource,
-    PullRequestRepositoryLike? pullRequestRepository,
-    SessionRepositoryLike? sessionRepository,
+    PrSourceRepository? prSource,
+    PullRequestRepository? pullRequestRepository,
+    SessionRepository? sessionRepository,
   }) : super(
          prSource: prSource ?? _AlwaysReadyPrSource(),
          pullRequestRepository: pullRequestRepository ?? _NoopPullRequestRepository(),
@@ -461,65 +457,48 @@ class FakePrSyncService extends PrSyncService {
   }
 }
 
-class _AlwaysReadyPrSource implements PrSourceRepositoryLike {
+class _AlwaysReadyPrSource implements PrSourceRepository {
   @override
-  Future<bool> isGitHubAvailable() async => true;
-
+  Future<bool> isGithubCliAvailable() async => true;
   @override
-  Future<bool> isGitHubAuthenticated() async => true;
-
+  Future<bool> isGithubCliAuthenticated() async => true;
   @override
   Future<bool> hasGitHubRemote({required String projectPath}) async => true;
-
   @override
-  Future<List<GhPullRequest>> listOpenPrs({required String workingDirectory}) async {
-    return const <GhPullRequest>[];
-  }
-
+  Future<List<GhPullRequest>> listOpenPrs({required String workingDirectory}) async => const <GhPullRequest>[];
   @override
-  Future<GhPullRequest> getPrByNumber({required int number, required String workingDirectory}) async {
-    throw StateError("getPrByNumber should not be called");
-  }
+  Future<GhPullRequest> getPrByNumber({required int number, required String workingDirectory}) async =>
+      throw StateError("getPrByNumber should not be called");
 }
 
-class _NoopPullRequestRepository implements PullRequestRepositoryLike {
+class _NoopPullRequestRepository implements PullRequestRepository {
   @override
-  Future<List<PullRequestRecord>> getActivePullRequestsByProjectId({required String projectId}) async {
-    return const <PullRequestRecord>[];
-  }
-
+  Future<List<PullRequestDto>> getActivePullRequestsByProjectId({required String projectId}) async =>
+      const <PullRequestDto>[];
   @override
-  Future<void> upsertPullRequest({required PullRequestRecord record}) async {}
+  Future<void> upsertPullRequest({required PullRequestDto record}) async {}
 }
 
-class _NoopSessionRepository implements SessionRepositoryLike {
+class _NoopSessionRepository implements SessionRepository {
   @override
   Future<List<Session>> getSessionsForProject({
     required String projectId,
     required int? start,
     required int? limit,
-  }) async {
-    return const <Session>[];
-  }
-
+  }) async => const <Session>[];
   @override
-  Future<List<Session>> getChildSessions({required String sessionId}) async {
-    return const <Session>[];
-  }
-
+  Future<List<Session>> getChildSessions({required String sessionId}) async => const <Session>[];
   @override
-  Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {
-    return const <StoredSession>[];
-  }
-
+  Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async =>
+      const <StoredSession>[];
   @override
   Future<String?> getProjectPath({required String projectId}) async => null;
 }
 
-/// Test-friendly [SessionRepositoryLike] that delegates to a [FakeBridgePlugin]
+/// Test-friendly [SessionRepository] that delegates to a [FakeBridgePlugin]
 /// and [FakeSessionDao], so handler tests can configure plugin/DAO behaviour
 /// without needing real implementations.
-class FakeSessionRepository implements SessionRepositoryLike {
+class FakeSessionRepository implements SessionRepository {
   final FakeBridgePlugin _plugin;
   final FakeSessionDao _sessionDao;
   final FakePullRequestDao _pullRequestDao;

@@ -14,7 +14,7 @@ void main() {
     late FakeSessionDao sessionDao;
     late FakePullRequestDao prDao;
     late FakePrSyncService prSyncService;
-    late SessionRepository sessionRepository;
+    late FakeSessionRepository sessionRepository;
     late GetSessionsHandler handler;
 
     setUp(() {
@@ -22,7 +22,7 @@ void main() {
       sessionDao = FakeSessionDao();
       prDao = FakePullRequestDao();
       prSyncService = FakePrSyncService();
-      sessionRepository = SessionRepository(
+      sessionRepository = FakeSessionRepository(
         plugin: plugin,
         sessionDao: sessionDao,
         pullRequestDao: prDao,

@@ -10,11 +10,11 @@ import "request_handler.dart";
 ///
 /// Merges archive status from the database with plugin session data.
 class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionListResponse> {
-  final SessionRepositoryLike _sessionRepository;
+  final SessionRepository _sessionRepository;
   final PrSyncService _prSyncService;
 
   GetSessionsHandler({
-    required SessionRepositoryLike sessionRepository,
+    required SessionRepository sessionRepository,
     required PrSyncService prSyncService,
   }) : _sessionRepository = sessionRepository,
        _prSyncService = prSyncService,

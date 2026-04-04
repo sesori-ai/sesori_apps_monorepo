@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$GhPullRequest {
 
- int get number; String get url; String get title; String get state; String get headRefName; String? get mergeable; String? get reviewDecision;@JsonKey(fromJson: _extractRollupState) String? get statusCheckRollup;
+ int get number; String get url; String get title;@JsonKey(fromJson: _prStateFromString) PrState get state; String get headRefName;@JsonKey(fromJson: _prMergeableStatusFromString) PrMergeableStatus get mergeable;@JsonKey(fromJson: _prReviewDecisionFromString) PrReviewDecision get reviewDecision;@JsonKey(fromJson: _prCheckStatusFromRollup, toJson: _rollupStateToJson) PrCheckStatus get statusCheckRollup;
 /// Create a copy of GhPullRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -48,7 +48,7 @@ abstract mixin class $GhPullRequestCopyWith<$Res>  {
   factory $GhPullRequestCopyWith(GhPullRequest value, $Res Function(GhPullRequest) _then) = _$GhPullRequestCopyWithImpl;
 @useResult
 $Res call({
- int number, String url, String title, String state, String headRefName, String? mergeable, String? reviewDecision,@JsonKey(fromJson: _extractRollupState) String? statusCheckRollup
+ int number, String url, String title,@JsonKey(fromJson: _prStateFromString) PrState state, String headRefName,@JsonKey(fromJson: _prMergeableStatusFromString) PrMergeableStatus mergeable,@JsonKey(fromJson: _prReviewDecisionFromString) PrReviewDecision reviewDecision,@JsonKey(fromJson: _prCheckStatusFromRollup, toJson: _rollupStateToJson) PrCheckStatus statusCheckRollup
 });
 
 
@@ -65,17 +65,17 @@ class _$GhPullRequestCopyWithImpl<$Res>
 
 /// Create a copy of GhPullRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? number = null,Object? url = null,Object? title = null,Object? state = null,Object? headRefName = null,Object? mergeable = freezed,Object? reviewDecision = freezed,Object? statusCheckRollup = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? number = null,Object? url = null,Object? title = null,Object? state = null,Object? headRefName = null,Object? mergeable = null,Object? reviewDecision = null,Object? statusCheckRollup = null,}) {
   return _then(_self.copyWith(
 number: null == number ? _self.number : number // ignore: cast_nullable_to_non_nullable
 as int,url: null == url ? _self.url : url // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String,state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
-as String,headRefName: null == headRefName ? _self.headRefName : headRefName // ignore: cast_nullable_to_non_nullable
-as String,mergeable: freezed == mergeable ? _self.mergeable : mergeable // ignore: cast_nullable_to_non_nullable
-as String?,reviewDecision: freezed == reviewDecision ? _self.reviewDecision : reviewDecision // ignore: cast_nullable_to_non_nullable
-as String?,statusCheckRollup: freezed == statusCheckRollup ? _self.statusCheckRollup : statusCheckRollup // ignore: cast_nullable_to_non_nullable
-as String?,
+as PrState,headRefName: null == headRefName ? _self.headRefName : headRefName // ignore: cast_nullable_to_non_nullable
+as String,mergeable: null == mergeable ? _self.mergeable : mergeable // ignore: cast_nullable_to_non_nullable
+as PrMergeableStatus,reviewDecision: null == reviewDecision ? _self.reviewDecision : reviewDecision // ignore: cast_nullable_to_non_nullable
+as PrReviewDecision,statusCheckRollup: null == statusCheckRollup ? _self.statusCheckRollup : statusCheckRollup // ignore: cast_nullable_to_non_nullable
+as PrCheckStatus,
   ));
 }
 
@@ -87,17 +87,17 @@ as String?,
 @JsonSerializable()
 
 class _GhPullRequest implements GhPullRequest {
-  const _GhPullRequest({required this.number, required this.url, required this.title, required this.state, required this.headRefName, required this.mergeable, required this.reviewDecision, @JsonKey(fromJson: _extractRollupState) required this.statusCheckRollup});
+  const _GhPullRequest({required this.number, required this.url, required this.title, @JsonKey(fromJson: _prStateFromString) required this.state, required this.headRefName, @JsonKey(fromJson: _prMergeableStatusFromString) required this.mergeable, @JsonKey(fromJson: _prReviewDecisionFromString) required this.reviewDecision, @JsonKey(fromJson: _prCheckStatusFromRollup, toJson: _rollupStateToJson) required this.statusCheckRollup});
   factory _GhPullRequest.fromJson(Map<String, dynamic> json) => _$GhPullRequestFromJson(json);
 
 @override final  int number;
 @override final  String url;
 @override final  String title;
-@override final  String state;
+@override@JsonKey(fromJson: _prStateFromString) final  PrState state;
 @override final  String headRefName;
-@override final  String? mergeable;
-@override final  String? reviewDecision;
-@override@JsonKey(fromJson: _extractRollupState) final  String? statusCheckRollup;
+@override@JsonKey(fromJson: _prMergeableStatusFromString) final  PrMergeableStatus mergeable;
+@override@JsonKey(fromJson: _prReviewDecisionFromString) final  PrReviewDecision reviewDecision;
+@override@JsonKey(fromJson: _prCheckStatusFromRollup, toJson: _rollupStateToJson) final  PrCheckStatus statusCheckRollup;
 
 /// Create a copy of GhPullRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -132,7 +132,7 @@ abstract mixin class _$GhPullRequestCopyWith<$Res> implements $GhPullRequestCopy
   factory _$GhPullRequestCopyWith(_GhPullRequest value, $Res Function(_GhPullRequest) _then) = __$GhPullRequestCopyWithImpl;
 @override @useResult
 $Res call({
- int number, String url, String title, String state, String headRefName, String? mergeable, String? reviewDecision,@JsonKey(fromJson: _extractRollupState) String? statusCheckRollup
+ int number, String url, String title,@JsonKey(fromJson: _prStateFromString) PrState state, String headRefName,@JsonKey(fromJson: _prMergeableStatusFromString) PrMergeableStatus mergeable,@JsonKey(fromJson: _prReviewDecisionFromString) PrReviewDecision reviewDecision,@JsonKey(fromJson: _prCheckStatusFromRollup, toJson: _rollupStateToJson) PrCheckStatus statusCheckRollup
 });
 
 
@@ -149,17 +149,17 @@ class __$GhPullRequestCopyWithImpl<$Res>
 
 /// Create a copy of GhPullRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? number = null,Object? url = null,Object? title = null,Object? state = null,Object? headRefName = null,Object? mergeable = freezed,Object? reviewDecision = freezed,Object? statusCheckRollup = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? number = null,Object? url = null,Object? title = null,Object? state = null,Object? headRefName = null,Object? mergeable = null,Object? reviewDecision = null,Object? statusCheckRollup = null,}) {
   return _then(_GhPullRequest(
 number: null == number ? _self.number : number // ignore: cast_nullable_to_non_nullable
 as int,url: null == url ? _self.url : url // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String,state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
-as String,headRefName: null == headRefName ? _self.headRefName : headRefName // ignore: cast_nullable_to_non_nullable
-as String,mergeable: freezed == mergeable ? _self.mergeable : mergeable // ignore: cast_nullable_to_non_nullable
-as String?,reviewDecision: freezed == reviewDecision ? _self.reviewDecision : reviewDecision // ignore: cast_nullable_to_non_nullable
-as String?,statusCheckRollup: freezed == statusCheckRollup ? _self.statusCheckRollup : statusCheckRollup // ignore: cast_nullable_to_non_nullable
-as String?,
+as PrState,headRefName: null == headRefName ? _self.headRefName : headRefName // ignore: cast_nullable_to_non_nullable
+as String,mergeable: null == mergeable ? _self.mergeable : mergeable // ignore: cast_nullable_to_non_nullable
+as PrMergeableStatus,reviewDecision: null == reviewDecision ? _self.reviewDecision : reviewDecision // ignore: cast_nullable_to_non_nullable
+as PrReviewDecision,statusCheckRollup: null == statusCheckRollup ? _self.statusCheckRollup : statusCheckRollup // ignore: cast_nullable_to_non_nullable
+as PrCheckStatus,
   ));
 }
 

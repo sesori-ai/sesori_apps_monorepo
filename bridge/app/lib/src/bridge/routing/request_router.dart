@@ -51,7 +51,7 @@ class RequestRouter {
     required MetadataService metadataService,
     required ProjectsDao projectsDao,
     required SessionDao sessionDao,
-    required SessionRepositoryLike sessionRepository,
+    required SessionRepository sessionRepository,
     required PrSyncService prSyncService,
   }) : _handlers = _buildHandlers(
          plugin: plugin,
@@ -67,7 +67,7 @@ class RequestRouter {
     required MetadataService metadataService,
     required ProjectsDao projectsDao,
     required SessionDao sessionDao,
-    required SessionRepositoryLike sessionRepository,
+    required SessionRepository sessionRepository,
     required PrSyncService prSyncService,
   }) {
     final hiddenStore = projectsDao;

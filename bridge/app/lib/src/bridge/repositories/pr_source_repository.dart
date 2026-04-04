@@ -1,40 +1,20 @@
-import "../api/gh_cli_api.dart";
 import "../api/gh_pull_request.dart";
-import "../api/git_remote_api.dart";
+import "../api/git_cli_api.dart";
 
-abstract interface class PrSourceRepositoryLike {
-  Future<bool> isGitHubAvailable();
-  Future<bool> isGitHubAuthenticated();
-  Future<bool> hasGitHubRemote({required String projectPath});
-  Future<List<GhPullRequest>> listOpenPrs({required String workingDirectory});
-  Future<GhPullRequest> getPrByNumber({required int number, required String workingDirectory});
-}
+class PrSourceRepository {
+  final GitCliApi _gitCli;
 
-class PrSourceRepository implements PrSourceRepositoryLike {
-  final GhCliApi _ghCli;
-  final GitRemoteApi _gitRemoteApi;
+  PrSourceRepository({required GitCliApi gitCli}) : _gitCli = gitCli;
 
-  PrSourceRepository({
-    required GhCliApi ghCli,
-    required GitRemoteApi gitRemoteApi,
-  }) : _ghCli = ghCli,
-       _gitRemoteApi = gitRemoteApi;
+  Future<bool> isGithubCliAvailable() => _gitCli.isGithubCliAvailable();
 
-  @override
-  Future<bool> isGitHubAvailable() => _ghCli.isAvailable();
+  Future<bool> isGithubCliAuthenticated() => _gitCli.isGithubCliAuthenticated();
 
-  @override
-  Future<bool> isGitHubAuthenticated() => _ghCli.isAuthenticated();
+  Future<bool> hasGitHubRemote({required String projectPath}) => _gitCli.hasGitHubRemote(projectPath: projectPath);
 
-  @override
-  Future<bool> hasGitHubRemote({required String projectPath}) =>
-      _gitRemoteApi.hasGitHubRemote(projectPath: projectPath);
-
-  @override
   Future<List<GhPullRequest>> listOpenPrs({required String workingDirectory}) =>
-      _ghCli.listOpenPrs(workingDirectory: workingDirectory);
+      _gitCli.listOpenPrs(workingDirectory: workingDirectory);
 
-  @override
   Future<GhPullRequest> getPrByNumber({required int number, required String workingDirectory}) =>
-      _ghCli.getPrByNumber(number: number, workingDirectory: workingDirectory);
+      _gitCli.getPrByNumber(number: number, workingDirectory: workingDirectory);
 }

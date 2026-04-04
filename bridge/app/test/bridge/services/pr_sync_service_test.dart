@@ -1,7 +1,7 @@
 import "dart:async";
 
+import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
-import "package:sesori_bridge/src/bridge/repositories/models/pull_request_record.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
@@ -49,12 +49,17 @@ void main() {
     test("does not emit when PR data is unchanged", () async {
       final prSource = _FakePrSource(
         listOpenPrsResult: <GhPullRequest>[
-          _ghPr(number: 33, branch: "feature/no-change", title: "No changes", reviewDecision: "APPROVED"),
+          _ghPr(
+            number: 33,
+            branch: "feature/no-change",
+            title: "No changes",
+            reviewDecision: PrReviewDecision.approved,
+          ),
         ],
       );
       final pullRequestRepository = _FakePullRequestRepository(
-        seed: <PullRequestRecord>[
-          _record(
+        seed: <PullRequestDto>[
+          _dto(
             projectId: "project-1",
             branchName: "feature/no-change",
             prNumber: 33,
@@ -92,12 +97,12 @@ void main() {
       final prSource = _FakePrSource(
         listOpenPrsResult: <GhPullRequest>[],
         prByNumber: <int, GhPullRequest>{
-          22: _ghPr(number: 22, branch: "feature/merged", title: "Merged PR", state: "MERGED"),
+          22: _ghPr(number: 22, branch: "feature/merged", title: "Merged PR", state: PrState.merged),
         },
       );
       final pullRequestRepository = _FakePullRequestRepository(
-        seed: <PullRequestRecord>[
-          _record(
+        seed: <PullRequestDto>[
+          _dto(
             projectId: "project-1",
             branchName: "feature/merged",
             prNumber: 22,
@@ -208,10 +213,10 @@ GhPullRequest _ghPr({
   required int number,
   required String branch,
   required String title,
-  String state = "OPEN",
-  String mergeable = "MERGEABLE",
-  String? reviewDecision,
-  String statusCheckRollup = "SUCCESS",
+  PrState state = PrState.open,
+  PrMergeableStatus mergeable = PrMergeableStatus.mergeable,
+  PrReviewDecision? reviewDecision,
+  PrCheckStatus statusCheckRollup = PrCheckStatus.success,
 }) {
   return GhPullRequest(
     number: number,
@@ -220,12 +225,12 @@ GhPullRequest _ghPr({
     state: state,
     headRefName: branch,
     mergeable: mergeable,
-    reviewDecision: reviewDecision,
+    reviewDecision: reviewDecision ?? PrReviewDecision.unknown,
     statusCheckRollup: statusCheckRollup,
   );
 }
 
-PullRequestRecord _record({
+PullRequestDto _dto({
   required String projectId,
   required String branchName,
   required int prNumber,
@@ -235,7 +240,7 @@ PullRequestRecord _record({
   required String reviewDecision,
   required String checkStatus,
 }) {
-  return PullRequestRecord(
+  return PullRequestDto(
     projectId: projectId,
     prNumber: prNumber,
     branchName: branchName,
@@ -250,7 +255,7 @@ PullRequestRecord _record({
   );
 }
 
-class _FakePrSource implements PrSourceRepositoryLike {
+class _FakePrSource implements PrSourceRepository {
   final List<GhPullRequest> listOpenPrsResult;
   final Map<int, GhPullRequest> prByNumber;
   final Future<void> Function()? onListOpenPrs;
@@ -269,21 +274,19 @@ class _FakePrSource implements PrSourceRepositoryLike {
   });
 
   @override
-  Future<bool> isGitHubAvailable() async {
+  Future<bool> isGithubCliAvailable() async {
     isAvailableCallCount++;
     return isAvailableResult;
   }
 
   @override
-  Future<bool> isGitHubAuthenticated() async {
+  Future<bool> isGithubCliAuthenticated() async {
     isAuthenticatedCallCount++;
     return true;
   }
 
   @override
-  Future<bool> hasGitHubRemote({required String projectPath}) async {
-    return true;
-  }
+  Future<bool> hasGitHubRemote({required String projectPath}) async => true;
 
   @override
   Future<List<GhPullRequest>> listOpenPrs({required String workingDirectory}) async {
@@ -305,25 +308,25 @@ class _FakePrSource implements PrSourceRepositoryLike {
   }
 }
 
-class _FakePullRequestRepository implements PullRequestRepositoryLike {
-  final Map<String, List<PullRequestRecord>> _recordsByProject = <String, List<PullRequestRecord>>{};
+class _FakePullRequestRepository implements PullRequestRepository {
+  final Map<String, List<PullRequestDto>> _recordsByProject = <String, List<PullRequestDto>>{};
   int upsertCalls = 0;
 
-  _FakePullRequestRepository({List<PullRequestRecord> seed = const <PullRequestRecord>[]}) {
+  _FakePullRequestRepository({List<PullRequestDto> seed = const <PullRequestDto>[]}) {
     for (final record in seed) {
-      _recordsByProject.putIfAbsent(record.projectId, () => <PullRequestRecord>[]).add(record);
+      _recordsByProject.putIfAbsent(record.projectId, () => <PullRequestDto>[]).add(record);
     }
   }
 
   @override
-  Future<List<PullRequestRecord>> getActivePullRequestsByProjectId({required String projectId}) async {
-    return List<PullRequestRecord>.from(_recordsByProject[projectId] ?? const <PullRequestRecord>[]);
+  Future<List<PullRequestDto>> getActivePullRequestsByProjectId({required String projectId}) async {
+    return List<PullRequestDto>.from(_recordsByProject[projectId] ?? const <PullRequestDto>[]);
   }
 
   @override
-  Future<void> upsertPullRequest({required PullRequestRecord record}) async {
+  Future<void> upsertPullRequest({required PullRequestDto record}) async {
     upsertCalls++;
-    final records = _recordsByProject.putIfAbsent(record.projectId, () => <PullRequestRecord>[]);
+    final records = _recordsByProject.putIfAbsent(record.projectId, () => <PullRequestDto>[]);
     final existingIndex = records.indexWhere(
       (existing) => existing.projectId == record.projectId && existing.prNumber == record.prNumber,
     );
@@ -334,12 +337,12 @@ class _FakePullRequestRepository implements PullRequestRepositoryLike {
     }
   }
 
-  List<PullRequestRecord> getByProjectId({required String projectId}) {
-    return List<PullRequestRecord>.from(_recordsByProject[projectId] ?? const <PullRequestRecord>[]);
+  List<PullRequestDto> getByProjectId({required String projectId}) {
+    return List<PullRequestDto>.from(_recordsByProject[projectId] ?? const <PullRequestDto>[]);
   }
 }
 
-class _FakeSessionRepository implements SessionRepositoryLike {
+class _FakeSessionRepository implements SessionRepository {
   final Map<String, List<StoredSession>> sessionsByProject;
 
   _FakeSessionRepository({required this.sessionsByProject});
@@ -349,14 +352,10 @@ class _FakeSessionRepository implements SessionRepositoryLike {
     required String projectId,
     required int? start,
     required int? limit,
-  }) async {
-    return const <Session>[];
-  }
+  }) async => const <Session>[];
 
   @override
-  Future<List<Session>> getChildSessions({required String sessionId}) async {
-    return const <Session>[];
-  }
+  Future<List<Session>> getChildSessions({required String sessionId}) async => const <Session>[];
 
   @override
   Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {
@@ -364,7 +363,5 @@ class _FakeSessionRepository implements SessionRepositoryLike {
   }
 
   @override
-  Future<String?> getProjectPath({required String projectId}) async {
-    return null;
-  }
+  Future<String?> getProjectPath({required String projectId}) async => null;
 }

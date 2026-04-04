@@ -1,26 +1,16 @@
 import "../api/database/daos/pull_request_dao.dart";
-import "../repositories/mappers/pull_request_mapper.dart";
-import "../repositories/models/pull_request_record.dart";
+import "../api/database/tables/pull_requests_table.dart";
 
-abstract interface class PullRequestRepositoryLike {
-  Future<List<PullRequestRecord>> getActivePullRequestsByProjectId({required String projectId});
-
-  Future<void> upsertPullRequest({required PullRequestRecord record});
-}
-
-class PullRequestRepository implements PullRequestRepositoryLike {
+class PullRequestRepository {
   final PullRequestDao _pullRequestDao;
 
   PullRequestRepository({required PullRequestDao pullRequestDao}) : _pullRequestDao = pullRequestDao;
 
-  @override
-  Future<List<PullRequestRecord>> getActivePullRequestsByProjectId({required String projectId}) async {
-    final prs = await _pullRequestDao.getActivePrsByProjectId(projectId: projectId);
-    return prs.map(pullRequestRecordFromDto).toList(growable: false);
+  Future<List<PullRequestDto>> getActivePullRequestsByProjectId({required String projectId}) async {
+    return _pullRequestDao.getActivePrsByProjectId(projectId: projectId);
   }
 
-  @override
-  Future<void> upsertPullRequest({required PullRequestRecord record}) async {
+  Future<void> upsertPullRequest({required PullRequestDto record}) async {
     await _pullRequestDao.upsertPr(
       projectId: record.projectId,
       branchName: record.branchName,

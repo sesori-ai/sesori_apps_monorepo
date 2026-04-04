@@ -5,12 +5,8 @@ import "dart:io";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "api/gh_cli_api.dart";
-import "api/git_remote_api.dart";
 import "metadata_service.dart";
 import "persistence/daos/projects_dao.dart";
-import "repositories/pr_source_repository.dart";
-import "repositories/pull_request_repository.dart";
 import "repositories/session_repository.dart";
 import "routing/request_router.dart";
 import "services/pr_sync_service.dart";
@@ -33,34 +29,17 @@ class DebugServer {
     required ProjectsDao projectsDao,
     required this.port,
     required FailureReporter failureReporter,
+    required PrSyncService prSyncService,
+    required SessionRepository sessionRepository,
   }) : _plugin = plugin,
-       _router = (() {
-         final database = projectsDao.attachedDatabase;
-         final pullRequestRepository = PullRequestRepository(
-           pullRequestDao: database.pullRequestDao,
-         );
-         final sessionRepository = SessionRepository(
-           plugin: plugin,
-           sessionDao: database.sessionDao,
-           pullRequestDao: database.pullRequestDao,
-         );
-         final prSyncService = PrSyncService(
-           prSource: PrSourceRepository(
-             ghCli: GhCliApi(),
-             gitRemoteApi: GitRemoteApi(),
-           ),
-           pullRequestRepository: pullRequestRepository,
-           sessionRepository: sessionRepository,
-         );
-         return RequestRouter(
-           plugin: plugin,
-           metadataService: metadataService,
-           projectsDao: projectsDao,
-           sessionDao: database.sessionDao,
-           sessionRepository: sessionRepository,
-           prSyncService: prSyncService,
-         );
-       })(),
+       _router = RequestRouter(
+         plugin: plugin,
+         metadataService: metadataService,
+         projectsDao: projectsDao,
+         sessionDao: projectsDao.attachedDatabase.sessionDao,
+         sessionRepository: sessionRepository,
+         prSyncService: prSyncService,
+       ),
        _mapper = BridgeEventMapper(plugin: plugin, failureReporter: failureReporter);
 
   int? get boundPort => _server?.port;

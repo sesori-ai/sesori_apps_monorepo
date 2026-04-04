@@ -1,23 +1,6 @@
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../api/database/tables/pull_requests_table.dart";
-import "../models/pull_request_record.dart";
-
-PullRequestRecord pullRequestRecordFromDto(PullRequestDto dto) {
-  return PullRequestRecord(
-    projectId: dto.projectId,
-    prNumber: dto.prNumber,
-    branchName: dto.branchName,
-    url: dto.url,
-    title: dto.title,
-    state: dto.state,
-    mergeableStatus: dto.mergeableStatus,
-    reviewDecision: dto.reviewDecision,
-    checkStatus: dto.checkStatus,
-    lastCheckedAt: dto.lastCheckedAt,
-    createdAt: dto.createdAt,
-  );
-}
 
 PullRequestInfo pullRequestInfoFromDto(PullRequestDto dto) {
   return PullRequestInfo(
@@ -46,7 +29,6 @@ PrMergeableStatus _stringToPrMergeableStatus(String? value) {
   return switch (value.toUpperCase()) {
     "MERGEABLE" => PrMergeableStatus.mergeable,
     "CONFLICTED" || "CONFLICTING" => PrMergeableStatus.conflicted,
-    "UNKNOWN" => PrMergeableStatus.unknown,
     _ => PrMergeableStatus.unknown,
   };
 }

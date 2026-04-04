@@ -251,9 +251,9 @@ void main() {
       );
 
       final spyPrSyncService = FakePrSyncService();
-      final sessionRepository = SessionRepository(
+      final sessionRepository = FakeSessionRepository(
         plugin: plugin,
-        sessionDao: db.sessionDao,
+        sessionDao: FakeSessionDao(),
         pullRequestDao: fakePrDao,
       );
 

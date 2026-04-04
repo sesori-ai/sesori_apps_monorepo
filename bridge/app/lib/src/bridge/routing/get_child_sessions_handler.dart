@@ -5,9 +5,9 @@ import "request_handler.dart";
 
 /// Handles `GET /session/:id/children` — returns direct child sessions.
 class GetChildSessionsHandler extends BodyRequestHandler<SessionIdRequest, SessionListResponse> {
-  final SessionRepositoryLike _sessionRepository;
+  final SessionRepository _sessionRepository;
 
-  GetChildSessionsHandler({required SessionRepositoryLike sessionRepository})
+  GetChildSessionsHandler({required SessionRepository sessionRepository})
     : _sessionRepository = sessionRepository,
       super(
         HttpMethod.post,

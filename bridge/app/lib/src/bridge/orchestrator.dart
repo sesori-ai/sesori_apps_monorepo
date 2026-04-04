@@ -9,8 +9,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../auth/token_refresher.dart";
 import "../push/push_notification_service.dart";
-import "api/gh_cli_api.dart";
-import "api/git_remote_api.dart";
+import "api/git_cli_api.dart";
 import "key_exchange.dart";
 import "metadata_service.dart";
 import "models/bridge_config.dart";
@@ -36,7 +35,6 @@ class Orchestrator {
   final ProjectsDao _projectsDao;
   final FailureReporter _failureReporter;
   final PrSyncService _prSyncService;
-  final PullRequestRepository _pullRequestRepository;
   final SessionRepository _sessionRepository;
 
   Orchestrator({
@@ -56,20 +54,24 @@ class Orchestrator {
        _tokenRefresher = tokenRefresher,
        _projectsDao = projectsDao,
        _failureReporter = failureReporter,
-       _pullRequestRepository = PullRequestRepository(
-         pullRequestDao: projectsDao.attachedDatabase.pullRequestDao,
-       ),
        _sessionRepository = SessionRepository(
          plugin: plugin,
          sessionDao: projectsDao.attachedDatabase.sessionDao,
          pullRequestDao: projectsDao.attachedDatabase.pullRequestDao,
        ),
-       _prSyncService = prSyncService ?? _defaultPrSyncService {
-    _prSyncService.setRepositories(
-      pullRequestRepository: _pullRequestRepository,
-      sessionRepository: _sessionRepository,
-    );
-  }
+       _prSyncService =
+           prSyncService ??
+           PrSyncService(
+             prSource: PrSourceRepository(gitCli: GitCliApi()),
+             pullRequestRepository: PullRequestRepository(
+               pullRequestDao: projectsDao.attachedDatabase.pullRequestDao,
+             ),
+             sessionRepository: SessionRepository(
+               plugin: plugin,
+               sessionDao: projectsDao.attachedDatabase.sessionDao,
+               pullRequestDao: projectsDao.attachedDatabase.pullRequestDao,
+             ),
+           );
 
   /// Creates a new session with a fresh room key and SSE manager.
   OrchestratorSession create() {
@@ -105,13 +107,6 @@ class Orchestrator {
       List<int>.generate(32, (_) => random.nextInt(256)),
     );
   }
-
-  static final PrSyncService _defaultPrSyncService = PrSyncService(
-    prSource: PrSourceRepository(
-      ghCli: GhCliApi(),
-      gitRemoteApi: GitRemoteApi(),
-    ),
-  );
 }
 
 /// A running bridge session with immutable runtime state.
@@ -147,7 +142,7 @@ class OrchestratorSession {
     required SSEManager sseManager,
     required StreamController<int> bytesSentController,
     required FailureReporter failureReporter,
-    required SessionRepositoryLike sessionRepository,
+    required SessionRepository sessionRepository,
     required PrSyncService prSyncService,
   }) : _client = client,
        _plugin = plugin,

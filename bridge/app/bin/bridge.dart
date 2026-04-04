@@ -10,6 +10,7 @@ import 'package:sesori_bridge/src/auth/token.dart';
 import 'package:sesori_bridge/src/auth/token_manager.dart';
 import 'package:sesori_bridge/src/auth/validate.dart';
 import 'package:sesori_bridge/src/bridge/bandwidth_tracker.dart';
+import 'package:sesori_bridge/src/bridge/api/git_cli_api.dart';
 import 'package:sesori_bridge/src/bridge/debug_server.dart';
 import 'package:sesori_bridge/src/bridge/log_failure_reporter.dart';
 import 'package:sesori_bridge/src/bridge/metadata_service.dart';
@@ -18,6 +19,10 @@ import 'package:sesori_bridge/src/bridge/orchestrator.dart';
 import 'package:sesori_bridge/src/bridge/persistence/bridge_diagnostics.dart';
 import 'package:sesori_bridge/src/bridge/persistence/database.dart';
 import 'package:sesori_bridge/src/bridge/relay_client.dart';
+import 'package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart';
+import 'package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart';
+import 'package:sesori_bridge/src/bridge/repositories/session_repository.dart';
+import 'package:sesori_bridge/src/bridge/services/pr_sync_service.dart';
 import 'package:sesori_bridge/src/bridge/sse/sse_manager.dart';
 import 'package:sesori_bridge/src/push/completion_notifier.dart';
 import 'package:sesori_bridge/src/push/push_notification_client.dart';
@@ -198,6 +203,20 @@ Future<void> main(List<String> args) async {
     tokenRefresher: tokenManager,
   );
 
+  final pullRequestRepository = PullRequestRepository(
+    pullRequestDao: db.pullRequestDao,
+  );
+  final sessionRepository = SessionRepository(
+    plugin: plugin,
+    sessionDao: db.sessionDao,
+    pullRequestDao: db.pullRequestDao,
+  );
+  final prSyncService = PrSyncService(
+    prSource: PrSourceRepository(gitCli: GitCliApi()),
+    pullRequestRepository: pullRequestRepository,
+    sessionRepository: sessionRepository,
+  );
+
   final orchestrator = Orchestrator(
     config: bridgeConfig,
     client: relayClient,
@@ -207,6 +226,7 @@ Future<void> main(List<String> args) async {
     tokenRefresher: tokenManager,
     projectsDao: db.projectsDao,
     failureReporter: failureReporter,
+    prSyncService: prSyncService,
   );
   final session = orchestrator.create();
 
@@ -222,6 +242,8 @@ Future<void> main(List<String> args) async {
       projectsDao: db.projectsDao,
       port: debugPort,
       failureReporter: failureReporter,
+      prSyncService: prSyncService,
+      sessionRepository: sessionRepository,
     );
     try {
       await debugServer.start();
