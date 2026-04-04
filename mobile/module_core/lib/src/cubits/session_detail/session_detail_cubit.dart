@@ -18,6 +18,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   final SessionService _service;
   final ConnectionService _connectionService;
   final String _sessionId;
+  final String? _projectId;
   final NotificationCanceller _notificationCanceller;
   final FailureReporter _failureReporter;
   late final PromptSendService _sendService;
@@ -40,11 +41,13 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     SessionService service,
     ConnectionService connectionService, {
     required String sessionId,
+    required String? projectId,
     required NotificationCanceller notificationCanceller,
     required FailureReporter failureReporter,
   }) : _service = service,
        _connectionService = connectionService,
        _sessionId = sessionId,
+       _projectId = projectId,
        _notificationCanceller = notificationCanceller,
        _failureReporter = failureReporter,
        super(const SessionDetailState.loading()) {
@@ -422,8 +425,10 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             SesoriWorktreeReady() ||
             SesoriWorktreeFailed():
           break;
-        case SesoriSessionsUpdated():
-          _silentRefresh();
+        case SesoriSessionsUpdated(:final projectID):
+          if (_projectId == null || projectID == _projectId) {
+            _silentRefresh();
+          }
       }
     } catch (e, st) {
       loge("SSE global event handler error", e, st);

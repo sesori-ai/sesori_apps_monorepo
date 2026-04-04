@@ -74,6 +74,7 @@ void main() {
           mockSessionService,
           mockConnectionService,
           sessionId: sessionId,
+          projectId: "test-project",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: MockFailureReporter(),
         );
@@ -123,6 +124,7 @@ void main() {
         mockSessionService,
         mockConnectionService,
         sessionId: sessionId,
+        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -164,6 +166,7 @@ void main() {
         mockSessionService,
         mockConnectionService,
         sessionId: sessionId,
+        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -221,6 +224,7 @@ void main() {
         mockSessionService,
         mockConnectionService,
         sessionId: sessionId,
+        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -281,6 +285,7 @@ void main() {
         mockSessionService,
         mockConnectionService,
         sessionId: sessionId,
+        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -312,6 +317,7 @@ void main() {
         mockSessionService,
         mockConnectionService,
         sessionId: sessionId,
+        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -340,6 +346,7 @@ void main() {
         mockSessionService,
         mockConnectionService,
         sessionId: sessionId,
+        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -360,6 +367,7 @@ void main() {
           mockSessionService,
           mockConnectionService,
           sessionId: sessionId,
+          projectId: "test-project",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: MockFailureReporter(),
         );
@@ -395,6 +403,7 @@ void main() {
         mockSessionService,
         mockConnectionService,
         sessionId: sessionId,
+        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );

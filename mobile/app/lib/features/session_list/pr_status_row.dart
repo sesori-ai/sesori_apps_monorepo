@@ -4,6 +4,11 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../l10n/app_localizations.dart";
 
+// GitHub-inspired semantic status colors, chosen for light/dark contrast.
+const _kPrGreen = Color(0xFF3FB950);
+const _kPrPurple = Color(0xFFA371F7);
+const _kPrAmber = Color(0xFFD29922);
+
 /// Compact row showing PR number, state label, and review/check status dots.
 ///
 /// Used inside [_SessionTile] to surface pull-request metadata directly in the
@@ -56,8 +61,8 @@ class PrStatusRow extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 Color _stateColor({required ColorScheme scheme, required PrState state}) => switch (state) {
-  PrState.open => const Color(0xFF3FB950),
-  PrState.merged => const Color(0xFFA371F7),
+  PrState.open => _kPrGreen,
+  PrState.merged => _kPrPurple,
   PrState.closed => scheme.outline,
   PrState.unknown => scheme.outline,
 };
@@ -66,7 +71,7 @@ String _stateText({required AppLocalizations loc, required PrState state}) => sw
   PrState.open => loc.prStateOpen,
   PrState.merged => loc.prStateMerged,
   PrState.closed => loc.prStateClosed,
-  PrState.unknown => loc.prStateClosed,
+  PrState.unknown => "",
 };
 
 // ---------------------------------------------------------------------------
@@ -75,7 +80,7 @@ String _stateText({required AppLocalizations loc, required PrState state}) => sw
 
 /// Returns a color when the review decision should display a dot, or null to hide it.
 Color? _reviewColor({required ColorScheme scheme, required PrReviewDecision decision}) => switch (decision) {
-  PrReviewDecision.approved => const Color(0xFF3FB950),
+  PrReviewDecision.approved => _kPrGreen,
   PrReviewDecision.changesRequested => scheme.error,
   PrReviewDecision.reviewRequired => scheme.outline,
   PrReviewDecision.unknown => null,
@@ -101,9 +106,10 @@ String _reviewTooltip({required AppLocalizations loc, required PrReviewDecision 
 
 /// Returns a color when the check status should display a dot, or null to hide it.
 Color? _checkColor({required ColorScheme scheme, required PrCheckStatus status}) => switch (status) {
-  PrCheckStatus.success => const Color(0xFF3FB950),
+  PrCheckStatus.success => _kPrGreen,
   PrCheckStatus.failure => scheme.error,
-  PrCheckStatus.pending => const Color(0xFFD29922),
+  PrCheckStatus.pending => _kPrAmber,
+  PrCheckStatus.none => null,
   PrCheckStatus.unknown => null,
 };
 
@@ -111,6 +117,7 @@ IconData _checkIcon({required PrCheckStatus status}) => switch (status) {
   PrCheckStatus.success => Icons.check_circle_outline,
   PrCheckStatus.failure => Icons.error_outline,
   PrCheckStatus.pending => Icons.schedule,
+  PrCheckStatus.none => Icons.circle,
   PrCheckStatus.unknown => Icons.circle,
 };
 
@@ -118,5 +125,6 @@ String _checkTooltip({required AppLocalizations loc, required PrCheckStatus stat
   PrCheckStatus.success => loc.prChecksSuccess,
   PrCheckStatus.failure => loc.prChecksFailing,
   PrCheckStatus.pending => loc.prChecksPending,
+  PrCheckStatus.none => "",
   PrCheckStatus.unknown => "",
 };
