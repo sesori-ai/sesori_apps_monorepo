@@ -300,7 +300,11 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
                     onCancel: (index) => context.read<SessionDetailCubit>().cancelQueuedMessage(index),
                   ),
                 PromptInput(
-                  isBusy: sessionStatus is! SessionStatusIdle,
+                  isBusy:
+                      sessionStatus is! SessionStatusIdle ||
+                      childStatuses.values.any(
+                        (s) => s is SessionStatusBusy || s is SessionStatusRetry,
+                      ),
                   onSend: (text) => context.read<SessionDetailCubit>().sendMessage(text),
                   onAbort: () => context.read<SessionDetailCubit>().abort(),
                   header: AgentModelButtons(
