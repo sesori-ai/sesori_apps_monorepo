@@ -46,9 +46,20 @@ PrReviewDecision _prReviewDecisionFromString(String? value) {
 PrCheckStatus _prCheckStatusFromString(String? value) {
   if (value == null) return PrCheckStatus.unknown;
   return switch (value.toUpperCase()) {
-    "SUCCESS" => PrCheckStatus.success,
-    "FAILURE" => PrCheckStatus.failure,
-    "PENDING" => PrCheckStatus.pending,
+    "SUCCESS" || "NEUTRAL" || "SKIPPED" => PrCheckStatus.success,
+    "FAILURE" ||
+    "ERROR" ||
+    "CANCELLED" ||
+    "TIMED_OUT" ||
+    "ACTION_REQUIRED" ||
+    "STARTUP_FAILURE" => PrCheckStatus.failure,
+    "PENDING" ||
+    "IN_PROGRESS" ||
+    "QUEUED" ||
+    "WAITING" ||
+    "REQUESTED" ||
+    "EXPECTED" ||
+    "STALE" => PrCheckStatus.pending,
     _ => PrCheckStatus.unknown,
   };
 }
