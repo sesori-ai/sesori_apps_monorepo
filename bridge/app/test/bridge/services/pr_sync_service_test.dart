@@ -329,16 +329,12 @@ class _FakePullRequestRepository implements PullRequestRepository {
   }
 
   @override
-  Future<bool> hasChanged({required String projectId, required int prNumber, required GhPullRequest pr}) async {
-    final existing = (_recordsByProject[projectId] ?? const <PullRequestDto>[])
-        .where((dto) => dto.prNumber == prNumber)
-        .firstOrNull;
-    if (existing == null) {
-      return true;
-    }
+  bool hasChangedFromExisting({required PullRequestDto? existing, required GhPullRequest pr}) {
+    if (existing == null) return true;
     return existing.prNumber != pr.number ||
         existing.url != pr.url ||
         existing.title != pr.title ||
+        existing.branchName != pr.headRefName ||
         existing.state != pr.state.name.toUpperCase() ||
         existing.mergeableStatus != pr.mergeable.name.toUpperCase() ||
         existing.reviewDecision != pr.reviewDecision.name.toUpperCase() ||
@@ -385,6 +381,15 @@ class _FakePullRequestRepository implements PullRequestRepository {
 
   List<PullRequestDto> getByProjectId({required String projectId}) {
     return List<PullRequestDto>.from(_recordsByProject[projectId] ?? const <PullRequestDto>[]);
+  }
+
+  @override
+  Future<void> deletePr({required String projectId, required int prNumber}) async {
+    final records = _recordsByProject[projectId];
+    if (records != null) {
+      records.removeWhere((r) => r.prNumber == prNumber);
+    }
+    upsertCalls++;
   }
 }
 

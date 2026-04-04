@@ -377,9 +377,7 @@ class _NoopPullRequestRepository implements PullRequestRepository {
   }
 
   @override
-  Future<bool> hasChanged({required String projectId, required int prNumber, required GhPullRequest pr}) async {
-    return true;
-  }
+  bool hasChangedFromExisting({required PullRequestDto? existing, required GhPullRequest pr}) => true;
 
   @override
   Future<void> upsertFromGhPr({
@@ -388,6 +386,9 @@ class _NoopPullRequestRepository implements PullRequestRepository {
     required int createdAt,
     required int lastCheckedAt,
   }) async {}
+
+  @override
+  Future<void> deletePr({required String projectId, required int prNumber}) async {}
 
   @override
   Future<void> upsertPullRequest({required PullRequestDto record}) async {}

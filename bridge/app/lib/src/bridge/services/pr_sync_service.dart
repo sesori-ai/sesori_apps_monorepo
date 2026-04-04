@@ -14,9 +14,12 @@ class PrSyncService {
   final Duration _debounceWindow;
   final StreamController<String> _prChangesController = StreamController<String>.broadcast();
 
-  final Map<String, bool> _hasGitHubRemoteCache = <String, bool>{};
+  final Map<String, ({bool value, DateTime cachedAt})> _hasGitHubRemoteCache =
+      <String, ({bool value, DateTime cachedAt})>{};
   final Map<String, DateTime> _lastRefreshTimes = <String, DateTime>{};
   final Set<String> _activeRefreshes = <String>{};
+
+  static const _remoteCacheTtl = Duration(minutes: 10);
 
   PrSyncService({
     required PrSourceRepository prSource,
@@ -41,12 +44,13 @@ class PrSyncService {
       return;
     }
 
-    if (!_hasGitHubRemoteCache.containsKey(projectPath)) {
-      _hasGitHubRemoteCache[projectPath] = await _prSource.hasGitHubRemote(
-        projectPath: projectPath,
-      );
+    final cached = _hasGitHubRemoteCache[projectPath];
+    final cacheCheckTime = DateTime.now();
+    if (cached == null || cacheCheckTime.difference(cached.cachedAt) > _remoteCacheTtl) {
+      final hasRemote = await _prSource.hasGitHubRemote(projectPath: projectPath);
+      _hasGitHubRemoteCache[projectPath] = (value: hasRemote, cachedAt: cacheCheckTime);
     }
-    if (!_hasGitHubRemoteCache[projectPath]!) {
+    if (!_hasGitHubRemoteCache[projectPath]!.value) {
       return;
     }
 
@@ -60,7 +64,6 @@ class PrSyncService {
       return;
     }
 
-    _lastRefreshTimes[projectId] = now;
     _activeRefreshes.add(projectId);
     unawaited(_refresh(projectId: projectId, projectPath: projectPath));
   }
@@ -79,14 +82,18 @@ class PrSyncService {
       final nowEpochMs = DateTime.now().millisecondsSinceEpoch;
 
       final matchedOpenPrs = openPrs
-          .where((pr) => sessionsByBranch.containsKey(pr.headRefName))
+          .where((pr) => !pr.isCrossRepository && sessionsByBranch.containsKey(pr.headRefName))
           .toList(growable: false);
 
+      final activeByBranch = {
+        for (final activePr in activePrs) activePr.branchName: activePr,
+      };
+
       for (final pr in matchedOpenPrs) {
-        final existing = activePrs.where((activePr) => activePr.branchName == pr.headRefName).firstOrNull;
+        final existing = activeByBranch[pr.headRefName];
         final createdAt = existing?.createdAt ?? nowEpochMs;
 
-        if (await _pullRequestRepository.hasChanged(projectId: projectId, prNumber: pr.number, pr: pr)) {
+        if (_pullRequestRepository.hasChangedFromExisting(existing: existing, pr: pr)) {
           hasChanges = true;
         }
 
@@ -110,7 +117,7 @@ class PrSyncService {
             workingDirectory: projectPath,
           );
 
-          if (await _pullRequestRepository.hasChanged(projectId: projectId, prNumber: finalPr.number, pr: finalPr)) {
+          if (_pullRequestRepository.hasChangedFromExisting(existing: disappeared, pr: finalPr)) {
             hasChanges = true;
           }
 
@@ -121,13 +128,20 @@ class PrSyncService {
             lastCheckedAt: nowEpochMs,
           );
         } catch (e) {
-          Log.w("[PrSync] failed to fetch PR #${disappeared.prNumber}: $e");
+          Log.w("[PrSync] failed to fetch PR #${disappeared.prNumber}: $e — removing stale record");
+          await _pullRequestRepository.deletePr(
+            projectId: projectId,
+            prNumber: disappeared.prNumber,
+          );
+          hasChanges = true;
         }
       }
 
       if (hasChanges) {
         _prChangesController.add(projectId);
       }
+
+      _lastRefreshTimes[projectId] = DateTime.now();
     } catch (e, st) {
       Log.e("[PrSync] refresh failed for $projectId: $e\n$st");
     } finally {

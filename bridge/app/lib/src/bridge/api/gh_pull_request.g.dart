@@ -12,6 +12,7 @@ _GhPullRequest _$GhPullRequestFromJson(Map json) => _GhPullRequest(
   title: json['title'] as String,
   state: _prStateFromString(json['state'] as String?),
   headRefName: json['headRefName'] as String,
+  isCrossRepository: json['isCrossRepository'] as bool? ?? false,
   mergeable: _prMergeableStatusFromString(json['mergeable'] as String?),
   reviewDecision: _prReviewDecisionFromString(
     json['reviewDecision'] as String?,
@@ -26,6 +27,7 @@ Map<String, dynamic> _$GhPullRequestToJson(_GhPullRequest instance) =>
       'title': instance.title,
       'state': _$PrStateEnumMap[instance.state]!,
       'headRefName': instance.headRefName,
+      'isCrossRepository': instance.isCrossRepository,
       'mergeable': _$PrMergeableStatusEnumMap[instance.mergeable]!,
       'reviewDecision': _$PrReviewDecisionEnumMap[instance.reviewDecision]!,
       'statusCheckRollup': _rollupStateToJson(instance.statusCheckRollup),

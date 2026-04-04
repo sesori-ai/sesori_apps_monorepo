@@ -428,30 +428,29 @@ class FakePullRequestRepository implements PullRequestRepository {
   }
 
   @override
-  Future<bool> hasChanged({required String projectId, required int prNumber, required GhPullRequest pr}) async {
-    final existing = _prsByPrimaryKey[_key(projectId: projectId, prNumber: prNumber)];
-    if (existing == null) {
-      return true;
-    }
+  bool hasChangedFromExisting({required PullRequestDto? existing, required GhPullRequest pr}) {
+    if (existing == null) return true;
     return existing.prNumber != pr.number ||
         existing.url != pr.url ||
         existing.title != pr.title ||
+        existing.branchName != pr.headRefName ||
         existing.state != pr.state.name.toUpperCase() ||
         existing.mergeableStatus != pr.mergeable.name.toUpperCase() ||
         existing.reviewDecision != pr.reviewDecision.name.toUpperCase() ||
         existing.checkStatus != pr.statusCheckRollup.name.toUpperCase();
   }
 
+  String _key({required String projectId, required int prNumber}) {
+    return "$projectId::$prNumber";
+  }
+
+  @override
   Future<void> deletePr({required String projectId, required int prNumber}) async {
     _prsByPrimaryKey.remove(_key(projectId: projectId, prNumber: prNumber));
     _prsBySessionId.updateAll(
       (_, List<PullRequestDto> list) =>
           list.where((pr) => !(pr.projectId == projectId && pr.prNumber == prNumber)).toList(),
     );
-  }
-
-  String _key({required String projectId, required int prNumber}) {
-    return "$projectId::$prNumber";
   }
 }
 
@@ -499,9 +498,7 @@ class _NoopPullRequestRepository implements PullRequestRepository {
   }
 
   @override
-  Future<bool> hasChanged({required String projectId, required int prNumber, required GhPullRequest pr}) async {
-    return true;
-  }
+  bool hasChangedFromExisting({required PullRequestDto? existing, required GhPullRequest pr}) => true;
 
   @override
   Future<void> upsertFromGhPr({
@@ -510,6 +507,9 @@ class _NoopPullRequestRepository implements PullRequestRepository {
     required int createdAt,
     required int lastCheckedAt,
   }) async {}
+
+  @override
+  Future<void> deletePr({required String projectId, required int prNumber}) async {}
 
   @override
   Future<void> upsertPullRequest({required PullRequestDto record}) async {}

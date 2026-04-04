@@ -61,6 +61,7 @@ sealed class GhPullRequest with _$GhPullRequest {
     required String title,
     @JsonKey(fromJson: _prStateFromString) required PrState state,
     required String headRefName,
+    @Default(false) bool isCrossRepository,
     @JsonKey(fromJson: _prMergeableStatusFromString) required PrMergeableStatus mergeable,
     @JsonKey(fromJson: _prReviewDecisionFromString) required PrReviewDecision reviewDecision,
     @JsonKey(fromJson: _prCheckStatusFromRollup, toJson: _rollupStateToJson) required PrCheckStatus statusCheckRollup,

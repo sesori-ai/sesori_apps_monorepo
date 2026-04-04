@@ -108,7 +108,8 @@ class SessionRepository {
         return null;
       }
       return project.id;
-    } catch (_) {
+    } catch (e) {
+      Log.w("[SessionRepository] getProjectPath failed for $projectId: $e");
       return null;
     }
   }

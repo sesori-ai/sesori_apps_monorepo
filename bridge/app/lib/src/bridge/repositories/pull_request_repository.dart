@@ -15,20 +15,16 @@ class PullRequestRepository {
     return _pullRequestDao.getPrsBySessionIds(sessionIds: sessionIds);
   }
 
-  Future<bool> hasChanged({
-    required String projectId,
-    required int prNumber,
+  bool hasChangedFromExisting({
+    required PullRequestDto? existing,
     required GhPullRequest pr,
-  }) async {
-    final existingPrs = await _pullRequestDao.getPrsByProjectId(projectId: projectId);
-    final existing = existingPrs.where((it) => it.prNumber == prNumber).firstOrNull;
-    if (existing == null) {
-      return true;
-    }
+  }) {
+    if (existing == null) return true;
 
     return existing.prNumber != pr.number ||
         existing.url != pr.url ||
         existing.title != pr.title ||
+        existing.branchName != pr.headRefName ||
         existing.state != pr.state.name.toUpperCase() ||
         existing.mergeableStatus != pr.mergeable.name.toUpperCase() ||
         existing.reviewDecision != pr.reviewDecision.name.toUpperCase() ||
@@ -60,5 +56,12 @@ class PullRequestRepository {
 
   Future<void> upsertPullRequest({required PullRequestDto record}) async {
     await _pullRequestDao.upsertPr(pullRequest: record);
+  }
+
+  Future<void> deletePr({
+    required String projectId,
+    required int prNumber,
+  }) async {
+    await _pullRequestDao.deletePr(projectId: projectId, prNumber: prNumber);
   }
 }

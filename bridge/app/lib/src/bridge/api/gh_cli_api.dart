@@ -42,7 +42,7 @@ class GhCliApi {
         "--state",
         "open",
         "--json",
-        "number,url,title,state,headRefName,mergeable,reviewDecision,statusCheckRollup",
+        "number,url,title,state,headRefName,isCrossRepository,mergeable,reviewDecision,statusCheckRollup",
         "--limit",
         "100",
       ],
@@ -66,7 +66,7 @@ class GhCliApi {
         "view",
         number.toString(),
         "--json",
-        "number,url,title,state,headRefName,mergeable,reviewDecision,statusCheckRollup",
+        "number,url,title,state,headRefName,isCrossRepository,mergeable,reviewDecision,statusCheckRollup",
       ],
       workingDirectory: workingDirectory,
     );
@@ -78,12 +78,30 @@ class GhCliApi {
     return GhPullRequest.fromJson(map);
   }
 
+  /// Runs a `gh` command with timeout. Uses [Process.start] so the subprocess
+  /// can be killed on timeout (unlike [Process.run] + [Future.timeout] which
+  /// leaves the child running). Falls back to [_processRunner] when injected
+  /// for testing.
   Future<ProcessResult> _runGh({
     required List<String> arguments,
     String? workingDirectory,
-  }) {
-    return _processRunner("gh", arguments, workingDirectory: workingDirectory).timeout(
+  }) async {
+    // When a custom processRunner is injected (tests), use it directly.
+    // In production (Process.run default), use Process.start for kill-on-timeout.
+    if (_processRunner != Process.run) {
+      return _processRunner("gh", arguments, workingDirectory: workingDirectory).timeout(_ghCommandTimeout);
+    }
+
+    final process = await Process.start("gh", arguments, workingDirectory: workingDirectory);
+    final exitCode = await process.exitCode.timeout(
       _ghCommandTimeout,
+      onTimeout: () {
+        process.kill();
+        throw TimeoutException("gh command timed out after $_ghCommandTimeout", _ghCommandTimeout);
+      },
     );
+    final stdout = await process.stdout.transform(const SystemEncoding().decoder).join();
+    final stderr = await process.stderr.transform(const SystemEncoding().decoder).join();
+    return ProcessResult(process.pid, exitCode, stdout, stderr);
   }
 }

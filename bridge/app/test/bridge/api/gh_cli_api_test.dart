@@ -131,7 +131,7 @@ void main() {
           "--state",
           "open",
           "--json",
-          "number,url,title,state,headRefName,mergeable,reviewDecision,statusCheckRollup",
+          "number,url,title,state,headRefName,isCrossRepository,mergeable,reviewDecision,statusCheckRollup",
           "--limit",
           "100",
         ]),
@@ -258,7 +258,7 @@ void main() {
           "view",
           "12",
           "--json",
-          "number,url,title,state,headRefName,mergeable,reviewDecision,statusCheckRollup",
+          "number,url,title,state,headRefName,isCrossRepository,mergeable,reviewDecision,statusCheckRollup",
         ]),
       );
       expect(processRunner.invocations.first.workingDirectory, equals("/repo"));
