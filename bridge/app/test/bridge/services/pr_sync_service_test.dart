@@ -274,13 +274,13 @@ class _FakePrSource implements PrSourceRepository {
   });
 
   @override
-  Future<bool> isGithubCliAvailable() async {
+  Future<bool> isGhAvailable() async {
     isAvailableCallCount++;
     return isAvailableResult;
   }
 
   @override
-  Future<bool> isGithubCliAuthenticated() async {
+  Future<bool> isGhAuthenticated() async {
     isAuthenticatedCallCount++;
     return true;
   }

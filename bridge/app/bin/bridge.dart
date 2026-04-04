@@ -10,6 +10,7 @@ import 'package:sesori_bridge/src/auth/token.dart';
 import 'package:sesori_bridge/src/auth/token_manager.dart';
 import 'package:sesori_bridge/src/auth/validate.dart';
 import 'package:sesori_bridge/src/bridge/bandwidth_tracker.dart';
+import 'package:sesori_bridge/src/bridge/api/gh_cli_api.dart';
 import 'package:sesori_bridge/src/bridge/api/git_cli_api.dart';
 import 'package:sesori_bridge/src/bridge/debug_server.dart';
 import 'package:sesori_bridge/src/bridge/log_failure_reporter.dart';
@@ -212,7 +213,7 @@ Future<void> main(List<String> args) async {
     pullRequestDao: db.pullRequestDao,
   );
   final prSyncService = PrSyncService(
-    prSource: PrSourceRepository(gitCli: GitCliApi()),
+    prSource: PrSourceRepository(ghCli: GhCliApi(), gitCli: GitCliApi()),
     pullRequestRepository: pullRequestRepository,
     sessionRepository: sessionRepository,
   );

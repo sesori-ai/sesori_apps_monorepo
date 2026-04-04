@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:convert";
 import "dart:io";
 
+import "package:sesori_bridge/src/bridge/api/gh_cli_api.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/debug_server.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
@@ -28,7 +29,7 @@ DebugServer _createDebugServer({
     pullRequestDao: db.pullRequestDao,
   );
   final prSyncService = PrSyncService(
-    prSource: PrSourceRepository(gitCli: GitCliApi()),
+    prSource: PrSourceRepository(ghCli: GhCliApi(), gitCli: GitCliApi()),
     pullRequestRepository: pullRequestRepository,
     sessionRepository: sessionRepository,
   );

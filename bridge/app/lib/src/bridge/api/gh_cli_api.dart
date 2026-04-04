@@ -18,11 +18,8 @@ class GhCliApi {
     try {
       final result = await _runGh(arguments: const ["--version"]);
       return result.exitCode == 0;
-    } on ProcessException {
-      return false;
-    } on TimeoutException {
-      return false;
-    } catch (_) {
+    } on Object catch (e) {
+      Log.w("[GhCli] gh --version failed: $e");
       return false;
     }
   }
@@ -31,47 +28,32 @@ class GhCliApi {
     try {
       final result = await _runGh(arguments: const ["auth", "status"]);
       return result.exitCode == 0;
-    } on ProcessException {
-      return false;
-    } on TimeoutException {
-      return false;
-    } catch (_) {
+    } on Object catch (e) {
+      Log.w("[GhCli] gh auth status failed: $e");
       return false;
     }
   }
 
   Future<List<GhPullRequest>> listOpenPrs({required String workingDirectory}) async {
-    try {
-      final result = await _runGh(
-        arguments: const <String>[
-          "pr",
-          "list",
-          "--state",
-          "open",
-          "--json",
-          "number,url,title,state,headRefName,mergeable,reviewDecision,statusCheckRollup",
-          "--limit",
-          "100",
-        ],
-        workingDirectory: workingDirectory,
-      );
-      if (result.exitCode != 0) {
-        Log.w("[GhCli] gh pr list failed with exit code ${result.exitCode}");
-        return const <GhPullRequest>[];
-      }
-
-      final maps = jsonDecodeListMap(result.stdout.toString());
-      return maps.map(GhPullRequest.fromJson).toList(growable: false);
-    } on ProcessException catch (e) {
-      Log.w("[GhCli] process error listing PRs: $e");
-      return const <GhPullRequest>[];
-    } on TimeoutException catch (e) {
-      Log.w("[GhCli] timeout listing PRs: $e");
-      return const <GhPullRequest>[];
-    } on FormatException catch (e) {
-      Log.w("[GhCli] failed to parse gh pr list output: $e");
-      return const <GhPullRequest>[];
+    final result = await _runGh(
+      arguments: const <String>[
+        "pr",
+        "list",
+        "--state",
+        "open",
+        "--json",
+        "number,url,title,state,headRefName,mergeable,reviewDecision,statusCheckRollup",
+        "--limit",
+        "100",
+      ],
+      workingDirectory: workingDirectory,
+    );
+    if (result.exitCode != 0) {
+      throw Exception("gh pr list failed with exit code ${result.exitCode}");
     }
+
+    final maps = jsonDecodeListMap(result.stdout.toString());
+    return maps.map(GhPullRequest.fromJson).toList(growable: false);
   }
 
   Future<GhPullRequest> getPrByNumber({

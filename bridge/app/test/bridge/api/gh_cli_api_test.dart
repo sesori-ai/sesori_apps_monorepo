@@ -1,25 +1,25 @@
 import "dart:async";
 import "dart:io";
 
-import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
+import "package:sesori_bridge/src/bridge/api/gh_cli_api.dart";
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
-  group("GitCliApi.isAvailable", () {
+  group("GhCliApi.isAvailable", () {
     late _FakeProcessRunner processRunner;
-    late GitCliApi service;
+    late GhCliApi service;
 
     setUp(() {
       processRunner = _FakeProcessRunner();
-      service = GitCliApi(processRunner: processRunner.call);
+      service = GhCliApi(processRunner: processRunner.call);
     });
 
     test("returns true when gh --version exits with code 0", () async {
       processRunner.enqueueResult(result: _ok(stdout: "gh version 2.0.0\n"));
 
-      final isAvailable = await service.isGithubCliAvailable();
+      final isAvailable = await service.isAvailable();
 
       expect(isAvailable, isTrue);
       expect(processRunner.invocations, hasLength(1));
@@ -31,7 +31,7 @@ void main() {
     test("returns false on non-zero exit code", () async {
       processRunner.enqueueResult(result: _fail(exitCode: 1));
 
-      final isAvailable = await service.isGithubCliAvailable();
+      final isAvailable = await service.isAvailable();
 
       expect(isAvailable, isFalse);
     });
@@ -39,7 +39,7 @@ void main() {
     test("returns false on timeout", () async {
       processRunner.enqueueError(error: TimeoutException("timed out"));
 
-      final isAvailable = await service.isGithubCliAvailable();
+      final isAvailable = await service.isAvailable();
 
       expect(isAvailable, isFalse);
     });
@@ -49,25 +49,25 @@ void main() {
         error: const ProcessException("gh", <String>["--version"], "boom", 1),
       );
 
-      final isAvailable = await service.isGithubCliAvailable();
+      final isAvailable = await service.isAvailable();
 
       expect(isAvailable, isFalse);
     });
   });
 
-  group("GitCliApi.isAuthenticated", () {
+  group("GhCliApi.isAuthenticated", () {
     late _FakeProcessRunner processRunner;
-    late GitCliApi service;
+    late GhCliApi service;
 
     setUp(() {
       processRunner = _FakeProcessRunner();
-      service = GitCliApi(processRunner: processRunner.call);
+      service = GhCliApi(processRunner: processRunner.call);
     });
 
     test("returns true when gh auth status exits with code 0", () async {
       processRunner.enqueueResult(result: _ok());
 
-      final isAuthenticated = await service.isGithubCliAuthenticated();
+      final isAuthenticated = await service.isAuthenticated();
 
       expect(isAuthenticated, isTrue);
       expect(processRunner.invocations, hasLength(1));
@@ -78,19 +78,19 @@ void main() {
     test("returns false on non-zero exit code", () async {
       processRunner.enqueueResult(result: _fail(exitCode: 1));
 
-      final isAuthenticated = await service.isGithubCliAuthenticated();
+      final isAuthenticated = await service.isAuthenticated();
 
       expect(isAuthenticated, isFalse);
     });
   });
 
-  group("GitCliApi.listOpenPrs", () {
+  group("GhCliApi.listOpenPrs", () {
     late _FakeProcessRunner processRunner;
-    late GitCliApi service;
+    late GhCliApi service;
 
     setUp(() {
       processRunner = _FakeProcessRunner();
-      service = GitCliApi(processRunner: processRunner.call);
+      service = GhCliApi(processRunner: processRunner.call);
     });
 
     test("returns parsed PR list for valid JSON", () async {
@@ -214,13 +214,13 @@ void main() {
     });
   });
 
-  group("GitCliApi.getPrByNumber", () {
+  group("GhCliApi.getPrByNumber", () {
     late _FakeProcessRunner processRunner;
-    late GitCliApi service;
+    late GhCliApi service;
 
     setUp(() {
       processRunner = _FakeProcessRunner();
-      service = GitCliApi(processRunner: processRunner.call);
+      service = GhCliApi(processRunner: processRunner.call);
     });
 
     test("returns parsed PR for valid JSON", () async {

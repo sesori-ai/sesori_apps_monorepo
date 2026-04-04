@@ -1,6 +1,6 @@
 import "dart:io";
 
-import "package:sesori_bridge/src/bridge/api/git_remote_api.dart";
+import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:test/test.dart";
 
@@ -12,7 +12,7 @@ void main() {
         stdout: "https://github.com/org/repo.git",
       );
 
-      final result = await GitRemoteApi(processRunner: mockRunner).hasGitHubRemote(
+      final result = await GitCliApi(processRunner: mockRunner).hasGitHubRemote(
         projectPath: "/path/to/project",
       );
 
@@ -25,7 +25,7 @@ void main() {
         stdout: "git@github.com:org/repo.git",
       );
 
-      final result = await GitRemoteApi(processRunner: mockRunner).hasGitHubRemote(
+      final result = await GitCliApi(processRunner: mockRunner).hasGitHubRemote(
         projectPath: "/path/to/project",
       );
 
@@ -38,7 +38,7 @@ void main() {
         stdout: "https://GitHub.COM/org/repo.git",
       );
 
-      final result = await GitRemoteApi(processRunner: mockRunner).hasGitHubRemote(
+      final result = await GitCliApi(processRunner: mockRunner).hasGitHubRemote(
         projectPath: "/path/to/project",
       );
 
@@ -51,7 +51,7 @@ void main() {
         stdout: "https://gitlab.com/org/repo.git",
       );
 
-      final result = await GitRemoteApi(processRunner: mockRunner).hasGitHubRemote(
+      final result = await GitCliApi(processRunner: mockRunner).hasGitHubRemote(
         projectPath: "/path/to/project",
       );
 
@@ -64,7 +64,7 @@ void main() {
         stdout: "/path/to/local/repo",
       );
 
-      final result = await GitRemoteApi(processRunner: mockRunner).hasGitHubRemote(
+      final result = await GitCliApi(processRunner: mockRunner).hasGitHubRemote(
         projectPath: "/path/to/project",
       );
 
@@ -77,7 +77,7 @@ void main() {
         stdout: "",
       );
 
-      final result = await GitRemoteApi(processRunner: mockRunner).hasGitHubRemote(
+      final result = await GitCliApi(processRunner: mockRunner).hasGitHubRemote(
         projectPath: "/path/to/project",
       );
 
@@ -90,7 +90,7 @@ void main() {
         stdout: "   \n  \t  ",
       );
 
-      final result = await GitRemoteApi(processRunner: mockRunner).hasGitHubRemote(
+      final result = await GitCliApi(processRunner: mockRunner).hasGitHubRemote(
         projectPath: "/path/to/project",
       );
 
@@ -103,7 +103,7 @@ void main() {
         stdout: "https://github.com/org/repo.git",
       );
 
-      final result = await GitRemoteApi(processRunner: mockRunner).hasGitHubRemote(
+      final result = await GitCliApi(processRunner: mockRunner).hasGitHubRemote(
         projectPath: "/path/to/project",
       );
 
@@ -120,7 +120,7 @@ void main() {
         return ProcessResult(0, 0, "https://github.com/org/repo.git", "");
       }
 
-      final result = await GitRemoteApi(processRunner: mockRunner).hasGitHubRemote(
+      final result = await GitCliApi(processRunner: mockRunner).hasGitHubRemote(
         projectPath: "/path/to/project",
       );
 
@@ -138,7 +138,7 @@ void main() {
         return ProcessResult(0, 0, "https://github.com/org/repo.git", "");
       }
 
-      await GitRemoteApi(processRunner: mockRunner).hasGitHubRemote(
+      await GitCliApi(processRunner: mockRunner).hasGitHubRemote(
         projectPath: "/my/project/path",
       );
 
@@ -158,7 +158,7 @@ void main() {
         return ProcessResult(0, 0, "https://github.com/org/repo.git", "");
       }
 
-      await GitRemoteApi(processRunner: mockRunner).hasGitHubRemote(
+      await GitCliApi(processRunner: mockRunner).hasGitHubRemote(
         projectPath: "/path/to/project",
       );
 
@@ -176,7 +176,7 @@ void main() {
         return ProcessResult(0, 127, "", "command not found");
       }
 
-      final result = await GitRemoteApi(processRunner: mockRunner).hasGitHubRemote(
+      final result = await GitCliApi(processRunner: mockRunner).hasGitHubRemote(
         projectPath: "/path/to/project",
       );
 
@@ -189,7 +189,7 @@ void main() {
         stdout: "  \n  https://github.com/org/repo.git  \n  ",
       );
 
-      final result = await GitRemoteApi(processRunner: mockRunner).hasGitHubRemote(
+      final result = await GitCliApi(processRunner: mockRunner).hasGitHubRemote(
         projectPath: "/path/to/project",
       );
 

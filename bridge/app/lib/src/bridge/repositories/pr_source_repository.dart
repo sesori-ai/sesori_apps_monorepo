@@ -1,20 +1,22 @@
+import "../api/gh_cli_api.dart";
 import "../api/gh_pull_request.dart";
 import "../api/git_cli_api.dart";
 
 class PrSourceRepository {
+  final GhCliApi _ghCli;
   final GitCliApi _gitCli;
 
-  PrSourceRepository({required GitCliApi gitCli}) : _gitCli = gitCli;
+  PrSourceRepository({required GhCliApi ghCli, required GitCliApi gitCli}) : _ghCli = ghCli, _gitCli = gitCli;
 
-  Future<bool> isGithubCliAvailable() => _gitCli.isGithubCliAvailable();
+  Future<bool> isGhAvailable() => _ghCli.isAvailable();
 
-  Future<bool> isGithubCliAuthenticated() => _gitCli.isGithubCliAuthenticated();
+  Future<bool> isGhAuthenticated() => _ghCli.isAuthenticated();
 
   Future<bool> hasGitHubRemote({required String projectPath}) => _gitCli.hasGitHubRemote(projectPath: projectPath);
 
   Future<List<GhPullRequest>> listOpenPrs({required String workingDirectory}) =>
-      _gitCli.listOpenPrs(workingDirectory: workingDirectory);
+      _ghCli.listOpenPrs(workingDirectory: workingDirectory);
 
   Future<GhPullRequest> getPrByNumber({required int number, required String workingDirectory}) =>
-      _gitCli.getPrByNumber(number: number, workingDirectory: workingDirectory);
+      _ghCli.getPrByNumber(number: number, workingDirectory: workingDirectory);
 }

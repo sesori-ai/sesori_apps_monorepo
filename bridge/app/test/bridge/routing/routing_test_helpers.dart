@@ -459,9 +459,9 @@ class FakePrSyncService extends PrSyncService {
 
 class _AlwaysReadyPrSource implements PrSourceRepository {
   @override
-  Future<bool> isGithubCliAvailable() async => true;
+  Future<bool> isGhAvailable() async => true;
   @override
-  Future<bool> isGithubCliAuthenticated() async => true;
+  Future<bool> isGhAuthenticated() async => true;
   @override
   Future<bool> hasGitHubRemote({required String projectPath}) async => true;
   @override

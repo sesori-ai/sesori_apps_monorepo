@@ -41,12 +41,12 @@ class PrSyncService {
   Stream<String> get prChanges => _prChangesController.stream;
 
   Future<void> triggerRefresh({required String projectId, required String projectPath}) async {
-    _ghAvailable ??= await _prSource.isGithubCliAvailable();
+    _ghAvailable ??= await _prSource.isGhAvailable();
     if (!_ghAvailable!) {
       return;
     }
 
-    _ghAuthenticated ??= await _prSource.isGithubCliAuthenticated();
+    _ghAuthenticated ??= await _prSource.isGhAuthenticated();
     if (!_ghAuthenticated!) {
       return;
     }

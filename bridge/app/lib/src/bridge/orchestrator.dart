@@ -9,6 +9,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../auth/token_refresher.dart";
 import "../push/push_notification_service.dart";
+import "api/gh_cli_api.dart";
 import "api/git_cli_api.dart";
 import "key_exchange.dart";
 import "metadata_service.dart";
@@ -62,7 +63,10 @@ class Orchestrator {
        _prSyncService =
            prSyncService ??
            PrSyncService(
-             prSource: PrSourceRepository(gitCli: GitCliApi()),
+             prSource: PrSourceRepository(
+               ghCli: GhCliApi(),
+               gitCli: GitCliApi(),
+             ),
              pullRequestRepository: PullRequestRepository(
                pullRequestDao: projectsDao.attachedDatabase.pullRequestDao,
              ),

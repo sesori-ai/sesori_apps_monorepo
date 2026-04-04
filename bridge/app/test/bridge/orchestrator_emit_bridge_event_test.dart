@@ -346,9 +346,9 @@ class _FakePrSyncService extends PrSyncService {
 
 class _NoopPrSource implements PrSourceRepository {
   @override
-  Future<bool> isGithubCliAvailable() async => false;
+  Future<bool> isGhAvailable() async => false;
   @override
-  Future<bool> isGithubCliAuthenticated() async => false;
+  Future<bool> isGhAuthenticated() async => false;
   @override
   Future<bool> hasGitHubRemote({required String projectPath}) async => false;
   @override
