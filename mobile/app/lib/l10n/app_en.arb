@@ -283,5 +283,22 @@
           }
         },
          "sessionListDeleteFailed": "Failed to delete session",
-        "sessionListArchiveFailed": "Failed to archive session"
+         "sessionListArchiveFailed": "Failed to archive session",
+         "prLabel": "PR #{number}",
+         "@prLabel": {
+           "placeholders": {
+             "number": {
+               "type": "int"
+             }
+           }
+         },
+         "prStateOpen": "Open",
+         "prStateMerged": "Merged",
+         "prStateClosed": "Closed",
+         "prReviewApproved": "Approved",
+         "prReviewChangesRequested": "Changes requested",
+         "prReviewRequired": "Review required",
+         "prChecksSuccess": "Checks passing",
+         "prChecksFailing": "Checks failing",
+         "prChecksPending": "Checks pending"
 }

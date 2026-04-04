@@ -1110,6 +1110,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed to archive session'**
   String get sessionListArchiveFailed;
+
+  /// No description provided for @prLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'PR #{number}'**
+  String prLabel(int number);
+
+  /// No description provided for @prStateOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get prStateOpen;
+
+  /// No description provided for @prStateMerged.
+  ///
+  /// In en, this message translates to:
+  /// **'Merged'**
+  String get prStateMerged;
+
+  /// No description provided for @prStateClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get prStateClosed;
+
+  /// No description provided for @prReviewApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved'**
+  String get prReviewApproved;
+
+  /// No description provided for @prReviewChangesRequested.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes requested'**
+  String get prReviewChangesRequested;
+
+  /// No description provided for @prReviewRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Review required'**
+  String get prReviewRequired;
+
+  /// No description provided for @prChecksSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Checks passing'**
+  String get prChecksSuccess;
+
+  /// No description provided for @prChecksFailing.
+  ///
+  /// In en, this message translates to:
+  /// **'Checks failing'**
+  String get prChecksFailing;
+
+  /// No description provided for @prChecksPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Checks pending'**
+  String get prChecksPending;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

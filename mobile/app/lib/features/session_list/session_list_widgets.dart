@@ -70,6 +70,7 @@ class _SessionTile extends StatelessWidget {
                 loc.sessionListFilesChanged(filesChanged),
                 style: theme.textTheme.bodySmall,
               ),
+            if (session.pullRequest case final pr?) PrStatusRow(pr: pr),
             if (isActive)
               Row(
                 children: [
@@ -103,7 +104,7 @@ class _SessionTile extends StatelessWidget {
               ),
           ],
         ),
-        isThreeLine: updatedAt != null && (filesChanged > 0 || isActive),
+        isThreeLine: updatedAt != null && (filesChanged > 0 || isActive || session.pullRequest != null),
         trailing: const Icon(Icons.chevron_right),
         onTap: () {
           context.pushRoute(
