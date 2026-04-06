@@ -1,6 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../repositories/session_repository.dart";
 import "../worktree_service.dart";
 
 /// Result of a worktree cleanup attempt.
@@ -22,6 +23,7 @@ class CleanupRejected extends CleanupResult {
 /// Returns [CleanupSuccess] if cleanup completed.
 Future<CleanupResult> performWorktreeCleanup({
   required WorktreeService worktreeService,
+  required SessionRepository sessionRepository,
   required String sessionId,
   required String projectId,
   required String worktreePath,
@@ -31,7 +33,7 @@ Future<CleanupResult> performWorktreeCleanup({
   required bool force,
 }) async {
   // Shared-worktree check — non-bypassable, even with force=true.
-  final hasSharing = await worktreeService.hasOtherActiveSessionsSharing(
+  final hasSharing = await sessionRepository.hasOtherActiveSessionsSharing(
     sessionId: sessionId,
     worktreePath: deleteWorktree ? worktreePath : null,
     branchName: deleteBranch ? branchName : null,

@@ -407,5 +407,11 @@ class _NoopSessionRepository implements SessionRepository {
   Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async =>
       const <StoredSession>[];
   @override
+  Future<bool> hasOtherActiveSessionsSharing({
+    required String sessionId,
+    required String? worktreePath,
+    required String? branchName,
+  }) async => false;
+  @override
   Future<String?> getProjectPath({required String projectId}) async => null;
 }

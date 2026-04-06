@@ -2,6 +2,7 @@ import "dart:io";
 
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/delete_session_handler.dart";
 import "package:sesori_bridge/src/bridge/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -28,6 +29,7 @@ void main() {
         plugin: plugin,
         worktreeService: worktreeService,
         sessionDao: db.sessionDao,
+        sessionRepository: _FakeSessionRepository(),
       );
     });
 
@@ -459,4 +461,16 @@ class _TrackingFakeBridgePlugin extends FakeBridgePlugin {
     operationLog.add("pluginDelete");
     await super.deleteSession(sessionId);
   }
+}
+
+class _FakeSessionRepository implements SessionRepository {
+  @override
+  Future<bool> hasOtherActiveSessionsSharing({
+    required String sessionId,
+    required String? worktreePath,
+    required String? branchName,
+  }) async => false;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

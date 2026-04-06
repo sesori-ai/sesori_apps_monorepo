@@ -15,6 +15,7 @@ import "rename_session_dialog.dart";
 
 part "session_list_actions.dart";
 part "session_cleanup_dialogs.dart";
+part "session_force_dialog.dart";
 part "session_list_widgets.dart";
 
 class SessionListScreen extends StatelessWidget {

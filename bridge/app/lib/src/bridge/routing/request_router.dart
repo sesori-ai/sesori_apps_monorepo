@@ -101,11 +101,13 @@ class RequestRouter {
         plugin: plugin,
         worktreeService: worktreeService,
         sessionDao: sessionDao,
+        sessionRepository: sessionRepository,
       ),
       DeleteSessionHandler(
         plugin: plugin,
         worktreeService: worktreeService,
         sessionDao: sessionDao,
+        sessionRepository: sessionRepository,
       ),
       SendPromptHandler(plugin),
       AbortSessionHandler(plugin),

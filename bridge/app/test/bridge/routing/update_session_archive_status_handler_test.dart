@@ -3,6 +3,7 @@ import "dart:io";
 
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/update_session_archive_status_handler.dart";
 import "package:sesori_bridge/src/bridge/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -27,6 +28,7 @@ void main() {
         plugin: plugin,
         worktreeService: worktreeService,
         sessionDao: db.sessionDao,
+        sessionRepository: _FakeSessionRepository(),
       );
     });
 
@@ -1007,4 +1009,16 @@ class _NoopProcessRunner implements ProcessRunner {
   }) {
     throw UnimplementedError("_NoopProcessRunner should never execute git commands");
   }
+}
+
+class _FakeSessionRepository implements SessionRepository {
+  @override
+  Future<bool> hasOtherActiveSessionsSharing({
+    required String sessionId,
+    required String? worktreePath,
+    required String? branchName,
+  }) async => false;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

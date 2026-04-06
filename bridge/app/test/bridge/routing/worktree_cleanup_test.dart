@@ -2,6 +2,7 @@ import "dart:io";
 
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/worktree_cleanup.dart";
 import "package:sesori_bridge/src/bridge/worktree_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -13,10 +14,12 @@ void main() {
   group("performWorktreeCleanup", () {
     late AppDatabase db;
     late _FakeWorktreeService worktreeService;
+    late _FakeSessionRepository sessionRepository;
 
     setUp(() {
       db = createTestDatabase();
       worktreeService = _FakeWorktreeService(database: db);
+      sessionRepository = _FakeSessionRepository();
     });
 
     tearDown(() async {
@@ -26,6 +29,7 @@ void main() {
     test("no cleanup requested returns success and runs no git ops", () async {
       final result = await performWorktreeCleanup(
         worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
         sessionId: "s1",
         projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-001",
@@ -46,6 +50,7 @@ void main() {
 
       final result = await performWorktreeCleanup(
         worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
         sessionId: "s2",
         projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-002",
@@ -72,6 +77,7 @@ void main() {
 
       final result = await performWorktreeCleanup(
         worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
         sessionId: "s3",
         projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-003",
@@ -103,6 +109,7 @@ void main() {
 
       final result = await performWorktreeCleanup(
         worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
         sessionId: "s4",
         projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-004",
@@ -123,6 +130,7 @@ void main() {
 
       final result = await performWorktreeCleanup(
         worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
         sessionId: "s5",
         projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-005",
@@ -140,10 +148,11 @@ void main() {
     });
 
     test("shared worktree rejected even with force=true", () async {
-      worktreeService.hasSharingResult = true;
+      sessionRepository.hasSharingResult = true;
 
       final result = await performWorktreeCleanup(
         worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
         sessionId: "s6",
         projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-006",
@@ -156,18 +165,19 @@ void main() {
       expect(result, isA<CleanupRejected>());
       final rejection = (result as CleanupRejected).rejection;
       expect(rejection.issues, equals(const [CleanupIssue.sharedWorktree()]));
-      expect(worktreeService.hasSharingCallCount, equals(1));
+      expect(sessionRepository.hasSharingCallCount, equals(1));
       expect(worktreeService.checkCallCount, equals(0));
       expect(worktreeService.removeCallCount, equals(0));
       expect(worktreeService.deleteBranchCallCount, equals(0));
     });
 
     test("no rejection when no other sessions share worktree", () async {
-      worktreeService.hasSharingResult = false;
+      sessionRepository.hasSharingResult = false;
       worktreeService.safetyResult = WorktreeSafe();
 
       final result = await performWorktreeCleanup(
         worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
         sessionId: "s7",
         projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-007",
@@ -178,17 +188,18 @@ void main() {
       );
 
       expect(result, isA<CleanupSuccess>());
-      expect(worktreeService.hasSharingCallCount, equals(1));
+      expect(sessionRepository.hasSharingCallCount, equals(1));
       expect(worktreeService.removeCallCount, equals(1));
     });
 
     test("no rejection when other session is archived (hasSharingResult=false)", () async {
       // hasSharingResult=false simulates the DAO returning empty (archived sessions excluded)
-      worktreeService.hasSharingResult = false;
+      sessionRepository.hasSharingResult = false;
       worktreeService.safetyResult = WorktreeSafe();
 
       final result = await performWorktreeCleanup(
         worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
         sessionId: "s8",
         projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-008",
@@ -199,23 +210,39 @@ void main() {
       );
 
       expect(result, isA<CleanupSuccess>());
-      expect(worktreeService.hasSharingCallCount, equals(1));
+      expect(sessionRepository.hasSharingCallCount, equals(1));
       expect(worktreeService.removeCallCount, equals(1));
       expect(worktreeService.deleteBranchCallCount, equals(1));
     });
   });
 }
 
+class _FakeSessionRepository implements SessionRepository {
+  bool hasSharingResult = false;
+  int hasSharingCallCount = 0;
+
+  @override
+  Future<bool> hasOtherActiveSessionsSharing({
+    required String sessionId,
+    required String? worktreePath,
+    required String? branchName,
+  }) async {
+    hasSharingCallCount++;
+    return hasSharingResult;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 class _FakeWorktreeService extends WorktreeService {
   WorktreeSafetyResult safetyResult = WorktreeSafe();
   bool removeResult = true;
   bool deleteBranchResult = true;
-  bool hasSharingResult = false;
 
   int checkCallCount = 0;
   int removeCallCount = 0;
   int deleteBranchCallCount = 0;
-  int hasSharingCallCount = 0;
 
   String? lastRemoveWorktreePath;
   bool? lastRemoveForce;
@@ -228,16 +255,6 @@ class _FakeWorktreeService extends WorktreeService {
         processRunner: _NoopProcessRunner(),
         gitPathExists: ({required String gitPath}) => true,
       );
-
-  @override
-  Future<bool> hasOtherActiveSessionsSharing({
-    required String sessionId,
-    required String? worktreePath,
-    required String? branchName,
-  }) async {
-    hasSharingCallCount++;
-    return hasSharingResult;
-  }
 
   @override
   Future<WorktreeSafetyResult> checkWorktreeSafety({
