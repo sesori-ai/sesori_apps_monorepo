@@ -164,7 +164,7 @@ as String?,
 /// @nodoc
 mixin _$ProviderModel {
 
- String get id; String get providerID; String get name; String? get family; String get status;@JsonKey(name: "release_date") String? get releaseDate;
+ String get id; String get providerID; String get name; String? get family; bool get isAvailable;@DateConverter() DateTime? get releaseDate;
 /// Create a copy of ProviderModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -177,16 +177,16 @@ $ProviderModelCopyWith<ProviderModel> get copyWith => _$ProviderModelCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProviderModel&&(identical(other.id, id) || other.id == id)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.name, name) || other.name == name)&&(identical(other.family, family) || other.family == family)&&(identical(other.status, status) || other.status == status)&&(identical(other.releaseDate, releaseDate) || other.releaseDate == releaseDate));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProviderModel&&(identical(other.id, id) || other.id == id)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.name, name) || other.name == name)&&(identical(other.family, family) || other.family == family)&&(identical(other.isAvailable, isAvailable) || other.isAvailable == isAvailable)&&(identical(other.releaseDate, releaseDate) || other.releaseDate == releaseDate));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,providerID,name,family,status,releaseDate);
+int get hashCode => Object.hash(runtimeType,id,providerID,name,family,isAvailable,releaseDate);
 
 @override
 String toString() {
-  return 'ProviderModel(id: $id, providerID: $providerID, name: $name, family: $family, status: $status, releaseDate: $releaseDate)';
+  return 'ProviderModel(id: $id, providerID: $providerID, name: $name, family: $family, isAvailable: $isAvailable, releaseDate: $releaseDate)';
 }
 
 
@@ -197,7 +197,7 @@ abstract mixin class $ProviderModelCopyWith<$Res>  {
   factory $ProviderModelCopyWith(ProviderModel value, $Res Function(ProviderModel) _then) = _$ProviderModelCopyWithImpl;
 @useResult
 $Res call({
- String id, String providerID, String name, String? family, String status,@JsonKey(name: "release_date") String? releaseDate
+ String id, String providerID, String name, String? family, bool isAvailable,@DateConverter() DateTime? releaseDate
 });
 
 
@@ -214,15 +214,15 @@ class _$ProviderModelCopyWithImpl<$Res>
 
 /// Create a copy of ProviderModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? providerID = null,Object? name = null,Object? family = freezed,Object? status = null,Object? releaseDate = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? providerID = null,Object? name = null,Object? family = freezed,Object? isAvailable = null,Object? releaseDate = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,providerID: null == providerID ? _self.providerID : providerID // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,family: freezed == family ? _self.family : family // ignore: cast_nullable_to_non_nullable
-as String?,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
-as String,releaseDate: freezed == releaseDate ? _self.releaseDate : releaseDate // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,isAvailable: null == isAvailable ? _self.isAvailable : isAvailable // ignore: cast_nullable_to_non_nullable
+as bool,releaseDate: freezed == releaseDate ? _self.releaseDate : releaseDate // ignore: cast_nullable_to_non_nullable
+as DateTime?,
   ));
 }
 
@@ -234,15 +234,15 @@ as String?,
 @JsonSerializable()
 
 class _ProviderModel implements ProviderModel {
-  const _ProviderModel({required this.id, required this.providerID, required this.name, required this.family, this.status = "active", @JsonKey(name: "release_date") required this.releaseDate});
+  const _ProviderModel({required this.id, required this.providerID, required this.name, required this.family, this.isAvailable = true, @DateConverter() required this.releaseDate});
   factory _ProviderModel.fromJson(Map<String, dynamic> json) => _$ProviderModelFromJson(json);
 
 @override final  String id;
 @override final  String providerID;
 @override final  String name;
 @override final  String? family;
-@override@JsonKey() final  String status;
-@override@JsonKey(name: "release_date") final  String? releaseDate;
+@override@JsonKey() final  bool isAvailable;
+@override@DateConverter() final  DateTime? releaseDate;
 
 /// Create a copy of ProviderModel
 /// with the given fields replaced by the non-null parameter values.
@@ -257,16 +257,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProviderModel&&(identical(other.id, id) || other.id == id)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.name, name) || other.name == name)&&(identical(other.family, family) || other.family == family)&&(identical(other.status, status) || other.status == status)&&(identical(other.releaseDate, releaseDate) || other.releaseDate == releaseDate));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProviderModel&&(identical(other.id, id) || other.id == id)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.name, name) || other.name == name)&&(identical(other.family, family) || other.family == family)&&(identical(other.isAvailable, isAvailable) || other.isAvailable == isAvailable)&&(identical(other.releaseDate, releaseDate) || other.releaseDate == releaseDate));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,providerID,name,family,status,releaseDate);
+int get hashCode => Object.hash(runtimeType,id,providerID,name,family,isAvailable,releaseDate);
 
 @override
 String toString() {
-  return 'ProviderModel(id: $id, providerID: $providerID, name: $name, family: $family, status: $status, releaseDate: $releaseDate)';
+  return 'ProviderModel(id: $id, providerID: $providerID, name: $name, family: $family, isAvailable: $isAvailable, releaseDate: $releaseDate)';
 }
 
 
@@ -277,7 +277,7 @@ abstract mixin class _$ProviderModelCopyWith<$Res> implements $ProviderModelCopy
   factory _$ProviderModelCopyWith(_ProviderModel value, $Res Function(_ProviderModel) _then) = __$ProviderModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String providerID, String name, String? family, String status,@JsonKey(name: "release_date") String? releaseDate
+ String id, String providerID, String name, String? family, bool isAvailable,@DateConverter() DateTime? releaseDate
 });
 
 
@@ -294,15 +294,15 @@ class __$ProviderModelCopyWithImpl<$Res>
 
 /// Create a copy of ProviderModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? providerID = null,Object? name = null,Object? family = freezed,Object? status = null,Object? releaseDate = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? providerID = null,Object? name = null,Object? family = freezed,Object? isAvailable = null,Object? releaseDate = freezed,}) {
   return _then(_ProviderModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,providerID: null == providerID ? _self.providerID : providerID // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,family: freezed == family ? _self.family : family // ignore: cast_nullable_to_non_nullable
-as String?,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
-as String,releaseDate: freezed == releaseDate ? _self.releaseDate : releaseDate // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,isAvailable: null == isAvailable ? _self.isAvailable : isAvailable // ignore: cast_nullable_to_non_nullable
+as bool,releaseDate: freezed == releaseDate ? _self.releaseDate : releaseDate // ignore: cast_nullable_to_non_nullable
+as DateTime?,
   ));
 }
 

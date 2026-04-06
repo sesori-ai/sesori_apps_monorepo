@@ -6,9 +6,7 @@ import "../extensions/build_context_x.dart";
 import "app_modal_bottom_sheet.dart";
 
 /// Bottom sheet for selecting a model, grouped by provider.
-///
-/// Includes a search field for filtering. Models with status "deprecated"
-/// are excluded. Tapping a model selects it and closes the sheet.
+/// Includes a search field for filtering. Unavailable models are excluded.
 class ModelPickerSheet extends StatefulWidget {
   final List<ProviderInfo> providers;
   final String selectedProviderID;
@@ -40,9 +38,7 @@ class ModelPickerSheet extends StatefulWidget {
           height: height,
           decoration: BoxDecoration(
             color: Theme.of(sheetContext).colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(16),
-            ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
           ),
           child: ModelPickerSheet(
             providers: providers,
@@ -76,35 +72,36 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
         providerName.toLowerCase().contains(q);
   }
 
-  /// Builds the set of model IDs that should be visible by default
-  /// (when not searching). Matches the web UI logic: pick the newest
-  /// model per family (released within the last 6 months). Models
-  /// without a family or without a valid release date are always shown.
+  /// Builds the set of model IDs that should be visible by default.
   Set<String> _defaultVisibleIds(ProviderInfo provider) {
     final now = DateTime.now();
     final cutoff = DateTime(now.year, now.month - 6, now.day);
     final visible = <String>{};
 
-    // Group non-deprecated models by family.
+    // Group available models by family.
     final byFamily = <String, List<ProviderModel>>{};
     for (final m in provider.models.values) {
-      if (m.status == "deprecated") continue;
+      if (!m.isAvailable) continue;
       final family = m.family ?? m.id;
       (byFamily[family] ??= []).add(m);
     }
 
     for (final group in byFamily.values) {
-      // Pick the newest model in each family.
-      group.sort((a, b) => (b.releaseDate ?? "").compareTo(a.releaseDate ?? ""));
+      group.sort((a, b) {
+        final dateA = a.releaseDate;
+        final dateB = b.releaseDate;
+        if (dateB == null && dateA == null) return 0;
+        if (dateB == null) return -1;
+        if (dateA == null) return 1;
+        return dateB.compareTo(dateA);
+      });
       final newest = group.first;
-      final date = DateTime.tryParse(newest.releaseDate ?? "");
-      // Show if released within last 6 months, or if no valid date.
+      final date = newest.releaseDate;
       if (date == null || date.isAfter(cutoff)) {
         visible.add(newest.id);
       }
     }
 
-    // Always include the currently selected model so it's visible.
     if (provider.id == widget.selectedProviderID) {
       visible.add(widget.selectedModelID);
     }
@@ -119,7 +116,6 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
 
     return Column(
       children: [
-        // Drag handle
         Center(
           child: Container(
             margin: const EdgeInsetsDirectional.only(top: 12, bottom: 8),
@@ -138,7 +134,6 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
             style: theme.textTheme.titleMedium,
           ),
         ),
-        // Search field
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: TextField(
@@ -177,7 +172,7 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
 
     final models =
         provider.models.values
-            .where((m) => m.status != "deprecated")
+            .where((m) => m.isAvailable)
             .where((m) => _matchesQuery(model: m, providerName: provider.name))
             .where((m) {
               if (isSearching) {
@@ -186,11 +181,14 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
               return visibleIds?.contains(m.id) ?? false;
             })
             .toList()
-          // Sort by release_date descending (newest first), then by name.
           ..sort((a, b) {
-            final aDate = a.releaseDate ?? "";
-            final bDate = b.releaseDate ?? "";
-            if (aDate != bDate) return bDate.compareTo(aDate);
+            final aDate = a.releaseDate;
+            final bDate = b.releaseDate;
+            if (aDate != bDate) {
+              if (bDate == null) return -1;
+              if (aDate == null) return 1;
+              return bDate.compareTo(aDate);
+            }
             return a.name.compareTo(b.name);
           });
 

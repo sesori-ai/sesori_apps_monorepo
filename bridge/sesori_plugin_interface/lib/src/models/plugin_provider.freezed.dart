@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PluginModel {
 
- String get id; String get name; String? get family; bool get isAvailable;@_NullableDateTimeConverter() DateTime? get releaseDate;
+ String get id; String get name; String? get family; bool get isAvailable; DateTime? get releaseDate;
 /// Create a copy of PluginModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -47,7 +47,7 @@ abstract mixin class $PluginModelCopyWith<$Res>  {
   factory $PluginModelCopyWith(PluginModel value, $Res Function(PluginModel) _then) = _$PluginModelCopyWithImpl;
 @useResult
 $Res call({
- String id, String name, String? family, bool isAvailable,@_NullableDateTimeConverter() DateTime? releaseDate
+ String id, String name, String? family, bool isAvailable, DateTime? releaseDate
 });
 
 
@@ -83,14 +83,14 @@ as DateTime?,
 @JsonSerializable(createFactory: false)
 
 class _PluginModel implements PluginModel {
-  const _PluginModel({required this.id, required this.name, this.family, this.isAvailable = true, @_NullableDateTimeConverter() this.releaseDate});
+  const _PluginModel({required this.id, required this.name, this.family, this.isAvailable = true, this.releaseDate});
   
 
 @override final  String id;
 @override final  String name;
 @override final  String? family;
 @override@JsonKey() final  bool isAvailable;
-@override@_NullableDateTimeConverter() final  DateTime? releaseDate;
+@override final  DateTime? releaseDate;
 
 /// Create a copy of PluginModel
 /// with the given fields replaced by the non-null parameter values.
@@ -125,7 +125,7 @@ abstract mixin class _$PluginModelCopyWith<$Res> implements $PluginModelCopyWith
   factory _$PluginModelCopyWith(_PluginModel value, $Res Function(_PluginModel) _then) = __$PluginModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String name, String? family, bool isAvailable,@_NullableDateTimeConverter() DateTime? releaseDate
+ String id, String name, String? family, bool isAvailable, DateTime? releaseDate
 });
 
 

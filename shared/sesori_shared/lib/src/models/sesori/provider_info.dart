@@ -1,5 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "../../converters/date_converter.dart";
+
 part "provider_info.freezed.dart";
 
 part "provider_info.g.dart";
@@ -26,8 +28,8 @@ sealed class ProviderModel with _$ProviderModel {
     required String providerID,
     required String name,
     required String? family,
-    @Default("active") String status,
-    @JsonKey(name: "release_date") required String? releaseDate,
+    @Default(true) bool isAvailable,
+    @DateConverter() required DateTime? releaseDate,
   }) = _ProviderModel;
 
   factory ProviderModel.fromJson(Map<String, dynamic> json) => _$ProviderModelFromJson(json);

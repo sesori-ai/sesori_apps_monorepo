@@ -12,9 +12,7 @@ Map<String, dynamic> _$PluginModelToJson(_PluginModel instance) =>
       'name': instance.name,
       'family': instance.family,
       'isAvailable': instance.isAvailable,
-      'releaseDate': const _NullableDateTimeConverter().toJson(
-        instance.releaseDate,
-      ),
+      'releaseDate': instance.releaseDate?.toIso8601String(),
     };
 
 Map<String, dynamic> _$PluginProviderAnthropicToJson(

@@ -205,7 +205,7 @@ void main() {
       expect(sonnet.family, isNull);
     });
 
-    test("maps model status and releaseDate from plugin", () async {
+    test("maps model availability and releaseDate from plugin", () async {
       plugin.providersResult = PluginProvidersResult(
         providers: [
           PluginProvider.openAI(
@@ -244,19 +244,19 @@ void main() {
       final models = response.items[0].models;
 
       final gpt4o = models["gpt-4o"]!;
-      expect(gpt4o.status, equals("active"));
-      expect(gpt4o.releaseDate, equals("2025-01-15"));
+      expect(gpt4o.isAvailable, isTrue);
+      expect(gpt4o.releaseDate, equals(DateTime(2025, 1, 15)));
 
       final gpt35 = models["gpt-3.5"]!;
-      expect(gpt35.status, equals("deprecated"));
-      expect(gpt35.releaseDate, equals("2023-03-01"));
+      expect(gpt35.isAvailable, isFalse);
+      expect(gpt35.releaseDate, equals(DateTime(2023, 3, 1)));
 
       final gpt4Turbo = models["gpt-4-turbo"]!;
-      expect(gpt4Turbo.status, equals("active"));
+      expect(gpt4Turbo.isAvailable, isTrue);
       expect(gpt4Turbo.releaseDate, isNull);
     });
 
-    test("maps isAvailable=true to active status and false to deprecated", () async {
+    test("maps isAvailable values directly", () async {
       plugin.providersResult = const PluginProvidersResult(
         providers: [
           PluginProvider.anthropic(
@@ -280,8 +280,8 @@ void main() {
       );
 
       final models = response.items[0].models;
-      expect(models["m1"]!.status, equals("active"));
-      expect(models["m2"]!.status, equals("deprecated"));
+      expect(models["m1"]!.isAvailable, isTrue);
+      expect(models["m2"]!.isAvailable, isFalse);
     });
 
     test("provider with no models has empty models map", () async {

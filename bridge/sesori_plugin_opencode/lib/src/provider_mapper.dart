@@ -1,5 +1,5 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show PluginModel, PluginProvider, PluginProviderAuthType, PluginProvidersResult;
+    show Log, PluginModel, PluginProvider, PluginProviderAuthType, PluginProvidersResult;
 
 import "models/provider_info.dart";
 
@@ -19,8 +19,18 @@ PluginProvidersResult mapProviderResponse({
             id: m.id,
             name: m.name,
             family: m.family,
-            isAvailable: m.status != "deprecated",
-            releaseDate: m.releaseDate != null ? DateTime.tryParse(m.releaseDate!) : null,
+            isAvailable: switch (m.status) {
+              "active" => true,
+              "deprecated" => false,
+              final unknown => () {
+                Log.w("Unknown model status: $unknown for model ${m.id}, treating as available");
+                return true;
+              }(),
+            },
+            releaseDate: switch (m.releaseDate) {
+              final dateStr? => DateTime.tryParse(dateStr),
+              null => null,
+            },
           ),
         )
         .toList();
