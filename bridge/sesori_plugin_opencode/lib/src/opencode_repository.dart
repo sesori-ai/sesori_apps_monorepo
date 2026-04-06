@@ -1,8 +1,10 @@
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginProvidersResult;
 import "package:sesori_shared/sesori_shared.dart" show wait2;
 
 import "models/project.dart";
 import "models/session.dart";
 import "opencode_api.dart";
+import "provider_mapper.dart";
 
 const String _globalProjectId = "global";
 
@@ -140,6 +142,13 @@ class OpenCodeRepository {
     });
 
     return filtered;
+  }
+
+  /// Fetches providers from the API, optionally filtering to connected-only,
+  /// and maps OpenCode-specific models to plugin interface types.
+  Future<PluginProvidersResult> getProviders({required bool connectedOnly}) async {
+    final response = await _api.listProviders();
+    return mapProviderResponse(response: response, connectedOnly: connectedOnly);
   }
 
   /// Collects all sessions whose directory is equal to or under [worktree],

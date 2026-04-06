@@ -18,6 +18,8 @@ sealed class PluginModel with _$PluginModel {
     required String id,
     required String name,
     String? family,
+    @Default("active") String status,
+    String? releaseDate,
   }) = _PluginModel;
 }
 

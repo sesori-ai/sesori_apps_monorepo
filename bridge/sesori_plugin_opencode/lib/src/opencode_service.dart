@@ -1,4 +1,4 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginProvidersResult;
 import "package:sesori_shared/sesori_shared.dart" show ProjectActivitySummary;
 
 import "../opencode_plugin.dart";
@@ -13,8 +13,8 @@ class OpenCodeService {
     return repository.getProjects();
   }
 
-  Future<ProviderListResponse> getProviders() {
-    return repository.api.listProviders();
+  Future<PluginProvidersResult> getProviders({required bool connectedOnly}) {
+    return repository.getProviders(connectedOnly: connectedOnly);
   }
 
   Future<List<Session>> getSessions({

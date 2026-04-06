@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PluginModel {
 
- String get id; String get name; String? get family;
+ String get id; String get name; String? get family; String get status; String? get releaseDate;
 /// Create a copy of PluginModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -27,16 +27,16 @@ $PluginModelCopyWith<PluginModel> get copyWith => _$PluginModelCopyWithImpl<Plug
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginModel&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.family, family) || other.family == family));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginModel&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.family, family) || other.family == family)&&(identical(other.status, status) || other.status == status)&&(identical(other.releaseDate, releaseDate) || other.releaseDate == releaseDate));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,family);
+int get hashCode => Object.hash(runtimeType,id,name,family,status,releaseDate);
 
 @override
 String toString() {
-  return 'PluginModel(id: $id, name: $name, family: $family)';
+  return 'PluginModel(id: $id, name: $name, family: $family, status: $status, releaseDate: $releaseDate)';
 }
 
 
@@ -47,7 +47,7 @@ abstract mixin class $PluginModelCopyWith<$Res>  {
   factory $PluginModelCopyWith(PluginModel value, $Res Function(PluginModel) _then) = _$PluginModelCopyWithImpl;
 @useResult
 $Res call({
- String id, String name, String? family
+ String id, String name, String? family, String status, String? releaseDate
 });
 
 
@@ -64,11 +64,13 @@ class _$PluginModelCopyWithImpl<$Res>
 
 /// Create a copy of PluginModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? family = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? family = freezed,Object? status = null,Object? releaseDate = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,family: freezed == family ? _self.family : family // ignore: cast_nullable_to_non_nullable
+as String?,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as String,releaseDate: freezed == releaseDate ? _self.releaseDate : releaseDate // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -81,12 +83,14 @@ as String?,
 @JsonSerializable(createFactory: false)
 
 class _PluginModel implements PluginModel {
-  const _PluginModel({required this.id, required this.name, this.family});
+  const _PluginModel({required this.id, required this.name, this.family, this.status = "active", this.releaseDate});
   
 
 @override final  String id;
 @override final  String name;
 @override final  String? family;
+@override@JsonKey() final  String status;
+@override final  String? releaseDate;
 
 /// Create a copy of PluginModel
 /// with the given fields replaced by the non-null parameter values.
@@ -101,16 +105,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginModel&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.family, family) || other.family == family));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginModel&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.family, family) || other.family == family)&&(identical(other.status, status) || other.status == status)&&(identical(other.releaseDate, releaseDate) || other.releaseDate == releaseDate));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,family);
+int get hashCode => Object.hash(runtimeType,id,name,family,status,releaseDate);
 
 @override
 String toString() {
-  return 'PluginModel(id: $id, name: $name, family: $family)';
+  return 'PluginModel(id: $id, name: $name, family: $family, status: $status, releaseDate: $releaseDate)';
 }
 
 
@@ -121,7 +125,7 @@ abstract mixin class _$PluginModelCopyWith<$Res> implements $PluginModelCopyWith
   factory _$PluginModelCopyWith(_PluginModel value, $Res Function(_PluginModel) _then) = __$PluginModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String name, String? family
+ String id, String name, String? family, String status, String? releaseDate
 });
 
 
@@ -138,11 +142,13 @@ class __$PluginModelCopyWithImpl<$Res>
 
 /// Create a copy of PluginModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? family = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? family = freezed,Object? status = null,Object? releaseDate = freezed,}) {
   return _then(_PluginModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,family: freezed == family ? _self.family : family // ignore: cast_nullable_to_non_nullable
+as String?,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as String,releaseDate: freezed == releaseDate ? _self.releaseDate : releaseDate // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

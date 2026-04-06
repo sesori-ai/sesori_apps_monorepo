@@ -159,10 +159,14 @@ void main() {
       final opus = anthropic.models.firstWhere((m) => m.id == "claude-3-opus");
       expect(opus.name, equals("Claude 3 Opus"));
       expect(opus.family, equals("claude-3"));
+      expect(opus.status, equals("active"));
+      expect(opus.releaseDate, equals("2025-03-15"));
 
       final sonnet = anthropic.models.firstWhere((m) => m.id == "claude-3-sonnet");
       expect(sonnet.name, equals("Claude 3 Sonnet"));
       expect(sonnet.family, equals("claude-3"));
+      expect(sonnet.status, equals("deprecated"));
+      expect(sonnet.releaseDate, equals("2024-06-01"));
 
       final custom = result.providers.firstWhere((p) => p.id == "my-custom");
       expect(custom, isA<PluginProviderCustom>());
@@ -557,12 +561,16 @@ class _FakeOpenCodeServer {
                   "providerID": "anthropic",
                   "name": "Claude 3 Opus",
                   "family": "claude-3",
+                  "status": "active",
+                  "release_date": "2025-03-15",
                 },
                 "claude-3-sonnet": {
                   "id": "claude-3-sonnet",
                   "providerID": "anthropic",
                   "name": "Claude 3 Sonnet",
                   "family": "claude-3",
+                  "status": "deprecated",
+                  "release_date": "2024-06-01",
                 },
               },
             },

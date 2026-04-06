@@ -11,6 +11,8 @@ Map<String, dynamic> _$PluginModelToJson(_PluginModel instance) =>
       'id': instance.id,
       'name': instance.name,
       'family': instance.family,
+      'status': instance.status,
+      'releaseDate': instance.releaseDate,
     };
 
 Map<String, dynamic> _$PluginProviderAnthropicToJson(

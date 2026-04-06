@@ -1,3 +1,4 @@
+import "package:sesori_bridge/src/bridge/repositories/provider_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/get_providers_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -12,7 +13,7 @@ void main() {
 
     setUp(() {
       plugin = FakeBridgePlugin();
-      handler = GetProvidersHandler(plugin);
+      handler = GetProvidersHandler(ProviderRepository(plugin: plugin));
     });
 
     tearDown(() => plugin.close());
@@ -37,51 +38,11 @@ void main() {
 
     // ── Query parameter handling ────────────────────────────────────────────
 
-    test("connectedOnly defaults to true when absent", () async {
+    test("always requests connected providers only", () async {
       await handler.handle(
         makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
-        fragment: null,
-      );
-      expect(plugin.lastGetProvidersConnectedOnly, isTrue);
-    });
-
-    test("connectedOnly remains true when explicitly set to false", () async {
-      await handler.handle(
-        makeRequest("GET", "/provider"),
-        pathParams: {},
-        queryParams: {"connectedOnly": "false"},
-        fragment: null,
-      );
-      expect(plugin.lastGetProvidersConnectedOnly, isTrue);
-    });
-
-    test("connectedOnly is true when explicitly set to true", () async {
-      await handler.handle(
-        makeRequest("GET", "/provider"),
-        pathParams: {},
-        queryParams: {"connectedOnly": "true"},
-        fragment: null,
-      );
-      expect(plugin.lastGetProvidersConnectedOnly, isTrue);
-    });
-
-    test("connectedOnly remains true for uppercase FALSE", () async {
-      await handler.handle(
-        makeRequest("GET", "/provider"),
-        pathParams: {},
-        queryParams: {"connectedOnly": "FALSE"},
-        fragment: null,
-      );
-      expect(plugin.lastGetProvidersConnectedOnly, isTrue);
-    });
-
-    test("connectedOnly remains true for invalid values", () async {
-      await handler.handle(
-        makeRequest("GET", "/provider"),
-        pathParams: {},
-        queryParams: {"connectedOnly": "maybe"},
         fragment: null,
       );
       expect(plugin.lastGetProvidersConnectedOnly, isTrue);
@@ -242,6 +203,57 @@ void main() {
       expect(sonnet.providerID, equals("anthropic"));
       expect(sonnet.name, equals("Claude 3 Sonnet"));
       expect(sonnet.family, isNull);
+    });
+
+    test("maps model status and releaseDate from plugin", () async {
+      plugin.providersResult = const PluginProvidersResult(
+        providers: [
+          PluginProvider.openAI(
+            id: "openai",
+            name: "OpenAI",
+            authType: PluginProviderAuthType.apiKey,
+            models: [
+              PluginModel(
+                id: "gpt-4o",
+                name: "GPT-4o",
+                family: "gpt-4",
+                status: "active",
+                releaseDate: "2025-01-15",
+              ),
+              PluginModel(
+                id: "gpt-3.5",
+                name: "GPT-3.5",
+                family: "gpt-3",
+                status: "deprecated",
+                releaseDate: "2023-03-01",
+              ),
+              PluginModel(id: "gpt-4-turbo", name: "GPT-4 Turbo", family: "gpt-4"),
+            ],
+            defaultModelID: "gpt-4o",
+          ),
+        ],
+      );
+
+      final response = await handler.handle(
+        makeRequest("GET", "/provider"),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      final models = response.items[0].models;
+
+      final gpt4o = models["gpt-4o"]!;
+      expect(gpt4o.status, equals("active"));
+      expect(gpt4o.releaseDate, equals("2025-01-15"));
+
+      final gpt35 = models["gpt-3.5"]!;
+      expect(gpt35.status, equals("deprecated"));
+      expect(gpt35.releaseDate, equals("2023-03-01"));
+
+      final gpt4Turbo = models["gpt-4-turbo"]!;
+      expect(gpt4Turbo.status, equals("active"));
+      expect(gpt4Turbo.releaseDate, isNull);
     });
 
     test("provider with no models has empty models map", () async {
