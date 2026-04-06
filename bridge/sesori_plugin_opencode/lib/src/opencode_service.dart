@@ -44,8 +44,10 @@ class OpenCodeService {
     return tracker.handleEvent(event, directory);
   }
 
-  Future<void> coldStart() {
-    return tracker.coldStart();
+  Future<void> coldStart() async {
+    await tracker.coldStart();
+    final questions = await repository.getPendingQuestions();
+    tracker.populatePendingQuestions(questions: questions);
   }
 
   void reset() {

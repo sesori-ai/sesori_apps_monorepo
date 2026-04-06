@@ -1,6 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginProvidersResult;
 import "package:sesori_shared/sesori_shared.dart" show wait2;
 
+import "models/pending_question.dart";
 import "models/project.dart";
 import "models/session.dart";
 import "opencode_api.dart";
@@ -149,6 +150,10 @@ class OpenCodeRepository {
   Future<PluginProvidersResult> getProviders({required bool connectedOnly}) async {
     final response = await _api.listProviders();
     return mapProviderResponse(response: response, connectedOnly: connectedOnly);
+  }
+
+  Future<List<PendingQuestion>> getPendingQuestions() {
+    return _api.getPendingQuestions(directory: null);
   }
 
   /// Collects all sessions whose directory is equal to or under [worktree],
