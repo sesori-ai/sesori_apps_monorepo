@@ -1170,6 +1170,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Checks pending'**
   String get prChecksPending;
+
+  /// No description provided for @prMergeable.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to merge'**
+  String get prMergeable;
+
+  /// No description provided for @prConflicting.
+  ///
+  /// In en, this message translates to:
+  /// **'Has merge conflicts'**
+  String get prConflicting;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

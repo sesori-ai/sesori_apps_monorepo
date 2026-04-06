@@ -23,10 +23,15 @@ class PrStatusRow extends StatelessWidget {
     final theme = Theme.of(context);
     final loc = context.loc;
     final stateColor = _stateColor(scheme: theme.colorScheme, state: pr.state);
+    final mergeIcon = _mergeIcon(status: pr.mergeableStatus);
+    final mergeColor = _mergeColor(scheme: theme.colorScheme, status: pr.mergeableStatus) ?? stateColor;
 
     return Row(
       children: [
-        Icon(Icons.merge_type, size: 14, color: stateColor),
+        Tooltip(
+          message: _mergeTooltip(loc: loc, status: pr.mergeableStatus),
+          child: Icon(mergeIcon, size: 14, color: mergeColor),
+        ),
         const SizedBox(width: 4),
         Text(
           loc.prLabel(pr.number),
@@ -72,6 +77,29 @@ String _stateText({required AppLocalizations loc, required PrState state}) => sw
   PrState.merged => loc.prStateMerged,
   PrState.closed => loc.prStateClosed,
   PrState.unknown => "",
+};
+
+// ---------------------------------------------------------------------------
+// Mergeable status helpers
+// ---------------------------------------------------------------------------
+
+/// Returns a color for the merge icon, or null to fall back to the state color.
+Color? _mergeColor({required ColorScheme scheme, required PrMergeableStatus status}) => switch (status) {
+  PrMergeableStatus.mergeable => _kPrGreen,
+  PrMergeableStatus.conflicting => scheme.error,
+  PrMergeableStatus.unknown => null,
+};
+
+IconData _mergeIcon({required PrMergeableStatus status}) => switch (status) {
+  PrMergeableStatus.mergeable => Icons.merge_type,
+  PrMergeableStatus.conflicting => Icons.warning_amber_rounded,
+  PrMergeableStatus.unknown => Icons.merge_type,
+};
+
+String _mergeTooltip({required AppLocalizations loc, required PrMergeableStatus status}) => switch (status) {
+  PrMergeableStatus.mergeable => loc.prMergeable,
+  PrMergeableStatus.conflicting => loc.prConflicting,
+  PrMergeableStatus.unknown => "",
 };
 
 // ---------------------------------------------------------------------------

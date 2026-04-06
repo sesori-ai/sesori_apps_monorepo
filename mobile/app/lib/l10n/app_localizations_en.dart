@@ -604,4 +604,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prChecksPending => 'Checks pending';
+
+  @override
+  String get prMergeable => 'Ready to merge';
+
+  @override
+  String get prConflicting => 'Has merge conflicts';
 }

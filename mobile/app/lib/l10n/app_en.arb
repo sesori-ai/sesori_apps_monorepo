@@ -300,5 +300,7 @@
          "prReviewRequired": "Review required",
          "prChecksSuccess": "Checks passing",
          "prChecksFailing": "Checks failing",
-         "prChecksPending": "Checks pending"
+         "prChecksPending": "Checks pending",
+         "prMergeable": "Ready to merge",
+         "prConflicting": "Has merge conflicts"
 }
