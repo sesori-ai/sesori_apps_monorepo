@@ -282,6 +282,13 @@ class _NoopPlugin implements BridgePlugin {
   Future<void> rejectQuestion(String questionId) async {}
 
   @override
+  Future<void> replyToPermission({
+    required String requestId,
+    required String sessionId,
+    required String response,
+  }) async {}
+
+  @override
   Future<PluginProject> getProject(String projectId) async => const PluginProject(id: "");
 
   @override

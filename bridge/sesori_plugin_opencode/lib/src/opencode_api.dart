@@ -326,6 +326,27 @@ class OpenCodeApi {
     _ensureSuccess(response, "POST /question/$questionId/reply");
   }
 
+  Future<void> replyToPermission({
+    required String requestId,
+    required String sessionId,
+    required String response,
+  }) async {
+    final body = jsonEncode({"response": response});
+    Log.d("[permission-api] POST /session/$sessionId/permissions/$requestId");
+    final httpResponse = await _client.post(
+      Uri.parse("$serverURL/session/$sessionId/permissions/$requestId"),
+      headers: {
+        ..._authHeaders,
+        "content-type": "application/json",
+      },
+      body: body,
+    );
+    _ensureSuccess(
+      httpResponse,
+      "POST /session/$sessionId/permissions/$requestId",
+    );
+  }
+
   Future<void> rejectQuestion({
     required String questionId,
   }) async {

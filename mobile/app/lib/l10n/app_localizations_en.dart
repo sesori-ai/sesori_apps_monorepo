@@ -497,6 +497,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get questionRejectFailed => 'Failed to reject question. Please try again.';
 
   @override
+  String get permissionReplyFailed => 'Failed to send permission response. Please try again.';
+
+  @override
+  String get permissionBannerSingle => '1 permission request pending';
+
+  @override
+  String permissionBannerMultiple(int count) {
+    return '$count permission requests pending';
+  }
+
+  @override
   String get rename => 'Rename';
 
   @override

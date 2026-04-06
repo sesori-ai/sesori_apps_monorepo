@@ -91,6 +91,17 @@ abstract class BridgePlugin {
 
   Future<void> rejectQuestion(String questionId);
 
+  /// Responds to a pending permission request.
+  ///
+  /// [requestId] — the unique ID of the permission request
+  /// [sessionId] — the session that owns this permission
+  /// [response] — one of "once", "always", or "reject"
+  Future<void> replyToPermission({
+    required String requestId,
+    required String sessionId,
+    required String response,
+  });
+
   /// Get a project by its ID.
   Future<PluginProject> getProject(String projectId);
 

@@ -16,6 +16,7 @@ import "../../l10n/app_localizations.dart";
 import "widgets/assistant_message_card.dart";
 import "widgets/background_tasks_bar.dart";
 import "widgets/prompt_input.dart";
+import "widgets/permission_modal.dart";
 import "widgets/question_modal.dart";
 import "widgets/queued_message_bubble.dart";
 import "widgets/user_message_card.dart";
@@ -40,6 +41,7 @@ class SessionDetailScreen extends StatelessWidget {
       create: (_) => SessionDetailCubit(
         getIt<SessionService>(),
         getIt<ConnectionService>(),
+        permissionRepository: getIt<PermissionRepository>(),
         sessionId: sessionId,
         projectId: projectId,
         notificationCanceller: getIt<NotificationCanceller>(),
@@ -74,24 +76,32 @@ class _SessionDetailBody extends StatefulWidget {
 
 class _SessionDetailBodyState extends State<_SessionDetailBody> {
   StreamSubscription<SesoriQuestionAsked>? _questionSub;
+  StreamSubscription<SesoriPermissionAsked>? _permissionSub;
 
   @override
   void initState() {
     super.initState();
     final cubit = context.read<SessionDetailCubit>();
     _questionSub = cubit.questionStream.listen(_onNewQuestion);
+    _permissionSub = cubit.permissionStream.listen(_onNewPermission);
     cubit.clearNotifications();
   }
 
   @override
   void dispose() {
     _questionSub?.cancel();
+    _permissionSub?.cancel();
     super.dispose();
   }
 
   void _onNewQuestion(SesoriQuestionAsked question) {
     if (!mounted) return;
     _showQuestionModal(question);
+  }
+
+  void _onNewPermission(SesoriPermissionAsked permission) {
+    if (!mounted) return;
+    _showPermissionModal(permission);
   }
 
   void _openAgentPicker(SessionDetailLoaded loaded) {
@@ -188,6 +198,49 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
     );
   }
 
+  void _showPermissionModal(SesoriPermissionAsked permission) {
+    context.read<SessionDetailCubit>().clearNotifications();
+    PermissionModal.show(
+      context,
+      permission: permission,
+      onReply:
+          ({
+            required String requestId,
+            required String sessionId,
+            required String response,
+          }) async {
+            final success = await context.read<SessionDetailCubit>().replyToPermission(
+              requestId: requestId,
+              sessionId: sessionId,
+              response: response,
+            );
+
+            if (!mounted) return;
+
+            if (!success) {
+              ScaffoldMessenger.of(context)
+                ..clearSnackBars()
+                ..showSnackBar(
+                  SnackBar(
+                    content: Text(context.loc.permissionReplyFailed),
+                    duration: kSnackBarDuration,
+                  ),
+                );
+              return;
+            }
+
+            // Auto-open the next pending permission, if any.
+            final current = context.read<SessionDetailCubit>().state;
+            if (current case SessionDetailLoaded(:final pendingPermissions) when pendingPermissions.isNotEmpty) {
+              Future.delayed(const Duration(milliseconds: 200), () {
+                if (!mounted) return;
+                _showPermissionModal(pendingPermissions.first);
+              });
+            }
+          },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -258,6 +311,7 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
           :final streamingText,
           :final sessionStatus,
           :final pendingQuestions,
+          :final pendingPermissions,
           :final children,
           :final childStatuses,
           :final queuedMessages,
@@ -275,6 +329,12 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
                 _PendingQuestionsBanner(
                   count: pendingQuestions.fold(0, (sum, q) => sum + q.questions.length),
                   onTap: () => _showQuestionModal(pendingQuestions.first),
+                ),
+              // Pending-permissions banner
+              if (pendingPermissions.isNotEmpty)
+                _PendingPermissionsBanner(
+                  count: pendingPermissions.length,
+                  onTap: () => _showPermissionModal(pendingPermissions.first),
                 ),
               Expanded(
                 child: messages.isEmpty
@@ -318,6 +378,57 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
           onRetry: () => context.read<SessionDetailCubit>().reload(),
         ),
       },
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Pending-permissions banner
+// -----------------------------------------------------------------------------
+
+class _PendingPermissionsBanner extends StatelessWidget {
+  final int count;
+  final VoidCallback onTap;
+
+  const _PendingPermissionsBanner({required this.count, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final loc = context.loc;
+
+    return Material(
+      elevation: 2,
+      color: theme.colorScheme.tertiaryContainer,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            children: [
+              Icon(
+                Icons.shield_outlined,
+                size: 20,
+                color: theme.colorScheme.onTertiaryContainer,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  count == 1 ? loc.permissionBannerSingle : loc.permissionBannerMultiple(count),
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: theme.colorScheme.onTertiaryContainer,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.chevron_right,
+                size: 20,
+                color: theme.colorScheme.onTertiaryContainer,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

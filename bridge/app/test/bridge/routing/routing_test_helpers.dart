@@ -83,6 +83,9 @@ class FakeBridgePlugin implements BridgePlugin {
   List<List<String>>? lastReplyAnswers;
   String? lastRejectQuestionId;
   String? lastGetCurrentProjectProjectId;
+  String? lastReplyToPermissionRequestId;
+  String? lastReplyToPermissionSessionId;
+  String? lastReplyToPermissionResponse;
 
   // ── Error injection ──────────────────────────────────────────────────────
 
@@ -263,6 +266,17 @@ class FakeBridgePlugin implements BridgePlugin {
   @override
   Future<void> rejectQuestion(String questionId) async {
     lastRejectQuestionId = questionId;
+  }
+
+  @override
+  Future<void> replyToPermission({
+    required String requestId,
+    required String sessionId,
+    required String response,
+  }) async {
+    lastReplyToPermissionRequestId = requestId;
+    lastReplyToPermissionSessionId = sessionId;
+    lastReplyToPermissionResponse = response;
   }
 
   @override

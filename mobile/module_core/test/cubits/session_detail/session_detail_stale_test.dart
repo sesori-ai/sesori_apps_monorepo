@@ -9,12 +9,15 @@ import "package:sesori_dart_core/src/capabilities/server_connection/server_conne
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/platform/notification_canceller.dart";
+import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_helpers.dart";
 
 class MockNotificationCanceller extends Mock implements NotificationCanceller {}
+
+class MockPermissionRepository extends Mock implements PermissionRepository {}
 
 void main() {
   const sessionId = "session-1";
@@ -35,6 +38,7 @@ void main() {
     late MockSessionService mockSessionService;
     late MockConnectionService mockConnectionService;
     late MockNotificationCanceller mockNotificationCanceller;
+    late MockPermissionRepository mockPermissionRepository;
     late StreamController<SesoriSessionEvent> sessionEvents;
     late StreamController<SseEvent> globalEvents;
     late BehaviorSubject<ConnectionStatus> connectionStatus;
@@ -43,6 +47,7 @@ void main() {
       mockSessionService = MockSessionService();
       mockConnectionService = MockConnectionService();
       mockNotificationCanceller = MockNotificationCanceller();
+      mockPermissionRepository = MockPermissionRepository();
       sessionEvents = StreamController<SesoriSessionEvent>.broadcast();
       globalEvents = StreamController<SseEvent>.broadcast();
       connectionStatus = BehaviorSubject<ConnectionStatus>.seeded(connectedStatus);
@@ -57,6 +62,13 @@ void main() {
           category: any(named: "category"),
         ),
       ).thenReturn(null);
+      when(
+        () => mockPermissionRepository.replyToPermission(
+          requestId: any(named: "requestId"),
+          sessionId: any(named: "sessionId"),
+          response: any(named: "response"),
+        ),
+      ).thenAnswer((_) async => ApiResponse<void>.success(null));
 
       _stubLoadApis(mockSessionService, sessionId: sessionId);
     });
@@ -73,6 +85,7 @@ void main() {
         final cubit = SessionDetailCubit(
           mockSessionService,
           mockConnectionService,
+          permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
           notificationCanceller: mockNotificationCanceller,
@@ -123,6 +136,7 @@ void main() {
       final cubit = SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
@@ -165,6 +179,7 @@ void main() {
       final cubit = SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
@@ -223,6 +238,7 @@ void main() {
       final cubit = SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
@@ -284,6 +300,7 @@ void main() {
       final cubit = SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
@@ -316,6 +333,7 @@ void main() {
       final cubit = SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
@@ -345,6 +363,7 @@ void main() {
       final cubit = SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
@@ -366,6 +385,7 @@ void main() {
         final cubit = SessionDetailCubit(
           mockSessionService,
           mockConnectionService,
+          permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
           notificationCanceller: mockNotificationCanceller,
@@ -402,6 +422,7 @@ void main() {
       final cubit = SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,

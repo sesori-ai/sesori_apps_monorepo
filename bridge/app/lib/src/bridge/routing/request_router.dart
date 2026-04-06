@@ -7,6 +7,7 @@ import "../foundation/process_runner.dart";
 import "../metadata_service.dart";
 import "../persistence/daos/projects_dao.dart";
 import "../persistence/daos/session_dao.dart";
+import "../repositories/permission_repository.dart";
 import "../repositories/provider_repository.dart";
 import "../repositories/session_repository.dart";
 import "../services/pr_sync_service.dart";
@@ -32,6 +33,7 @@ import "health_check_handler.dart";
 import "hide_project_handler.dart";
 import "open_project_handler.dart";
 import "reject_question_handler.dart";
+import "reply_to_permission_handler.dart";
 import "rename_project_handler.dart";
 import "rename_session_handler.dart";
 import "reply_to_question_handler.dart";
@@ -75,6 +77,7 @@ class RequestRouter {
     required PrSyncService prSyncService,
   }) {
     final hiddenStore = projectsDao;
+    final permissionRepository = PermissionRepository(plugin: plugin);
 
     final worktreeService = WorktreeService(
       projectsDao: projectsDao,
@@ -117,6 +120,7 @@ class RequestRouter {
       GetProjectQuestionsHandler(plugin),
       ReplyToQuestionHandler(plugin),
       RejectQuestionHandler(plugin),
+      ReplyToPermissionHandler(permissionRepository: permissionRepository),
       RenameProjectHandler(plugin),
       CreateProjectHandler(plugin),
       OpenProjectHandler(plugin, hiddenStore),

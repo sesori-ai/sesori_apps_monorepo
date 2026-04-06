@@ -33,6 +33,7 @@ export "src/capabilities/session/session_service.dart";
 export "src/capabilities/sse/session_activity_info.dart";
 export "src/capabilities/sse/sse_event_repository.dart";
 export "src/capabilities/voice/voice_api.dart";
+export "src/repositories/permission_repository.dart";
 // Cubits
 export "src/cubits/connection_overlay/connection_overlay_cubit.dart";
 export "src/cubits/login/login_cubit.dart";

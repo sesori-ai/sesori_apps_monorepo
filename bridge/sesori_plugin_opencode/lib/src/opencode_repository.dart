@@ -102,6 +102,18 @@ class OpenCodeRepository {
     return [...mergedRealProjects, ...virtualProjects];
   }
 
+  Future<void> replyToPermission({
+    required String requestId,
+    required String sessionId,
+    required String response,
+  }) {
+    return _api.replyToPermission(
+      requestId: requestId,
+      sessionId: sessionId,
+      response: response,
+    );
+  }
+
   Future<List<Session>> getSessions({required String worktree}) async {
     final (standardSessions, globalSessions) = await wait2(
       _api.listSessions(directory: worktree),

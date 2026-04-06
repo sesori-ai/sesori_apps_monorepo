@@ -40,6 +40,18 @@ class OpenCodeService {
     }
   }
 
+  Future<void> replyToPermission({
+    required String requestId,
+    required String sessionId,
+    required String response,
+  }) {
+    return repository.replyToPermission(
+      requestId: requestId,
+      sessionId: sessionId,
+      response: response,
+    );
+  }
+
   bool handleSseEvent(SseEventData event, String? directory) {
     return tracker.handleEvent(event, directory);
   }

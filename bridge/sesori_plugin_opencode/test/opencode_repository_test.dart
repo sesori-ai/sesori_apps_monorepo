@@ -442,6 +442,13 @@ class _FakeApi implements OpenCodeApi {
   }) async {}
 
   @override
+  Future<void> replyToPermission({
+    required String requestId,
+    required String sessionId,
+    required String response,
+  }) async {}
+
+  @override
   Future<void> rejectQuestion({required String questionId}) async {}
 
   @override

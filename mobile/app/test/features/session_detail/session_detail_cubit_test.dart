@@ -8,9 +8,12 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_e
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
+import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../helpers/test_helpers.dart";
+
+class MockPermissionRepository extends Mock implements PermissionRepository {}
 
 void main() {
   const sessionId = "session-1";
@@ -24,6 +27,7 @@ void main() {
     late MockSessionService mockSessionService;
     late MockConnectionService mockConnectionService;
     late MockNotificationCanceller mockNotificationCanceller;
+    late MockPermissionRepository mockPermissionRepository;
     late MockFailureReporter mockFailureReporter;
     late BehaviorSubject<SesoriSessionEvent> sessionEvents;
     late BehaviorSubject<SseEvent> globalEvents;
@@ -33,6 +37,7 @@ void main() {
       mockSessionService = MockSessionService();
       mockConnectionService = MockConnectionService();
       mockNotificationCanceller = MockNotificationCanceller();
+      mockPermissionRepository = MockPermissionRepository();
       mockFailureReporter = MockFailureReporter();
       sessionEvents = BehaviorSubject<SesoriSessionEvent>();
       globalEvents = BehaviorSubject<SseEvent>();
@@ -48,6 +53,14 @@ void main() {
           information: any(named: "information"),
         ),
       ).thenAnswer((_) async {});
+
+      when(
+        () => mockPermissionRepository.replyToPermission(
+          requestId: any(named: "requestId"),
+          sessionId: any(named: "sessionId"),
+          response: any(named: "response"),
+        ),
+      ).thenAnswer((_) async => ApiResponse<void>.success(null));
 
       _stubAllDefaults(
         mockSessionService,
@@ -71,6 +84,7 @@ void main() {
       build: () => SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
@@ -101,6 +115,7 @@ void main() {
         return SessionDetailCubit(
           mockSessionService,
           mockConnectionService,
+          permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
           notificationCanceller: mockNotificationCanceller,
@@ -117,6 +132,7 @@ void main() {
       build: () => SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
@@ -146,6 +162,7 @@ void main() {
       build: () => SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
@@ -176,6 +193,7 @@ void main() {
       build: () => SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
@@ -221,6 +239,7 @@ void main() {
       build: () => SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
@@ -245,6 +264,7 @@ void main() {
       build: () => SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
@@ -267,6 +287,7 @@ void main() {
       build: () => SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
@@ -294,6 +315,7 @@ void main() {
         return SessionDetailCubit(
           mockSessionService,
           mockConnectionService,
+          permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
           notificationCanceller: mockNotificationCanceller,
@@ -343,6 +365,7 @@ void main() {
         return SessionDetailCubit(
           mockSessionService,
           mockConnectionService,
+          permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
           notificationCanceller: mockNotificationCanceller,
@@ -373,6 +396,7 @@ void main() {
       build: () => SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
@@ -414,6 +438,7 @@ void main() {
         return SessionDetailCubit(
           mockSessionService,
           mockConnectionService,
+          permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
           notificationCanceller: mockNotificationCanceller,
@@ -445,6 +470,7 @@ void main() {
       build: () => SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
@@ -474,6 +500,7 @@ void main() {
       build: () => SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
@@ -501,6 +528,7 @@ void main() {
         return SessionDetailCubit(
           mockSessionService,
           mockConnectionService,
+          permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
           notificationCanceller: mockNotificationCanceller,
@@ -527,6 +555,7 @@ void main() {
       build: () => SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
@@ -568,6 +597,7 @@ void main() {
         return SessionDetailCubit(
           mockSessionService,
           mockConnectionService,
+          permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
           notificationCanceller: mockNotificationCanceller,
@@ -595,6 +625,7 @@ void main() {
         return SessionDetailCubit(
           mockSessionService,
           mockConnectionService,
+          permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
           notificationCanceller: mockNotificationCanceller,
@@ -630,6 +661,7 @@ void main() {
       build: () => SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
@@ -660,6 +692,7 @@ void main() {
         return SessionDetailCubit(
           mockSessionService,
           mockConnectionService,
+          permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
           notificationCanceller: mockNotificationCanceller,
@@ -702,6 +735,7 @@ void main() {
         return SessionDetailCubit(
           mockSessionService,
           mockConnectionService,
+          permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
           notificationCanceller: mockNotificationCanceller,
@@ -749,6 +783,7 @@ void main() {
         return SessionDetailCubit(
           mockSessionService,
           mockConnectionService,
+          permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
           notificationCanceller: mockNotificationCanceller,
@@ -797,6 +832,7 @@ void main() {
         return SessionDetailCubit(
           mockSessionService,
           mockConnectionService,
+          permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
           notificationCanceller: mockNotificationCanceller,
@@ -854,6 +890,7 @@ void main() {
       build: () => SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
@@ -921,6 +958,7 @@ void main() {
       build: () => SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
@@ -997,6 +1035,7 @@ void main() {
         return SessionDetailCubit(
           mockSessionService,
           mockConnectionService,
+          permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
           notificationCanceller: mockNotificationCanceller,
@@ -1160,7 +1199,7 @@ void _stubAllDefaults(
       providerID: any(named: "providerID"),
       modelID: any(named: "modelID"),
     ),
-  ).thenAnswer((_) async => ApiResponse.success(null));
+  ).thenAnswer((_) async => ApiResponse<void>.success(null));
   when(
     () => service.abortSession(any()),
   ).thenAnswer((_) async => ApiResponse.success(const SuccessEmptyResponse()));
@@ -1170,8 +1209,8 @@ void _stubAllDefaults(
       sessionId: any(named: "sessionId"),
       answers: any(named: "answers"),
     ),
-  ).thenAnswer((_) async => ApiResponse.success(null));
+  ).thenAnswer((_) async => ApiResponse<void>.success(null));
   when(
     () => service.rejectQuestion(any()),
-  ).thenAnswer((_) async => ApiResponse.success(null));
+  ).thenAnswer((_) async => ApiResponse<void>.success(null));
 }
