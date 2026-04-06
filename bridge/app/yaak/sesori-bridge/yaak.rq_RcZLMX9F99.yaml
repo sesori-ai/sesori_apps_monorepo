@@ -2,25 +2,29 @@ type: http_request
 model: http_request
 id: rq_RcZLMX9F99
 createdAt: 2026-03-24T12:36:02.499026
-updatedAt: 2026-03-24T16:58:56.628266
+updatedAt: 2026-04-06T13:13:58.783689
 workspaceId: wk_rSi2KDTVqo
 folderId: fl_KKPLMJLWXX
 authentication: {}
 authenticationType: null
-body: {}
-bodyType: null
+body:
+  text: |-
+    {
+      "projectId": "${[ project_id ]}"
+    }
+bodyType: application/json
 description: ''
 headers:
 - enabled: true
-  name: x-project-id
-  value: ${[ project_id ]}
-  id: jD0MEpp09G
-- enabled: true
   name: ''
   value: ''
-  id: uVuKUCuYeh
-method: GET
+  id: mGWamx6Cad
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: B9i2rKQdxB
+method: POST
 name: Sessions List
 sortPriority: 0.0
-url: ${[ url ]}/session
+url: ${[ url ]}/sessions
 urlParameters: []
