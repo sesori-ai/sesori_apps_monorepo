@@ -652,6 +652,177 @@ void main() {
       expect(persisted?.archivedAt, isNotNull);
     });
 
+    test("archive response has hasWorktree true when session has worktreePath", () async {
+      await _insertSession(
+        db: db,
+        sessionId: "s1",
+        projectId: "/repo",
+        isDedicated: true,
+        worktreePath: "/repo/.worktrees/session-001",
+        branchName: "session-001",
+        baseBranch: null,
+        archivedAt: null,
+        baseCommit: null,
+      );
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "/repo",
+          directory: "/repo/.worktrees/session-001",
+          parentID: null,
+          title: "Session 1",
+          time: PluginSessionTime(created: 10, updated: 20, archived: null),
+          summary: null,
+        ),
+      ];
+
+      final result = await handler.handle(
+        makeRequest("PATCH", "/session/update/archive"),
+        body: _archiveRequest(
+          sessionId: "s1",
+          archived: true,
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.hasWorktree, isTrue);
+    });
+
+    test("archive response has hasWorktree false when session has no worktreePath", () async {
+      await _insertSession(
+        db: db,
+        sessionId: "s1",
+        projectId: "/repo",
+        isDedicated: false,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        archivedAt: null,
+        baseCommit: null,
+      );
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "/repo",
+          directory: "/repo",
+          parentID: null,
+          title: "Session 1",
+          time: PluginSessionTime(created: 10, updated: 20, archived: null),
+          summary: null,
+        ),
+      ];
+
+      final result = await handler.handle(
+        makeRequest("PATCH", "/session/update/archive"),
+        body: _archiveRequest(
+          sessionId: "s1",
+          archived: true,
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.hasWorktree, isFalse);
+    });
+
+    test("unarchive response has hasWorktree true when session has worktreePath", () async {
+      final existingDir = Directory.systemTemp.createTempSync("archive-handler-worktree-");
+      addTearDown(() {
+        if (existingDir.existsSync()) {
+          existingDir.deleteSync(recursive: true);
+        }
+      });
+
+      await _insertSession(
+        db: db,
+        sessionId: "s1",
+        projectId: "/repo",
+        isDedicated: true,
+        worktreePath: existingDir.path,
+        branchName: "session-001",
+        baseBranch: null,
+        archivedAt: 123,
+        baseCommit: null,
+      );
+      plugin.sessionsResult = [
+        PluginSession(
+          id: "s1",
+          projectID: "/repo",
+          directory: existingDir.path,
+          parentID: null,
+          title: "Session 1",
+          time: const PluginSessionTime(created: 10, updated: 20, archived: 123),
+          summary: null,
+        ),
+      ];
+
+      final result = await handler.handle(
+        makeRequest("PATCH", "/session/update/archive"),
+        body: _archiveRequest(
+          sessionId: "s1",
+          archived: false,
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.hasWorktree, isTrue);
+    });
+
+    test("unarchive response has hasWorktree false when session has no worktreePath", () async {
+      await _insertSession(
+        db: db,
+        sessionId: "s1",
+        projectId: "/repo",
+        isDedicated: false,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        archivedAt: 123,
+        baseCommit: null,
+      );
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "/repo",
+          directory: "/repo",
+          parentID: null,
+          title: "Session 1",
+          time: PluginSessionTime(created: 10, updated: 20, archived: 123),
+          summary: null,
+        ),
+      ];
+
+      final result = await handler.handle(
+        makeRequest("PATCH", "/session/update/archive"),
+        body: _archiveRequest(
+          sessionId: "s1",
+          archived: false,
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.hasWorktree, isFalse);
+    });
+
     test("session id is preserved on unarchive response", () async {
       await _insertSession(
         db: db,

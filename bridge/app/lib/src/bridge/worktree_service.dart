@@ -187,6 +187,25 @@ class WorktreeService {
   }
 
   // -------------------------------------------------------------------------
+  // Sharing check
+  // -------------------------------------------------------------------------
+
+  /// Returns true if any other active (non-archived) session shares the given
+  /// [worktreePath] or [branchName] with [sessionId].
+  Future<bool> hasOtherActiveSessionsSharing({
+    required String sessionId,
+    required String? worktreePath,
+    required String? branchName,
+  }) async {
+    final sessions = await _sessionDao.getOtherActiveSessionsSharing(
+      sessionId: sessionId,
+      worktreePath: worktreePath,
+      branchName: branchName,
+    );
+    return sessions.isNotEmpty;
+  }
+
+  // -------------------------------------------------------------------------
   // Safety check
   // -------------------------------------------------------------------------
 

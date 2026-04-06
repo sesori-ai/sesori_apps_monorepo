@@ -566,7 +566,10 @@ class FakeSessionRepository implements SessionRepository {
         final mergedTime = currentTime != null
             ? currentTime.copyWith(archived: dbSession.archivedAt)
             : SessionTime(created: 0, updated: 0, archived: dbSession.archivedAt);
-        return session.copyWith(time: mergedTime);
+        return session.copyWith(
+          time: mergedTime,
+          hasWorktree: dbSession.worktreePath != null,
+        );
       }
       return session;
     }).toList();

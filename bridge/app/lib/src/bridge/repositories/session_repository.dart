@@ -49,7 +49,10 @@ class SessionRepository {
         final mergedTime = currentTime != null
             ? currentTime.copyWith(archived: dbSession.archivedAt)
             : SessionTime(created: 0, updated: 0, archived: dbSession.archivedAt);
-        result = result.copyWith(time: mergedTime);
+        result = result.copyWith(
+          time: mergedTime,
+          hasWorktree: dbSession.worktreePath != null,
+        );
       }
 
       final pr = _selectBestPr(prsBySessionId[session.id]);

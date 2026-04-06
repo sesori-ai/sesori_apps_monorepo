@@ -188,7 +188,7 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
     final responseSession = _withArchivedTime(
       session: pluginSession.toSharedSession(),
       archivedAt: archivedAt,
-    );
+    ).copyWith(hasWorktree: sessionDto.worktreePath != null);
     return responseSession;
   }
 
@@ -227,7 +227,7 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
     final responseSession = _withArchivedTime(
       session: pluginSession.toSharedSession(),
       archivedAt: null,
-    );
+    ).copyWith(hasWorktree: sessionDto.worktreePath != null);
     return responseSession;
   }
 }

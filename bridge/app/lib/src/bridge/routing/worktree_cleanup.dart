@@ -30,6 +30,20 @@ Future<CleanupResult> performWorktreeCleanup({
   required bool deleteBranch,
   required bool force,
 }) async {
+  // Shared-worktree check — non-bypassable, even with force=true.
+  final hasSharing = await worktreeService.hasOtherActiveSessionsSharing(
+    sessionId: sessionId,
+    worktreePath: deleteWorktree ? worktreePath : null,
+    branchName: deleteBranch ? branchName : null,
+  );
+  if (hasSharing) {
+    return CleanupRejected(
+      rejection: const SessionCleanupRejection(
+        issues: [CleanupIssue.sharedWorktree()],
+      ),
+    );
+  }
+
   if (deleteWorktree && !force) {
     final safety = await worktreeService.checkWorktreeSafety(
       worktreePath: worktreePath,

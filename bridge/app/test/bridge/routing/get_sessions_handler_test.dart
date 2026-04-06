@@ -394,6 +394,106 @@ void main() {
       expect(result.items[2].time?.archived, equals(500));
     });
 
+    test("hasWorktree is true when DB record has worktreePath", () async {
+      plugin.sessionsResult = [
+        const PluginSession(
+          id: "s1",
+          projectID: "p1",
+          directory: "/tmp",
+          parentID: null,
+          title: null,
+          time: PluginSessionTime(created: 100, updated: 200, archived: null),
+          summary: null,
+        ),
+      ];
+
+      sessionDao.setSession(
+        const SessionDto(
+          sessionId: "s1",
+          projectId: "p1",
+          worktreePath: "/repo/.worktrees/session-001",
+          branchName: "session-001",
+          isDedicated: true,
+          archivedAt: null,
+          baseBranch: null,
+          baseCommit: null,
+          createdAt: 100,
+        ),
+      );
+
+      final result = await handler.handle(
+        makeRequest("POST", "/sessions"),
+        body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.items.first.hasWorktree, isTrue);
+    });
+
+    test("hasWorktree is false when DB record has null worktreePath", () async {
+      plugin.sessionsResult = [
+        const PluginSession(
+          id: "s1",
+          projectID: "p1",
+          directory: "/tmp",
+          parentID: null,
+          title: null,
+          time: PluginSessionTime(created: 100, updated: 200, archived: null),
+          summary: null,
+        ),
+      ];
+
+      sessionDao.setSession(
+        const SessionDto(
+          sessionId: "s1",
+          projectId: "p1",
+          worktreePath: null,
+          branchName: null,
+          isDedicated: false,
+          archivedAt: null,
+          baseBranch: null,
+          baseCommit: null,
+          createdAt: 100,
+        ),
+      );
+
+      final result = await handler.handle(
+        makeRequest("POST", "/sessions"),
+        body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.items.first.hasWorktree, isFalse);
+    });
+
+    test("hasWorktree is false when no DB record exists", () async {
+      plugin.sessionsResult = [
+        const PluginSession(
+          id: "s1",
+          projectID: "p1",
+          directory: "/tmp",
+          parentID: null,
+          title: null,
+          time: null,
+          summary: null,
+        ),
+      ];
+
+      final result = await handler.handle(
+        makeRequest("POST", "/sessions"),
+        body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.items.first.hasWorktree, isFalse);
+    });
+
     test("merges pull request metadata when session has a PR", () async {
       plugin.sessionsResult = const [
         PluginSession(
