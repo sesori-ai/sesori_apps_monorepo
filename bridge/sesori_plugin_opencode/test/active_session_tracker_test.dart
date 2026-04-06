@@ -1,4 +1,5 @@
 import "package:opencode_plugin/opencode_plugin.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PermissionReply;
 import "package:test/test.dart";
 
 void main() {
@@ -1059,7 +1060,7 @@ class _FakeApi implements OpenCodeApi {
   Future<void> replyToPermission({
     required String requestId,
     required String sessionId,
-    required String response,
+    required PermissionReply reply,
   }) async {}
 
   @override

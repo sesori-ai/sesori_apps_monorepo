@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$ReplyToPermissionRequest {
 
- String get requestId; String get sessionId; String get response;
+ String get requestId; String get sessionId; PermissionReply get reply;
 /// Create a copy of ReplyToPermissionRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $ReplyToPermissionRequestCopyWith<ReplyToPermissionRequest> get copyWith => _$Re
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ReplyToPermissionRequest&&(identical(other.requestId, requestId) || other.requestId == requestId)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.response, response) || other.response == response));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ReplyToPermissionRequest&&(identical(other.requestId, requestId) || other.requestId == requestId)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.reply, reply) || other.reply == reply));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,requestId,sessionId,response);
+int get hashCode => Object.hash(runtimeType,requestId,sessionId,reply);
 
 @override
 String toString() {
-  return 'ReplyToPermissionRequest(requestId: $requestId, sessionId: $sessionId, response: $response)';
+  return 'ReplyToPermissionRequest(requestId: $requestId, sessionId: $sessionId, reply: $reply)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $ReplyToPermissionRequestCopyWith<$Res>  {
   factory $ReplyToPermissionRequestCopyWith(ReplyToPermissionRequest value, $Res Function(ReplyToPermissionRequest) _then) = _$ReplyToPermissionRequestCopyWithImpl;
 @useResult
 $Res call({
- String requestId, String sessionId, String response
+ String requestId, String sessionId, PermissionReply reply
 });
 
 
@@ -65,12 +65,12 @@ class _$ReplyToPermissionRequestCopyWithImpl<$Res>
 
 /// Create a copy of ReplyToPermissionRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? requestId = null,Object? sessionId = null,Object? response = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? requestId = null,Object? sessionId = null,Object? reply = null,}) {
   return _then(_self.copyWith(
 requestId: null == requestId ? _self.requestId : requestId // ignore: cast_nullable_to_non_nullable
 as String,sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
-as String,response: null == response ? _self.response : response // ignore: cast_nullable_to_non_nullable
-as String,
+as String,reply: null == reply ? _self.reply : reply // ignore: cast_nullable_to_non_nullable
+as PermissionReply,
   ));
 }
 
@@ -82,12 +82,12 @@ as String,
 @JsonSerializable()
 
 class _ReplyToPermissionRequest implements ReplyToPermissionRequest {
-  const _ReplyToPermissionRequest({required this.requestId, required this.sessionId, required this.response});
+  const _ReplyToPermissionRequest({required this.requestId, required this.sessionId, required this.reply});
   factory _ReplyToPermissionRequest.fromJson(Map<String, dynamic> json) => _$ReplyToPermissionRequestFromJson(json);
 
 @override final  String requestId;
 @override final  String sessionId;
-@override final  String response;
+@override final  PermissionReply reply;
 
 /// Create a copy of ReplyToPermissionRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -102,16 +102,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ReplyToPermissionRequest&&(identical(other.requestId, requestId) || other.requestId == requestId)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.response, response) || other.response == response));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ReplyToPermissionRequest&&(identical(other.requestId, requestId) || other.requestId == requestId)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.reply, reply) || other.reply == reply));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,requestId,sessionId,response);
+int get hashCode => Object.hash(runtimeType,requestId,sessionId,reply);
 
 @override
 String toString() {
-  return 'ReplyToPermissionRequest(requestId: $requestId, sessionId: $sessionId, response: $response)';
+  return 'ReplyToPermissionRequest(requestId: $requestId, sessionId: $sessionId, reply: $reply)';
 }
 
 
@@ -122,7 +122,7 @@ abstract mixin class _$ReplyToPermissionRequestCopyWith<$Res> implements $ReplyT
   factory _$ReplyToPermissionRequestCopyWith(_ReplyToPermissionRequest value, $Res Function(_ReplyToPermissionRequest) _then) = __$ReplyToPermissionRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String requestId, String sessionId, String response
+ String requestId, String sessionId, PermissionReply reply
 });
 
 
@@ -139,12 +139,12 @@ class __$ReplyToPermissionRequestCopyWithImpl<$Res>
 
 /// Create a copy of ReplyToPermissionRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? requestId = null,Object? sessionId = null,Object? response = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? requestId = null,Object? sessionId = null,Object? reply = null,}) {
   return _then(_ReplyToPermissionRequest(
 requestId: null == requestId ? _self.requestId : requestId // ignore: cast_nullable_to_non_nullable
 as String,sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
-as String,response: null == response ? _self.response : response // ignore: cast_nullable_to_non_nullable
-as String,
+as String,reply: null == reply ? _self.reply : reply // ignore: cast_nullable_to_non_nullable
+as PermissionReply,
   ));
 }
 

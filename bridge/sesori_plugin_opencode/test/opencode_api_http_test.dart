@@ -3,11 +3,12 @@ import "dart:convert";
 import "package:http/http.dart" as http;
 import "package:http/testing.dart";
 import "package:opencode_plugin/opencode_plugin.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PermissionReply;
 import "package:test/test.dart";
 
 void main() {
   group("OpenCodeApi.replyToPermission", () {
-    test("sends POST to /session/{sessionId}/permissions/{requestId} with response body", () async {
+    test("sends POST to /permission/{requestId}/reply with reply body", () async {
       late http.BaseRequest capturedRequest;
       late String capturedBody;
 
@@ -26,15 +27,15 @@ void main() {
       await api.replyToPermission(
         requestId: "perm-123",
         sessionId: "ses-456",
-        response: "once",
+        reply: PermissionReply.once,
       );
 
       expect(capturedRequest.method, equals("POST"));
       expect(
         capturedRequest.url.toString(),
-        equals("http://localhost:1234/session/ses-456/permissions/perm-123"),
+        equals("http://localhost:1234/permission/perm-123/reply"),
       );
-      expect(jsonDecode(capturedBody), equals({"response": "once"}));
+      expect(jsonDecode(capturedBody), equals({"reply": "once"}));
       expect(capturedRequest.headers["authorization"], isNotNull);
       expect(capturedRequest.headers["content-type"], equals("application/json"));
     });
@@ -54,7 +55,7 @@ void main() {
         () => api.replyToPermission(
           requestId: "perm-123",
           sessionId: "ses-456",
-          response: "once",
+          reply: PermissionReply.once,
         ),
         throwsA(isA<OpenCodeApiException>()),
       );

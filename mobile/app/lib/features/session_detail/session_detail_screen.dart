@@ -207,12 +207,12 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
           ({
             required String requestId,
             required String sessionId,
-            required String response,
+            required PermissionReply reply,
           }) async {
             final success = await context.read<SessionDetailCubit>().replyToPermission(
               requestId: requestId,
               sessionId: sessionId,
-              response: response,
+              reply: reply,
             );
 
             if (!mounted) return;

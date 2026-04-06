@@ -381,7 +381,7 @@ class _FakeBridgePlugin implements BridgePlugin {
   Future<void> replyToPermission({
     required String requestId,
     required String sessionId,
-    required String response,
+    required PermissionReply reply,
   }) async {}
 
   @override
@@ -522,7 +522,7 @@ class _TrackingBridgePlugin implements BridgePlugin {
   Future<void> replyToPermission({
     required String requestId,
     required String sessionId,
-    required String response,
+    required PermissionReply reply,
   }) async {}
 
   @override

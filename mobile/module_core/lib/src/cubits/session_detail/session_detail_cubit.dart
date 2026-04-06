@@ -804,7 +804,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   Future<bool> replyToPermission({
     required String requestId,
     required String sessionId,
-    required String response,
+    required PermissionReply reply,
   }) async {
     _onPermissionResolved(requestId);
     _notificationCanceller.cancelForSession(
@@ -815,7 +815,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       await _permissionRepository.replyToPermission(
         requestId: requestId,
         sessionId: sessionId,
-        response: response,
+        reply: reply,
       );
       return true;
     } on Object catch (e, st) {

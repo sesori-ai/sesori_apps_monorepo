@@ -7,33 +7,33 @@ void main() {
       const request = ReplyToPermissionRequest(
         requestId: "perm-123",
         sessionId: "ses-456",
-        response: "once",
+        reply: PermissionReply.once,
       );
 
       expect(request.requestId, "perm-123");
       expect(request.sessionId, "ses-456");
-      expect(request.response, "once");
+      expect(request.reply, PermissionReply.once);
     });
 
     test("toJson produces correct JSON", () {
       const request = ReplyToPermissionRequest(
         requestId: "perm-123",
         sessionId: "ses-456",
-        response: "once",
+        reply: PermissionReply.once,
       );
 
       final json = request.toJson();
 
       expect(json["requestId"], "perm-123");
       expect(json["sessionId"], "ses-456");
-      expect(json["response"], "once");
+      expect(json["reply"], "once");
     });
 
     test("fromJson roundtrip", () {
       const original = ReplyToPermissionRequest(
         requestId: "perm-123",
         sessionId: "ses-456",
-        response: "once",
+        reply: PermissionReply.once,
       );
 
       final json = original.toJson();
@@ -41,33 +41,33 @@ void main() {
 
       expect(restored.requestId, original.requestId);
       expect(restored.sessionId, original.sessionId);
-      expect(restored.response, original.response);
+      expect(restored.reply, original.reply);
     });
 
-    test("supports response value always", () {
+    test("supports reply value always", () {
       const request = ReplyToPermissionRequest(
         requestId: "perm-789",
         sessionId: "ses-456",
-        response: "always",
+        reply: PermissionReply.always,
       );
 
       final json = request.toJson();
       final restored = ReplyToPermissionRequest.fromJson(json);
 
-      expect(restored.response, "always");
+      expect(restored.reply, PermissionReply.always);
     });
 
-    test("supports response value reject", () {
+    test("supports reply value reject", () {
       const request = ReplyToPermissionRequest(
         requestId: "perm-789",
         sessionId: "ses-456",
-        response: "reject",
+        reply: PermissionReply.reject,
       );
 
       final json = request.toJson();
       final restored = ReplyToPermissionRequest.fromJson(json);
 
-      expect(restored.response, "reject");
+      expect(restored.reply, PermissionReply.reject);
     });
   });
 }

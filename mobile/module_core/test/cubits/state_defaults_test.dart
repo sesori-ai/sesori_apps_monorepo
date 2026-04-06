@@ -11,6 +11,7 @@ void main() {
       streamingText: {},
       sessionStatus: SessionStatus.idle(),
       pendingQuestions: [],
+      pendingPermissions: [],
       sessionTitle: null,
       agent: null,
       modelID: null,

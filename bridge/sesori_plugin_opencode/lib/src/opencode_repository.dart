@@ -1,4 +1,4 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginProvidersResult;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PermissionReply, PluginProvidersResult;
 import "package:sesori_shared/sesori_shared.dart" show wait2;
 
 import "models/pending_permission.dart";
@@ -105,12 +105,12 @@ class OpenCodeRepository {
   Future<void> replyToPermission({
     required String requestId,
     required String sessionId,
-    required String response,
+    required PermissionReply reply,
   }) {
     return _api.replyToPermission(
       requestId: requestId,
       sessionId: sessionId,
-      response: response,
+      reply: reply,
     );
   }
 

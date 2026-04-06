@@ -21,6 +21,7 @@ void main() {
   setUpAll(() {
     registerAllFallbackValues();
     registerFallbackValue(NotificationCategory.aiInteraction);
+    registerFallbackValue(PermissionReply.once);
   });
 
   group("SessionDetailCubit", () {
@@ -58,7 +59,7 @@ void main() {
         () => mockPermissionRepository.replyToPermission(
           requestId: any(named: "requestId"),
           sessionId: any(named: "sessionId"),
-          response: any(named: "response"),
+          reply: any(named: "reply"),
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
 

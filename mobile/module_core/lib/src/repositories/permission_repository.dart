@@ -1,5 +1,6 @@
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/permission_api.dart";
 
@@ -12,12 +13,12 @@ class PermissionRepository {
   Future<ApiResponse<void>> replyToPermission({
     required String requestId,
     required String sessionId,
-    required String response,
+    required PermissionReply reply,
   }) {
     return _api.replyToPermission(
       requestId: requestId,
       sessionId: sessionId,
-      response: response,
+      reply: reply,
     );
   }
 }

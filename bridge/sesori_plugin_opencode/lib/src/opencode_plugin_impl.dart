@@ -316,13 +316,13 @@ class OpenCodePlugin implements BridgePlugin {
   Future<void> replyToPermission({
     required String requestId,
     required String sessionId,
-    required String response,
+    required PermissionReply reply,
   }) {
     return _call(
       () => _service.replyToPermission(
         requestId: requestId,
         sessionId: sessionId,
-        response: response,
+        reply: reply,
       ),
     );
   }

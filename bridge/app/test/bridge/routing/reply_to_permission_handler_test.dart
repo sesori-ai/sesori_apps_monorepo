@@ -1,5 +1,6 @@
 import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/reply_to_permission_handler.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" as plugin_interface;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -33,7 +34,7 @@ void main() {
         body: const ReplyToPermissionRequest(
           requestId: "perm-123",
           sessionId: "ses-456",
-          response: "once",
+          reply: PermissionReply.once,
         ),
         pathParams: {},
         queryParams: {},
@@ -42,7 +43,7 @@ void main() {
 
       expect(plugin.lastReplyToPermissionRequestId, equals("perm-123"));
       expect(plugin.lastReplyToPermissionSessionId, equals("ses-456"));
-      expect(plugin.lastReplyToPermissionResponse, equals("once"));
+      expect(plugin.lastReplyToPermissionReply, equals(plugin_interface.PermissionReply.once));
     });
 
     test("returns 200 on success", () async {
@@ -51,7 +52,7 @@ void main() {
         body: const ReplyToPermissionRequest(
           requestId: "perm-123",
           sessionId: "ses-456",
-          response: "once",
+          reply: PermissionReply.once,
         ),
         pathParams: {},
         queryParams: {},
@@ -68,7 +69,7 @@ void main() {
           body: const ReplyToPermissionRequest(
             requestId: "",
             sessionId: "ses-456",
-            response: "once",
+            reply: PermissionReply.once,
           ),
           pathParams: {},
           queryParams: {},
@@ -85,7 +86,7 @@ void main() {
           body: const ReplyToPermissionRequest(
             requestId: "perm-123",
             sessionId: "",
-            response: "once",
+            reply: PermissionReply.once,
           ),
           pathParams: {},
           queryParams: {},

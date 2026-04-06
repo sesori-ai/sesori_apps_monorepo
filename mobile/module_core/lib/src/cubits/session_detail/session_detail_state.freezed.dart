@@ -78,7 +78,7 @@ String toString() {
 
 
 class SessionDetailLoaded implements SessionDetailState {
-  const SessionDetailLoaded({required final  List<MessageWithParts> messages, required final  Map<String, String> streamingText, required this.sessionStatus, required final  List<SesoriQuestionAsked> pendingQuestions, final  List<SesoriPermissionAsked> pendingPermissions = const [], required this.sessionTitle, required this.agent, required this.modelID, required this.providerID, required final  List<Session> children, required final  Map<String, SessionStatus> childStatuses, required final  List<String> queuedMessages, required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required this.selectedAgent, required this.selectedProviderID, required this.selectedModelID, required this.isRefreshing}): _messages = messages,_streamingText = streamingText,_pendingQuestions = pendingQuestions,_pendingPermissions = pendingPermissions,_children = children,_childStatuses = childStatuses,_queuedMessages = queuedMessages,_availableAgents = availableAgents,_availableProviders = availableProviders;
+  const SessionDetailLoaded({required final  List<MessageWithParts> messages, required final  Map<String, String> streamingText, required this.sessionStatus, required final  List<SesoriQuestionAsked> pendingQuestions, required final  List<SesoriPermissionAsked> pendingPermissions, required this.sessionTitle, required this.agent, required this.modelID, required this.providerID, required final  List<Session> children, required final  Map<String, SessionStatus> childStatuses, required final  List<String> queuedMessages, required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required this.selectedAgent, required this.selectedProviderID, required this.selectedModelID, required this.isRefreshing}): _messages = messages,_streamingText = streamingText,_pendingQuestions = pendingQuestions,_pendingPermissions = pendingPermissions,_children = children,_childStatuses = childStatuses,_queuedMessages = queuedMessages,_availableAgents = availableAgents,_availableProviders = availableProviders;
   
 
  final  List<MessageWithParts> _messages;
@@ -104,7 +104,7 @@ class SessionDetailLoaded implements SessionDetailState {
 }
 
  final  List<SesoriPermissionAsked> _pendingPermissions;
-@JsonKey() List<SesoriPermissionAsked> get pendingPermissions {
+ List<SesoriPermissionAsked> get pendingPermissions {
   if (_pendingPermissions is EqualUnmodifiableListView) return _pendingPermissions;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_pendingPermissions);

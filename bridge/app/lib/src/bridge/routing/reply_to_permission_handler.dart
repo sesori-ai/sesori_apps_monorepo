@@ -5,7 +5,7 @@ import "request_handler.dart";
 
 /// Handles `POST /permission/reply` — replies to a pending permission request.
 ///
-/// The [response] field accepts "once", "always", or "reject".
+/// The [reply] field accepts "once", "always", or "reject".
 class ReplyToPermissionHandler extends BodyRequestHandler<ReplyToPermissionRequest, SuccessEmptyResponse> {
   final PermissionRepository _permissionRepository;
 
@@ -37,7 +37,7 @@ class ReplyToPermissionHandler extends BodyRequestHandler<ReplyToPermissionReque
     await _permissionRepository.replyToPermission(
       requestId: requestId,
       sessionId: sessionId,
-      response: body.response,
+      reply: body.reply,
     );
 
     return const SuccessEmptyResponse();

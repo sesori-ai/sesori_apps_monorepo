@@ -13,12 +13,12 @@ class PermissionApi {
   Future<ApiResponse<void>> replyToPermission({
     required String requestId,
     required String sessionId,
-    required String response,
+    required PermissionReply reply,
   }) {
     return _client.post(
       "/permission/reply",
       fromJson: SuccessEmptyResponse.fromJson,
-      body: ReplyToPermissionRequest(requestId: requestId, sessionId: sessionId, response: response),
+      body: ReplyToPermissionRequest(requestId: requestId, sessionId: sessionId, reply: reply),
     );
   }
 }

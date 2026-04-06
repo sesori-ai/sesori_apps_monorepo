@@ -14,7 +14,7 @@ class PermissionModal extends StatelessWidget {
   final void Function({
     required String requestId,
     required String sessionId,
-    required String response,
+    required PermissionReply reply,
   })
   onReply;
 
@@ -31,7 +31,7 @@ class PermissionModal extends StatelessWidget {
     required void Function({
       required String requestId,
       required String sessionId,
-      required String response,
+      required PermissionReply reply,
     })
     onReply,
   }) {
@@ -46,12 +46,12 @@ class PermissionModal extends StatelessWidget {
     );
   }
 
-  void _reply(BuildContext context, {required String response}) {
+  void _reply(BuildContext context, {required PermissionReply reply}) {
     Navigator.of(context).pop();
     onReply(
       requestId: permission.requestID,
       sessionId: permission.sessionID,
-      response: response,
+      reply: reply,
     );
   }
 
@@ -103,7 +103,7 @@ class PermissionModal extends StatelessWidget {
                 ),
                 IconButton(
                   icon: const Icon(Icons.close, size: 20),
-                  onPressed: () => _reply(context, response: "reject"),
+                  onPressed: () => _reply(context, reply: PermissionReply.reject),
                 ),
               ],
             ),
@@ -172,21 +172,21 @@ class PermissionModal extends StatelessWidget {
                       foregroundColor: theme.colorScheme.error,
                       side: BorderSide(color: theme.colorScheme.error),
                     ),
-                    onPressed: () => _reply(context, response: "reject"),
+                    onPressed: () => _reply(context, reply: PermissionReply.reject),
                     child: const Text("Reject"),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => _reply(context, response: "once"),
+                    onPressed: () => _reply(context, reply: PermissionReply.once),
                     child: const Text("Once"),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: FilledButton(
-                    onPressed: () => _reply(context, response: "always"),
+                    onPressed: () => _reply(context, reply: PermissionReply.always),
                     child: const Text("Always Allow"),
                   ),
                 ),

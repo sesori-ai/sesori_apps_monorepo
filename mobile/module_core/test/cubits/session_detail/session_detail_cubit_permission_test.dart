@@ -29,6 +29,7 @@ void main() {
   setUpAll(() {
     registerAllFallbackValues();
     registerFallbackValue(NotificationCategory.aiInteraction);
+    registerFallbackValue(PermissionReply.once);
   });
 
   group("SessionDetailCubit permission handling", () {
@@ -75,7 +76,7 @@ void main() {
         () => mockPermissionRepository.replyToPermission(
           requestId: any(named: "requestId"),
           sessionId: any(named: "sessionId"),
-          response: any(named: "response"),
+          reply: any(named: "reply"),
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
 
@@ -153,7 +154,7 @@ void main() {
         () => mockPermissionRepository.replyToPermission(
           requestId: any(named: "requestId"),
           sessionId: any(named: "sessionId"),
-          response: any(named: "response"),
+          reply: any(named: "reply"),
         ),
       ).thenAnswer((_) => completer.future);
 
@@ -181,7 +182,7 @@ void main() {
       final resultFuture = cubit.replyToPermission(
         requestId: "perm-123",
         sessionId: "ses-456",
-        response: "once",
+        reply: PermissionReply.once,
       );
 
       expect((cubit.state as SessionDetailLoaded).pendingPermissions, isEmpty);
@@ -189,7 +190,7 @@ void main() {
         () => mockPermissionRepository.replyToPermission(
           requestId: "perm-123",
           sessionId: "ses-456",
-          response: "once",
+          reply: PermissionReply.once,
         ),
       ).called(1);
       verify(
@@ -209,7 +210,7 @@ void main() {
         () => mockPermissionRepository.replyToPermission(
           requestId: any(named: "requestId"),
           sessionId: any(named: "sessionId"),
-          response: any(named: "response"),
+          reply: any(named: "reply"),
         ),
       ).thenThrow(Exception("boom"));
 
@@ -238,7 +239,7 @@ void main() {
       final result = await cubit.replyToPermission(
         requestId: "perm-123",
         sessionId: "ses-456",
-        response: "once",
+        reply: PermissionReply.once,
       );
 
       expect(result, isFalse);

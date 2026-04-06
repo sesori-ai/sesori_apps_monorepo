@@ -10,7 +10,7 @@ _ReplyToPermissionRequest _$ReplyToPermissionRequestFromJson(Map json) =>
     _ReplyToPermissionRequest(
       requestId: json['requestId'] as String,
       sessionId: json['sessionId'] as String,
-      response: json['response'] as String,
+      reply: $enumDecode(_$PermissionReplyEnumMap, json['reply']),
     );
 
 Map<String, dynamic> _$ReplyToPermissionRequestToJson(
@@ -18,5 +18,11 @@ Map<String, dynamic> _$ReplyToPermissionRequestToJson(
 ) => <String, dynamic>{
   'requestId': instance.requestId,
   'sessionId': instance.sessionId,
-  'response': instance.response,
+  'reply': _$PermissionReplyEnumMap[instance.reply]!,
+};
+
+const _$PermissionReplyEnumMap = {
+  PermissionReply.once: 'once',
+  PermissionReply.always: 'always',
+  PermissionReply.reject: 'reject',
 };
