@@ -1553,6 +1553,40 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
+    // 23. activeSessionIds propagates awaitingInput from SessionActivityInfo
+    // -------------------------------------------------------------------------
+
+    blocTest<SessionListCubit, SessionListState>(
+      "activeSessionIds propagates awaitingInput true from SessionActivityInfo",
+      build: () {
+        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+          (_) async => ApiResponse.success(
+            SessionListResponse(
+              items: [
+                testSession(id: "s1", title: "Session 1"),
+              ],
+            ),
+          ),
+        );
+        mockSseEventRepository.emitSessionActivity({
+          projectId: {
+            "s1": const SessionActivityInfo(mainAgentRunning: true, awaitingInput: true),
+          },
+        });
+        return buildCubit();
+      },
+      expect: () => [
+        isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions count", 1).having(
+          (s) => s.activeSessionIds,
+          "activeSessionIds with awaitingInput",
+          {
+            "s1": const SessionActivityInfo(mainAgentRunning: true, awaitingInput: true),
+          },
+        ),
+      ],
+    );
+
+    // -------------------------------------------------------------------------
     // Stale reconnect
     // -------------------------------------------------------------------------
 
