@@ -270,7 +270,8 @@
        "sessionListForceMessage": "The following issues were found:",
        "sessionListForceDeleteAction": "Force Delete",
        "sessionListForceArchiveAction": "Force Archive",
-        "sessionListCleanupIssueUnstagedChanges": "Worktree has unstaged changes",
+         "sessionListCleanupIssueUnstagedChanges": "Worktree has unstaged changes",
+         "sessionListCleanupIssueSharedWorktree": "Another active session uses this worktree",
         "sessionListCleanupIssueBranchMismatch": "Worktree is on branch '{actual}' instead of expected '{expected}'",
         "@sessionListCleanupIssueBranchMismatch": {
           "placeholders": {

@@ -9,6 +9,17 @@ void _showArchiveSheet({
   required SessionListCubit cubit,
   required Session session,
 }) {
+  if (!session.hasWorktree) {
+    _archiveSession(
+      context: context,
+      cubit: cubit,
+      sessionId: session.id,
+      deleteWorktree: false,
+      deleteBranch: false,
+    );
+    return;
+  }
+
   showAppModalBottomSheet<void>(
     context: context,
     builder: (_) => _ArchiveSessionSheet(
@@ -121,6 +132,17 @@ void _showDeleteSheet({
   required SessionListCubit cubit,
   required Session session,
 }) {
+  if (!session.hasWorktree) {
+    _deleteSession(
+      context: context,
+      cubit: cubit,
+      sessionId: session.id,
+      deleteWorktree: false,
+      deleteBranch: false,
+    );
+    return;
+  }
+
   showAppModalBottomSheet<void>(
     context: context,
     builder: (_) => _DeleteSessionSheet(
