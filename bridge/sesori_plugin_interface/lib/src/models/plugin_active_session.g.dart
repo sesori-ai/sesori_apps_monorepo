@@ -11,5 +11,6 @@ Map<String, dynamic> _$PluginActiveSessionToJson(
 ) => <String, dynamic>{
   'id': instance.id,
   'mainAgentRunning': instance.mainAgentRunning,
+  'awaitingInput': instance.awaitingInput,
   'childSessionIds': instance.childSessionIds,
 };
