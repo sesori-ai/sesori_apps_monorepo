@@ -47,16 +47,13 @@ class _SessionTile extends StatelessWidget {
         ),
       ),
       child: ListTile(
-        leading: switch (session.pullRequest) {
-          final pr? => PrStatusAvatar(pr: pr),
-          null => CircleAvatar(
-            backgroundColor: theme.colorScheme.primaryContainer,
-            child: Icon(
-              Icons.chat_outlined,
-              color: theme.colorScheme.onPrimaryContainer,
-            ),
+        leading: CircleAvatar(
+          backgroundColor: theme.colorScheme.primaryContainer,
+          child: Icon(
+            Icons.chat_outlined,
+            color: theme.colorScheme.onPrimaryContainer,
           ),
-        },
+        ),
         title: Text(session.title ?? loc.sessionListUntitled),
         subtitle: Column(
           crossAxisAlignment: .start,
