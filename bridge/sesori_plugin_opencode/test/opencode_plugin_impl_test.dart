@@ -159,14 +159,14 @@ void main() {
       final opus = anthropic.models.firstWhere((m) => m.id == "claude-3-opus");
       expect(opus.name, equals("Claude 3 Opus"));
       expect(opus.family, equals("claude-3"));
-      expect(opus.status, equals("active"));
-      expect(opus.releaseDate, equals("2025-03-15"));
+      expect(opus.isAvailable, isTrue);
+      expect(opus.releaseDate, equals(DateTime(2025, 3, 15)));
 
       final sonnet = anthropic.models.firstWhere((m) => m.id == "claude-3-sonnet");
       expect(sonnet.name, equals("Claude 3 Sonnet"));
       expect(sonnet.family, equals("claude-3"));
-      expect(sonnet.status, equals("deprecated"));
-      expect(sonnet.releaseDate, equals("2024-06-01"));
+      expect(sonnet.isAvailable, isFalse);
+      expect(sonnet.releaseDate, equals(DateTime(2024, 6, 1)));
 
       final custom = result.providers.firstWhere((p) => p.id == "my-custom");
       expect(custom, isA<PluginProviderCustom>());

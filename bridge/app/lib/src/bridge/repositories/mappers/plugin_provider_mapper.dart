@@ -16,8 +16,8 @@ extension PluginProviderMapper on PluginProvider {
             providerID: id,
             name: m.name,
             family: m.family,
-            status: m.status,
-            releaseDate: m.releaseDate,
+            status: m.isAvailable ? "active" : "deprecated",
+            releaseDate: m.releaseDate?.toIso8601String().split("T").first,
           ),
       },
     );

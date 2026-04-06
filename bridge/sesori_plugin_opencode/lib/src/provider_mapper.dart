@@ -15,7 +15,13 @@ PluginProvidersResult mapProviderResponse({
   final providers = source.map((providerInfo) {
     final models = providerInfo.models.values
         .map(
-          (m) => PluginModel(id: m.id, name: m.name, family: m.family, status: m.status, releaseDate: m.releaseDate),
+          (m) => PluginModel(
+            id: m.id,
+            name: m.name,
+            family: m.family,
+            isAvailable: m.status != "deprecated",
+            releaseDate: m.releaseDate != null ? DateTime.tryParse(m.releaseDate!) : null,
+          ),
         )
         .toList();
     return _mapProvider(id: providerInfo.id, name: providerInfo.name, models: models, defaultModels: response.defaults);

@@ -12,15 +12,25 @@ enum PluginProviderAuthType {
 }
 
 /// A model available from a provider.
-@freezed
+@Freezed(toJson: true)
 sealed class PluginModel with _$PluginModel {
   const factory PluginModel({
     required String id,
     required String name,
     String? family,
-    @Default("active") String status,
-    String? releaseDate,
+    @Default(true) bool isAvailable,
+    @_NullableDateTimeConverter() DateTime? releaseDate,
   }) = _PluginModel;
+}
+
+class _NullableDateTimeConverter implements JsonConverter<DateTime?, String?> {
+  const _NullableDateTimeConverter();
+
+  @override
+  DateTime? fromJson(String? json) => json == null ? null : DateTime.tryParse(json);
+
+  @override
+  String? toJson(DateTime? object) => object?.toIso8601String().split("T").first;
 }
 
 /// A known or custom AI provider, identified by its union variant.

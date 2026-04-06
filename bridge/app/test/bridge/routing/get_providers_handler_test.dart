@@ -206,7 +206,7 @@ void main() {
     });
 
     test("maps model status and releaseDate from plugin", () async {
-      plugin.providersResult = const PluginProvidersResult(
+      plugin.providersResult = PluginProvidersResult(
         providers: [
           PluginProvider.openAI(
             id: "openai",
@@ -217,17 +217,17 @@ void main() {
                 id: "gpt-4o",
                 name: "GPT-4o",
                 family: "gpt-4",
-                status: "active",
-                releaseDate: "2025-01-15",
+                isAvailable: true,
+                releaseDate: DateTime(2025, 1, 15),
               ),
               PluginModel(
                 id: "gpt-3.5",
                 name: "GPT-3.5",
                 family: "gpt-3",
-                status: "deprecated",
-                releaseDate: "2023-03-01",
+                isAvailable: false,
+                releaseDate: DateTime(2023, 3, 1),
               ),
-              PluginModel(id: "gpt-4-turbo", name: "GPT-4 Turbo", family: "gpt-4"),
+              const PluginModel(id: "gpt-4-turbo", name: "GPT-4 Turbo", family: "gpt-4"),
             ],
             defaultModelID: "gpt-4o",
           ),
@@ -254,6 +254,34 @@ void main() {
       final gpt4Turbo = models["gpt-4-turbo"]!;
       expect(gpt4Turbo.status, equals("active"));
       expect(gpt4Turbo.releaseDate, isNull);
+    });
+
+    test("maps isAvailable=true to active status and false to deprecated", () async {
+      plugin.providersResult = const PluginProvidersResult(
+        providers: [
+          PluginProvider.anthropic(
+            id: "anthropic",
+            name: "Anthropic",
+            authType: PluginProviderAuthType.apiKey,
+            models: [
+              PluginModel(id: "m1", name: "Available", isAvailable: true),
+              PluginModel(id: "m2", name: "Deprecated", isAvailable: false),
+            ],
+            defaultModelID: null,
+          ),
+        ],
+      );
+
+      final response = await handler.handle(
+        makeRequest("GET", "/provider"),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      final models = response.items[0].models;
+      expect(models["m1"]!.status, equals("active"));
+      expect(models["m2"]!.status, equals("deprecated"));
     });
 
     test("provider with no models has empty models map", () async {
