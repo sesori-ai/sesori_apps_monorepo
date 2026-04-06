@@ -39,6 +39,7 @@ sealed class Session with _$Session {
     required SessionTime? time,
     required SessionSummary? summary,
     required PullRequestInfo? pullRequest,
+    @Default(false) bool hasWorktree,
   }) = _Session;
 
   factory Session.fromJson(Map<String, dynamic> json) => _$SessionFromJson(json);

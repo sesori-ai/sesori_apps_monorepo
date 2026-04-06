@@ -63,6 +63,30 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     return <String, SessionDto>{for (final session in sessions) session.sessionId: session};
   }
 
+  Future<List<SessionDto>> getOtherActiveSessionsSharing({
+    required String sessionId,
+    required String? worktreePath,
+    required String? branchName,
+  }) async {
+    if (worktreePath == null && branchName == null) return [];
+
+    return (select(sessionTable)..where((t) {
+          final condition = t.sessionId.equals(sessionId).not() & t.archivedAt.isNull();
+
+          Expression<bool>? sharingCondition;
+          if (worktreePath != null) {
+            sharingCondition = t.worktreePath.equals(worktreePath);
+          }
+          if (branchName != null) {
+            final branchCondition = t.branchName.equals(branchName);
+            sharingCondition = sharingCondition != null ? (sharingCondition | branchCondition) : branchCondition;
+          }
+
+          return condition & sharingCondition!;
+        }))
+        .get();
+  }
+
   Future<void> deleteSession({required String sessionId}) async {
     await (delete(sessionTable)..where((t) => t.sessionId.equals(sessionId))).go();
   }
