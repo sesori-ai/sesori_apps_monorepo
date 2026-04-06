@@ -44,18 +44,20 @@ class PrStatusRow extends StatelessWidget {
         ),
         // Review/check indicators are only relevant for open PRs.
         if (pr.state == PrState.open) ...[
-          if (_reviewColor(scheme: theme.colorScheme, decision: pr.reviewDecision) case final color?) ...[
+          if (_reviewIndicator(scheme: theme.colorScheme, loc: loc, decision: pr.reviewDecision)
+              case (:final icon, :final color, :final tooltip)?) ...[
             const SizedBox(width: 8),
             Tooltip(
-              message: _reviewTooltip(loc: loc, decision: pr.reviewDecision),
-              child: Icon(_reviewIcon(decision: pr.reviewDecision), size: 12, color: color),
+              message: tooltip,
+              child: Icon(icon, size: 12, color: color),
             ),
           ],
-          if (_checkColor(scheme: theme.colorScheme, status: pr.checkStatus) case final color?) ...[
+          if (_checkIndicator(scheme: theme.colorScheme, loc: loc, status: pr.checkStatus)
+              case (:final icon, :final color, :final tooltip)?) ...[
             const SizedBox(width: 4),
             Tooltip(
-              message: _checkTooltip(loc: loc, status: pr.checkStatus),
-              child: Icon(_checkIcon(status: pr.checkStatus), size: 12, color: color),
+              message: tooltip,
+              child: Icon(icon, size: 12, color: color),
             ),
           ],
         ],
@@ -106,56 +108,42 @@ String _mergeTooltip({required AppLocalizations loc, required PrMergeableStatus 
 };
 
 // ---------------------------------------------------------------------------
-// Review decision helpers
+// Review decision indicator
 // ---------------------------------------------------------------------------
 
-/// Returns a color when the review decision should display a dot, or null to hide it.
-Color? _reviewColor({required ColorScheme scheme, required PrReviewDecision decision}) => switch (decision) {
-  PrReviewDecision.approved => _kPrGreen,
-  PrReviewDecision.changesRequested => scheme.error,
-  PrReviewDecision.reviewRequired => scheme.outline,
+/// Returns icon, color, and tooltip for the review decision, or null to hide it.
+({IconData icon, Color color, String tooltip})? _reviewIndicator({
+  required ColorScheme scheme,
+  required AppLocalizations loc,
+  required PrReviewDecision decision,
+}) => switch (decision) {
+  PrReviewDecision.approved => (icon: Icons.check_circle_outline, color: _kPrGreen, tooltip: loc.prReviewApproved),
+  PrReviewDecision.changesRequested => (
+    icon: Icons.cancel_outlined,
+    color: scheme.error,
+    tooltip: loc.prReviewChangesRequested,
+  ),
+  PrReviewDecision.reviewRequired => (
+    icon: Icons.pending_outlined,
+    color: scheme.outline,
+    tooltip: loc.prReviewRequired,
+  ),
   PrReviewDecision.unknown => null,
 };
 
-IconData? _reviewIcon({required PrReviewDecision decision}) => switch (decision) {
-  PrReviewDecision.approved => Icons.check_circle_outline,
-  PrReviewDecision.changesRequested => Icons.cancel_outlined,
-  PrReviewDecision.reviewRequired => Icons.pending_outlined,
-  PrReviewDecision.unknown => null,
-};
-
-String _reviewTooltip({required AppLocalizations loc, required PrReviewDecision decision}) => switch (decision) {
-  PrReviewDecision.approved => loc.prReviewApproved,
-  PrReviewDecision.changesRequested => loc.prReviewChangesRequested,
-  PrReviewDecision.reviewRequired => loc.prReviewRequired,
-  PrReviewDecision.unknown => "",
-};
-
 // ---------------------------------------------------------------------------
-// Check status helpers
+// Check status indicator
 // ---------------------------------------------------------------------------
 
-/// Returns a color when the check status should display a dot, or null to hide it.
-Color? _checkColor({required ColorScheme scheme, required PrCheckStatus status}) => switch (status) {
-  PrCheckStatus.success => _kPrGreen,
-  PrCheckStatus.failure => scheme.error,
-  PrCheckStatus.pending => _kPrAmber,
+/// Returns icon, color, and tooltip for the check status, or null to hide it.
+({IconData icon, Color color, String tooltip})? _checkIndicator({
+  required ColorScheme scheme,
+  required AppLocalizations loc,
+  required PrCheckStatus status,
+}) => switch (status) {
+  PrCheckStatus.success => (icon: Icons.check_circle_outline, color: _kPrGreen, tooltip: loc.prChecksSuccess),
+  PrCheckStatus.failure => (icon: Icons.error_outline, color: scheme.error, tooltip: loc.prChecksFailing),
+  PrCheckStatus.pending => (icon: Icons.schedule, color: _kPrAmber, tooltip: loc.prChecksPending),
   PrCheckStatus.none => null,
   PrCheckStatus.unknown => null,
-};
-
-IconData? _checkIcon({required PrCheckStatus status}) => switch (status) {
-  PrCheckStatus.success => Icons.check_circle_outline,
-  PrCheckStatus.failure => Icons.error_outline,
-  PrCheckStatus.pending => Icons.schedule,
-  PrCheckStatus.none => null,
-  PrCheckStatus.unknown => null,
-};
-
-String _checkTooltip({required AppLocalizations loc, required PrCheckStatus status}) => switch (status) {
-  PrCheckStatus.success => loc.prChecksSuccess,
-  PrCheckStatus.failure => loc.prChecksFailing,
-  PrCheckStatus.pending => loc.prChecksPending,
-  PrCheckStatus.none => "",
-  PrCheckStatus.unknown => "",
 };
