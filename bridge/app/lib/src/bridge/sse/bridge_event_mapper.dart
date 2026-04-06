@@ -176,6 +176,7 @@ class BridgeEventMapper {
                       (a) => ActiveSession(
                         id: a.id,
                         mainAgentRunning: a.mainAgentRunning,
+                        awaitingInput: a.awaitingInput,
                         childSessionIds: a.childSessionIds,
                       ),
                     )

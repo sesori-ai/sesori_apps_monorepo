@@ -414,6 +414,7 @@ class OpenCodePlugin implements BridgePlugin {
                   (a) => PluginActiveSession(
                     id: a.id,
                     mainAgentRunning: a.mainAgentRunning,
+                    awaitingInput: a.awaitingInput,
                     childSessionIds: a.childSessionIds,
                   ),
                 )
