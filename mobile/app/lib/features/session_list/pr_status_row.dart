@@ -117,11 +117,11 @@ Color? _reviewColor({required ColorScheme scheme, required PrReviewDecision deci
   PrReviewDecision.unknown => null,
 };
 
-IconData _reviewIcon({required PrReviewDecision decision}) => switch (decision) {
+IconData? _reviewIcon({required PrReviewDecision decision}) => switch (decision) {
   PrReviewDecision.approved => Icons.check_circle_outline,
   PrReviewDecision.changesRequested => Icons.cancel_outlined,
   PrReviewDecision.reviewRequired => Icons.pending_outlined,
-  PrReviewDecision.unknown => Icons.circle,
+  PrReviewDecision.unknown => null,
 };
 
 String _reviewTooltip({required AppLocalizations loc, required PrReviewDecision decision}) => switch (decision) {
@@ -144,12 +144,12 @@ Color? _checkColor({required ColorScheme scheme, required PrCheckStatus status})
   PrCheckStatus.unknown => null,
 };
 
-IconData _checkIcon({required PrCheckStatus status}) => switch (status) {
+IconData? _checkIcon({required PrCheckStatus status}) => switch (status) {
   PrCheckStatus.success => Icons.check_circle_outline,
   PrCheckStatus.failure => Icons.error_outline,
   PrCheckStatus.pending => Icons.schedule,
-  PrCheckStatus.none => Icons.circle,
-  PrCheckStatus.unknown => Icons.circle,
+  PrCheckStatus.none => null,
+  PrCheckStatus.unknown => null,
 };
 
 String _checkTooltip({required AppLocalizations loc, required PrCheckStatus status}) => switch (status) {
