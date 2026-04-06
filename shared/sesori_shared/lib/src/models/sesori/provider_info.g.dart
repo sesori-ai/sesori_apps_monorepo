@@ -34,7 +34,7 @@ _ProviderModel _$ProviderModelFromJson(Map json) => _ProviderModel(
   isAvailable: json['isAvailable'] as bool? ?? true,
   releaseDate: _$JsonConverterFromJson<String, DateTime>(
     json['releaseDate'],
-    const DateConverter().fromJson,
+    dateConverter.fromJson,
   ),
 );
 
@@ -47,7 +47,7 @@ Map<String, dynamic> _$ProviderModelToJson(_ProviderModel instance) =>
       'isAvailable': instance.isAvailable,
       'releaseDate': _$JsonConverterToJson<String, DateTime>(
         instance.releaseDate,
-        const DateConverter().toJson,
+        dateConverter.toJson,
       ),
     };
 

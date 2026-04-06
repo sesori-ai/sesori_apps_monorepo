@@ -29,7 +29,7 @@ sealed class ProviderModel with _$ProviderModel {
     required String name,
     required String? family,
     @Default(true) bool isAvailable,
-    @DateConverter() required DateTime? releaseDate,
+    @dateConverter required DateTime? releaseDate,
   }) = _ProviderModel;
 
   factory ProviderModel.fromJson(Map<String, dynamic> json) => _$ProviderModelFromJson(json);

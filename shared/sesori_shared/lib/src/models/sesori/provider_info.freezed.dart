@@ -164,7 +164,7 @@ as String?,
 /// @nodoc
 mixin _$ProviderModel {
 
- String get id; String get providerID; String get name; String? get family; bool get isAvailable;@DateConverter() DateTime? get releaseDate;
+ String get id; String get providerID; String get name; String? get family; bool get isAvailable;@dateConverter DateTime? get releaseDate;
 /// Create a copy of ProviderModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -197,7 +197,7 @@ abstract mixin class $ProviderModelCopyWith<$Res>  {
   factory $ProviderModelCopyWith(ProviderModel value, $Res Function(ProviderModel) _then) = _$ProviderModelCopyWithImpl;
 @useResult
 $Res call({
- String id, String providerID, String name, String? family, bool isAvailable,@DateConverter() DateTime? releaseDate
+ String id, String providerID, String name, String? family, bool isAvailable,@dateConverter DateTime? releaseDate
 });
 
 
@@ -234,7 +234,7 @@ as DateTime?,
 @JsonSerializable()
 
 class _ProviderModel implements ProviderModel {
-  const _ProviderModel({required this.id, required this.providerID, required this.name, required this.family, this.isAvailable = true, @DateConverter() required this.releaseDate});
+  const _ProviderModel({required this.id, required this.providerID, required this.name, required this.family, this.isAvailable = true, @dateConverter required this.releaseDate});
   factory _ProviderModel.fromJson(Map<String, dynamic> json) => _$ProviderModelFromJson(json);
 
 @override final  String id;
@@ -242,7 +242,7 @@ class _ProviderModel implements ProviderModel {
 @override final  String name;
 @override final  String? family;
 @override@JsonKey() final  bool isAvailable;
-@override@DateConverter() final  DateTime? releaseDate;
+@override@dateConverter final  DateTime? releaseDate;
 
 /// Create a copy of ProviderModel
 /// with the given fields replaced by the non-null parameter values.
@@ -277,7 +277,7 @@ abstract mixin class _$ProviderModelCopyWith<$Res> implements $ProviderModelCopy
   factory _$ProviderModelCopyWith(_ProviderModel value, $Res Function(_ProviderModel) _then) = __$ProviderModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String providerID, String name, String? family, bool isAvailable,@DateConverter() DateTime? releaseDate
+ String id, String providerID, String name, String? family, bool isAvailable,@dateConverter DateTime? releaseDate
 });
 
 

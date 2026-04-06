@@ -1,10 +1,12 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+const dateConverter = DateConverter();
+
 class DateConverter implements JsonConverter<DateTime, String> {
   const DateConverter();
 
   @override
-  DateTime fromJson(String json) => DateTime.parse(json);
+  DateTime fromJson(String json) => DateTime.parse(json).toLocal();
 
   @override
   String toJson(DateTime object) {
