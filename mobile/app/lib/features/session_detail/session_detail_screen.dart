@@ -231,13 +231,10 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
               );
             },
           ),
-          if (state
-              case SessionDetailLoaded(
-                :final sessionStatus,
-                :final childStatuses,
-              )
-              when sessionStatus is! SessionStatusIdle ||
-                  childStatuses.values.any((s) => s is SessionStatusBusy || s is SessionStatusRetry))
+          if (state case SessionDetailLoaded(
+            :final sessionStatus,
+            :final childStatuses,
+          ) when _hasActiveWork(sessionStatus: sessionStatus, childStatuses: childStatuses))
             Padding(
               padding: const EdgeInsetsDirectional.only(end: 16),
               child: SizedBox(
@@ -300,7 +297,7 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
                     onCancel: (index) => context.read<SessionDetailCubit>().cancelQueuedMessage(index),
                   ),
                 PromptInput(
-                  isBusy: sessionStatus is! SessionStatusIdle,
+                  isBusy: _hasActiveWork(sessionStatus: sessionStatus, childStatuses: childStatuses),
                   onSend: (text) => context.read<SessionDetailCubit>().sendMessage(text),
                   onAbort: () => context.read<SessionDetailCubit>().abort(),
                   header: AgentModelButtons(
@@ -593,6 +590,16 @@ class _ErrorView extends StatelessWidget {
 // -----------------------------------------------------------------------------
 // Queued messages section
 // -----------------------------------------------------------------------------
+
+/// Whether the main session or any child session is actively running or retrying.
+bool _hasActiveWork({
+  required SessionStatus sessionStatus,
+  required Map<String, SessionStatus> childStatuses,
+}) =>
+    sessionStatus is! SessionStatusIdle ||
+    childStatuses.values.any(
+      (s) => s is SessionStatusBusy || s is SessionStatusRetry,
+    );
 
 class _QueuedMessagesSection extends StatelessWidget {
   final List<String> messages;

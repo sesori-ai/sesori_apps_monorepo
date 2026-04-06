@@ -781,7 +781,24 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   }
 
   Future<void> abort() async {
-    await _service.abortSession(_sessionId);
+    try {
+      final current = state;
+      final futures = <Future<void>>[_service.abortSession(_sessionId)];
+
+      // Also abort any active child sessions (busy or retrying).
+      if (current is SessionDetailLoaded) {
+        for (final entry in current.childStatuses.entries) {
+          final status = entry.value;
+          if (status is SessionStatusBusy || status is SessionStatusRetry) {
+            futures.add(_service.abortSession(entry.key));
+          }
+        }
+      }
+
+      await Future.wait(futures);
+    } on Object catch (e, st) {
+      loge("Failed to abort session(s)", e, st);
+    }
   }
 
   // ---------------------------------------------------------------------------
