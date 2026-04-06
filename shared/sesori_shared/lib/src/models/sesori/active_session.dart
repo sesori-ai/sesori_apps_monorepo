@@ -14,6 +14,7 @@ sealed class ActiveSession with _$ActiveSession {
   const factory ActiveSession({
     required String id,
     @Default(false) bool mainAgentRunning,
+    @Default(false) bool awaitingInput,
     @Default([]) List<String> childSessionIds,
   }) = _ActiveSession;
 
