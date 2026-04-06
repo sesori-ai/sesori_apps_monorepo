@@ -42,19 +42,22 @@ class PrStatusRow extends StatelessWidget {
           _stateText(loc: loc, state: pr.state),
           style: theme.textTheme.bodySmall?.copyWith(color: stateColor),
         ),
-        if (_reviewColor(scheme: theme.colorScheme, decision: pr.reviewDecision) case final color?) ...[
-          const SizedBox(width: 8),
-          Tooltip(
-            message: _reviewTooltip(loc: loc, decision: pr.reviewDecision),
-            child: Icon(_reviewIcon(decision: pr.reviewDecision), size: 12, color: color),
-          ),
-        ],
-        if (_checkColor(scheme: theme.colorScheme, status: pr.checkStatus) case final color?) ...[
-          const SizedBox(width: 4),
-          Tooltip(
-            message: _checkTooltip(loc: loc, status: pr.checkStatus),
-            child: Icon(_checkIcon(status: pr.checkStatus), size: 12, color: color),
-          ),
+        // Review/check indicators are only relevant for open PRs.
+        if (pr.state == PrState.open) ...[
+          if (_reviewColor(scheme: theme.colorScheme, decision: pr.reviewDecision) case final color?) ...[
+            const SizedBox(width: 8),
+            Tooltip(
+              message: _reviewTooltip(loc: loc, decision: pr.reviewDecision),
+              child: Icon(_reviewIcon(decision: pr.reviewDecision), size: 12, color: color),
+            ),
+          ],
+          if (_checkColor(scheme: theme.colorScheme, status: pr.checkStatus) case final color?) ...[
+            const SizedBox(width: 4),
+            Tooltip(
+              message: _checkTooltip(loc: loc, status: pr.checkStatus),
+              child: Icon(_checkIcon(status: pr.checkStatus), size: 12, color: color),
+            ),
+          ],
         ],
       ],
     );
