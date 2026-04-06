@@ -192,6 +192,7 @@ class _SessionListBody extends StatelessWidget {
                             session: session,
                             isArchived: isArchived,
                             isActive: activityInfo != null,
+                            awaitingInput: activityInfo?.awaitingInput ?? false,
                             backgroundTaskCount: activityInfo?.backgroundTaskCount ?? 0,
                             onLongPress: () => _showSessionActions(context: context, session: session),
                             onSwipe: () => isArchived
