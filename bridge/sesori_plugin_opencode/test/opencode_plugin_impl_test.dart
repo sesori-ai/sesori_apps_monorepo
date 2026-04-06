@@ -198,14 +198,12 @@ void main() {
     test("events stream emits bridge events", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
 
-      final stream = plugin.events;
-      final collected = <BridgeSseEvent>[];
-      final sub = stream.listen(collected.add);
-
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-      await sub.cancel();
-
-      expect(collected.whereType<BridgeSseProjectUpdated>(), isNotEmpty);
+      // Wait for the actual event instead of a blind delay.
+      // _initialize() emits BridgeSseProjectUpdated after coldStart().
+      await expectLater(
+        plugin.events,
+        emitsThrough(isA<BridgeSseProjectUpdated>()),
+      );
     });
 
     test("getSessionStatuses merges tracker data with API response", () async {
@@ -365,6 +363,11 @@ class _DynamicStatusServer {
 
       if (request.method == "GET" && path == "/experimental/session") {
         await _json(request.response, <Map<String, dynamic>>[]);
+        return;
+      }
+
+      if (request.method == "GET" && path == "/question") {
+        await _json(request.response, <Object>[]);
         return;
       }
 
@@ -915,6 +918,11 @@ class _FakeOpenCodeServer {
             ],
           },
         ]);
+        return;
+      }
+
+      if (request.method == "GET" && path == "/question") {
+        await _sendJson(request.response, <Object>[]);
         return;
       }
 
