@@ -739,6 +739,12 @@ abstract class AppLocalizations {
   /// **'Running'**
   String get sessionListRunning;
 
+  /// Label shown next to the amber dot for sessions that are waiting for user input (question or permission)
+  ///
+  /// In en, this message translates to:
+  /// **'Awaiting input'**
+  String get sessionListAwaitingInput;
+
   /// Label showing the number of active background tasks for a session
   ///
   /// In en, this message translates to:

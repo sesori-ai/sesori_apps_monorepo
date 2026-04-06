@@ -204,6 +204,10 @@
     "@sessionListRunning": {
       "description": "Label shown next to the green dot for sessions that are currently active"
     },
+    "sessionListAwaitingInput": "Awaiting input",
+    "@sessionListAwaitingInput": {
+      "description": "Label shown next to the amber dot for sessions that are waiting for user input (question or permission)"
+    },
     "sessionListBackgroundTasks": "{count, plural, =1{1 background task} other{{count} background tasks}}",
     "@sessionListBackgroundTasks": {
       "description": "Label showing the number of active background tasks for a session",
