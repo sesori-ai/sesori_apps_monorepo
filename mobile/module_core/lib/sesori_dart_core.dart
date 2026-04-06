@@ -13,8 +13,9 @@ export "package:sesori_auth/sesori_auth.dart"
         NonSuccessCodeError,
         NotAuthenticatedError;
 export "package:sesori_auth/sesori_auth.dart" show ApiResponse, ErrorResponse, SuccessResponse;
-export "package:sesori_auth/sesori_auth.dart" show HttpMethod, SafeApiClient;
 export "package:sesori_auth/sesori_auth.dart" show HttpApiClient;
+export "package:sesori_auth/sesori_auth.dart" show HttpMethod, SafeApiClient;
+
 // API
 export "src/api/client/relay_http_client.dart";
 export "src/capabilities/notifications/notification_api_client.dart";
@@ -33,7 +34,6 @@ export "src/capabilities/session/session_service.dart";
 export "src/capabilities/sse/session_activity_info.dart";
 export "src/capabilities/sse/sse_event_repository.dart";
 export "src/capabilities/voice/voice_api.dart";
-export "src/repositories/permission_repository.dart";
 // Cubits
 export "src/cubits/connection_overlay/connection_overlay_cubit.dart";
 export "src/cubits/login/login_cubit.dart";
@@ -60,6 +60,7 @@ export "src/platform/lifecycle_source.dart";
 export "src/platform/notification_canceller.dart";
 export "src/platform/route_source.dart";
 export "src/platform/url_launcher.dart";
+export "src/repositories/permission_repository.dart";
 // Routing
 export "src/routing/app_routes.dart";
 export "src/routing/auth_redirect_service.dart";
