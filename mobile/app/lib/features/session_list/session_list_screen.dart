@@ -10,6 +10,7 @@ import "../../core/extensions/build_context_x.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/widgets/app_modal_bottom_sheet.dart";
 import "../../l10n/app_localizations.dart";
+import "pr_status_row.dart";
 import "rename_session_dialog.dart";
 
 part "session_list_actions.dart";

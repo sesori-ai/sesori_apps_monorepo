@@ -120,9 +120,10 @@ class SessionListCubit extends Cubit<SessionListState> {
             SesoriWorktreeReady() ||
             SesoriWorktreeFailed():
           break;
-        case SesoriSessionsUpdated():
-          // TODO: refresh session list to show updated PR metadata.
-          break;
+        case SesoriSessionsUpdated(:final projectID):
+          if (projectID == _projectId) {
+            unawaited(refreshSessions());
+          }
       }
     } catch (e, st) {
       loge("SSE event handler error", e, st);

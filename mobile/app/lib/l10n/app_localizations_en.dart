@@ -572,4 +572,42 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionListArchiveFailed => 'Failed to archive session';
+
+  @override
+  String prLabel(int number) {
+    return 'PR #$number';
+  }
+
+  @override
+  String get prStateOpen => 'Open';
+
+  @override
+  String get prStateMerged => 'Merged';
+
+  @override
+  String get prStateClosed => 'Closed';
+
+  @override
+  String get prReviewApproved => 'Approved';
+
+  @override
+  String get prReviewChangesRequested => 'Changes requested';
+
+  @override
+  String get prReviewRequired => 'Review required';
+
+  @override
+  String get prChecksSuccess => 'Checks passing';
+
+  @override
+  String get prChecksFailing => 'Checks failing';
+
+  @override
+  String get prChecksPending => 'Checks pending';
+
+  @override
+  String get prMergeable => 'Ready to merge';
+
+  @override
+  String get prConflicting => 'Has merge conflicts';
 }
