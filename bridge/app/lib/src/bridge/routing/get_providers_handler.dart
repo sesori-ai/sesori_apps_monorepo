@@ -1,13 +1,13 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../repositories/provider_repository.dart";
 import "request_handler.dart";
 
-/// Handles `GET /provider` — returns providers and their models from the plugin.
+/// Handles `GET /provider` — returns providers and their models.
 class GetProvidersHandler extends GetRequestHandler<ProviderListResponse> {
-  final BridgePlugin _plugin;
+  final ProviderRepository _repository;
 
-  GetProvidersHandler(this._plugin) : super("/provider");
+  GetProvidersHandler(this._repository) : super("/provider");
 
   @override
   Future<ProviderListResponse> handle(
@@ -15,33 +15,7 @@ class GetProvidersHandler extends GetRequestHandler<ProviderListResponse> {
     required Map<String, String> pathParams,
     required Map<String, String> queryParams,
     required String? fragment,
-  }) async {
-    final result = await _plugin.getProviders(connectedOnly: true);
-
-    final providers = result.providers.map((p) {
-      final models = <String, ProviderModel>{
-        for (final m in p.models)
-          m.id: ProviderModel(
-            id: m.id,
-            providerID: p.id,
-            name: m.name,
-            family: m.family,
-            releaseDate: null,
-          ),
-      };
-      return ProviderInfo(
-        id: p.id,
-        name: p.name,
-        defaultModelID: p.defaultModelID,
-        models: models,
-      );
-    }).toList();
-
-    final response = ProviderListResponse(
-      items: providers,
-      connectedOnly: true,
-    );
-
-    return response;
+  }) {
+    return _repository.getProviders();
   }
 }

@@ -7,6 +7,7 @@ import "../foundation/process_runner.dart";
 import "../metadata_service.dart";
 import "../persistence/daos/projects_dao.dart";
 import "../persistence/daos/session_dao.dart";
+import "../repositories/provider_repository.dart";
 import "../repositories/session_repository.dart";
 import "../services/pr_sync_service.dart";
 import "../worktree_service.dart";
@@ -108,7 +109,7 @@ class RequestRouter {
       ),
       SendPromptHandler(plugin),
       AbortSessionHandler(plugin),
-      GetProvidersHandler(plugin),
+      GetProvidersHandler(ProviderRepository(plugin: plugin)),
       GetAgentsHandler(plugin),
       GetSessionQuestionsHandler(plugin),
       GetProjectQuestionsHandler(plugin),

@@ -31,8 +31,11 @@ _ProviderModel _$ProviderModelFromJson(Map json) => _ProviderModel(
   providerID: json['providerID'] as String,
   name: json['name'] as String,
   family: json['family'] as String?,
-  status: json['status'] as String? ?? "active",
-  releaseDate: json['release_date'] as String?,
+  isAvailable: json['isAvailable'] as bool? ?? true,
+  releaseDate: _$JsonConverterFromJson<String, DateTime>(
+    json['releaseDate'],
+    dateConverter.fromJson,
+  ),
 );
 
 Map<String, dynamic> _$ProviderModelToJson(_ProviderModel instance) =>
@@ -41,9 +44,22 @@ Map<String, dynamic> _$ProviderModelToJson(_ProviderModel instance) =>
       'providerID': instance.providerID,
       'name': instance.name,
       'family': instance.family,
-      'status': instance.status,
-      'release_date': instance.releaseDate,
+      'isAvailable': instance.isAvailable,
+      'releaseDate': _$JsonConverterToJson<String, DateTime>(
+        instance.releaseDate,
+        dateConverter.toJson,
+      ),
     };
+
+Value? _$JsonConverterFromJson<Json, Value>(
+  Object? json,
+  Value? Function(Json json) fromJson,
+) => json == null ? null : fromJson(json as Json);
+
+Json? _$JsonConverterToJson<Json, Value>(
+  Value? value,
+  Json? Function(Value value) toJson,
+) => value == null ? null : toJson(value);
 
 _ProviderListResponse _$ProviderListResponseFromJson(Map json) =>
     _ProviderListResponse(
