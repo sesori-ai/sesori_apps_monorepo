@@ -4,4 +4,4 @@
 /// - [once] — approve just this one tool call
 /// - [always] — approve future requests matching the suggested patterns for the rest of the session
 /// - [reject] — deny the request
-enum PermissionReply { once, always, reject }
+enum PluginPermissionReply { once, always, reject }

@@ -85,7 +85,7 @@ class FakeBridgePlugin implements BridgePlugin {
   String? lastGetCurrentProjectProjectId;
   String? lastReplyToPermissionRequestId;
   String? lastReplyToPermissionSessionId;
-  PermissionReply? lastReplyToPermissionReply;
+  PluginPermissionReply? lastReplyToPermissionReply;
 
   // ── Error injection ──────────────────────────────────────────────────────
 
@@ -272,7 +272,7 @@ class FakeBridgePlugin implements BridgePlugin {
   Future<void> replyToPermission({
     required String requestId,
     required String sessionId,
-    required PermissionReply reply,
+    required PluginPermissionReply reply,
   }) async {
     lastReplyToPermissionRequestId = requestId;
     lastReplyToPermissionSessionId = sessionId;

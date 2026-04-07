@@ -1,6 +1,6 @@
 import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/reply_to_permission_handler.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" as plugin_interface;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -43,7 +43,7 @@ void main() {
 
       expect(plugin.lastReplyToPermissionRequestId, equals("perm-123"));
       expect(plugin.lastReplyToPermissionSessionId, equals("ses-456"));
-      expect(plugin.lastReplyToPermissionReply, equals(plugin_interface.PermissionReply.once));
+      expect(plugin.lastReplyToPermissionReply, equals(PluginPermissionReply.once));
     });
 
     test("returns 200 on success", () async {

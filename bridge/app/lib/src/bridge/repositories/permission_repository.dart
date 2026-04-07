@@ -1,4 +1,4 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" as plugin_interface;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 /// Layer 2 repository wrapping [plugin_interface.BridgePlugin] for permission operations.
@@ -11,9 +11,9 @@ import "package:sesori_shared/sesori_shared.dart";
 /// plugin-contract [plugin_interface.PermissionReply] to keep the two enums
 /// decoupled.
 class PermissionRepository {
-  final plugin_interface.BridgePlugin _plugin;
+  final BridgePlugin _plugin;
 
-  PermissionRepository({required plugin_interface.BridgePlugin plugin}) : _plugin = plugin;
+  PermissionRepository({required BridgePlugin plugin}) : _plugin = plugin;
 
   Future<void> replyToPermission({
     required String requestId,
@@ -25,14 +25,9 @@ class PermissionRepository {
     reply: _toPluginReply(reply),
   );
 
-  static plugin_interface.PermissionReply _toPluginReply(PermissionReply reply) {
-    switch (reply) {
-      case PermissionReply.once:
-        return plugin_interface.PermissionReply.once;
-      case PermissionReply.always:
-        return plugin_interface.PermissionReply.always;
-      case PermissionReply.reject:
-        return plugin_interface.PermissionReply.reject;
-    }
-  }
+  static PluginPermissionReply _toPluginReply(PermissionReply reply) => switch (reply) {
+    .once => .once,
+    .always => .always,
+    .reject => .reject,
+  };
 }

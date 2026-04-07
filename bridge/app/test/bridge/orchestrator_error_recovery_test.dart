@@ -311,7 +311,7 @@ class _ThrowingSummaryPlugin implements BridgePlugin {
   Future<void> replyToPermission({
     required String requestId,
     required String sessionId,
-    required PermissionReply reply,
+    required PluginPermissionReply reply,
   }) async {}
 
   @override

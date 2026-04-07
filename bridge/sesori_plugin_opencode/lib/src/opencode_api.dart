@@ -329,7 +329,7 @@ class OpenCodeApi {
   Future<void> replyToPermission({
     required String requestId,
     required String sessionId,
-    required PermissionReply reply,
+    required PluginPermissionReply reply,
   }) async {
     final body = jsonEncode({"reply": reply.name});
     Log.d("[permission-api] POST /permission/$requestId/reply for session $sessionId");
