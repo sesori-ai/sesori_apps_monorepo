@@ -11,6 +11,7 @@ import "../repositories/permission_repository.dart";
 import "../repositories/provider_repository.dart";
 import "../repositories/session_repository.dart";
 import "../services/pr_sync_service.dart";
+import "../services/session_persistence_service.dart";
 import "../worktree_service.dart";
 import "abort_session_handler.dart";
 import "create_project_handler.dart";
@@ -81,6 +82,11 @@ class RequestRouter {
   }) {
     final hiddenStore = projectsDao;
     final permissionRepository = PermissionRepository(plugin: plugin);
+    final sessionPersistenceService = SessionPersistenceService(
+      projectsDao: projectsDao,
+      sessionDao: sessionDao,
+      db: projectsDao.attachedDatabase,
+    );
 
     final worktreeService = WorktreeService(
       projectsDao: projectsDao,
@@ -95,7 +101,11 @@ class RequestRouter {
       GetSessionStatusesHandler(plugin),
       GetChildSessionsHandler(sessionRepository: sessionRepository),
       GetSessionMessagesHandler(plugin),
-      GetSessionsHandler(sessionRepository: sessionRepository, prSyncService: prSyncService),
+      GetSessionsHandler(
+        sessionRepository: sessionRepository,
+        prSyncService: prSyncService,
+        sessionPersistenceService: sessionPersistenceService,
+      ),
       CreateSessionHandler(
         plugin: plugin,
         metadataService: metadataService,

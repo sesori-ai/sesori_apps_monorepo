@@ -5,6 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/session_repository.dart";
 import "../services/pr_sync_service.dart";
+import "../services/session_persistence_service.dart";
 import "request_handler.dart";
 
 /// Handles `GET /sessions` — returns sessions for a given project.
@@ -13,12 +14,15 @@ import "request_handler.dart";
 class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionListResponse> {
   final SessionRepository _sessionRepository;
   final PrSyncService _prSyncService;
+  final SessionPersistenceService _sessionPersistenceService;
 
   GetSessionsHandler({
     required SessionRepository sessionRepository,
     required PrSyncService prSyncService,
+    required SessionPersistenceService sessionPersistenceService,
   }) : _sessionRepository = sessionRepository,
        _prSyncService = prSyncService,
+       _sessionPersistenceService = sessionPersistenceService,
        super(
          HttpMethod.post,
          "/sessions",
@@ -45,11 +49,22 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
     final start = body.start;
     final limit = body.limit;
 
+    await _sessionPersistenceService.ensureProject(projectId: projectId);
+
     final sessions = await _sessionRepository.getSessionsForProject(
       projectId: projectId,
       start: start,
       limit: limit,
     );
+
+    try {
+      await _sessionPersistenceService.persistSessionsForProject(
+        projectId: projectId,
+        sessions: sessions,
+      );
+    } on Exception catch (e, st) {
+      Log.w("GetSessionsHandler: persistSessionsForProject failed for projectId=$projectId: $e\n$st");
+    }
 
     final response = SessionListResponse(items: sessions);
 

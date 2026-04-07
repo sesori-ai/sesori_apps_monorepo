@@ -12,6 +12,7 @@ import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
@@ -485,6 +486,32 @@ class FakePrSyncService extends PrSyncService {
   }
 }
 
+class FakeSessionPersistenceService extends SessionPersistenceService {
+  final List<String> ensuredProjectIds = <String>[];
+  final List<({String projectId, List<Session> sessions})> persistedCalls =
+      <({String projectId, List<Session> sessions})>[];
+
+  FakeSessionPersistenceService()
+    : super(
+        projectsDao: throw UnimplementedError(),
+        sessionDao: throw UnimplementedError(),
+        db: throw UnimplementedError(),
+      );
+
+  @override
+  Future<void> ensureProject({required String projectId}) async {
+    ensuredProjectIds.add(projectId);
+  }
+
+  @override
+  Future<void> persistSessionsForProject({
+    required String projectId,
+    required List<Session> sessions,
+  }) async {
+    persistedCalls.add((projectId: projectId, sessions: sessions));
+  }
+}
+
 class _AlwaysReadyPrSource implements PrSourceRepository {
   @override
   Future<bool> isGithubCliAvailable() async => true;
@@ -557,6 +584,8 @@ class FakeSessionRepository implements SessionRepository {
   final FakeBridgePlugin _plugin;
   final FakeSessionDao _sessionDao;
   final FakePullRequestRepository _pullRequestRepository;
+  int getSessionsCallCount = 0;
+  ({String projectId, int? start, int? limit})? lastGetSessionsArgs;
 
   FakeSessionRepository({
     required FakeBridgePlugin plugin,
@@ -572,6 +601,8 @@ class FakeSessionRepository implements SessionRepository {
     required int? start,
     required int? limit,
   }) async {
+    getSessionsCallCount++;
+    lastGetSessionsArgs = (projectId: projectId, start: start, limit: limit);
     final pluginSessions = await _plugin.getSessions(
       projectId,
       start: start,
