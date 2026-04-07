@@ -86,6 +86,30 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
         .get();
   }
 
+  /// Inserts a placeholder session row if none exists for [sessionId].
+  /// Preserves all fields of existing rows — uses InsertMode.insertOrIgnore.
+  /// Placeholders are non-dedicated by default and have no worktree/branch state.
+  /// Use this to persist plugin-sourced sessions so FK constraints (post-v5) hold.
+  Future<void> insertSessionIfMissing({
+    required String sessionId,
+    required String projectId,
+    required int createdAt,
+  }) async {
+    await into(sessionTable).insert(
+      SessionTableCompanion(
+        sessionId: Value(sessionId),
+        projectId: Value(projectId),
+        // isDedicated hardcoded false — placeholders are non-dedicated by default.
+        // Callers (plugin-sourced sessions) never have meaningful worktree state.
+        isDedicated: const Value(false),
+        createdAt: Value(createdAt),
+        // worktreePath, branchName, archivedAt, baseBranch, baseCommit intentionally
+        // omitted — they default to absent (null) via SessionTableCompanion
+      ),
+      mode: InsertMode.insertOrIgnore,
+    );
+  }
+
   Future<void> deleteSession({required String sessionId}) async {
     await (delete(sessionTable)..where((t) => t.sessionId.equals(sessionId))).go();
   }

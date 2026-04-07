@@ -1,3 +1,4 @@
+import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/daos/session_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:test/test.dart";
@@ -8,10 +9,12 @@ void main() {
   group("SessionDao", () {
     late AppDatabase db;
     late SessionDao dao;
+    late ProjectsDao projectsDao;
 
     setUp(() {
       db = createTestDatabase();
       dao = db.sessionDao;
+      projectsDao = db.projectsDao;
     });
 
     tearDown(() async {
@@ -395,6 +398,63 @@ void main() {
 
         expect(result, isEmpty);
       });
+    });
+
+    test(
+      "insertSessionIfMissing inserts placeholder session with isDedicated=false and null nullable fields",
+      () async {
+        // Seed projects_table so FK constraints (post-v5) are satisfied.
+        await projectsDao.hideProject(projectId: "proj-1");
+        await projectsDao.unhideProject(projectId: "proj-1");
+
+        await dao.insertSessionIfMissing(
+          sessionId: "sess-1",
+          projectId: "proj-1",
+          createdAt: 1000,
+        );
+
+        final result = await dao.getSession(sessionId: "sess-1");
+
+        expect(result, isNotNull);
+        expect(result!.sessionId, equals("sess-1"));
+        expect(result.projectId, equals("proj-1"));
+        expect(result.isDedicated, isFalse);
+        expect(result.createdAt, equals(1000));
+        expect(result.worktreePath, isNull);
+        expect(result.branchName, isNull);
+        expect(result.archivedAt, isNull);
+        expect(result.baseBranch, isNull);
+        expect(result.baseCommit, isNull);
+      },
+    );
+
+    test("insertSessionIfMissing is no-op when session exists, preserving worktreePath and branchName", () async {
+      // Pre-insert a full session with worktree state.
+      await dao.insertSession(
+        sessionId: "sess-existing",
+        projectId: "proj-1",
+        isDedicated: true,
+        createdAt: 500,
+        worktreePath: "/tmp/wt",
+        branchName: "feature-x",
+        baseBranch: "main",
+        baseCommit: "abc123",
+      );
+
+      // insertSessionIfMissing must be a no-op — must NOT clobber existing fields.
+      await dao.insertSessionIfMissing(
+        sessionId: "sess-existing",
+        projectId: "proj-1",
+        createdAt: 999,
+      );
+
+      final result = await dao.getSession(sessionId: "sess-existing");
+
+      expect(result, isNotNull);
+      expect(result!.worktreePath, equals("/tmp/wt"));
+      expect(result.branchName, equals("feature-x"));
+      expect(result.isDedicated, isTrue);
+      expect(result.createdAt, equals(500));
     });
   });
 }
