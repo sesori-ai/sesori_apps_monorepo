@@ -29,10 +29,16 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
     );
   }
 
-  /// Removes the hidden flag from a project. No-op if not hidden.
+  /// Removes the hidden flag from a project. Creates the row if missing.
+  /// Uses DoUpdate to update ONLY the hidden column on conflict, preserving
+  /// baseBranch and worktreeCounter on existing rows.
   Future<void> unhideProject({required String projectId}) async {
-    await (update(projectsTable)..where((t) => t.projectId.equals(projectId))).write(
-      const ProjectsTableCompanion(hidden: Value(false)),
+    await into(projectsTable).insert(
+      ProjectsTableCompanion.insert(projectId: projectId, hidden: const Value(false)),
+      onConflict: DoUpdate(
+        (old) => ProjectsTableCompanion(hidden: const Value(false)),
+        target: [projectsTable.projectId],
+      ),
     );
   }
 

@@ -56,6 +56,39 @@ void main() {
       expect(hiddenIds, equals({"project-1"}));
     });
 
+    test("unhideProject creates row with hidden=false when project does not exist", () async {
+      await dao.unhideProject(projectId: "brand-new");
+
+      final rows = await (db.select(db.projectsTable)..where((t) => t.projectId.equals("brand-new"))).get();
+      expect(rows, hasLength(1));
+      expect(rows.first.hidden, isFalse);
+      expect(rows.first.baseBranch, isNull);
+      expect(rows.first.worktreeCounter, equals(0));
+    });
+
+    test("unhideProject on existing hidden=true project sets hidden=false", () async {
+      await dao.hideProject(projectId: "proj-hidden");
+
+      await dao.unhideProject(projectId: "proj-hidden");
+
+      final hiddenIds = await dao.getHiddenProjectIds();
+      expect(hiddenIds, isEmpty);
+    });
+
+    test("unhideProject preserves baseBranch and worktreeCounter on existing row", () async {
+      await dao.setBaseBranch(projectId: "proj-p", baseBranch: "main");
+      await dao.incrementAndGetWorktreeCounter(projectId: "proj-p");
+      await dao.hideProject(projectId: "proj-p");
+
+      await dao.unhideProject(projectId: "proj-p");
+
+      final rows = await (db.select(db.projectsTable)..where((t) => t.projectId.equals("proj-p"))).get();
+      expect(rows, hasLength(1));
+      expect(rows.first.hidden, isFalse);
+      expect(rows.first.baseBranch, equals("main"));
+      expect(rows.first.worktreeCounter, equals(1));
+    });
+
     test("handles project IDs with slashes", () async {
       await dao.hideProject(projectId: "/Users/alex/projects/my-app");
 
