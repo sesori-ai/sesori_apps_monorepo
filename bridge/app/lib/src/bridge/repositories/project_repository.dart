@@ -5,11 +5,17 @@ import "../persistence/daos/projects_dao.dart";
 import "../persistence/database.dart";
 import "mappers/plugin_project_mapper.dart";
 
-/// Aggregates plugin project data with local persistence state.
+/// Project data aggregator that fetches plugin projects, persists them
+/// in a single transaction (so downstream FK references hold), and returns
+/// the visible/sorted list to handlers.
 ///
-/// Fetches projects from the plugin, persists each project ID to the local
-/// database (so hide/unhide state is preserved), filters hidden projects,
-/// and returns the visible list sorted by [Project.time.updated] descending.
+/// This class exposes ONLY [getProjects]. Defensive "ensure project exists"
+/// helpers are intentionally absent: per the Aristotle architectural review
+/// (rule A5 — Unnecessary Complexity), single-use thin DAO wrappers are
+/// rejected. Callers that need to ensure a specific project exists go through
+/// [SessionPersistenceService.ensureProject] (Layer 3 → Layer 1) or call
+/// [ProjectsDao.insertProjectIfMissing] directly from a Layer 2 repository
+/// (e.g. [PullRequestRepository]).
 class ProjectRepository {
   final BridgePlugin _plugin;
   final ProjectsDao _projectsDao;

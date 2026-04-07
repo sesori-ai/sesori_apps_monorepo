@@ -30,7 +30,6 @@ void main() {
         plugin: plugin,
         metadataService: metadataService,
         worktreeService: worktreeService,
-        sessionDao: db.sessionDao,
         sessionPersistenceService: SessionPersistenceService(
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
@@ -228,7 +227,6 @@ void main() {
         plugin: failingPlugin,
         metadataService: metadataService,
         worktreeService: worktreeService,
-        sessionDao: db.sessionDao,
         sessionPersistenceService: SessionPersistenceService(
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
@@ -624,7 +622,6 @@ void main() {
         plugin: throwingPlugin,
         metadataService: metadataService,
         worktreeService: worktreeService,
-        sessionDao: db.sessionDao,
         sessionPersistenceService: SessionPersistenceService(
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,

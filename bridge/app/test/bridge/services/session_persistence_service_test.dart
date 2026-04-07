@@ -95,6 +95,39 @@ void main() {
       expect(row?.createdAt, equals(123));
     });
 
+    test("createSession inserts a full session row with all fields and ensures project exists", () async {
+      await service.createSession(
+        sessionId: "sess-full",
+        projectId: "proj-full",
+        isDedicated: true,
+        createdAt: 42000,
+        worktreePath: "/tmp/wt/sess-full",
+        branchName: "feat/full-session",
+        baseBranch: "main",
+        baseCommit: "deadbeef",
+      );
+
+      // (a) projects_table has the projectId
+      final projects = await db.select(db.projectsTable).get();
+      expect(projects, hasLength(1));
+      expect(projects.single.projectId, equals("proj-full"));
+
+      // (b) sessions_table has the session with all fields populated
+      final rows = await db.select(db.sessionTable).get();
+      expect(rows, hasLength(1));
+      final row = rows.single;
+      expect(row.sessionId, equals("sess-full"));
+      expect(row.projectId, equals("proj-full"));
+      expect(row.worktreePath, equals("/tmp/wt/sess-full"));
+      expect(row.branchName, equals("feat/full-session"));
+      expect(row.baseBranch, equals("main"));
+      expect(row.baseCommit, equals("deadbeef"));
+      expect(row.createdAt, equals(42000));
+
+      // (c) isDedicated: true
+      expect(row.isDedicated, isTrue);
+    });
+
     test("persistSessionsForProject rolls back all inserts on failure", () async {
       final failingDao = _ThrowingSessionDao(db: db, throwOnCall: 3);
       final failingService = SessionPersistenceService(

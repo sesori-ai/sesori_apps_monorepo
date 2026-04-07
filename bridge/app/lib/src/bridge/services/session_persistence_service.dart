@@ -4,7 +4,35 @@ import "../persistence/daos/projects_dao.dart";
 import "../persistence/daos/session_dao.dart";
 import "../persistence/database.dart";
 
-/// Coordinates minimal project/session persistence needed for FK-safe writes.
+/// Layer 3 service that owns the "ensure projects/sessions exist in the DB"
+/// concern so handlers (Layer 4) and other repositories never need to call
+/// DAOs (Layer 1) directly.
+///
+/// ## Architectural notes
+///
+/// - This service has direct Layer 1 dependencies ([ProjectsDao],
+///   [SessionDao], [AppDatabase]). The bridge codebase pragmatically allows
+///   Layer 3 → Layer 1 deps for persistence services — see
+///   [WorktreeService] for the existing precedent.
+/// - All write methods are transaction-wrapped to avoid N round-trips when
+///   multiple inserts are needed.
+/// - All inserts use `InsertMode.insertOrIgnore` semantics (via the
+///   `insertProjectIfMissing` / `insertSessionIfMissing` DAO methods) so
+///   user-set fields on existing rows (hidden, baseBranch, worktreePath,
+///   branchName, etc.) are NEVER clobbered.
+///
+/// ## Public surface
+///
+/// - [ensureProject] — fast path: insert a single placeholder project row
+///   if missing. Used by [CreateSessionHandler] (before insertSession) and
+///   [GetSessionsHandler] (before reading sessions, to satisfy the v5 FK).
+/// - [persistSessionsForProject] — bulk path: insert the project + each of
+///   the given sessions inside one transaction. Called by
+///   [GetSessionsHandler] post-fetch on a best-effort basis.
+/// - [createSession] — full session insert: ensures the project exists then
+///   inserts a session row with all worktree state in one transaction.
+///   Called by [CreateSessionHandler] so the handler doesn't need a direct
+///   [SessionDao] dependency.
 class SessionPersistenceService {
   final ProjectsDao _projectsDao;
   final SessionDao _sessionDao;
@@ -35,6 +63,37 @@ class SessionPersistenceService {
           createdAt: session.time?.created ?? DateTime.now().millisecondsSinceEpoch,
         );
       }
+    });
+  }
+
+  /// Inserts a full session row with all worktree state. Wraps the project
+  /// existence check + the session insert in a single transaction so the v5
+  /// FK constraint cannot fire mid-write.
+  ///
+  /// Used by CreateSessionHandler to satisfy the architectural rule that
+  /// handlers MUST NOT call Layer 1 (DAOs) directly.
+  Future<void> createSession({
+    required String sessionId,
+    required String projectId,
+    required bool isDedicated,
+    required int createdAt,
+    required String? worktreePath,
+    required String? branchName,
+    required String? baseBranch,
+    required String? baseCommit,
+  }) async {
+    await _db.transaction(() async {
+      await _projectsDao.insertProjectIfMissing(projectId: projectId);
+      await _sessionDao.insertSession(
+        sessionId: sessionId,
+        projectId: projectId,
+        isDedicated: isDedicated,
+        createdAt: createdAt,
+        worktreePath: worktreePath,
+        branchName: branchName,
+        baseBranch: baseBranch,
+        baseCommit: baseCommit,
+      );
     });
   }
 }
