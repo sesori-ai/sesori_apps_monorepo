@@ -359,6 +359,10 @@ void main() {
         ),
       ];
 
+      // Seed the project row to satisfy the v5 FK constraint before the handler
+      // auto-inserts the session row.
+      await db.projectsDao.insertProjectIfMissing(projectId: "/repo");
+
       await handler.handle(
         makeRequest("PATCH", "/session/update/archive"),
         body: _archiveRequest(
@@ -896,6 +900,7 @@ Future<void> _insertSession({
   required int? archivedAt,
   required String? baseCommit,
 }) async {
+  await db.projectsDao.insertProjectIfMissing(projectId: projectId); // satisfy v5 FK constraint
   await db.sessionDao.insertSession(
     sessionId: sessionId,
     projectId: projectId,

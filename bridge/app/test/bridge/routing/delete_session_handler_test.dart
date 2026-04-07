@@ -358,8 +358,9 @@ Future<void> _insertSession({
   required String projectId,
   required String? worktreePath,
   required String? branchName,
-}) {
-  return db.sessionDao.insertSession(
+}) async {
+  await db.projectsDao.insertProjectIfMissing(projectId: projectId); // satisfy v5 FK constraint
+  await db.sessionDao.insertSession(
     sessionId: sessionId,
     projectId: projectId,
     isDedicated: true,
