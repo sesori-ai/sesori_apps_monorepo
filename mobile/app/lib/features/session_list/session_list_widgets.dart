@@ -1,7 +1,5 @@
 part of "session_list_screen.dart";
 
-const _kSessionAmber = Color(0xFFD29922);
-
 class _SessionTile extends StatelessWidget {
   final Session session;
   final bool isArchived;
@@ -108,7 +106,7 @@ Widget _buildActivityRow({
   required bool awaitingInput,
   required int backgroundTaskCount,
 }) {
-  final color = awaitingInput ? _kSessionAmber : theme.colorScheme.primary;
+  final color = awaitingInput ? kStatusAmber : theme.colorScheme.primary;
   final label = awaitingInput ? loc.sessionListAwaitingInput : loc.sessionListRunning;
 
   return Row(
