@@ -138,8 +138,13 @@ class BridgeSsePermissionAsked extends BridgeSseEvent {
 
 class BridgeSsePermissionReplied extends BridgeSseEvent {
   final String requestID;
+  final String sessionID;
   final String reply;
-  const BridgeSsePermissionReplied({required this.requestID, required this.reply});
+  const BridgeSsePermissionReplied({
+    required this.requestID,
+    required this.sessionID,
+    required this.reply,
+  });
 }
 
 class BridgeSsePermissionUpdated extends BridgeSseEvent {

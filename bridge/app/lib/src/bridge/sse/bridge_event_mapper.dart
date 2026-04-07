@@ -93,10 +93,12 @@ class BridgeEventMapper {
             tool: tool,
             description: description,
           ),
-        BridgeSsePermissionReplied(:final requestID, :final reply) => SesoriSseEvent.permissionReplied(
-          requestID: requestID,
-          reply: reply,
-        ),
+        BridgeSsePermissionReplied(:final requestID, :final sessionID, :final reply) =>
+          SesoriSseEvent.permissionReplied(
+            requestID: requestID,
+            sessionID: sessionID,
+            reply: reply,
+          ),
         BridgeSsePermissionUpdated() => const SesoriSseEvent.permissionUpdated(),
         BridgeSseQuestionAsked(:final id, :final sessionID, :final questions) => _tryParseSseEvent({
           "type": "question.asked",

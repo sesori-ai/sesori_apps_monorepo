@@ -236,6 +236,7 @@ Map<String, dynamic> _$SsePermissionAskedToJson(SsePermissionAsked instance) =>
 SsePermissionReplied _$SsePermissionRepliedFromJson(Map json) =>
     SsePermissionReplied(
       requestID: json['requestID'] as String,
+      sessionID: json['sessionID'] as String,
       reply: json['reply'] as String,
       $type: json['type'] as String?,
     );
@@ -244,6 +245,7 @@ Map<String, dynamic> _$SsePermissionRepliedToJson(
   SsePermissionReplied instance,
 ) => <String, dynamic>{
   'requestID': instance.requestID,
+  'sessionID': instance.sessionID,
   'reply': instance.reply,
   'type': instance.$type,
 };
