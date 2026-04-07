@@ -371,6 +371,11 @@ class _DynamicStatusServer {
         return;
       }
 
+      if (request.method == "GET" && path == "/permission") {
+        await _json(request.response, <Object>[]);
+        return;
+      }
+
       if (request.method == "GET" && path == "/global/event") {
         request.response.statusCode = HttpStatus.ok;
         request.response.headers.contentType = ContentType("text", "event-stream");
@@ -922,6 +927,11 @@ class _FakeOpenCodeServer {
       }
 
       if (request.method == "GET" && path == "/question") {
+        await _sendJson(request.response, <Object>[]);
+        return;
+      }
+
+      if (request.method == "GET" && path == "/permission") {
         await _sendJson(request.response, <Object>[]);
         return;
       }
