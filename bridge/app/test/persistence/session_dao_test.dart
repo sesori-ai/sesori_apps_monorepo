@@ -1,6 +1,7 @@
 import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/daos/session_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sqlite3/sqlite3.dart";
 import "package:test/test.dart";
 
 import "../helpers/test_database.dart";
@@ -11,10 +12,15 @@ void main() {
     late SessionDao dao;
     late ProjectsDao projectsDao;
 
-    setUp(() {
+    setUp(() async {
       db = createTestDatabase();
       dao = db.sessionDao;
       projectsDao = db.projectsDao;
+      // Seed projects required by tests — v5 FK constraint on session_table.projectId
+      // → projects_table.projectId means every session insert needs a matching project row.
+      for (final id in ["proj-1", "proj-2", "proj-3", "proj-4", "proj-x", "proj-y"]) {
+        await projectsDao.insertProjectIfMissing(projectId: id);
+      }
     });
 
     tearDown(() async {
@@ -403,10 +409,7 @@ void main() {
     test(
       "insertSessionIfMissing inserts placeholder session with isDedicated=false and null nullable fields",
       () async {
-        // Seed projects_table so FK constraints (post-v5) are satisfied.
-        await projectsDao.hideProject(projectId: "proj-1");
-        await projectsDao.unhideProject(projectId: "proj-1");
-
+        // proj-1 is seeded in setUp — FK constraint satisfied.
         await dao.insertSessionIfMissing(
           sessionId: "sess-1",
           projectId: "proj-1",
@@ -456,5 +459,44 @@ void main() {
       expect(result.isDedicated, isTrue);
       expect(result.createdAt, equals(500));
     });
+
+    test(
+      "insertSessionIfMissing throws SqliteException with FK violation when projectId does not exist",
+      () async {
+        // Fresh in-memory AppDatabase at v5 with FK enforced.
+        // projects_table is empty — no row for "nonexistent".
+        // The v5 FK constraint on session_table.projectId → projects_table.projectId
+        // must reject this insert at the SQLite level.
+        expect(
+          () async => dao.insertSessionIfMissing(
+            sessionId: "s1",
+            projectId: "nonexistent",
+            createdAt: 0,
+          ),
+          throwsA(isA<SqliteException>()),
+        );
+      },
+    );
+
+    test(
+      "insertSession throws SqliteException with FK violation when projectId does not exist",
+      () async {
+        // Same FK enforcement proof but via the existing insertSession path.
+        // Proves the v5 FK constraint catches BOTH session insert paths.
+        expect(
+          () async => dao.insertSession(
+            sessionId: "s2",
+            projectId: "nonexistent",
+            isDedicated: false,
+            createdAt: 0,
+            worktreePath: null,
+            branchName: null,
+            baseBranch: null,
+            baseCommit: null,
+          ),
+          throwsA(isA<SqliteException>()),
+        );
+      },
+    );
   });
 }
