@@ -8,6 +8,7 @@ import "models/plugin_prompt_part.dart";
 import "models/plugin_provider.dart";
 import "models/plugin_session.dart";
 import "models/plugin_session_status.dart";
+import "plugin_permission_reply.dart";
 
 abstract class BridgePlugin {
   /// Unique plugin identifier (e.g., "opencode", "codex")
@@ -90,6 +91,17 @@ abstract class BridgePlugin {
   });
 
   Future<void> rejectQuestion(String questionId);
+
+  /// Responds to a pending permission request.
+  ///
+  /// [requestId] — the unique ID of the permission request
+  /// [sessionId] — the session that owns this permission
+  /// [reply] — once/always/reject
+  Future<void> replyToPermission({
+    required String requestId,
+    required String sessionId,
+    required PluginPermissionReply reply,
+  });
 
   /// Get a project by its ID.
   Future<PluginProject> getProject(String projectId);

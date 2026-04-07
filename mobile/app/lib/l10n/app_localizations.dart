@@ -961,6 +961,24 @@ abstract class AppLocalizations {
   /// **'Failed to reject question. Please try again.'**
   String get questionRejectFailed;
 
+  /// No description provided for @permissionReplyFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to send permission response. Please try again.'**
+  String get permissionReplyFailed;
+
+  /// No description provided for @permissionBannerSingle.
+  ///
+  /// In en, this message translates to:
+  /// **'1 permission request pending'**
+  String get permissionBannerSingle;
+
+  /// No description provided for @permissionBannerMultiple.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} permission requests pending'**
+  String permissionBannerMultiple(int count);
+
   /// No description provided for @rename.
   ///
   /// In en, this message translates to:

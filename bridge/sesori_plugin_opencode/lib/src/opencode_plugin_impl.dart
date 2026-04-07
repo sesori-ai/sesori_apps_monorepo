@@ -313,6 +313,21 @@ class OpenCodePlugin implements BridgePlugin {
   }
 
   @override
+  Future<void> replyToPermission({
+    required String requestId,
+    required String sessionId,
+    required PluginPermissionReply reply,
+  }) {
+    return _call(
+      () => _service.replyToPermission(
+        requestId: requestId,
+        sessionId: sessionId,
+        reply: reply,
+      ),
+    );
+  }
+
+  @override
   Future<void> rejectQuestion(String questionId) {
     return _call(
       () => _service.repository.api.rejectQuestion(

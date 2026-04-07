@@ -14,7 +14,7 @@ import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.da
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart";
+import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
 
 /// Convenience factory for [RelayRequest] instances in tests.
 RelayRequest makeRequest(
@@ -83,6 +83,9 @@ class FakeBridgePlugin implements BridgePlugin {
   List<List<String>>? lastReplyAnswers;
   String? lastRejectQuestionId;
   String? lastGetCurrentProjectProjectId;
+  String? lastReplyToPermissionRequestId;
+  String? lastReplyToPermissionSessionId;
+  PluginPermissionReply? lastReplyToPermissionReply;
 
   // ── Error injection ──────────────────────────────────────────────────────
 
@@ -263,6 +266,17 @@ class FakeBridgePlugin implements BridgePlugin {
   @override
   Future<void> rejectQuestion(String questionId) async {
     lastRejectQuestionId = questionId;
+  }
+
+  @override
+  Future<void> replyToPermission({
+    required String requestId,
+    required String sessionId,
+    required PluginPermissionReply reply,
+  }) async {
+    lastReplyToPermissionRequestId = requestId;
+    lastReplyToPermissionSessionId = sessionId;
+    lastReplyToPermissionReply = reply;
   }
 
   @override

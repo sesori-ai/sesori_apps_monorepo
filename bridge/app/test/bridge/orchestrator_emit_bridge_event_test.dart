@@ -22,7 +22,7 @@ import "package:sesori_bridge/src/push/push_notification_service.dart";
 import "package:sesori_bridge/src/push/push_rate_limiter.dart";
 import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart";
+import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
 import "package:test/test.dart";
 
 import "../helpers/test_database.dart";
@@ -280,6 +280,13 @@ class _NoopPlugin implements BridgePlugin {
 
   @override
   Future<void> rejectQuestion(String questionId) async {}
+
+  @override
+  Future<void> replyToPermission({
+    required String requestId,
+    required String sessionId,
+    required PluginPermissionReply reply,
+  }) async {}
 
   @override
   Future<PluginProject> getProject(String projectId) async => const PluginProject(id: "");

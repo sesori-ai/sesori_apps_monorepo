@@ -10,6 +10,7 @@ import "../../capabilities/server_connection/models/sse_event.dart";
 import "../../capabilities/session/session_service.dart";
 import "../../logging/logging.dart";
 import "../../platform/notification_canceller.dart";
+import "../../repositories/permission_repository.dart";
 import "prompt_send_service.dart";
 import "session_detail_state.dart";
 import "streaming_text_buffer.dart";
@@ -17,6 +18,7 @@ import "streaming_text_buffer.dart";
 class SessionDetailCubit extends Cubit<SessionDetailState> {
   final SessionService _service;
   final ConnectionService _connectionService;
+  final PermissionRepository _permissionRepository;
   final String _sessionId;
   final String? _projectId;
   final NotificationCanceller _notificationCanceller;
@@ -36,16 +38,23 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   final StreamController<SesoriQuestionAsked> _questionStream = StreamController.broadcast();
   Stream<SesoriQuestionAsked> get questionStream => _questionStream.stream;
 
+  /// Fires the [SesoriPermissionAsked] whenever a new permission arrives, so the
+  /// screen can auto-open the permission modal.
+  final StreamController<SesoriPermissionAsked> _permissionStream = StreamController.broadcast();
+  Stream<SesoriPermissionAsked> get permissionStream => _permissionStream.stream;
+
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
   SessionDetailCubit(
     SessionService service,
     ConnectionService connectionService, {
+    required PermissionRepository permissionRepository,
     required String sessionId,
     required String? projectId,
     required NotificationCanceller notificationCanceller,
     required FailureReporter failureReporter,
   }) : _service = service,
        _connectionService = connectionService,
+       _permissionRepository = permissionRepository,
        _sessionId = sessionId,
        _projectId = projectId,
        _notificationCanceller = notificationCanceller,
@@ -143,6 +152,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
                 ),
               )
               .toList(),
+          pendingPermissions: const [],
           sessionTitle: null,
           agent: latestAssistant?.agent,
           modelID: latestAssistant?.modelID,
@@ -217,6 +227,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
                 ),
               )
               .toList(),
+          pendingPermissions: current.pendingPermissions,
           agent: latestAssistant?.agent,
           modelID: latestAssistant?.modelID,
           providerID: latestAssistant?.providerID,
@@ -341,6 +352,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           _onQuestionResolved(requestID);
         case SesoriQuestionRejected(:final requestID):
           _onQuestionResolved(requestID);
+        case SesoriPermissionAsked():
+          _onPermissionAsked(event);
         case SesoriSessionUpdated(:final info):
           _onSessionUpdated(info);
         case SesoriSessionCreated() ||
@@ -350,7 +363,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             SesoriSessionCompacted() ||
             // ignore: deprecated_member_use, legacy idle event is still emitted for backward compatibility
             SesoriSessionIdle() ||
-            SesoriPermissionAsked() ||
             SesoriPermissionReplied() ||
             SesoriTodoUpdated():
           break;
@@ -726,6 +738,30 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     emit(current.copyWith(pendingQuestions: pending));
   }
 
+  void _onPermissionAsked(SesoriPermissionAsked permission) {
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
+
+    final pending = List<SesoriPermissionAsked>.from(current.pendingPermissions);
+    if (pending.any((item) => item.requestID == permission.requestID)) return;
+
+    pending.add(permission);
+
+    if (isClosed) return;
+    emit(current.copyWith(pendingPermissions: pending));
+    _permissionStream.add(permission);
+  }
+
+  void _onPermissionResolved(String requestId) {
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
+
+    final pending = current.pendingPermissions.where((item) => item.requestID != requestId).toList();
+
+    if (isClosed) return;
+    emit(current.copyWith(pendingPermissions: pending));
+  }
+
   Future<bool> replyToQuestion({
     required String requestId,
     required String sessionId,
@@ -760,6 +796,30 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       return true;
     } on Object catch (e, st) {
       loge("Failed to reject question $requestId", e, st);
+      await _loadMessages();
+      return false;
+    }
+  }
+
+  Future<bool> replyToPermission({
+    required String requestId,
+    required String sessionId,
+    required PermissionReply reply,
+  }) async {
+    _onPermissionResolved(requestId);
+    _notificationCanceller.cancelForSession(
+      sessionId: sessionId,
+      category: NotificationCategory.aiInteraction,
+    );
+    try {
+      await _permissionRepository.replyToPermission(
+        requestId: requestId,
+        sessionId: sessionId,
+        reply: reply,
+      );
+      return true;
+    } on Object catch (e, st) {
+      loge("Failed to reply to permission $requestId", e, st);
       await _loadMessages();
       return false;
     }
@@ -818,6 +878,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     _staleSubscription.cancel();
     _streamingBuffer.dispose();
     _questionStream.close();
+    _permissionStream.close();
     return super.close();
   }
 }

@@ -1,4 +1,5 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginProvidersResult;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
+    show Log, PluginPermissionReply, PluginProvidersResult;
 import "package:sesori_shared/sesori_shared.dart" show ProjectActivitySummary;
 
 import "../opencode_plugin.dart";
@@ -38,6 +39,18 @@ class OpenCodeService {
       Log.w("Failed to get messages for session $sessionId: $e");
       return [];
     }
+  }
+
+  Future<void> replyToPermission({
+    required String requestId,
+    required String sessionId,
+    required PluginPermissionReply reply,
+  }) {
+    return repository.replyToPermission(
+      requestId: requestId,
+      sessionId: sessionId,
+      reply: reply,
+    );
   }
 
   bool handleSseEvent(SseEventData event, String? directory) {

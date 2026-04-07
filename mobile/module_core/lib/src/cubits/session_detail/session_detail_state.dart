@@ -13,6 +13,7 @@ sealed class SessionDetailState with _$SessionDetailState {
     required Map<String, String> streamingText,
     required SessionStatus sessionStatus,
     required List<SesoriQuestionAsked> pendingQuestions,
+    required List<SesoriPermissionAsked> pendingPermissions,
     // Session title — updated reactively via SSE `session.updated` events.
     required String? sessionTitle,
     // Agent/model from the latest assistant message.

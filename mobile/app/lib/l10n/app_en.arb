@@ -250,8 +250,18 @@
      "projectDiscovered": "Project discovered",
      "projectCreateFailed": "Failed to create project",
       "projectDiscoverFailed": "Failed to discover project",
-      "questionReplyFailed": "Failed to send answer. Please try again.",
-      "questionRejectFailed": "Failed to reject question. Please try again.",
+       "questionReplyFailed": "Failed to send answer. Please try again.",
+       "questionRejectFailed": "Failed to reject question. Please try again.",
+       "permissionReplyFailed": "Failed to send permission response. Please try again.",
+       "permissionBannerSingle": "1 permission request pending",
+       "permissionBannerMultiple": "{count} permission requests pending",
+       "@permissionBannerMultiple": {
+         "placeholders": {
+           "count": {
+             "type": "int"
+           }
+         }
+       },
       "rename": "Rename",
       "renameSessionTitle": "Rename Session",
       "renameProjectTitle": "Rename Project",
