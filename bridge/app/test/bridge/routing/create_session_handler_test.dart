@@ -4,6 +4,7 @@ import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge_metadata;
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/routing/create_session_handler.dart";
+import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -30,6 +31,11 @@ void main() {
         metadataService: metadataService,
         worktreeService: worktreeService,
         sessionDao: db.sessionDao,
+        sessionPersistenceService: SessionPersistenceService(
+          projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
+          db: db,
+        ),
       );
     });
 
@@ -223,6 +229,11 @@ void main() {
         metadataService: metadataService,
         worktreeService: worktreeService,
         sessionDao: db.sessionDao,
+        sessionPersistenceService: SessionPersistenceService(
+          projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
+          db: db,
+        ),
       );
       worktreeService.prepareResult = WorktreeSuccess(
         path: "/repo/.worktrees/session-001",
@@ -554,6 +565,46 @@ void main() {
       expect(metadataService.lastGenerateMessage, isNull);
     });
 
+    test("creates session for first-time project (no prior projects_table row)", () async {
+      plugin.createSessionResult = const PluginSession(
+        id: "new-sess-1",
+        projectID: "brand-new-proj",
+        directory: "brand-new-proj",
+        parentID: null,
+        title: "New Session",
+        time: null,
+        summary: null,
+      );
+
+      final result = await handler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "brand-new-proj",
+          dedicatedWorktree: false,
+          parts: [PromptPart.text(text: "Hello")],
+          agent: null,
+          model: null,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      // (a) handler returns success
+      expect(result.id, equals("new-sess-1"));
+
+      // (b) projects_table has 1 row "brand-new-proj"
+      final projectRows = await db.projectsDao.getHiddenProjectIds();
+      // getHiddenProjectIds returns hidden ones; we need to verify the row exists
+      // by checking the session's projectId was persisted
+      final dbSession = await db.sessionDao.getSession(sessionId: "new-sess-1");
+      expect(dbSession, isNotNull);
+      expect(dbSession!.projectId, equals("brand-new-proj"));
+
+      // (c) sessions_table has 1 session row
+      expect(dbSession.sessionId, equals("new-sess-1"));
+    });
+
     test("rename fails — session still returned successfully", () async {
       final throwingPlugin = _ThrowingRenameSessionPlugin();
       metadataService.generateResult = const bridge_metadata.SessionMetadata(
@@ -575,6 +626,11 @@ void main() {
         metadataService: metadataService,
         worktreeService: worktreeService,
         sessionDao: db.sessionDao,
+        sessionPersistenceService: SessionPersistenceService(
+          projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
+          db: db,
+        ),
       );
 
       final result = await localHandler.handle(

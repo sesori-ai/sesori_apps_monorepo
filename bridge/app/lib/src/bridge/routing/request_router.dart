@@ -116,6 +116,7 @@ class RequestRouter {
         metadataService: metadataService,
         worktreeService: worktreeService,
         sessionDao: sessionDao,
+        sessionPersistenceService: sessionPersistenceService,
       ),
       RenameSessionHandler(plugin),
       UpdateSessionArchiveStatusHandler(

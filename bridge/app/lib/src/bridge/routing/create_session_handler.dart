@@ -4,6 +4,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../metadata_service.dart";
 import "../models/session_metadata.dart" as bridge_metadata;
 import "../persistence/daos/session_dao.dart";
+import "../services/session_persistence_service.dart";
 import "../worktree_service.dart";
 import "prompt_part_mapper.dart";
 import "request_handler.dart";
@@ -32,16 +33,19 @@ class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Sess
   final MetadataService _metadataService;
   final WorktreeService _worktreeService;
   final SessionDao _sessionDao;
+  final SessionPersistenceService _sessionPersistenceService;
 
   CreateSessionHandler({
     required BridgePlugin plugin,
     required MetadataService metadataService,
     required WorktreeService worktreeService,
     required SessionDao sessionDao,
+    required SessionPersistenceService sessionPersistenceService,
   }) : _plugin = plugin,
        _metadataService = metadataService,
        _worktreeService = worktreeService,
        _sessionDao = sessionDao,
+       _sessionPersistenceService = sessionPersistenceService,
        super(
          HttpMethod.post,
          "/session/create",
@@ -162,6 +166,7 @@ class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Sess
       }
     }
 
+    await _sessionPersistenceService.ensureProject(projectId: projectId);
     await _sessionDao.insertSession(
       sessionId: created.id,
       projectId: projectId,
