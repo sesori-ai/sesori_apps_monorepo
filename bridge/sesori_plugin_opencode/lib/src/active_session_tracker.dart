@@ -1,6 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart" show ActiveSession, ProjectActivitySummary, wait3;
 
+import "models/pending_permission.dart";
 import "models/pending_question.dart";
 import "models/session_status.dart";
 import "models/sse_event_data.dart";
@@ -15,7 +16,6 @@ class ActiveSessionTracker {
   final Map<String, SessionStatus> _sessionStatuses = {};
   final Map<String, Set<String>> _pendingQuestions = {};
   final Map<String, Set<String>> _pendingPermissions = {};
-  final Map<String, String> _permissionSessionIds = {};
 
   /// Tracks parent IDs for all known sessions.
   /// `null` value = root session, non-null value = parent session ID.
@@ -126,12 +126,8 @@ class ActiveSessionTracker {
         _removePendingQuestion(sessionId: event.sessionID, requestId: event.requestID);
       case SsePermissionAsked():
         _pendingPermissions.putIfAbsent(event.sessionID, () => <String>{}).add(event.requestID);
-        _permissionSessionIds[event.requestID] = event.sessionID;
       case SsePermissionReplied():
-        final sessionId = _permissionSessionIds.remove(event.requestID);
-        if (sessionId != null) {
-          _removePendingPermission(sessionId: sessionId, requestId: event.requestID);
-        }
+        _removePendingPermission(sessionId: event.sessionID, requestId: event.requestID);
       default:
         return false;
     }
@@ -156,7 +152,6 @@ class ActiveSessionTracker {
     _sessionParentIds.clear();
     _pendingQuestions.clear();
     _pendingPermissions.clear();
-    _permissionSessionIds.clear();
     _lastEmittedActiveSessions = {};
     _lastEmittedPendingInputSessions = {};
   }
@@ -164,7 +159,14 @@ class ActiveSessionTracker {
   void populatePendingQuestions({required List<PendingQuestion> questions}) {
     _pendingQuestions
       ..clear()
-      ..addEntries(_groupPendingQuestionsBySession(questions).entries);
+      ..addEntries(_groupBySessionId(questions.map((q) => (q.sessionID, q.id))).entries);
+    _lastEmittedPendingInputSessions = _pendingInputSessions;
+  }
+
+  void populatePendingPermissions({required List<PendingPermission> permissions}) {
+    _pendingPermissions
+      ..clear()
+      ..addEntries(_groupBySessionId(permissions.map((p) => (p.sessionID, p.id))).entries);
     _lastEmittedPendingInputSessions = _pendingInputSessions;
   }
 
@@ -234,14 +236,15 @@ class ActiveSessionTracker {
         Log.w("buildSummary: no worktree for session $rootId");
         continue;
       }
+      final children = activeChildrenByParent[rootId] ?? const <String>[];
       byWorktree
           .putIfAbsent(worktree, () => [])
           .add(
             ActiveSession(
               id: rootId,
               mainAgentRunning: activeRoots.contains(rootId),
-              awaitingInput: _hasPendingInput(rootId),
-              childSessionIds: activeChildrenByParent[rootId] ?? [],
+              awaitingInput: _rootHasPendingInput(rootId, children),
+              childSessionIds: children,
             ),
           );
     }
@@ -277,20 +280,23 @@ class ActiveSessionTracker {
     return (_pendingQuestions[sessionId]?.isNotEmpty ?? false) || (_pendingPermissions[sessionId]?.isNotEmpty ?? false);
   }
 
-  Set<String> get _pendingInputSessions {
-    final sessionIds = <String>{};
-    for (final entry in _pendingQuestions.entries) {
-      if (entry.value.isNotEmpty) {
-        sessionIds.add(entry.key);
-      }
-    }
-    for (final entry in _pendingPermissions.entries) {
-      if (entry.value.isNotEmpty) {
-        sessionIds.add(entry.key);
-      }
-    }
-    return sessionIds;
+  /// Returns true if the root session OR any of its direct child sessions
+  /// has pending input (question or permission).
+  ///
+  /// Child sessions are included so that sub-agent questions/permissions
+  /// surface on the root session row in the session list.
+  bool _rootHasPendingInput(String rootId, List<String> childIds) {
+    if (_hasPendingInput(rootId)) return true;
+    return childIds.any(_hasPendingInput);
   }
+
+  /// Raw set of session IDs (including children) that currently have any
+  /// pending input. Used only for change detection — re-emit triggers when
+  /// this set changes, even if active-session counts did not.
+  Set<String> get _pendingInputSessions => {
+    ..._pendingQuestions.keys,
+    ..._pendingPermissions.keys,
+  };
 
   String? _resolveWorktree(String directory) {
     final normalizedDirectory = _normalizePath(directory);
@@ -317,10 +323,10 @@ class ActiveSessionTracker {
     _sessionWorktrees[sessionID] = worktree;
   }
 
-  Map<String, Set<String>> _groupPendingQuestionsBySession(List<PendingQuestion> questions) {
+  Map<String, Set<String>> _groupBySessionId(Iterable<(String, String)> sessionIdAndEntryId) {
     final grouped = <String, Set<String>>{};
-    for (final question in questions) {
-      grouped.putIfAbsent(question.sessionID, () => <String>{}).add(question.id);
+    for (final (sessionId, entryId) in sessionIdAndEntryId) {
+      grouped.putIfAbsent(sessionId, () => <String>{}).add(entryId);
     }
     return grouped;
   }
@@ -346,7 +352,6 @@ class ActiveSessionTracker {
   void _clearPendingInputForSession(String sessionId) {
     _pendingQuestions.remove(sessionId);
     _pendingPermissions.remove(sessionId);
-    _permissionSessionIds.removeWhere((_, mappedSessionId) => mappedSessionId == sessionId);
   }
 
   bool _mapsEqual(Map<String, int> a, Map<String, int> b) {
@@ -360,10 +365,6 @@ class ActiveSessionTracker {
 
   bool _setsEqual(Set<String> a, Set<String> b) {
     if (identical(a, b)) return true;
-    if (a.length != b.length) return false;
-    for (final value in a) {
-      if (!b.contains(value)) return false;
-    }
-    return true;
+    return a.length == b.length && a.containsAll(b);
   }
 }

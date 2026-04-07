@@ -694,8 +694,7 @@ void main() {
 
         expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isTrue);
 
-        // SsePermissionReplied has no sessionID — tracker uses requestID→sessionID map.
-        tracker.handleEvent(_permissionReplied("p1"), null);
+        tracker.handleEvent(_permissionReplied(requestId: "p1", sessionId: "s1"), null);
 
         expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isFalse);
       });
@@ -797,10 +796,73 @@ void main() {
         tracker.handleEvent(_sessionBusy("s1"), null);
 
         // Reply to a permission that was never asked — should not crash.
-        final changed = tracker.handleEvent(_permissionReplied("unknown"), null);
+        final changed = tracker.handleEvent(_permissionReplied(requestId: "unknown", sessionId: "s1"), null);
 
         expect(changed, isFalse);
         expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isFalse);
+      });
+
+      test("child session pending question bubbles up to root awaitingInput", () async {
+        final tracker = await _coldStartedTracker(
+          projects: [const Project(id: "p1", worktree: "/repo")],
+        );
+
+        tracker.handleEvent(_sessionCreated("root", "/repo"), null);
+        tracker.handleEvent(_sessionBusy("root"), null);
+
+        // Register child session under root, mark it busy.
+        tracker.handleEvent(_childSessionCreated("child", "root", "/repo"), null);
+        tracker.handleEvent(_sessionBusy("child"), null);
+
+        // Question asked on child — root should show awaitingInput.
+        final changed = tracker.handleEvent(_questionAsked("q1", "child"), null);
+
+        expect(changed, isTrue, reason: "bubble-up must trigger re-emit");
+        final summary = tracker.buildSummary();
+        final rootSession = summary.first.activeSessions.firstWhere((s) => s.id == "root");
+        expect(rootSession.awaitingInput, isTrue, reason: "child question must bubble to root");
+      });
+
+      test("child session pending permission bubbles up to root awaitingInput", () async {
+        final tracker = await _coldStartedTracker(
+          projects: [const Project(id: "p1", worktree: "/repo")],
+        );
+
+        tracker.handleEvent(_sessionCreated("root", "/repo"), null);
+        tracker.handleEvent(_sessionBusy("root"), null);
+        tracker.handleEvent(_childSessionCreated("child", "root", "/repo"), null);
+        tracker.handleEvent(_sessionBusy("child"), null);
+
+        tracker.handleEvent(_permissionAsked("p1", "child"), null);
+
+        final summary = tracker.buildSummary();
+        final rootSession = summary.first.activeSessions.firstWhere((s) => s.id == "root");
+        expect(rootSession.awaitingInput, isTrue);
+
+        // Resolving the child permission should clear the root's awaitingInput.
+        tracker.handleEvent(_permissionReplied(requestId: "p1", sessionId: "child"), null);
+        final afterSummary = tracker.buildSummary();
+        final afterRoot = afterSummary.first.activeSessions.firstWhere((s) => s.id == "root");
+        expect(afterRoot.awaitingInput, isFalse);
+      });
+
+      test("populatePendingPermissions hydrates from cold start data", () async {
+        final tracker = await _coldStartedTracker(
+          projects: [const Project(id: "p1", worktree: "/repo")],
+          statuses: {"s1": const SessionStatus.busy()},
+          sessions: [
+            const Session(id: "s1", projectID: "p1", directory: "/repo"),
+          ],
+        );
+
+        tracker.populatePendingPermissions(
+          permissions: [
+            const PendingPermission(id: "perm1", sessionID: "s1", permission: "bash"),
+          ],
+        );
+
+        final summary = tracker.buildSummary();
+        expect(summary.first.activeSessions.first.awaitingInput, isTrue);
       });
     });
   });
@@ -809,6 +871,12 @@ void main() {
 SseEventData _sessionCreated(String id, String directory) {
   return SseEventData.sessionCreated(
     info: Session(id: id, projectID: "project", directory: directory),
+  );
+}
+
+SseEventData _childSessionCreated(String id, String parentId, String directory) {
+  return SseEventData.sessionCreated(
+    info: Session(id: id, projectID: "project", directory: directory, parentID: parentId),
   );
 }
 
@@ -873,9 +941,10 @@ SseEventData _permissionAsked(String requestId, String sessionId) {
   );
 }
 
-SseEventData _permissionReplied(String requestId) {
+SseEventData _permissionReplied({required String requestId, required String sessionId}) {
   return SseEventData.permissionReplied(
     requestID: requestId,
+    sessionID: sessionId,
     reply: "approve",
   );
 }
@@ -975,6 +1044,9 @@ class _FakeApi implements OpenCodeApi {
 
   @override
   Future<List<PendingQuestion>> getPendingQuestions({required String? directory}) async => [];
+
+  @override
+  Future<List<PendingPermission>> getPendingPermissions() async => [];
 
   @override
   Future<void> replyToQuestion({
