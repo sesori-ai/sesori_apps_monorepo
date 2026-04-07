@@ -6,6 +6,7 @@ import "package:sesori_shared/sesori_shared.dart" show jsonDecodeListMap, jsonDe
 
 import "models/agent_info.dart";
 import "models/message_with_parts.dart";
+import "models/pending_permission.dart";
 import "models/pending_question.dart";
 import "models/project.dart";
 import "models/provider_info.dart";
@@ -286,6 +287,15 @@ class OpenCodeApi {
 
     final decoded = jsonDecodeListMap(response.body);
     return decoded.map(PendingQuestion.fromJson).toList();
+  }
+
+  Future<List<PendingPermission>> getPendingPermissions() async {
+    final response = await _client.get(Uri.parse("$serverURL/permission"), headers: _authHeaders);
+    Log.v("[getPendingPermissions] response: ${response.body}");
+    _ensureSuccess(response, "GET /permission");
+
+    final decoded = jsonDecodeListMap(response.body);
+    return decoded.map(PendingPermission.fromJson).toList();
   }
 
   Future<void> replyToQuestion({

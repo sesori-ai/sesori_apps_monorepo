@@ -1,6 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginProvidersResult;
 import "package:sesori_shared/sesori_shared.dart" show wait2;
 
+import "models/pending_permission.dart";
 import "models/pending_question.dart";
 import "models/project.dart";
 import "models/session.dart";
@@ -154,6 +155,10 @@ class OpenCodeRepository {
 
   Future<List<PendingQuestion>> getPendingQuestions() {
     return _api.getPendingQuestions(directory: null);
+  }
+
+  Future<List<PendingPermission>> getPendingPermissions() {
+    return _api.getPendingPermissions();
   }
 
   /// Collects all sessions whose directory is equal to or under [worktree],
