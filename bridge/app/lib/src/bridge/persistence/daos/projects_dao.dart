@@ -74,4 +74,14 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
       ProjectsTableCompanion.insert(projectId: projectId, baseBranch: Value(baseBranch)),
     );
   }
+
+  /// Inserts a minimal project row if none exists for [projectId].
+  /// Preserves all fields of existing rows — uses InsertMode.insertOrIgnore.
+  /// Use this to satisfy FK constraints without clobbering user-set state.
+  Future<void> insertProjectIfMissing({required String projectId}) async {
+    await into(projectsTable).insert(
+      ProjectsTableCompanion.insert(projectId: projectId),
+      mode: InsertMode.insertOrIgnore,
+    );
+  }
 }
