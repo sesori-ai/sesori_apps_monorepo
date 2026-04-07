@@ -25,9 +25,6 @@
 library;
 
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
-import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
-import "package:sesori_bridge/src/bridge/persistence/daos/session_dao.dart";
-import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
@@ -47,7 +44,7 @@ void main() {
       "subsequent upsertFromGhPr succeeds without FK exception",
       () async {
         final db = createTestDatabase();
-        addTearDown(() => db.close());
+        addTearDown(db.close);
 
         final plugin = _FakeBridgePlugin(
           projects: const [
@@ -108,7 +105,7 @@ void main() {
       "even when GetProjects never ran",
       () async {
         final db = createTestDatabase();
-        addTearDown(() => db.close());
+        addTearDown(db.close);
 
         final prRepo = PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
@@ -152,7 +149,7 @@ void main() {
       "create project and session rows without FK exception",
       () async {
         final db = createTestDatabase();
-        addTearDown(() => db.close());
+        addTearDown(db.close);
 
         final service = SessionPersistenceService(
           projectsDao: db.projectsDao,

@@ -36,7 +36,7 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
     await into(projectsTable).insert(
       ProjectsTableCompanion.insert(projectId: projectId, hidden: const Value(false)),
       onConflict: DoUpdate(
-        (old) => ProjectsTableCompanion(hidden: const Value(false)),
+        (old) => const ProjectsTableCompanion(hidden: Value(false)),
         target: [projectsTable.projectId],
       ),
     );

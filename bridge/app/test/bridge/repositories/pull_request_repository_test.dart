@@ -9,7 +9,7 @@ void main() {
   group("PullRequestRepository", () {
     test("upsertFromGhPr ensures project exists before inserting PR", () async {
       final db = createTestDatabase();
-      addTearDown(() => db.close());
+      addTearDown(db.close);
 
       // RED: This constructor call is missing `projectsDao` — it will fail to
       // compile once we add the required parameter in the GREEN phase.
@@ -19,7 +19,7 @@ void main() {
         projectsDao: db.projectsDao,
       );
 
-      final fakeGhPr = GhPullRequest(
+      const fakeGhPr = GhPullRequest(
         number: 42,
         url: "https://github.com/org/repo/pull/42",
         title: "Test PR",

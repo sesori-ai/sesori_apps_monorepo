@@ -25,7 +25,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -81,6 +81,32 @@ class AppDatabase extends _$AppDatabase {
       },
       from3To4: (m, schema) async {
         await m.createTable(schema.pullRequestsTable);
+      },
+      from4To5: (m, schema) async {
+        // Seed placeholder projects before recreating the sessions table with
+        // an FK. Existing orphan sessions must be preserved, not deleted.
+        await m.database.customStatement(
+          'INSERT OR IGNORE INTO projects_table '
+          '(project_id, hidden, base_branch, worktree_counter) '
+          'SELECT DISTINCT project_id, 0, NULL, 0 FROM sessions_table '
+          'WHERE project_id NOT IN '
+          '(SELECT project_id FROM projects_table)',
+        );
+
+        // Drift recreates the table to add the FK while preserving the
+        // WITHOUT ROWID table shape.
+        await m.alterTable(TableMigration(schema.sessionsTable));
+
+        // Migrations run inside a transaction, so foreign_keys cannot be
+        // toggled mid-flight. Validate the final graph explicitly instead.
+        final violations = await m.database.customSelect('PRAGMA foreign_key_check').get();
+        if (violations.isNotEmpty) {
+          throw StateError(
+            'Migration v4→v5 failed: ${violations.length} FK violations '
+            'remain after orphan cleanup. Rows: '
+            '${violations.map((row) => row.data).toList()}',
+          );
+        }
       },
     ),
     beforeOpen: (details) async {

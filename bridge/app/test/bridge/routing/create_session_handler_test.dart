@@ -594,9 +594,8 @@ void main() {
       expect(result.id, equals("new-sess-1"));
 
       // (b) projects_table has 1 row "brand-new-proj"
-      final projectRows = await db.projectsDao.getHiddenProjectIds();
-      // getHiddenProjectIds returns hidden ones; we need to verify the row exists
-      // by checking the session's projectId was persisted
+      // getHiddenProjectIds returns hidden ones, so verify existence indirectly
+      // by checking the persisted session's projectId.
       final dbSession = await db.sessionDao.getSession(sessionId: "new-sess-1");
       expect(dbSession, isNotNull);
       expect(dbSession!.projectId, equals("brand-new-proj"));

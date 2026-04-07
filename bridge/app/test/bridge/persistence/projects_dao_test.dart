@@ -210,7 +210,7 @@ void main() {
       test("insertProjectIfMissing inserts new project with default fields", () async {
         await dao.insertProjectIfMissing(projectId: "proj-1");
 
-        final rows = await (db.select(db.projectsTable)).get();
+        final rows = await db.select(db.projectsTable).get();
         expect(rows, hasLength(1));
         expect(rows.first.projectId, equals("proj-1"));
         expect(rows.first.hidden, isFalse);
