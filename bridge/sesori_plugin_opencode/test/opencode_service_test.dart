@@ -360,6 +360,9 @@ class FakeOpenCodeApi implements OpenCodeApi {
   Future<List<PendingQuestion>> getPendingQuestions({required String? directory}) async => [];
 
   @override
+  Future<List<PendingPermission>> getPendingPermissions({required String? directory}) async => [];
+
+  @override
   Future<void> replyToQuestion({
     required String questionId,
     required String? directory,

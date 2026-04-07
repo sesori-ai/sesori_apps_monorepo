@@ -8,6 +8,7 @@ import "../../core/constants.dart";
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/routing/app_router.dart";
+import "../../core/status_colors.dart";
 import "../../core/widgets/app_modal_bottom_sheet.dart";
 import "../../l10n/app_localizations.dart";
 import "pr_status_row.dart";
@@ -192,6 +193,7 @@ class _SessionListBody extends StatelessWidget {
                             session: session,
                             isArchived: isArchived,
                             isActive: activityInfo != null,
+                            awaitingInput: activityInfo?.awaitingInput ?? false,
                             backgroundTaskCount: activityInfo?.backgroundTaskCount ?? 0,
                             onLongPress: () => _showSessionActions(context: context, session: session),
                             onSwipe: () => isArchived

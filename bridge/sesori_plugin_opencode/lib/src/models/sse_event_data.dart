@@ -177,8 +177,10 @@ sealed class SseEventData with _$SseEventData {
   }) = SsePermissionAsked;
 
   @FreezedUnionValue("permission.replied")
+  @Implements<SseSessionEventData>()
   const factory SseEventData.permissionReplied({
     required String requestID,
+    required String sessionID,
     required String reply,
   }) = SsePermissionReplied;
 

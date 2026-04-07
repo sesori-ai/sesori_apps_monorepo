@@ -318,6 +318,82 @@ void main() {
     // 9. Non-projectsSummary events are ignored
     // -------------------------------------------------------------------------
 
+    // -------------------------------------------------------------------------
+    // 10. awaitingInput true is mapped to SessionActivityInfo
+    // -------------------------------------------------------------------------
+
+    test("sessionActivity maps awaitingInput true from ActiveSession", () async {
+      final repo = SseEventRepository(mockConnectionService, failureReporter: mockFailureReporter);
+
+      final completer = Completer<Map<String, Map<String, SessionActivityInfo>>>();
+      final subscription = repo.sessionActivity.listen((activity) {
+        if (activity.isNotEmpty) {
+          completer.complete(activity);
+        }
+      });
+
+      final event = SseEvent(
+        data: const SesoriProjectsSummary(
+          projects: [
+            ProjectActivitySummary(
+              id: "/foo",
+              activeSessions: [
+                ActiveSession(id: "s1", mainAgentRunning: true, awaitingInput: true),
+              ],
+            ),
+          ],
+        ),
+      );
+      eventController.add(event);
+
+      final activity = await completer.future;
+      expect(activity["/foo"]!["s1"]!.awaitingInput, isTrue);
+      expect(activity["/foo"]!["s1"]!.mainAgentRunning, isTrue);
+
+      await subscription.cancel();
+      repo.onDispose();
+    });
+
+    // -------------------------------------------------------------------------
+    // 11. awaitingInput false is mapped to SessionActivityInfo
+    // -------------------------------------------------------------------------
+
+    test("sessionActivity maps awaitingInput false from ActiveSession", () async {
+      final repo = SseEventRepository(mockConnectionService, failureReporter: mockFailureReporter);
+
+      final completer = Completer<Map<String, Map<String, SessionActivityInfo>>>();
+      final subscription = repo.sessionActivity.listen((activity) {
+        if (activity.isNotEmpty) {
+          completer.complete(activity);
+        }
+      });
+
+      final event = SseEvent(
+        data: const SesoriProjectsSummary(
+          projects: [
+            ProjectActivitySummary(
+              id: "/foo",
+              activeSessions: [
+                ActiveSession(id: "s1", mainAgentRunning: true, awaitingInput: false),
+              ],
+            ),
+          ],
+        ),
+      );
+      eventController.add(event);
+
+      final activity = await completer.future;
+      expect(activity["/foo"]!["s1"]!.awaitingInput, isFalse);
+      expect(activity["/foo"]!["s1"]!.mainAgentRunning, isTrue);
+
+      await subscription.cancel();
+      repo.onDispose();
+    });
+
+    // -------------------------------------------------------------------------
+    // 12. Non-projectsSummary events are ignored
+    // -------------------------------------------------------------------------
+
     test("non-projectsSummary events are ignored", () async {
       final repo = SseEventRepository(mockConnectionService, failureReporter: mockFailureReporter);
 

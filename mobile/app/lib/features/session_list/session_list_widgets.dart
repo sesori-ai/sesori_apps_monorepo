@@ -4,6 +4,7 @@ class _SessionTile extends StatelessWidget {
   final Session session;
   final bool isArchived;
   final bool isActive;
+  final bool awaitingInput;
   final int backgroundTaskCount;
   final VoidCallback onLongPress;
   final VoidCallback onSwipe;
@@ -12,6 +13,7 @@ class _SessionTile extends StatelessWidget {
     required this.session,
     required this.isArchived,
     required this.isActive,
+    this.awaitingInput = false,
     this.backgroundTaskCount = 0,
     required this.onLongPress,
     required this.onSwipe,
@@ -72,35 +74,11 @@ class _SessionTile extends StatelessWidget {
               ),
             if (session.pullRequest case final pr?) PrStatusRow(pr: pr),
             if (isActive)
-              Row(
-                children: [
-                  Icon(Icons.circle, size: 8, color: theme.colorScheme.primary),
-                  const SizedBox(width: 4),
-                  Text(
-                    loc.sessionListRunning,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  if (backgroundTaskCount > 0) ...[
-                    Padding(
-                      padding: const EdgeInsetsDirectional.symmetric(horizontal: 6),
-                      child: Icon(
-                        Icons.circle,
-                        size: 3,
-                        color: theme.colorScheme.primary,
-                      ),
-                    ),
-                    Text(
-                      loc.sessionListBackgroundTasks(backgroundTaskCount),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ],
+              _buildActivityRow(
+                theme: theme,
+                loc: loc,
+                awaitingInput: awaitingInput,
+                backgroundTaskCount: backgroundTaskCount,
               ),
           ],
         ),
@@ -120,6 +98,43 @@ class _SessionTile extends StatelessWidget {
       ),
     );
   }
+}
+
+Widget _buildActivityRow({
+  required ThemeData theme,
+  required AppLocalizations loc,
+  required bool awaitingInput,
+  required int backgroundTaskCount,
+}) {
+  final color = awaitingInput ? kStatusAmber : theme.colorScheme.primary;
+  final label = awaitingInput ? loc.sessionListAwaitingInput : loc.sessionListRunning;
+
+  return Row(
+    children: [
+      Icon(Icons.circle, size: 8, color: color),
+      const SizedBox(width: 4),
+      Text(
+        label,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      if (backgroundTaskCount > 0) ...[
+        Padding(
+          padding: const EdgeInsetsDirectional.symmetric(horizontal: 6),
+          child: Icon(Icons.circle, size: 3, color: color),
+        ),
+        Text(
+          loc.sessionListBackgroundTasks(backgroundTaskCount),
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: color,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    ],
+  );
 }
 
 String _formatTimestamp({required int ms}) {

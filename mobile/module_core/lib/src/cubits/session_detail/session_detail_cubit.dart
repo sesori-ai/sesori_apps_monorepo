@@ -351,6 +351,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             // ignore: deprecated_member_use, legacy idle event is still emitted for backward compatibility
             SesoriSessionIdle() ||
             SesoriPermissionAsked() ||
+            SesoriPermissionReplied() ||
             SesoriTodoUpdated():
           break;
       }

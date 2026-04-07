@@ -66,8 +66,9 @@ class SseEventMapper {
           tool: tool,
           description: description,
         ),
-      SsePermissionReplied(:final requestID, :final reply) => BridgeSsePermissionReplied(
+      SsePermissionReplied(:final requestID, :final sessionID, :final reply) => BridgeSsePermissionReplied(
         requestID: requestID,
+        sessionID: sessionID,
         reply: reply,
       ),
       SsePermissionUpdated() => const BridgeSsePermissionUpdated(),

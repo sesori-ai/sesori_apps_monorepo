@@ -246,6 +246,7 @@ Map<String, dynamic> _$SesoriPermissionAskedToJson(
 SesoriPermissionReplied _$SesoriPermissionRepliedFromJson(Map json) =>
     SesoriPermissionReplied(
       requestID: json['requestID'] as String,
+      sessionID: json['sessionID'] as String,
       reply: json['reply'] as String,
       $type: json['type'] as String?,
     );
@@ -254,6 +255,7 @@ Map<String, dynamic> _$SesoriPermissionRepliedToJson(
   SesoriPermissionReplied instance,
 ) => <String, dynamic>{
   'requestID': instance.requestID,
+  'sessionID': instance.sessionID,
   'reply': instance.reply,
   'type': instance.$type,
 };

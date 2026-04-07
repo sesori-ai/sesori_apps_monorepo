@@ -1757,11 +1757,12 @@ as String,
 /// @nodoc
 @JsonSerializable()
 
-class SesoriPermissionReplied implements SesoriSseEvent {
-  const SesoriPermissionReplied({required this.requestID, required this.reply, final  String? $type}): $type = $type ?? 'permission.replied';
+class SesoriPermissionReplied implements SesoriSseEvent, SesoriSessionEvent {
+  const SesoriPermissionReplied({required this.requestID, required this.sessionID, required this.reply, final  String? $type}): $type = $type ?? 'permission.replied';
   factory SesoriPermissionReplied.fromJson(Map<String, dynamic> json) => _$SesoriPermissionRepliedFromJson(json);
 
  final  String requestID;
+ final  String sessionID;
  final  String reply;
 
 @JsonKey(name: 'type')
@@ -1781,16 +1782,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriPermissionReplied&&(identical(other.requestID, requestID) || other.requestID == requestID)&&(identical(other.reply, reply) || other.reply == reply));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriPermissionReplied&&(identical(other.requestID, requestID) || other.requestID == requestID)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.reply, reply) || other.reply == reply));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,requestID,reply);
+int get hashCode => Object.hash(runtimeType,requestID,sessionID,reply);
 
 @override
 String toString() {
-  return 'SesoriSseEvent.permissionReplied(requestID: $requestID, reply: $reply)';
+  return 'SesoriSseEvent.permissionReplied(requestID: $requestID, sessionID: $sessionID, reply: $reply)';
 }
 
 
@@ -1801,7 +1802,7 @@ abstract mixin class $SesoriPermissionRepliedCopyWith<$Res> implements $SesoriSs
   factory $SesoriPermissionRepliedCopyWith(SesoriPermissionReplied value, $Res Function(SesoriPermissionReplied) _then) = _$SesoriPermissionRepliedCopyWithImpl;
 @useResult
 $Res call({
- String requestID, String reply
+ String requestID, String sessionID, String reply
 });
 
 
@@ -1818,9 +1819,10 @@ class _$SesoriPermissionRepliedCopyWithImpl<$Res>
 
 /// Create a copy of SesoriSseEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? requestID = null,Object? reply = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? requestID = null,Object? sessionID = null,Object? reply = null,}) {
   return _then(SesoriPermissionReplied(
 requestID: null == requestID ? _self.requestID : requestID // ignore: cast_nullable_to_non_nullable
+as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,reply: null == reply ? _self.reply : reply // ignore: cast_nullable_to_non_nullable
 as String,
   ));

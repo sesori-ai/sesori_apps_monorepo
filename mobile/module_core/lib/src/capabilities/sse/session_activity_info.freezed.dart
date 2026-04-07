@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$SessionActivityInfo {
 
- bool get mainAgentRunning; int get backgroundTaskCount;
+ bool get mainAgentRunning; bool get awaitingInput; int get backgroundTaskCount;
 /// Create a copy of SessionActivityInfo
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $SessionActivityInfoCopyWith<SessionActivityInfo> get copyWith => _$SessionActiv
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionActivityInfo&&(identical(other.mainAgentRunning, mainAgentRunning) || other.mainAgentRunning == mainAgentRunning)&&(identical(other.backgroundTaskCount, backgroundTaskCount) || other.backgroundTaskCount == backgroundTaskCount));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionActivityInfo&&(identical(other.mainAgentRunning, mainAgentRunning) || other.mainAgentRunning == mainAgentRunning)&&(identical(other.awaitingInput, awaitingInput) || other.awaitingInput == awaitingInput)&&(identical(other.backgroundTaskCount, backgroundTaskCount) || other.backgroundTaskCount == backgroundTaskCount));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,mainAgentRunning,backgroundTaskCount);
+int get hashCode => Object.hash(runtimeType,mainAgentRunning,awaitingInput,backgroundTaskCount);
 
 @override
 String toString() {
-  return 'SessionActivityInfo(mainAgentRunning: $mainAgentRunning, backgroundTaskCount: $backgroundTaskCount)';
+  return 'SessionActivityInfo(mainAgentRunning: $mainAgentRunning, awaitingInput: $awaitingInput, backgroundTaskCount: $backgroundTaskCount)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $SessionActivityInfoCopyWith<$Res>  {
   factory $SessionActivityInfoCopyWith(SessionActivityInfo value, $Res Function(SessionActivityInfo) _then) = _$SessionActivityInfoCopyWithImpl;
 @useResult
 $Res call({
- bool mainAgentRunning, int backgroundTaskCount
+ bool mainAgentRunning, bool awaitingInput, int backgroundTaskCount
 });
 
 
@@ -62,9 +62,10 @@ class _$SessionActivityInfoCopyWithImpl<$Res>
 
 /// Create a copy of SessionActivityInfo
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? mainAgentRunning = null,Object? backgroundTaskCount = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? mainAgentRunning = null,Object? awaitingInput = null,Object? backgroundTaskCount = null,}) {
   return _then(_self.copyWith(
 mainAgentRunning: null == mainAgentRunning ? _self.mainAgentRunning : mainAgentRunning // ignore: cast_nullable_to_non_nullable
+as bool,awaitingInput: null == awaitingInput ? _self.awaitingInput : awaitingInput // ignore: cast_nullable_to_non_nullable
 as bool,backgroundTaskCount: null == backgroundTaskCount ? _self.backgroundTaskCount : backgroundTaskCount // ignore: cast_nullable_to_non_nullable
 as int,
   ));
@@ -78,10 +79,11 @@ as int,
 
 
 class _SessionActivityInfo implements SessionActivityInfo {
-  const _SessionActivityInfo({this.mainAgentRunning = false, this.backgroundTaskCount = 0});
+  const _SessionActivityInfo({this.mainAgentRunning = false, this.awaitingInput = false, this.backgroundTaskCount = 0});
   
 
 @override@JsonKey() final  bool mainAgentRunning;
+@override@JsonKey() final  bool awaitingInput;
 @override@JsonKey() final  int backgroundTaskCount;
 
 /// Create a copy of SessionActivityInfo
@@ -94,16 +96,16 @@ _$SessionActivityInfoCopyWith<_SessionActivityInfo> get copyWith => __$SessionAc
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionActivityInfo&&(identical(other.mainAgentRunning, mainAgentRunning) || other.mainAgentRunning == mainAgentRunning)&&(identical(other.backgroundTaskCount, backgroundTaskCount) || other.backgroundTaskCount == backgroundTaskCount));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionActivityInfo&&(identical(other.mainAgentRunning, mainAgentRunning) || other.mainAgentRunning == mainAgentRunning)&&(identical(other.awaitingInput, awaitingInput) || other.awaitingInput == awaitingInput)&&(identical(other.backgroundTaskCount, backgroundTaskCount) || other.backgroundTaskCount == backgroundTaskCount));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,mainAgentRunning,backgroundTaskCount);
+int get hashCode => Object.hash(runtimeType,mainAgentRunning,awaitingInput,backgroundTaskCount);
 
 @override
 String toString() {
-  return 'SessionActivityInfo(mainAgentRunning: $mainAgentRunning, backgroundTaskCount: $backgroundTaskCount)';
+  return 'SessionActivityInfo(mainAgentRunning: $mainAgentRunning, awaitingInput: $awaitingInput, backgroundTaskCount: $backgroundTaskCount)';
 }
 
 
@@ -114,7 +116,7 @@ abstract mixin class _$SessionActivityInfoCopyWith<$Res> implements $SessionActi
   factory _$SessionActivityInfoCopyWith(_SessionActivityInfo value, $Res Function(_SessionActivityInfo) _then) = __$SessionActivityInfoCopyWithImpl;
 @override @useResult
 $Res call({
- bool mainAgentRunning, int backgroundTaskCount
+ bool mainAgentRunning, bool awaitingInput, int backgroundTaskCount
 });
 
 
@@ -131,9 +133,10 @@ class __$SessionActivityInfoCopyWithImpl<$Res>
 
 /// Create a copy of SessionActivityInfo
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? mainAgentRunning = null,Object? backgroundTaskCount = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? mainAgentRunning = null,Object? awaitingInput = null,Object? backgroundTaskCount = null,}) {
   return _then(_SessionActivityInfo(
 mainAgentRunning: null == mainAgentRunning ? _self.mainAgentRunning : mainAgentRunning // ignore: cast_nullable_to_non_nullable
+as bool,awaitingInput: null == awaitingInput ? _self.awaitingInput : awaitingInput // ignore: cast_nullable_to_non_nullable
 as bool,backgroundTaskCount: null == backgroundTaskCount ? _self.backgroundTaskCount : backgroundTaskCount // ignore: cast_nullable_to_non_nullable
 as int,
   ));

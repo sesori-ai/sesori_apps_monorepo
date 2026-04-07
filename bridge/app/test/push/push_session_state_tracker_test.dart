@@ -240,6 +240,7 @@ void main() {
       tracker.handleEvent(
         const SesoriSseEvent.permissionReplied(
           requestID: "req-1",
+          sessionID: "session-a",
           reply: "allow",
         ),
       );

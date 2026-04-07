@@ -12,6 +12,7 @@ sealed class PluginActiveSession with _$PluginActiveSession {
   const factory PluginActiveSession({
     required String id,
     @Default(false) bool mainAgentRunning,
+    @Default(false) bool awaitingInput,
     @Default([]) List<String> childSessionIds,
   }) = _PluginActiveSession;
 }

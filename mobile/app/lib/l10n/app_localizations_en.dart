@@ -377,6 +377,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListRunning => 'Running';
 
   @override
+  String get sessionListAwaitingInput => 'Awaiting input';
+
+  @override
   String sessionListBackgroundTasks(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

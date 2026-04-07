@@ -207,7 +207,7 @@ void main() {
           ),
         );
         harness.dispatch(
-          const SesoriSseEvent.permissionReplied(requestID: "perm-1", reply: "allow"),
+          const SesoriSseEvent.permissionReplied(requestID: "perm-1", sessionID: "s1", reply: "allow"),
         );
 
         async.elapse(const Duration(milliseconds: 500));

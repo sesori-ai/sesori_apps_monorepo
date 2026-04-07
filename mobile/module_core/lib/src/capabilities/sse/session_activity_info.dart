@@ -10,6 +10,7 @@ part "session_activity_info.freezed.dart";
 sealed class SessionActivityInfo with _$SessionActivityInfo {
   const factory SessionActivityInfo({
     @Default(false) bool mainAgentRunning,
+    @Default(false) bool awaitingInput,
     @Default(0) int backgroundTaskCount,
   }) = _SessionActivityInfo;
 }

@@ -1,6 +1,8 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart" show ActiveSession, ProjectActivitySummary, wait3;
 
+import "models/pending_permission.dart";
+import "models/pending_question.dart";
 import "models/session_status.dart";
 import "models/sse_event_data.dart";
 import "opencode_repository.dart";
@@ -12,12 +14,15 @@ class ActiveSessionTracker {
   final Map<String, String> _sessionWorktrees = {};
   final Map<String, String> _sessionDirectories = {}; // directory where the session is located
   final Map<String, SessionStatus> _sessionStatuses = {};
+  final Map<String, Set<String>> _pendingQuestions = {};
+  final Map<String, Set<String>> _pendingPermissions = {};
 
   /// Tracks parent IDs for all known sessions.
   /// `null` value = root session, non-null value = parent session ID.
   final Map<String, String?> _sessionParentIds = {};
 
   Map<String, int> _lastEmittedActiveSessions = {};
+  Set<String> _lastEmittedPendingInputSessions = {};
 
   ActiveSessionTracker(this._repository);
 
@@ -67,6 +72,7 @@ class ActiveSessionTracker {
     }
 
     _lastEmittedActiveSessions = _activeSessionCounts;
+    _lastEmittedPendingInputSessions = _pendingInputSessions;
   }
 
   bool handleEvent(SseEventData event, String? directory) {
@@ -96,6 +102,7 @@ class ActiveSessionTracker {
         _sessionWorktrees.remove(event.info.id);
         _sessionStatuses.remove(event.info.id);
         _sessionParentIds.remove(event.info.id);
+        _clearPendingInputForSession(event.info.id);
       case SseSessionStatus():
         if (!_sessionWorktrees.containsKey(event.sessionID) && directory != null) {
           _updateSessionWorktree(event.sessionID, directory);
@@ -103,19 +110,37 @@ class ActiveSessionTracker {
         switch (event.status) {
           case SessionStatusIdle():
             _sessionStatuses.remove(event.sessionID);
+            _clearPendingInputForSession(event.sessionID);
           case SessionStatusBusy():
           case SessionStatusRetry():
             _sessionStatuses[event.sessionID] = event.status;
         }
       case SseSessionIdle():
         _sessionStatuses.remove(event.sessionID);
+        _clearPendingInputForSession(event.sessionID);
+      case SseQuestionAsked():
+        _pendingQuestions.putIfAbsent(event.sessionID, () => <String>{}).add(event.id);
+      case SseQuestionReplied():
+        _removePendingQuestion(sessionId: event.sessionID, requestId: event.requestID);
+      case SseQuestionRejected():
+        _removePendingQuestion(sessionId: event.sessionID, requestId: event.requestID);
+      case SsePermissionAsked():
+        _pendingPermissions.putIfAbsent(event.sessionID, () => <String>{}).add(event.requestID);
+      case SsePermissionReplied():
+        _removePendingPermission(sessionId: event.sessionID, requestId: event.requestID);
       default:
         return false;
     }
 
     final next = _activeSessionCounts;
-    if (!forceReemit && _mapsEqual(_lastEmittedActiveSessions, next)) return false;
+    final nextPendingInputSessions = _pendingInputSessions;
+    if (!forceReemit &&
+        _mapsEqual(_lastEmittedActiveSessions, next) &&
+        _setsEqual(_lastEmittedPendingInputSessions, nextPendingInputSessions)) {
+      return false;
+    }
     _lastEmittedActiveSessions = next;
+    _lastEmittedPendingInputSessions = nextPendingInputSessions;
     return true;
   }
 
@@ -125,7 +150,24 @@ class ActiveSessionTracker {
     _sessionDirectories.clear();
     _sessionStatuses.clear();
     _sessionParentIds.clear();
+    _pendingQuestions.clear();
+    _pendingPermissions.clear();
     _lastEmittedActiveSessions = {};
+    _lastEmittedPendingInputSessions = {};
+  }
+
+  void populatePendingQuestions({required List<PendingQuestion> questions}) {
+    _pendingQuestions
+      ..clear()
+      ..addEntries(_groupBySessionId(questions.map((q) => (q.sessionID, q.id))).entries);
+    _lastEmittedPendingInputSessions = _pendingInputSessions;
+  }
+
+  void populatePendingPermissions({required List<PendingPermission> permissions}) {
+    _pendingPermissions
+      ..clear()
+      ..addEntries(_groupBySessionId(permissions.map((p) => (p.sessionID, p.id))).entries);
+    _lastEmittedPendingInputSessions = _pendingInputSessions;
   }
 
   /// Register a known session -> directory mapping (e.g., after session creation).
@@ -194,13 +236,15 @@ class ActiveSessionTracker {
         Log.w("buildSummary: no worktree for session $rootId");
         continue;
       }
+      final children = activeChildrenByParent[rootId] ?? const <String>[];
       byWorktree
           .putIfAbsent(worktree, () => [])
           .add(
             ActiveSession(
               id: rootId,
               mainAgentRunning: activeRoots.contains(rootId),
-              childSessionIds: activeChildrenByParent[rootId] ?? [],
+              awaitingInput: _rootHasPendingInput(rootId, children),
+              childSessionIds: children,
             ),
           );
     }
@@ -232,6 +276,28 @@ class ActiveSessionTracker {
   /// Exposed for testing: raw count of all busy/retry sessions per worktree.
   Map<String, int> get activeSessions => _activeSessionCounts;
 
+  bool _hasPendingInput(String sessionId) {
+    return (_pendingQuestions[sessionId]?.isNotEmpty ?? false) || (_pendingPermissions[sessionId]?.isNotEmpty ?? false);
+  }
+
+  /// Returns true if the root session OR any of its direct child sessions
+  /// has pending input (question or permission).
+  ///
+  /// Child sessions are included so that sub-agent questions/permissions
+  /// surface on the root session row in the session list.
+  bool _rootHasPendingInput(String rootId, List<String> childIds) {
+    if (_hasPendingInput(rootId)) return true;
+    return childIds.any(_hasPendingInput);
+  }
+
+  /// Raw set of session IDs (including children) that currently have any
+  /// pending input. Used only for change detection — re-emit triggers when
+  /// this set changes, even if active-session counts did not.
+  Set<String> get _pendingInputSessions => {
+    ..._pendingQuestions.keys,
+    ..._pendingPermissions.keys,
+  };
+
   String? _resolveWorktree(String directory) {
     final normalizedDirectory = _normalizePath(directory);
     String? bestMatch;
@@ -257,6 +323,37 @@ class ActiveSessionTracker {
     _sessionWorktrees[sessionID] = worktree;
   }
 
+  Map<String, Set<String>> _groupBySessionId(Iterable<(String, String)> sessionIdAndEntryId) {
+    final grouped = <String, Set<String>>{};
+    for (final (sessionId, entryId) in sessionIdAndEntryId) {
+      grouped.putIfAbsent(sessionId, () => <String>{}).add(entryId);
+    }
+    return grouped;
+  }
+
+  void _removePendingQuestion({required String sessionId, required String requestId}) {
+    final questionIds = _pendingQuestions[sessionId];
+    if (questionIds == null) return;
+    questionIds.remove(requestId);
+    if (questionIds.isEmpty) {
+      _pendingQuestions.remove(sessionId);
+    }
+  }
+
+  void _removePendingPermission({required String sessionId, required String requestId}) {
+    final requestIds = _pendingPermissions[sessionId];
+    if (requestIds == null) return;
+    requestIds.remove(requestId);
+    if (requestIds.isEmpty) {
+      _pendingPermissions.remove(sessionId);
+    }
+  }
+
+  void _clearPendingInputForSession(String sessionId) {
+    _pendingQuestions.remove(sessionId);
+    _pendingPermissions.remove(sessionId);
+  }
+
   bool _mapsEqual(Map<String, int> a, Map<String, int> b) {
     if (identical(a, b)) return true;
     if (a.length != b.length) return false;
@@ -264,5 +361,10 @@ class ActiveSessionTracker {
       if (b[entry.key] != entry.value) return false;
     }
     return true;
+  }
+
+  bool _setsEqual(Set<String> a, Set<String> b) {
+    if (identical(a, b)) return true;
+    return a.length == b.length && a.containsAll(b);
   }
 }

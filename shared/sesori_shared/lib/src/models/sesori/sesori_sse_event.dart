@@ -176,8 +176,10 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   }) = SesoriPermissionAsked;
 
   @FreezedUnionValue("permission.replied")
+  @Implements<SesoriSessionEvent>()
   const factory SesoriSseEvent.permissionReplied({
     required String requestID,
+    required String sessionID,
     required String reply,
   }) = SesoriPermissionReplied;
 

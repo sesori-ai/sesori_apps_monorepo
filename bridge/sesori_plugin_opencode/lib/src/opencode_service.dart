@@ -44,8 +44,34 @@ class OpenCodeService {
     return tracker.handleEvent(event, directory);
   }
 
-  Future<void> coldStart() {
-    return tracker.coldStart();
+  Future<void> coldStart() async {
+    await tracker.coldStart();
+    try {
+      await _hydratePendingInput();
+    } catch (e, st) {
+      Log.w("coldStart: failed to hydrate pending input: $e\n$st");
+    }
+  }
+
+  /// Best-effort hydration of pending questions and permissions from the
+  /// OpenCode API. Failures are logged but do NOT abort cold start — core
+  /// active-session tracking from [ActiveSessionTracker.coldStart] succeeds
+  /// independently.
+  Future<void> _hydratePendingInput() async {
+    await (
+      repository
+          .getPendingQuestions()
+          .then((questions) => tracker.populatePendingQuestions(questions: questions))
+          .catchError((Object e, StackTrace st) {
+            Log.w("coldStart: failed to hydrate pending questions: $e\n$st");
+          }),
+      repository
+          .getPendingPermissions()
+          .then((permissions) => tracker.populatePendingPermissions(permissions: permissions))
+          .catchError((Object e, StackTrace st) {
+            Log.w("coldStart: failed to hydrate pending permissions: $e\n$st");
+          }),
+    ).wait;
   }
 
   void reset() {

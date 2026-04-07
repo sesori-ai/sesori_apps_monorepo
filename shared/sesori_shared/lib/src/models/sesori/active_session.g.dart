@@ -9,6 +9,7 @@ part of 'active_session.dart';
 _ActiveSession _$ActiveSessionFromJson(Map json) => _ActiveSession(
   id: json['id'] as String,
   mainAgentRunning: json['mainAgentRunning'] as bool? ?? false,
+  awaitingInput: json['awaitingInput'] as bool? ?? false,
   childSessionIds:
       (json['childSessionIds'] as List<dynamic>?)
           ?.map((e) => e as String)
@@ -20,5 +21,6 @@ Map<String, dynamic> _$ActiveSessionToJson(_ActiveSession instance) =>
     <String, dynamic>{
       'id': instance.id,
       'mainAgentRunning': instance.mainAgentRunning,
+      'awaitingInput': instance.awaitingInput,
       'childSessionIds': instance.childSessionIds,
     };
