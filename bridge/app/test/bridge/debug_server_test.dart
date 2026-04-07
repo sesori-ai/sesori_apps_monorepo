@@ -24,7 +24,7 @@ DebugServer _createDebugServer({
   required AppDatabase db,
   required int port,
 }) {
-  final pullRequestRepository = PullRequestRepository(pullRequestDao: db.pullRequestDao);
+  final pullRequestRepository = PullRequestRepository(pullRequestDao: db.pullRequestDao, projectsDao: db.projectsDao);
   final processRunner = ProcessRunner();
   final sessionRepository = SessionRepository(
     plugin: plugin,

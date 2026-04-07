@@ -34,7 +34,10 @@ void main() {
     final database = createTestDatabase();
     final plugin = _NoopPlugin();
     final fakePrSyncService = _FakePrSyncService();
-    final pullRequestRepository = PullRequestRepository(pullRequestDao: database.pullRequestDao);
+    final pullRequestRepository = PullRequestRepository(
+      pullRequestDao: database.pullRequestDao,
+      projectsDao: database.projectsDao,
+    );
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,

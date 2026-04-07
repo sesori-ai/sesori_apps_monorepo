@@ -26,7 +26,7 @@ void main() {
       final sessionRepository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
-        pullRequestRepository: PullRequestRepository(pullRequestDao: db.pullRequestDao),
+        pullRequestRepository: PullRequestRepository(pullRequestDao: db.pullRequestDao, projectsDao: db.projectsDao),
       );
       router = RequestRouter(
         plugin: plugin,

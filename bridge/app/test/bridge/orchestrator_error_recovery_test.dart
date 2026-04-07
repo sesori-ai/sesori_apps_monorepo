@@ -99,7 +99,10 @@ class _TestHarness {
     );
 
     final metadataService = FakeMetadataService();
-    final pullRequestRepository = PullRequestRepository(pullRequestDao: database.pullRequestDao);
+    final pullRequestRepository = PullRequestRepository(
+      pullRequestDao: database.pullRequestDao,
+      projectsDao: database.projectsDao,
+    );
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,

@@ -208,6 +208,7 @@ Future<void> main(List<String> args) async {
 
   final pullRequestRepository = PullRequestRepository(
     pullRequestDao: db.pullRequestDao,
+    projectsDao: db.projectsDao,
   );
   final sessionRepository = SessionRepository(
     plugin: plugin,
