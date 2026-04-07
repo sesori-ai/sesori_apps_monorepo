@@ -49,7 +49,10 @@ class SessionRepository {
         final mergedTime = currentTime != null
             ? currentTime.copyWith(archived: dbSession.archivedAt)
             : SessionTime(created: 0, updated: 0, archived: dbSession.archivedAt);
-        result = result.copyWith(time: mergedTime);
+        result = result.copyWith(
+          time: mergedTime,
+          hasWorktree: dbSession.worktreePath != null,
+        );
       }
 
       final pr = _selectBestPr(prsBySessionId[session.id]);
@@ -99,6 +102,21 @@ class SessionRepository {
     return sessions
         .map((session) => StoredSession(id: session.sessionId, branchName: session.branchName))
         .toList(growable: false);
+  }
+
+  Future<bool> hasOtherActiveSessionsSharing({
+    required String sessionId,
+    required String projectId,
+    required String? worktreePath,
+    required String? branchName,
+  }) async {
+    final sessions = await _sessionDao.getOtherActiveSessionsSharing(
+      sessionId: sessionId,
+      projectId: projectId,
+      worktreePath: worktreePath,
+      branchName: branchName,
+    );
+    return sessions.isNotEmpty;
   }
 
   Future<String?> getProjectPath({required String projectId}) async {

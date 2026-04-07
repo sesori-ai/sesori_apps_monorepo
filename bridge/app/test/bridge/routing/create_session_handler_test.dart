@@ -290,6 +290,100 @@ void main() {
       expect(result.summary?.files, equals(3));
     });
 
+    test("hasWorktree is true when WorktreeSuccess", () async {
+      plugin.createSessionResult = const PluginSession(
+        id: "s1",
+        projectID: "p1",
+        directory: "/repo/.worktrees/session-001",
+        parentID: null,
+        title: "Created",
+        time: null,
+        summary: null,
+      );
+      worktreeService.prepareResult = WorktreeSuccess(
+        path: "/repo/.worktrees/session-001",
+        branchName: "session-001",
+        baseBranch: "main",
+        baseCommit: "abc123",
+      );
+
+      final result = await handler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "/repo",
+          dedicatedWorktree: true,
+          parts: [PromptPart.text(text: "Start")],
+          agent: null,
+          model: null,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.hasWorktree, isTrue);
+    });
+
+    test("hasWorktree is false when dedicated=false", () async {
+      plugin.createSessionResult = const PluginSession(
+        id: "s1",
+        projectID: "p1",
+        directory: "/repo",
+        parentID: null,
+        title: "Created",
+        time: null,
+        summary: null,
+      );
+
+      final result = await handler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "/repo",
+          dedicatedWorktree: false,
+          parts: [PromptPart.text(text: "Start")],
+          agent: null,
+          model: null,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.hasWorktree, isFalse);
+    });
+
+    test("hasWorktree is false when WorktreeFallback", () async {
+      plugin.createSessionResult = const PluginSession(
+        id: "fallback-1",
+        projectID: "p1",
+        directory: "/repo",
+        parentID: null,
+        title: "Fallback",
+        time: null,
+        summary: null,
+      );
+      worktreeService.prepareResult = WorktreeFallback(
+        originalPath: "/repo",
+        reason: "not git",
+      );
+
+      final result = await handler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "/repo",
+          dedicatedWorktree: true,
+          parts: [PromptPart.text(text: "Start")],
+          agent: null,
+          model: null,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.hasWorktree, isFalse);
+    });
+
     test("passes parts, agent, and model to plugin", () async {
       await handler.handle(
         makeRequest("POST", "/session/create"),

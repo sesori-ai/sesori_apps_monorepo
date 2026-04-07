@@ -196,6 +196,7 @@ class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Sess
         null => null,
       },
       pullRequest: null,
+      hasWorktree: worktreePath != null,
     );
 
     return session;

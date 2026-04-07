@@ -566,6 +566,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListCleanupIssueUnstagedChanges => 'Worktree has unstaged changes';
 
   @override
+  String get sessionListCleanupIssueSharedWorktree => 'Another active session uses this worktree';
+
+  @override
   String sessionListCleanupIssueBranchMismatch(String actual, String expected) {
     return 'Worktree is on branch \'$actual\' instead of expected \'$expected\'';
   }

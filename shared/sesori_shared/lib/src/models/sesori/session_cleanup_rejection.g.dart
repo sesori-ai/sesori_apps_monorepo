@@ -42,3 +42,10 @@ Map<String, dynamic> _$CleanupIssueBranchMismatchToJson(
   'actual': instance.actual,
   'type': instance.$type,
 };
+
+CleanupIssueSharedWorktree _$CleanupIssueSharedWorktreeFromJson(Map json) =>
+    CleanupIssueSharedWorktree($type: json['type'] as String?);
+
+Map<String, dynamic> _$CleanupIssueSharedWorktreeToJson(
+  CleanupIssueSharedWorktree instance,
+) => <String, dynamic>{'type': instance.$type};

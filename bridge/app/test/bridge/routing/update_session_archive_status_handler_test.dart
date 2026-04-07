@@ -3,6 +3,7 @@ import "dart:io";
 
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/update_session_archive_status_handler.dart";
 import "package:sesori_bridge/src/bridge/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -27,6 +28,7 @@ void main() {
         plugin: plugin,
         worktreeService: worktreeService,
         sessionDao: db.sessionDao,
+        sessionRepository: _FakeSessionRepository(),
       );
     });
 
@@ -652,6 +654,177 @@ void main() {
       expect(persisted?.archivedAt, isNotNull);
     });
 
+    test("archive response has hasWorktree true when session has worktreePath", () async {
+      await _insertSession(
+        db: db,
+        sessionId: "s1",
+        projectId: "/repo",
+        isDedicated: true,
+        worktreePath: "/repo/.worktrees/session-001",
+        branchName: "session-001",
+        baseBranch: null,
+        archivedAt: null,
+        baseCommit: null,
+      );
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "/repo",
+          directory: "/repo/.worktrees/session-001",
+          parentID: null,
+          title: "Session 1",
+          time: PluginSessionTime(created: 10, updated: 20, archived: null),
+          summary: null,
+        ),
+      ];
+
+      final result = await handler.handle(
+        makeRequest("PATCH", "/session/update/archive"),
+        body: _archiveRequest(
+          sessionId: "s1",
+          archived: true,
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.hasWorktree, isTrue);
+    });
+
+    test("archive response has hasWorktree false when session has no worktreePath", () async {
+      await _insertSession(
+        db: db,
+        sessionId: "s1",
+        projectId: "/repo",
+        isDedicated: false,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        archivedAt: null,
+        baseCommit: null,
+      );
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "/repo",
+          directory: "/repo",
+          parentID: null,
+          title: "Session 1",
+          time: PluginSessionTime(created: 10, updated: 20, archived: null),
+          summary: null,
+        ),
+      ];
+
+      final result = await handler.handle(
+        makeRequest("PATCH", "/session/update/archive"),
+        body: _archiveRequest(
+          sessionId: "s1",
+          archived: true,
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.hasWorktree, isFalse);
+    });
+
+    test("unarchive response has hasWorktree true when session has worktreePath", () async {
+      final existingDir = Directory.systemTemp.createTempSync("archive-handler-worktree-");
+      addTearDown(() {
+        if (existingDir.existsSync()) {
+          existingDir.deleteSync(recursive: true);
+        }
+      });
+
+      await _insertSession(
+        db: db,
+        sessionId: "s1",
+        projectId: "/repo",
+        isDedicated: true,
+        worktreePath: existingDir.path,
+        branchName: "session-001",
+        baseBranch: null,
+        archivedAt: 123,
+        baseCommit: null,
+      );
+      plugin.sessionsResult = [
+        PluginSession(
+          id: "s1",
+          projectID: "/repo",
+          directory: existingDir.path,
+          parentID: null,
+          title: "Session 1",
+          time: const PluginSessionTime(created: 10, updated: 20, archived: 123),
+          summary: null,
+        ),
+      ];
+
+      final result = await handler.handle(
+        makeRequest("PATCH", "/session/update/archive"),
+        body: _archiveRequest(
+          sessionId: "s1",
+          archived: false,
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.hasWorktree, isTrue);
+    });
+
+    test("unarchive response has hasWorktree false when session has no worktreePath", () async {
+      await _insertSession(
+        db: db,
+        sessionId: "s1",
+        projectId: "/repo",
+        isDedicated: false,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        archivedAt: 123,
+        baseCommit: null,
+      );
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "/repo",
+          directory: "/repo",
+          parentID: null,
+          title: "Session 1",
+          time: PluginSessionTime(created: 10, updated: 20, archived: 123),
+          summary: null,
+        ),
+      ];
+
+      final result = await handler.handle(
+        makeRequest("PATCH", "/session/update/archive"),
+        body: _archiveRequest(
+          sessionId: "s1",
+          archived: false,
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.hasWorktree, isFalse);
+    });
+
     test("session id is preserved on unarchive response", () async {
       await _insertSession(
         db: db,
@@ -836,4 +1009,17 @@ class _NoopProcessRunner implements ProcessRunner {
   }) {
     throw UnimplementedError("_NoopProcessRunner should never execute git commands");
   }
+}
+
+class _FakeSessionRepository implements SessionRepository {
+  @override
+  Future<bool> hasOtherActiveSessionsSharing({
+    required String sessionId,
+    required String projectId,
+    required String? worktreePath,
+    required String? branchName,
+  }) async => false;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

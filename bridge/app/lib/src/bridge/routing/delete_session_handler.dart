@@ -5,6 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../persistence/daos/session_dao.dart";
 import "../persistence/tables/session_table.dart";
+import "../repositories/session_repository.dart";
 import "../worktree_service.dart";
 import "request_handler.dart";
 import "worktree_cleanup.dart";
@@ -14,14 +15,17 @@ class DeleteSessionHandler extends BodyRequestHandler<DeleteSessionRequest, Succ
   final BridgePlugin _plugin;
   final WorktreeService _worktreeService;
   final SessionDao _sessionDao;
+  final SessionRepository _sessionRepository;
 
   DeleteSessionHandler({
     required BridgePlugin plugin,
     required WorktreeService worktreeService,
     required SessionDao sessionDao,
+    required SessionRepository sessionRepository,
   }) : _plugin = plugin,
        _worktreeService = worktreeService,
        _sessionDao = sessionDao,
+       _sessionRepository = sessionRepository,
        super(
          HttpMethod.delete,
          "/session/delete",
@@ -51,6 +55,7 @@ class DeleteSessionHandler extends BodyRequestHandler<DeleteSessionRequest, Succ
       )) {
         final cleanupResult = await performWorktreeCleanup(
           worktreeService: _worktreeService,
+          sessionRepository: _sessionRepository,
           sessionId: sessionId,
           projectId: projectId,
           worktreePath: worktreePath,

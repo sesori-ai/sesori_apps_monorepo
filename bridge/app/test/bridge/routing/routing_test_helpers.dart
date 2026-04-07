@@ -526,6 +526,13 @@ class _NoopSessionRepository implements SessionRepository {
   Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async =>
       const <StoredSession>[];
   @override
+  Future<bool> hasOtherActiveSessionsSharing({
+    required String sessionId,
+    required String projectId,
+    required String? worktreePath,
+    required String? branchName,
+  }) async => false;
+  @override
   Future<String?> getProjectPath({required String projectId}) async => null;
 }
 
@@ -566,7 +573,10 @@ class FakeSessionRepository implements SessionRepository {
         final mergedTime = currentTime != null
             ? currentTime.copyWith(archived: dbSession.archivedAt)
             : SessionTime(created: 0, updated: 0, archived: dbSession.archivedAt);
-        return session.copyWith(time: mergedTime);
+        return session.copyWith(
+          time: mergedTime,
+          hasWorktree: dbSession.worktreePath != null,
+        );
       }
       return session;
     }).toList();
@@ -611,6 +621,14 @@ class FakeSessionRepository implements SessionRepository {
     final sessions = await _sessionDao.getSessionsByProject(projectId: projectId);
     return sessions.map((s) => StoredSession(id: s.sessionId, branchName: s.branchName)).toList(growable: false);
   }
+
+  @override
+  Future<bool> hasOtherActiveSessionsSharing({
+    required String sessionId,
+    required String projectId,
+    required String? worktreePath,
+    required String? branchName,
+  }) async => false;
 
   @override
   Future<String?> getProjectPath({required String projectId}) async {

@@ -8,6 +8,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../persistence/daos/session_dao.dart";
 import "../persistence/tables/session_table.dart";
 import "../repositories/mappers/plugin_session_mapper.dart";
+import "../repositories/session_repository.dart";
 import "../worktree_service.dart";
 import "request_handler.dart";
 import "worktree_cleanup.dart";
@@ -17,14 +18,17 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
   final BridgePlugin _plugin;
   final WorktreeService _worktreeService;
   final SessionDao _sessionDao;
+  final SessionRepository _sessionRepository;
 
   UpdateSessionArchiveStatusHandler({
     required BridgePlugin plugin,
     required WorktreeService worktreeService,
     required SessionDao sessionDao,
+    required SessionRepository sessionRepository,
   }) : _plugin = plugin,
        _worktreeService = worktreeService,
        _sessionDao = sessionDao,
+       _sessionRepository = sessionRepository,
        super(
          HttpMethod.patch,
          "/session/update/archive",
@@ -90,13 +94,24 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
     return null;
   }
 
-  Session _withArchivedTime({required Session session, required int? archivedAt}) {
-    final time = session.time;
-    if (time == null) {
-      return session;
-    }
-    return session.copyWith(
-      time: time.copyWith(archived: archivedAt),
+  /// Builds the response Session by merging plugin data with DB state.
+  ///
+  /// Mirrors the merge that [SessionRepository.getSessionsForProject] performs
+  /// for the listing endpoint, so archive/unarchive responses stay consistent
+  /// with what subsequent list refreshes will return.
+  Session _buildResponseSession({
+    required PluginSession pluginSession,
+    required SessionDto sessionDto,
+    required int? archivedAt,
+  }) {
+    final base = pluginSession.toSharedSession();
+    final time = base.time;
+    final mergedTime = time != null
+        ? time.copyWith(archived: archivedAt)
+        : SessionTime(created: 0, updated: 0, archived: archivedAt);
+    return base.copyWith(
+      time: mergedTime,
+      hasWorktree: sessionDto.worktreePath != null,
     );
   }
 
@@ -146,6 +161,7 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
       )) {
         final cleanupResult = await performWorktreeCleanup(
           worktreeService: _worktreeService,
+          sessionRepository: _sessionRepository,
           sessionId: sessionDto.sessionId,
           projectId: projectId,
           worktreePath: worktreePath,
@@ -185,11 +201,11 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
       }),
     );
 
-    final responseSession = _withArchivedTime(
-      session: pluginSession.toSharedSession(),
+    return _buildResponseSession(
+      pluginSession: pluginSession,
+      sessionDto: sessionDto,
       archivedAt: archivedAt,
     );
-    return responseSession;
   }
 
   Future<Session> _doUnarchive({
@@ -224,10 +240,10 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
       throw buildErrorResponse(request, 404, "session not found");
     }
 
-    final responseSession = _withArchivedTime(
-      session: pluginSession.toSharedSession(),
+    return _buildResponseSession(
+      pluginSession: pluginSession,
+      sessionDto: sessionDto,
       archivedAt: null,
     );
-    return responseSession;
   }
 }

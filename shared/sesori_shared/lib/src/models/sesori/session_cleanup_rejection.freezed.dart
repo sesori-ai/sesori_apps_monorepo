@@ -163,6 +163,10 @@ CleanupIssue _$CleanupIssueFromJson(
           return CleanupIssueBranchMismatch.fromJson(
             json
           );
+                case 'shared_worktree':
+          return CleanupIssueSharedWorktree.fromJson(
+            json
+          );
         
           default:
             throw CheckedFromJsonException(
@@ -321,5 +325,44 @@ as String,
 
 
 }
+
+/// @nodoc
+@JsonSerializable()
+
+class CleanupIssueSharedWorktree implements CleanupIssue {
+  const CleanupIssueSharedWorktree({final  String? $type}): $type = $type ?? 'shared_worktree';
+  factory CleanupIssueSharedWorktree.fromJson(Map<String, dynamic> json) => _$CleanupIssueSharedWorktreeFromJson(json);
+
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$CleanupIssueSharedWorktreeToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CleanupIssueSharedWorktree);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'CleanupIssue.sharedWorktree()';
+}
+
+
+}
+
+
+
 
 // dart format on

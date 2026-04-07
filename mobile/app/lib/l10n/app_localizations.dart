@@ -1099,6 +1099,12 @@ abstract class AppLocalizations {
   /// **'Worktree has unstaged changes'**
   String get sessionListCleanupIssueUnstagedChanges;
 
+  /// No description provided for @sessionListCleanupIssueSharedWorktree.
+  ///
+  /// In en, this message translates to:
+  /// **'Another active session uses this worktree'**
+  String get sessionListCleanupIssueSharedWorktree;
+
   /// No description provided for @sessionListCleanupIssueBranchMismatch.
   ///
   /// In en, this message translates to:

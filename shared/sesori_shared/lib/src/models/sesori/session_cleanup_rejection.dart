@@ -24,5 +24,8 @@ sealed class CleanupIssue with _$CleanupIssue {
     required String actual,
   }) = CleanupIssueBranchMismatch;
 
+  @FreezedUnionValue("shared_worktree")
+  const factory CleanupIssue.sharedWorktree() = CleanupIssueSharedWorktree;
+
   factory CleanupIssue.fromJson(Map<String, dynamic> json) => _$CleanupIssueFromJson(json);
 }

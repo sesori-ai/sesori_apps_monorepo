@@ -414,5 +414,13 @@ class _FakeSessionRepository implements SessionRepository {
   }
 
   @override
+  Future<bool> hasOtherActiveSessionsSharing({
+    required String sessionId,
+    required String projectId,
+    required String? worktreePath,
+    required String? branchName,
+  }) async => false;
+
+  @override
   Future<String?> getProjectPath({required String projectId}) async => null;
 }

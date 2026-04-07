@@ -50,6 +50,7 @@ _Session _$SessionFromJson(Map json) => _Session(
       : PullRequestInfo.fromJson(
           Map<String, dynamic>.from(json['pullRequest'] as Map),
         ),
+  hasWorktree: json['hasWorktree'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$SessionToJson(_Session instance) => <String, dynamic>{
@@ -61,6 +62,7 @@ Map<String, dynamic> _$SessionToJson(_Session instance) => <String, dynamic>{
   'time': instance.time?.toJson(),
   'summary': instance.summary?.toJson(),
   'pullRequest': instance.pullRequest?.toJson(),
+  'hasWorktree': instance.hasWorktree,
 };
 
 _SessionTime _$SessionTimeFromJson(Map json) => _SessionTime(
