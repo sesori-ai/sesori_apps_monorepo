@@ -32,18 +32,22 @@ Future<CleanupResult> performWorktreeCleanup({
   required bool deleteBranch,
   required bool force,
 }) async {
-  // Shared-worktree check — non-bypassable, even with force=true.
-  final hasSharing = await sessionRepository.hasOtherActiveSessionsSharing(
-    sessionId: sessionId,
-    worktreePath: deleteWorktree ? worktreePath : null,
-    branchName: deleteBranch ? branchName : null,
-  );
-  if (hasSharing) {
-    return CleanupRejected(
-      rejection: const SessionCleanupRejection(
-        issues: [CleanupIssue.sharedWorktree()],
-      ),
+  // Shared-worktree check — bypassable with force=true so the user can resolve
+  // the stalemate when multiple sessions point at the same worktree/branch.
+  if ((deleteWorktree || deleteBranch) && !force) {
+    final hasSharing = await sessionRepository.hasOtherActiveSessionsSharing(
+      sessionId: sessionId,
+      projectId: projectId,
+      worktreePath: deleteWorktree ? worktreePath : null,
+      branchName: deleteBranch ? branchName : null,
     );
+    if (hasSharing) {
+      return CleanupRejected(
+        rejection: const SessionCleanupRejection(
+          issues: [CleanupIssue.sharedWorktree()],
+        ),
+      );
+    }
   }
 
   if (deleteWorktree && !force) {

@@ -94,13 +94,24 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
     return null;
   }
 
-  Session _withArchivedTime({required Session session, required int? archivedAt}) {
-    final time = session.time;
-    if (time == null) {
-      return session;
-    }
-    return session.copyWith(
-      time: time.copyWith(archived: archivedAt),
+  /// Builds the response Session by merging plugin data with DB state.
+  ///
+  /// Mirrors the merge that [SessionRepository.getSessionsForProject] performs
+  /// for the listing endpoint, so archive/unarchive responses stay consistent
+  /// with what subsequent list refreshes will return.
+  Session _buildResponseSession({
+    required PluginSession pluginSession,
+    required SessionDto sessionDto,
+    required int? archivedAt,
+  }) {
+    final base = pluginSession.toSharedSession();
+    final time = base.time;
+    final mergedTime = time != null
+        ? time.copyWith(archived: archivedAt)
+        : SessionTime(created: 0, updated: 0, archived: archivedAt);
+    return base.copyWith(
+      time: mergedTime,
+      hasWorktree: sessionDto.worktreePath != null,
     );
   }
 
@@ -190,11 +201,11 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
       }),
     );
 
-    final responseSession = _withArchivedTime(
-      session: pluginSession.toSharedSession(),
+    return _buildResponseSession(
+      pluginSession: pluginSession,
+      sessionDto: sessionDto,
       archivedAt: archivedAt,
-    ).copyWith(hasWorktree: sessionDto.worktreePath != null);
-    return responseSession;
+    );
   }
 
   Future<Session> _doUnarchive({
@@ -229,10 +240,10 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
       throw buildErrorResponse(request, 404, "session not found");
     }
 
-    final responseSession = _withArchivedTime(
-      session: pluginSession.toSharedSession(),
+    return _buildResponseSession(
+      pluginSession: pluginSession,
+      sessionDto: sessionDto,
       archivedAt: null,
-    ).copyWith(hasWorktree: sessionDto.worktreePath != null);
-    return responseSession;
+    );
   }
 }

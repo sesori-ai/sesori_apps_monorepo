@@ -190,6 +190,7 @@ void main() {
 
         final result = await dao.getOtherActiveSessionsSharing(
           sessionId: "ses-1",
+          projectId: "proj-1",
           worktreePath: null,
           branchName: null,
         );
@@ -221,6 +222,7 @@ void main() {
 
         final result = await dao.getOtherActiveSessionsSharing(
           sessionId: "ses-a",
+          projectId: "proj-1",
           worktreePath: "/shared-wt",
           branchName: null,
         );
@@ -253,6 +255,7 @@ void main() {
 
         final result = await dao.getOtherActiveSessionsSharing(
           sessionId: "ses-a",
+          projectId: "proj-1",
           worktreePath: null,
           branchName: "shared-branch",
         );
@@ -275,6 +278,7 @@ void main() {
 
         final result = await dao.getOtherActiveSessionsSharing(
           sessionId: "ses-a",
+          projectId: "proj-1",
           worktreePath: "/shared-wt",
           branchName: null,
         );
@@ -307,6 +311,7 @@ void main() {
 
         final result = await dao.getOtherActiveSessionsSharing(
           sessionId: "ses-a",
+          projectId: "proj-1",
           worktreePath: "/shared-wt",
           branchName: null,
         );
@@ -348,12 +353,47 @@ void main() {
 
         final result = await dao.getOtherActiveSessionsSharing(
           sessionId: "ses-a",
+          projectId: "proj-1",
           worktreePath: "/wt-a",
           branchName: "branch-a",
         );
 
         expect(result, hasLength(2));
         expect(result.map((s) => s.sessionId), containsAll(["ses-b", "ses-c"]));
+      });
+
+      test("excludes sessions from other projects", () async {
+        // Two sessions in different projects accidentally share the same branch
+        // name. Cleanup of one must not be blocked by the other.
+        await dao.insertSession(
+          sessionId: "ses-a",
+          projectId: "proj-1",
+          isDedicated: true,
+          createdAt: 1,
+          worktreePath: "/wt-a",
+          branchName: "session-001",
+          baseBranch: "main",
+          baseCommit: null,
+        );
+        await dao.insertSession(
+          sessionId: "ses-b",
+          projectId: "proj-2",
+          isDedicated: true,
+          createdAt: 2,
+          worktreePath: "/wt-a",
+          branchName: "session-001",
+          baseBranch: "main",
+          baseCommit: null,
+        );
+
+        final result = await dao.getOtherActiveSessionsSharing(
+          sessionId: "ses-a",
+          projectId: "proj-1",
+          worktreePath: "/wt-a",
+          branchName: "session-001",
+        );
+
+        expect(result, isEmpty);
       });
     });
   });

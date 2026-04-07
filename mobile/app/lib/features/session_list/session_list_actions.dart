@@ -9,6 +9,8 @@ void _showArchiveSheet({
   required SessionListCubit cubit,
   required Session session,
 }) {
+  // Sessions without a dedicated worktree have nothing to clean up — bypass
+  // the "delete worktree and branch" sheet and archive directly.
   if (!session.hasWorktree) {
     _archiveSession(
       context: context,
@@ -132,6 +134,8 @@ void _showDeleteSheet({
   required SessionListCubit cubit,
   required Session session,
 }) {
+  // Sessions without a dedicated worktree have nothing to clean up — bypass
+  // the "delete worktree and branch" sheet and delete directly.
   if (!session.hasWorktree) {
     _deleteSession(
       context: context,

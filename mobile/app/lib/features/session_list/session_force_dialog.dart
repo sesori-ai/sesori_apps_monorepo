@@ -51,35 +51,34 @@ void _showForceDialog({
             onPressed: () => dialogContext.pop(),
             child: Text(loc.sessionListDeleteConfirmCancel),
           ),
-          if (_hasForceableIssues(rejection))
-            TextButton(
-              onPressed: () {
-                dialogContext.pop();
-                if (isDelete) {
-                  _deleteSession(
-                    context: context,
-                    cubit: cubit,
-                    sessionId: sessionId,
-                    deleteWorktree: deleteWorktree,
-                    deleteBranch: deleteBranch,
-                    force: true,
-                  );
-                } else {
-                  _archiveSession(
-                    context: context,
-                    cubit: cubit,
-                    sessionId: sessionId,
-                    deleteWorktree: deleteWorktree,
-                    deleteBranch: deleteBranch,
-                    force: true,
-                  );
-                }
-              },
-              child: Text(
-                isDelete ? loc.sessionListForceDeleteAction : loc.sessionListForceArchiveAction,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
+          TextButton(
+            onPressed: () {
+              dialogContext.pop();
+              if (isDelete) {
+                _deleteSession(
+                  context: context,
+                  cubit: cubit,
+                  sessionId: sessionId,
+                  deleteWorktree: deleteWorktree,
+                  deleteBranch: deleteBranch,
+                  force: true,
+                );
+              } else {
+                _archiveSession(
+                  context: context,
+                  cubit: cubit,
+                  sessionId: sessionId,
+                  deleteWorktree: deleteWorktree,
+                  deleteBranch: deleteBranch,
+                  force: true,
+                );
+              }
+            },
+            child: Text(
+              isDelete ? loc.sessionListForceDeleteAction : loc.sessionListForceArchiveAction,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
+          ),
         ],
       );
     },
@@ -94,7 +93,3 @@ String _describeCleanupIssue({required AppLocalizations loc, required CleanupIss
   ),
   CleanupIssueSharedWorktree() => loc.sessionListCleanupIssueSharedWorktree,
 };
-
-bool _hasForceableIssues(SessionCleanupRejection rejection) {
-  return rejection.issues.any((issue) => issue is! CleanupIssueSharedWorktree);
-}

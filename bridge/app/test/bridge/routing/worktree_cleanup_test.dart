@@ -147,7 +147,7 @@ void main() {
       expect(worktreeService.lastDeleteBranchForce, isTrue);
     });
 
-    test("shared worktree rejected even with force=true", () async {
+    test("shared worktree rejected when force=false", () async {
       sessionRepository.hasSharingResult = true;
 
       final result = await performWorktreeCleanup(
@@ -159,7 +159,7 @@ void main() {
         branchName: "session-006",
         deleteWorktree: true,
         deleteBranch: true,
-        force: true,
+        force: false,
       );
 
       expect(result, isA<CleanupRejected>());
@@ -169,6 +169,29 @@ void main() {
       expect(worktreeService.checkCallCount, equals(0));
       expect(worktreeService.removeCallCount, equals(0));
       expect(worktreeService.deleteBranchCallCount, equals(0));
+    });
+
+    test("force=true bypasses shared-worktree check and proceeds with cleanup", () async {
+      sessionRepository.hasSharingResult = true;
+
+      final result = await performWorktreeCleanup(
+        worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
+        sessionId: "s6b",
+        projectId: "/repo",
+        worktreePath: "/repo/.worktrees/session-006b",
+        branchName: "session-006b",
+        deleteWorktree: true,
+        deleteBranch: true,
+        force: true,
+      );
+
+      // force=true skips both the shared-worktree check and the safety check;
+      // cleanup proceeds so the user can resolve the stalemate.
+      expect(result, isA<CleanupSuccess>());
+      expect(sessionRepository.hasSharingCallCount, equals(0));
+      expect(worktreeService.removeCallCount, equals(1));
+      expect(worktreeService.deleteBranchCallCount, equals(1));
     });
 
     test("no rejection when no other sessions share worktree", () async {
@@ -224,6 +247,7 @@ class _FakeSessionRepository implements SessionRepository {
   @override
   Future<bool> hasOtherActiveSessionsSharing({
     required String sessionId,
+    required String projectId,
     required String? worktreePath,
     required String? branchName,
   }) async {
