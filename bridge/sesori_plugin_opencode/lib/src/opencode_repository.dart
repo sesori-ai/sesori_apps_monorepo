@@ -158,7 +158,7 @@ class OpenCodeRepository {
   }
 
   Future<List<PendingPermission>> getPendingPermissions() {
-    return _api.getPendingPermissions();
+    return _api.getPendingPermissions(directory: null);
   }
 
   /// Collects all sessions whose directory is equal to or under [worktree],

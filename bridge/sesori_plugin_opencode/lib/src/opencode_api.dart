@@ -289,8 +289,16 @@ class OpenCodeApi {
     return decoded.map(PendingQuestion.fromJson).toList();
   }
 
-  Future<List<PendingPermission>> getPendingPermissions() async {
-    final response = await _client.get(Uri.parse("$serverURL/permission"), headers: _authHeaders);
+  Future<List<PendingPermission>> getPendingPermissions({
+    required String? directory,
+  }) async {
+    final response = await _client.get(
+      Uri.parse("$serverURL/permission"),
+      headers: {
+        ..._authHeaders,
+        _directoryOpenCodeHeader: ?directory,
+      },
+    );
     Log.v("[getPendingPermissions] response: ${response.body}");
     _ensureSuccess(response, "GET /permission");
 
