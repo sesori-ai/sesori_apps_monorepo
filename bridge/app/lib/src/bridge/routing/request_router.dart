@@ -8,6 +8,7 @@ import "../metadata_service.dart";
 import "../persistence/daos/projects_dao.dart";
 import "../persistence/daos/session_dao.dart";
 import "../repositories/permission_repository.dart";
+import "../repositories/project_repository.dart";
 import "../repositories/provider_repository.dart";
 import "../repositories/session_repository.dart";
 import "../services/pr_sync_service.dart";
@@ -80,7 +81,11 @@ class RequestRouter {
     required PrSyncService prSyncService,
     required void Function(String sessionId) onSessionAborted,
   }) {
-    final hiddenStore = projectsDao;
+    final projectRepository = ProjectRepository(
+      plugin: plugin,
+      projectsDao: projectsDao,
+      db: projectsDao.attachedDatabase,
+    );
     final permissionRepository = PermissionRepository(plugin: plugin);
     final sessionPersistenceService = SessionPersistenceService(
       projectsDao: projectsDao,
@@ -97,7 +102,7 @@ class RequestRouter {
     return [
       HealthCheckHandler(plugin),
       GetCurrentProjectHandler(plugin),
-      GetProjectsHandler(plugin, hiddenStore),
+      GetProjectsHandler(projectRepository: projectRepository),
       GetSessionStatusesHandler(plugin),
       GetChildSessionsHandler(sessionRepository: sessionRepository),
       GetSessionMessagesHandler(plugin),
@@ -136,8 +141,8 @@ class RequestRouter {
       ReplyToPermissionHandler(permissionRepository: permissionRepository),
       RenameProjectHandler(plugin),
       CreateProjectHandler(plugin),
-      OpenProjectHandler(plugin, hiddenStore),
-      HideProjectHandler(hiddenStore),
+      OpenProjectHandler(plugin, projectsDao),
+      HideProjectHandler(projectsDao),
       GetBaseBranchHandler(projectsDao),
       SetBaseBranchHandler(projectsDao),
       FilesystemSuggestionsHandler(),

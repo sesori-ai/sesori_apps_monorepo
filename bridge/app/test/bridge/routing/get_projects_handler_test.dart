@@ -1,5 +1,6 @@
 import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/get_projects_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -12,14 +13,20 @@ void main() {
   group("GetProjectsHandler", () {
     late FakeBridgePlugin plugin;
     late AppDatabase db;
-    late ProjectsDao hiddenStore;
+    late ProjectsDao projectsDao;
     late GetProjectsHandler handler;
 
     setUp(() {
       plugin = FakeBridgePlugin();
       db = createTestDatabase();
-      hiddenStore = db.projectsDao;
-      handler = GetProjectsHandler(plugin, hiddenStore);
+      projectsDao = db.projectsDao;
+      handler = GetProjectsHandler(
+        projectRepository: ProjectRepository(
+          plugin: plugin,
+          projectsDao: projectsDao,
+          db: db,
+        ),
+      );
     });
 
     tearDown(() async {
@@ -137,7 +144,7 @@ void main() {
         const PluginProject(id: "hidden-1"),
         const PluginProject(id: "visible-2"),
       ];
-      await hiddenStore.hideProject(projectId: "hidden-1");
+      await projectsDao.hideProject(projectId: "hidden-1");
 
       final response = await handler.handle(
         makeRequest("GET", "/projects"),
