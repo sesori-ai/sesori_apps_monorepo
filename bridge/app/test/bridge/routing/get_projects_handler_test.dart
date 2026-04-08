@@ -24,7 +24,6 @@ void main() {
         projectRepository: ProjectRepository(
           plugin: plugin,
           projectsDao: projectsDao,
-          db: db,
         ),
       );
     });

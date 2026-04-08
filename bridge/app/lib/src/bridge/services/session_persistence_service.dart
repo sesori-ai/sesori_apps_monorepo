@@ -56,13 +56,17 @@ class SessionPersistenceService {
   }) async {
     await _db.transaction(() async {
       await _projectsDao.insertProjectIfMissing(projectId: projectId);
-      for (final session in sessions) {
-        await _sessionDao.insertSessionIfMissing(
-          sessionId: session.id,
-          projectId: projectId,
-          createdAt: session.time?.created ?? DateTime.now().millisecondsSinceEpoch,
-        );
-      }
+      await _sessionDao.insertSessionsIfMissing(
+        sessions: [
+          for (final s in sessions)
+            (
+              sessionId: s.id,
+              projectId: projectId,
+              createdAt: s.time?.created ?? DateTime.now().millisecondsSinceEpoch,
+              archivedAt: s.time?.archived,
+            ),
+        ],
+      );
     });
   }
 

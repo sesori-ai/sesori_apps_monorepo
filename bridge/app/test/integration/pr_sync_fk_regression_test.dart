@@ -59,7 +59,6 @@ void main() {
         final projectRepo = ProjectRepository(
           plugin: plugin,
           projectsDao: db.projectsDao,
-          db: db,
         );
         final prRepo = PullRequestRepository(
           pullRequestDao: db.pullRequestDao,

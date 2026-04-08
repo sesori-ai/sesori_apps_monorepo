@@ -128,8 +128,25 @@ void main() {
       expect(row.isDedicated, isTrue);
     });
 
+    test("persistSessionsForProject preserves archivedAt from session.time?.archived", () async {
+      final sessions = [
+        _session(id: "s-archived", projectId: "X", createdAt: 1000, archivedAt: 5555),
+        _session(id: "s-active", projectId: "X", createdAt: 2000, archivedAt: null),
+      ];
+
+      await service.persistSessionsForProject(projectId: "X", sessions: sessions);
+
+      final archived = await sessionDao.getSession(sessionId: "s-archived");
+      expect(archived, isNotNull);
+      expect(archived!.archivedAt, equals(5555));
+
+      final active = await sessionDao.getSession(sessionId: "s-active");
+      expect(active, isNotNull);
+      expect(active!.archivedAt, isNull);
+    });
+
     test("persistSessionsForProject rolls back all inserts on failure", () async {
-      final failingDao = _ThrowingSessionDao(db: db, throwOnCall: 3);
+      final failingDao = _ThrowingSessionDao(db: db, throwOnCall: 1);
       final failingService = SessionPersistenceService(
         projectsDao: projectsDao,
         sessionDao: failingDao,
@@ -159,6 +176,7 @@ Session _session({
   required String id,
   required String projectId,
   required int createdAt,
+  int? archivedAt,
 }) {
   return Session(
     id: id,
@@ -166,7 +184,7 @@ Session _session({
     directory: "/tmp/$projectId",
     parentID: null,
     title: null,
-    time: SessionTime(created: createdAt, updated: createdAt, archived: null),
+    time: SessionTime(created: createdAt, updated: createdAt, archived: archivedAt),
     summary: null,
     pullRequest: null,
   );
@@ -179,19 +197,13 @@ class _ThrowingSessionDao extends SessionDao {
   _ThrowingSessionDao({required AppDatabase db, required this.throwOnCall}) : super(db);
 
   @override
-  Future<void> insertSessionIfMissing({
-    required String sessionId,
-    required String projectId,
-    required int createdAt,
+  Future<void> insertSessionsIfMissing({
+    required List<({String sessionId, String projectId, int createdAt, int? archivedAt})> sessions,
   }) async {
     _calls++;
     if (_calls == throwOnCall) {
       throw StateError("boom");
     }
-    await super.insertSessionIfMissing(
-      sessionId: sessionId,
-      projectId: projectId,
-      createdAt: createdAt,
-    );
+    await super.insertSessionsIfMissing(sessions: sessions);
   }
 }

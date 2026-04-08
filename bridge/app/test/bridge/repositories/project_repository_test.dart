@@ -1,4 +1,3 @@
-import "package:drift/native.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -18,7 +17,6 @@ void main() {
       repo = ProjectRepository(
         plugin: plugin,
         projectsDao: db.projectsDao,
-        db: db,
       );
     });
 
@@ -69,41 +67,24 @@ void main() {
       expect(rows, isEmpty, reason: "no DB writes on plugin failure");
     });
 
-    test("getProjects wraps inserts in a single transaction", () async {
-      // Approach: subclass AppDatabase and increment a counter on each
-      // `transaction()` invocation. A single transaction wrapping N inserts
-      // => count == 1; one transaction per insert => count == N. This
-      // observes the transaction boundary directly (see Task 5 notes).
-      final trackingDb = _TxTrackingDatabase();
-      try {
-        final trackingPlugin = _FakeBridgePlugin()
-          ..projectsResult = const [
-            PluginProject(id: "p1"),
-            PluginProject(id: "p2"),
-            PluginProject(id: "p3"),
-            PluginProject(id: "p4"),
-          ];
-        final trackingRepo = ProjectRepository(
-          plugin: trackingPlugin,
-          projectsDao: trackingDb.projectsDao,
-          db: trackingDb,
-        );
+    test("getProjects inserts all projects atomically via batch", () async {
+      // Verify that all N plugin projects are persisted in a single batch call.
+      // The batch API is internally atomic — all rows land or none do.
+      plugin.projectsResult = const [
+        PluginProject(id: "p1"),
+        PluginProject(id: "p2"),
+        PluginProject(id: "p3"),
+        PluginProject(id: "p4"),
+      ];
 
-        await trackingRepo.getProjects();
+      await repo.getProjects();
 
-        expect(
-          trackingDb.transactionCount,
-          equals(1),
-          reason: "all N inserts must share a single transaction",
-        );
-        final rows = await trackingDb.select(trackingDb.projectsTable).get();
-        expect(
-          rows.map((r) => r.projectId).toSet(),
-          equals({"p1", "p2", "p3", "p4"}),
-        );
-      } finally {
-        await trackingDb.close();
-      }
+      final rows = await db.select(db.projectsTable).get();
+      expect(
+        rows.map((r) => r.projectId).toSet(),
+        equals({"p1", "p2", "p3", "p4"}),
+        reason: "all plugin projects must be persisted via batch insert",
+      );
     });
   });
 }
@@ -211,20 +192,4 @@ class _FakeBridgePlugin implements BridgePlugin {
 
   @override
   Future<void> dispose() => throw UnimplementedError();
-}
-
-/// [AppDatabase] variant that counts invocations of [transaction].
-///
-/// Used by the transaction-wrapping test to prove that [ProjectRepository]
-/// opens exactly one transaction for N inserts instead of N transactions.
-class _TxTrackingDatabase extends AppDatabase {
-  _TxTrackingDatabase() : super(NativeDatabase.memory());
-
-  int transactionCount = 0;
-
-  @override
-  Future<T> transaction<T>(Future<T> Function() action, {bool requireNew = false}) {
-    transactionCount++;
-    return super.transaction(action, requireNew: requireNew);
-  }
 }

@@ -90,4 +90,18 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
       mode: InsertMode.insertOrIgnore,
     );
   }
+
+  /// Bulk version of [insertProjectIfMissing]. Uses Drift's `batch` API
+  /// with `insertAll` and [InsertMode.insertOrIgnore] for a single SQL
+  /// statement that preserves existing rows' fields.
+  Future<void> insertProjectsIfMissing({required List<String> projectIds}) async {
+    if (projectIds.isEmpty) return;
+    await batch((b) {
+      b.insertAll(
+        projectsTable,
+        [for (final id in projectIds) ProjectsTableCompanion.insert(projectId: id)],
+        mode: InsertMode.insertOrIgnore,
+      );
+    });
+  }
 }

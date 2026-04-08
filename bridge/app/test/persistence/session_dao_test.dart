@@ -414,6 +414,7 @@ void main() {
           sessionId: "sess-1",
           projectId: "proj-1",
           createdAt: 1000,
+          archivedAt: null,
         );
 
         final result = await dao.getSession(sessionId: "sess-1");
@@ -430,6 +431,19 @@ void main() {
         expect(result.baseCommit, isNull);
       },
     );
+
+    test("insertSessionIfMissing persists archivedAt when provided", () async {
+      await dao.insertSessionIfMissing(
+        sessionId: "sess-archived",
+        projectId: "proj-1",
+        createdAt: 1000,
+        archivedAt: 9999,
+      );
+
+      final result = await dao.getSession(sessionId: "sess-archived");
+      expect(result, isNotNull);
+      expect(result!.archivedAt, equals(9999));
+    });
 
     test("insertSessionIfMissing is no-op when session exists, preserving worktreePath and branchName", () async {
       // Pre-insert a full session with worktree state.
@@ -449,6 +463,7 @@ void main() {
         sessionId: "sess-existing",
         projectId: "proj-1",
         createdAt: 999,
+        archivedAt: null,
       );
 
       final result = await dao.getSession(sessionId: "sess-existing");
@@ -472,11 +487,45 @@ void main() {
             sessionId: "s1",
             projectId: "nonexistent",
             createdAt: 0,
+            archivedAt: null,
           ),
           throwsA(isA<SqliteException>()),
         );
       },
     );
+
+    group("insertSessionsIfMissing", () {
+      test("insertSessionsIfMissing inserts all sessions in one batch", () async {
+        await dao.insertSessionsIfMissing(
+          sessions: [
+            (sessionId: "bulk-1", projectId: "proj-1", createdAt: 100, archivedAt: null),
+            (sessionId: "bulk-2", projectId: "proj-1", createdAt: 200, archivedAt: 9999),
+            (sessionId: "bulk-3", projectId: "proj-2", createdAt: 300, archivedAt: null),
+          ],
+        );
+
+        final s1 = await dao.getSession(sessionId: "bulk-1");
+        expect(s1, isNotNull);
+        expect(s1!.isDedicated, isFalse);
+        expect(s1.createdAt, equals(100));
+        expect(s1.archivedAt, isNull);
+
+        final s2 = await dao.getSession(sessionId: "bulk-2");
+        expect(s2, isNotNull);
+        expect(s2!.archivedAt, equals(9999));
+
+        final s3 = await dao.getSession(sessionId: "bulk-3");
+        expect(s3, isNotNull);
+        expect(s3!.projectId, equals("proj-2"));
+      });
+
+      test("insertSessionsIfMissing is no-op for empty list", () async {
+        await dao.insertSessionsIfMissing(sessions: []);
+
+        final rows = await db.select(db.sessionTable).get();
+        expect(rows, isEmpty);
+      });
+    });
 
     test(
       "insertSession throws SqliteException with FK violation when projectId does not exist",

@@ -84,7 +84,6 @@ class RequestRouter {
     final projectRepository = ProjectRepository(
       plugin: plugin,
       projectsDao: projectsDao,
-      db: projectsDao.attachedDatabase,
     );
     final permissionRepository = PermissionRepository(plugin: plugin);
     final sessionPersistenceService = SessionPersistenceService(

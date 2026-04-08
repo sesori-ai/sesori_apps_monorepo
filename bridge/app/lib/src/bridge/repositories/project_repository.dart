@@ -2,12 +2,11 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Bridg
 import "package:sesori_shared/sesori_shared.dart" show Project;
 
 import "../persistence/daos/projects_dao.dart";
-import "../persistence/database.dart";
 import "mappers/plugin_project_mapper.dart";
 
 /// Project data aggregator that fetches plugin projects, persists them
-/// in a single transaction (so downstream FK references hold), and returns
-/// the visible/sorted list to handlers.
+/// atomically via a single batch insert, and returns the visible/sorted list
+/// to handlers.
 ///
 /// This class exposes ONLY [getProjects]. Defensive "ensure project exists"
 /// helpers are intentionally absent: per the Aristotle architectural review
@@ -19,23 +18,18 @@ import "mappers/plugin_project_mapper.dart";
 class ProjectRepository {
   final BridgePlugin _plugin;
   final ProjectsDao _projectsDao;
-  final AppDatabase _db;
 
   ProjectRepository({
     required BridgePlugin plugin,
     required ProjectsDao projectsDao,
-    required AppDatabase db,
   }) : _plugin = plugin,
-       _projectsDao = projectsDao,
-       _db = db;
+       _projectsDao = projectsDao;
 
   Future<List<Project>> getProjects() async {
     final pluginProjects = await _plugin.getProjects();
-    await _db.transaction(() async {
-      for (final p in pluginProjects) {
-        await _projectsDao.insertProjectIfMissing(projectId: p.id);
-      }
-    });
+    await _projectsDao.insertProjectsIfMissing(
+      projectIds: [for (final p in pluginProjects) p.id],
+    );
     final hiddenIds = await _projectsDao.getHiddenProjectIds();
     final projects = pluginProjects.where((p) => !hiddenIds.contains(p.id)).map((p) => p.toSharedProject()).toList();
     projects.sort(
