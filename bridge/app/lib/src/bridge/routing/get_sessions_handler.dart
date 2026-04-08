@@ -62,7 +62,7 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
         projectId: projectId,
         sessions: sessions,
       );
-    } on Exception catch (e, st) {
+    } on Object catch (e, st) {
       Log.w("GetSessionsHandler: persistSessionsForProject failed for projectId=$projectId: $e\n$st");
     }
 
