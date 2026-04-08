@@ -1,5 +1,3 @@
-import "dart:ui";
-
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
@@ -9,10 +7,11 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "../di/injection.dart";
 import "../extensions/build_context_x.dart";
 import "../routing/app_router.dart";
+import "../theme/sesori_theme_tokens.dart";
 
 /// App-wide overlay that reacts to [ConnectionService] status changes.
 ///
-/// When [ConnectionLost]: blurs the screen and shows a card with
+/// When [ConnectionLost]: dims the screen and shows a card with
 /// Reconnect / Disconnect actions.
 /// When [ConnectionReconnecting]: shows a subtle progress bar at the top.
 class ConnectionOverlay extends StatelessWidget {
@@ -84,9 +83,8 @@ class _ConnectionOverlayBody extends StatelessWidget {
         // Full overlay when connection is lost.
         if (showOverlay) ...[
           Positioned.fill(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-              child: ColoredBox(color: Colors.black.withAlpha(100)),
+            child: ColoredBox(
+              color: themeOverlayScrim(context),
             ),
           ),
           Positioned.fill(
@@ -116,7 +114,7 @@ class _BridgeOfflineBanner extends StatelessWidget {
 
     return Material(
       elevation: 2,
-      color: Colors.orange.shade800,
+      color: SesoriThemeTokens.offlineBanner,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Row(
@@ -166,7 +164,7 @@ class _ConnectionLostCard extends StatelessWidget {
     final loc = context.loc;
 
     return Card(
-      elevation: 8,
+      elevation: 0,
       margin: const EdgeInsets.symmetric(horizontal: 32),
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -215,4 +213,9 @@ class _ConnectionLostCard extends StatelessWidget {
       ),
     );
   }
+}
+
+Color themeOverlayScrim(BuildContext context) {
+  final brightness = Theme.of(context).brightness;
+  return brightness == Brightness.light ? const Color(0xCCEEF2F8) : const Color(0xCC04070D);
 }

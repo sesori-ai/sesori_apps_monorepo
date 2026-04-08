@@ -12,6 +12,7 @@ OpenCode uses a **local client/server architecture** — the server runs on the 
 | [SSE_EVENTS.md](./SSE_EVENTS.md)                         | Server-Sent Events catalog for real-time updates       |
 | [ELECTRON_IPC_REFERENCE.md](./ELECTRON_IPC_REFERENCE.md) | Desktop app capabilities for feature parity planning   |
 | [openapi.json](./openapi.json)                           | OpenAPI 3.1.1 spec (machine-readable, use for codegen) |
+| [theme.md](./theme.md)                                   | Sesori mobile theme tokens, update flow, and guardrails |
 
 ## Quick Start
 

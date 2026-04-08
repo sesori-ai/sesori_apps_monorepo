@@ -13,6 +13,8 @@ import "core/extensions/build_context_x.dart";
 import "core/platform/notification_service.dart";
 import "core/routing/app_router.dart";
 import "core/routing/deep_link_service.dart";
+import "core/theme/sesori_dark_theme.dart";
+import "core/theme/sesori_light_theme.dart";
 import "core/widgets/connection_overlay.dart";
 import "firebase_options.dart";
 import "l10n/app_localizations.dart";
@@ -111,8 +113,9 @@ class SesoriApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp.router(
       onGenerateTitle: (context) => context.loc.appTitle,
-      theme: ThemeData(colorScheme: .fromSeed(seedColor: Colors.deepPurple)),
-      darkTheme: ThemeData.dark(),
+      theme: sesoriLightTheme,
+      darkTheme: sesoriDarkTheme,
+      themeMode: ThemeMode.system,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: appRouter,
