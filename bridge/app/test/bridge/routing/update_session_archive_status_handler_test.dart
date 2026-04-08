@@ -5,6 +5,7 @@ import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/update_session_archive_status_handler.dart";
+import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -29,6 +30,11 @@ void main() {
         worktreeService: worktreeService,
         sessionDao: db.sessionDao,
         sessionRepository: _FakeSessionRepository(),
+        sessionPersistenceService: SessionPersistenceService(
+          projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
+          db: db,
+        ),
       );
     });
 
@@ -385,6 +391,42 @@ void main() {
       expect(persisted?.branchName, isNull);
       expect(persisted?.baseBranch, isNull);
       expect(persisted?.baseCommit, isNull);
+      expect(persisted?.archivedAt, isNotNull);
+    });
+
+    test("archives first-time project (no prior projects_table row) without FK violation", () async {
+      // Empty projects_table — no pre-seeding at all.
+      plugin.projectsResult = const [PluginProject(id: "brand-new")];
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s-brand-new",
+          projectID: "brand-new",
+          directory: "brand-new",
+          parentID: null,
+          title: "Brand New Session",
+          time: PluginSessionTime(created: 10, updated: 20, archived: null),
+          summary: null,
+        ),
+      ];
+
+      // Should not throw FK violation even though projects_table is empty.
+      await handler.handle(
+        makeRequest("PATCH", "/session/update/archive"),
+        body: _archiveRequest(
+          sessionId: "s-brand-new",
+          archived: true,
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      final persisted = await db.sessionDao.getSession(sessionId: "s-brand-new");
+      expect(persisted, isNotNull);
+      expect(persisted?.projectId, equals("brand-new"));
       expect(persisted?.archivedAt, isNotNull);
     });
 

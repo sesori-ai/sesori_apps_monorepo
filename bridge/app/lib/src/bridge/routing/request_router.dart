@@ -123,6 +123,7 @@ class RequestRouter {
         worktreeService: worktreeService,
         sessionDao: sessionDao,
         sessionRepository: sessionRepository,
+        sessionPersistenceService: sessionPersistenceService,
       ),
       DeleteSessionHandler(
         plugin: plugin,

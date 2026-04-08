@@ -9,6 +9,7 @@ import "../persistence/daos/session_dao.dart";
 import "../persistence/tables/session_table.dart";
 import "../repositories/mappers/plugin_session_mapper.dart";
 import "../repositories/session_repository.dart";
+import "../services/session_persistence_service.dart";
 import "../worktree_service.dart";
 import "request_handler.dart";
 import "worktree_cleanup.dart";
@@ -19,16 +20,19 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
   final WorktreeService _worktreeService;
   final SessionDao _sessionDao;
   final SessionRepository _sessionRepository;
+  final SessionPersistenceService _sessionPersistenceService;
 
   UpdateSessionArchiveStatusHandler({
     required BridgePlugin plugin,
     required WorktreeService worktreeService,
     required SessionDao sessionDao,
     required SessionRepository sessionRepository,
+    required SessionPersistenceService sessionPersistenceService,
   }) : _plugin = plugin,
        _worktreeService = worktreeService,
        _sessionDao = sessionDao,
        _sessionRepository = sessionRepository,
+       _sessionPersistenceService = sessionPersistenceService,
        super(
          HttpMethod.patch,
          "/session/update/archive",
@@ -129,6 +133,7 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
       throw buildErrorResponse(request, 404, "session not found");
     }
 
+    await _sessionPersistenceService.ensureProject(projectId: pluginSessionLookup.projectId);
     await _sessionDao.insertSession(
       sessionId: sessionId,
       projectId: pluginSessionLookup.projectId,
