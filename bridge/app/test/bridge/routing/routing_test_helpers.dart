@@ -4,7 +4,9 @@ import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
 import "package:sesori_bridge/src/bridge/metadata_service.dart";
 import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge_metadata;
+import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/daos/session_dao.dart";
+import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_session_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/pull_request_mapper.dart";
@@ -13,6 +15,7 @@ import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart"
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
 
@@ -485,6 +488,38 @@ class FakePrSyncService extends PrSyncService {
   }
 }
 
+class FakeSessionPersistenceService extends SessionPersistenceService {
+  final List<String> ensuredProjectIds = <String>[];
+  final List<({String projectId, List<Session> sessions})> persistedCalls =
+      <({String projectId, List<Session> sessions})>[];
+
+  FakeSessionPersistenceService()
+    : super(
+        projectsDao: _unsupportedProjectsDao(),
+        sessionDao: _unsupportedSessionDao(),
+        db: _unsupportedDatabase(),
+      );
+
+  static ProjectsDao _unsupportedProjectsDao() => throw UnimplementedError();
+
+  static SessionDao _unsupportedSessionDao() => throw UnimplementedError();
+
+  static AppDatabase _unsupportedDatabase() => throw UnimplementedError();
+
+  @override
+  Future<void> ensureProject({required String projectId}) async {
+    ensuredProjectIds.add(projectId);
+  }
+
+  @override
+  Future<void> persistSessionsForProject({
+    required String projectId,
+    required List<Session> sessions,
+  }) async {
+    persistedCalls.add((projectId: projectId, sessions: sessions));
+  }
+}
+
 class _AlwaysReadyPrSource implements PrSourceRepository {
   @override
   Future<bool> isGithubCliAvailable() async => true;
@@ -557,6 +592,8 @@ class FakeSessionRepository implements SessionRepository {
   final FakeBridgePlugin _plugin;
   final FakeSessionDao _sessionDao;
   final FakePullRequestRepository _pullRequestRepository;
+  int getSessionsCallCount = 0;
+  ({String projectId, int? start, int? limit})? lastGetSessionsArgs;
 
   FakeSessionRepository({
     required FakeBridgePlugin plugin,
@@ -572,6 +609,8 @@ class FakeSessionRepository implements SessionRepository {
     required int? start,
     required int? limit,
   }) async {
+    getSessionsCallCount++;
+    lastGetSessionsArgs = (projectId: projectId, start: start, limit: limit);
     final pluginSessions = await _plugin.getSessions(
       projectId,
       start: start,

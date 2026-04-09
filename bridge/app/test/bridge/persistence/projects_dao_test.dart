@@ -56,6 +56,39 @@ void main() {
       expect(hiddenIds, equals({"project-1"}));
     });
 
+    test("unhideProject creates row with hidden=false when project does not exist", () async {
+      await dao.unhideProject(projectId: "brand-new");
+
+      final rows = await (db.select(db.projectsTable)..where((t) => t.projectId.equals("brand-new"))).get();
+      expect(rows, hasLength(1));
+      expect(rows.first.hidden, isFalse);
+      expect(rows.first.baseBranch, isNull);
+      expect(rows.first.worktreeCounter, equals(0));
+    });
+
+    test("unhideProject on existing hidden=true project sets hidden=false", () async {
+      await dao.hideProject(projectId: "proj-hidden");
+
+      await dao.unhideProject(projectId: "proj-hidden");
+
+      final hiddenIds = await dao.getHiddenProjectIds();
+      expect(hiddenIds, isEmpty);
+    });
+
+    test("unhideProject preserves baseBranch and worktreeCounter on existing row", () async {
+      await dao.setBaseBranch(projectId: "proj-p", baseBranch: "main");
+      await dao.incrementAndGetWorktreeCounter(projectId: "proj-p");
+      await dao.hideProject(projectId: "proj-p");
+
+      await dao.unhideProject(projectId: "proj-p");
+
+      final rows = await (db.select(db.projectsTable)..where((t) => t.projectId.equals("proj-p"))).get();
+      expect(rows, hasLength(1));
+      expect(rows.first.hidden, isFalse);
+      expect(rows.first.baseBranch, equals("main"));
+      expect(rows.first.worktreeCounter, equals(1));
+    });
+
     test("handles project IDs with slashes", () async {
       await dao.hideProject(projectId: "/Users/alex/projects/my-app");
 
@@ -170,6 +203,50 @@ void main() {
         // increment again and expect it continues from 2 → 3
         final counter = await dao.incrementAndGetWorktreeCounter(projectId: "proj-1");
         expect(counter, equals(3));
+      });
+    });
+
+    group("insertProjectsIfMissing", () {
+      test("insertProjectsIfMissing inserts all missing projects in one batch", () async {
+        await dao.insertProjectsIfMissing(projectIds: ["p1", "p2", "p3"]);
+
+        final rows = await db.select(db.projectsTable).get();
+        expect(rows, hasLength(3));
+        expect(rows.map((r) => r.projectId).toSet(), equals({"p1", "p2", "p3"}));
+        for (final row in rows) {
+          expect(row.hidden, isFalse);
+          expect(row.baseBranch, isNull);
+          expect(row.worktreeCounter, equals(0));
+        }
+      });
+
+      test("insertProjectsIfMissing is no-op for empty list", () async {
+        await dao.insertProjectsIfMissing(projectIds: []);
+
+        final rows = await db.select(db.projectsTable).get();
+        expect(rows, isEmpty);
+      });
+
+      test("insertProjectsIfMissing preserves existing hidden/baseBranch fields for each id", () async {
+        await dao.hideProject(projectId: "p1");
+        await dao.setBaseBranch(projectId: "p2", baseBranch: "develop");
+
+        // Batch insert — p1 and p2 already exist, p3 is new.
+        await dao.insertProjectsIfMissing(projectIds: ["p1", "p2", "p3"]);
+
+        // p1 must still be hidden.
+        final hiddenIds = await dao.getHiddenProjectIds();
+        expect(hiddenIds, contains("p1"));
+
+        // p2 must still have baseBranch=develop.
+        final branch = await dao.getBaseBranch(projectId: "p2");
+        expect(branch, equals("develop"));
+
+        // p3 is newly inserted with defaults.
+        final rows = await (db.select(db.projectsTable)..where((t) => t.projectId.equals("p3"))).get();
+        expect(rows, hasLength(1));
+        expect(rows.first.hidden, isFalse);
+        expect(rows.first.baseBranch, isNull);
       });
     });
   });

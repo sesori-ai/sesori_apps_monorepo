@@ -14,7 +14,7 @@ void main() {
   group("OpenProjectHandler", () {
     late FakeBridgePlugin plugin;
     late AppDatabase db;
-    late ProjectsDao hiddenStore;
+    late ProjectsDao projectsDao;
     late OpenProjectHandler handler;
     late Directory tempDir;
     late File tempFile;
@@ -24,8 +24,8 @@ void main() {
       db = createTestDatabase();
       tempDir = Directory.systemTemp.createTempSync("sesori_discover_test_");
       tempFile = File("${tempDir.path}/test_file.txt")..createSync();
-      hiddenStore = db.projectsDao;
-      handler = OpenProjectHandler(plugin, hiddenStore);
+      projectsDao = db.projectsDao;
+      handler = OpenProjectHandler(plugin, projectsDao);
     });
 
     tearDown(() async {
@@ -245,7 +245,7 @@ void main() {
 
     test("unhides discovered project id", () async {
       plugin.currentProjectResult = PluginProject(id: tempDir.path);
-      await hiddenStore.hideProject(projectId: tempDir.path);
+      await projectsDao.hideProject(projectId: tempDir.path);
 
       await handler.handle(
         makeRequest("POST", "/project/open"),
@@ -255,7 +255,7 @@ void main() {
         fragment: null,
       );
 
-      final hiddenIds = await hiddenStore.getHiddenProjectIds();
+      final hiddenIds = await projectsDao.getHiddenProjectIds();
       expect(hiddenIds, isNot(contains(tempDir.path)));
     });
   });

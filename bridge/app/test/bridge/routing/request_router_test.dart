@@ -2,14 +2,19 @@ import "dart:convert";
 
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/request_router.dart";
+import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
+import "package:sesori_bridge/src/bridge/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_database.dart";
+import "get_session_diffs_handler_test_helpers.dart";
 import "routing_test_helpers.dart";
 
 void main() {
@@ -26,7 +31,20 @@ void main() {
       final sessionRepository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
-        pullRequestRepository: PullRequestRepository(pullRequestDao: db.pullRequestDao),
+        pullRequestRepository: PullRequestRepository(pullRequestDao: db.pullRequestDao, projectsDao: db.projectsDao),
+      );
+      final projectRepository = ProjectRepository(plugin: plugin, projectsDao: db.projectsDao);
+      final permissionRepository = PermissionRepository(plugin: plugin);
+      final sessionPersistenceService = SessionPersistenceService(
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        db: db,
+      );
+      final worktreeService = WorktreeService(
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        processRunner: FakeProcessRunner(),
+        gitPathExists: ({required String gitPath}) => true,
       );
       router = RequestRouter(
         plugin: plugin,
@@ -35,6 +53,10 @@ void main() {
         sessionDao: db.sessionDao,
         sessionRepository: sessionRepository,
         prSyncService: FakePrSyncService(),
+        projectRepository: projectRepository,
+        permissionRepository: permissionRepository,
+        sessionPersistenceService: sessionPersistenceService,
+        worktreeService: worktreeService,
         onSessionAborted: (_) {},
       );
     });
@@ -259,6 +281,20 @@ void main() {
         pullRequestRepository: fakePullRequestRepository,
       );
 
+      final projectRepository = ProjectRepository(plugin: plugin, projectsDao: db.projectsDao);
+      final permissionRepository = PermissionRepository(plugin: plugin);
+      final sessionPersistenceService = SessionPersistenceService(
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        db: db,
+      );
+      final worktreeService = WorktreeService(
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        processRunner: FakeProcessRunner(),
+        gitPathExists: ({required String gitPath}) => true,
+      );
+
       router = RequestRouter(
         plugin: plugin,
         projectsDao: db.projectsDao,
@@ -266,6 +302,10 @@ void main() {
         sessionRepository: sessionRepository,
         prSyncService: spyPrSyncService,
         metadataService: metadataService,
+        projectRepository: projectRepository,
+        permissionRepository: permissionRepository,
+        sessionPersistenceService: sessionPersistenceService,
+        worktreeService: worktreeService,
         onSessionAborted: (_) {},
       );
 

@@ -4,15 +4,15 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../persistence/daos/projects_dao.dart";
-import "plugin_project_mapper.dart";
+import "../repositories/mappers/plugin_project_mapper.dart";
 import "request_handler.dart";
 
 /// Handles `POST /project/open` — opens an existing directory as a project.
 class OpenProjectHandler extends BodyRequestHandler<ProjectPathRequest, Project> {
   final BridgePlugin _plugin;
-  final ProjectsDao _hiddenStore;
+  final ProjectsDao _projectsDao;
 
-  OpenProjectHandler(this._plugin, this._hiddenStore)
+  OpenProjectHandler(this._plugin, this._projectsDao)
     : super(
         HttpMethod.post,
         "/project/open",
@@ -51,7 +51,7 @@ class OpenProjectHandler extends BodyRequestHandler<ProjectPathRequest, Project>
 
     // Discover via plugin (getProject triggers auto-discovery)
     final pluginProject = await _plugin.getProject(path);
-    await _hiddenStore.unhideProject(projectId: pluginProject.id);
+    await _projectsDao.unhideProject(projectId: pluginProject.id);
 
     final project = pluginProject.toSharedProject();
 

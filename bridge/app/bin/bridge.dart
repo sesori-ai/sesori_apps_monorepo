@@ -21,11 +21,15 @@ import 'package:sesori_bridge/src/bridge/orchestrator.dart';
 import 'package:sesori_bridge/src/bridge/persistence/bridge_diagnostics.dart';
 import 'package:sesori_bridge/src/bridge/persistence/database.dart';
 import 'package:sesori_bridge/src/bridge/relay_client.dart';
+import 'package:sesori_bridge/src/bridge/repositories/permission_repository.dart';
 import 'package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart';
+import 'package:sesori_bridge/src/bridge/repositories/project_repository.dart';
 import 'package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart';
 import 'package:sesori_bridge/src/bridge/repositories/session_repository.dart';
 import 'package:sesori_bridge/src/bridge/services/pr_sync_service.dart';
+import 'package:sesori_bridge/src/bridge/services/session_persistence_service.dart';
 import 'package:sesori_bridge/src/bridge/sse/sse_manager.dart';
+import 'package:sesori_bridge/src/bridge/worktree_service.dart';
 import 'package:sesori_bridge/src/push/completion_notifier.dart';
 import 'package:sesori_bridge/src/push/push_notification_client.dart';
 import 'package:sesori_bridge/src/push/push_notification_service.dart';
@@ -208,6 +212,7 @@ Future<void> main(List<String> args) async {
 
   final pullRequestRepository = PullRequestRepository(
     pullRequestDao: db.pullRequestDao,
+    projectsDao: db.projectsDao,
   );
   final sessionRepository = SessionRepository(
     plugin: plugin,
@@ -222,6 +227,23 @@ Future<void> main(List<String> args) async {
     pullRequestRepository: pullRequestRepository,
     sessionRepository: sessionRepository,
   );
+  final projectRepository = ProjectRepository(
+    plugin: plugin,
+    projectsDao: db.projectsDao,
+  );
+  final permissionRepository = PermissionRepository(plugin: plugin);
+  final sessionPersistenceService = SessionPersistenceService(
+    projectsDao: db.projectsDao,
+    sessionDao: db.sessionDao,
+    db: db,
+  );
+
+  final worktreeService = WorktreeService(
+    projectsDao: db.projectsDao,
+    sessionDao: db.sessionDao,
+    processRunner: ProcessRunner(),
+    gitPathExists: ({required String gitPath}) => FileSystemEntity.typeSync(gitPath) != FileSystemEntityType.notFound,
+  );
 
   final orchestrator = Orchestrator(
     config: bridgeConfig,
@@ -234,6 +256,10 @@ Future<void> main(List<String> args) async {
     failureReporter: failureReporter,
     prSyncService: prSyncService,
     sessionRepository: sessionRepository,
+    projectRepository: projectRepository,
+    permissionRepository: permissionRepository,
+    sessionPersistenceService: sessionPersistenceService,
+    worktreeService: worktreeService,
   );
   final session = orchestrator.create();
 

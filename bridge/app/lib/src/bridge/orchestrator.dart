@@ -14,11 +14,15 @@ import "metadata_service.dart";
 import "models/bridge_config.dart";
 import "persistence/daos/projects_dao.dart";
 import "relay_client.dart";
+import "repositories/permission_repository.dart";
+import "repositories/project_repository.dart";
 import "repositories/session_repository.dart";
 import "routing/request_router.dart";
 import "services/pr_sync_service.dart";
+import "services/session_persistence_service.dart";
 import "sse/bridge_event_mapper.dart";
 import "sse/sse_manager.dart";
+import "worktree_service.dart";
 
 /// Factory that creates [OrchestratorSession] instances with all runtime
 /// dependencies (room key, SSE manager) properly initialized.
@@ -33,6 +37,10 @@ class Orchestrator {
   final FailureReporter _failureReporter;
   final PrSyncService _prSyncService;
   final SessionRepository _sessionRepository;
+  final ProjectRepository _projectRepository;
+  final PermissionRepository _permissionRepository;
+  final SessionPersistenceService _sessionPersistenceService;
+  final WorktreeService _worktreeService;
 
   Orchestrator({
     required this.config,
@@ -45,6 +53,10 @@ class Orchestrator {
     required FailureReporter failureReporter,
     required PrSyncService prSyncService,
     required SessionRepository sessionRepository,
+    required ProjectRepository projectRepository,
+    required PermissionRepository permissionRepository,
+    required SessionPersistenceService sessionPersistenceService,
+    required WorktreeService worktreeService,
   }) : _client = client,
        _plugin = plugin,
        _metadataService = metadataService,
@@ -53,7 +65,11 @@ class Orchestrator {
        _projectsDao = projectsDao,
        _failureReporter = failureReporter,
        _sessionRepository = sessionRepository,
-       _prSyncService = prSyncService;
+       _prSyncService = prSyncService,
+       _projectRepository = projectRepository,
+       _permissionRepository = permissionRepository,
+       _sessionPersistenceService = sessionPersistenceService,
+       _worktreeService = worktreeService;
 
   /// Creates a new session with a fresh room key and SSE manager.
   OrchestratorSession create() {
@@ -80,6 +96,10 @@ class Orchestrator {
       failureReporter: _failureReporter,
       sessionRepository: _sessionRepository,
       prSyncService: _prSyncService,
+      projectRepository: _projectRepository,
+      permissionRepository: _permissionRepository,
+      sessionPersistenceService: _sessionPersistenceService,
+      worktreeService: _worktreeService,
     );
   }
 
@@ -126,6 +146,10 @@ class OrchestratorSession {
     required FailureReporter failureReporter,
     required SessionRepository sessionRepository,
     required PrSyncService prSyncService,
+    required ProjectRepository projectRepository,
+    required PermissionRepository permissionRepository,
+    required SessionPersistenceService sessionPersistenceService,
+    required WorktreeService worktreeService,
   }) : _client = client,
        _plugin = plugin,
        _pushNotificationService = pushNotificationService,
@@ -142,6 +166,10 @@ class OrchestratorSession {
          sessionDao: projectsDao.attachedDatabase.sessionDao,
          sessionRepository: sessionRepository,
          prSyncService: prSyncService,
+         projectRepository: projectRepository,
+         permissionRepository: permissionRepository,
+         sessionPersistenceService: sessionPersistenceService,
+         worktreeService: worktreeService,
          onSessionAborted: pushNotificationService.markSessionAborted,
        ),
        _mapper = BridgeEventMapper(plugin: plugin, failureReporter: failureReporter);

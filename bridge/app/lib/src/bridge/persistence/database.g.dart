@@ -297,6 +297,9 @@ class $SessionTableTable extends SessionTable
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES projects_table (project_id) ON DELETE CASCADE',
+    ),
   );
   static const VerificationMeta _worktreePathMeta = const VerificationMeta(
     'worktreePath',
@@ -1207,6 +1210,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         'projects_table',
         limitUpdateKind: UpdateKind.delete,
       ),
+      result: [TableUpdate('sessions_table', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'projects_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
       result: [TableUpdate('pull_requests_table', kind: UpdateKind.delete)],
     ),
   ]);
@@ -1234,6 +1244,29 @@ final class $$ProjectsTableTableReferences
     super.$_table,
     super.$_typedResult,
   );
+
+  static MultiTypedResultKey<$SessionTableTable, List<SessionDto>>
+  _sessionTableRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.sessionTable,
+    aliasName: $_aliasNameGenerator(
+      db.projectsTable.projectId,
+      db.sessionTable.projectId,
+    ),
+  );
+
+  $$SessionTableTableProcessedTableManager get sessionTableRefs {
+    final manager = $$SessionTableTableTableManager($_db, $_db.sessionTable)
+        .filter(
+          (f) => f.projectId.projectId.sqlEquals(
+            $_itemColumn<String>('project_id')!,
+          ),
+        );
+
+    final cache = $_typedResult.readTableOrNull(_sessionTableRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 
   static MultiTypedResultKey<$PullRequestsTableTable, List<PullRequestDto>>
   _pullRequestsTableRefsTable(_$AppDatabase db) =>
@@ -1293,6 +1326,31 @@ class $$ProjectsTableTableFilterComposer
     column: $table.worktreeCounter,
     builder: (column) => ColumnFilters(column),
   );
+
+  Expression<bool> sessionTableRefs(
+    Expression<bool> Function($$SessionTableTableFilterComposer f) f,
+  ) {
+    final $$SessionTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.projectId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.projectId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableFilterComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 
   Expression<bool> pullRequestsTableRefs(
     Expression<bool> Function($$PullRequestsTableTableFilterComposer f) f,
@@ -1375,6 +1433,31 @@ class $$ProjectsTableTableAnnotationComposer
     builder: (column) => column,
   );
 
+  Expression<T> sessionTableRefs<T extends Object>(
+    Expression<T> Function($$SessionTableTableAnnotationComposer a) f,
+  ) {
+    final $$SessionTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.projectId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.projectId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
   Expression<T> pullRequestsTableRefs<T extends Object>(
     Expression<T> Function($$PullRequestsTableTableAnnotationComposer a) f,
   ) {
@@ -1415,7 +1498,10 @@ class $$ProjectsTableTableTableManager
           $$ProjectsTableTableUpdateCompanionBuilder,
           (ProjectDto, $$ProjectsTableTableReferences),
           ProjectDto,
-          PrefetchHooks Function({bool pullRequestsTableRefs})
+          PrefetchHooks Function({
+            bool sessionTableRefs,
+            bool pullRequestsTableRefs,
+          })
         > {
   $$ProjectsTableTableTableManager(_$AppDatabase db, $ProjectsTableTable table)
     : super(
@@ -1460,40 +1546,63 @@ class $$ProjectsTableTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({pullRequestsTableRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [
-                if (pullRequestsTableRefs) db.pullRequestsTable,
-              ],
-              addJoins: null,
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (pullRequestsTableRefs)
-                    await $_getPrefetchedData<
-                      ProjectDto,
-                      $ProjectsTableTable,
-                      PullRequestDto
-                    >(
-                      currentTable: table,
-                      referencedTable: $$ProjectsTableTableReferences
-                          ._pullRequestsTableRefsTable(db),
-                      managerFromTypedResult: (p0) =>
-                          $$ProjectsTableTableReferences(
-                            db,
-                            table,
-                            p0,
-                          ).pullRequestsTableRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where(
-                            (e) => e.projectId == item.projectId,
-                          ),
-                      typedResults: items,
-                    ),
-                ];
+          prefetchHooksCallback:
+              ({sessionTableRefs = false, pullRequestsTableRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (sessionTableRefs) db.sessionTable,
+                    if (pullRequestsTableRefs) db.pullRequestsTable,
+                  ],
+                  addJoins: null,
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (sessionTableRefs)
+                        await $_getPrefetchedData<
+                          ProjectDto,
+                          $ProjectsTableTable,
+                          SessionDto
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ProjectsTableTableReferences
+                              ._sessionTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ProjectsTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).sessionTableRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.projectId == item.projectId,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (pullRequestsTableRefs)
+                        await $_getPrefetchedData<
+                          ProjectDto,
+                          $ProjectsTableTable,
+                          PullRequestDto
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ProjectsTableTableReferences
+                              ._pullRequestsTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ProjectsTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).pullRequestsTableRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.projectId == item.projectId,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -1510,7 +1619,10 @@ typedef $$ProjectsTableTableProcessedTableManager =
       $$ProjectsTableTableUpdateCompanionBuilder,
       (ProjectDto, $$ProjectsTableTableReferences),
       ProjectDto,
-      PrefetchHooks Function({bool pullRequestsTableRefs})
+      PrefetchHooks Function({
+        bool sessionTableRefs,
+        bool pullRequestsTableRefs,
+      })
     >;
 typedef $$SessionTableTableCreateCompanionBuilder =
     SessionTableCompanion Function({
@@ -1537,6 +1649,33 @@ typedef $$SessionTableTableUpdateCompanionBuilder =
       Value<int> createdAt,
     });
 
+final class $$SessionTableTableReferences
+    extends BaseReferences<_$AppDatabase, $SessionTableTable, SessionDto> {
+  $$SessionTableTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $ProjectsTableTable _projectIdTable(_$AppDatabase db) =>
+      db.projectsTable.createAlias(
+        $_aliasNameGenerator(
+          db.sessionTable.projectId,
+          db.projectsTable.projectId,
+        ),
+      );
+
+  $$ProjectsTableTableProcessedTableManager get projectId {
+    final $_column = $_itemColumn<String>('project_id')!;
+
+    final manager = $$ProjectsTableTableTableManager(
+      $_db,
+      $_db.projectsTable,
+    ).filter((f) => f.projectId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_projectIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
 class $$SessionTableTableFilterComposer
     extends Composer<_$AppDatabase, $SessionTableTable> {
   $$SessionTableTableFilterComposer({
@@ -1548,11 +1687,6 @@ class $$SessionTableTableFilterComposer
   });
   ColumnFilters<String> get sessionId => $composableBuilder(
     column: $table.sessionId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get projectId => $composableBuilder(
-    column: $table.projectId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1590,6 +1724,29 @@ class $$SessionTableTableFilterComposer
     column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
   );
+
+  $$ProjectsTableTableFilterComposer get projectId {
+    final $$ProjectsTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.projectId,
+      referencedTable: $db.projectsTable,
+      getReferencedColumn: (t) => t.projectId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ProjectsTableTableFilterComposer(
+            $db: $db,
+            $table: $db.projectsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$SessionTableTableOrderingComposer
@@ -1603,11 +1760,6 @@ class $$SessionTableTableOrderingComposer
   });
   ColumnOrderings<String> get sessionId => $composableBuilder(
     column: $table.sessionId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get projectId => $composableBuilder(
-    column: $table.projectId,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -1645,6 +1797,29 @@ class $$SessionTableTableOrderingComposer
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  $$ProjectsTableTableOrderingComposer get projectId {
+    final $$ProjectsTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.projectId,
+      referencedTable: $db.projectsTable,
+      getReferencedColumn: (t) => t.projectId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ProjectsTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.projectsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$SessionTableTableAnnotationComposer
@@ -1658,9 +1833,6 @@ class $$SessionTableTableAnnotationComposer
   });
   GeneratedColumn<String> get sessionId =>
       $composableBuilder(column: $table.sessionId, builder: (column) => column);
-
-  GeneratedColumn<String> get projectId =>
-      $composableBuilder(column: $table.projectId, builder: (column) => column);
 
   GeneratedColumn<String> get worktreePath => $composableBuilder(
     column: $table.worktreePath,
@@ -1694,6 +1866,29 @@ class $$SessionTableTableAnnotationComposer
 
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$ProjectsTableTableAnnotationComposer get projectId {
+    final $$ProjectsTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.projectId,
+      referencedTable: $db.projectsTable,
+      getReferencedColumn: (t) => t.projectId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ProjectsTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.projectsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$SessionTableTableTableManager
@@ -1707,12 +1902,9 @@ class $$SessionTableTableTableManager
           $$SessionTableTableAnnotationComposer,
           $$SessionTableTableCreateCompanionBuilder,
           $$SessionTableTableUpdateCompanionBuilder,
-          (
-            SessionDto,
-            BaseReferences<_$AppDatabase, $SessionTableTable, SessionDto>,
-          ),
+          (SessionDto, $$SessionTableTableReferences),
           SessionDto,
-          PrefetchHooks Function()
+          PrefetchHooks Function({bool projectId})
         > {
   $$SessionTableTableTableManager(_$AppDatabase db, $SessionTableTable table)
     : super(
@@ -1770,9 +1962,54 @@ class $$SessionTableTableTableManager
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$SessionTableTableReferences(db, table, e),
+                ),
+              )
               .toList(),
-          prefetchHooksCallback: null,
+          prefetchHooksCallback: ({projectId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (projectId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.projectId,
+                                referencedTable: $$SessionTableTableReferences
+                                    ._projectIdTable(db),
+                                referencedColumn: $$SessionTableTableReferences
+                                    ._projectIdTable(db)
+                                    .projectId,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
         ),
       );
 }
@@ -1787,12 +2024,9 @@ typedef $$SessionTableTableProcessedTableManager =
       $$SessionTableTableAnnotationComposer,
       $$SessionTableTableCreateCompanionBuilder,
       $$SessionTableTableUpdateCompanionBuilder,
-      (
-        SessionDto,
-        BaseReferences<_$AppDatabase, $SessionTableTable, SessionDto>,
-      ),
+      (SessionDto, $$SessionTableTableReferences),
       SessionDto,
-      PrefetchHooks Function()
+      PrefetchHooks Function({bool projectId})
     >;
 typedef $$PullRequestsTableTableCreateCompanionBuilder =
     PullRequestsTableCompanion Function({
