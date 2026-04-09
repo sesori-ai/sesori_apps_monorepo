@@ -432,6 +432,7 @@ class SessionListCubit extends Cubit<SessionListState> {
         force: force,
       );
     } on SessionCleanupRejectedException catch (error) {
+      logd("[SessionList] delete rejected: cleanup issues=${error.rejection.issues}");
       _lastCleanupRejection = error.rejection;
       _reinsertSession(originalSession);
       return false;
