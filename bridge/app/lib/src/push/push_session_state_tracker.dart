@@ -149,30 +149,7 @@ class PushSessionStateTracker {
   }
 
   String? getSessionProjectId({required String sessionId}) {
-    var current = sessionId;
-    final visited = <String>{};
-
-    while (true) {
-      if (!visited.add(current)) {
-        return null;
-      }
-
-      final state = _sessions[current];
-      if (state == null) {
-        return null;
-      }
-
-      if (state.projectId != null) {
-        return state.projectId;
-      }
-
-      final parentId = state.parentId;
-      if (parentId == null) {
-        return null;
-      }
-
-      current = parentId;
-    }
+    return _sessions[sessionId]?.projectId;
   }
 
   String? getLatestAssistantText(String sessionId) {

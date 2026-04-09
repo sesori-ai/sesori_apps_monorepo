@@ -895,31 +895,6 @@ void main() {
       expect(tracker.getSessionProjectId(sessionId: "sess-1"), equals("proj-new"));
     });
 
-    group("getSessionProjectId parent-chain walk", () {
-      test("getSessionProjectId returns direct projectId without walking parent", () {
-        final tracker = PushSessionStateTracker();
-
-        tracker.handleEvent(
-          SesoriSseEvent.sessionCreated(
-            info: _session(id: "parent", projectID: "proj-a"),
-          ),
-        );
-        tracker.handleEvent(
-          SesoriSseEvent.sessionCreated(
-            info: _session(id: "child", projectID: "proj-b", parentID: "parent"),
-          ),
-        );
-
-        expect(tracker.getSessionProjectId(sessionId: "child"), equals("proj-b"));
-      });
-
-      test("getSessionProjectId returns null for unknown session", () {
-        final tracker = PushSessionStateTracker();
-
-        expect(tracker.getSessionProjectId(sessionId: "unknown"), isNull);
-      });
-    });
-
     test("projectsSummary establishes multi-level hierarchy for status-only sessions", () {
       final tracker = PushSessionStateTracker();
 
