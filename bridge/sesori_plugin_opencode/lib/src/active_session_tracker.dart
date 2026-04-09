@@ -199,7 +199,7 @@ class ActiveSessionTracker {
   /// [coldStart] may run before all projects are known (e.g. fresh OpenCode
   /// install), and new projects discovered later would otherwise be invisible
   /// to the activity summary.
-  void updateProjectWorktrees({required Set<String> worktrees}) {
+  bool updateProjectWorktrees({required Set<String> worktrees}) {
     _projectWorktrees
       ..clear()
       ..addAll(worktrees);
@@ -215,8 +215,17 @@ class ActiveSessionTracker {
       }
     }
 
-    _lastEmittedActiveSessions = _activeSessionCounts;
-    _lastEmittedPendingInputSessions = _pendingInputSessions;
+    final nextActive = _activeSessionCounts;
+    final nextPending = _pendingInputSessions;
+
+    if (_mapsEqual(_lastEmittedActiveSessions, nextActive) &&
+        _setsEqual(_lastEmittedPendingInputSessions, nextPending)) {
+      return false;
+    }
+
+    _lastEmittedActiveSessions = nextActive;
+    _lastEmittedPendingInputSessions = nextPending;
+    return true;
   }
 
   /// Register a known session -> directory mapping (e.g., after session creation).

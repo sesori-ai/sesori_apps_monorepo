@@ -102,9 +102,10 @@ class OpenCodePlugin implements BridgePlugin {
   @override
   Future<List<PluginProject>> getProjects() async {
     final projects = await _call(_service.getProjects);
-    _service.tracker.updateProjectWorktrees(
+    final changed = _service.tracker.updateProjectWorktrees(
       worktrees: projects.map((p) => p.worktree).toSet(),
     );
+    if (changed) _emitProjectsSummary();
     return projects.map((project) => project.toPlugin()).toList();
   }
 
