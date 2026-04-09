@@ -35,6 +35,7 @@ void main() {
         sessionDao: db.sessionDao,
         sessionRepository: sessionRepository,
         prSyncService: FakePrSyncService(),
+        onSessionAborted: (_) {},
       );
     });
 
@@ -265,6 +266,7 @@ void main() {
         sessionRepository: sessionRepository,
         prSyncService: spyPrSyncService,
         metadataService: metadataService,
+        onSessionAborted: (_) {},
       );
 
       final response = await router.route(

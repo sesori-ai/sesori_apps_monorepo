@@ -36,6 +36,12 @@ class PushNotificationService {
     _sendImmediateNotificationIfApplicable(event);
   }
 
+  /// Marks a session as user-aborted so the completion notification is
+  /// suppressed for the current busy→idle transition.
+  void markSessionAborted(String sessionId) {
+    _completionNotifier.markSessionAborted(sessionId);
+  }
+
   Future<void> dispose() async {
     await _completionSubscription.cancel();
     _completionNotifier.dispose();

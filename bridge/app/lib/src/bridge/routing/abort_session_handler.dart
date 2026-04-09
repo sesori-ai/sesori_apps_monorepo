@@ -6,13 +6,17 @@ import "request_handler.dart";
 /// Handles `POST /session/:id/abort` — aborts in-progress session execution.
 class AbortSessionHandler extends BodyRequestHandler<SessionIdRequest, SuccessEmptyResponse> {
   final BridgePlugin _plugin;
+  final void Function(String sessionId) _onSessionAborted;
 
-  AbortSessionHandler(this._plugin)
-    : super(
-        HttpMethod.post,
-        "/session/abort",
-        fromJson: SessionIdRequest.fromJson,
-      );
+  AbortSessionHandler(
+    this._plugin, {
+    required void Function(String sessionId) onSessionAborted,
+  }) : _onSessionAborted = onSessionAborted,
+       super(
+         HttpMethod.post,
+         "/session/abort",
+         fromJson: SessionIdRequest.fromJson,
+       );
 
   @override
   Future<SuccessEmptyResponse> handle(
@@ -22,6 +26,7 @@ class AbortSessionHandler extends BodyRequestHandler<SessionIdRequest, SuccessEm
     required Map<String, String> queryParams,
     String? fragment,
   }) async {
+    _onSessionAborted(body.sessionId);
     await _plugin.abortSession(sessionId: body.sessionId);
     return const SuccessEmptyResponse();
   }
