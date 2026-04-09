@@ -1,6 +1,7 @@
 ### Sesori AI tooling
 .sisyphus/
 .worktrees/
+.opencode/
 
 ### Dart
 .dart_tool/
@@ -19,7 +20,8 @@ pubspec.lock
 ._*
 
 # Custom folder icons
-Icon
+Icon
+
 
 # Volume root files
 .DocumentRevisions-V100
