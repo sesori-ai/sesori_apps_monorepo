@@ -1,5 +1,5 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
-import "package:sesori_shared/sesori_shared.dart" show ActiveSession, ProjectActivitySummary, wait3;
+import "package:sesori_shared/sesori_shared.dart" show ActiveSession, ProjectActivitySummary;
 
 import "models/pending_permission.dart";
 import "models/pending_question.dart";
@@ -27,11 +27,10 @@ class ActiveSessionTracker {
   ActiveSessionTracker(this._repository);
 
   Future<void> coldStart() async {
-    final (projects, statuses, sessions) = await wait3(
+    final (projects, sessions) = await (
       _repository.getProjects(),
-      _repository.api.getSessionStatuses(),
       _repository.api.listSessions(),
-    );
+    ).wait;
 
     _projectWorktrees
       ..clear()
@@ -52,17 +51,39 @@ class ActiveSessionTracker {
       ..clear()
       ..addAll(sessionDirectories);
 
+    // Fetch statuses per-project-directory so each call targets the correct
+    // OpenCode Instance. Errors for individual directories are logged and
+    // skipped so that one unavailable project doesn't block the rest.
+    final allStatuses = <String, SessionStatus>{};
+    final statusFutures = _projectWorktrees.map((worktree) async {
+      try {
+        final statuses = await _repository.api.getSessionStatuses(directory: worktree);
+        for (final entry in statuses.entries) {
+          allStatuses[entry.key] = entry.value;
+          // Map session → worktree directly from the call context.
+          _sessionWorktrees[entry.key] = worktree;
+        }
+      } catch (e) {
+        Log.w("coldStart: failed to fetch session statuses for $worktree: $e");
+      }
+    });
+    await Future.wait(statusFutures);
+
     _sessionStatuses
       ..clear()
       ..addAll(
         Map.fromEntries(
-          statuses.entries.where(
+          allStatuses.entries.where(
             (e) => e.value is SessionStatusBusy || e.value is SessionStatusRetry,
           ),
         ),
       );
 
+    // Also resolve worktrees for sessions whose directory is known but that
+    // were not returned by the per-directory status calls (e.g. sessions in
+    // subdirectories of a worktree).
     for (final sessionId in _sessionStatuses.keys.toList()) {
+      if (_sessionWorktrees.containsKey(sessionId)) continue;
       final directory = sessionDirectories[sessionId];
       if (directory == null) continue;
       final worktree = _resolveWorktree(directory);
@@ -167,6 +188,34 @@ class ActiveSessionTracker {
     _pendingPermissions
       ..clear()
       ..addEntries(_groupBySessionId(permissions.map((p) => (p.sessionID, p.id))).entries);
+    _lastEmittedPendingInputSessions = _pendingInputSessions;
+  }
+
+  /// Replaces the set of known project worktrees and re-resolves worktree
+  /// mappings for any active sessions that currently lack one.
+  ///
+  /// Called from [OpenCodePlugin.getProjects] to keep the tracker's worktree
+  /// knowledge in sync with the latest project list. This is important because
+  /// [coldStart] may run before all projects are known (e.g. fresh OpenCode
+  /// install), and new projects discovered later would otherwise be invisible
+  /// to the activity summary.
+  void updateProjectWorktrees({required Set<String> worktrees}) {
+    _projectWorktrees
+      ..clear()
+      ..addAll(worktrees);
+
+    // Re-resolve worktrees for active sessions that don't have one yet.
+    for (final sessionId in _sessionStatuses.keys.toList()) {
+      if (_sessionWorktrees.containsKey(sessionId)) continue;
+      final directory = _sessionDirectories[sessionId];
+      if (directory == null) continue;
+      final worktree = _resolveWorktree(directory);
+      if (worktree != null) {
+        _sessionWorktrees[sessionId] = worktree;
+      }
+    }
+
+    _lastEmittedActiveSessions = _activeSessionCounts;
     _lastEmittedPendingInputSessions = _pendingInputSessions;
   }
 

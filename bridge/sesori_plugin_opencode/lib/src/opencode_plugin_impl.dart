@@ -101,7 +101,11 @@ class OpenCodePlugin implements BridgePlugin {
 
   @override
   Future<List<PluginProject>> getProjects() async {
-    return (await _call(_service.getProjects)).map((project) => project.toPlugin()).toList();
+    final projects = await _call(_service.getProjects);
+    _service.tracker.updateProjectWorktrees(
+      worktrees: projects.map((p) => p.worktree).toSet(),
+    );
+    return projects.map((project) => project.toPlugin()).toList();
   }
 
   @override
@@ -196,7 +200,9 @@ class OpenCodePlugin implements BridgePlugin {
 
   @override
   Future<Map<String, PluginSessionStatus>> getSessionStatuses() async {
-    final apiStatuses = await _call(_service.repository.api.getSessionStatuses);
+    final apiStatuses = await _call(
+      () => _service.repository.api.getSessionStatuses(directory: null),
+    );
 
     // Start with the API response as a baseline.
     final merged = apiStatuses.map((key, value) => MapEntry(key, value.toPlugin()));
