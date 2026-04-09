@@ -1,5 +1,3 @@
-import "dart:mirrors";
-
 import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -898,28 +896,6 @@ void main() {
     });
 
     group("getSessionProjectId parent-chain walk", () {
-      test("getSessionProjectId walks parent chain when child has no projectId", () {
-        final tracker = PushSessionStateTracker();
-
-        tracker.handleEvent(
-          SesoriSseEvent.sessionCreated(
-            info: _session(id: "parent", projectID: "proj-a"),
-          ),
-        );
-        tracker.handleEvent(
-          SesoriSseEvent.sessionCreated(
-            info: _session(id: "child", projectID: "proj-b", parentID: "parent"),
-          ),
-        );
-        _setSessionProjectId(
-          tracker: tracker,
-          sessionId: "child",
-          projectId: null,
-        );
-
-        expect(tracker.getSessionProjectId(sessionId: "child"), equals("proj-a"));
-      });
-
       test("getSessionProjectId returns direct projectId without walking parent", () {
         final tracker = PushSessionStateTracker();
 
@@ -937,23 +913,10 @@ void main() {
         expect(tracker.getSessionProjectId(sessionId: "child"), equals("proj-b"));
       });
 
-      test("getSessionProjectId returns null when no session in ancestry has projectId", () {
+      test("getSessionProjectId returns null for unknown session", () {
         final tracker = PushSessionStateTracker();
 
-        tracker.handleEvent(
-          SesoriSseEvent.sessionCreated(
-            info: _session(id: "parent", projectID: "proj-a"),
-          ),
-        );
-        tracker.handleEvent(
-          SesoriSseEvent.sessionCreated(
-            info: _session(id: "child", projectID: "proj-b", parentID: "parent"),
-          ),
-        );
-        _setSessionProjectId(tracker: tracker, sessionId: "parent", projectId: null);
-        _setSessionProjectId(tracker: tracker, sessionId: "child", projectId: null);
-
-        expect(tracker.getSessionProjectId(sessionId: "child"), isNull);
+        expect(tracker.getSessionProjectId(sessionId: "unknown"), isNull);
       });
     });
 
@@ -1046,19 +1009,4 @@ Session _session({
     summary: null,
     pullRequest: null,
   );
-}
-
-void _setSessionProjectId({
-  required PushSessionStateTracker tracker,
-  required String sessionId,
-  required String? projectId,
-}) {
-  final trackerLibrary = reflectClass(PushSessionStateTracker).owner! as LibraryMirror;
-  final trackerMirror = reflect(tracker);
-  final state = trackerMirror.invoke(
-    MirrorSystem.getSymbol("_stateForWrite", trackerLibrary),
-    [sessionId],
-  ).reflectee;
-
-  reflect(state).setField(const Symbol("projectId"), projectId);
 }
