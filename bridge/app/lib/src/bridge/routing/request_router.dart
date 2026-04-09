@@ -1,5 +1,3 @@
-import "dart:io";
-
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -61,6 +59,10 @@ class RequestRouter {
     required SessionDao sessionDao,
     required SessionRepository sessionRepository,
     required PrSyncService prSyncService,
+    required ProjectRepository projectRepository,
+    required PermissionRepository permissionRepository,
+    required SessionPersistenceService sessionPersistenceService,
+    required WorktreeService worktreeService,
     required void Function(String sessionId) onSessionAborted,
   }) : _handlers = _buildHandlers(
          plugin: plugin,
@@ -69,6 +71,10 @@ class RequestRouter {
          sessionDao: sessionDao,
          sessionRepository: sessionRepository,
          prSyncService: prSyncService,
+         projectRepository: projectRepository,
+         permissionRepository: permissionRepository,
+         sessionPersistenceService: sessionPersistenceService,
+         worktreeService: worktreeService,
          onSessionAborted: onSessionAborted,
        );
 
@@ -79,25 +85,12 @@ class RequestRouter {
     required SessionDao sessionDao,
     required SessionRepository sessionRepository,
     required PrSyncService prSyncService,
+    required ProjectRepository projectRepository,
+    required PermissionRepository permissionRepository,
+    required SessionPersistenceService sessionPersistenceService,
+    required WorktreeService worktreeService,
     required void Function(String sessionId) onSessionAborted,
   }) {
-    final projectRepository = ProjectRepository(
-      plugin: plugin,
-      projectsDao: projectsDao,
-    );
-    final permissionRepository = PermissionRepository(plugin: plugin);
-    final sessionPersistenceService = SessionPersistenceService(
-      projectsDao: projectsDao,
-      sessionDao: sessionDao,
-      db: projectsDao.attachedDatabase,
-    );
-
-    final worktreeService = WorktreeService(
-      projectsDao: projectsDao,
-      sessionDao: sessionDao,
-      processRunner: ProcessRunner(),
-      gitPathExists: ({required String gitPath}) => FileSystemEntity.typeSync(gitPath) != FileSystemEntityType.notFound,
-    );
     return [
       HealthCheckHandler(plugin),
       GetCurrentProjectHandler(plugin),

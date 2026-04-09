@@ -93,30 +93,6 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   ///
   /// [archivedAt] is written explicitly (including null) so that plugin-sourced
   /// archive state is preserved on first insert. Existing rows are never updated.
-  Future<void> insertSessionIfMissing({
-    required String sessionId,
-    required String projectId,
-    required int createdAt,
-    required int? archivedAt,
-  }) async {
-    await into(sessionTable).insert(
-      SessionTableCompanion(
-        sessionId: Value(sessionId),
-        projectId: Value(projectId),
-        // isDedicated hardcoded false — placeholders are non-dedicated by default.
-        // Callers (plugin-sourced sessions) never have meaningful worktree state.
-        isDedicated: const Value(false),
-        createdAt: Value(createdAt),
-        archivedAt: Value(archivedAt),
-        // worktreePath, branchName, baseBranch, baseCommit intentionally
-        // omitted — they default to absent (null) via SessionTableCompanion
-      ),
-      mode: InsertMode.insertOrIgnore,
-    );
-  }
-
-  /// Bulk version of [insertSessionIfMissing]. Uses Drift's `batch` API.
-  /// Each entry provides (sessionId, projectId, createdAt, archivedAt).
   Future<void> insertSessionsIfMissing({
     required List<({String sessionId, String projectId, int createdAt, int? archivedAt})> sessions,
   }) async {
@@ -129,9 +105,13 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
             SessionTableCompanion(
               sessionId: Value(s.sessionId),
               projectId: Value(s.projectId),
+              // isDedicated hardcoded false — placeholders are non-dedicated by default.
+              // Callers (plugin-sourced sessions) never have meaningful worktree state.
               isDedicated: const Value(false),
               createdAt: Value(s.createdAt),
               archivedAt: Value(s.archivedAt),
+              // worktreePath, branchName, baseBranch, baseCommit intentionally
+              // omitted — they default to absent (null) via SessionTableCompanion
             ),
         ],
         mode: InsertMode.insertOrIgnore,

@@ -7,11 +7,15 @@ import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/debug_server.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/request_router.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
+import "package:sesori_bridge/src/bridge/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -39,6 +43,19 @@ DebugServer _createDebugServer({
     pullRequestRepository: pullRequestRepository,
     sessionRepository: sessionRepository,
   );
+  final projectRepository = ProjectRepository(plugin: plugin, projectsDao: db.projectsDao);
+  final permissionRepository = PermissionRepository(plugin: plugin);
+  final sessionPersistenceService = SessionPersistenceService(
+    projectsDao: db.projectsDao,
+    sessionDao: db.sessionDao,
+    db: db,
+  );
+  final worktreeService = WorktreeService(
+    projectsDao: db.projectsDao,
+    sessionDao: db.sessionDao,
+    processRunner: processRunner,
+    gitPathExists: ({required String gitPath}) => FileSystemEntity.typeSync(gitPath) != FileSystemEntityType.notFound,
+  );
   final router = RequestRouter(
     plugin: plugin,
     metadataService: FakeMetadataService(),
@@ -46,6 +63,10 @@ DebugServer _createDebugServer({
     sessionDao: db.sessionDao,
     sessionRepository: sessionRepository,
     prSyncService: prSyncService,
+    projectRepository: projectRepository,
+    permissionRepository: permissionRepository,
+    sessionPersistenceService: sessionPersistenceService,
+    worktreeService: worktreeService,
     onSessionAborted: (_) {},
   );
   return DebugServer(

@@ -12,10 +12,14 @@ import "package:sesori_bridge/src/bridge/models/session_metadata.dart";
 import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
+import "package:sesori_bridge/src/bridge/worktree_service.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
 import "package:sesori_bridge/src/push/push_notification_client.dart";
 import "package:sesori_bridge/src/push/push_notification_service.dart";
@@ -27,6 +31,7 @@ import "package:test/test.dart";
 
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
+import "routing/get_session_diffs_handler_test_helpers.dart";
 
 void main() {
   test("pr sync stream enqueues sessions.updated SSE event for subscribers", () async {
@@ -42,6 +47,22 @@ void main() {
       plugin: plugin,
       sessionDao: database.sessionDao,
       pullRequestRepository: pullRequestRepository,
+    );
+    final projectRepository = ProjectRepository(
+      plugin: plugin,
+      projectsDao: database.projectsDao,
+    );
+    final permissionRepository = PermissionRepository(plugin: plugin);
+    final sessionPersistenceService = SessionPersistenceService(
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      db: database,
+    );
+    final worktreeService = WorktreeService(
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      processRunner: FakeProcessRunner(),
+      gitPathExists: ({required String gitPath}) => true,
     );
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
@@ -65,6 +86,10 @@ void main() {
       failureReporter: FakeFailureReporter(),
       prSyncService: fakePrSyncService,
       sessionRepository: sessionRepository,
+      projectRepository: projectRepository,
+      permissionRepository: permissionRepository,
+      sessionPersistenceService: sessionPersistenceService,
+      worktreeService: worktreeService,
     );
 
     final session = orchestrator.create();
@@ -124,7 +149,10 @@ void main() {
       },
     );
     final fakePrSyncService = _FakePrSyncService();
-    final pullRequestRepository = PullRequestRepository(pullRequestDao: database.pullRequestDao);
+    final pullRequestRepository = PullRequestRepository(
+      pullRequestDao: database.pullRequestDao,
+      projectsDao: database.projectsDao,
+    );
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
@@ -133,6 +161,19 @@ void main() {
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
       accessTokenProvider: FakeAccessTokenProvider(""),
+    );
+    final projectRepository = ProjectRepository(plugin: plugin, projectsDao: database.projectsDao);
+    final permissionRepository = PermissionRepository(plugin: plugin);
+    final sessionPersistenceService = SessionPersistenceService(
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      db: database,
+    );
+    final worktreeService = WorktreeService(
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      processRunner: FakeProcessRunner(),
+      gitPathExists: ({required String gitPath}) => true,
     );
 
     final orchestrator = Orchestrator(
@@ -152,6 +193,10 @@ void main() {
       failureReporter: FakeFailureReporter(),
       prSyncService: fakePrSyncService,
       sessionRepository: sessionRepository,
+      projectRepository: projectRepository,
+      permissionRepository: permissionRepository,
+      sessionPersistenceService: sessionPersistenceService,
+      worktreeService: worktreeService,
     );
 
     final session = orchestrator.create();
@@ -285,11 +330,10 @@ class _CapturingPushNotificationService extends PushNotificationService {
         tracker: PushSessionStateTracker(),
       );
 
-  _CapturingPushNotificationService._({required PushSessionStateTracker tracker})
+  _CapturingPushNotificationService._({required super.tracker})
     : super(
         client: _NoopPushNotificationClient(),
         rateLimiter: PushRateLimiter(),
-        tracker: tracker,
         completionNotifier: CompletionNotifier(tracker: tracker),
       );
 

@@ -76,7 +76,7 @@ void main() {
 
     test("parent session: reuses parent worktree when mapping exists", () async {
       // Insert a mapping for the parent session.
-      await projectsDao.insertProjectIfMissing(projectId: _projectId); // satisfy v5 FK constraint
+      await projectsDao.insertProjectsIfMissing(projectIds: [_projectId]); // satisfy v5 FK constraint
       await sessionDao.insertSession(
         sessionId: "parent-001",
         projectId: _projectId,
@@ -426,7 +426,7 @@ void main() {
 
     test("preferred branch name with parent session: ignored, reuses parent worktree", () async {
       // Insert a mapping for the parent session.
-      await projectsDao.insertProjectIfMissing(projectId: _projectId); // satisfy v5 FK constraint
+      await projectsDao.insertProjectsIfMissing(projectIds: [_projectId]); // satisfy v5 FK constraint
       await sessionDao.insertSession(
         sessionId: "parent-001",
         projectId: _projectId,

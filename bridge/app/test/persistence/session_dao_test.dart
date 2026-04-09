@@ -19,7 +19,7 @@ void main() {
       // Seed projects required by tests — v5 FK constraint on session_table.projectId
       // → projects_table.projectId means every session insert needs a matching project row.
       for (final id in ["proj-1", "proj-2", "proj-3", "proj-4", "proj-x", "proj-y"]) {
-        await projectsDao.insertProjectIfMissing(projectId: id);
+        await projectsDao.insertProjectsIfMissing(projectIds: [id]);
       }
     });
 
@@ -407,14 +407,18 @@ void main() {
     });
 
     test(
-      "insertSessionIfMissing inserts placeholder session with isDedicated=false and null nullable fields",
+      "insertSessionsIfMissing inserts placeholder session with isDedicated=false and null nullable fields",
       () async {
         // proj-1 is seeded in setUp — FK constraint satisfied.
-        await dao.insertSessionIfMissing(
-          sessionId: "sess-1",
-          projectId: "proj-1",
-          createdAt: 1000,
-          archivedAt: null,
+        await dao.insertSessionsIfMissing(
+          sessions: [
+            (
+              sessionId: "sess-1",
+              projectId: "proj-1",
+              createdAt: 1000,
+              archivedAt: null,
+            ),
+          ],
         );
 
         final result = await dao.getSession(sessionId: "sess-1");
@@ -432,12 +436,16 @@ void main() {
       },
     );
 
-    test("insertSessionIfMissing persists archivedAt when provided", () async {
-      await dao.insertSessionIfMissing(
-        sessionId: "sess-archived",
-        projectId: "proj-1",
-        createdAt: 1000,
-        archivedAt: 9999,
+    test("insertSessionsIfMissing persists archivedAt when provided", () async {
+      await dao.insertSessionsIfMissing(
+        sessions: [
+          (
+            sessionId: "sess-archived",
+            projectId: "proj-1",
+            createdAt: 1000,
+            archivedAt: 9999,
+          ),
+        ],
       );
 
       final result = await dao.getSession(sessionId: "sess-archived");
@@ -445,7 +453,7 @@ void main() {
       expect(result!.archivedAt, equals(9999));
     });
 
-    test("insertSessionIfMissing is no-op when session exists, preserving worktreePath and branchName", () async {
+    test("insertSessionsIfMissing is no-op when session exists, preserving worktreePath and branchName", () async {
       // Pre-insert a full session with worktree state.
       await dao.insertSession(
         sessionId: "sess-existing",
@@ -458,12 +466,16 @@ void main() {
         baseCommit: "abc123",
       );
 
-      // insertSessionIfMissing must be a no-op — must NOT clobber existing fields.
-      await dao.insertSessionIfMissing(
-        sessionId: "sess-existing",
-        projectId: "proj-1",
-        createdAt: 999,
-        archivedAt: null,
+      // insertSessionsIfMissing must be a no-op — must NOT clobber existing fields.
+      await dao.insertSessionsIfMissing(
+        sessions: [
+          (
+            sessionId: "sess-existing",
+            projectId: "proj-1",
+            createdAt: 999,
+            archivedAt: null,
+          ),
+        ],
       );
 
       final result = await dao.getSession(sessionId: "sess-existing");
@@ -476,18 +488,22 @@ void main() {
     });
 
     test(
-      "insertSessionIfMissing throws SqliteException with FK violation when projectId does not exist",
+      "insertSessionsIfMissing throws SqliteException with FK violation when projectId does not exist",
       () async {
         // Fresh in-memory AppDatabase at v5 with FK enforced.
         // projects_table is empty — no row for "nonexistent".
         // The v5 FK constraint on session_table.projectId → projects_table.projectId
         // must reject this insert at the SQLite level.
         expect(
-          () async => dao.insertSessionIfMissing(
-            sessionId: "s1",
-            projectId: "nonexistent",
-            createdAt: 0,
-            archivedAt: null,
+          () async => dao.insertSessionsIfMissing(
+            sessions: [
+              (
+                sessionId: "s1",
+                projectId: "nonexistent",
+                createdAt: 0,
+                archivedAt: null,
+              ),
+            ],
           ),
           throwsA(isA<SqliteException>()),
         );

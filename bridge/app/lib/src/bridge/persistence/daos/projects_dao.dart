@@ -84,22 +84,12 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
   /// Inserts a minimal project row if none exists for [projectId].
   /// Preserves all fields of existing rows — uses InsertMode.insertOrIgnore.
   /// Use this to satisfy FK constraints without clobbering user-set state.
-  Future<void> insertProjectIfMissing({required String projectId}) async {
-    await into(projectsTable).insert(
-      ProjectsTableCompanion.insert(projectId: projectId),
-      mode: InsertMode.insertOrIgnore,
-    );
-  }
-
-  /// Bulk version of [insertProjectIfMissing]. Uses Drift's `batch` API
-  /// with `insertAll` and [InsertMode.insertOrIgnore] for a single SQL
-  /// statement that preserves existing rows' fields.
   Future<void> insertProjectsIfMissing({required List<String> projectIds}) async {
     if (projectIds.isEmpty) return;
     await batch((b) {
       b.insertAll(
         projectsTable,
-        [for (final id in projectIds) ProjectsTableCompanion.insert(projectId: id)],
+        projectIds.map((id) => ProjectsTableCompanion.insert(projectId: id)).toList(),
         mode: InsertMode.insertOrIgnore,
       );
     });

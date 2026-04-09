@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:io";
 
 import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
@@ -6,10 +7,14 @@ import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
+import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
+import "package:sesori_bridge/src/bridge/worktree_service.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
 import "package:sesori_bridge/src/push/push_notification_client.dart";
 import "package:sesori_bridge/src/push/push_notification_service.dart";
@@ -21,6 +26,7 @@ import "package:test/test.dart";
 
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
+import "api/git_remote_api_test.dart";
 import "routing/routing_test_helpers.dart";
 
 void main() {
@@ -114,6 +120,27 @@ class _TestHarness {
       sessionRepository: sessionRepository,
     );
 
+    final projectRepository = ProjectRepository(plugin: plugin, projectsDao: database.projectsDao);
+    final permissionRepository = PermissionRepository(plugin: plugin);
+    final sessionPersistenceService = SessionPersistenceService(
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      db: database,
+    );
+    final worktreeService = WorktreeService(
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      processRunner: FakeProcessRunner((
+        String executable,
+        List<String> arguments, {
+        String? workingDirectory,
+        Duration timeout = const Duration(seconds: 15),
+      }) async {
+        return ProcessResult(0, 127, "", "command not found");
+      }),
+      gitPathExists: ({required String gitPath}) => true,
+    );
+
     final orchestrator = Orchestrator(
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
@@ -131,6 +158,10 @@ class _TestHarness {
       failureReporter: failureReporter,
       prSyncService: prSyncService,
       sessionRepository: sessionRepository,
+      projectRepository: projectRepository,
+      permissionRepository: permissionRepository,
+      sessionPersistenceService: sessionPersistenceService,
+      worktreeService: worktreeService,
     );
 
     final session = orchestrator.create();

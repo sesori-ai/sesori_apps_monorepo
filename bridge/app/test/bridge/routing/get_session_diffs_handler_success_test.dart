@@ -42,7 +42,7 @@ void main() {
         ..createSync(recursive: true)
         ..writeAsStringSync("added after\n");
 
-      await db.projectsDao.insertProjectIfMissing(projectId: "project-1"); // satisfy v5 FK constraint
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await sessionDao.insertSession(
         sessionId: "s1",
         projectId: "project-1",
@@ -139,7 +139,7 @@ void main() {
         ..createSync(recursive: true)
         ..writeAsStringSync("after\n");
 
-      await db.projectsDao.insertProjectIfMissing(projectId: "project-1"); // satisfy v5 FK constraint
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await sessionDao.insertSession(
         sessionId: "s1",
         projectId: "project-1",
@@ -197,7 +197,7 @@ void main() {
         ..createSync(recursive: true)
         ..writeAsBytesSync([0, 159, 146, 150]);
 
-      await db.projectsDao.insertProjectIfMissing(projectId: "project-1"); // satisfy v5 FK constraint
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await sessionDao.insertSession(
         sessionId: "s1",
         projectId: "project-1",
@@ -258,7 +258,7 @@ void main() {
         ..createSync(recursive: true)
         ..writeAsStringSync(afterLarge);
 
-      await db.projectsDao.insertProjectIfMissing(projectId: "project-1"); // satisfy v5 FK constraint
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await sessionDao.insertSession(
         sessionId: "s1",
         projectId: "project-1",

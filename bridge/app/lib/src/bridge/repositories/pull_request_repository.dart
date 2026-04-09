@@ -46,7 +46,7 @@ class PullRequestRepository {
     // Defensive backstop: ensure the project row exists before inserting the PR.
     // PrSyncService calls this method from two places; fixing it here covers both.
     // If insertProjectIfMissing throws, the exception propagates to the caller.
-    await _projectsDao.insertProjectIfMissing(projectId: projectId);
+    await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
     await _pullRequestDao.upsertPr(
       pullRequest: PullRequestDto(
         projectId: projectId,
@@ -66,7 +66,7 @@ class PullRequestRepository {
 
   Future<void> upsertPullRequest({required PullRequestDto record}) async {
     // Defensive backstop: ensure the project row exists before inserting the PR.
-    await _projectsDao.insertProjectIfMissing(projectId: record.projectId);
+    await _projectsDao.insertProjectsIfMissing(projectIds: [record.projectId]);
     await _pullRequestDao.upsertPr(pullRequest: record);
   }
 

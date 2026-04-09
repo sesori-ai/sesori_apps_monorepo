@@ -47,7 +47,7 @@ class SessionPersistenceService {
        _db = db;
 
   Future<void> ensureProject({required String projectId}) async {
-    await _projectsDao.insertProjectIfMissing(projectId: projectId);
+    await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
   }
 
   Future<void> persistSessionsForProject({
@@ -55,7 +55,7 @@ class SessionPersistenceService {
     required List<Session> sessions,
   }) async {
     await _db.transaction(() async {
-      await _projectsDao.insertProjectIfMissing(projectId: projectId);
+      await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
       await _sessionDao.insertSessionsIfMissing(
         sessions: [
           for (final s in sessions)
@@ -87,7 +87,7 @@ class SessionPersistenceService {
     required String? baseCommit,
   }) async {
     await _db.transaction(() async {
-      await _projectsDao.insertProjectIfMissing(projectId: projectId);
+      await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
       await _sessionDao.insertSession(
         sessionId: sessionId,
         projectId: projectId,

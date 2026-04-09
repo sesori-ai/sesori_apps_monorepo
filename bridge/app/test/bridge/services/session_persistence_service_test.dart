@@ -70,7 +70,7 @@ void main() {
     });
 
     test("persistSessionsForProject is idempotent and preserves worktree state", () async {
-      await projectsDao.insertProjectIfMissing(projectId: "X");
+      await projectsDao.insertProjectsIfMissing(projectIds: ["X"]);
       await sessionDao.insertSession(
         sessionId: "s1",
         projectId: "X",

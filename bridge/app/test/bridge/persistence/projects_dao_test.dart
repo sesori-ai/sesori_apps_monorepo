@@ -206,40 +206,6 @@ void main() {
       });
     });
 
-    group("insertProjectIfMissing", () {
-      test("insertProjectIfMissing inserts new project with default fields", () async {
-        await dao.insertProjectIfMissing(projectId: "proj-1");
-
-        final rows = await db.select(db.projectsTable).get();
-        expect(rows, hasLength(1));
-        expect(rows.first.projectId, equals("proj-1"));
-        expect(rows.first.hidden, isFalse);
-        expect(rows.first.baseBranch, isNull);
-        expect(rows.first.worktreeCounter, equals(0));
-      });
-
-      test("insertProjectIfMissing is no-op when project exists with hidden=true", () async {
-        await dao.hideProject(projectId: "proj-1");
-
-        await dao.insertProjectIfMissing(projectId: "proj-1");
-
-        final hiddenIds = await dao.getHiddenProjectIds();
-        expect(hiddenIds, contains("proj-1"));
-      });
-
-      test("insertProjectIfMissing is no-op when project exists with custom baseBranch", () async {
-        await dao.setBaseBranch(projectId: "proj-1", baseBranch: "develop");
-
-        await dao.insertProjectIfMissing(projectId: "proj-1");
-
-        final branch = await dao.getBaseBranch(projectId: "proj-1");
-        expect(branch, equals("develop"));
-
-        final rows = await (db.select(db.projectsTable)..where((t) => t.projectId.equals("proj-1"))).get();
-        expect(rows.first.worktreeCounter, equals(0));
-      });
-    });
-
     group("insertProjectsIfMissing", () {
       test("insertProjectsIfMissing inserts all missing projects in one batch", () async {
         await dao.insertProjectsIfMissing(projectIds: ["p1", "p2", "p3"]);
