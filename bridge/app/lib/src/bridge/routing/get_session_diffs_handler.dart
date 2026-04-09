@@ -37,15 +37,15 @@ class GetSessionDiffsHandler extends BodyRequestHandler<SessionIdRequest, Sessio
     }
 
     final worktreePath = session.worktreePath;
-    final baseBranch = session.baseBranch;
-    if (worktreePath == null || baseBranch == null) return const SessionDiffsResponse(diffs: []);
+    final baseCommit = session.baseCommit;
+    if (worktreePath == null || baseCommit == null) return const SessionDiffsResponse(diffs: []);
     if (!Directory(worktreePath).existsSync()) return const SessionDiffsResponse(diffs: []);
 
     final List<FileDiff> diffs;
     try {
       diffs = await computeSessionDiffs(
         worktreePath: worktreePath,
-        baseBranch: baseBranch,
+        baseBranch: baseCommit,
         processRunner: _processRunner,
       );
     } on BaseBranchUnreachableException catch (error) {
