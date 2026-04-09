@@ -866,6 +866,98 @@ void main() {
         expect(summary.first.activeSessions.first.awaitingInput, isTrue);
       });
     });
+
+    group("multi-project cold start", () {
+      test("populates statuses and worktrees correctly", () async {
+        final tracker = await _coldStartedTracker(
+          projects: [
+            const Project(id: "p1", worktree: "/repo-a"),
+            const Project(id: "p2", worktree: "/repo-b"),
+          ],
+          sessions: [
+            _session("session-a", "/repo-a"),
+            _session("session-b", "/repo-b"),
+          ],
+          statuses: {
+            "session-a": const SessionStatus.busy(),
+            "session-b": const SessionStatus.busy(),
+          },
+        );
+
+        final active = tracker.getActiveStatuses();
+        expect(active, hasLength(2));
+        expect(active["session-a"], isA<SessionStatusBusy>());
+        expect(active["session-b"], isA<SessionStatusBusy>());
+
+        expect(
+          tracker.activeSessions,
+          equals({"/repo-a": 1, "/repo-b": 1}),
+        );
+
+        final summary = tracker.buildSummary();
+        expect(summary, hasLength(2));
+      });
+
+      test("per-directory error does not break other directories", () async {
+        final tracker = await _coldStartedTracker(
+          projects: [
+            const Project(id: "p1", worktree: "/repo-a"),
+            const Project(id: "p2", worktree: "/repo-b"),
+          ],
+          sessions: [
+            _session("session-b", "/repo-b"),
+          ],
+          statuses: {
+            "session-b": const SessionStatus.busy(),
+          },
+          throwForDirectories: {"/repo-a"},
+        );
+
+        final active = tracker.getActiveStatuses();
+        expect(active, hasLength(1));
+        expect(active["session-b"], isA<SessionStatusBusy>());
+
+        final summary = tracker.buildSummary();
+        expect(summary, hasLength(1));
+        expect(summary.first.id, equals("/repo-b"));
+      });
+    });
+
+    group("updateProjectWorktrees", () {
+      test("resolves pending sessions", () async {
+        final tracker = await _coldStartedTracker(projects: []);
+
+        tracker.handleEvent(_sessionCreated("s1", "/repo/sub"), null);
+        tracker.handleEvent(_sessionBusy("s1"), null);
+
+        expect(tracker.buildSummary(), isEmpty);
+
+        tracker.updateProjectWorktrees(worktrees: {"/repo"});
+
+        final summary = tracker.buildSummary();
+        expect(summary, hasLength(1));
+        expect(summary.first.id, equals("/repo"));
+      });
+
+      test("replaces old worktrees", () async {
+        final tracker = await _coldStartedTracker(
+          projects: [const Project(id: "p1", worktree: "/old-repo")],
+        );
+
+        tracker.handleEvent(_sessionCreated("s1", "/old-repo/sub"), null);
+        tracker.handleEvent(_sessionBusy("s1"), null);
+        expect(tracker.buildSummary(), hasLength(1));
+        expect(tracker.buildSummary().first.id, equals("/old-repo"));
+
+        tracker.updateProjectWorktrees(worktrees: {"/new-repo"});
+
+        // s1 keeps its resolved worktree mapping from before the update,
+        // but new sessions arriving after this will resolve against /new-repo.
+        // The worktree set itself is replaced — _projectWorktrees is {/new-repo}.
+        expect(tracker.buildSummary(), hasLength(1));
+        expect(tracker.buildSummary().first.id, equals("/old-repo"));
+      });
+    });
   });
 }
 
@@ -954,9 +1046,15 @@ OpenCodeRepository _fakeRepository({
   List<Project>? projects,
   List<Session>? sessions,
   Map<String, SessionStatus>? statuses,
+  Set<String>? throwForDirectories,
 }) {
   return OpenCodeRepository(
-    _FakeApi(projects: projects, sessions: sessions, statuses: statuses),
+    _FakeApi(
+      projects: projects,
+      sessions: sessions,
+      statuses: statuses,
+      throwForDirectories: throwForDirectories,
+    ),
   );
 }
 
@@ -964,9 +1062,15 @@ Future<ActiveSessionTracker> _coldStartedTracker({
   required List<Project> projects,
   List<Session> sessions = const [],
   Map<String, SessionStatus> statuses = const {},
+  Set<String> throwForDirectories = const {},
 }) async {
   final tracker = ActiveSessionTracker(
-    _fakeRepository(projects: projects, sessions: sessions, statuses: statuses),
+    _fakeRepository(
+      projects: projects,
+      sessions: sessions,
+      statuses: statuses,
+      throwForDirectories: throwForDirectories,
+    ),
   );
   await tracker.coldStart();
   return tracker;
@@ -976,14 +1080,17 @@ class _FakeApi implements OpenCodeApi {
   final List<Project> _projects;
   final List<Session> _sessions;
   final Map<String, SessionStatus> _statuses;
+  final Set<String> _throwForDirectories;
 
   _FakeApi({
     List<Project>? projects,
     List<Session>? sessions,
     Map<String, SessionStatus>? statuses,
+    Set<String>? throwForDirectories,
   }) : _projects = projects ?? [],
        _sessions = sessions ?? [],
-       _statuses = statuses ?? {};
+       _statuses = statuses ?? {},
+       _throwForDirectories = throwForDirectories ?? {};
 
   @override
   String get serverURL => "http://fake";
@@ -1070,7 +1177,19 @@ class _FakeApi implements OpenCodeApi {
   Future<Project> getProject({required String directory}) async => throw UnimplementedError();
 
   @override
-  Future<Map<String, SessionStatus>> getSessionStatuses() async => _statuses;
+  Future<Map<String, SessionStatus>> getSessionStatuses({required String? directory}) async {
+    if (directory != null && _throwForDirectories.contains(directory)) {
+      throw Exception("Fake error for directory: $directory");
+    }
+    if (directory == null) return _statuses;
+    final sessionIdsInDirectory = _sessions
+        .where((s) => s.directory == directory || s.directory.startsWith("$directory/"))
+        .map((s) => s.id)
+        .toSet();
+    return Map.fromEntries(
+      _statuses.entries.where((e) => sessionIdsInDirectory.contains(e.key)),
+    );
+  }
 
   @override
   Future<ProviderListResponse> listProviders() async =>
