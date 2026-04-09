@@ -11,21 +11,25 @@ import 'package:sesori_bridge/src/auth/token_manager.dart';
 import 'package:sesori_bridge/src/auth/validate.dart';
 import 'package:sesori_bridge/src/bridge/api/gh_cli_api.dart';
 import 'package:sesori_bridge/src/bridge/api/git_cli_api.dart';
+import 'package:sesori_bridge/src/bridge/api/opencode_db_api.dart';
 import 'package:sesori_bridge/src/bridge/bandwidth_tracker.dart';
 import 'package:sesori_bridge/src/bridge/debug_server.dart';
 import 'package:sesori_bridge/src/bridge/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/bridge/log_failure_reporter.dart';
 import 'package:sesori_bridge/src/bridge/metadata_service.dart';
+
 import 'package:sesori_bridge/src/bridge/models/bridge_config.dart';
 import 'package:sesori_bridge/src/bridge/orchestrator.dart';
 import 'package:sesori_bridge/src/bridge/persistence/bridge_diagnostics.dart';
 import 'package:sesori_bridge/src/bridge/persistence/database.dart';
 import 'package:sesori_bridge/src/bridge/relay_client.dart';
+import 'package:sesori_bridge/src/bridge/repositories/opencode_db_repository.dart';
 import 'package:sesori_bridge/src/bridge/repositories/permission_repository.dart';
 import 'package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart';
 import 'package:sesori_bridge/src/bridge/repositories/project_repository.dart';
 import 'package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart';
 import 'package:sesori_bridge/src/bridge/repositories/session_repository.dart';
+import 'package:sesori_bridge/src/bridge/services/opencode_db_maintenance_service.dart';
 import 'package:sesori_bridge/src/bridge/services/pr_sync_service.dart';
 import 'package:sesori_bridge/src/bridge/services/session_persistence_service.dart';
 import 'package:sesori_bridge/src/bridge/sse/sse_manager.dart';
@@ -147,7 +151,19 @@ Future<void> main(List<String> args) async {
     Log.w('Authenticated (unable to fetch profile username: $e)');
   }
 
-  // Server resolution
+  // OpenCode DB maintenance (opportunistic — runs before server start to
+  // maximize the chance that OpenCode hasn't opened the DB yet)
+  final homeDir = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+  if (homeDir != null) {
+    final xdgDataHome = Platform.environment['XDG_DATA_HOME'] ?? '$homeDir/.local/share';
+    final openCodeDbPath = '$xdgDataHome/opencode/opencode.db';
+    final dbMaintenanceService = OpenCodeDbMaintenanceService(
+      repository: OpenCodeDbRepository(api: OpenCodeDbApi()),
+    );
+    dbMaintenanceService.optimizeIfNeeded(dbPath: openCodeDbPath);
+  }
+
+  // Server resolution (may auto-start OpenCode process)
   final (serverURL, serverPassword, cmd) = await resolveServer(
     noAutoStart: noAutoStart,
     port: port,
