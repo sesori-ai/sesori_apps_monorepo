@@ -418,10 +418,15 @@ class OpenCodeApi {
     return ProviderListResponse.fromJson(jsonDecodeMap(response.body));
   }
 
-  Future<Map<String, SessionStatus>> getSessionStatuses() async {
+  Future<Map<String, SessionStatus>> getSessionStatuses({required String? directory}) async {
+    final headers = <String, String>{
+      ..._authHeaders,
+      _directoryOpenCodeHeader: ?directory,
+    };
+
     final response = await _client.get(
       Uri.parse("$serverURL/session/status"),
-      headers: _authHeaders,
+      headers: headers,
     );
     _ensureSuccess(response, "GET /session/status");
 

@@ -342,7 +342,8 @@ class FakeOpenCodeApi implements OpenCodeApi {
   Future<List<Session>> getChildren({required String sessionId, required String? directory}) async => [];
 
   @override
-  Future<Map<String, SessionStatus>> getSessionStatuses() async => <String, SessionStatus>{};
+  Future<Map<String, SessionStatus>> getSessionStatuses({required String? directory}) async =>
+      <String, SessionStatus>{};
 
   @override
   Future<void> sendPrompt({
