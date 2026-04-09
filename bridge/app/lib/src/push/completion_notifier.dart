@@ -15,6 +15,7 @@ class CompletionNotifier {
   final StreamController<String> _completionController = StreamController<String>.broadcast();
   final Map<String, Timer> _debounceTimers = {};
   final Set<String> _completionSentForRoots = {};
+  final Set<String> _abortedRoots = {};
   final Map<String, String> _permissionRequestToSession = {};
 
   Stream<String> get completions => _completionController.stream;
@@ -24,6 +25,15 @@ class CompletionNotifier {
     Duration debounceDuration = const Duration(milliseconds: 500),
   }) : _tracker = tracker,
        _debounceDuration = debounceDuration;
+
+  /// Marks a session as user-aborted so the next idle transition does not
+  /// trigger a completion notification. The flag is cleared when the session
+  /// becomes busy again (new turn) or is deleted.
+  void markSessionAborted(String sessionId) {
+    final rootSessionId = _tracker.resolveRootSessionId(sessionId);
+    _abortedRoots.add(rootSessionId);
+    _cancelDebounceForRoot(rootSessionId);
+  }
 
   /// Process an SSE event for completion tracking.
   /// Call AFTER tracker.handleEvent() has already updated state.
@@ -43,6 +53,7 @@ class CompletionNotifier {
           case SessionStatusBusy():
           case SessionStatusRetry():
             _completionSentForRoots.remove(rootSessionId);
+            _abortedRoots.remove(rootSessionId);
             _cancelDebounceForRoot(rootSessionId);
           case SessionStatusIdle():
             _maybeScheduleCompletion(sessionID);
@@ -51,6 +62,7 @@ class CompletionNotifier {
       case SesoriSessionDeleted(:final info):
         _cancelDebounceForSessionGroup(info.id);
         _completionSentForRoots.remove(info.id);
+        _abortedRoots.remove(info.id);
         _permissionRequestToSession.removeWhere((_, sessionId) => sessionId == info.id);
       // User already handled the question, so cancel any pending completion ping.
       case SesoriQuestionReplied(:final sessionID):
@@ -82,6 +94,7 @@ class CompletionNotifier {
   void reset() {
     _cancelAllDebounceTimers();
     _completionSentForRoots.clear();
+    _abortedRoots.clear();
     _permissionRequestToSession.clear();
   }
 
@@ -130,7 +143,8 @@ class CompletionNotifier {
     return _tracker.wasPreviouslyBusy(rootSessionId) &&
         _tracker.isSessionGroupFullyIdle(rootSessionId) &&
         !_tracker.hasPendingInteraction(rootSessionId) &&
-        !_completionSentForRoots.contains(rootSessionId);
+        !_completionSentForRoots.contains(rootSessionId) &&
+        !_abortedRoots.contains(rootSessionId);
   }
 
   /// Cancels debounce timers for a session and its current root session.

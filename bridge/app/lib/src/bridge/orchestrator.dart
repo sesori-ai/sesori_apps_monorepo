@@ -142,6 +142,7 @@ class OrchestratorSession {
          sessionDao: projectsDao.attachedDatabase.sessionDao,
          sessionRepository: sessionRepository,
          prSyncService: prSyncService,
+         onSessionAborted: pushNotificationService.markSessionAborted,
        ),
        _mapper = BridgeEventMapper(plugin: plugin, failureReporter: failureReporter);
 

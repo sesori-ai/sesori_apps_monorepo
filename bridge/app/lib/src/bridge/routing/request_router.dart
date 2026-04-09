@@ -59,6 +59,7 @@ class RequestRouter {
     required SessionDao sessionDao,
     required SessionRepository sessionRepository,
     required PrSyncService prSyncService,
+    required void Function(String sessionId) onSessionAborted,
   }) : _handlers = _buildHandlers(
          plugin: plugin,
          metadataService: metadataService,
@@ -66,6 +67,7 @@ class RequestRouter {
          sessionDao: sessionDao,
          sessionRepository: sessionRepository,
          prSyncService: prSyncService,
+         onSessionAborted: onSessionAborted,
        );
 
   static List<RequestHandlerBase> _buildHandlers({
@@ -75,6 +77,7 @@ class RequestRouter {
     required SessionDao sessionDao,
     required SessionRepository sessionRepository,
     required PrSyncService prSyncService,
+    required void Function(String sessionId) onSessionAborted,
   }) {
     final hiddenStore = projectsDao;
     final permissionRepository = PermissionRepository(plugin: plugin);
@@ -113,7 +116,7 @@ class RequestRouter {
         sessionRepository: sessionRepository,
       ),
       SendPromptHandler(plugin),
-      AbortSessionHandler(plugin),
+      AbortSessionHandler(plugin, onSessionAborted: onSessionAborted),
       GetProvidersHandler(ProviderRepository(plugin: plugin)),
       GetAgentsHandler(plugin),
       GetSessionQuestionsHandler(plugin),

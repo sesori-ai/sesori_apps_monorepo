@@ -46,6 +46,7 @@ DebugServer _createDebugServer({
     sessionDao: db.sessionDao,
     sessionRepository: sessionRepository,
     prSyncService: prSyncService,
+    onSessionAborted: (_) {},
   );
   return DebugServer(
     plugin: plugin,
