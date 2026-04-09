@@ -24,7 +24,7 @@ Understand these three hops when working on any module:
 
 All packages in this monorepo follow a strict layered architecture. **Much of the existing code was written before these rules and does NOT follow them.** This is expected — legacy code will be migrated over time. However, **all new code must fully comply with the layering described below. It is not acceptable to follow old patterns just because existing code does.**
 
-The full specification with detailed per-layer cross-dependency rules and diagrams is in `.opencode/agents/Aristotel (Architectural Reviewer).md`.
+The full specification with detailed per-layer cross-dependency rules and diagrams is in `.opencode/agents/Aristotle - Architectural Reviewer.md`.
 
 ### Layer Definitions
 

@@ -1,7 +1,6 @@
 ### Sesori AI tooling
 .sisyphus/
 .worktrees/
-.opencode/
 
 ### Dart
 .dart_tool/
