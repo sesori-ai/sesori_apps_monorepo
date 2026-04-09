@@ -249,8 +249,10 @@ class PushSessionStateTracker {
     for (final project in projects) {
       for (final activeSession in project.activeSessions) {
         final parentId = activeSession.id;
+        _stateForWrite(parentId).projectId = project.id;
         for (final childId in activeSession.childSessionIds) {
           final childState = _stateForWrite(childId);
+          childState.projectId = project.id;
           if (childState.parentId == null) {
             childState.parentId = parentId;
             _stateForWrite(parentId).childIds.add(childId);

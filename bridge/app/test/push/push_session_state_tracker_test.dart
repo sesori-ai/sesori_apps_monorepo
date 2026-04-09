@@ -829,6 +829,72 @@ void main() {
       expect(tracker.resolveRootSessionId("child"), equals("root"));
     });
 
+    test("root session gets projectId from projects summary", () {
+      final tracker = PushSessionStateTracker();
+
+      tracker.handleEvent(
+        const SesoriSseEvent.projectsSummary(
+          projects: [
+            ProjectActivitySummary(
+              id: "proj-a",
+              activeSessions: [
+                ActiveSession(id: "sess-root", mainAgentRunning: true),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      expect(tracker.getSessionProjectId(sessionId: "sess-root"), equals("proj-a"));
+    });
+
+    test("child session gets projectId from projects summary", () {
+      final tracker = PushSessionStateTracker();
+
+      tracker.handleEvent(
+        const SesoriSseEvent.projectsSummary(
+          projects: [
+            ProjectActivitySummary(
+              id: "proj-a",
+              activeSessions: [
+                ActiveSession(
+                  id: "sess-root",
+                  mainAgentRunning: true,
+                  childSessionIds: ["sess-child"],
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      expect(tracker.getSessionProjectId(sessionId: "sess-child"), equals("proj-a"));
+    });
+
+    test("projects summary overwrites existing projectId", () {
+      final tracker = PushSessionStateTracker();
+
+      tracker.handleEvent(
+        SesoriSseEvent.sessionCreated(
+          info: _session(id: "sess-1", projectID: "proj-old"),
+        ),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.projectsSummary(
+          projects: [
+            ProjectActivitySummary(
+              id: "proj-new",
+              activeSessions: [
+                ActiveSession(id: "sess-1", mainAgentRunning: true),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      expect(tracker.getSessionProjectId(sessionId: "sess-1"), equals("proj-new"));
+    });
+
     test("projectsSummary establishes multi-level hierarchy for status-only sessions", () {
       final tracker = PushSessionStateTracker();
 

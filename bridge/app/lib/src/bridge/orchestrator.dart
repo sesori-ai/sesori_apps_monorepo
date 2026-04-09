@@ -156,6 +156,11 @@ class OrchestratorSession {
     final kxManager = KeyExchangeManager(_roomKey);
     final activePhones = <int, bool>{};
 
+    final startupSummary = _mapper.buildProjectsSummaryEvent();
+    if (startupSummary != null) {
+      _pushNotificationService.handleSseEvent(startupSummary);
+    }
+
     Log.d("[dbg] subscribing to plugin event stream...");
     _eventSubscription = _plugin.events.listen(
       (BridgeSseEvent event) {
@@ -506,6 +511,7 @@ class OrchestratorSession {
           final projSummary = _mapper.buildProjectsSummaryEvent();
           if (projSummary != null) {
             _sseManager.enqueueEvent(projSummary);
+            _pushNotificationService.handleSseEvent(projSummary);
           }
           Log.v("[dbg] initial projectsSummary enqueued");
         } catch (e) {

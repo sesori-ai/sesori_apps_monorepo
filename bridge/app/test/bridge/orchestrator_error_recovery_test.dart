@@ -36,11 +36,12 @@ void main() {
       harness.plugin.add(const BridgeSseProjectUpdated());
       harness.plugin.add(const BridgeSseProjectUpdated());
 
-      await harness.waitForFailureCount(expected: 2);
+      await harness.waitForFailureCount(expected: 3);
 
       expect(
         harness.failureReporter.recordedIdentifiers,
         equals([
+          "sse_projects_summary",
           "sse_projects_summary",
           "sse_projects_summary",
         ]),
