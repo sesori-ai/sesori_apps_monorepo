@@ -165,6 +165,113 @@ void main() {
       );
       expect(processRunner.invocations.single.workingDirectory, equals("/repo/project"));
     });
+
+    group("resolveStartPointForBranch", () {
+      test("returns local when origin ref does not exist", () async {
+        processRunner.enqueue(result: _processResult(exitCode: 128, stderr: "fatal"));
+
+        final result = await service.resolveStartPointForBranch(
+          projectPath: "/repo/project",
+          baseBranch: "main",
+          localCommit: "abc123",
+        );
+
+        expect(result.ref, equals("main"));
+        expect(result.commit, equals("abc123"));
+        expect(processRunner.invocations, hasLength(1));
+        expect(processRunner.invocations.single.arguments, equals(["rev-parse", "origin/main"]));
+        expect(processRunner.invocations.single.workingDirectory, equals("/repo/project"));
+      });
+
+      test("returns local when commits are the same", () async {
+        processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "abc123\n"));
+
+        final result = await service.resolveStartPointForBranch(
+          projectPath: "/repo/project",
+          baseBranch: "main",
+          localCommit: "abc123",
+        );
+
+        expect(result.ref, equals("main"));
+        expect(result.commit, equals("abc123"));
+        expect(processRunner.invocations, hasLength(1));
+        expect(processRunner.invocations.single.arguments, equals(["rev-parse", "origin/main"]));
+      });
+
+      test("returns local when local is strictly ahead", () async {
+        processRunner
+          ..enqueue(result: _processResult(exitCode: 0, stdout: "def456\n"))
+          ..enqueue(result: _processResult(exitCode: 0));
+
+        final result = await service.resolveStartPointForBranch(
+          projectPath: "/repo/project",
+          baseBranch: "main",
+          localCommit: "abc123",
+        );
+
+        expect(result.ref, equals("main"));
+        expect(result.commit, equals("abc123"));
+        expect(processRunner.invocations, hasLength(2));
+        expect(processRunner.invocations[0].arguments, equals(["rev-parse", "origin/main"]));
+        expect(
+          processRunner.invocations[1].arguments,
+          equals(["merge-base", "--is-ancestor", "def456", "abc123"]),
+        );
+      });
+
+      test("returns origin when origin is strictly ahead", () async {
+        processRunner
+          ..enqueue(result: _processResult(exitCode: 0, stdout: "def456\n"))
+          ..enqueue(result: _processResult(exitCode: 1));
+
+        final result = await service.resolveStartPointForBranch(
+          projectPath: "/repo/project",
+          baseBranch: "main",
+          localCommit: "abc123",
+        );
+
+        expect(result.ref, equals("origin/main"));
+        expect(result.commit, equals("def456"));
+        expect(processRunner.invocations, hasLength(2));
+        expect(processRunner.invocations[0].arguments, equals(["rev-parse", "origin/main"]));
+        expect(
+          processRunner.invocations[1].arguments,
+          equals(["merge-base", "--is-ancestor", "def456", "abc123"]),
+        );
+      });
+
+      test("returns origin when branches have diverged", () async {
+        processRunner
+          ..enqueue(result: _processResult(exitCode: 0, stdout: "diverged-origin\n"))
+          ..enqueue(result: _processResult(exitCode: 1));
+
+        final result = await service.resolveStartPointForBranch(
+          projectPath: "/repo/project",
+          baseBranch: "main",
+          localCommit: "diverged-local",
+        );
+
+        expect(result.ref, equals("origin/main"));
+        expect(result.commit, equals("diverged-origin"));
+        expect(processRunner.invocations, hasLength(2));
+      });
+
+      test("returns origin when merge-base command fails", () async {
+        processRunner
+          ..enqueue(result: _processResult(exitCode: 0, stdout: "def456\n"))
+          ..enqueue(result: _processResult(exitCode: 128, stderr: "fatal"));
+
+        final result = await service.resolveStartPointForBranch(
+          projectPath: "/repo/project",
+          baseBranch: "main",
+          localCommit: "abc123",
+        );
+
+        expect(result.ref, equals("origin/main"));
+        expect(result.commit, equals("def456"));
+        expect(processRunner.invocations, hasLength(2));
+      });
+    });
   });
 }
 

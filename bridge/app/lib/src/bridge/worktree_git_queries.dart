@@ -77,6 +77,36 @@ extension WorktreeGitQueries on WorktreeService {
     );
   }
 
+  Future<({String ref, String commit})> resolveStartPointForBranch({
+    required String projectPath,
+    required String baseBranch,
+    required String localCommit,
+  }) async {
+    final originRef = "origin/$baseBranch";
+    final originResult = await _runGit(
+      projectPath: projectPath,
+      arguments: ["rev-parse", originRef],
+    );
+    if (originResult.exitCode != 0) {
+      return (ref: baseBranch, commit: localCommit);
+    }
+
+    final originCommit = originResult.stdout.toString().trim();
+    if (originCommit == localCommit) {
+      return (ref: baseBranch, commit: localCommit);
+    }
+
+    final mergeBaseResult = await _runGit(
+      projectPath: projectPath,
+      arguments: ["merge-base", "--is-ancestor", originCommit, localCommit],
+    );
+    if (mergeBaseResult.exitCode == 0) {
+      return (ref: baseBranch, commit: localCommit);
+    }
+
+    return (ref: originRef, commit: originCommit);
+  }
+
   Future<ProcessResult> _runGit({
     required String projectPath,
     required List<String> arguments,

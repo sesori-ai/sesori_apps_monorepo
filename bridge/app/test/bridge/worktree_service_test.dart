@@ -49,6 +49,8 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
       // git rev-parse main → base commit SHA
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
+      // git rev-parse origin/main → no remote tracking branch
+      processRunner.enqueue(result: _fail(exitCode: 128));
       // git branch --list session-001 → empty (branch does not exist)
       processRunner.enqueue(result: _ok(stdout: ""));
       // git worktree add → success
@@ -105,6 +107,8 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
       // git rev-parse main → base commit SHA
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
+      // git rev-parse origin/main → no remote tracking branch
+      processRunner.enqueue(result: _fail(exitCode: 128));
       // git branch --list session-001 → empty
       processRunner.enqueue(result: _ok(stdout: ""));
       // git worktree add → success
@@ -169,6 +173,8 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
       // git rev-parse main → base commit SHA
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
+      // git rev-parse origin/main → no remote tracking branch
+      processRunner.enqueue(result: _fail(exitCode: 128));
       // branch --list session-001 → non-empty (collision!)
       processRunner.enqueue(result: _ok(stdout: "  session-001\n"));
       // branch --list session-002 → empty (free)
@@ -198,6 +204,8 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
       // git rev-parse main → base commit SHA
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
+      // git rev-parse origin/main → no remote tracking branch
+      processRunner.enqueue(result: _fail(exitCode: 128));
       // Attempt 1: branch --list session-001 → empty, worktree add → fail
       processRunner.enqueue(result: _ok(stdout: ""));
       processRunner.enqueue(result: _fail(exitCode: 128, stderr: "error"));
@@ -235,6 +243,8 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "  develop\n"));
       // git rev-parse develop → base commit SHA
       processRunner.enqueue(result: _ok(stdout: "deadbeef1234\n"));
+      // git rev-parse origin/develop → no remote tracking branch
+      processRunner.enqueue(result: _fail(exitCode: 128));
       // branch --list session-001 → empty
       processRunner.enqueue(result: _ok(stdout: ""));
       // worktree add → success
@@ -280,6 +290,8 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
       // git rev-parse main → base commit SHA
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
+      // git rev-parse origin/main → no remote tracking branch
+      processRunner.enqueue(result: _fail(exitCode: 128));
       // branch --list session-001 → empty
       processRunner.enqueue(result: _ok(stdout: ""));
       // worktree add → success
@@ -309,6 +321,8 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
       // git rev-parse main → base commit SHA
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
+      // git rev-parse origin/main → no remote tracking branch
+      processRunner.enqueue(result: _fail(exitCode: 128));
       // branch --list my-feature → empty (preferred name available)
       processRunner.enqueue(result: _ok(stdout: ""));
       // worktree add → success
@@ -335,6 +349,8 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
       // git rev-parse main → base commit SHA
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
+      // git rev-parse origin/main → no remote tracking branch
+      processRunner.enqueue(result: _fail(exitCode: 128));
       // branch --list my-feature → non-empty (collision!)
       processRunner.enqueue(result: _ok(stdout: "  my-feature\n"));
       // worktree add with suffixed name → success
@@ -360,6 +376,8 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
       // git rev-parse main → base commit SHA
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
+      // git rev-parse origin/main → no remote tracking branch
+      processRunner.enqueue(result: _fail(exitCode: 128));
       // branch --list my-feature → empty (available)
       processRunner.enqueue(result: _ok(stdout: ""));
       // worktree add → failure
@@ -387,6 +405,8 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
       // git rev-parse main → base commit SHA
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
+      // git rev-parse origin/main → no remote tracking branch
+      processRunner.enqueue(result: _fail(exitCode: 128));
       // branch --list session-001 → empty
       processRunner.enqueue(result: _ok(stdout: ""));
       // worktree add → success
@@ -428,6 +448,185 @@ void main() {
       expect(success.branchName, equals("session-001"));
       // No git commands should have been called — worktree already exists.
       expect(processRunner.invocations, isEmpty);
+    });
+
+    // -----------------------------------------------------------------------
+    // Origin comparison scenarios
+    // -----------------------------------------------------------------------
+
+    test("origin ahead: worktree starts from origin ref", () async {
+      // rev-parse HEAD → ok
+      processRunner.enqueue(result: _ok());
+      // symbolic-ref → main
+      processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // rev-parse main → local commit
+      processRunner.enqueue(result: _ok(stdout: "local111\n"));
+      // rev-parse origin/main → origin commit (different)
+      processRunner.enqueue(result: _ok(stdout: "origin222\n"));
+      // merge-base --is-ancestor origin222 local111 → exit 1 (origin NOT ancestor of local)
+      processRunner.enqueue(result: _fail(exitCode: 1));
+      // branch --list session-001 → empty
+      processRunner.enqueue(result: _ok(stdout: ""));
+      // worktree add → success
+      processRunner.enqueue(result: _ok());
+
+      final result = await service.prepareWorktreeForSession(
+        projectId: _projectId,
+        parentSessionId: null,
+      );
+
+      expect(result, isA<WorktreeSuccess>());
+      final success = result as WorktreeSuccess;
+      expect(success.baseBranch, equals("origin/main"));
+      expect(success.baseCommit, equals("origin222"));
+
+      // Verify worktree add used "origin/main" as start point
+      final worktreeAddArgs = processRunner.invocations.last.arguments;
+      expect(worktreeAddArgs.last, equals("origin/main"));
+    });
+
+    test("local ahead: worktree starts from local branch", () async {
+      // rev-parse HEAD → ok
+      processRunner.enqueue(result: _ok());
+      // symbolic-ref → main
+      processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // rev-parse main → local commit
+      processRunner.enqueue(result: _ok(stdout: "local111\n"));
+      // rev-parse origin/main → origin commit (different)
+      processRunner.enqueue(result: _ok(stdout: "origin222\n"));
+      // merge-base --is-ancestor origin222 local111 → exit 0 (origin IS ancestor of local)
+      processRunner.enqueue(result: _ok());
+      // branch --list session-001 → empty
+      processRunner.enqueue(result: _ok(stdout: ""));
+      // worktree add → success
+      processRunner.enqueue(result: _ok());
+
+      final result = await service.prepareWorktreeForSession(
+        projectId: _projectId,
+        parentSessionId: null,
+      );
+
+      expect(result, isA<WorktreeSuccess>());
+      final success = result as WorktreeSuccess;
+      expect(success.baseBranch, equals("main"));
+      expect(success.baseCommit, equals("local111"));
+
+      // Verify worktree add used "main" as start point
+      final worktreeAddArgs = processRunner.invocations.last.arguments;
+      expect(worktreeAddArgs.last, equals("main"));
+    });
+
+    test("same commit: worktree starts from local branch", () async {
+      // rev-parse HEAD → ok
+      processRunner.enqueue(result: _ok());
+      // symbolic-ref → main
+      processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // rev-parse main → local commit
+      processRunner.enqueue(result: _ok(stdout: "samecommit\n"));
+      // rev-parse origin/main → same commit
+      processRunner.enqueue(result: _ok(stdout: "samecommit\n"));
+      // branch --list session-001 → empty
+      processRunner.enqueue(result: _ok(stdout: ""));
+      // worktree add → success
+      processRunner.enqueue(result: _ok());
+
+      final result = await service.prepareWorktreeForSession(
+        projectId: _projectId,
+        parentSessionId: null,
+      );
+
+      expect(result, isA<WorktreeSuccess>());
+      final success = result as WorktreeSuccess;
+      expect(success.baseCommit, equals("samecommit"));
+
+      // Verify worktree add used "main" as start point
+      final worktreeAddArgs = processRunner.invocations.last.arguments;
+      expect(worktreeAddArgs.last, equals("main"));
+    });
+
+    test("diverged: worktree starts from origin ref", () async {
+      // rev-parse HEAD → ok
+      processRunner.enqueue(result: _ok());
+      // symbolic-ref → main
+      processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // rev-parse main → local commit
+      processRunner.enqueue(result: _ok(stdout: "diverged-local\n"));
+      // rev-parse origin/main → origin commit
+      processRunner.enqueue(result: _ok(stdout: "diverged-origin\n"));
+      // merge-base --is-ancestor diverged-origin diverged-local → exit 1 (not ancestor)
+      processRunner.enqueue(result: _fail(exitCode: 1));
+      // branch --list session-001 → empty
+      processRunner.enqueue(result: _ok(stdout: ""));
+      // worktree add → success
+      processRunner.enqueue(result: _ok());
+
+      final result = await service.prepareWorktreeForSession(
+        projectId: _projectId,
+        parentSessionId: null,
+      );
+
+      expect(result, isA<WorktreeSuccess>());
+      final success = result as WorktreeSuccess;
+      expect(success.baseCommit, equals("diverged-origin"));
+
+      final worktreeAddArgs = processRunner.invocations.last.arguments;
+      expect(worktreeAddArgs.last, equals("origin/main"));
+    });
+
+    test("no origin ref: worktree starts from local branch", () async {
+      // rev-parse HEAD → ok
+      processRunner.enqueue(result: _ok());
+      // symbolic-ref → main
+      processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // rev-parse main → local commit
+      processRunner.enqueue(result: _ok(stdout: "local111\n"));
+      // rev-parse origin/main → fail (no remote tracking branch)
+      processRunner.enqueue(result: _fail(exitCode: 128));
+      // branch --list session-001 → empty
+      processRunner.enqueue(result: _ok(stdout: ""));
+      // worktree add → success
+      processRunner.enqueue(result: _ok());
+
+      final result = await service.prepareWorktreeForSession(
+        projectId: _projectId,
+        parentSessionId: null,
+      );
+
+      expect(result, isA<WorktreeSuccess>());
+      final success = result as WorktreeSuccess;
+      expect(success.baseCommit, equals("local111"));
+
+      final worktreeAddArgs = processRunner.invocations.last.arguments;
+      expect(worktreeAddArgs.last, equals("main"));
+    });
+
+    test("merge-base fails: worktree starts from origin ref", () async {
+      // rev-parse HEAD → ok
+      processRunner.enqueue(result: _ok());
+      // symbolic-ref → main
+      processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // rev-parse main → local commit
+      processRunner.enqueue(result: _ok(stdout: "local111\n"));
+      // rev-parse origin/main → origin commit (different)
+      processRunner.enqueue(result: _ok(stdout: "origin222\n"));
+      // merge-base --is-ancestor → exit 128 (fatal error, e.g. shallow clone)
+      processRunner.enqueue(result: _fail(exitCode: 128, stderr: "fatal"));
+      // branch --list session-001 → empty
+      processRunner.enqueue(result: _ok(stdout: ""));
+      // worktree add → success
+      processRunner.enqueue(result: _ok());
+
+      final result = await service.prepareWorktreeForSession(
+        projectId: _projectId,
+        parentSessionId: null,
+      );
+
+      expect(result, isA<WorktreeSuccess>());
+      final success = result as WorktreeSuccess;
+      expect(success.baseCommit, equals("origin222"));
+
+      final worktreeAddArgs = processRunner.invocations.last.arguments;
+      expect(worktreeAddArgs.last, equals("origin/main"));
     });
   });
 

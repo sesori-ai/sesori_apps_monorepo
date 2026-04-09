@@ -120,6 +120,7 @@ void main() {
       worktreeService.resolveBaseBranchAndCommitResult = (
         baseBranch: "main",
         baseCommit: "abc123def456",
+        startPoint: "main",
       );
 
       final result = await handler.handle(
@@ -607,7 +608,7 @@ class _FakeWorktreeService extends WorktreeService {
     originalPath: "/repo",
     reason: "default",
   );
-  ({String baseBranch, String baseCommit})? resolveBaseBranchAndCommitResult;
+  ({String baseBranch, String baseCommit, String startPoint})? resolveBaseBranchAndCommitResult;
 
   _FakeWorktreeService({required AppDatabase database})
     : super(
@@ -631,7 +632,7 @@ class _FakeWorktreeService extends WorktreeService {
   }
 
   @override
-  Future<({String baseBranch, String baseCommit})?> resolveBaseBranchAndCommit({
+  Future<({String baseBranch, String baseCommit, String startPoint})?> resolveBaseBranchAndCommit({
     required String projectPath,
   }) async {
     resolveBaseBranchAndCommitCallCount++;

@@ -97,6 +97,7 @@ class WorktreeService {
     }
     final baseBranch = baseBranchAndCommit.baseBranch;
     final baseCommit = baseBranchAndCommit.baseCommit;
+    final startPoint = baseBranchAndCommit.startPoint;
 
     // 4.5. Try preferred branch name if provided.
     if (preferredBranchAndWorktreeName != null && parentSessionId == null) {
@@ -115,7 +116,7 @@ class WorktreeService {
           projectPath: projectId,
           worktreePath: worktreePath,
           branchName: branchName,
-          baseBranch: baseBranch,
+          baseBranch: startPoint,
         );
         if (result.exitCode == 0) {
           return WorktreeSuccess(
@@ -139,7 +140,7 @@ class WorktreeService {
         projectPath: projectId,
         worktreePath: worktreePath,
         branchName: branchName,
-        baseBranch: baseBranch,
+        baseBranch: startPoint,
       );
 
       if (result.exitCode == 0) {
@@ -159,7 +160,7 @@ class WorktreeService {
     );
   }
 
-  Future<({String baseBranch, String baseCommit})?> resolveBaseBranchAndCommit({
+  Future<({String baseBranch, String baseCommit, String startPoint})?> resolveBaseBranchAndCommit({
     required String projectPath,
   }) async {
     try {
@@ -177,10 +178,20 @@ class WorktreeService {
       );
       if (revParseResult.exitCode != 0) return null;
 
-      final baseCommit = revParseResult.stdout.toString().trim();
-      if (baseCommit.isEmpty) return null;
+      final localCommit = revParseResult.stdout.toString().trim();
+      if (localCommit.isEmpty) return null;
 
-      return (baseBranch: baseBranch, baseCommit: baseCommit);
+      final startPointResult = await resolveStartPointForBranch(
+        projectPath: projectPath,
+        baseBranch: baseBranch,
+        localCommit: localCommit,
+      );
+
+      return (
+        baseBranch: startPointResult.ref,
+        baseCommit: startPointResult.commit,
+        startPoint: startPointResult.ref,
+      );
     } on Object {
       return null;
     }
