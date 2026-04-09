@@ -110,6 +110,87 @@ void main() {
     await database.close();
     await relayServer.close();
   });
+
+  test("pre-seeds and forwards projects summary to push service", () async {
+    final relayServer = await TestRelayServer.start();
+    final database = createTestDatabase();
+    final pushService = _CapturingPushNotificationService();
+    final plugin = _SummaryPlugin(
+      onSubscribe: () {
+        expect(pushService.events.length, 1);
+      },
+    );
+    final fakePrSyncService = _FakePrSyncService();
+    final pullRequestRepository = PullRequestRepository(pullRequestDao: database.pullRequestDao);
+    final sessionRepository = SessionRepository(
+      plugin: plugin,
+      sessionDao: database.sessionDao,
+      pullRequestRepository: pullRequestRepository,
+    );
+    final relayClient = RelayClient(
+      relayURL: "ws://127.0.0.1:${relayServer.port}",
+      accessTokenProvider: FakeAccessTokenProvider(""),
+    );
+
+    final orchestrator = Orchestrator(
+      config: BridgeConfig(
+        relayURL: "ws://127.0.0.1:${relayServer.port}",
+        serverURL: "http://127.0.0.1:4096",
+        serverPassword: null,
+        authBackendURL: "http://127.0.0.1:8080",
+        sseReplayWindow: const Duration(minutes: 1),
+      ),
+      client: relayClient,
+      plugin: plugin,
+      metadataService: _FakeMetadataService(),
+      pushNotificationService: pushService,
+      tokenRefresher: _FakeTokenRefresher(),
+      projectsDao: database.projectsDao,
+      failureReporter: FakeFailureReporter(),
+      prSyncService: fakePrSyncService,
+      sessionRepository: sessionRepository,
+    );
+
+    final session = orchestrator.create();
+    final runFuture = session.run();
+
+    final bridgeSocket = await relayServer.nextClient();
+    final messages = bridgeSocket.asBroadcastStream();
+
+    const connID = 8;
+    bridgeSocket.add(jsonEncode(<String, Object>{"type": "phone_connected", "connId": connID}));
+
+    final crypto = RelayCryptoService();
+    final phoneKp = await crypto.generateKeyPair();
+    final phonePub = await phoneKp.extractPublicKey();
+    final kxMessage = RelayMessage.keyExchange(
+      publicKey: base64Url.encode(phonePub.bytes).replaceAll("=", ""),
+    );
+    bridgeSocket.add(_withConnID(connID: connID, payload: utf8.encode(jsonEncode(kxMessage.toJson()))));
+
+    final readyFrame = await _nextBinaryMessage(messages: messages);
+    final roomKey = await _extractRoomKeyFromReady(
+      framedWithConnID: readyFrame,
+      phoneKp: phoneKp,
+    );
+
+    final encryptor = crypto.createSessionEncryptor(SecretKey(roomKey));
+    final subscribeFrame = await frame(
+      utf8.encode(jsonEncode(const RelayMessage.sseSubscribe(path: "/events").toJson())),
+      encryptor: encryptor,
+    );
+    bridgeSocket.add(_withConnID(connID: connID, payload: subscribeFrame));
+
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    expect(pushService.events, hasLength(2));
+
+    await session.cancel();
+    await runFuture.timeout(const Duration(seconds: 5));
+    await plugin.close();
+    await database.close();
+    await relayServer.close();
+  });
 }
 
 Future<List<int>> _nextBinaryMessage({required Stream<dynamic> messages}) async {
@@ -191,6 +272,169 @@ PushNotificationService _createPushNotificationService() {
     tracker: tracker,
     completionNotifier: completionNotifier,
   );
+}
+
+class _CapturingPushNotificationService extends PushNotificationService {
+  final List<SesoriSseEvent> events = <SesoriSseEvent>[];
+
+  _CapturingPushNotificationService()
+    : this._(
+        tracker: PushSessionStateTracker(),
+      );
+
+  _CapturingPushNotificationService._({required PushSessionStateTracker tracker})
+    : super(
+        client: _NoopPushNotificationClient(),
+        rateLimiter: PushRateLimiter(),
+        tracker: tracker,
+        completionNotifier: CompletionNotifier(tracker: tracker),
+      );
+
+  @override
+  void handleSseEvent(SesoriSseEvent event) {
+    events.add(event);
+  }
+
+  @override
+  Future<void> dispose() async {}
+}
+
+class _SummaryPlugin implements BridgePlugin {
+  final void Function() onSubscribe;
+  final StreamController<BridgeSseEvent> _controller = StreamController<BridgeSseEvent>.broadcast();
+
+  _SummaryPlugin({required this.onSubscribe});
+
+  @override
+  String get id => "summary-plugin";
+
+  @override
+  Stream<BridgeSseEvent> get events {
+    return Stream<BridgeSseEvent>.multi((controller) {
+      onSubscribe();
+      final sub = _controller.stream.listen(
+        controller.add,
+        onError: controller.addError,
+        onDone: controller.close,
+      );
+      controller.onCancel = sub.cancel;
+    });
+  }
+
+  @override
+  Future<List<PluginProject>> getProjects() async => <PluginProject>[];
+
+  @override
+  Future<List<PluginSession>> getSessions(String worktree, {int? start, int? limit}) async {
+    return <PluginSession>[];
+  }
+
+  @override
+  Future<PluginSession> createSession({
+    required String directory,
+    required String? parentSessionId,
+    required List<PluginPromptPart> parts,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<PluginSession> renameSession({required String sessionId, required String title}) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<PluginProject> renameProject({required String projectId, required String name}) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> deleteSession(String sessionId) async {}
+
+  @override
+  Future<List<PluginSession>> getChildSessions(String sessionId) async => <PluginSession>[];
+
+  @override
+  Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => <String, PluginSessionStatus>{};
+
+  @override
+  Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async {
+    return <PluginMessageWithParts>[];
+  }
+
+  @override
+  Future<void> sendPrompt({
+    required String sessionId,
+    required List<PluginPromptPart> parts,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) async {}
+
+  @override
+  Future<void> abortSession({required String sessionId}) async {}
+
+  @override
+  Future<List<PluginAgent>> getAgents() async => <PluginAgent>[];
+
+  @override
+  Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) async {
+    return <PluginPendingQuestion>[];
+  }
+
+  @override
+  Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) async {
+    return <PluginPendingQuestion>[];
+  }
+
+  @override
+  Future<void> replyToQuestion({
+    required String questionId,
+    required String sessionId,
+    required List<List<String>> answers,
+  }) async {}
+
+  @override
+  Future<void> rejectQuestion(String questionId) async {}
+
+  @override
+  Future<void> replyToPermission({
+    required String requestId,
+    required String sessionId,
+    required PluginPermissionReply reply,
+  }) async {}
+
+  @override
+  Future<PluginProject> getProject(String projectId) async => const PluginProject(id: "");
+
+  @override
+  Future<bool> healthCheck() async => true;
+
+  @override
+  List<PluginProjectActivitySummary> getActiveSessionsSummary() {
+    return <PluginProjectActivitySummary>[
+      const PluginProjectActivitySummary(
+        id: "project-1",
+        activeSessions: <PluginActiveSession>[
+          PluginActiveSession(id: "session-1"),
+        ],
+      ),
+    ];
+  }
+
+  @override
+  Future<PluginProvidersResult> getProviders({required bool connectedOnly}) async {
+    return const PluginProvidersResult(providers: <PluginProvider>[]);
+  }
+
+  @override
+  Future<void> archiveSession({required String sessionId}) async {}
+
+  @override
+  Future<void> dispose() async {}
+
+  Future<void> close() => _controller.close();
 }
 
 class _NoopPlugin implements BridgePlugin {

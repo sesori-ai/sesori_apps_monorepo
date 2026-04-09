@@ -1,3 +1,5 @@
+import "dart:mirrors";
+
 import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -829,6 +831,132 @@ void main() {
       expect(tracker.resolveRootSessionId("child"), equals("root"));
     });
 
+    test("root session gets projectId from projects summary", () {
+      final tracker = PushSessionStateTracker();
+
+      tracker.handleEvent(
+        const SesoriSseEvent.projectsSummary(
+          projects: [
+            ProjectActivitySummary(
+              id: "proj-a",
+              activeSessions: [
+                ActiveSession(id: "sess-root", mainAgentRunning: true),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      expect(tracker.getSessionProjectId(sessionId: "sess-root"), equals("proj-a"));
+    });
+
+    test("child session gets projectId from projects summary", () {
+      final tracker = PushSessionStateTracker();
+
+      tracker.handleEvent(
+        const SesoriSseEvent.projectsSummary(
+          projects: [
+            ProjectActivitySummary(
+              id: "proj-a",
+              activeSessions: [
+                ActiveSession(
+                  id: "sess-root",
+                  mainAgentRunning: true,
+                  childSessionIds: ["sess-child"],
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      expect(tracker.getSessionProjectId(sessionId: "sess-child"), equals("proj-a"));
+    });
+
+    test("projects summary overwrites existing projectId", () {
+      final tracker = PushSessionStateTracker();
+
+      tracker.handleEvent(
+        SesoriSseEvent.sessionCreated(
+          info: _session(id: "sess-1", projectID: "proj-old"),
+        ),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.projectsSummary(
+          projects: [
+            ProjectActivitySummary(
+              id: "proj-new",
+              activeSessions: [
+                ActiveSession(id: "sess-1", mainAgentRunning: true),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      expect(tracker.getSessionProjectId(sessionId: "sess-1"), equals("proj-new"));
+    });
+
+    group("getSessionProjectId parent-chain walk", () {
+      test("getSessionProjectId walks parent chain when child has no projectId", () {
+        final tracker = PushSessionStateTracker();
+
+        tracker.handleEvent(
+          SesoriSseEvent.sessionCreated(
+            info: _session(id: "parent", projectID: "proj-a"),
+          ),
+        );
+        tracker.handleEvent(
+          SesoriSseEvent.sessionCreated(
+            info: _session(id: "child", projectID: "proj-b", parentID: "parent"),
+          ),
+        );
+        _setSessionProjectId(
+          tracker: tracker,
+          sessionId: "child",
+          projectId: null,
+        );
+
+        expect(tracker.getSessionProjectId(sessionId: "child"), equals("proj-a"));
+      });
+
+      test("getSessionProjectId returns direct projectId without walking parent", () {
+        final tracker = PushSessionStateTracker();
+
+        tracker.handleEvent(
+          SesoriSseEvent.sessionCreated(
+            info: _session(id: "parent", projectID: "proj-a"),
+          ),
+        );
+        tracker.handleEvent(
+          SesoriSseEvent.sessionCreated(
+            info: _session(id: "child", projectID: "proj-b", parentID: "parent"),
+          ),
+        );
+
+        expect(tracker.getSessionProjectId(sessionId: "child"), equals("proj-b"));
+      });
+
+      test("getSessionProjectId returns null when no session in ancestry has projectId", () {
+        final tracker = PushSessionStateTracker();
+
+        tracker.handleEvent(
+          SesoriSseEvent.sessionCreated(
+            info: _session(id: "parent", projectID: "proj-a"),
+          ),
+        );
+        tracker.handleEvent(
+          SesoriSseEvent.sessionCreated(
+            info: _session(id: "child", projectID: "proj-b", parentID: "parent"),
+          ),
+        );
+        _setSessionProjectId(tracker: tracker, sessionId: "parent", projectId: null);
+        _setSessionProjectId(tracker: tracker, sessionId: "child", projectId: null);
+
+        expect(tracker.getSessionProjectId(sessionId: "child"), isNull);
+      });
+    });
+
     test("projectsSummary establishes multi-level hierarchy for status-only sessions", () {
       final tracker = PushSessionStateTracker();
 
@@ -918,4 +1046,19 @@ Session _session({
     summary: null,
     pullRequest: null,
   );
+}
+
+void _setSessionProjectId({
+  required PushSessionStateTracker tracker,
+  required String sessionId,
+  required String? projectId,
+}) {
+  final trackerLibrary = reflectClass(PushSessionStateTracker).owner! as LibraryMirror;
+  final trackerMirror = reflect(tracker);
+  final state = trackerMirror.invoke(
+    MirrorSystem.getSymbol("_stateForWrite", trackerLibrary),
+    [sessionId],
+  ).reflectee;
+
+  reflect(state).setField(const Symbol("projectId"), projectId);
 }
