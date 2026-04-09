@@ -188,7 +188,7 @@ class WorktreeService {
       );
 
       return (
-        baseBranch: baseBranch,
+        baseBranch: startPointResult.ref,
         baseCommit: startPointResult.commit,
         startPoint: startPointResult.ref,
       );

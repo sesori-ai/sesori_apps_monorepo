@@ -477,7 +477,7 @@ void main() {
 
       expect(result, isA<WorktreeSuccess>());
       final success = result as WorktreeSuccess;
-      expect(success.baseBranch, equals("main"));
+      expect(success.baseBranch, equals("origin/main"));
       expect(success.baseCommit, equals("origin222"));
 
       // Verify worktree add used "origin/main" as start point
