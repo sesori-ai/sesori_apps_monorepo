@@ -16,9 +16,9 @@ class SseEventMapper {
       SseServerHeartbeat() => const BridgeSseServerHeartbeat(),
       SseServerInstanceDisposed(:final directory) => BridgeSseServerInstanceDisposed(directory: directory),
       SseGlobalDisposed() => const BridgeSseGlobalDisposed(),
-      SseSessionCreated(:final info) => BridgeSseSessionCreated(info: info.toJson()),
-      SseSessionUpdated(:final info) => BridgeSseSessionUpdated(info: info.toJson()),
-      SseSessionDeleted(:final info) => BridgeSseSessionDeleted(info: info.toJson()),
+      SseSessionCreated(:final info) => BridgeSseSessionCreated(info: info.toJson()..['projectID'] = info.directory),
+      SseSessionUpdated(:final info) => BridgeSseSessionUpdated(info: info.toJson()..['projectID'] = info.directory),
+      SseSessionDeleted(:final info) => BridgeSseSessionDeleted(info: info.toJson()..['projectID'] = info.directory),
       SseSessionDiff(:final sessionID) => BridgeSseSessionDiff(
         sessionID: sessionID,
       ),

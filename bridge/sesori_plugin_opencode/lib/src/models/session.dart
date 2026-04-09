@@ -81,7 +81,7 @@ sealed class SessionProject with _$SessionProject {
 extension SessionToPluginExtension on Session {
   PluginSession toPlugin() => PluginSession(
     id: id,
-    projectID: projectID,
+    projectID: directory,
     directory: directory,
     parentID: parentID,
     title: title,

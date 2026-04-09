@@ -47,7 +47,7 @@ void main() {
       expect(sessions, hasLength(1));
       final session = sessions.single;
       expect(session.id, equals("s-root"));
-      expect(session.projectID, equals("p1"));
+      expect(session.projectID, equals("/repo"));
       expect(session.directory, equals("/repo"));
       expect(session.parentID, isNull);
       expect(session.time?.created, equals(100));
