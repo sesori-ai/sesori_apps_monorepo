@@ -1,7 +1,9 @@
 import "dart:convert";
 
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
+import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/branch_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
@@ -41,6 +43,7 @@ void main() {
         db: db,
       );
       final worktreeService = WorktreeService(
+        branchRepository: BranchRepository(gitCliApi: GitCliApi(processRunner: FakeProcessRunner())),
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
         processRunner: FakeProcessRunner(),
@@ -157,7 +160,8 @@ void main() {
           body: jsonEncode(
             const CreateSessionRequest(
               projectId: "/tmp",
-              dedicatedWorktree: false,
+              worktreeMode: WorktreeMode.none,
+              selectedBranch: null,
               parts: [PromptPart.text(text: "Start")],
               agent: "architect",
               model: PromptModel(providerID: "openai", modelID: "gpt-5"),
@@ -289,6 +293,7 @@ void main() {
         db: db,
       );
       final worktreeService = WorktreeService(
+        branchRepository: BranchRepository(gitCliApi: GitCliApi(processRunner: FakeProcessRunner())),
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
         processRunner: FakeProcessRunner(),

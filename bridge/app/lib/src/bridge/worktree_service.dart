@@ -2,16 +2,19 @@ import "dart:io";
 import "dart:math";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "foundation/process_runner.dart";
 import "persistence/daos/projects_dao.dart";
 import "persistence/daos/session_dao.dart";
 import "persistence/tables/session_table.dart";
+import "repositories/branch_repository.dart";
 
 part "worktree_types.dart";
 part "worktree_git_queries.dart";
 part "worktree_safety.dart";
 part "worktree_lifecycle.dart";
+part "worktree_branch_preparation.dart";
 
 typedef GitPathExistsChecker = bool Function({required String gitPath});
 
@@ -26,15 +29,18 @@ const _worktreeDir = ".worktrees";
 class WorktreeService {
   final ProcessRunner _processRunner;
   final GitPathExistsChecker _gitPathExists;
+  final BranchRepository _branchRepository;
   final ProjectsDao _projectsDao;
   final SessionDao _sessionDao;
 
   WorktreeService({
+    required BranchRepository branchRepository,
     required ProjectsDao projectsDao,
     required SessionDao sessionDao,
     required ProcessRunner processRunner,
     required GitPathExistsChecker gitPathExists,
-  }) : _processRunner = processRunner,
+  }) : _branchRepository = branchRepository,
+       _processRunner = processRunner,
        _gitPathExists = gitPathExists,
        _projectsDao = projectsDao,
        _sessionDao = sessionDao;

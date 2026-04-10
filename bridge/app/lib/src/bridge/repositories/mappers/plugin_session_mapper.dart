@@ -10,6 +10,7 @@ extension PluginSessionMapper on PluginSession {
       directory: directory,
       parentID: parentID,
       title: title,
+      branchName: null,
       time: switch (time) {
         PluginSessionTime(:final created, :final updated, :final archived) => SessionTime(
           created: created,

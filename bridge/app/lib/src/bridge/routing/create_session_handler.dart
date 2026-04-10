@@ -57,7 +57,7 @@ class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Sess
     required String? fragment,
   }) async {
     final projectId = body.projectId;
-    final dedicatedWorktree = body.dedicatedWorktree;
+    final dedicatedWorktree = body.worktreeMode == WorktreeMode.newBranch;
     const String? parentSessionId = null;
 
     final firstText = body.parts
@@ -179,6 +179,7 @@ class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Sess
       directory: finalSession.directory,
       parentID: finalSession.parentID,
       title: finalSession.title,
+      branchName: branchName,
       time: switch (finalSession.time) {
         PluginSessionTime(:final created, :final updated, :final archived) => SessionTime(
           created: created,

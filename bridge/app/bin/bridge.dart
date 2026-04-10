@@ -23,6 +23,7 @@ import 'package:sesori_bridge/src/bridge/orchestrator.dart';
 import 'package:sesori_bridge/src/bridge/persistence/bridge_diagnostics.dart';
 import 'package:sesori_bridge/src/bridge/persistence/database.dart';
 import 'package:sesori_bridge/src/bridge/relay_client.dart';
+import 'package:sesori_bridge/src/bridge/repositories/branch_repository.dart';
 import 'package:sesori_bridge/src/bridge/repositories/opencode_db_repository.dart';
 import 'package:sesori_bridge/src/bridge/repositories/permission_repository.dart';
 import 'package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart';
@@ -247,6 +248,8 @@ Future<void> main(List<String> args) async {
     plugin: plugin,
     projectsDao: db.projectsDao,
   );
+  final gitCliApi = GitCliApi(processRunner: processRunner);
+  final branchRepository = BranchRepository(gitCliApi: gitCliApi);
   final permissionRepository = PermissionRepository(plugin: plugin);
   final sessionPersistenceService = SessionPersistenceService(
     projectsDao: db.projectsDao,
@@ -255,9 +258,10 @@ Future<void> main(List<String> args) async {
   );
 
   final worktreeService = WorktreeService(
+    branchRepository: branchRepository,
     projectsDao: db.projectsDao,
     sessionDao: db.sessionDao,
-    processRunner: ProcessRunner(),
+    processRunner: processRunner,
     gitPathExists: ({required String gitPath}) => FileSystemEntity.typeSync(gitPath) != FileSystemEntityType.notFound,
   );
 

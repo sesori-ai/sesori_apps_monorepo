@@ -74,6 +74,96 @@ class BranchRepository {
     );
   }
 
+  Future<ProcessResult> createWorktree({
+    required String projectPath,
+    required String worktreePath,
+    required String branchName,
+    required String startPoint,
+  }) {
+    return _gitCliApi.createWorktree(
+      workingDirectory: projectPath,
+      worktreePath: worktreePath,
+      branchName: branchName,
+      startPoint: startPoint,
+    );
+  }
+
+  Future<bool> branchExistsLocally({
+    required String projectPath,
+    required String branchName,
+  }) async {
+    final result = await _gitCliApi.branchExistsLocally(
+      workingDirectory: projectPath,
+      branchName: branchName,
+    );
+    return result.stdout.toString().trim().isNotEmpty;
+  }
+
+  Future<({String ref, String commit})?> resolveStartPointForBranch({
+    required String projectPath,
+    required String branchName,
+  }) async {
+    final localResult = await _gitCliApi.revParse(
+      workingDirectory: projectPath,
+      ref: branchName,
+    );
+    if (localResult.exitCode != 0) {
+      return _resolveRemoteOnlyStartPoint(
+        projectPath: projectPath,
+        branchName: branchName,
+      );
+    }
+
+    final localCommit = localResult.stdout.toString().trim();
+    if (localCommit.isEmpty) return null;
+
+    final originRef = "origin/$branchName";
+    final originResult = await _gitCliApi.revParse(
+      workingDirectory: projectPath,
+      ref: originRef,
+    );
+    if (originResult.exitCode != 0) {
+      return (ref: branchName, commit: localCommit);
+    }
+
+    final originCommit = originResult.stdout.toString().trim();
+    if (originCommit.isEmpty || originCommit == localCommit) {
+      return (ref: branchName, commit: localCommit);
+    }
+
+    final mergeBaseResult = await _gitCliApi.isAncestor(
+      workingDirectory: projectPath,
+      ancestorRef: originCommit,
+      descendantRef: localCommit,
+    );
+    if (mergeBaseResult.exitCode == 0) {
+      return (ref: branchName, commit: localCommit);
+    }
+
+    return (ref: originRef, commit: originCommit);
+  }
+
+  Future<({String ref, String commit})?> _resolveRemoteOnlyStartPoint({
+    required String projectPath,
+    required String branchName,
+  }) async {
+    final originRef = "origin/$branchName";
+    final originResult = await _gitCliApi.revParse(
+      workingDirectory: projectPath,
+      ref: originRef,
+    );
+    if (originResult.exitCode != 0) {
+      return null;
+    }
+
+    final originCommit = originResult.stdout.toString().trim();
+    if (originCommit.isEmpty) {
+      return null;
+    }
+
+    return (ref: originRef, commit: originCommit);
+  }
+
   /// Parses `git branch -a --sort=-committerdate --format='%(refname:short) %(committerdate:unix)'`
   /// into a deduplicated list of [BranchInfo].
   static List<BranchInfo> _parseBranches({required String stdout}) {

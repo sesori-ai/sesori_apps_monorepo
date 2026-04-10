@@ -1,8 +1,10 @@
 import "dart:async";
 import "dart:io";
 
+import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/branch_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/update_session_archive_status_handler.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
@@ -985,13 +987,13 @@ class _FakeWorktreeService extends WorktreeService {
 
   _FakeWorktreeService({required AppDatabase database})
     : super(
+        branchRepository: BranchRepository(gitCliApi: GitCliApi(processRunner: _NoopProcessRunner())),
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
         processRunner: _NoopProcessRunner(),
         gitPathExists: ({required String gitPath}) => true,
       );
 
-  @override
   Future<WorktreeSafetyResult> checkWorktreeSafety({
     required String worktreePath,
     required String expectedBranch,
@@ -1002,7 +1004,6 @@ class _FakeWorktreeService extends WorktreeService {
     return safetyResult;
   }
 
-  @override
   Future<bool> removeWorktree({
     required String projectPath,
     required String worktreePath,
@@ -1015,7 +1016,6 @@ class _FakeWorktreeService extends WorktreeService {
     return removeResult;
   }
 
-  @override
   Future<bool> deleteBranch({
     required String projectPath,
     required String branchName,
@@ -1028,7 +1028,6 @@ class _FakeWorktreeService extends WorktreeService {
     return deleteBranchResult;
   }
 
-  @override
   Future<bool> restoreWorktree({
     required String projectPath,
     required String worktreePath,

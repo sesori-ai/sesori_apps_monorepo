@@ -3,10 +3,12 @@ import "dart:io";
 
 import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
+import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
+import "package:sesori_bridge/src/bridge/repositories/branch_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
@@ -127,17 +129,20 @@ class _TestHarness {
       sessionDao: database.sessionDao,
       db: database,
     );
+    final failingProcessRunner = FakeProcessRunner((
+      String executable,
+      List<String> arguments, {
+      String? workingDirectory,
+      Duration timeout = const Duration(seconds: 15),
+    }) async {
+      return ProcessResult(0, 127, "", "command not found");
+    });
+
     final worktreeService = WorktreeService(
+      branchRepository: BranchRepository(gitCliApi: GitCliApi(processRunner: failingProcessRunner)),
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
-      processRunner: FakeProcessRunner((
-        String executable,
-        List<String> arguments, {
-        String? workingDirectory,
-        Duration timeout = const Duration(seconds: 15),
-      }) async {
-        return ProcessResult(0, 127, "", "command not found");
-      }),
+      processRunner: failingProcessRunner,
       gitPathExists: ({required String gitPath}) => true,
     );
 

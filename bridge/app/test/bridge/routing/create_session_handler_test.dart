@@ -1,8 +1,10 @@
 import "dart:io";
 
+import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge_metadata;
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/branch_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/create_session_handler.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/worktree_service.dart";
@@ -72,7 +74,8 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
-          dedicatedWorktree: true,
+          worktreeMode: WorktreeMode.newBranch,
+          selectedBranch: null,
           parts: [PromptPart.text(text: "Start")],
           agent: null,
           model: null,
@@ -132,7 +135,8 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
-          dedicatedWorktree: false,
+          worktreeMode: WorktreeMode.none,
+          selectedBranch: null,
           parts: [PromptPart.text(text: "Start")],
           agent: null,
           model: null,
@@ -181,7 +185,8 @@ void main() {
           makeRequest("POST", "/session/create"),
           body: const CreateSessionRequest(
             projectId: "/repo",
-            dedicatedWorktree: true,
+            worktreeMode: WorktreeMode.newBranch,
+            selectedBranch: null,
             parts: [PromptPart.text(text: "Start")],
             agent: null,
             model: null,
@@ -245,7 +250,8 @@ void main() {
           makeRequest("POST", "/session/create"),
           body: const CreateSessionRequest(
             projectId: "/repo",
-            dedicatedWorktree: true,
+            worktreeMode: WorktreeMode.newBranch,
+            selectedBranch: null,
             parts: [PromptPart.text(text: "Start")],
             agent: null,
             model: null,
@@ -277,7 +283,8 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
-          dedicatedWorktree: false,
+          worktreeMode: WorktreeMode.none,
+          selectedBranch: null,
           parts: [PromptPart.text(text: "Start")],
           agent: null,
           model: null,
@@ -321,7 +328,8 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
-          dedicatedWorktree: true,
+          worktreeMode: WorktreeMode.newBranch,
+          selectedBranch: null,
           parts: [PromptPart.text(text: "Start")],
           agent: null,
           model: null,
@@ -349,7 +357,8 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
-          dedicatedWorktree: false,
+          worktreeMode: WorktreeMode.none,
+          selectedBranch: null,
           parts: [PromptPart.text(text: "Start")],
           agent: null,
           model: null,
@@ -381,7 +390,8 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
-          dedicatedWorktree: true,
+          worktreeMode: WorktreeMode.newBranch,
+          selectedBranch: null,
           parts: [PromptPart.text(text: "Start")],
           agent: null,
           model: null,
@@ -399,7 +409,8 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/tmp",
-          dedicatedWorktree: false,
+          worktreeMode: WorktreeMode.none,
+          selectedBranch: null,
           parts: [PromptPart.text(text: "Hello")],
           agent: "architect",
           model: PromptModel(providerID: "openai", modelID: "gpt-5"),
@@ -450,7 +461,8 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
-          dedicatedWorktree: true,
+          worktreeMode: WorktreeMode.newBranch,
+          selectedBranch: null,
           parts: [PromptPart.text(text: "Fix the login bug")],
           agent: null,
           model: null,
@@ -488,7 +500,8 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
-          dedicatedWorktree: true,
+          worktreeMode: WorktreeMode.newBranch,
+          selectedBranch: null,
           parts: [PromptPart.text(text: "Start")],
           agent: null,
           model: null,
@@ -519,7 +532,8 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
-          dedicatedWorktree: false,
+          worktreeMode: WorktreeMode.none,
+          selectedBranch: null,
           parts: [PromptPart.fileData(mime: "image/png", base64: "abc", filename: "img.png")],
           agent: null,
           model: null,
@@ -549,7 +563,8 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
-          dedicatedWorktree: false,
+          worktreeMode: WorktreeMode.none,
+          selectedBranch: null,
           parts: [PromptPart.text(text: "   ")],
           agent: null,
           model: null,
@@ -578,7 +593,8 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "brand-new-proj",
-          dedicatedWorktree: false,
+          worktreeMode: WorktreeMode.none,
+          selectedBranch: null,
           parts: [PromptPart.text(text: "Hello")],
           agent: null,
           model: null,
@@ -633,7 +649,8 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
-          dedicatedWorktree: false,
+          worktreeMode: WorktreeMode.none,
+          selectedBranch: null,
           parts: [PromptPart.text(text: "Fix the login bug")],
           agent: null,
           model: null,
@@ -664,6 +681,7 @@ class _FakeWorktreeService extends WorktreeService {
 
   _FakeWorktreeService({required AppDatabase database})
     : super(
+        branchRepository: BranchRepository(gitCliApi: GitCliApi(processRunner: _NoopProcessRunner())),
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
         processRunner: _NoopProcessRunner(),

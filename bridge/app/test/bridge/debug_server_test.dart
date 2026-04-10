@@ -7,6 +7,7 @@ import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/debug_server.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/branch_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
@@ -51,6 +52,7 @@ DebugServer _createDebugServer({
     db: db,
   );
   final worktreeService = WorktreeService(
+    branchRepository: BranchRepository(gitCliApi: GitCliApi(processRunner: processRunner)),
     projectsDao: db.projectsDao,
     sessionDao: db.sessionDao,
     processRunner: processRunner,

@@ -1,7 +1,9 @@
 import "dart:io";
 
+import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/branch_repository.dart";
 import "package:sesori_bridge/src/bridge/worktree_service.dart";
 import "package:test/test.dart";
 
@@ -19,6 +21,7 @@ void main() {
       processRunner = _FakeProcessRunner();
       gitDirectoryExists = false;
       service = WorktreeService(
+        branchRepository: BranchRepository(gitCliApi: GitCliApi(processRunner: processRunner)),
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
         processRunner: processRunner,
