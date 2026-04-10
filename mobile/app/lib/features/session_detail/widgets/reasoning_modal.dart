@@ -2,7 +2,6 @@ import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_shared/sesori_shared.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/widgets/markdown_styles.dart";
@@ -37,39 +36,13 @@ class _ReasoningModalState extends State<ReasoningModal> {
     super.dispose();
   }
 
-  static String _findPartText({
-    required List<MessageWithParts> messages,
-    required String messageId,
-    required String partId,
-  }) {
-    for (final m in messages) {
-      if (m.info.id != messageId) continue;
-      for (final p in m.parts) {
-        if (p.id == partId) return p.text ?? "";
-      }
-    }
-    return "";
-  }
-
   @override
   Widget build(BuildContext context) {
     final data = context.select<SessionDetailCubit, ({String text, bool isStreaming})>(
-      (cubit) {
-        final state = cubit.state;
-        if (state is! SessionDetailLoaded) {
-          return (text: "", isStreaming: false);
-        }
-        return (
-          text:
-              state.streamingText[widget.partId] ??
-              _findPartText(
-                messages: state.messages,
-                messageId: widget.messageId,
-                partId: widget.partId,
-              ),
-          isStreaming: state.streamingText.containsKey(widget.partId),
-        );
-      },
+      (cubit) => cubit.state.resolvePartContent(
+        partId: widget.partId,
+        messageId: widget.messageId,
+      ),
     );
 
     final theme = Theme.of(context);
