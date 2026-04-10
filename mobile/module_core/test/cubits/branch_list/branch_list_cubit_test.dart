@@ -32,13 +32,6 @@ const _branchWithWorktree = BranchInfo(
   worktreePath: "/repo/.worktrees/fix-bug-123",
 );
 
-const _branchRemoteOnly = BranchInfo(
-  name: "remote-only-branch",
-  isRemoteOnly: true,
-  lastCommitTimestamp: null,
-  worktreePath: null,
-);
-
 void main() {
   group("BranchListCubit", () {
     late MockProjectRepository mockProjectRepository;

@@ -188,7 +188,8 @@ void main() {
           text: "hello",
           agent: null,
           model: null,
-          dedicatedWorktree: true,
+          worktreeMode: WorktreeMode.newBranch,
+          selectedBranch: null,
         );
 
         expect(result, isA<SuccessResponse<Session>>());
@@ -217,7 +218,8 @@ void main() {
           text: "hello",
           agent: null,
           model: null,
-          dedicatedWorktree: true,
+          worktreeMode: WorktreeMode.newBranch,
+          selectedBranch: null,
         );
 
         expect(result, isA<ErrorResponse<Session>>());
@@ -245,7 +247,8 @@ void main() {
           text: "first prompt",
           agent: null,
           model: null,
-          dedicatedWorktree: true,
+          worktreeMode: WorktreeMode.newBranch,
+          selectedBranch: null,
         );
 
         final captured =
@@ -265,7 +268,8 @@ void main() {
               parts: [PromptPart.text(text: "first prompt")],
               agent: null,
               model: null,
-              dedicatedWorktree: true,
+              worktreeMode: WorktreeMode.newBranch,
+              selectedBranch: null,
             ),
           ),
         );
