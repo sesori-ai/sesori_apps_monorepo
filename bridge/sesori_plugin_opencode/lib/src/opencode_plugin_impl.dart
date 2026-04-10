@@ -30,7 +30,7 @@ class OpenCodePlugin implements BridgePlugin {
     );
     final repository = OpenCodeRepository(api);
     final tracker = ActiveSessionTracker(repository);
-    final sessionMapper = SessionPluginMapper(tracker: tracker);
+    const sessionMapper = SessionPluginMapper();
     return OpenCodePlugin._(
       service: OpenCodeService(repository, tracker),
       sessionMapper: sessionMapper,
@@ -136,7 +136,7 @@ class OpenCodePlugin implements BridgePlugin {
       );
     }
     return sessions
-        .map((session) => _sessionMapper.toPluginSession(session: session, fallbackProjectID: projectId))
+        .map((session) => _sessionMapper.toPluginSession(session: _canonicalizeSession(session, projectId)))
         .toList();
   }
 
@@ -169,7 +169,7 @@ class OpenCodePlugin implements BridgePlugin {
       ),
     );
 
-    return _sessionMapper.toPluginSession(session: session, fallbackProjectID: directory);
+    return _sessionMapper.toPluginSession(session: _canonicalizeSession(session, directory));
   }
 
   @override
@@ -193,7 +193,7 @@ class OpenCodePlugin implements BridgePlugin {
         body: {"title": title},
       ),
     );
-    return _sessionMapper.toPluginSession(session: session, fallbackProjectID: session.projectID);
+    return _sessionMapper.toPluginSession(session: _canonicalizeSession(session, session.projectID));
   }
 
   @override
@@ -206,7 +206,11 @@ class OpenCodePlugin implements BridgePlugin {
       ),
     );
     return sessions
-        .map((session) => _sessionMapper.toPluginSession(session: session, fallbackProjectID: session.projectID))
+        .map(
+          (session) => _sessionMapper.toPluginSession(
+            session: _canonicalizeSession(session, session.projectID),
+          ),
+        )
         .toList();
   }
 
@@ -406,7 +410,7 @@ class OpenCodePlugin implements BridgePlugin {
         _emitProjectsSummary();
       }
 
-      final bridgeEvent = _mapper.map(event);
+      final bridgeEvent = _mapper.map(_canonicalizeEvent(event));
       if (bridgeEvent != null) {
         _eventBuffer.add(bridgeEvent);
       }
@@ -417,6 +421,27 @@ class OpenCodePlugin implements BridgePlugin {
 
   void _emitProjectsSummary() {
     _eventBuffer.add(const BridgeSseProjectUpdated());
+  }
+
+  Session _canonicalizeSession(Session session, String fallbackProjectID) {
+    final canonicalProjectID =
+        _service.tracker.resolveProjectWorktree(directory: session.directory) ?? fallbackProjectID;
+    return session.copyWith(projectID: canonicalProjectID);
+  }
+
+  SseEventData _canonicalizeEvent(SseEventData event) {
+    return switch (event) {
+      SseSessionCreated(:final info) => SseEventData.sessionCreated(
+        info: _canonicalizeSession(info, info.projectID),
+      ),
+      SseSessionUpdated(:final info) => SseEventData.sessionUpdated(
+        info: _canonicalizeSession(info, info.projectID),
+      ),
+      SseSessionDeleted(:final info) => SseEventData.sessionDeleted(
+        info: _canonicalizeSession(info, info.projectID),
+      ),
+      _ => event,
+    };
   }
 
   PluginMessageWithParts _mapMessage(MessageWithParts raw) {

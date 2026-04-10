@@ -22,13 +22,13 @@ class SseEventMapper {
       SseServerInstanceDisposed(:final directory) => BridgeSseServerInstanceDisposed(directory: directory),
       SseGlobalDisposed() => const BridgeSseGlobalDisposed(),
       SseSessionCreated(:final info) => BridgeSseSessionCreated(
-        info: _sessionMapper.toBridgeSessionInfo(session: info, fallbackProjectID: info.projectID),
+        info: _sessionMapper.toBridgeSessionInfo(session: info),
       ),
       SseSessionUpdated(:final info) => BridgeSseSessionUpdated(
-        info: _sessionMapper.toBridgeSessionInfo(session: info, fallbackProjectID: info.projectID),
+        info: _sessionMapper.toBridgeSessionInfo(session: info),
       ),
       SseSessionDeleted(:final info) => BridgeSseSessionDeleted(
-        info: _sessionMapper.toBridgeSessionInfo(session: info, fallbackProjectID: info.projectID),
+        info: _sessionMapper.toBridgeSessionInfo(session: info),
       ),
       SseSessionDiff(:final sessionID) => BridgeSseSessionDiff(
         sessionID: sessionID,
