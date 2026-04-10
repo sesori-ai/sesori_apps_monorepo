@@ -9,6 +9,10 @@ import "package:test/test.dart";
 import "../../helpers/test_helpers.dart";
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(WorktreeMode.none);
+  });
+
   group("NewSessionCubit", () {
     late MockSessionService mockSessionService;
 

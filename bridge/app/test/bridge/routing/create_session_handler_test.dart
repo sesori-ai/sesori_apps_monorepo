@@ -213,6 +213,64 @@ void main() {
       },
     );
 
+    test(
+      "stayOnBranch injects continue-branch system prompt and stores worktree metadata with isDedicated=false",
+      () async {
+        plugin.createSessionResult = const PluginSession(
+          id: "stay-1",
+          projectID: "p1",
+          directory: "/repo/.worktrees/feature-branch",
+          parentID: null,
+          title: "Stay",
+          time: null,
+          summary: null,
+        );
+
+        final result = await handler.handle(
+          makeRequest("POST", "/session/create"),
+          body: const CreateSessionRequest(
+            projectId: "/repo",
+            worktreeMode: WorktreeMode.stayOnBranch,
+            selectedBranch: "feature-branch",
+            parts: [PromptPart.text(text: "Continue work")],
+            agent: null,
+            model: null,
+          ),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        );
+
+        expect(result.id, equals("stay-1"));
+        expect(plugin.lastCreateSessionDirectory, equals("/repo/.worktrees/feature-branch"));
+        expect(plugin.lastCreateSessionParts, isNotNull);
+        expect(plugin.lastCreateSessionParts, hasLength(2));
+        expect(
+          plugin.lastCreateSessionParts![0],
+          equals(
+            PluginPromptPart.text(
+              text: buildContinueBranchSystemPrompt(
+                branchName: "feature-branch",
+                path: "/repo/.worktrees/feature-branch",
+                baseBranch: "feature-branch",
+              ),
+            ),
+          ),
+        );
+        expect(plugin.lastCreateSessionParts![1], equals(const PluginPromptPart.text(text: "Continue work")));
+
+        final dbSession = await db.sessionDao.getSession(sessionId: "stay-1");
+        expect(dbSession, isNotNull);
+        expect(dbSession!.projectId, equals("/repo"));
+        expect(dbSession.isDedicated, isFalse);
+        expect(dbSession.worktreePath, equals("/repo/.worktrees/feature-branch"));
+        expect(dbSession.branchName, equals("feature-branch"));
+        expect(dbSession.baseBranch, equals("feature-branch"));
+        expect(dbSession.baseCommit, equals("abc123def456"));
+        expect(dbSession.createdAt, greaterThan(0));
+      },
+    );
+
     test("buildWorktreeSystemPrompt includes branch, path, and base branch", () {
       final prompt = buildWorktreeSystemPrompt(
         branchName: "session-017",
@@ -224,6 +282,19 @@ void main() {
       expect(prompt, contains("/repo/.worktrees/session-017"));
       expect(prompt, contains("develop"));
       expect(prompt, contains("Do NOT create new worktrees"));
+    });
+
+    test("buildContinueBranchSystemPrompt includes branch, path, and base branch", () {
+      final prompt = buildContinueBranchSystemPrompt(
+        branchName: "feature/auth",
+        path: "/repo/.worktrees/feature__auth",
+        baseBranch: "main",
+      );
+
+      expect(prompt, contains("feature/auth"));
+      expect(prompt, contains("/repo/.worktrees/feature__auth"));
+      expect(prompt, contains("main"));
+      expect(prompt, contains("Do NOT create new branches or worktrees"));
     });
 
     test("plugin failure is propagated and no session row is inserted", () async {
