@@ -5,17 +5,15 @@ import "package:http/io_client.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../opencode_plugin.dart";
-import "session_plugin_mapper.dart";
 import "sse/sse_connection.dart";
 import "sse_event_mapper.dart";
 
 class OpenCodePlugin implements BridgePlugin {
   final OpenCodeService _service;
-  final SessionPluginMapper _sessionMapper;
   final SseEventParser _parser;
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
   final io.HttpClient _httpClient;
-  late final SseEventMapper _mapper;
+  final SseEventMapper _mapper = SseEventMapper();
   late final SseConnection _sseConnection;
 
   factory OpenCodePlugin({
@@ -30,10 +28,8 @@ class OpenCodePlugin implements BridgePlugin {
     );
     final repository = OpenCodeRepository(api);
     final tracker = ActiveSessionTracker(repository);
-    const sessionMapper = SessionPluginMapper();
     return OpenCodePlugin._(
       service: OpenCodeService(repository, tracker),
-      sessionMapper: sessionMapper,
       httpClient: httpClient,
       serverUrl: serverUrl,
       password: password,
@@ -42,16 +38,13 @@ class OpenCodePlugin implements BridgePlugin {
 
   OpenCodePlugin._({
     required OpenCodeService service,
-    required SessionPluginMapper sessionMapper,
     required io.HttpClient httpClient,
     required String serverUrl,
     required String? password,
   }) : _service = service,
-       _sessionMapper = sessionMapper,
        _httpClient = httpClient,
        _parser = SseEventParser(),
        _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>() {
-    _mapper = SseEventMapper(sessionMapper: _sessionMapper);
     _sseConnection = SseConnection(
       targetUrl: serverUrl,
       password: password,
@@ -135,9 +128,7 @@ class OpenCodePlugin implements BridgePlugin {
         directory: session.directory,
       );
     }
-    return sessions
-        .map((session) => _sessionMapper.toPluginSession(session: _canonicalizeSession(session, projectId)))
-        .toList();
+    return sessions.map((session) => _canonicalizeSession(session, projectId).toPlugin()).toList();
   }
 
   @override
@@ -169,7 +160,7 @@ class OpenCodePlugin implements BridgePlugin {
       ),
     );
 
-    return _sessionMapper.toPluginSession(session: _canonicalizeSession(session, directory));
+    return _canonicalizeSession(session, directory).toPlugin();
   }
 
   @override
@@ -193,7 +184,7 @@ class OpenCodePlugin implements BridgePlugin {
         body: {"title": title},
       ),
     );
-    return _sessionMapper.toPluginSession(session: _canonicalizeSession(session, session.projectID));
+    return _canonicalizeSession(session, session.projectID).toPlugin();
   }
 
   @override
@@ -207,9 +198,7 @@ class OpenCodePlugin implements BridgePlugin {
     );
     return sessions
         .map(
-          (session) => _sessionMapper.toPluginSession(
-            session: _canonicalizeSession(session, session.projectID),
-          ),
+          (session) => _canonicalizeSession(session, session.projectID).toPlugin(),
         )
         .toList();
   }

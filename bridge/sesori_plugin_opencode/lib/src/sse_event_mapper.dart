@@ -2,17 +2,12 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "models/message_part.dart";
 import "models/sse_event_data.dart";
-import "session_plugin_mapper.dart";
 
 /// Maps OpenCode SSE events and message parts to plugin interface types.
 ///
 /// Extracted from [OpenCodePlugin] to isolate the mapping concern.
 /// This class is stateless — all methods are pure transformations.
 class SseEventMapper {
-  final SessionPluginMapper _sessionMapper;
-
-  SseEventMapper({required SessionPluginMapper sessionMapper}) : _sessionMapper = sessionMapper;
-
   /// Maps an [SseEventData] to a [BridgeSseEvent], or null if the event
   /// type has no plugin representation.
   BridgeSseEvent? map(SseEventData event) {
@@ -21,15 +16,9 @@ class SseEventMapper {
       SseServerHeartbeat() => const BridgeSseServerHeartbeat(),
       SseServerInstanceDisposed(:final directory) => BridgeSseServerInstanceDisposed(directory: directory),
       SseGlobalDisposed() => const BridgeSseGlobalDisposed(),
-      SseSessionCreated(:final info) => BridgeSseSessionCreated(
-        info: _sessionMapper.toBridgeSessionInfo(session: info),
-      ),
-      SseSessionUpdated(:final info) => BridgeSseSessionUpdated(
-        info: _sessionMapper.toBridgeSessionInfo(session: info),
-      ),
-      SseSessionDeleted(:final info) => BridgeSseSessionDeleted(
-        info: _sessionMapper.toBridgeSessionInfo(session: info),
-      ),
+      SseSessionCreated(:final info) => BridgeSseSessionCreated(info: info.toJson()),
+      SseSessionUpdated(:final info) => BridgeSseSessionUpdated(info: info.toJson()),
+      SseSessionDeleted(:final info) => BridgeSseSessionDeleted(info: info.toJson()),
       SseSessionDiff(:final sessionID) => BridgeSseSessionDiff(
         sessionID: sessionID,
       ),

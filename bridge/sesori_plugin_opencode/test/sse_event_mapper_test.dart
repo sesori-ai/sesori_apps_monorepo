@@ -1,13 +1,12 @@
 import "package:opencode_plugin/src/models/session.dart";
 import "package:opencode_plugin/src/models/sse_event_data.dart";
-import "package:opencode_plugin/src/session_plugin_mapper.dart";
 import "package:opencode_plugin/src/sse_event_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 void main() {
   group("SseEventMapper", () {
-    final mapper = SseEventMapper(sessionMapper: const SessionPluginMapper());
+    final mapper = SseEventMapper();
 
     test("maps session.created using provided canonical projectID", () {
       const session = Session(
