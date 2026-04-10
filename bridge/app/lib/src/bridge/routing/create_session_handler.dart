@@ -26,6 +26,21 @@ IMPORTANT: Do NOT create new worktrees, branches, or working directories for thi
 ''';
 }
 
+String buildContinueBranchSystemPrompt({
+  required String branchName,
+  required String path,
+  required String? baseBranch,
+}) {
+  return '''
+[SYSTEM CONTEXT — IMPORTANT]
+A dedicated git worktree has been set up for this session. You are continuing work on an existing branch: `$branchName`. The worktree is at `$path`.${baseBranch != null ? ' Based on: $baseBranch.' : ''}
+
+IMPORTANT: Do NOT create new branches or worktrees — the branch already exists and is checked out in the worktree above.
+
+---
+''';
+}
+
 /// Handles `POST /session` — creates a session for a given project.
 class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Session> {
   final BridgePlugin _plugin;
@@ -57,7 +72,8 @@ class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Sess
     required String? fragment,
   }) async {
     final projectId = body.projectId;
-    final dedicatedWorktree = body.worktreeMode == WorktreeMode.newBranch;
+    final worktreeMode = body.worktreeMode;
+    final selectedBranch = body.selectedBranch;
     const String? parentSessionId = null;
 
     final firstText = body.parts
@@ -75,31 +91,44 @@ class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Sess
       metadata = null;
     }
 
-    final WorktreeResult? worktreeResult;
-    if (dedicatedWorktree) {
-      worktreeResult = await _worktreeService.prepareWorktreeForSession(
-        projectId: projectId,
-        parentSessionId: parentSessionId,
-        preferredBranchAndWorktreeName: metadata != null
-            ? (branchName: metadata.branchName, worktreeName: metadata.worktreeName)
-            : null,
-      );
-    } else {
-      worktreeResult = null;
-    }
+    final worktreeResult = await _worktreeService.prepareWorktreeForBranch(
+      mode: worktreeMode,
+      selectedBranch: selectedBranch,
+      projectPath: projectId,
+      sessionId: "",
+      preferredBranchAndWorktreeName: worktreeMode == WorktreeMode.newBranch && metadata != null
+          ? (branchName: metadata.branchName, worktreeName: metadata.worktreeName)
+          : null,
+    );
 
     final parts = body.parts.map((p) => p.toPlugin()).toList();
     if (worktreeResult case WorktreeSuccess(:final path, :final branchName, :final baseBranch)) {
-      parts.insert(
-        0,
-        PluginPromptPart.text(
-          text: buildWorktreeSystemPrompt(
-            branchName: branchName,
-            worktreePath: path,
-            baseBranch: baseBranch,
-          ),
-        ),
-      );
+      switch (worktreeMode) {
+        case WorktreeMode.newBranch:
+          parts.insert(
+            0,
+            PluginPromptPart.text(
+              text: buildWorktreeSystemPrompt(
+                branchName: branchName,
+                worktreePath: path,
+                baseBranch: baseBranch,
+              ),
+            ),
+          );
+        case WorktreeMode.stayOnBranch:
+          parts.insert(
+            0,
+            PluginPromptPart.text(
+              text: buildContinueBranchSystemPrompt(
+                branchName: branchName,
+                path: path,
+                baseBranch: baseBranch,
+              ),
+            ),
+          );
+        case WorktreeMode.none:
+          break;
+      }
     }
 
     final model = switch (body.model) {
@@ -107,13 +136,10 @@ class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Sess
       null => null,
     };
 
-    final directory = !dedicatedWorktree
-        ? projectId
-        : switch (worktreeResult) {
-            WorktreeSuccess(:final path) => path,
-            WorktreeFallback(:final originalPath) => originalPath,
-            null => projectId,
-          };
+    final directory = switch (worktreeResult) {
+      WorktreeSuccess(:final path) => path,
+      WorktreeFallback(:final originalPath) => originalPath,
+    };
 
     final created = await _plugin.createSession(
       directory: directory,
@@ -135,6 +161,7 @@ class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Sess
       }
     }
 
+    final isDedicated = worktreeMode == WorktreeMode.newBranch;
     String? worktreePath;
     String? branchName;
     String? baseBranch;
@@ -152,7 +179,7 @@ class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Sess
     } else {
       worktreePath = null;
       branchName = null;
-      if (!dedicatedWorktree) {
+      if (!isDedicated) {
         final baseBranchAndCommit = await _worktreeService.resolveBaseBranchAndCommit(projectPath: projectId);
         baseBranch = baseBranchAndCommit?.baseBranch;
         baseCommit = baseBranchAndCommit?.baseCommit;
@@ -165,7 +192,7 @@ class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Sess
     await _sessionPersistenceService.createSession(
       sessionId: created.id,
       projectId: projectId,
-      isDedicated: dedicatedWorktree,
+      isDedicated: isDedicated,
       createdAt: DateTime.now().millisecondsSinceEpoch,
       worktreePath: worktreePath,
       branchName: branchName,
