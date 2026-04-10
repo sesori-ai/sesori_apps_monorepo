@@ -17,13 +17,14 @@ void main() {
       service = SessionService(mockClient);
     });
 
-    test("createSessionWithMessage sends dedicatedWorktree in request body", () async {
+    test("createSessionWithMessage sends worktree mode in request body", () async {
       const session = Session(
         id: "s1",
         projectID: "p1",
         directory: "/tmp/project",
         parentID: null,
         title: "Session",
+        branchName: null,
         summary: null,
         time: SessionTime(created: 1, updated: 1, archived: null),
         pullRequest: null,
@@ -42,7 +43,8 @@ void main() {
         text: "hello",
         agent: null,
         model: null,
-        dedicatedWorktree: true,
+        worktreeMode: WorktreeMode.newBranch,
+        selectedBranch: "feature/session",
       );
 
       expect(result, isA<SuccessResponse<Session>>());
@@ -55,7 +57,8 @@ void main() {
             parts: [PromptPart.text(text: "hello")],
             agent: null,
             model: null,
-            dedicatedWorktree: true,
+            worktreeMode: WorktreeMode.newBranch,
+            selectedBranch: "feature/session",
           ),
         ),
       ).called(1);
@@ -68,6 +71,7 @@ void main() {
         directory: "/tmp/project",
         parentID: null,
         title: "Session",
+        branchName: null,
         summary: null,
         time: SessionTime(created: 1, updated: 1, archived: null),
         pullRequest: null,

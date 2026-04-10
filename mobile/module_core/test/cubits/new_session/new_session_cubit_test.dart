@@ -32,7 +32,7 @@ void main() {
     );
 
     blocTest<NewSessionCubit, NewSessionState>(
-      "createSessionWithMessage forwards dedicatedWorktree to service",
+      "createSessionWithMessage forwards worktree mode to service",
       build: () {
         when(
           () => mockSessionService.createSessionWithMessage(
@@ -40,7 +40,8 @@ void main() {
             text: any(named: "text"),
             agent: any(named: "agent"),
             model: any(named: "model"),
-            dedicatedWorktree: any(named: "dedicatedWorktree"),
+            worktreeMode: any(named: "worktreeMode"),
+            selectedBranch: any(named: "selectedBranch"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s1")));
         return buildCubit();
@@ -48,7 +49,8 @@ void main() {
       act: (cubit) async {
         await cubit.createSessionWithMessage(
           text: "hello",
-          dedicatedWorktree: false,
+          worktreeMode: WorktreeMode.none,
+          selectedBranch: null,
         );
       },
       expect: () => [
@@ -66,7 +68,8 @@ void main() {
             text: "hello",
             agent: null,
             model: null,
-            dedicatedWorktree: false,
+            worktreeMode: WorktreeMode.none,
+            selectedBranch: null,
           ),
         ).called(1);
       },

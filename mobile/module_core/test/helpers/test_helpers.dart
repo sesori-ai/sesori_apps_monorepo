@@ -86,13 +86,14 @@ Project testProject({String? id, String? path, String? name}) {
   });
 }
 
-Session testSession({String? id, String? title, DateTime? archivedAt}) {
+Session testSession({String? id, String? title, String? branchName, DateTime? archivedAt}) {
   return Session(
     id: id ?? "session-1",
     projectID: "project-1",
     directory: "/home/user/my-project",
     parentID: null,
     title: title,
+    branchName: branchName,
     summary: null,
     pullRequest: null,
     time: SessionTime(

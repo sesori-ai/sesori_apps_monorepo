@@ -135,7 +135,8 @@ class NewSessionCubit extends Cubit<NewSessionState> {
 
   Future<void> createSessionWithMessage({
     required String text,
-    required bool dedicatedWorktree,
+    required WorktreeMode worktreeMode,
+    required String? selectedBranch,
   }) async {
     if (state is NewSessionSending) return;
 
@@ -168,7 +169,8 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       text: trimmed,
       agent: config?.agent,
       model: model,
-      dedicatedWorktree: dedicatedWorktree,
+      worktreeMode: worktreeMode,
+      selectedBranch: selectedBranch,
     );
 
     if (isClosed) return;

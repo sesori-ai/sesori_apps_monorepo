@@ -45,7 +45,8 @@ class SessionService {
     required String text,
     required String? agent,
     required PromptModel? model,
-    required bool dedicatedWorktree,
+    required WorktreeMode worktreeMode,
+    required String? selectedBranch,
   }) {
     return _client.post(
       "/session/create",
@@ -55,7 +56,8 @@ class SessionService {
         parts: [PromptPart.text(text: text)],
         agent: agent,
         model: model,
-        dedicatedWorktree: dedicatedWorktree,
+        worktreeMode: worktreeMode,
+        selectedBranch: selectedBranch,
       ),
     );
   }
