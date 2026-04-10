@@ -627,4 +627,51 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prConflicting => 'Has merge conflicts';
+
+  @override
+  String get branchPickerTitle => 'Select Branch';
+
+  @override
+  String get branchPickerSearch => 'Search branches...';
+
+  @override
+  String get branchPickerProjectDir => 'Use project directory';
+
+  @override
+  String branchPickerProjectDirSubtitle(String branch) {
+    return 'Currently on $branch';
+  }
+
+  @override
+  String get branchPickerRemote => 'remote';
+
+  @override
+  String get branchPickerModeStay => 'Stay on this branch';
+
+  @override
+  String get branchPickerModeNew => 'Create new branch from this';
+
+  @override
+  String get branchPickerLoadError => 'Could not load branches';
+
+  @override
+  String get branchPickerUsingProjectDir => 'Using project directory';
+
+  @override
+  String branchPickerSelectedBranch(String branch) {
+    return 'Branch: $branch';
+  }
+
+  @override
+  String branchPickerModeLabel(String mode) {
+    return '$mode';
+  }
+
+  @override
+  String get branchPickerNoWorktree => 'no worktree';
+
+  @override
+  String branchPickerTimeAgo(String time) {
+    return '$time ago';
+  }
 }

@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
@@ -10,6 +11,7 @@ import "../../core/widgets/agent_model_buttons.dart";
 import "../../core/widgets/agent_picker_sheet.dart";
 import "../../core/widgets/model_picker_sheet.dart";
 import "../session_detail/widgets/prompt_input.dart";
+import "widgets/branch_picker_sheet.dart";
 
 class NewSessionScreen extends StatelessWidget {
   final String projectId;
@@ -26,20 +28,23 @@ class NewSessionScreen extends StatelessWidget {
         sessionService: getIt<SessionService>(),
         projectId: projectId,
       ),
-      child: const _NewSessionBody(),
+      child: _NewSessionBody(projectId: projectId),
     );
   }
 }
 
 class _NewSessionBody extends StatefulWidget {
-  const _NewSessionBody();
+  final String projectId;
+
+  const _NewSessionBody({required this.projectId});
 
   @override
   State<_NewSessionBody> createState() => _NewSessionBodyState();
 }
 
 class _NewSessionBodyState extends State<_NewSessionBody> {
-  bool _dedicatedWorktree = true;
+  WorktreeMode _selectedWorktreeMode = WorktreeMode.none;
+  String? _selectedBranch;
 
   void _dismissScreen() {
     context.pop();
@@ -63,6 +68,49 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
       selectedProviderID: data.providerID ?? "",
       selectedModelID: data.modelID ?? "",
       onModelChanged: cubit.selectModel,
+    );
+  }
+
+  Future<void> _openBranchPicker() async {
+    final result = await BranchPickerSheet.show(
+      context,
+      projectId: widget.projectId,
+    );
+    if (result == null || !mounted) return;
+    setState(() {
+      _selectedWorktreeMode = result.mode;
+      _selectedBranch = result.branch;
+    });
+  }
+
+  Widget _buildBranchSelector() {
+    final theme = Theme.of(context);
+    final loc = context.loc;
+
+    final String title;
+    final String? subtitle;
+
+    if (_selectedBranch != null) {
+      title = loc.branchPickerSelectedBranch(_selectedBranch!);
+      subtitle = switch (_selectedWorktreeMode) {
+        WorktreeMode.stayOnBranch => loc.branchPickerModeStay,
+        WorktreeMode.newBranch => loc.branchPickerModeNew,
+        WorktreeMode.none => null,
+      };
+    } else {
+      title = loc.branchPickerUsingProjectDir;
+      subtitle = null;
+    }
+
+    return ListTile(
+      leading: Icon(
+        _selectedBranch != null ? Icons.alt_route : Icons.folder_outlined,
+        color: theme.colorScheme.primary,
+      ),
+      title: Text(title),
+      subtitle: subtitle != null ? Text(subtitle) : null,
+      trailing: const Icon(Icons.chevron_right),
+      onTap: _openBranchPicker,
     );
   }
 
@@ -137,17 +185,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SwitchListTile(
-                      title: Text(loc.newSessionDedicatedWorktree),
-                      subtitle: Text(
-                        loc.newSessionDedicatedWorktreeDescription,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      value: _dedicatedWorktree,
-                      onChanged: (value) => setState(() => _dedicatedWorktree = value),
-                    ),
+                    _buildBranchSelector(),
                   ],
                 ),
               ),
@@ -157,7 +195,8 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
               onSend: (text) {
                 context.read<NewSessionCubit>().createSessionWithMessage(
                   text: text,
-                  dedicatedWorktree: _dedicatedWorktree,
+                  worktreeMode: _selectedWorktreeMode,
+                  selectedBranch: _selectedBranch,
                 );
               },
               onAbort: _dismissScreen,

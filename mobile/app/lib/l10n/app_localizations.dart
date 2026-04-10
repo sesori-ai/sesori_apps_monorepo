@@ -1212,6 +1212,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Has merge conflicts'**
   String get prConflicting;
+
+  /// No description provided for @branchPickerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Branch'**
+  String get branchPickerTitle;
+
+  /// No description provided for @branchPickerSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search branches...'**
+  String get branchPickerSearch;
+
+  /// No description provided for @branchPickerProjectDir.
+  ///
+  /// In en, this message translates to:
+  /// **'Use project directory'**
+  String get branchPickerProjectDir;
+
+  /// No description provided for @branchPickerProjectDirSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Currently on {branch}'**
+  String branchPickerProjectDirSubtitle(String branch);
+
+  /// No description provided for @branchPickerRemote.
+  ///
+  /// In en, this message translates to:
+  /// **'remote'**
+  String get branchPickerRemote;
+
+  /// No description provided for @branchPickerModeStay.
+  ///
+  /// In en, this message translates to:
+  /// **'Stay on this branch'**
+  String get branchPickerModeStay;
+
+  /// No description provided for @branchPickerModeNew.
+  ///
+  /// In en, this message translates to:
+  /// **'Create new branch from this'**
+  String get branchPickerModeNew;
+
+  /// No description provided for @branchPickerLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load branches'**
+  String get branchPickerLoadError;
+
+  /// No description provided for @branchPickerUsingProjectDir.
+  ///
+  /// In en, this message translates to:
+  /// **'Using project directory'**
+  String get branchPickerUsingProjectDir;
+
+  /// No description provided for @branchPickerSelectedBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'Branch: {branch}'**
+  String branchPickerSelectedBranch(String branch);
+
+  /// No description provided for @branchPickerModeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{mode}'**
+  String branchPickerModeLabel(String mode);
+
+  /// No description provided for @branchPickerNoWorktree.
+  ///
+  /// In en, this message translates to:
+  /// **'no worktree'**
+  String get branchPickerNoWorktree;
+
+  /// No description provided for @branchPickerTimeAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{time} ago'**
+  String branchPickerTimeAgo(String time);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
