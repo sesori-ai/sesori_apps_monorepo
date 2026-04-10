@@ -37,6 +37,7 @@ _Session _$SessionFromJson(Map json) => _Session(
   directory: json['directory'] as String,
   parentID: json['parentID'] as String?,
   title: json['title'] as String?,
+  branchName: json['branchName'] as String?,
   time: json['time'] == null
       ? null
       : SessionTime.fromJson(Map<String, dynamic>.from(json['time'] as Map)),
@@ -59,6 +60,7 @@ Map<String, dynamic> _$SessionToJson(_Session instance) => <String, dynamic>{
   'directory': instance.directory,
   'parentID': instance.parentID,
   'title': instance.title,
+  'branchName': instance.branchName,
   'time': instance.time?.toJson(),
   'summary': instance.summary?.toJson(),
   'pullRequest': instance.pullRequest?.toJson(),
@@ -97,6 +99,7 @@ _GlobalSession _$GlobalSessionFromJson(Map json) => _GlobalSession(
   directory: json['directory'] as String,
   parentID: json['parentID'] as String?,
   title: json['title'] as String?,
+  branchName: json['branchName'] as String?,
   time: json['time'] == null
       ? null
       : SessionTime.fromJson(Map<String, dynamic>.from(json['time'] as Map)),
@@ -119,6 +122,7 @@ Map<String, dynamic> _$GlobalSessionToJson(_GlobalSession instance) =>
       'directory': instance.directory,
       'parentID': instance.parentID,
       'title': instance.title,
+      'branchName': instance.branchName,
       'time': instance.time?.toJson(),
       'summary': instance.summary?.toJson(),
       'project': instance.project?.toJson(),

@@ -41,6 +41,7 @@ void main() {
         directory: "/tmp",
         parentID: null,
         title: null,
+        branchName: null,
         time: null,
         summary: null,
         pullRequest: null,

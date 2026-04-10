@@ -18,7 +18,8 @@ _CreateSessionRequest _$CreateSessionRequestFromJson(Map json) =>
           : PromptModel.fromJson(
               Map<String, dynamic>.from(json['model'] as Map),
             ),
-      dedicatedWorktree: json['dedicatedWorktree'] as bool,
+      worktreeMode: $enumDecode(_$WorktreeModeEnumMap, json['worktreeMode']),
+      selectedBranch: json['selectedBranch'] as String?,
     );
 
 Map<String, dynamic> _$CreateSessionRequestToJson(
@@ -28,5 +29,12 @@ Map<String, dynamic> _$CreateSessionRequestToJson(
   'parts': instance.parts.map((e) => e.toJson()).toList(),
   'agent': instance.agent,
   'model': instance.model?.toJson(),
-  'dedicatedWorktree': instance.dedicatedWorktree,
+  'worktreeMode': _$WorktreeModeEnumMap[instance.worktreeMode]!,
+  'selectedBranch': instance.selectedBranch,
+};
+
+const _$WorktreeModeEnumMap = {
+  WorktreeMode.none: 'none',
+  WorktreeMode.stayOnBranch: 'stayOnBranch',
+  WorktreeMode.newBranch: 'newBranch',
 };
