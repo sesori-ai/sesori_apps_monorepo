@@ -12,7 +12,7 @@ class SseEventMapper {
   /// type has no plugin representation.
   BridgeSseEvent? map(
     SseEventData event, {
-    required String? Function(String directory) resolveProjectID,
+    required String Function({required String directory, required String fallbackProjectID}) resolveProjectID,
   }) {
     return switch (event) {
       SseServerConnected() => const BridgeSseServerConnected(),
@@ -20,13 +20,16 @@ class SseEventMapper {
       SseServerInstanceDisposed(:final directory) => BridgeSseServerInstanceDisposed(directory: directory),
       SseGlobalDisposed() => const BridgeSseGlobalDisposed(),
       SseSessionCreated(:final info) => BridgeSseSessionCreated(
-        info: info.toJson()..['projectID'] = resolveProjectID(info.directory) ?? info.projectID,
+        info: info.toJson()
+          ..['projectID'] = resolveProjectID(directory: info.directory, fallbackProjectID: info.projectID),
       ),
       SseSessionUpdated(:final info) => BridgeSseSessionUpdated(
-        info: info.toJson()..['projectID'] = resolveProjectID(info.directory) ?? info.projectID,
+        info: info.toJson()
+          ..['projectID'] = resolveProjectID(directory: info.directory, fallbackProjectID: info.projectID),
       ),
       SseSessionDeleted(:final info) => BridgeSseSessionDeleted(
-        info: info.toJson()..['projectID'] = resolveProjectID(info.directory) ?? info.projectID,
+        info: info.toJson()
+          ..['projectID'] = resolveProjectID(directory: info.directory, fallbackProjectID: info.projectID),
       ),
       SseSessionDiff(:final sessionID) => BridgeSseSessionDiff(
         sessionID: sessionID,

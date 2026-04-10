@@ -129,11 +129,7 @@ class OpenCodePlugin implements BridgePlugin {
       );
     }
     return sessions
-        .map(
-          (session) => session.toPlugin(
-            projectID: _service.tracker.resolveProjectWorktree(directory: session.directory) ?? projectId,
-          ),
-        )
+        .map((session) => _service.mapSessionToPlugin(session: session, fallbackProjectID: projectId))
         .toList();
   }
 
@@ -166,9 +162,7 @@ class OpenCodePlugin implements BridgePlugin {
       ),
     );
 
-    return session.toPlugin(
-      projectID: _service.tracker.resolveProjectWorktree(directory: session.directory) ?? directory,
-    );
+    return _service.mapSessionToPlugin(session: session, fallbackProjectID: directory);
   }
 
   @override
@@ -192,9 +186,7 @@ class OpenCodePlugin implements BridgePlugin {
         body: {"title": title},
       ),
     );
-    return session.toPlugin(
-      projectID: _service.tracker.resolveProjectWorktree(directory: session.directory) ?? session.projectID,
-    );
+    return _service.mapSessionToPlugin(session: session, fallbackProjectID: session.projectID);
   }
 
   @override
@@ -207,11 +199,7 @@ class OpenCodePlugin implements BridgePlugin {
       ),
     );
     return sessions
-        .map(
-          (session) => session.toPlugin(
-            projectID: _service.tracker.resolveProjectWorktree(directory: session.directory) ?? session.projectID,
-          ),
-        )
+        .map((session) => _service.mapSessionToPlugin(session: session, fallbackProjectID: session.projectID))
         .toList();
   }
 
@@ -413,7 +401,7 @@ class OpenCodePlugin implements BridgePlugin {
 
       final bridgeEvent = _mapper.map(
         event,
-        resolveProjectID: (directory) => _service.tracker.resolveProjectWorktree(directory: directory),
+        resolveProjectID: _service.resolveCanonicalProjectID,
       );
       if (bridgeEvent != null) {
         _eventBuffer.add(bridgeEvent);

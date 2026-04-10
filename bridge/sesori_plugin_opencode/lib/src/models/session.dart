@@ -79,7 +79,7 @@ sealed class SessionProject with _$SessionProject {
 }
 
 extension SessionToPluginExtension on Session {
-  PluginSession toPlugin({required String projectID}) => PluginSession(
+  PluginSession toPlugin() => PluginSession(
     id: id,
     projectID: projectID,
     directory: directory,

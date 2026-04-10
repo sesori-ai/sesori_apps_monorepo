@@ -15,7 +15,8 @@ void main() {
 
       final result = SseEventMapper().map(
         const SseEventData.sessionCreated(info: session),
-        resolveProjectID: (directory) => directory.startsWith("/repo") ? "/repo" : null,
+        resolveProjectID: ({required String directory, required String fallbackProjectID}) =>
+            directory.startsWith("/repo") ? "/repo" : fallbackProjectID,
       );
 
       expect(result, isNotNull);
@@ -34,7 +35,8 @@ void main() {
 
       final result = SseEventMapper().map(
         const SseEventData.sessionUpdated(info: session),
-        resolveProjectID: (directory) => directory.startsWith("/repo") ? "/repo" : null,
+        resolveProjectID: ({required String directory, required String fallbackProjectID}) =>
+            directory.startsWith("/repo") ? "/repo" : fallbackProjectID,
       );
 
       expect(result, isNotNull);
@@ -53,7 +55,8 @@ void main() {
 
       final result = SseEventMapper().map(
         const SseEventData.sessionDeleted(info: session),
-        resolveProjectID: (directory) => directory.startsWith("/repo") ? "/repo" : null,
+        resolveProjectID: ({required String directory, required String fallbackProjectID}) =>
+            directory.startsWith("/repo") ? "/repo" : fallbackProjectID,
       );
 
       expect(result, isNotNull);
