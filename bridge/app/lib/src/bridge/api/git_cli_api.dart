@@ -1,3 +1,5 @@
+import "dart:io";
+
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../foundation/process_runner.dart";
@@ -6,6 +8,64 @@ class GitCliApi {
   final ProcessRunner _processRunner;
 
   GitCliApi({required ProcessRunner processRunner}) : _processRunner = processRunner;
+
+  Future<ProcessResult> fetchRemotes({required String workingDirectory}) {
+    return _processRunner.run(
+      "git",
+      const ["fetch", "--all"],
+      workingDirectory: workingDirectory,
+      timeout: const Duration(seconds: 30),
+    );
+  }
+
+  Future<ProcessResult> listBranches({required String workingDirectory}) {
+    return _processRunner.run(
+      "git",
+      const ["branch", "-a", "--sort=-committerdate", "--format=%(refname:short) %(committerdate:unix)"],
+      workingDirectory: workingDirectory,
+    );
+  }
+
+  Future<ProcessResult> listWorktrees({required String workingDirectory}) {
+    return _processRunner.run(
+      "git",
+      const ["worktree", "list", "--porcelain"],
+      workingDirectory: workingDirectory,
+    );
+  }
+
+  Future<ProcessResult> addExistingBranchWorktree({
+    required String workingDirectory,
+    required String worktreePath,
+    required String branchName,
+  }) {
+    return _processRunner.run(
+      "git",
+      ["worktree", "add", "--", worktreePath, branchName],
+      workingDirectory: workingDirectory,
+    );
+  }
+
+  Future<ProcessResult> createTrackingBranchWorktree({
+    required String workingDirectory,
+    required String worktreePath,
+    required String localBranchName,
+    required String remoteBranch,
+  }) {
+    return _processRunner.run(
+      "git",
+      ["worktree", "add", "-b", localBranchName, "--", worktreePath, remoteBranch],
+      workingDirectory: workingDirectory,
+    );
+  }
+
+  Future<ProcessResult> getCurrentBranch({required String workingDirectory}) {
+    return _processRunner.run(
+      "git",
+      const ["rev-parse", "--abbrev-ref", "HEAD"],
+      workingDirectory: workingDirectory,
+    );
+  }
 
   Future<bool> hasGitHubRemote({required String projectPath}) async {
     try {
