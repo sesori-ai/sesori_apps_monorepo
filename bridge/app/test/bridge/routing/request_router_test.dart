@@ -42,8 +42,9 @@ void main() {
         sessionDao: db.sessionDao,
         db: db,
       );
+      final branchRepository = BranchRepository(gitCliApi: GitCliApi(processRunner: FakeProcessRunner()));
       final worktreeService = WorktreeService(
-        branchRepository: BranchRepository(gitCliApi: GitCliApi(processRunner: FakeProcessRunner())),
+        branchRepository: branchRepository,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
         processRunner: FakeProcessRunner(),
@@ -60,6 +61,7 @@ void main() {
         permissionRepository: permissionRepository,
         sessionPersistenceService: sessionPersistenceService,
         worktreeService: worktreeService,
+        branchRepository: branchRepository,
         onSessionAborted: (_) {},
       );
     });
@@ -292,8 +294,9 @@ void main() {
         sessionDao: db.sessionDao,
         db: db,
       );
+      final branchRepository2 = BranchRepository(gitCliApi: GitCliApi(processRunner: FakeProcessRunner()));
       final worktreeService = WorktreeService(
-        branchRepository: BranchRepository(gitCliApi: GitCliApi(processRunner: FakeProcessRunner())),
+        branchRepository: branchRepository2,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
         processRunner: FakeProcessRunner(),
@@ -311,6 +314,7 @@ void main() {
         permissionRepository: permissionRepository,
         sessionPersistenceService: sessionPersistenceService,
         worktreeService: worktreeService,
+        branchRepository: branchRepository2,
         onSessionAborted: (_) {},
       );
 

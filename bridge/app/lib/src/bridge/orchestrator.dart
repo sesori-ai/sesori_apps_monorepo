@@ -14,6 +14,7 @@ import "metadata_service.dart";
 import "models/bridge_config.dart";
 import "persistence/daos/projects_dao.dart";
 import "relay_client.dart";
+import "repositories/branch_repository.dart";
 import "repositories/permission_repository.dart";
 import "repositories/project_repository.dart";
 import "repositories/session_repository.dart";
@@ -41,6 +42,7 @@ class Orchestrator {
   final PermissionRepository _permissionRepository;
   final SessionPersistenceService _sessionPersistenceService;
   final WorktreeService _worktreeService;
+  final BranchRepository _branchRepository;
 
   Orchestrator({
     required this.config,
@@ -57,6 +59,7 @@ class Orchestrator {
     required PermissionRepository permissionRepository,
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
+    required BranchRepository branchRepository,
   }) : _client = client,
        _plugin = plugin,
        _metadataService = metadataService,
@@ -69,7 +72,8 @@ class Orchestrator {
        _projectRepository = projectRepository,
        _permissionRepository = permissionRepository,
        _sessionPersistenceService = sessionPersistenceService,
-       _worktreeService = worktreeService;
+       _worktreeService = worktreeService,
+       _branchRepository = branchRepository;
 
   /// Creates a new session with a fresh room key and SSE manager.
   OrchestratorSession create() {
@@ -100,6 +104,7 @@ class Orchestrator {
       permissionRepository: _permissionRepository,
       sessionPersistenceService: _sessionPersistenceService,
       worktreeService: _worktreeService,
+      branchRepository: _branchRepository,
     );
   }
 
@@ -150,6 +155,7 @@ class OrchestratorSession {
     required PermissionRepository permissionRepository,
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
+    required BranchRepository branchRepository,
   }) : _client = client,
        _plugin = plugin,
        _pushNotificationService = pushNotificationService,
@@ -170,6 +176,7 @@ class OrchestratorSession {
          permissionRepository: permissionRepository,
          sessionPersistenceService: sessionPersistenceService,
          worktreeService: worktreeService,
+         branchRepository: branchRepository,
          onSessionAborted: pushNotificationService.markSessionAborted,
        ),
        _mapper = BridgeEventMapper(plugin: plugin, failureReporter: failureReporter);

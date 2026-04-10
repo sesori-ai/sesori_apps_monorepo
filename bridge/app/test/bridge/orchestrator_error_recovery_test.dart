@@ -138,8 +138,9 @@ class _TestHarness {
       return ProcessResult(0, 127, "", "command not found");
     });
 
+    final branchRepository = BranchRepository(gitCliApi: GitCliApi(processRunner: failingProcessRunner));
     final worktreeService = WorktreeService(
-      branchRepository: BranchRepository(gitCliApi: GitCliApi(processRunner: failingProcessRunner)),
+      branchRepository: branchRepository,
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       processRunner: failingProcessRunner,
@@ -167,6 +168,7 @@ class _TestHarness {
       permissionRepository: permissionRepository,
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
+      branchRepository: branchRepository,
     );
 
     final session = orchestrator.create();

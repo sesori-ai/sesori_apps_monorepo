@@ -66,7 +66,7 @@ extension WorktreeBranchPreparation on WorktreeService {
       projectPath: projectPath,
       branchName: selectedBranch,
     );
-    final result = branchExistsLocally
+    final success = branchExistsLocally
         ? await _branchRepository.addExistingBranchWorktree(
             workingDirectory: projectPath,
             worktreePath: worktreePath,
@@ -78,7 +78,7 @@ extension WorktreeBranchPreparation on WorktreeService {
             localBranchName: selectedBranch,
             remoteBranch: startPoint.ref,
           );
-    if (result.exitCode != 0) {
+    if (!success) {
       return WorktreeFallback(
         originalPath: projectPath,
         reason: "failed to create worktree for selected branch",
@@ -136,13 +136,13 @@ extension WorktreeBranchPreparation on WorktreeService {
       }
 
       final worktreePath = "$projectPath/$_worktreeDir/$branchName";
-      final result = await _branchRepository.createWorktree(
+      final success = await _branchRepository.createWorktree(
         projectPath: projectPath,
         worktreePath: worktreePath,
         branchName: branchName,
         startPoint: startPoint.ref,
       );
-      if (result.exitCode == 0) {
+      if (success) {
         return WorktreeSuccess(
           path: worktreePath,
           branchName: branchName,
@@ -188,13 +188,13 @@ extension WorktreeBranchPreparation on WorktreeService {
     final branchName = "$preferredBranch$suffix";
     final worktreeName = "$preferredWorktree$suffix";
     final worktreePath = "$projectPath/$_worktreeDir/$worktreeName";
-    final result = await _branchRepository.createWorktree(
+    final success = await _branchRepository.createWorktree(
       projectPath: projectPath,
       worktreePath: worktreePath,
       branchName: branchName,
       startPoint: startPoint,
     );
-    if (result.exitCode != 0) {
+    if (!success) {
       return null;
     }
 

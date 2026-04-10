@@ -280,6 +280,7 @@ Future<void> main(List<String> args) async {
     permissionRepository: permissionRepository,
     sessionPersistenceService: sessionPersistenceService,
     worktreeService: worktreeService,
+    branchRepository: branchRepository,
   );
   final session = orchestrator.create();
 

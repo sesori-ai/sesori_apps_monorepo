@@ -1,7 +1,6 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../api/git_cli_api.dart";
 import "../foundation/process_runner.dart";
 import "../metadata_service.dart";
 import "../persistence/daos/projects_dao.dart";
@@ -66,6 +65,7 @@ class RequestRouter {
     required PermissionRepository permissionRepository,
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
+    required BranchRepository branchRepository,
     required void Function(String sessionId) onSessionAborted,
   }) : _handlers = _buildHandlers(
          plugin: plugin,
@@ -78,6 +78,7 @@ class RequestRouter {
          permissionRepository: permissionRepository,
          sessionPersistenceService: sessionPersistenceService,
          worktreeService: worktreeService,
+         branchRepository: branchRepository,
          onSessionAborted: onSessionAborted,
        );
 
@@ -92,6 +93,7 @@ class RequestRouter {
     required PermissionRepository permissionRepository,
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
+    required BranchRepository branchRepository,
     required void Function(String sessionId) onSessionAborted,
   }) {
     return [
@@ -140,9 +142,7 @@ class RequestRouter {
       OpenProjectHandler(plugin, projectsDao),
       HideProjectHandler(projectsDao),
       GetBaseBranchHandler(projectsDao),
-      GetBranchesHandler(
-        BranchRepository(gitCliApi: GitCliApi(processRunner: ProcessRunner())),
-      ),
+      GetBranchesHandler(branchRepository),
       SetBaseBranchHandler(projectsDao),
       FilesystemSuggestionsHandler(),
       GetSessionDiffsHandler(sessionDao, processRunner: ProcessRunner()),

@@ -48,44 +48,47 @@ class BranchRepository {
     return worktreeMap[branchName];
   }
 
-  Future<ProcessResult> addExistingBranchWorktree({
+  Future<bool> addExistingBranchWorktree({
     required String workingDirectory,
     required String worktreePath,
     required String branchName,
-  }) {
-    return _gitCliApi.addExistingBranchWorktree(
+  }) async {
+    final result = await _gitCliApi.addExistingBranchWorktree(
       workingDirectory: workingDirectory,
       worktreePath: worktreePath,
       branchName: branchName,
     );
+    return result.exitCode == 0;
   }
 
-  Future<ProcessResult> createTrackingBranchWorktree({
+  Future<bool> createTrackingBranchWorktree({
     required String workingDirectory,
     required String worktreePath,
     required String localBranchName,
     required String remoteBranch,
-  }) {
-    return _gitCliApi.createTrackingBranchWorktree(
+  }) async {
+    final result = await _gitCliApi.createTrackingBranchWorktree(
       workingDirectory: workingDirectory,
       worktreePath: worktreePath,
       localBranchName: localBranchName,
       remoteBranch: remoteBranch,
     );
+    return result.exitCode == 0;
   }
 
-  Future<ProcessResult> createWorktree({
+  Future<bool> createWorktree({
     required String projectPath,
     required String worktreePath,
     required String branchName,
     required String startPoint,
-  }) {
-    return _gitCliApi.createWorktree(
+  }) async {
+    final result = await _gitCliApi.createWorktree(
       workingDirectory: projectPath,
       worktreePath: worktreePath,
       branchName: branchName,
       startPoint: startPoint,
     );
+    return result.exitCode == 0;
   }
 
   Future<bool> branchExistsLocally({

@@ -60,8 +60,9 @@ void main() {
       sessionDao: database.sessionDao,
       db: database,
     );
+    final branchRepository = BranchRepository(gitCliApi: GitCliApi(processRunner: FakeProcessRunner()));
     final worktreeService = WorktreeService(
-      branchRepository: BranchRepository(gitCliApi: GitCliApi(processRunner: FakeProcessRunner())),
+      branchRepository: branchRepository,
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       processRunner: FakeProcessRunner(),
@@ -93,6 +94,7 @@ void main() {
       permissionRepository: permissionRepository,
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
+      branchRepository: branchRepository,
     );
 
     final session = orchestrator.create();
@@ -172,8 +174,9 @@ void main() {
       sessionDao: database.sessionDao,
       db: database,
     );
+    final branchRepository2 = BranchRepository(gitCliApi: GitCliApi(processRunner: FakeProcessRunner()));
     final worktreeService = WorktreeService(
-      branchRepository: BranchRepository(gitCliApi: GitCliApi(processRunner: FakeProcessRunner())),
+      branchRepository: branchRepository2,
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       processRunner: FakeProcessRunner(),
@@ -201,6 +204,7 @@ void main() {
       permissionRepository: permissionRepository,
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
+      branchRepository: branchRepository2,
     );
 
     final session = orchestrator.create();

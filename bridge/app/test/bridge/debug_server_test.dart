@@ -51,8 +51,9 @@ DebugServer _createDebugServer({
     sessionDao: db.sessionDao,
     db: db,
   );
+  final branchRepository = BranchRepository(gitCliApi: GitCliApi(processRunner: processRunner));
   final worktreeService = WorktreeService(
-    branchRepository: BranchRepository(gitCliApi: GitCliApi(processRunner: processRunner)),
+    branchRepository: branchRepository,
     projectsDao: db.projectsDao,
     sessionDao: db.sessionDao,
     processRunner: processRunner,
@@ -69,6 +70,7 @@ DebugServer _createDebugServer({
     permissionRepository: permissionRepository,
     sessionPersistenceService: sessionPersistenceService,
     worktreeService: worktreeService,
+    branchRepository: branchRepository,
     onSessionAborted: (_) {},
   );
   return DebugServer(
