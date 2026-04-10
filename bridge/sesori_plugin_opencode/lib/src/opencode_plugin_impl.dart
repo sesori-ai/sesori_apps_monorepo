@@ -128,7 +128,13 @@ class OpenCodePlugin implements BridgePlugin {
         directory: session.directory,
       );
     }
-    return sessions.map((session) => session.toPlugin()).toList();
+    return sessions
+        .map(
+          (session) => session.toPlugin(
+            projectID: _service.tracker.resolveProjectWorktree(directory: session.directory) ?? projectId,
+          ),
+        )
+        .toList();
   }
 
   @override
@@ -160,7 +166,9 @@ class OpenCodePlugin implements BridgePlugin {
       ),
     );
 
-    return session.toPlugin();
+    return session.toPlugin(
+      projectID: _service.tracker.resolveProjectWorktree(directory: session.directory) ?? directory,
+    );
   }
 
   @override
@@ -184,7 +192,9 @@ class OpenCodePlugin implements BridgePlugin {
         body: {"title": title},
       ),
     );
-    return session.toPlugin();
+    return session.toPlugin(
+      projectID: _service.tracker.resolveProjectWorktree(directory: session.directory) ?? session.projectID,
+    );
   }
 
   @override
@@ -196,7 +206,13 @@ class OpenCodePlugin implements BridgePlugin {
         directory: directory,
       ),
     );
-    return sessions.map((session) => session.toPlugin()).toList();
+    return sessions
+        .map(
+          (session) => session.toPlugin(
+            projectID: _service.tracker.resolveProjectWorktree(directory: session.directory) ?? session.projectID,
+          ),
+        )
+        .toList();
   }
 
   @override
@@ -395,7 +411,10 @@ class OpenCodePlugin implements BridgePlugin {
         _emitProjectsSummary();
       }
 
-      final bridgeEvent = _mapper.map(event);
+      final bridgeEvent = _mapper.map(
+        event,
+        resolveProjectID: (directory) => _service.tracker.resolveProjectWorktree(directory: directory),
+      );
       if (bridgeEvent != null) {
         _eventBuffer.add(bridgeEvent);
       }

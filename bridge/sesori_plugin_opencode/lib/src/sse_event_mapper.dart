@@ -10,15 +10,24 @@ import "models/sse_event_data.dart";
 class SseEventMapper {
   /// Maps an [SseEventData] to a [BridgeSseEvent], or null if the event
   /// type has no plugin representation.
-  BridgeSseEvent? map(SseEventData event) {
+  BridgeSseEvent? map(
+    SseEventData event, {
+    required String? Function(String directory) resolveProjectID,
+  }) {
     return switch (event) {
       SseServerConnected() => const BridgeSseServerConnected(),
       SseServerHeartbeat() => const BridgeSseServerHeartbeat(),
       SseServerInstanceDisposed(:final directory) => BridgeSseServerInstanceDisposed(directory: directory),
       SseGlobalDisposed() => const BridgeSseGlobalDisposed(),
-      SseSessionCreated(:final info) => BridgeSseSessionCreated(info: info.toJson()..['projectID'] = info.directory),
-      SseSessionUpdated(:final info) => BridgeSseSessionUpdated(info: info.toJson()..['projectID'] = info.directory),
-      SseSessionDeleted(:final info) => BridgeSseSessionDeleted(info: info.toJson()..['projectID'] = info.directory),
+      SseSessionCreated(:final info) => BridgeSseSessionCreated(
+        info: info.toJson()..['projectID'] = resolveProjectID(info.directory) ?? info.projectID,
+      ),
+      SseSessionUpdated(:final info) => BridgeSseSessionUpdated(
+        info: info.toJson()..['projectID'] = resolveProjectID(info.directory) ?? info.projectID,
+      ),
+      SseSessionDeleted(:final info) => BridgeSseSessionDeleted(
+        info: info.toJson()..['projectID'] = resolveProjectID(info.directory) ?? info.projectID,
+      ),
       SseSessionDiff(:final sessionID) => BridgeSseSessionDiff(
         sessionID: sessionID,
       ),
