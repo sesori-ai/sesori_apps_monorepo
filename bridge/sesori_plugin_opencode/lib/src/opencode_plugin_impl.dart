@@ -128,7 +128,11 @@ class OpenCodePlugin implements BridgePlugin {
         directory: session.directory,
       );
     }
-    return sessions.map((session) => _canonicalizeSession(session, projectId).toPlugin()).toList();
+    return sessions
+        .map(
+          (session) => session.toPlugin(projectID: _resolveCanonicalProjectID(session, projectId)),
+        )
+        .toList();
   }
 
   @override
@@ -160,7 +164,7 @@ class OpenCodePlugin implements BridgePlugin {
       ),
     );
 
-    return _canonicalizeSession(session, directory).toPlugin();
+    return session.toPlugin(projectID: _resolveCanonicalProjectID(session, directory));
   }
 
   @override
@@ -184,7 +188,7 @@ class OpenCodePlugin implements BridgePlugin {
         body: {"title": title},
       ),
     );
-    return _canonicalizeSession(session, session.projectID).toPlugin();
+    return session.toPlugin(projectID: _resolveCanonicalProjectID(session, session.projectID));
   }
 
   @override
@@ -198,7 +202,9 @@ class OpenCodePlugin implements BridgePlugin {
     );
     return sessions
         .map(
-          (session) => _canonicalizeSession(session, session.projectID).toPlugin(),
+          (session) => session.toPlugin(
+            projectID: _resolveCanonicalProjectID(session, session.projectID),
+          ),
         )
         .toList();
   }
@@ -413,9 +419,11 @@ class OpenCodePlugin implements BridgePlugin {
   }
 
   Session _canonicalizeSession(Session session, String fallbackProjectID) {
-    final canonicalProjectID =
-        _service.tracker.resolveProjectWorktree(directory: session.directory) ?? fallbackProjectID;
-    return session.copyWith(projectID: canonicalProjectID);
+    return session.copyWith(projectID: _resolveCanonicalProjectID(session, fallbackProjectID));
+  }
+
+  String _resolveCanonicalProjectID(Session session, String fallbackProjectID) {
+    return _service.tracker.resolveProjectWorktree(directory: session.directory) ?? fallbackProjectID;
   }
 
   SseEventData _canonicalizeEvent(SseEventData event) {
