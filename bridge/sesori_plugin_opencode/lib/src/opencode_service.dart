@@ -1,5 +1,5 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show Log, PluginPermissionReply, PluginProvidersResult, PluginSession, PluginSessionSummary, PluginSessionTime;
+    show Log, PluginPermissionReply, PluginProvidersResult;
 import "package:sesori_shared/sesori_shared.dart" show ProjectActivitySummary;
 
 import "../opencode_plugin.dart";
@@ -93,46 +93,6 @@ class OpenCodeService {
 
   List<ProjectActivitySummary> buildSummary() {
     return tracker.buildSummary();
-  }
-
-  PluginSession mapSessionToPlugin({
-    required Session session,
-    required String fallbackProjectID,
-  }) {
-    final projectID = resolveCanonicalProjectID(
-      directory: session.directory,
-      fallbackProjectID: fallbackProjectID,
-    );
-    return PluginSession(
-      id: session.id,
-      projectID: projectID,
-      directory: session.directory,
-      parentID: session.parentID,
-      title: session.title,
-      summary: switch (session.summary) {
-        SessionSummary(:final additions, :final deletions, :final files) => PluginSessionSummary(
-          additions: additions,
-          deletions: deletions,
-          files: files,
-        ),
-        null => null,
-      },
-      time: switch (session.time) {
-        SessionTime(:final created, :final updated, :final archived) => PluginSessionTime(
-          created: created,
-          updated: updated,
-          archived: archived,
-        ),
-        null => null,
-      },
-    );
-  }
-
-  String resolveCanonicalProjectID({
-    required String directory,
-    required String fallbackProjectID,
-  }) {
-    return tracker.resolveProjectWorktree(directory: directory) ?? fallbackProjectID;
   }
 
   List<Session> _applyStart(List<Session> sessions, int? start) {

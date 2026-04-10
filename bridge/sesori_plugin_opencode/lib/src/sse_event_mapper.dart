@@ -2,34 +2,33 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "models/message_part.dart";
 import "models/sse_event_data.dart";
+import "session_plugin_mapper.dart";
 
 /// Maps OpenCode SSE events and message parts to plugin interface types.
 ///
 /// Extracted from [OpenCodePlugin] to isolate the mapping concern.
 /// This class is stateless — all methods are pure transformations.
 class SseEventMapper {
+  final SessionPluginMapper _sessionMapper;
+
+  SseEventMapper({required SessionPluginMapper sessionMapper}) : _sessionMapper = sessionMapper;
+
   /// Maps an [SseEventData] to a [BridgeSseEvent], or null if the event
   /// type has no plugin representation.
-  BridgeSseEvent? map(
-    SseEventData event, {
-    required String Function({required String directory, required String fallbackProjectID}) resolveProjectID,
-  }) {
+  BridgeSseEvent? map(SseEventData event) {
     return switch (event) {
       SseServerConnected() => const BridgeSseServerConnected(),
       SseServerHeartbeat() => const BridgeSseServerHeartbeat(),
       SseServerInstanceDisposed(:final directory) => BridgeSseServerInstanceDisposed(directory: directory),
       SseGlobalDisposed() => const BridgeSseGlobalDisposed(),
       SseSessionCreated(:final info) => BridgeSseSessionCreated(
-        info: info.toJson()
-          ..['projectID'] = resolveProjectID(directory: info.directory, fallbackProjectID: info.projectID),
+        info: _sessionMapper.toBridgeSessionInfo(session: info, fallbackProjectID: info.projectID),
       ),
       SseSessionUpdated(:final info) => BridgeSseSessionUpdated(
-        info: info.toJson()
-          ..['projectID'] = resolveProjectID(directory: info.directory, fallbackProjectID: info.projectID),
+        info: _sessionMapper.toBridgeSessionInfo(session: info, fallbackProjectID: info.projectID),
       ),
       SseSessionDeleted(:final info) => BridgeSseSessionDeleted(
-        info: info.toJson()
-          ..['projectID'] = resolveProjectID(directory: info.directory, fallbackProjectID: info.projectID),
+        info: _sessionMapper.toBridgeSessionInfo(session: info, fallbackProjectID: info.projectID),
       ),
       SseSessionDiff(:final sessionID) => BridgeSseSessionDiff(
         sessionID: sessionID,
