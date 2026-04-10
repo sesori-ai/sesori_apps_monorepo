@@ -10,6 +10,8 @@ import "persistence/tables/session_table.dart";
 
 part "worktree_types.dart";
 part "worktree_git_queries.dart";
+part "worktree_safety.dart";
+part "worktree_lifecycle.dart";
 
 typedef GitPathExistsChecker = bool Function({required String gitPath});
 
@@ -195,116 +197,5 @@ class WorktreeService {
     } on Object {
       return null;
     }
-  }
-
-  // -------------------------------------------------------------------------
-  // Safety check
-  // -------------------------------------------------------------------------
-
-  /// Returns [WorktreeSafe] when the directory does not exist — a missing
-  /// worktree is treated as already cleaned up.
-  Future<WorktreeSafetyResult> checkWorktreeSafety({
-    required String worktreePath,
-    required String expectedBranch,
-  }) async {
-    if (!Directory(worktreePath).existsSync()) {
-      return WorktreeSafe();
-    }
-
-    final issues = <SafetyIssue>[];
-
-    final statusResult = await _processRunner.run(
-      "git",
-      ["status", "--porcelain"],
-      workingDirectory: worktreePath,
-    );
-    if (statusResult.stdout.toString().trim().isNotEmpty) {
-      issues.add(UnstagedChanges());
-    }
-
-    final headResult = await _processRunner.run(
-      "git",
-      ["rev-parse", "--abbrev-ref", "HEAD"],
-      workingDirectory: worktreePath,
-    );
-    final actualBranch = headResult.stdout.toString().trim();
-    if (actualBranch != expectedBranch) {
-      issues.add(BranchMismatch(expected: expectedBranch, actual: actualBranch));
-    }
-
-    if (issues.isEmpty) return WorktreeSafe();
-    return WorktreeUnsafe(issues: issues);
-  }
-
-  // -------------------------------------------------------------------------
-  // Lifecycle
-  // -------------------------------------------------------------------------
-
-  Future<void> pruneWorktrees({required String projectPath}) async {
-    await _runGit(projectPath: projectPath, arguments: const ["worktree", "prune"]);
-  }
-
-  Future<bool> removeWorktree({
-    required String projectPath,
-    required String worktreePath,
-    required bool force,
-  }) async {
-    if (!_isValidWorktreePath(projectPath: projectPath, worktreePath: worktreePath)) {
-      return false;
-    }
-    await pruneWorktrees(projectPath: projectPath);
-    final arguments = ["worktree", "remove", if (force) "--force", "--", worktreePath];
-    final result = await _runGit(projectPath: projectPath, arguments: arguments);
-    return result.exitCode == 0;
-  }
-
-  Future<bool> deleteBranch({
-    required String projectPath,
-    required String branchName,
-    required bool force,
-  }) async {
-    final result = await _runGit(
-      projectPath: projectPath,
-      arguments: ["branch", force ? "-D" : "-d", "--", branchName],
-    );
-    return result.exitCode == 0;
-  }
-
-  Future<bool> restoreWorktree({
-    required String projectPath,
-    required String worktreePath,
-    required String branchName,
-    required String baseBranch,
-    required String? baseCommit,
-  }) async {
-    if (!_isValidWorktreePath(projectPath: projectPath, worktreePath: worktreePath)) {
-      return false;
-    }
-
-    final verifyResult = await _runGit(
-      projectPath: projectPath,
-      arguments: ["rev-parse", "--verify", "--", "refs/heads/$branchName"],
-    );
-
-    final List<String> addArguments;
-    if (verifyResult.exitCode == 0) {
-      addArguments = ["worktree", "add", "--", worktreePath, branchName];
-    } else {
-      final startPoint = baseCommit ?? baseBranch;
-      addArguments = ["worktree", "add", "-b", branchName, "--", worktreePath, startPoint];
-    }
-
-    final addResult = await _runGit(projectPath: projectPath, arguments: addArguments);
-    return addResult.exitCode == 0;
-  }
-
-  /// Validates that [worktreePath] is under `<projectPath>/.worktrees/` to
-  /// prevent path-traversal attacks via stored database values.
-  bool _isValidWorktreePath({
-    required String projectPath,
-    required String worktreePath,
-  }) {
-    final expectedPrefix = "$projectPath/.worktrees/";
-    return worktreePath.startsWith(expectedPrefix);
   }
 }
