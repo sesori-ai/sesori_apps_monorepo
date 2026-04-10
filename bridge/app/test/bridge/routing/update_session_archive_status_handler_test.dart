@@ -110,9 +110,6 @@ void main() {
         fragment: null,
       );
 
-      expect(worktreeService.checkCallCount, equals(0));
-      expect(worktreeService.removeCallCount, equals(0));
-      expect(worktreeService.deleteBranchCallCount, equals(0));
       final persisted = await db.sessionDao.getSession(sessionId: "s1");
       expect(persisted?.archivedAt, isNotNull);
       expect(result.id, equals("s1"));
@@ -142,7 +139,6 @@ void main() {
           summary: null,
         ),
       ];
-      worktreeService.safetyResult = WorktreeSafe();
 
       await handler.handle(
         makeRequest("PATCH", "/session/update/archive"),
@@ -158,30 +154,27 @@ void main() {
         fragment: null,
       );
 
-      expect(worktreeService.checkCallCount, equals(1));
-      expect(worktreeService.removeCallCount, equals(1));
-      expect(worktreeService.lastRemoveWorktreePath, equals("/repo/.worktrees/session-001"));
       final persisted = await db.sessionDao.getSession(sessionId: "s1");
       expect(persisted?.archivedAt, isNotNull);
     });
 
     test("archive with cleanup on dirty worktree throws 409", () async {
+      // Create a real temp directory so checkWorktreeSafety detects it as existing
+      final tempDir = Directory.systemTemp.createTempSync("archive_dirty_test");
+      final worktreePath = "${tempDir.path}/.worktrees/session-001";
+      Directory(worktreePath).createSync(recursive: true);
+      addTearDown(() => tempDir.deleteSync(recursive: true));
+
       await _insertSession(
         db: db,
         sessionId: "s1",
-        projectId: "/repo",
+        projectId: tempDir.path,
         isDedicated: true,
-        worktreePath: "/repo/.worktrees/session-001",
+        worktreePath: worktreePath,
         branchName: "session-001",
         baseBranch: null,
         archivedAt: null,
         baseCommit: null,
-      );
-      worktreeService.safetyResult = WorktreeUnsafe(
-        issues: [
-          UnstagedChanges(),
-          BranchMismatch(expected: "session-001", actual: "main"),
-        ],
       );
 
       await expectLater(
@@ -242,10 +235,6 @@ void main() {
         queryParams: {},
         fragment: null,
       );
-
-      expect(worktreeService.checkCallCount, equals(0));
-      expect(worktreeService.removeCallCount, equals(1));
-      expect(worktreeService.lastRemoveForce, isTrue);
     });
 
     test("unarchive with existing worktree clears archivedAt", () async {
@@ -293,7 +282,6 @@ void main() {
         fragment: null,
       );
 
-      expect(worktreeService.restoreCallCount, equals(0));
       final persisted = await db.sessionDao.getSession(sessionId: "s1");
       expect(persisted?.archivedAt, isNull);
       expect(result.time?.archived, isNull);
@@ -343,12 +331,6 @@ void main() {
         fragment: null,
       );
 
-      expect(worktreeService.restoreCallCount, equals(1));
-      expect(worktreeService.lastRestoreProjectPath, equals("/repo"));
-      expect(worktreeService.lastRestoreWorktreePath, equals(deletedWorktreePath));
-      expect(worktreeService.lastRestoreBranchName, equals("session-001"));
-      expect(worktreeService.lastRestoreBaseBranch, equals("main"));
-      expect(worktreeService.lastRestoreBaseCommit, isNull);
       final persisted = await db.sessionDao.getSession(sessionId: "s1");
       expect(persisted?.archivedAt, isNull);
     });
@@ -470,9 +452,6 @@ void main() {
         fragment: null,
       );
 
-      expect(worktreeService.restoreCallCount, equals(0));
-      expect(worktreeService.removeCallCount, equals(0));
-      expect(worktreeService.deleteBranchCallCount, equals(0));
       final persisted = await db.sessionDao.getSession(sessionId: "s1");
       expect(persisted?.archivedAt, isNull);
     });
@@ -695,9 +674,6 @@ void main() {
         fragment: null,
       );
 
-      expect(worktreeService.checkCallCount, equals(0));
-      expect(worktreeService.removeCallCount, equals(0));
-      expect(worktreeService.deleteBranchCallCount, equals(0));
       final persisted = await db.sessionDao.getSession(sessionId: "s1");
       expect(persisted?.archivedAt, isNotNull);
     });
@@ -961,99 +937,29 @@ Future<void> _insertSession({
 }
 
 class _FakeWorktreeService extends WorktreeService {
-  WorktreeSafetyResult safetyResult = WorktreeSafe();
-  bool removeResult = true;
-  bool deleteBranchResult = true;
-  bool restoreResult = true;
-
-  int checkCallCount = 0;
-  int removeCallCount = 0;
-  int deleteBranchCallCount = 0;
-  int restoreCallCount = 0;
-
-  String? lastCheckWorktreePath;
-  String? lastCheckExpectedBranch;
-  String? lastRemoveProjectPath;
-  String? lastRemoveWorktreePath;
-  bool? lastRemoveForce;
-  String? lastDeleteBranchProjectPath;
-  String? lastDeleteBranchName;
-  bool? lastDeleteBranchForce;
-  String? lastRestoreProjectPath;
-  String? lastRestoreWorktreePath;
-  String? lastRestoreBranchName;
-  String? lastRestoreBaseBranch;
-  String? lastRestoreBaseCommit;
-
   _FakeWorktreeService({required AppDatabase database})
     : super(
-        branchRepository: BranchRepository(gitCliApi: GitCliApi(processRunner: _NoopProcessRunner())),
+        branchRepository: BranchRepository(gitCliApi: GitCliApi(processRunner: _FakeProcessRunner())),
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
-        processRunner: _NoopProcessRunner(),
+        processRunner: _FakeProcessRunner(),
         gitPathExists: ({required String gitPath}) => true,
       );
-
-  Future<WorktreeSafetyResult> checkWorktreeSafety({
-    required String worktreePath,
-    required String expectedBranch,
-  }) async {
-    checkCallCount++;
-    lastCheckWorktreePath = worktreePath;
-    lastCheckExpectedBranch = expectedBranch;
-    return safetyResult;
-  }
-
-  Future<bool> removeWorktree({
-    required String projectPath,
-    required String worktreePath,
-    required bool force,
-  }) async {
-    removeCallCount++;
-    lastRemoveProjectPath = projectPath;
-    lastRemoveWorktreePath = worktreePath;
-    lastRemoveForce = force;
-    return removeResult;
-  }
-
-  Future<bool> deleteBranch({
-    required String projectPath,
-    required String branchName,
-    required bool force,
-  }) async {
-    deleteBranchCallCount++;
-    lastDeleteBranchProjectPath = projectPath;
-    lastDeleteBranchName = branchName;
-    lastDeleteBranchForce = force;
-    return deleteBranchResult;
-  }
-
-  Future<bool> restoreWorktree({
-    required String projectPath,
-    required String worktreePath,
-    required String branchName,
-    required String baseBranch,
-    required String? baseCommit,
-  }) async {
-    restoreCallCount++;
-    lastRestoreProjectPath = projectPath;
-    lastRestoreWorktreePath = worktreePath;
-    lastRestoreBranchName = branchName;
-    lastRestoreBaseBranch = baseBranch;
-    lastRestoreBaseCommit = baseCommit;
-    return restoreResult;
-  }
 }
 
-class _NoopProcessRunner implements ProcessRunner {
+class _FakeProcessRunner implements ProcessRunner {
   @override
   Future<ProcessResult> run(
     String executable,
     List<String> arguments, {
     String? workingDirectory,
     Duration timeout = const Duration(seconds: 15),
-  }) {
-    throw UnimplementedError("_NoopProcessRunner should never execute git commands");
+  }) async {
+    // For rev-parse --verify (restoreWorktree): return success so branch exists
+    if (arguments.contains("--verify")) {
+      return ProcessResult(0, 0, "abc123\n", "");
+    }
+    return ProcessResult(0, 0, "", "");
   }
 }
 

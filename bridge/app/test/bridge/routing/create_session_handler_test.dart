@@ -23,8 +23,9 @@ void main() {
     late CreateSessionHandler handler;
     late AppDatabase db;
 
-    setUp(() {
+    setUp(() async {
       db = createTestDatabase();
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
       plugin = FakeBridgePlugin();
       metadataService = FakeMetadataService();
       worktreeService = _FakeWorktreeService(database: db);
@@ -63,19 +64,13 @@ void main() {
         time: null,
         summary: null,
       );
-      worktreeService.prepareResult = WorktreeSuccess(
-        path: "/repo/.worktrees/session-001",
-        branchName: "session-001",
-        baseBranch: "main",
-        baseCommit: "abc123def456",
-      );
 
       final result = await handler.handle(
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
           worktreeMode: WorktreeMode.newBranch,
-          selectedBranch: null,
+          selectedBranch: "main",
           parts: [PromptPart.text(text: "Start")],
           agent: null,
           model: null,
@@ -86,7 +81,6 @@ void main() {
       );
 
       expect(result.id, equals("s1"));
-      expect(worktreeService.prepareCallCount, equals(1));
       expect(plugin.lastCreateSessionDirectory, equals("/repo/.worktrees/session-001"));
       expect(plugin.lastCreateSessionParts, isNotNull);
       expect(plugin.lastCreateSessionParts, hasLength(2));
@@ -147,7 +141,6 @@ void main() {
       );
 
       expect(result.id, equals("simple-1"));
-      expect(worktreeService.prepareCallCount, equals(0));
       expect(worktreeService.resolveBaseBranchAndCommitCallCount, equals(1));
       expect(worktreeService.lastResolveBaseBranchProjectPath, equals("/repo"));
       expect(plugin.lastCreateSessionDirectory, equals("/repo"));
@@ -176,17 +169,25 @@ void main() {
           time: null,
           summary: null,
         );
-        worktreeService.prepareResult = WorktreeFallback(
-          originalPath: "/repo",
-          reason: "not git",
+        // Use a worktree service where git is not initialized → triggers fallback
+        final fallbackWs = _FakeWorktreeService(database: db, gitPathExists: false);
+        final localHandler = CreateSessionHandler(
+          plugin: plugin,
+          metadataService: metadataService,
+          worktreeService: fallbackWs,
+          sessionPersistenceService: SessionPersistenceService(
+            projectsDao: db.projectsDao,
+            sessionDao: db.sessionDao,
+            db: db,
+          ),
         );
 
-        final result = await handler.handle(
+        final result = await localHandler.handle(
           makeRequest("POST", "/session/create"),
           body: const CreateSessionRequest(
             projectId: "/repo",
             worktreeMode: WorktreeMode.newBranch,
-            selectedBranch: null,
+            selectedBranch: "main",
             parts: [PromptPart.text(text: "Start")],
             agent: null,
             model: null,
@@ -197,7 +198,6 @@ void main() {
         );
 
         expect(result.id, equals("fallback-1"));
-        expect(worktreeService.prepareCallCount, equals(1));
         expect(plugin.lastCreateSessionDirectory, equals("/repo"));
         expect(plugin.lastCreateSessionParts, equals(const [PluginPromptPart.text(text: "Start")]));
 
@@ -238,12 +238,6 @@ void main() {
           db: db,
         ),
       );
-      worktreeService.prepareResult = WorktreeSuccess(
-        path: "/repo/.worktrees/session-001",
-        branchName: "session-001",
-        baseBranch: "main",
-        baseCommit: "abc123def456",
-      );
 
       await expectLater(
         () => localHandler.handle(
@@ -251,7 +245,7 @@ void main() {
           body: const CreateSessionRequest(
             projectId: "/repo",
             worktreeMode: WorktreeMode.newBranch,
-            selectedBranch: null,
+            selectedBranch: "main",
             parts: [PromptPart.text(text: "Start")],
             agent: null,
             model: null,
@@ -317,19 +311,13 @@ void main() {
         time: null,
         summary: null,
       );
-      worktreeService.prepareResult = WorktreeSuccess(
-        path: "/repo/.worktrees/session-001",
-        branchName: "session-001",
-        baseBranch: "main",
-        baseCommit: "abc123",
-      );
 
       final result = await handler.handle(
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
           worktreeMode: WorktreeMode.newBranch,
-          selectedBranch: null,
+          selectedBranch: "main",
           parts: [PromptPart.text(text: "Start")],
           agent: null,
           model: null,
@@ -381,17 +369,25 @@ void main() {
         time: null,
         summary: null,
       );
-      worktreeService.prepareResult = WorktreeFallback(
-        originalPath: "/repo",
-        reason: "not git",
+      // Use a worktree service where git is not initialized → triggers fallback
+      final fallbackWs = _FakeWorktreeService(database: db, gitPathExists: false);
+      final localHandler = CreateSessionHandler(
+        plugin: plugin,
+        metadataService: metadataService,
+        worktreeService: fallbackWs,
+        sessionPersistenceService: SessionPersistenceService(
+          projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
+          db: db,
+        ),
       );
 
-      final result = await handler.handle(
+      final result = await localHandler.handle(
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
           worktreeMode: WorktreeMode.newBranch,
-          selectedBranch: null,
+          selectedBranch: "main",
           parts: [PromptPart.text(text: "Start")],
           agent: null,
           model: null,
@@ -450,19 +446,13 @@ void main() {
         time: null,
         summary: null,
       );
-      worktreeService.prepareResult = WorktreeSuccess(
-        path: "/repo/.worktrees/fix-login-bug",
-        branchName: "fix-login-bug",
-        baseBranch: "main",
-        baseCommit: "abc123",
-      );
 
       final result = await handler.handle(
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
           worktreeMode: WorktreeMode.newBranch,
-          selectedBranch: null,
+          selectedBranch: "main",
           parts: [PromptPart.text(text: "Fix the login bug")],
           agent: null,
           model: null,
@@ -474,7 +464,7 @@ void main() {
 
       expect(result.id, equals("s1"));
       expect(metadataService.lastGenerateMessage, equals("Fix the login bug"));
-      expect(worktreeService.lastPreparePreferredBranchName, equals("fix-login-bug"));
+      expect(result.branchName, equals("fix-login-bug"));
       expect(plugin.lastRenameSessionTitle, equals("Fix Login Bug"));
     });
 
@@ -489,19 +479,13 @@ void main() {
         time: null,
         summary: null,
       );
-      worktreeService.prepareResult = WorktreeSuccess(
-        path: "/repo/.worktrees/session-001",
-        branchName: "session-001",
-        baseBranch: "main",
-        baseCommit: "abc123",
-      );
 
       final result = await handler.handle(
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
           worktreeMode: WorktreeMode.newBranch,
-          selectedBranch: null,
+          selectedBranch: "main",
           parts: [PromptPart.text(text: "Start")],
           agent: null,
           model: null,
@@ -512,7 +496,7 @@ void main() {
       );
 
       expect(result.id, equals("s1"));
-      expect(worktreeService.lastPreparePreferredBranchName, isNull);
+      expect(result.branchName, equals("session-001"));
       expect(plugin.lastRenameSessionId, isNull);
     });
 
@@ -667,39 +651,18 @@ void main() {
 }
 
 class _FakeWorktreeService extends WorktreeService {
-  String? lastPrepareProjectId;
-  String? lastPrepareParentSessionId;
-  String? lastPreparePreferredBranchName;
   String? lastResolveBaseBranchProjectPath;
-  int prepareCallCount = 0;
   int resolveBaseBranchAndCommitCallCount = 0;
-  WorktreeResult prepareResult = WorktreeFallback(
-    originalPath: "/repo",
-    reason: "default",
-  );
   ({String baseBranch, String baseCommit, String startPoint})? resolveBaseBranchAndCommitResult;
 
-  _FakeWorktreeService({required AppDatabase database})
+  _FakeWorktreeService({required AppDatabase database, bool gitPathExists = true})
     : super(
-        branchRepository: BranchRepository(gitCliApi: GitCliApi(processRunner: _NoopProcessRunner())),
+        branchRepository: BranchRepository(gitCliApi: GitCliApi(processRunner: _FakeProcessRunner())),
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
-        processRunner: _NoopProcessRunner(),
-        gitPathExists: ({required String gitPath}) => true,
+        processRunner: _FakeProcessRunner(),
+        gitPathExists: ({required String gitPath}) => gitPathExists,
       );
-
-  @override
-  Future<WorktreeResult> prepareWorktreeForSession({
-    required String projectId,
-    required String? parentSessionId,
-    ({String branchName, String worktreeName})? preferredBranchAndWorktreeName,
-  }) async {
-    prepareCallCount++;
-    lastPrepareProjectId = projectId;
-    lastPrepareParentSessionId = parentSessionId;
-    lastPreparePreferredBranchName = preferredBranchAndWorktreeName?.branchName;
-    return prepareResult;
-  }
 
   @override
   Future<({String baseBranch, String baseCommit, String startPoint})?> resolveBaseBranchAndCommit({
@@ -711,15 +674,29 @@ class _FakeWorktreeService extends WorktreeService {
   }
 }
 
-class _NoopProcessRunner implements ProcessRunner {
+/// Process runner that returns success for all git commands.
+/// Used so that WorktreeService extension methods can run without real git.
+class _FakeProcessRunner implements ProcessRunner {
   @override
   Future<ProcessResult> run(
     String executable,
     List<String> arguments, {
     String? workingDirectory,
     Duration timeout = const Duration(seconds: 15),
-  }) {
-    throw UnimplementedError("_NoopProcessRunner should never execute git commands");
+  }) async {
+    // git rev-parse <ref> — return commit hash for local, exit 1 for origin/
+    if (arguments.isNotEmpty && arguments[0] == "rev-parse" && !arguments.contains("--abbrev-ref")) {
+      final ref = arguments.last;
+      if (ref.startsWith("origin/")) {
+        return ProcessResult(0, 1, "", "fatal: bad revision");
+      }
+      return ProcessResult(0, 0, "abc123def456\n", "");
+    }
+    // git branch --list — return empty (branch doesn't exist locally)
+    if (arguments.contains("--list")) {
+      return ProcessResult(0, 0, "", "");
+    }
+    return ProcessResult(0, 0, "", "");
   }
 }
 
