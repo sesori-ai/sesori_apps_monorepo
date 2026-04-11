@@ -139,6 +139,13 @@ void main() {
       expect(response.body, equals("no handler found for GET /unknown"));
     });
 
+    test("GET /session/{id}/shell remains unsupported in RequestRouter", () async {
+      final response = await router.route(makeRequest("GET", "/session/abc/shell"));
+
+      expect(response.status, equals(404));
+      expect(response.body, equals("no handler found for GET /session/abc/shell"));
+    });
+
     test("routes POST /session/create to CreateSessionHandler", () async {
       plugin.createSessionResult = const PluginSession(
         id: "s1",
@@ -226,12 +233,12 @@ void main() {
       expect(response.body, contains("Internal Server Error"));
     });
 
-    test("returns 500 when handler throws PluginApiException", () async {
+    test("returns plugin status when handler throws PluginApiException", () async {
       plugin.throwOnGetProjectsError = PluginApiException("/projects", 404);
 
       final response = await router.route(makeRequest("GET", "/projects"));
 
-      expect(response.status, equals(500));
+      expect(response.status, equals(404));
       expect(response.body, contains("PluginApiException"));
     });
 

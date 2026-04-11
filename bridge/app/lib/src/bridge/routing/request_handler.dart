@@ -1,5 +1,6 @@
 import "dart:convert";
 
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 /// HTTP methods supported by [RequestHandler].
@@ -49,6 +50,8 @@ abstract class GetRequestHandler<RES extends Object> extends RequestHandlerBase 
       );
 
       return buildOkJsonResponse(request, result);
+    } on PluginApiException catch (err) {
+      return buildErrorResponse(request, err.statusCode, err.toString());
     } on RelayResponse catch (err) {
       if (err.status >= 200 && err.status < 300) {
         // we don't expect to throw success responses from handleBody
@@ -106,6 +109,8 @@ abstract class BodyRequestHandler<REQ, RES extends Object> extends RequestHandle
       );
 
       return buildOkJsonResponse(request, result);
+    } on PluginApiException catch (err) {
+      return buildErrorResponse(request, err.statusCode, err.toString());
     } on RelayResponse catch (err) {
       if (err.status >= 200 && err.status < 300) {
         // we don't expect to throw success responses from handleBody

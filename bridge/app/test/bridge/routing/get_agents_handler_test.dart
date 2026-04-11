@@ -60,6 +60,28 @@ void main() {
       expect(agent.model, equals(const AgentModel(modelID: "gpt-4o", providerID: "openai")));
     });
 
+    test("maps unknown plugin agent modes to AgentMode.unknown", () async {
+      plugin.agentsResult = [
+        const PluginAgent(
+          name: "tolerant-agent",
+          description: null,
+          model: null,
+          variant: null,
+          mode: PluginAgentMode.unknown,
+          hidden: false,
+        ),
+      ];
+
+      final response = await handler.handle(
+        makeRequest("GET", "/agent"),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response.agents.single.mode, equals(AgentMode.unknown));
+    });
+
     test("handles agents with and without model", () async {
       plugin.agentsResult = [
         const PluginAgent(
