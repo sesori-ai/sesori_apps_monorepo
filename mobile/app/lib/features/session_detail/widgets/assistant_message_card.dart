@@ -1,7 +1,7 @@
 import "package:flutter/material.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "agent_part_widget.dart";
-import "reasoning_part_widget.dart";
+import "reasoning_part_card.dart";
 import "retry_part_widget.dart";
 import "subtask_part_widget.dart";
 import "text_part_widget.dart";
@@ -58,10 +58,12 @@ class AssistantMessageCard extends StatelessWidget {
         text: streaming ?? part.text ?? "",
         isStreaming: streaming != null,
       ),
-      MessagePartType.reasoning => ReasoningPartWidget(
+      MessagePartType.reasoning => ReasoningPartCard(
         key: ValueKey(part.id),
         text: streaming ?? part.text ?? "",
         isStreaming: streaming != null,
+        partId: part.id,
+        messageId: message.info.id,
       ),
       MessagePartType.tool => ToolPartWidget(key: ValueKey(part.id), part: part),
       MessagePartType.subtask => SubtaskPartWidget(

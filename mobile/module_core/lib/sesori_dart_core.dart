@@ -45,6 +45,7 @@ export "src/cubits/notification_preferences/notification_preferences_state.dart"
 export "src/cubits/project_list/project_list_cubit.dart";
 export "src/cubits/project_list/project_list_state.dart";
 export "src/cubits/session_detail/session_detail_cubit.dart";
+export "src/cubits/session_detail/session_detail_resolvers.dart";
 export "src/cubits/session_detail/session_detail_state.dart";
 export "src/cubits/session_diffs/diff_cubit.dart";
 export "src/cubits/session_diffs/diff_state.dart";
