@@ -238,6 +238,11 @@ class ActiveSessionTracker {
     return _sessionDirectories[sessionId];
   }
 
+  /// Resolves the canonical worktree for a raw session directory.
+  String? resolveProjectWorktree({required String directory}) {
+    return _resolveWorktree(directory);
+  }
+
   /// Returns the current status of every session the tracker considers
   /// active (busy or retry).
   ///

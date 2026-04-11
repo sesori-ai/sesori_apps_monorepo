@@ -128,7 +128,11 @@ class OpenCodePlugin implements BridgePlugin {
         directory: session.directory,
       );
     }
-    return sessions.map((session) => session.toPlugin()).toList();
+    return sessions
+        .map(
+          (session) => session.toPlugin(projectID: _resolveCanonicalProjectID(session, projectId)),
+        )
+        .toList();
   }
 
   @override
@@ -160,7 +164,7 @@ class OpenCodePlugin implements BridgePlugin {
       ),
     );
 
-    return session.toPlugin();
+    return session.toPlugin(projectID: _resolveCanonicalProjectID(session, directory));
   }
 
   @override
@@ -184,7 +188,7 @@ class OpenCodePlugin implements BridgePlugin {
         body: {"title": title},
       ),
     );
-    return session.toPlugin();
+    return session.toPlugin(projectID: _resolveCanonicalProjectID(session, session.projectID));
   }
 
   @override
@@ -196,7 +200,13 @@ class OpenCodePlugin implements BridgePlugin {
         directory: directory,
       ),
     );
-    return sessions.map((session) => session.toPlugin()).toList();
+    return sessions
+        .map(
+          (session) => session.toPlugin(
+            projectID: _resolveCanonicalProjectID(session, session.projectID),
+          ),
+        )
+        .toList();
   }
 
   @override
@@ -395,7 +405,7 @@ class OpenCodePlugin implements BridgePlugin {
         _emitProjectsSummary();
       }
 
-      final bridgeEvent = _mapper.map(event);
+      final bridgeEvent = _mapper.map(_canonicalizeEvent(event));
       if (bridgeEvent != null) {
         _eventBuffer.add(bridgeEvent);
       }
@@ -406,6 +416,29 @@ class OpenCodePlugin implements BridgePlugin {
 
   void _emitProjectsSummary() {
     _eventBuffer.add(const BridgeSseProjectUpdated());
+  }
+
+  Session _canonicalizeSession(Session session, String fallbackProjectID) {
+    return session.copyWith(projectID: _resolveCanonicalProjectID(session, fallbackProjectID));
+  }
+
+  String _resolveCanonicalProjectID(Session session, String fallbackProjectID) {
+    return _service.tracker.resolveProjectWorktree(directory: session.directory) ?? fallbackProjectID;
+  }
+
+  SseEventData _canonicalizeEvent(SseEventData event) {
+    return switch (event) {
+      SseSessionCreated(:final info) => SseEventData.sessionCreated(
+        info: _canonicalizeSession(info, info.projectID),
+      ),
+      SseSessionUpdated(:final info) => SseEventData.sessionUpdated(
+        info: _canonicalizeSession(info, info.projectID),
+      ),
+      SseSessionDeleted(:final info) => SseEventData.sessionDeleted(
+        info: _canonicalizeSession(info, info.projectID),
+      ),
+      _ => event,
+    };
   }
 
   PluginMessageWithParts _mapMessage(MessageWithParts raw) {

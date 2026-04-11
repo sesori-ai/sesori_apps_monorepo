@@ -112,6 +112,17 @@ void main() {
 
         expect(tracker.getSessionDirectory(sessionId: "s1"), isNull);
       });
+
+      test("resolveProjectWorktree returns canonical root for subdirectory sessions", () {
+        final tracker = ActiveSessionTracker(_fakeRepository());
+
+        tracker.updateProjectWorktrees(worktrees: {"/repo"});
+
+        expect(
+          tracker.resolveProjectWorktree(directory: "/repo/packages/foo"),
+          equals("/repo"),
+        );
+      });
     });
 
     group("getActiveStatuses", () {
