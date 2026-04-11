@@ -97,9 +97,6 @@ class BranchListCubit extends Cubit<BranchListState> {
   }
 
   List<WorktreeMode> _computeAvailableModes({required BranchInfo branch}) {
-    if (branch.worktreePath != null) {
-      return const [WorktreeMode.stayOnBranch];
-    }
     return const [WorktreeMode.stayOnBranch, WorktreeMode.newBranch];
   }
 

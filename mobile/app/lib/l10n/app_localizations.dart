@@ -1255,6 +1255,30 @@ abstract class AppLocalizations {
   /// **'Create new branch from this'**
   String get branchPickerModeNew;
 
+  /// No description provided for @branchPickerModeStayDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue directly on the selected branch. If a worktree already exists, Sesori will reuse it.'**
+  String get branchPickerModeStayDescription;
+
+  /// No description provided for @branchPickerModeNewDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Start a fresh branch and worktree from the selected branch.'**
+  String get branchPickerModeNewDescription;
+
+  /// No description provided for @branchPickerActionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How should Sesori start from {branch}?'**
+  String branchPickerActionTitle(String branch);
+
+  /// No description provided for @branchPickerConfirmSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get branchPickerConfirmSelection;
+
   /// No description provided for @branchPickerLoadError.
   ///
   /// In en, this message translates to:

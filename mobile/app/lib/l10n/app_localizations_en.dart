@@ -652,6 +652,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get branchPickerModeNew => 'Create new branch from this';
 
   @override
+  String get branchPickerModeStayDescription =>
+      'Continue directly on the selected branch. If a worktree already exists, Sesori will reuse it.';
+
+  @override
+  String get branchPickerModeNewDescription => 'Start a fresh branch and worktree from the selected branch.';
+
+  @override
+  String branchPickerActionTitle(String branch) {
+    return 'How should Sesori start from $branch?';
+  }
+
+  @override
+  String get branchPickerConfirmSelection => 'Continue';
+
+  @override
   String get branchPickerLoadError => 'Could not load branches';
 
   @override

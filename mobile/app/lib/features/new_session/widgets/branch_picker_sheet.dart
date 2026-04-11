@@ -8,7 +8,7 @@ import "../../../core/di/injection.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/widgets/app_modal_bottom_sheet.dart";
 import "../../../l10n/app_localizations.dart";
-import "branch_mode_picker_dialog.dart";
+import "branch_picker_selection_panel.dart";
 
 /// Result returned by [BranchPickerSheet] when a selection is confirmed.
 typedef BranchPickerResult = ({WorktreeMode mode, String? branch});
@@ -112,6 +112,14 @@ class _BranchPickerBody extends StatelessWidget {
             BranchListLoaded() => _BranchList(state: state),
           },
         ),
+        if (state case BranchListLoaded(:final selectedBranch) when selectedBranch != null)
+          BranchPickerSelectionPanel(
+            state: state,
+            onModeSelected: (mode) => context.read<BranchListCubit>().selectMode(mode: mode),
+            onConfirm: () => context.pop<BranchPickerResult>(
+              (mode: state.selectedMode!, branch: state.selectedBranch!.name),
+            ),
+          ),
       ],
     );
   }
@@ -162,10 +170,7 @@ class _BranchList extends StatelessWidget {
                   ),
                 )
               : null,
-          onTap: () {
-            context.read<BranchListCubit>().selectBranch(branch: branch);
-            _showModeSelector(context: context, branch: branch);
-          },
+          onTap: () => context.read<BranchListCubit>().selectBranch(branch: branch),
         );
       },
     );
@@ -189,34 +194,6 @@ class _BranchList extends StatelessWidget {
       _ => "now",
     };
     return Text(loc.branchPickerTimeAgo(timeAgo));
-  }
-
-  void _showModeSelector({
-    required BuildContext context,
-    required BranchInfo branch,
-  }) {
-    final cubit = context.read<BranchListCubit>();
-    final loaded = cubit.state;
-    if (loaded is! BranchListLoaded) return;
-
-    final availableModes = loaded.availableModes;
-    if (availableModes.isEmpty) return;
-
-    if (availableModes.length == 1) {
-      final mode = availableModes.first;
-      cubit.selectMode(mode: mode);
-      context.pop<BranchPickerResult>((mode: mode, branch: branch.name));
-      return;
-    }
-
-    BranchModePickerDialog.show(
-      context: context,
-      modes: availableModes,
-      onModeSelected: (mode) {
-        cubit.selectMode(mode: mode);
-        context.pop<BranchPickerResult>((mode: mode, branch: branch.name));
-      },
-    );
   }
 }
 

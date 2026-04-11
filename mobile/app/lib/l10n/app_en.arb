@@ -330,9 +330,20 @@
            }
          },
          "branchPickerRemote": "remote",
-         "branchPickerModeStay": "Stay on this branch",
-         "branchPickerModeNew": "Create new branch from this",
-         "branchPickerLoadError": "Could not load branches",
+  "branchPickerModeStay": "Stay on this branch",
+  "branchPickerModeNew": "Create new branch from this",
+  "branchPickerModeStayDescription": "Continue directly on the selected branch. If a worktree already exists, Sesori will reuse it.",
+  "branchPickerModeNewDescription": "Start a fresh branch and worktree from the selected branch.",
+  "branchPickerActionTitle": "How should Sesori start from {branch}?",
+  "@branchPickerActionTitle": {
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
+  "branchPickerConfirmSelection": "Continue",
+  "branchPickerLoadError": "Could not load branches",
          "branchPickerUsingProjectDir": "Using project directory",
          "branchPickerSelectedBranch": "Branch: {branch}",
          "@branchPickerSelectedBranch": {

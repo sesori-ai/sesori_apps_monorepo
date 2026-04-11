@@ -262,7 +262,7 @@ void main() {
     );
 
     blocTest<BranchListCubit, BranchListState>(
-      "selectBranch with worktreePath offers only stayOnBranch",
+      "selectBranch with worktreePath still offers stayOnBranch and newBranch",
       build: () {
         when(
           () => mockProjectRepository.listBranches(projectId: _projectId),
@@ -288,7 +288,7 @@ void main() {
             .having(
               (s) => s.availableModes,
               "availableModes",
-              [WorktreeMode.stayOnBranch],
+              [WorktreeMode.stayOnBranch, WorktreeMode.newBranch],
             ),
       ],
     );
@@ -394,7 +394,11 @@ void main() {
         isA<BranchListLoaded>()
             .having((s) => s.selectedBranch, "second selection", _branchWithWorktree)
             .having((s) => s.selectedMode, "mode reset", isNull)
-            .having((s) => s.availableModes, "modes for worktree branch", [WorktreeMode.stayOnBranch]),
+            .having(
+              (s) => s.availableModes,
+              "modes for worktree branch",
+              [WorktreeMode.stayOnBranch, WorktreeMode.newBranch],
+            ),
       ],
     );
 
