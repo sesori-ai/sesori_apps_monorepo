@@ -985,7 +985,7 @@ void main() {
     test("stayOnBranch reuses existing project checkout", () async {
       processRunner.enqueue(result: _ok());
       processRunner.enqueue(result: _ok(stdout: "branch-sha\n"));
-      processRunner.enqueue(result: _ok(stdout: "branch-sha\n"));
+      processRunner.enqueue(result: _ok(stdout: "\n"));
       processRunner.enqueue(
         result: _ok(stdout: "worktree $_projectId\nHEAD branch-sha\nbranch refs/heads/feature/test\n\n"),
       );
@@ -1008,6 +1008,7 @@ void main() {
     test("stayOnBranch creates tracking worktree for remote-only branch", () async {
       processRunner.enqueue(result: _ok());
       processRunner.enqueue(result: _fail(exitCode: 128));
+      processRunner.enqueue(result: _ok(stdout: "origin\n"));
       processRunner.enqueue(result: _ok(stdout: "remote-sha\n"));
       processRunner.enqueue(result: _ok(stdout: ""));
       processRunner.enqueue(result: _ok(stdout: ""));
@@ -1042,7 +1043,7 @@ void main() {
     test("newBranch creates dedicated worktree from selected branch", () async {
       processRunner.enqueue(result: _ok());
       processRunner.enqueue(result: _ok(stdout: "branch-sha\n"));
-      processRunner.enqueue(result: _ok(stdout: "branch-sha\n"));
+      processRunner.enqueue(result: _ok(stdout: "\n"));
       processRunner.enqueue(result: _ok(stdout: ""));
       processRunner.enqueue(result: _ok());
 

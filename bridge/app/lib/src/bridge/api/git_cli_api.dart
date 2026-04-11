@@ -26,6 +26,10 @@ class GitCliApi {
     );
   }
 
+  Future<ProcessResult> listRemotes({required String workingDirectory}) {
+    return _processRunner.run("git", const ["remote"], workingDirectory: workingDirectory);
+  }
+
   Future<ProcessResult> listWorktrees({required String workingDirectory}) {
     return _processRunner.run(
       "git",

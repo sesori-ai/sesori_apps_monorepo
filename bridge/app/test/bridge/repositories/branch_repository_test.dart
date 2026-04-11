@@ -10,6 +10,7 @@ void main() {
     test("parses branches, deduplicates local vs remote, enriches with worktrees", () async {
       final runner = _ScriptedProcessRunner({
         ["fetch", "--all"]: ProcessResult(0, 0, "", ""),
+        ["remote"]: ProcessResult(0, 0, "origin\n", ""),
         ["branch", "-a"]: ProcessResult(
           0,
           0,
@@ -51,6 +52,7 @@ void main() {
     test("skips HEAD entries", () async {
       final runner = _ScriptedProcessRunner({
         ["fetch", "--all"]: ProcessResult(0, 0, "", ""),
+        ["remote"]: ProcessResult(0, 0, "origin\n", ""),
         ["branch", "-a"]: ProcessResult(
           0,
           0,
@@ -71,6 +73,7 @@ void main() {
     test("handles empty branch list", () async {
       final runner = _ScriptedProcessRunner({
         ["fetch", "--all"]: ProcessResult(0, 0, "", ""),
+        ["remote"]: ProcessResult(0, 0, "origin\n", ""),
         ["branch", "-a"]: ProcessResult(0, 0, "", ""),
         ["worktree", "list", "--porcelain"]: ProcessResult(0, 0, "", ""),
         ["rev-parse", "--abbrev-ref", "HEAD"]: ProcessResult(0, 0, "\n", ""),
@@ -86,6 +89,7 @@ void main() {
     test("fetch failure is swallowed (best-effort)", () async {
       final runner = _ScriptedProcessRunner({
         ["fetch", "--all"]: ProcessResult(0, 128, "", "fatal: could not read from remote"),
+        ["remote"]: ProcessResult(0, 0, "origin\n", ""),
         ["branch", "-a"]: ProcessResult(0, 0, "main 100\n", ""),
         ["worktree", "list", "--porcelain"]: ProcessResult(0, 0, "", ""),
         ["rev-parse", "--abbrev-ref", "HEAD"]: ProcessResult(0, 0, "main\n", ""),
@@ -101,6 +105,7 @@ void main() {
     test("worktree enrichment maps branch to path correctly", () async {
       final runner = _ScriptedProcessRunner({
         ["fetch", "--all"]: ProcessResult(0, 0, "", ""),
+        ["remote"]: ProcessResult(0, 0, "origin\n", ""),
         ["branch", "-a"]: ProcessResult(0, 0, "main 100\nsession-001 200\n", ""),
         ["worktree", "list", "--porcelain"]: ProcessResult(
           0,
@@ -125,6 +130,7 @@ void main() {
     test("branches without timestamps have null lastCommitTimestamp", () async {
       final runner = _ScriptedProcessRunner({
         ["fetch", "--all"]: ProcessResult(0, 0, "", ""),
+        ["remote"]: ProcessResult(0, 0, "origin\n", ""),
         ["branch", "-a"]: ProcessResult(0, 0, "main\nfeature-x\n", ""),
         ["worktree", "list", "--porcelain"]: ProcessResult(0, 0, "", ""),
         ["rev-parse", "--abbrev-ref", "HEAD"]: ProcessResult(0, 0, "main\n", ""),
@@ -135,6 +141,28 @@ void main() {
 
       expect(response.branches, hasLength(2));
       expect(response.branches[0].lastCommitTimestamp, isNull);
+    });
+
+    test("supports remote-only branches from non-origin remotes", () async {
+      final runner = _ScriptedProcessRunner({
+        ["fetch", "--all"]: ProcessResult(0, 0, "", ""),
+        ["remote"]: ProcessResult(0, 0, "upstream\n", ""),
+        ["branch", "-a"]: ProcessResult(
+          0,
+          0,
+          "main 1700000000\nupstream/feature-b 1700000200\n",
+          "",
+        ),
+        ["worktree", "list", "--porcelain"]: ProcessResult(0, 0, "", ""),
+        ["rev-parse", "--abbrev-ref", "HEAD"]: ProcessResult(0, 0, "main\n", ""),
+      });
+
+      final repo = BranchRepository(gitCliApi: GitCliApi(processRunner: runner));
+      final response = await repo.listBranches(projectPath: "/repo");
+
+      expect(response.branches, hasLength(2));
+      final featureB = response.branches.firstWhere((b) => b.name == "feature-b");
+      expect(featureB.isRemoteOnly, isTrue);
     });
   });
 
@@ -164,6 +192,24 @@ void main() {
       final path = await repo.getWorktreeForBranch(projectPath: "/repo", branchName: "missing");
 
       expect(path, isNull);
+    });
+  });
+
+  group("BranchRepository.resolveStartPointForBranch", () {
+    test("uses non-origin remote refs for remote-only branches", () async {
+      final runner = _ScriptedProcessRunner({
+        ["remote"]: ProcessResult(0, 0, "upstream\n", ""),
+        ["rev-parse", "feature-b"]: ProcessResult(0, 128, "", ""),
+        ["rev-parse", "upstream/feature-b"]: ProcessResult(0, 0, "abc123\n", ""),
+      });
+
+      final repo = BranchRepository(gitCliApi: GitCliApi(processRunner: runner));
+      final startPoint = await repo.resolveStartPointForBranch(
+        projectPath: "/repo",
+        branchName: "feature-b",
+      );
+
+      expect(startPoint, equals((ref: "upstream/feature-b", commit: "abc123")));
     });
   });
 }
