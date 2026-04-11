@@ -8,6 +8,24 @@ import "../opencode_plugin.dart";
 import "sse/sse_connection.dart";
 import "sse_event_mapper.dart";
 
+String formatDroppedSseFrameLog({
+  required String category,
+  required String message,
+  String? directory,
+  String? eventType,
+}) {
+  final context = <String>[];
+  if (directory != null) {
+    context.add("directory=$directory");
+  }
+  if (eventType != null) {
+    context.add("eventType=$eventType");
+  }
+
+  final suffix = context.isEmpty ? "" : " [${context.join(", ")}]";
+  return "[opencode][sse][$category]$suffix $message";
+}
+
 class OpenCodePlugin implements BridgePlugin {
   final OpenCodeService _service;
   final SseEventParser _parser;
@@ -397,21 +415,68 @@ class OpenCodePlugin implements BridgePlugin {
   void _handleRawSseEvent(String rawData) {
     try {
       final parseResult = _parser.parse(rawData);
-      final event = parseResult.event;
-      if (event == null) return;
+      switch (parseResult.outcome) {
+        case SseParseOutcome.validKnownEvent:
+          final event = parseResult.event;
+          if (event == null) {
+            Log.e("[opencode] SSE parser reported validKnownEvent without an event instance.");
+            return;
+          }
 
-      final changed = _service.handleSseEvent(event, parseResult.directory);
-      if (changed) {
-        _emitProjectsSummary();
-      }
+          final changed = _service.handleSseEvent(event, parseResult.directory);
+          if (changed) {
+            _emitProjectsSummary();
+          }
 
-      final bridgeEvent = _mapper.map(_canonicalizeEvent(event));
-      if (bridgeEvent != null) {
-        _eventBuffer.add(bridgeEvent);
+          final bridgeEvent = _mapper.map(_canonicalizeEvent(event));
+          if (bridgeEvent != null) {
+            _eventBuffer.add(bridgeEvent);
+          }
+          return;
+        case SseParseOutcome.unknownEventType:
+          _logDroppedSseFrame(
+            category: "unknown-event-type",
+            message: "Ignoring SSE frame with unknown event type.",
+            directory: parseResult.directory,
+            eventType: parseResult.eventType,
+          );
+          return;
+        case SseParseOutcome.malformedEnvelope:
+          _logDroppedSseFrame(
+            category: "malformed-envelope",
+            message: "Ignoring malformed SSE envelope.",
+            directory: parseResult.directory,
+            eventType: parseResult.eventType,
+          );
+          return;
+        case SseParseOutcome.malformedKnownPayload:
+          _logDroppedSseFrame(
+            category: "malformed-known-payload",
+            message: "Ignoring malformed payload for known SSE event.",
+            directory: parseResult.directory,
+            eventType: parseResult.eventType,
+          );
+          return;
       }
     } catch (e, st) {
       Log.e("[opencode] SSE event processing error: $e\n$st");
     }
+  }
+
+  void _logDroppedSseFrame({
+    required String category,
+    required String message,
+    String? directory,
+    String? eventType,
+  }) {
+    Log.w(
+      formatDroppedSseFrameLog(
+        category: category,
+        message: message,
+        directory: directory,
+        eventType: eventType,
+      ),
+    );
   }
 
   void _emitProjectsSummary() {
