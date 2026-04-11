@@ -70,7 +70,7 @@ void main() {
       expect(result.rawData, equals(rawData));
     });
 
-    test("parses legacy 1.3 session.diff payload with diff array", () {
+    test("parses 1.4 session.diff payload with patch-based diff array", () {
       final parser = SseEventParser();
       final rawData = jsonEncode({
         "directory": "/repo",
@@ -81,8 +81,7 @@ void main() {
             "diff": [
               {
                 "file": "lib/main.dart",
-                "before": "old",
-                "after": "new",
+                "patch": "@@ -1 +1 @@\n-old\n+new",
                 "additions": 1,
                 "deletions": 1,
                 "status": "modified",
@@ -103,9 +102,10 @@ void main() {
       expect(event.sessionID, equals("s1"));
       expect(event.diff, hasLength(1));
       expect(event.diff.single.file, equals("lib/main.dart"));
+      expect(event.diff.single.patch, contains("+new"));
     });
 
-    test("parses 1.4 session.diff payload without legacy diff array", () {
+    test("session.diff without diff array is categorized as malformed known payload", () {
       final parser = SseEventParser();
       final rawData = jsonEncode({
         "directory": "/repo",
@@ -113,25 +113,16 @@ void main() {
           "type": "session.diff",
           "properties": {
             "sessionID": "s1",
-            "summary": {
-              "files": 2,
-              "additions": 12,
-              "deletions": 3,
-            },
           },
         },
       });
 
       final result = parser.parse(rawData);
 
-      expect(result.outcome, equals(SseParseOutcome.validKnownEvent));
-      expect(result.rawData, equals(rawData));
-      expect(result.event, isA<SseSessionDiff>());
+      expect(result.outcome, equals(SseParseOutcome.malformedKnownPayload));
+      expect(result.event, isNull);
       expect(result.eventType, equals("session.diff"));
-
-      final event = result.event! as SseSessionDiff;
-      expect(event.sessionID, equals("s1"));
-      expect(event.diff, isEmpty);
+      expect(result.rawData, equals(rawData));
     });
 
     test(

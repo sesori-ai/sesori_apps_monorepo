@@ -1,6 +1,5 @@
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
-import "models/file_diff.dart";
 import "models/sse_event_data.dart";
 
 enum SseParseOutcome {
@@ -129,41 +128,7 @@ class SseEventParser {
   }
 
   SseEventData _parseKnownEvent({required String type, required Map<String, dynamic> properties}) {
-    if (type == "session.diff") {
-      return _parseSessionDiff(properties: properties);
-    }
-
     return SseEventData.fromJson({"type": type, ...properties});
-  }
-
-  SseSessionDiff _parseSessionDiff({required Map<String, dynamic> properties}) {
-    // OpenCode 1.4 treats session.diff as an invalidation signal. Older
-    // payloads may still include legacy diff/diffs arrays, so we normalize
-    // both shapes into the shared event model here.
-    final sessionID = properties["sessionID"];
-    if (sessionID is! String) {
-      throw const FormatException("session.diff requires string sessionID");
-    }
-
-    return SseEventData.sessionDiff(
-          sessionID: sessionID,
-          diff: _extractLegacyDiffList(properties: properties),
-        )
-        as SseSessionDiff;
-  }
-
-  List<FileDiff> _extractLegacyDiffList({required Map<String, dynamic> properties}) {
-    final legacyDiff = properties["diff"];
-    if (legacyDiff is List) {
-      return legacyDiff.map((item) => FileDiff.fromJson(Map<String, dynamic>.from(item as Map))).toList();
-    }
-
-    final alternateDiff = properties["diffs"];
-    if (alternateDiff is List) {
-      return alternateDiff.map((item) => FileDiff.fromJson(Map<String, dynamic>.from(item as Map))).toList();
-    }
-
-    return const <FileDiff>[];
   }
 }
 

@@ -18,7 +18,7 @@ OpenCodeApi             HTTP client — raw requests to the OpenCode REST API
 
 `SseConnection` runs alongside this stack, maintaining a persistent SSE connection to `GET /global/event` and feeding raw event strings to `OpenCodePlugin`. `SseEventParser` translates those strings into typed `SseEventData` objects. `ActiveSessionTracker` watches session status events to maintain a live count of busy sessions per project.
 
-Compatibility note: the plugin keeps bridge-facing SSE behavior intentionally narrow. `session.diff` is normalized into the shared event model for invalidation tracking, parser failures are reported as categorized outcomes instead of exceptions, and dropped SSE frames are logged with stable category tags plus `directory` context when available. Cold-start hydration of pending questions/permissions is best-effort only. Shell routes such as `GET /session/{id}/shell` remain outside the bridge router and are expected to 404.
+Compatibility note: the plugin keeps bridge-facing SSE behavior intentionally narrow. Parser failures are reported as categorized outcomes instead of exceptions, dropped SSE frames are logged with stable category tags plus `directory` context when available, and cold-start hydration of pending questions/permissions is best-effort only. Shell routes such as `GET /session/{id}/shell` remain outside the bridge router and are expected to 404.
 
 ## Key Components
 
@@ -60,7 +60,7 @@ Translates raw OpenCode SSE data strings into typed `SseEventData` objects. Neve
 SseParseResult parse(String rawData)
 ```
 
-The parser follows OpenCode's event envelope format: it JSON-decodes the string, extracts `payload.type` and `payload.properties`, merges them into `{"type": type, ...properties}`, then deserializes via `SseEventData.fromJson`. The top-level `directory` field, when present, is preserved in the result for use by `ActiveSessionTracker` and drop logging. `session.diff` is normalized specially so OpenCode 1.4 invalidation-only payloads and older legacy diff arrays both map to the same shared model.
+The parser follows OpenCode's event envelope format: it JSON-decodes the string, extracts `payload.type` and `payload.properties`, merges them into `{"type": type, ...properties}`, then deserializes via `SseEventData.fromJson`. The top-level `directory` field, when present, is preserved in the result for use by `ActiveSessionTracker` and drop logging.
 
 ### `ActiveSessionTracker`
 
