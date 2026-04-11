@@ -108,8 +108,8 @@ class _ReasoningModalState extends State<ReasoningModal> {
                 NotificationListener<ScrollNotification>(
                   onNotification: (notification) {
                     if (notification is ScrollUpdateNotification && notification.dragDetails != null && _following) {
-                      final pos = _scrollController.position;
-                      if (pos.pixels < pos.maxScrollExtent - 20) {
+                      final metrics = notification.metrics;
+                      if (metrics.pixels < metrics.maxScrollExtent - 20) {
                         setState(() => _following = false);
                       }
                     }
