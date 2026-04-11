@@ -97,6 +97,7 @@ class FakeBridgePlugin implements BridgePlugin {
   Object? throwOnGetProjectsError;
   Object? throwOnGetProjectError;
   bool throwOnGetSessions = false;
+  Object? throwOnGetMessagesError;
   Object? throwOnDeleteSessionError;
   Object? throwOnArchiveSessionError;
   Completer<void>? archiveSessionCompleter;
@@ -225,6 +226,9 @@ class FakeBridgePlugin implements BridgePlugin {
     String sessionId,
   ) async {
     lastGetMessagesSessionId = sessionId;
+    if (throwOnGetMessagesError case final error?) {
+      throw error;
+    }
     return messagesResult;
   }
 

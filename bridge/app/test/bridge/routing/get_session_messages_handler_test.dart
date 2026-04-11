@@ -1,3 +1,5 @@
+import "dart:convert";
+
 import "package:sesori_bridge/src/bridge/routing/get_session_messages_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -110,6 +112,24 @@ void main() {
       );
 
       expect(response.messages.length, equals(2));
+    });
+
+    test("handleInternal returns 502 for upstream incompatibility", () async {
+      plugin.throwOnGetMessagesError = PluginApiException("GET /session/s1/message", 502);
+
+      final response = await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/session/messages",
+          body: jsonEncode(const SessionIdRequest(sessionId: "s1").toJson()),
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response.status, equals(502));
+      expect(response.body, contains("PluginApiException"));
     });
   });
 }
