@@ -61,7 +61,7 @@ This Agreement constitutes the entire agreement between the parties with respect
 To sign the CLA, please comment on a pull request with:
 
 ```
-I have read the CLA Document, including the future relicensing terms, and I hereby sign the CLA
+I have read the CLA Document and I hereby sign the CLA
 ```
 
 The CLA Assistant bot will automatically track your agreement. This is a one-time requirement. By signing, you agree that the Owner may use, sublicense, and relicense accepted Contributions under current and future license terms chosen by the Owner. If you have any questions, please open an issue.
