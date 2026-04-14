@@ -90,5 +90,14 @@ dart run build_runner build --delete-conflicting-outputs
 
 ## Related
 
-- [Sesori Bridge](https://github.com/sesori-ai/sesori_bridge) — laptop-side CLI that connects to OpenCode
-- [Sesori Relay Server](https://github.com/sesori-ai/sesori_relay_server) — WebSocket relay
+- [Bridge workspace](../bridge/README.md) — laptop-side CLI and plugin system in this monorepo
+
+## License
+
+This workspace is source-available under the Functional Source License, Version 1.1, Apache 2.0 Future License (`FSL-1.1-ALv2`).
+
+You may use it for permitted purposes, but you may not use it to launch a competing product or service.
+
+On the second anniversary of the date this version is made available, it automatically becomes available under Apache License 2.0.
+
+See the repo root [LICENSE](../LICENSE) for the full terms.
