@@ -14,12 +14,14 @@ class BranchRepository {
       Log.w("[BranchRepository] fetchRemotes failed (best-effort): $e");
     }
 
-    final remoteNames = await _listRemotes(projectPath: projectPath);
-    final branchResult = await _gitCliApi.listBranches(workingDirectory: projectPath);
+    final (remoteNames, branchResult, worktreeResult, currentBranchResult) = await (
+      _listRemotes(projectPath: projectPath),
+      _gitCliApi.listBranches(workingDirectory: projectPath),
+      _gitCliApi.listWorktrees(workingDirectory: projectPath),
+      _gitCliApi.getCurrentBranch(workingDirectory: projectPath),
+    ).wait;
     final branches = _parseBranches(stdout: branchResult.stdout.toString(), remoteNames: remoteNames);
-    final worktreeResult = await _gitCliApi.listWorktrees(workingDirectory: projectPath);
     final worktreeMap = _parseWorktrees(stdout: worktreeResult.stdout.toString());
-    final currentBranchResult = await _gitCliApi.getCurrentBranch(workingDirectory: projectPath);
     final currentBranch = currentBranchResult.stdout.toString().trim();
     final enrichedBranches = branches.map((branch) {
       final worktreePath = worktreeMap[branch.name];
@@ -159,6 +161,7 @@ class BranchRepository {
       final parts = line.trim().split(" ");
       if (parts.isEmpty) continue;
       final rawName = parts[0];
+      if (!_isSelectableBranchRef(rawName: rawName, remoteNames: remoteNames)) continue;
       final timestamp = parts.length > 1 ? int.tryParse(parts[1]) : null;
 
       final remoteBranchName = _extractRemoteBranchName(rawName: rawName, remoteNames: remoteNames);
@@ -190,11 +193,28 @@ class BranchRepository {
     required String rawName,
     required Set<String> remoteNames,
   }) {
-    final slashIndex = rawName.indexOf("/");
-    if (slashIndex <= 0) return null;
-    final remoteName = rawName.substring(0, slashIndex);
-    if (!remoteNames.contains(remoteName)) return null;
-    return rawName.substring(slashIndex + 1);
+    final sortedRemoteNames = remoteNames.toList()..sort((a, b) => b.length.compareTo(a.length));
+    for (final remoteName in sortedRemoteNames) {
+      final prefix = "$remoteName/";
+      if (!rawName.startsWith(prefix)) continue;
+      final branchName = rawName.substring(prefix.length);
+      if (branchName.isEmpty || branchName == "HEAD") return null;
+      return branchName;
+    }
+    return null;
+  }
+
+  static bool _isSelectableBranchRef({
+    required String rawName,
+    required Set<String> remoteNames,
+  }) {
+    if (rawName.isEmpty || rawName == "HEAD" || rawName.startsWith("(")) {
+      return false;
+    }
+    if (remoteNames.contains(rawName)) {
+      return false;
+    }
+    return !rawName.endsWith("/HEAD");
   }
 
   static Map<String, String> _parseWorktrees({required String stdout}) {

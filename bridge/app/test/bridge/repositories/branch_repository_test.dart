@@ -164,6 +164,48 @@ void main() {
       final featureB = response.branches.firstWhere((b) => b.name == "feature-b");
       expect(featureB.isRemoteOnly, isTrue);
     });
+
+    test("filters remote HEAD pseudo refs", () async {
+      final runner = _ScriptedProcessRunner({
+        ["fetch", "--all"]: ProcessResult(0, 0, "", ""),
+        ["remote"]: ProcessResult(0, 0, "origin\n", ""),
+        ["branch", "-a"]: ProcessResult(
+          0,
+          0,
+          "main 1700000000\norigin/HEAD 1700000050\norigin/feature-b 1700000200\n",
+          "",
+        ),
+        ["worktree", "list", "--porcelain"]: ProcessResult(0, 0, "", ""),
+        ["rev-parse", "--abbrev-ref", "HEAD"]: ProcessResult(0, 0, "main\n", ""),
+      });
+
+      final repo = BranchRepository(gitCliApi: GitCliApi(processRunner: runner));
+      final response = await repo.listBranches(projectPath: "/repo");
+
+      expect(response.branches.map((branch) => branch.name), isNot(contains("HEAD")));
+      expect(response.branches.map((branch) => branch.name), contains("feature-b"));
+    });
+
+    test("supports remotes whose names contain slashes", () async {
+      final runner = _ScriptedProcessRunner({
+        ["fetch", "--all"]: ProcessResult(0, 0, "", ""),
+        ["remote"]: ProcessResult(0, 0, "foo/bar\n", ""),
+        ["branch", "-a"]: ProcessResult(
+          0,
+          0,
+          "main 1700000000\nfoo/bar/feature-b 1700000200\n",
+          "",
+        ),
+        ["worktree", "list", "--porcelain"]: ProcessResult(0, 0, "", ""),
+        ["rev-parse", "--abbrev-ref", "HEAD"]: ProcessResult(0, 0, "main\n", ""),
+      });
+
+      final repo = BranchRepository(gitCliApi: GitCliApi(processRunner: runner));
+      final response = await repo.listBranches(projectPath: "/repo");
+
+      final featureB = response.branches.firstWhere((b) => b.name == "feature-b");
+      expect(featureB.isRemoteOnly, isTrue);
+    });
   });
 
   group("BranchRepository.getWorktreeForBranch", () {
