@@ -17,7 +17,7 @@ jobs:
     runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
       - name: CLA Assistant
-        if: (github.event.comment.body == 'recheck' || github.event.comment.body == 'I have read the CLA Document and I hereby sign the CLA') || github.event_name == 'pull_request_target'
+        if: (github.event.comment.body == 'recheck' || github.event.comment.body == 'I have read the CLA Document, including the future relicensing terms, and I hereby sign the CLA') || github.event_name == 'pull_request_target'
         uses: contributor-assistant/github-action@v2.6.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -29,13 +29,15 @@ jobs:
           custom-notsigned-prcomment: |
             Thank you for your contribution! Before we can merge this PR, we need you to sign our [Contributor License Agreement (CLA)](https://github.com/sesori-ai/sesori_apps_monorepo/blob/main/CLA.md).
 
+            The CLA lets the Owner use, sublicense, and relicense accepted contributions under current and future license terms chosen by the Owner.
+
             **To sign the CLA**, please comment on this PR with:
             ```
-            I have read the CLA Document and I hereby sign the CLA
+            I have read the CLA Document, including the future relicensing terms, and I hereby sign the CLA
             ```
 
             This is a one-time requirement. Once signed, all your future contributions will be automatically accepted.
-          custom-pr-sign-comment: 'I have read the CLA Document and I hereby sign the CLA'
+          custom-pr-sign-comment: 'I have read the CLA Document, including the future relicensing terms, and I hereby sign the CLA'
           custom-allsigned-prcomment: |
             All contributors have signed the CLA. Thank you!
           lock-pullrequest-aftermerge: false
