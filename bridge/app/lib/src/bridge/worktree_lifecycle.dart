@@ -1,8 +1,12 @@
 part of "worktree_service.dart";
 
-extension WorktreeLifecycle on WorktreeService {
+class _WorktreeLifecycleService {
+  final WorktreeService _service;
+
+  _WorktreeLifecycleService({required WorktreeService service}) : _service = service;
+
   Future<void> pruneWorktrees({required String projectPath}) async {
-    await _runGit(projectPath: projectPath, arguments: const ["worktree", "prune"]);
+    await _service._runGit(projectPath: projectPath, arguments: const ["worktree", "prune"]);
   }
 
   Future<bool> removeWorktree({
@@ -15,7 +19,7 @@ extension WorktreeLifecycle on WorktreeService {
     }
     await pruneWorktrees(projectPath: projectPath);
     final arguments = ["worktree", "remove", if (force) "--force", "--", worktreePath];
-    final result = await _runGit(projectPath: projectPath, arguments: arguments);
+    final result = await _service._runGit(projectPath: projectPath, arguments: arguments);
     return result.exitCode == 0;
   }
 
@@ -24,7 +28,7 @@ extension WorktreeLifecycle on WorktreeService {
     required String branchName,
     required bool force,
   }) async {
-    final result = await _runGit(
+    final result = await _service._runGit(
       projectPath: projectPath,
       arguments: ["branch", force ? "-D" : "-d", "--", branchName],
     );
@@ -42,25 +46,19 @@ extension WorktreeLifecycle on WorktreeService {
       return false;
     }
 
-    final verifyResult = await _runGit(
+    final verifyResult = await _service._runGit(
       projectPath: projectPath,
       arguments: ["rev-parse", "--verify", "--", "refs/heads/$branchName"],
     );
 
-    final List<String> addArguments;
-    if (verifyResult.exitCode == 0) {
-      addArguments = ["worktree", "add", "--", worktreePath, branchName];
-    } else {
-      final startPoint = baseCommit ?? baseBranch;
-      addArguments = ["worktree", "add", "-b", branchName, "--", worktreePath, startPoint];
-    }
+    final addArguments = verifyResult.exitCode == 0
+        ? ["worktree", "add", "--", worktreePath, branchName]
+        : ["worktree", "add", "-b", branchName, "--", worktreePath, baseCommit ?? baseBranch];
 
-    final addResult = await _runGit(projectPath: projectPath, arguments: addArguments);
+    final addResult = await _service._runGit(projectPath: projectPath, arguments: addArguments);
     return addResult.exitCode == 0;
   }
 
-  /// Validates that [worktreePath] is under `<projectPath>/.worktrees/` to
-  /// prevent path-traversal attacks via stored database values.
   bool _isValidWorktreePath({
     required String projectPath,
     required String worktreePath,

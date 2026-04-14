@@ -22,16 +22,15 @@ const _maxWorktreeCreationAttempts = 3;
 const _branchPrefix = "session-";
 const _worktreeDir = ".worktrees";
 
-// ---------------------------------------------------------------------------
-// Service
-// ---------------------------------------------------------------------------
-
 class WorktreeService {
   final ProcessRunner _processRunner;
   final GitPathExistsChecker _gitPathExists;
   final BranchRepository _branchRepository;
   final ProjectsDao _projectsDao;
   final SessionDao _sessionDao;
+  late final _WorktreeSafetyService _safetyService;
+  late final _WorktreeLifecycleService _lifecycleService;
+  late final _WorktreeBranchPreparationUseCase _branchPreparationUseCase;
 
   WorktreeService({
     required BranchRepository branchRepository,
@@ -43,7 +42,11 @@ class WorktreeService {
        _processRunner = processRunner,
        _gitPathExists = gitPathExists,
        _projectsDao = projectsDao,
-       _sessionDao = sessionDao;
+       _sessionDao = sessionDao {
+    _safetyService = _WorktreeSafetyService(service: this);
+    _lifecycleService = _WorktreeLifecycleService(service: this);
+    _branchPreparationUseCase = _WorktreeBranchPreparationUseCase(service: this);
+  }
 
   static final _random = Random.secure();
   static final _safeNamePattern = RegExp(r'^[a-z0-9][a-z0-9-]*$');
@@ -58,9 +61,45 @@ class WorktreeService {
       !name.contains(r"\") &&
       _safeNamePattern.hasMatch(name);
 
-  // -------------------------------------------------------------------------
-  // Orchestration
-  // -------------------------------------------------------------------------
+  Future<WorktreeSafetyResult> checkWorktreeSafety({required String worktreePath, required String expectedBranch}) =>
+      _safetyService.checkWorktreeSafety(worktreePath: worktreePath, expectedBranch: expectedBranch);
+
+  Future<void> pruneWorktrees({required String projectPath}) =>
+      _lifecycleService.pruneWorktrees(projectPath: projectPath);
+
+  Future<bool> removeWorktree({required String projectPath, required String worktreePath, required bool force}) =>
+      _lifecycleService.removeWorktree(projectPath: projectPath, worktreePath: worktreePath, force: force);
+
+  Future<bool> deleteBranch({required String projectPath, required String branchName, required bool force}) =>
+      _lifecycleService.deleteBranch(projectPath: projectPath, branchName: branchName, force: force);
+
+  Future<bool> restoreWorktree({
+    required String projectPath,
+    required String worktreePath,
+    required String branchName,
+    required String baseBranch,
+    required String? baseCommit,
+  }) => _lifecycleService.restoreWorktree(
+    projectPath: projectPath,
+    worktreePath: worktreePath,
+    branchName: branchName,
+    baseBranch: baseBranch,
+    baseCommit: baseCommit,
+  );
+
+  Future<WorktreeResult> prepareWorktreeForBranch({
+    required WorktreeMode mode,
+    required String? selectedBranch,
+    required String projectPath,
+    required String sessionId,
+    ({String branchName, String worktreeName})? preferredBranchAndWorktreeName,
+  }) => _branchPreparationUseCase.prepareWorktreeForBranch(
+    mode: mode,
+    selectedBranch: selectedBranch,
+    projectPath: projectPath,
+    sessionId: sessionId,
+    preferredBranchAndWorktreeName: preferredBranchAndWorktreeName,
+  );
 
   /// Prepares a worktree for a new or child session.
   Future<WorktreeResult> prepareWorktreeForSession({

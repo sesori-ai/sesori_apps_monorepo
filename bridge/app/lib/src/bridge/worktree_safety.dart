@@ -1,8 +1,10 @@
 part of "worktree_service.dart";
 
-extension WorktreeSafety on WorktreeService {
-  /// Returns [WorktreeSafe] when the directory does not exist — a missing
-  /// worktree is treated as already cleaned up.
+class _WorktreeSafetyService {
+  final WorktreeService _service;
+
+  _WorktreeSafetyService({required WorktreeService service}) : _service = service;
+
   Future<WorktreeSafetyResult> checkWorktreeSafety({
     required String worktreePath,
     required String expectedBranch,
@@ -12,8 +14,7 @@ extension WorktreeSafety on WorktreeService {
     }
 
     final issues = <SafetyIssue>[];
-
-    final statusResult = await _processRunner.run(
+    final statusResult = await _service._processRunner.run(
       "git",
       ["status", "--porcelain"],
       workingDirectory: worktreePath,
@@ -22,7 +23,7 @@ extension WorktreeSafety on WorktreeService {
       issues.add(UnstagedChanges());
     }
 
-    final headResult = await _processRunner.run(
+    final headResult = await _service._processRunner.run(
       "git",
       ["rev-parse", "--abbrev-ref", "HEAD"],
       workingDirectory: worktreePath,
