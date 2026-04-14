@@ -108,7 +108,7 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
     required SessionDto sessionDto,
     required int? archivedAt,
   }) {
-    final base = pluginSession.toSharedSession();
+    final base = pluginSession.toSharedSession(branchName: sessionDto.branchName);
     final time = base.time;
     final mergedTime = time != null
         ? time.copyWith(archived: archivedAt)

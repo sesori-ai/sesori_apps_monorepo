@@ -1040,6 +1040,40 @@ void main() {
       );
     });
 
+    test("stayOnBranch recreates a missing prunable worktree", () async {
+      processRunner.enqueue(result: _ok());
+      processRunner.enqueue(result: _ok(stdout: "branch-sha\n"));
+      processRunner.enqueue(result: _ok(stdout: "origin\n"));
+      processRunner.enqueue(result: _fail(exitCode: 128));
+      processRunner.enqueue(
+        result: _ok(
+          stdout: "worktree $_projectId/.worktrees/feature__test\nHEAD branch-sha\nbranch refs/heads/feature/test\n\n",
+        ),
+      );
+      processRunner.enqueue(result: _ok());
+      processRunner.enqueue(result: _ok(stdout: "  feature/test\n"));
+      processRunner.enqueue(result: _ok());
+
+      final result = await service.prepareWorktreeForBranch(
+        mode: WorktreeMode.stayOnBranch,
+        selectedBranch: "feature/test",
+        projectPath: _projectId,
+        sessionId: "ses-prunable",
+      );
+
+      expect(result, isA<WorktreeSuccess>());
+      final success = result as WorktreeSuccess;
+      expect(success.path, equals("$_projectId/.worktrees/feature__test"));
+      expect(
+        processRunner.invocations.map((invocation) => invocation.arguments),
+        contains(
+          predicate<List<String>>(
+            (arguments) => arguments.length == 2 && arguments[0] == "worktree" && arguments[1] == "prune",
+          ),
+        ),
+      );
+    });
+
     test("newBranch creates dedicated worktree from selected branch", () async {
       processRunner.enqueue(result: _ok());
       processRunner.enqueue(result: _ok(stdout: "branch-sha\n"));

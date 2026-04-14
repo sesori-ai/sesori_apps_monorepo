@@ -161,7 +161,7 @@ class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Sess
       }
     }
 
-    final isDedicated = worktreeMode == WorktreeMode.newBranch;
+    var isDedicated = worktreeMode == WorktreeMode.newBranch;
     String? worktreePath;
     String? branchName;
     String? baseBranch;
@@ -171,21 +171,23 @@ class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Sess
       branchName: final resolvedBranchName,
       baseBranch: final resolvedBaseBranch,
       baseCommit: final resolvedBaseCommit,
+      isDedicated: final resolvedIsDedicated,
     )) {
       worktreePath = path;
       branchName = resolvedBranchName;
       baseBranch = resolvedBaseBranch;
       baseCommit = resolvedBaseCommit;
+      isDedicated = resolvedIsDedicated;
     } else {
       worktreePath = null;
       branchName = null;
-      if (!isDedicated) {
+      if (isDedicated) {
+        baseBranch = null;
+        baseCommit = null;
+      } else {
         final baseBranchAndCommit = await _worktreeService.resolveBaseBranchAndCommit(projectPath: projectId);
         baseBranch = baseBranchAndCommit?.baseBranch;
         baseCommit = baseBranchAndCommit?.baseCommit;
-      } else {
-        baseBranch = null;
-        baseCommit = null;
       }
     }
 

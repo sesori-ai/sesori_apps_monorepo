@@ -214,7 +214,7 @@ void main() {
     );
 
     test(
-      "stayOnBranch injects continue-branch system prompt and stores worktree metadata with isDedicated=false",
+      "stayOnBranch injects continue-branch system prompt and stores dedicated worktree metadata when using a worktree path",
       () async {
         plugin.createSessionResult = const PluginSession(
           id: "stay-1",
@@ -262,7 +262,7 @@ void main() {
         final dbSession = await db.sessionDao.getSession(sessionId: "stay-1");
         expect(dbSession, isNotNull);
         expect(dbSession!.projectId, equals("/repo"));
-        expect(dbSession.isDedicated, isFalse);
+        expect(dbSession.isDedicated, isTrue);
         expect(dbSession.worktreePath, equals("/repo/.worktrees/feature-branch"));
         expect(dbSession.branchName, equals("feature-branch"));
         expect(dbSession.baseBranch, equals("feature-branch"));

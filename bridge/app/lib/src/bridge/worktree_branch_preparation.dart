@@ -53,12 +53,17 @@ extension WorktreeBranchPreparation on WorktreeService {
       branchName: selectedBranch,
     );
     if (existingPath != null) {
-      return WorktreeSuccess(
-        path: existingPath,
-        branchName: selectedBranch,
-        baseBranch: startPoint.ref,
-        baseCommit: startPoint.commit,
-      );
+      if (existingPath == projectPath || Directory(existingPath).existsSync()) {
+        return WorktreeSuccess(
+          path: existingPath,
+          branchName: selectedBranch,
+          baseBranch: startPoint.ref,
+          baseCommit: startPoint.commit,
+          isDedicated: existingPath != projectPath,
+        );
+      }
+
+      await pruneWorktrees(projectPath: projectPath);
     }
 
     final worktreePath = "$projectPath/$_worktreeDir/${_branchWorktreeName(branchName: selectedBranch)}";
@@ -90,6 +95,7 @@ extension WorktreeBranchPreparation on WorktreeService {
       branchName: selectedBranch,
       baseBranch: startPoint.ref,
       baseCommit: startPoint.commit,
+      isDedicated: true,
     );
   }
 
@@ -148,6 +154,7 @@ extension WorktreeBranchPreparation on WorktreeService {
           branchName: branchName,
           baseBranch: startPoint.ref,
           baseCommit: startPoint.commit,
+          isDedicated: true,
         );
       }
     }
@@ -203,6 +210,7 @@ extension WorktreeBranchPreparation on WorktreeService {
       branchName: branchName,
       baseBranch: baseBranch,
       baseCommit: baseCommit,
+      isDedicated: true,
     );
   }
 

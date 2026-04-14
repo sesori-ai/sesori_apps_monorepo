@@ -81,6 +81,7 @@ class WorktreeService {
           branchName: branchName,
           baseBranch: parentBaseBranch ?? "",
           baseCommit: parentBaseCommit ?? "",
+          isDedicated: true,
         );
       }
     }
@@ -132,6 +133,7 @@ class WorktreeService {
             branchName: branchName,
             baseBranch: baseBranch,
             baseCommit: baseCommit,
+            isDedicated: true,
           );
         }
       }
@@ -157,6 +159,7 @@ class WorktreeService {
           branchName: branchName,
           baseBranch: baseBranch,
           baseCommit: baseCommit,
+          isDedicated: true,
         );
       }
     }

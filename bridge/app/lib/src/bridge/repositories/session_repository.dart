@@ -52,6 +52,7 @@ class SessionRepository {
         result = result.copyWith(
           time: mergedTime,
           hasWorktree: dbSession.worktreePath != null,
+          branchName: dbSession.branchName,
         );
       }
 
@@ -94,7 +95,9 @@ class SessionRepository {
 
   Future<List<Session>> getChildSessions({required String sessionId}) async {
     final pluginSessions = await _plugin.getChildSessions(sessionId);
-    return pluginSessions.map((s) => s.toSharedSession()).toList();
+    final dbSessions = await _sessionDao.getSessionsByIds(sessionIds: pluginSessions.map((s) => s.id).toList());
+    final branchNamesById = {for (final entry in dbSessions.entries) entry.key: entry.value.branchName};
+    return pluginSessions.map((s) => s.toSharedSession(branchName: branchNamesById[s.id])).toList();
   }
 
   Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {
