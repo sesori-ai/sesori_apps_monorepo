@@ -29,6 +29,8 @@ jobs:
           custom-notsigned-prcomment: |
             Thank you for your contribution! Before we can merge this PR, we need you to sign our [Contributor License Agreement (CLA)](https://github.com/sesori-ai/sesori_apps_monorepo/blob/main/CLA.md).
 
+            The CLA lets the Owner use, sublicense, and relicense accepted contributions under current and future license terms chosen by the Owner.
+
             **To sign the CLA**, please comment on this PR with:
             ```
             I have read the CLA Document and I hereby sign the CLA

@@ -120,3 +120,13 @@ cd ../mobile && dart pub get
 
 - [bridge/README.md](bridge/README.md) — bridge CLI, plugin system, codegen, and testing
 - [mobile/README.md](mobile/README.md) — Flutter client, module structure, and testing
+
+## License
+
+This repository is source-available under the Functional Source License, Version 1.1, Apache 2.0 Future License (`FSL-1.1-ALv2`).
+
+That means you may use, modify, and redistribute the software for permitted purposes, but you may not use it to launch a competing product or service.
+
+On the second anniversary of the date each version is made available, that version automatically becomes available under Apache License 2.0.
+
+See [LICENSE](LICENSE) for the full terms.

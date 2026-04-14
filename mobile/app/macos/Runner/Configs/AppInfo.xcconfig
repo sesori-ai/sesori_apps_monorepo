@@ -11,4 +11,4 @@ PRODUCT_NAME = Sesori
 PRODUCT_BUNDLE_IDENTIFIER = com.sesori.app
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 Sesori. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 Sesori

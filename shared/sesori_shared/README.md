@@ -1,6 +1,6 @@
 # Sesori Shared
 
-Shared Dart package containing crypto primitives, relay protocol types, data models, and concurrency utilities. Used by both the bridge (`sesori_bridge_dart`) and the mobile client (`sesori_apps_monorepo`). Changes here affect both consumers.
+Shared Dart package containing crypto primitives, relay protocol types, data models, and concurrency utilities. Used by both the bridge workspace and the mobile workspace in this monorepo. Changes here affect both consumers.
 
 ## Crypto
 
@@ -73,3 +73,13 @@ Then run `dart pub get`.
 Pure Dart — no Flutter dependency. Works in any Dart environment including native binaries and Flutter apps.
 
 Requires Dart 3.8.0 or later (sealed class support, `freezed` generated output).
+
+## License
+
+This package is source-available under the Functional Source License, Version 1.1, Apache 2.0 Future License (`FSL-1.1-ALv2`).
+
+You may use it for permitted purposes, but you may not use it to launch a competing product or service.
+
+On the second anniversary of the date this version is made available, it automatically becomes available under Apache License 2.0.
+
+See [LICENSE](LICENSE) for the full terms.

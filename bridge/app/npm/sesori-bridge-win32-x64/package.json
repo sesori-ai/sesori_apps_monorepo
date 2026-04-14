@@ -5,9 +5,10 @@
   "os": ["win32"],
   "cpu": ["x64"],
   "files": ["bin/"],
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "repository": {
     "type": "git",
-    "url": "https://github.com/sesori-ai/sesori_bridge_dart"
+    "url": "https://github.com/sesori-ai/sesori_apps_monorepo",
+    "directory": "bridge/app/npm/sesori-bridge-win32-x64"
   }
 }
