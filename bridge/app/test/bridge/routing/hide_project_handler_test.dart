@@ -1,5 +1,5 @@
-import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/hide_project_handler.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -10,16 +10,22 @@ import "routing_test_helpers.dart";
 void main() {
   group("HideProjectHandler", () {
     late AppDatabase db;
-    late ProjectsDao dao;
+    late FakeBridgePlugin plugin;
+    late ProjectRepository projectRepository;
     late HideProjectHandler handler;
 
     setUp(() {
       db = createTestDatabase();
-      dao = db.projectsDao;
-      handler = HideProjectHandler(dao);
+      plugin = FakeBridgePlugin();
+      projectRepository = ProjectRepository(
+        plugin: plugin,
+        projectsDao: db.projectsDao,
+      );
+      handler = HideProjectHandler(projectRepository: projectRepository);
     });
 
     tearDown(() async {
+      await plugin.close();
       await db.close();
     });
 
@@ -40,7 +46,7 @@ void main() {
         fragment: null,
       );
 
-      final hiddenIds = await dao.getHiddenProjectIds();
+      final hiddenIds = await db.projectsDao.getHiddenProjectIds();
       expect(response, equals(const SuccessEmptyResponse()));
       expect(hiddenIds, contains("p1"));
     });
@@ -68,7 +74,7 @@ void main() {
         fragment: null,
       );
 
-      final hiddenIds = await dao.getHiddenProjectIds();
+      final hiddenIds = await db.projectsDao.getHiddenProjectIds();
       expect(response, equals(const SuccessEmptyResponse()));
       expect(hiddenIds, contains(projectId));
     });

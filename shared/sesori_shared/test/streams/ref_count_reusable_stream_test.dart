@@ -107,6 +107,31 @@ void main() {
 
       expect(source.factoryCallCount, equals(1));
     });
+
+    test("new subscriber after completion recreates the source immediately", () async {
+      final source = _SourceHarness<int>();
+      final stream = RefCountReusableStream<int>.publish(source.createStream);
+      final firstDone = Completer<void>();
+
+      stream.listen(
+        (_) {},
+        onDone: firstDone.complete,
+      );
+
+      await source.close();
+      await firstDone.future;
+
+      final secondValues = <int>[];
+      final secondSubscription = stream.listen(secondValues.add);
+      source.emit(value: 42);
+      await pumpEventQueue();
+
+      expect(source.factoryCallCount, equals(2));
+      expect(secondValues, equals([42]));
+
+      await secondSubscription.cancel();
+      await _pumpZeroDelay();
+    });
   });
 
   group("RefCountReusableStream.behaviour", () {

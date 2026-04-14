@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import '../bridge/foundation/process_runner.dart';
+import '../../bridge/foundation/process_runner.dart';
 
 const Duration _invalidLockGracePeriod = Duration(seconds: 2);
 

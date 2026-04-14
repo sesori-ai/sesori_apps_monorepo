@@ -7,8 +7,11 @@ set -euo pipefail
 INSTALL_DIR="${HOME}/.sesori"
 BIN_DIR="${INSTALL_DIR}/bin"
 BINARY="${BIN_DIR}/sesori-bridge"
+MANAGED_MANIFEST="${INSTALL_DIR}/.managed-runtime.json"
 GITHUB_REPO="sesori-ai/sesori_apps_monorepo"
-GITHUB_RELEASES_API_URL="https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=100"
+GITHUB_RELEASES_API_URL="https://api.github.com/repos/${GITHUB_REPO}/releases"
+GITHUB_RELEASES_PER_PAGE=100
+GITHUB_RELEASES_MAX_PAGES=10
 
 TMPDIR_WORK=""
 cleanup() {
@@ -77,8 +80,27 @@ resolve_release_contract() {
         echo "python3 is required to resolve the latest bridge release." >&2
         exit 1
     fi
-    local releases_json
-    releases_json="$(fetch_text "${GITHUB_RELEASES_API_URL}")"
+    local releases_json='[]'
+    local page_json
+    local page
+    for page in $(seq 1 "${GITHUB_RELEASES_MAX_PAGES}"); do
+        page_json="$(fetch_text "${GITHUB_RELEASES_API_URL}?per_page=${GITHUB_RELEASES_PER_PAGE}&page=${page}")"
+        releases_json="$(RELEASES_JSON="${releases_json}" PAGE_JSON="${page_json}" python3 -c '
+import json, os
+
+releases = json.loads(os.environ["RELEASES_JSON"])
+page = json.loads(os.environ["PAGE_JSON"])
+if not isinstance(releases, list) or not isinstance(page, list):
+    raise SystemExit(1)
+print(json.dumps(releases + page))
+')" || {
+            echo "Unexpected release metadata returned by GitHub." >&2
+            exit 1
+        }
+        if [ "$(PAGE_JSON="${page_json}" python3 -c 'import json, os; page = json.loads(os.environ["PAGE_JSON"]); print(len(page))')" -lt "${GITHUB_RELEASES_PER_PAGE}" ]; then
+            break
+        fi
+    done
     local resolved
 resolved="$(RELEASES_JSON="${releases_json}" python3 -c '
 import json, os, sys
@@ -270,6 +292,7 @@ main() {
     tar -xzf "${archive}" -C "${INSTALL_DIR}"
 
     chmod +x "${BINARY}"
+    printf '{"version":"%s"}\n' "${RESOLVED_RELEASE_TAG#bridge-v}" > "${MANAGED_MANIFEST}"
 
     if [ "${os}" = "macos" ]; then
         xattr -dr com.apple.quarantine "${BINARY}" 2>/dev/null || true

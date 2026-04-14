@@ -2,11 +2,11 @@ import 'package:collection/collection.dart';
 
 import '../api/github_releases_api.dart';
 import '../api/update_cache_api.dart';
+import '../foundation/version_utils.dart';
 import '../models/cached_release.dart';
+import '../models/distribution_target.dart';
 import '../models/github_release_dto.dart';
 import '../models/release_info.dart';
-import '../platform_info.dart';
-import '../version_utils.dart';
 
 class ReleaseRepository {
   final GitHubReleasesApi _api;
@@ -52,12 +52,7 @@ class ReleaseRepository {
   }
 
   Future<ReleaseInfo?> _fetchAndEvaluate() async {
-    final List<GitHubReleaseDto> releases;
-    try {
-      releases = await _api.fetchReleases();
-    } on Object {
-      return null;
-    }
+    final releases = await _api.fetchReleases();
 
     final release = _selectLatestBridgeRelease(releases: releases);
     if (release == null) {
@@ -96,8 +91,8 @@ class ReleaseRepository {
     final DateTime publishedAt;
     try {
       publishedAt = DateTime.parse(release.publishedAt);
-    } on FormatException {
-      return null;
+    } on FormatException catch (error) {
+      throw StateError('Invalid published_at for release $tagName: ${error.message}');
     }
 
     final assetName = _target.assetName;

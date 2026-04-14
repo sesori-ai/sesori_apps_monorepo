@@ -169,6 +169,61 @@ void main() {
       expect(projects, isEmpty);
       expect(rows, isEmpty);
     });
+
+    test("deleteSession removes an existing stored session", () async {
+      await projectsDao.insertProjectsIfMissing(projectIds: ["proj-delete"]);
+      await sessionDao.insertSession(
+        sessionId: "sess-delete",
+        projectId: "proj-delete",
+        isDedicated: true,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+      );
+
+      await service.deleteSession(sessionId: "sess-delete");
+
+      expect(await sessionDao.getSession(sessionId: "sess-delete"), isNull);
+    });
+
+    test("archiveSession sets archivedAt on an existing stored session", () async {
+      await projectsDao.insertProjectsIfMissing(projectIds: ["proj-archive"]);
+      await sessionDao.insertSession(
+        sessionId: "sess-archive",
+        projectId: "proj-archive",
+        isDedicated: true,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+      );
+
+      await service.archiveSession(sessionId: "sess-archive", archivedAt: 777);
+
+      expect((await sessionDao.getSession(sessionId: "sess-archive"))?.archivedAt, equals(777));
+    });
+
+    test("unarchiveSession clears archivedAt on an existing stored session", () async {
+      await projectsDao.insertProjectsIfMissing(projectIds: ["proj-unarchive"]);
+      await sessionDao.insertSession(
+        sessionId: "sess-unarchive",
+        projectId: "proj-unarchive",
+        isDedicated: true,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+      );
+      await sessionDao.setArchived(sessionId: "sess-unarchive", archivedAt: 888);
+
+      await service.unarchiveSession(sessionId: "sess-unarchive");
+
+      expect((await sessionDao.getSession(sessionId: "sess-unarchive"))?.archivedAt, isNull);
+    });
   });
 }
 

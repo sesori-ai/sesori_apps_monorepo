@@ -6,10 +6,13 @@ $ErrorActionPreference = 'Stop'
 
 $RepoOwner  = 'sesori-ai'
 $RepoName   = 'sesori_apps_monorepo'
-$ReleasesApiUrl = "https://api.github.com/repos/$RepoOwner/$RepoName/releases?per_page=100"
+$ReleasesApiUrl = "https://api.github.com/repos/$RepoOwner/$RepoName/releases"
+$ReleasesPerPage = 100
+$ReleasesMaxPages = 10
 $BinaryName = 'sesori-bridge.exe'
 $InstallRoot = Join-Path $env:LOCALAPPDATA 'sesori'
 $BinDir      = Join-Path $InstallRoot 'bin'
+$ManagedManifest = Join-Path $InstallRoot '.managed-runtime.json'
 
 # ── Architecture detection ────────────────────────────────────────────────────
 $arch = $null
@@ -41,9 +44,16 @@ function Resolve-BridgeRelease {
         [string]$ArchiveName
     )
 
-    $releases = Invoke-RestMethod -Uri $ReleasesApiUrl -Headers @{
-        'Accept' = 'application/vnd.github+json'
-        'User-Agent' = 'sesori-bridge-installer'
+    $releases = @()
+    for ($page = 1; $page -le $ReleasesMaxPages; $page++) {
+        $pageReleases = Invoke-RestMethod -Uri "$ReleasesApiUrl?per_page=$ReleasesPerPage&page=$page" -Headers @{
+            'Accept' = 'application/vnd.github+json'
+            'User-Agent' = 'sesori-bridge-installer'
+        }
+        $releases += $pageReleases
+        if ($pageReleases.Count -lt $ReleasesPerPage) {
+            break
+        }
     }
 
     $eligible = @()
@@ -143,6 +153,8 @@ try {
         Write-Error "Expected binary not found at '$BinaryPath' after extraction. Check archive structure."
         exit 1
     }
+
+    @{ version = $Release.TagName.Substring(8) } | ConvertTo-Json -Compress | Set-Content -Path $ManagedManifest -Encoding UTF8
 
     # ── Check for conflicts in existing PATH ──────────────────────────────────
     $existingOnPath = Get-Command 'sesori-bridge' -ErrorAction SilentlyContinue

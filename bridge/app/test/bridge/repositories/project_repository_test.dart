@@ -86,6 +86,41 @@ void main() {
         reason: "all plugin projects must be persisted via batch insert",
       );
     });
+
+    test("openProject discovers via plugin, unhides stored row, and maps result", () async {
+      plugin.projectResult = const PluginProject(id: "p-open", name: "Opened");
+      await db.projectsDao.hideProject(projectId: "p-open");
+
+      final result = await repo.openProject(path: "/tmp/p-open");
+
+      expect(plugin.lastGetProjectId, equals("/tmp/p-open"));
+      expect(result.id, equals("p-open"));
+      expect(result.name, equals("Opened"));
+      final hiddenIds = await db.projectsDao.getHiddenProjectIds();
+      expect(hiddenIds, isNot(contains("p-open")));
+    });
+
+    test("hideProject persists hidden project id", () async {
+      await repo.hideProject(projectId: "p-hidden");
+
+      final hiddenIds = await db.projectsDao.getHiddenProjectIds();
+      expect(hiddenIds, contains("p-hidden"));
+    });
+
+    test("getBaseBranch returns stored branch", () async {
+      await db.projectsDao.setBaseBranch(projectId: "p-base", baseBranch: "develop");
+
+      final result = await repo.getBaseBranch(projectId: "p-base");
+
+      expect(result, equals("develop"));
+    });
+
+    test("setBaseBranch stores branch", () async {
+      await repo.setBaseBranch(projectId: "p-set", baseBranch: "main");
+
+      final stored = await db.projectsDao.getBaseBranch(projectId: "p-set");
+      expect(stored, equals("main"));
+    });
   });
 }
 
@@ -94,6 +129,8 @@ void main() {
 class _FakeBridgePlugin implements BridgePlugin {
   List<PluginProject> projectsResult = const [];
   Object? getProjectsError;
+  PluginProject projectResult = const PluginProject(id: "project-id");
+  String? lastGetProjectId;
 
   @override
   Future<List<PluginProject>> getProjects() async {
@@ -179,7 +216,10 @@ class _FakeBridgePlugin implements BridgePlugin {
   }) => throw UnimplementedError();
 
   @override
-  Future<PluginProject> getProject(String projectId) => throw UnimplementedError();
+  Future<PluginProject> getProject(String projectId) async {
+    lastGetProjectId = projectId;
+    return projectResult;
+  }
 
   @override
   Future<bool> healthCheck() => throw UnimplementedError();

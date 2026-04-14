@@ -77,7 +77,11 @@ class RefCountReusableStream<T> extends Stream<T> {
       _subscription = _factory().listen(
         newController.add,
         onError: newController.addError,
-        onDone: newController.close,
+        onDone: () {
+          _subscription = null;
+          _controller = null;
+          unawaited(newController.close());
+        },
       );
       return newController.stream.listen(
         onData,

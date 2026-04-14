@@ -1,10 +1,23 @@
 {
   "name": "@sesori/bridge-darwin-arm64",
   "version": "0.2.0",
-  "description": "Sesori Bridge binary for macOS ARM64",
-  "os": ["darwin"],
-  "cpu": ["arm64"],
-  "files": ["bin/", "lib/"],
+  
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "files": [
+    "lib/runtime/"
+  ],
+  "sesoriBridge": {
+    "bootstrapOnly": true,
+    "managedRuntimeOwner": false,
+    "releaseTag": "bridge-v0.2.0",
+    "releaseArtifact": "sesori-bridge-macos-arm64.tar.gz",
+    "runtimeBundlePath": "lib/runtime"
+  },
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
     "type": "git",

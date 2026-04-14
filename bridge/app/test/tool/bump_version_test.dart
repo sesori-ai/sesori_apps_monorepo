@@ -71,6 +71,11 @@ dependencies:
     json: {
       'name': '@sesori/bridge',
       'version': oldVersion,
+      'sesoriBridge': {
+        'bootstrapOnly': true,
+        'managedRuntimeOwner': false,
+        'runtimeBundleSource': 'github-release-assets',
+      },
       'optionalDependencies': {
         '@sesori/bridge-darwin-arm64': oldVersion,
         '@sesori/bridge-darwin-x64': oldVersion,
@@ -88,6 +93,19 @@ dependencies:
       json: {
         'name': '@sesori/${package.replaceFirst('sesori-bridge-', 'bridge-')}',
         'version': oldVersion,
+        'sesoriBridge': {
+          'bootstrapOnly': true,
+          'managedRuntimeOwner': false,
+          'releaseTag': 'bridge-v$oldVersion',
+          'releaseArtifact': {
+            'sesori-bridge-darwin-arm64': 'sesori-bridge-macos-arm64.tar.gz',
+            'sesori-bridge-darwin-x64': 'sesori-bridge-macos-x64.tar.gz',
+            'sesori-bridge-linux-x64': 'sesori-bridge-linux-x64.tar.gz',
+            'sesori-bridge-linux-arm64': 'sesori-bridge-linux-arm64.tar.gz',
+            'sesori-bridge-win32-x64': 'sesori-bridge-windows-x64.zip',
+          }[package],
+          'runtimeBundlePath': 'lib/runtime',
+        },
       },
     );
   }
@@ -161,6 +179,11 @@ void main() {
           path: p.join(fixture.rootPath, 'npm', package, 'package.json'),
         );
         expect(packageJson['version'], equals(fixture.newVersion), reason: 'failed for $package');
+        expect(
+          (packageJson['sesoriBridge'] as Map<String, dynamic>)['releaseTag'],
+          equals('bridge-v${fixture.newVersion}'),
+          reason: 'failed releaseTag update for $package',
+        );
       }
     });
 

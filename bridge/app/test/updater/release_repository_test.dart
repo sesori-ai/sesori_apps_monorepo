@@ -6,11 +6,12 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:sesori_bridge/src/updater/api/github_releases_api.dart';
 import 'package:sesori_bridge/src/updater/api/update_cache_api.dart';
+import 'package:sesori_bridge/src/updater/foundation/platform_info.dart';
+import 'package:sesori_bridge/src/updater/foundation/version_utils.dart';
 import 'package:sesori_bridge/src/updater/models/cached_release.dart';
+import 'package:sesori_bridge/src/updater/models/distribution_target.dart';
 import 'package:sesori_bridge/src/updater/models/release_info.dart';
-import 'package:sesori_bridge/src/updater/platform_info.dart';
 import 'package:sesori_bridge/src/updater/repositories/release_repository.dart';
-import 'package:sesori_bridge/src/updater/version_utils.dart';
 import 'package:test/test.dart';
 
 // ---------------------------------------------------------------------------
@@ -193,45 +194,83 @@ void main() {
         expect(result!.version, equals('0.3.1'));
         expect(result.assetUrl, endsWith('/sesori-bridge-macos-arm64.tar.gz'));
       });
+
+      test('paginates release discovery until later pages to find the highest eligible stable release', () async {
+        final requestedPages = <int>[];
+        final firstPage = List.generate(100, (index) {
+          return _releaseJson(
+            version: '0.3.${index + 1}',
+            assetName: 'sesori-bridge-linux-x64.tar.gz',
+          );
+        });
+        final client = MockClient((request) async {
+          final page = int.parse(request.url.queryParameters['page'] ?? '1');
+          requestedPages.add(page);
+          if (page == 1) {
+            return http.Response(jsonEncode(firstPage), 200);
+          }
+          if (page == 2) {
+            return http.Response(jsonEncode([_releaseJson(version: '0.4.0')]), 200);
+          }
+          return http.Response(jsonEncode(<Map<String, dynamic>>[]), 200);
+        });
+
+        final repository = _makeRepository(
+          httpClient: client,
+          currentVersion: '0.2.0',
+        );
+
+        final result = await repository.checkForNewerRelease();
+
+        expect(result, isNotNull);
+        expect(result!.version, equals('0.4.0'));
+        expect(requestedPages, equals([1, 2]));
+      });
     });
 
     // -----------------------------------------------------------------------
     group('checkForNewerRelease - error handling', () {
-      test('network TimeoutException → returns null gracefully', () async {
+      test('network TimeoutException → throws so callers can surface the failure', () async {
         final client = MockClient(
           (_) async => throw TimeoutException('simulated timeout'),
         );
 
-        expect(await _makeRepository(httpClient: client).checkForNewerRelease(), isNull);
-      });
-
-      test('HTTP 403 (rate limit) → returns null', () async {
-        expect(
-          await _makeRepository(httpClient: _mockStatus(403)).checkForNewerRelease(),
-          isNull,
+        await expectLater(
+          _makeRepository(httpClient: client).checkForNewerRelease(),
+          throwsA(isA<TimeoutException>()),
         );
       });
 
-      test('HTTP 404 → returns null', () async {
-        expect(
-          await _makeRepository(httpClient: _mockStatus(404)).checkForNewerRelease(),
-          isNull,
+      test('HTTP 403 (rate limit) → throws', () async {
+        await expectLater(
+          _makeRepository(httpClient: _mockStatus(403)).checkForNewerRelease(),
+          throwsA(isA<StateError>()),
         );
       });
 
-      test('HTTP 500 → returns null', () async {
-        expect(
-          await _makeRepository(httpClient: _mockStatus(500)).checkForNewerRelease(),
-          isNull,
+      test('HTTP 404 → throws', () async {
+        await expectLater(
+          _makeRepository(httpClient: _mockStatus(404)).checkForNewerRelease(),
+          throwsA(isA<StateError>()),
         );
       });
 
-      test('malformed JSON body → returns null', () async {
+      test('HTTP 500 → throws', () async {
+        await expectLater(
+          _makeRepository(httpClient: _mockStatus(500)).checkForNewerRelease(),
+          throwsA(isA<StateError>()),
+        );
+      });
+
+      test('malformed JSON body → throws', () async {
         final client = MockClient(
           (_) async => http.Response('{ not valid json }}}', 200),
         );
 
-        expect(await _makeRepository(httpClient: client).checkForNewerRelease(), isNull);
+        await expectLater(
+          _makeRepository(httpClient: client).checkForNewerRelease(),
+          throwsA(isA<FormatException>()),
+        );
       });
 
       test('missing platform asset does not poison cache', () async {
@@ -248,7 +287,7 @@ void main() {
         expect(cache.writtenReleases, isEmpty);
       });
 
-      test('missing tag_name field → returns null', () async {
+      test('missing tag_name field → throws', () async {
         final client = MockClient(
           (_) async => http.Response(
             jsonEncode([
@@ -263,7 +302,10 @@ void main() {
           ),
         );
 
-        expect(await _makeRepository(httpClient: client).checkForNewerRelease(), isNull);
+        await expectLater(
+          _makeRepository(httpClient: client).checkForNewerRelease(),
+          throwsA(isA<TypeError>()),
+        );
       });
 
       test('tag_name without bridge-v prefix → returns null', () async {
@@ -285,10 +327,32 @@ void main() {
         expect(await _makeRepository(httpClient: client).checkForNewerRelease(), isNull);
       });
 
-      test('generic exception from HTTP client → returns null', () async {
+      test('generic exception from HTTP client → throws', () async {
         final client = MockClient((_) async => throw Exception('network error'));
 
-        expect(await _makeRepository(httpClient: client).checkForNewerRelease(), isNull);
+        await expectLater(
+          _makeRepository(httpClient: client).checkForNewerRelease(),
+          throwsA(isA<Exception>()),
+        );
+      });
+
+      test('invalid published_at on selected stable release → throws', () async {
+        final client = MockClient(
+          (_) async => http.Response(
+            jsonEncode([
+              {
+                ..._releaseJson(version: '0.3.0'),
+                'published_at': 'not-a-date',
+              },
+            ]),
+            200,
+          ),
+        );
+
+        await expectLater(
+          _makeRepository(httpClient: client).checkForNewerRelease(),
+          throwsA(isA<StateError>()),
+        );
       });
     });
 
@@ -487,9 +551,6 @@ void main() {
         );
 
         final result = await repository.checkForNewerRelease();
-
-        // ignore: avoid_print
-        print('result: $result');
 
         expect(result, isNotNull);
         expect(result!.version, equals('0.4.0'));

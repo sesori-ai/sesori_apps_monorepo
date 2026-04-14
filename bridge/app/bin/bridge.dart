@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:opencode_plugin/opencode_plugin.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_cli_options.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_runtime_runner.dart';
 import 'package:sesori_bridge/src/version.dart';
@@ -88,6 +89,11 @@ Future<void> main(List<String> args) async {
   );
   Log.level = LogLevel.values.byName(options.logLevelName);
 
-  final exitCode = await runBridgeApp(options: options);
+  final exitCode = await runBridgeApp(
+    options: options,
+    pluginFactory: ({required String serverUrl, required String? serverPassword}) {
+      return OpenCodePlugin(serverUrl: serverUrl, password: serverPassword);
+    },
+  );
   exit(exitCode);
 }

@@ -1,6 +1,6 @@
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../persistence/daos/projects_dao.dart";
+import "../repositories/project_repository.dart";
 import "request_handler.dart";
 
 /// Handles `PUT /project/base-branch` — sets the base branch for a project.
@@ -8,10 +8,11 @@ import "request_handler.dart";
 /// Accepts a JSON body matching [SetBaseBranchRequest]. Both [projectId] and
 /// [baseBranch] are required non-empty strings.
 class SetBaseBranchHandler extends BodyRequestHandler<SetBaseBranchRequest, SuccessEmptyResponse> {
-  final ProjectsDao _projectsDao;
+  final ProjectRepository _projectRepository;
 
-  SetBaseBranchHandler(this._projectsDao)
-    : super(
+  SetBaseBranchHandler({required ProjectRepository projectRepository})
+    : _projectRepository = projectRepository,
+      super(
         HttpMethod.put,
         "/project/base-branch",
         fromJson: SetBaseBranchRequest.fromJson,
@@ -34,7 +35,7 @@ class SetBaseBranchHandler extends BodyRequestHandler<SetBaseBranchRequest, Succ
       throw buildErrorResponse(request, 400, "empty base branch");
     }
 
-    await _projectsDao.setBaseBranch(
+    await _projectRepository.setBaseBranch(
       projectId: projectId,
       baseBranch: baseBranch,
     );

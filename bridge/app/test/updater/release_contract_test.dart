@@ -7,8 +7,9 @@ import 'package:http/testing.dart';
 import 'package:path/path.dart' as p;
 import 'package:sesori_bridge/src/updater/api/github_releases_api.dart';
 import 'package:sesori_bridge/src/updater/api/update_cache_api.dart';
+import 'package:sesori_bridge/src/updater/foundation/platform_info.dart';
 import 'package:sesori_bridge/src/updater/models/cached_release.dart';
-import 'package:sesori_bridge/src/updater/platform_info.dart';
+import 'package:sesori_bridge/src/updater/models/distribution_target.dart';
 import 'package:sesori_bridge/src/updater/repositories/release_repository.dart';
 import 'package:test/test.dart';
 
@@ -56,6 +57,13 @@ Future<String> _readRepoFile({required String relativePath}) {
 Future<Map<String, dynamic>> _readRepoJson({required String relativePath}) async {
   final content = await _readRepoFile(relativePath: relativePath);
   return jsonDecode(content) as Map<String, dynamic>;
+}
+
+Future<String> _appVersion() async {
+  final package = await _readRepoJson(
+    relativePath: 'bridge/app/npm/sesori-bridge/package.json',
+  );
+  return package['version'] as String;
 }
 
 void main() {
@@ -139,7 +147,10 @@ void main() {
     test('install.sh encodes the same bridge-tagged asset and basename checksum contract', () async {
       final script = await _readRepoFile(relativePath: 'install.sh');
 
-      expect(script, contains('releases?per_page=100'));
+      expect(script, contains(r'GITHUB_RELEASES_API_URL="https://api.github.com/repos/${GITHUB_REPO}/releases"'));
+      expect(script, contains('GITHUB_RELEASES_PER_PAGE=100'));
+      expect(script, contains('GITHUB_RELEASES_MAX_PAGES=10'));
+      expect(script, contains(r'?per_page=${GITHUB_RELEASES_PER_PAGE}&page=${page}'));
       expect(script, contains('bridge-v'));
       expect(script, contains('release.get("draft") or release.get("prerelease")'));
       expect(script, contains('eligible.sort('));
@@ -154,7 +165,10 @@ void main() {
     test('install.ps1 encodes the same bridge-tagged asset and basename checksum contract', () async {
       final script = await _readRepoFile(relativePath: 'install.ps1');
 
-      expect(script, contains('releases?per_page=100'));
+      expect(script, contains(r'$ReleasesApiUrl = "https://api.github.com/repos/$RepoOwner/$RepoName/releases"'));
+      expect(script, contains(r'$ReleasesPerPage = 100'));
+      expect(script, contains(r'$ReleasesMaxPages = 10'));
+      expect(script, contains(r'"$ReleasesApiUrl?per_page=$ReleasesPerPage&page=$page"'));
       expect(script, contains("StartsWith('bridge-v')"));
       expect(script, contains(r'''$release.draft -or $release.prerelease'''));
       expect(script, contains('Sort-Object Version -Descending'));
@@ -172,10 +186,17 @@ void main() {
       expect(workflow, contains('release_tag must start with bridge-v'));
       expect(workflow, contains(r'ref: ${{ github.event.inputs.release_tag }}'));
       expect(workflow, contains(r'gh release download "$RELEASE_TAG"'));
-      expect(workflow, contains('--pattern "*.tar.gz" --pattern "*.zip"'));
+      expect(workflow, contains('--pattern "*.tar.gz" --pattern "*.zip" --pattern "checksums.txt"'));
       expect(workflow, contains(r'if [[ "$CURRENT_VERSION" == "${{ steps.version.outputs.VERSION }}" ]]'));
+      expect(workflow, contains('Verify release archive checksums'));
+      expect(workflow, contains('checksum_for()'));
+      expect(workflow, contains('verify_archive_checksum()'));
       expect(workflow, contains('copy_runtime_bundle()'));
-      expect(workflow, contains(r'cp -R "$source_root/lib" "$package_root/lib"'));
+      expect(workflow, contains(r'cp -R "$source_root/bin" "$package_root/lib/runtime/bin"'));
+      expect(workflow, contains(r'cp -R "$source_root/lib" "$package_root/lib/runtime/lib"'));
+      expect(workflow, contains('.bridge-release-provenance.json'));
+      expect(workflow, contains(r'diff -r "$source_root/bin" "$package_root/lib/runtime/bin"'));
+      expect(workflow, contains(r'diff -r "$source_root/lib" "$package_root/lib/runtime/lib"'));
       expect(workflow, contains(r'sha256sum "$file" | awk -v name="$(basename "$file")"'));
       expect(workflow, contains(r'Version already set to $CURRENT_VERSION; skipping bump.'));
 
@@ -184,9 +205,10 @@ void main() {
       expect(
         docs,
         contains(
-          'The manual npm publish path checks out the tagged bridge release and downloads its existing GitHub Release assets before publishing.',
+          'The manual npm publish path checks out the tagged bridge release, verifies its archived asset checksums against `checksums.txt`, and then derives each platform npm package payload directly from those existing GitHub Release assets before publishing.',
         ),
       );
+      expect(docs, contains('package metadata, copied runtime payload, or recorded release provenance drifts'));
     });
 
     test('workflow asset names and npm package manifests stay aligned', () async {
@@ -194,6 +216,7 @@ void main() {
       final wrapperPackage = await _readRepoJson(
         relativePath: 'bridge/app/npm/sesori-bridge/package.json',
       );
+      final appVersion = await _appVersion();
 
       const workflowAssets = <String, String>{
         '@sesori/bridge-darwin-arm64': 'sesori-bridge-macos-arm64.tar.gz',
@@ -216,8 +239,57 @@ void main() {
           relativePath: 'bridge/app/npm/${packageName.replaceFirst('@sesori/', 'sesori-')}/package.json',
         );
         expect(package['name'], equals(packageName));
-        expect(package['files'], containsAll(['bin/', 'lib/']));
+        expect(package['files'], equals(['lib/runtime/']));
+        expect(package.containsKey('bin'), isFalse);
+        expect(package['description'], contains('Bootstrap payload for the managed Sesori Bridge runtime'));
+        expect(
+          package['sesoriBridge'],
+          equals({
+            'bootstrapOnly': true,
+            'managedRuntimeOwner': false,
+            'releaseTag': 'bridge-v$appVersion',
+            'releaseArtifact': workflowAssets[packageName],
+            'runtimeBundlePath': 'lib/runtime',
+          }),
+        );
       }
+
+      expect(
+        wrapperPackage['sesoriBridge'],
+        equals({
+          'bootstrapOnly': true,
+          'managedRuntimeOwner': false,
+          'runtimeBundleSource': 'github-release-assets',
+        }),
+      );
+    });
+
+    test('npm package manifests keep uninstall independent from the managed runtime', () async {
+      const packageNames = <String>[
+        '@sesori/bridge',
+        '@sesori/bridge-darwin-arm64',
+        '@sesori/bridge-darwin-x64',
+        '@sesori/bridge-linux-x64',
+        '@sesori/bridge-linux-arm64',
+        '@sesori/bridge-win32-x64',
+      ];
+
+      for (final packageName in packageNames) {
+        final relativePath = packageName == '@sesori/bridge'
+            ? 'bridge/app/npm/sesori-bridge/package.json'
+            : 'bridge/app/npm/${packageName.replaceFirst('@sesori/', 'sesori-')}/package.json';
+        final package = await _readRepoJson(relativePath: relativePath);
+        final scripts = (package['scripts'] as Map<String, dynamic>?) ?? const <String, dynamic>{};
+
+        expect(scripts.containsKey('preuninstall'), isFalse, reason: packageName);
+        expect(scripts.containsKey('uninstall'), isFalse, reason: packageName);
+        expect(scripts.containsKey('postuninstall'), isFalse, reason: packageName);
+      }
+
+      final wrapperPackage = await _readRepoJson(
+        relativePath: 'bridge/app/npm/sesori-bridge/package.json',
+      );
+      expect(wrapperPackage['bin'], equals({'sesori-bridge': 'bin/bridge.js'}));
     });
   });
 }

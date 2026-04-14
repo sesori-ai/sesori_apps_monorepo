@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
+import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
@@ -423,4 +424,7 @@ class _FakeSessionRepository implements SessionRepository {
 
   @override
   Future<String?> getProjectPath({required String projectId}) async => null;
+
+  @override
+  Future<SessionDto?> getStoredSession({required String sessionId}) async => null;
 }

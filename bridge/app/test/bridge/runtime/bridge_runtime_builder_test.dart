@@ -2,7 +2,7 @@ import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
-import "package:sesori_bridge/src/bridge/runtime/bridge_runtime_builder.dart";
+import "package:sesori_bridge/src/bridge/runtime/bridge_runtime.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_database.dart";
@@ -14,7 +14,7 @@ void main() {
     final plugin = FakeBridgePlugin();
     final database = createTestDatabase();
     final httpClient = http.Client();
-    final runtime = BridgeRuntimeBuilder(
+    final runtime = BridgeRuntime.create(
       config: const BridgeConfig(
         relayURL: "ws://127.0.0.1:9999",
         serverURL: "http://127.0.0.1:4096",
@@ -29,7 +29,7 @@ void main() {
       database: database,
       processRunner: ProcessRunner(),
       failureReporter: FakeFailureReporter(),
-    ).create();
+    );
     final debugServer = runtime.createDebugServer(port: 0);
 
     expect(identical(debugServer.router, runtime.session.router), isTrue);

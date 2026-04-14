@@ -87,6 +87,13 @@ Future<void> updatePackageJson({
     });
   }
 
+  if (json.containsKey('sesoriBridge')) {
+    final metadata = json['sesoriBridge'] as Map<String, dynamic>;
+    if (metadata['releaseTag'] == 'bridge-v$oldVersion') {
+      metadata['releaseTag'] = 'bridge-v$newVersion';
+    }
+  }
+
   // Write back with 2-space indent and trailing newline
   final formatted = const JsonEncoder.withIndent('  ').convert(json);
   await writeFile(path: path, content: '$formatted\n');

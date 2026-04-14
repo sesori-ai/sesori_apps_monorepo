@@ -2,19 +2,27 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:meta/meta.dart';
+import 'package:path/path.dart' as p;
 import 'package:rxdart/rxdart.dart';
 import 'package:sesori_shared/sesori_shared.dart';
 
+import '../foundation/update_lock.dart';
+import '../foundation/update_policy.dart';
+import '../foundation/update_relaunch_client.dart';
 import '../models/release_info.dart';
+import '../models/update_install_result.dart';
 import '../models/update_result.dart';
-import '../platform_info.dart';
+import '../repositories/installed_file_repository.dart';
 import '../repositories/release_repository.dart';
-import '../update_policy.dart';
-import 'update_installer_service.dart';
+import 'update_install_service.dart';
 
 class UpdateService {
   final ReleaseRepository _releaseRepository;
-  final UpdateInstallerService _updateInstallerService;
+  final UpdateInstallService _updateInstallerService;
+  final InstalledFileRepository _installedFileRepository;
+  final UpdateLock _updateLock;
+  final UpdateRelaunchClient _updateRelaunchClient;
+  final String _installRoot;
   final String _executablePath;
   final String _managedExecutablePath;
   final Map<String, String> _environment;
@@ -55,12 +63,20 @@ class UpdateService {
 
   UpdateService({
     required ReleaseRepository releaseRepository,
-    required UpdateInstallerService updateInstallerService,
+    required UpdateInstallService updateInstallerService,
+    required InstalledFileRepository installedFileRepository,
+    required UpdateLock updateLock,
+    required UpdateRelaunchClient updateRelaunchClient,
+    required String installRoot,
     required String executablePath,
     required String managedExecutablePath,
     required Map<String, String> environment,
   }) : _releaseRepository = releaseRepository,
        _updateInstallerService = updateInstallerService,
+       _installedFileRepository = installedFileRepository,
+       _updateLock = updateLock,
+       _updateRelaunchClient = updateRelaunchClient,
+       _installRoot = installRoot,
        _executablePath = executablePath,
        _managedExecutablePath = managedExecutablePath,
        _environment = environment;
@@ -104,22 +120,45 @@ class UpdateService {
         writeToStderr('Updating to ${release.version}...');
       }
 
-      final installRoot = getInstallRoot();
-      final result = await _updateInstallerService.performUpdate(
-        release: release,
-        installRoot: installRoot,
+      final UpdateInstallResult installResult = await _updateLock.locked<UpdateInstallResult>(
+        lockFile: File(p.join(_installRoot, '.update.lock')),
+        onLockAcquired: () {
+          return _updateInstallerService.performUpdate(
+            release: release,
+            installRoot: _installRoot,
+          );
+        },
+        onLockRejected: (lockResult) async {
+          return switch (lockResult) {
+            LockAcquireResult.alreadyLocked => const UpdateInstallResult.completed(
+              result: UpdateResult.alreadyLocked,
+            ),
+            LockAcquireResult.permissionDenied => const UpdateInstallResult.completed(
+              result: UpdateResult.permissionDenied,
+            ),
+            LockAcquireResult.acquired => throw StateError(
+              'Unexpected acquired state in onLockRejected',
+            ),
+          };
+        },
+        shouldReleaseLock: (installResult) {
+          return installResult.pendingWindowsUpdate == null;
+        },
       );
 
-      if (result == UpdateResult.success) {
+      if (installResult.result == UpdateResult.success) {
         if (interactiveTerminal) {
           writeToStderr('Updated to ${release.version}. Restarting...');
         }
-        await _updateInstallerService.reExec(args: cliArgs);
+        await _restartUpdatedBridge(
+          cliArgs: cliArgs,
+          installResult: installResult,
+        );
       }
 
       if (interactiveTerminal) {
         writeToStderr(
-          'Warning: failed to update to ${release.version} ($result). Continuing with current version.',
+          'Warning: failed to update to ${release.version} (${installResult.result}). Continuing with current version.',
         );
       }
     } on Object catch (error, stackTrace) {
@@ -127,5 +166,24 @@ class UpdateService {
         writeToStderr('Warning: automatic update failed: $error\n$stackTrace');
       }
     }
+  }
+
+  Future<Never> _restartUpdatedBridge({
+    required List<String> cliArgs,
+    required UpdateInstallResult installResult,
+  }) async {
+    final pendingWindowsUpdate = installResult.pendingWindowsUpdate;
+    if (Platform.isWindows && pendingWindowsUpdate != null) {
+      final String scriptPath = await _installedFileRepository.createWindowsSwapScript(
+        pendingWindowsUpdate: pendingWindowsUpdate,
+        args: cliArgs,
+      );
+      await _updateRelaunchClient.relaunchWindowsSwapScript(scriptPath: scriptPath);
+    }
+
+    await _updateRelaunchClient.relaunchBinary(
+      binaryPath: _managedExecutablePath,
+      args: cliArgs,
+    );
   }
 }

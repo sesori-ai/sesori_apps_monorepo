@@ -1,7 +1,9 @@
 import 'dart:io' show Platform;
 
-import 'package:sesori_bridge/src/updater/platform_info.dart';
-import 'package:sesori_bridge/src/updater/update_policy.dart';
+import 'package:sesori_bridge/src/updater/foundation/platform_info.dart';
+import 'package:sesori_bridge/src/updater/foundation/update_policy.dart';
+import 'package:sesori_bridge/src/updater/models/distribution_target.dart';
+import 'package:sesori_bridge/src/updater/services/managed_runtime_path_service.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -245,7 +247,7 @@ void main() {
     test('returns ~/.sesori on Unix when HOME is set', () {
       // This test uses the actual Platform.environment, so we can only verify
       // the format is correct. On Unix systems, it should end with /.sesori/
-      final root = getInstallRoot();
+      final root = const ManagedRuntimePathService().currentPaths(environment: Platform.environment).installRoot;
       if (!Platform.isWindows) {
         expect(root, endsWith('/.sesori'));
       }
@@ -253,7 +255,7 @@ void main() {
 
     test('returns correct path format on Windows', () {
       // On Windows, the path should contain sesori\ at the end
-      final root = getInstallRoot();
+      final root = const ManagedRuntimePathService().currentPaths(environment: Platform.environment).installRoot;
       if (Platform.isWindows) {
         expect(root, endsWith(r'\sesori'));
       }
@@ -262,7 +264,7 @@ void main() {
 
   group('getBinaryPath', () {
     test('returns correct path format on Unix', () {
-      final path = getBinaryPath();
+      final path = const ManagedRuntimePathService().currentPaths(environment: Platform.environment).binaryPath;
       if (!Platform.isWindows) {
         expect(path, endsWith('/bin/sesori-bridge'));
         expect(path, contains('/.sesori'));
@@ -270,7 +272,7 @@ void main() {
     });
 
     test('returns correct path format on Windows', () {
-      final path = getBinaryPath();
+      final path = const ManagedRuntimePathService().currentPaths(environment: Platform.environment).binaryPath;
       if (Platform.isWindows) {
         expect(path, endsWith(r'\sesori-bridge.exe'));
         expect(path, contains(r'\sesori\'));
@@ -280,14 +282,14 @@ void main() {
 
   group('getCacheDirectory', () {
     test('returns correct path format on Unix', () {
-      final dir = getCacheDirectory();
+      final dir = const ManagedRuntimePathService().currentPaths(environment: Platform.environment).cacheDirectory;
       if (!Platform.isWindows) {
         expect(dir, endsWith('/.config/sesori-bridge'));
       }
     });
 
     test('returns correct path format on Windows', () {
-      final dir = getCacheDirectory();
+      final dir = const ManagedRuntimePathService().currentPaths(environment: Platform.environment).cacheDirectory;
       if (Platform.isWindows) {
         expect(dir, endsWith(r'\sesori\cache'));
       }

@@ -1,33 +1,22 @@
 import "dart:io";
 
+import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
-import "package:sesori_bridge/src/bridge/persistence/database.dart";
-import "package:sesori_bridge/src/bridge/worktree_service.dart";
 import "package:test/test.dart";
 
-import "../helpers/test_database.dart";
-
 void main() {
-  group("WorktreeService", () {
+  group("GitCliApi", () {
     late _FakeProcessRunner processRunner;
     late bool gitDirectoryExists;
-    late WorktreeService service;
-    late AppDatabase db;
+    late GitCliApi service;
 
     setUp(() {
-      db = createTestDatabase();
       processRunner = _FakeProcessRunner();
       gitDirectoryExists = false;
-      service = WorktreeService(
-        projectsDao: db.projectsDao,
-        sessionDao: db.sessionDao,
+      service = GitCliApi(
         processRunner: processRunner,
         gitPathExists: ({required String gitPath}) => gitDirectoryExists,
       );
-    });
-
-    tearDown(() async {
-      await db.close();
     });
 
     test("isGitInitialized returns true when .git exists", () async {
@@ -145,18 +134,17 @@ void main() {
       expect(exists, isFalse);
     });
 
-    test("createWorktree runs git worktree add and returns ProcessResult", () async {
-      final expected = _processResult(exitCode: 0, stdout: "prepared");
-      processRunner.enqueue(result: expected);
+    test("createWorktree runs git worktree add and returns success", () async {
+      processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "prepared"));
 
       final result = await service.createWorktree(
         projectPath: "/repo/project",
         worktreePath: "/repo/.worktrees/feature-x",
         branchName: "feature/x",
-        baseBranch: "main",
+        startPoint: "main",
       );
 
-      expect(result, same(expected));
+      expect(result, isTrue);
       expect(processRunner.invocations, hasLength(1));
       expect(processRunner.invocations.single.command, equals("git"));
       expect(
@@ -164,6 +152,51 @@ void main() {
         equals(["worktree", "add", "-b", "feature/x", "--", "/repo/.worktrees/feature-x", "main"]),
       );
       expect(processRunner.invocations.single.workingDirectory, equals("/repo/project"));
+    });
+
+    group("inspectWorktreeSafety", () {
+      late Directory tempDir;
+
+      setUp(() async {
+        tempDir = await Directory.systemTemp.createTemp("git_worktree_safety_test_");
+      });
+
+      tearDown(() async {
+        if (tempDir.existsSync()) {
+          await tempDir.delete(recursive: true);
+        }
+      });
+
+      test("returns non-existent snapshot when worktree path is missing", () async {
+        final snapshot = await service.inspectWorktreeSafety(
+          worktreePath: "${tempDir.path}/missing",
+        );
+
+        expect(snapshot.worktreeExists, isFalse);
+        expect(snapshot.hasUnstagedChanges, isFalse);
+        expect(snapshot.actualBranch, isEmpty);
+        expect(processRunner.invocations, isEmpty);
+      });
+
+      test("returns raw git status and branch details for existing worktree", () async {
+        processRunner
+          ..enqueue(result: _processResult(exitCode: 0, stdout: "M file.txt\n"))
+          ..enqueue(result: _processResult(exitCode: 0, stdout: "main\n"));
+
+        final snapshot = await service.inspectWorktreeSafety(
+          worktreePath: tempDir.path,
+        );
+
+        expect(snapshot.worktreeExists, isTrue);
+        expect(snapshot.hasUnstagedChanges, isTrue);
+        expect(snapshot.actualBranch, equals("main"));
+        expect(processRunner.invocations, hasLength(2));
+        expect(processRunner.invocations.first.arguments, equals(["status", "--porcelain"]));
+        expect(
+          processRunner.invocations.last.arguments,
+          equals(["rev-parse", "--abbrev-ref", "HEAD"]),
+        );
+      });
     });
 
     group("resolveStartPointForBranch", () {

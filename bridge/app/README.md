@@ -16,11 +16,14 @@ make build
 
 Press `Ctrl+C` to stop. This shuts down both the bridge and the OpenCode server it started.
 
-No Dart SDK? Use the npm distribution instead:
+No Dart SDK? You can bootstrap the managed install with npm:
 
 ```bash
-npx @sesori/bridge
+npx @sesori/bridge --version
+sesori-bridge
 ```
+
+`npx @sesori/bridge` only installs or refreshes the managed runtime under `~/.sesori/` on macOS/Linux or `%LOCALAPPDATA%\sesori\` on Windows. `sesori-bridge` is the long-lived command you keep running after that bootstrap step. Shell installers are still supported if you prefer them. `npm uninstall @sesori/bridge` does not remove the managed install, so delete that Sesori directory manually if you want a full uninstall.
 
 ## How It Works
 
@@ -129,6 +132,10 @@ dart run bin/bridge.dart
 # Compiled binary
 ./dist/bridge-macos-arm64
 ./dist/bridge-linux-x64
+
+# npm bootstrap, then run the managed launcher
+npx @sesori/bridge --version
+sesori-bridge
 ```
 
 ## Project Structure

@@ -1,12 +1,3 @@
-/// Compares two semver version strings.
-///
-/// Returns a positive integer if [a] > [b], a negative integer if [a] < [b],
-/// and zero if they are equal.
-///
-/// Pre-release versions (those containing a `-`) are treated as less than the
-/// equivalent stable version: `1.0.0-beta` < `1.0.0`.
-///
-/// Returns 0 if either string cannot be parsed as semver.
 int compareVersions({required String a, required String b}) {
   try {
     final aNums = a.split('-')[0].split('.').map(int.parse).toList();
@@ -19,7 +10,6 @@ int compareVersions({required String a, required String b}) {
       if (aVal != bVal) return aVal - bVal;
     }
 
-    // Numeric parts are equal — pre-release < stable.
     final aIsPre = a.contains('-');
     final bIsPre = b.contains('-');
     if (aIsPre && !bIsPre) return -1;

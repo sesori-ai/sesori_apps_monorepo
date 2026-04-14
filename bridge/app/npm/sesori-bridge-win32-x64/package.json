@@ -1,10 +1,23 @@
 {
   "name": "@sesori/bridge-win32-x64",
   "version": "0.2.0",
-  "description": "Sesori Bridge binary for Windows x64",
-  "os": ["win32"],
-  "cpu": ["x64"],
-  "files": ["bin/", "lib/"],
+  "description": "Bootstrap payload for the managed Sesori Bridge runtime on Windows x64",
+  "os": [
+    "win32"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "files": [
+    "lib/runtime/"
+  ],
+  "sesoriBridge": {
+    "bootstrapOnly": true,
+    "managedRuntimeOwner": false,
+    "releaseTag": "bridge-v0.2.0",
+    "releaseArtifact": "sesori-bridge-windows-x64.zip",
+    "runtimeBundlePath": "lib/runtime"
+  },
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
     "type": "git",

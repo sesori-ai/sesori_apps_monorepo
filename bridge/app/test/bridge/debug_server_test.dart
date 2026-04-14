@@ -8,7 +8,7 @@ import "package:sesori_bridge/src/bridge/debug_server.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
-import "package:sesori_bridge/src/bridge/runtime/bridge_runtime_builder.dart";
+import "package:sesori_bridge/src/bridge/runtime/bridge_runtime.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -21,7 +21,7 @@ _DebugServerHarness _createDebugServerHarness({
   required int port,
 }) {
   final httpClient = http.Client();
-  final runtime = BridgeRuntimeBuilder(
+  final runtime = BridgeRuntime.create(
     config: const BridgeConfig(
       relayURL: "ws://127.0.0.1:9999",
       serverURL: "http://127.0.0.1:4096",
@@ -36,7 +36,7 @@ _DebugServerHarness _createDebugServerHarness({
     database: db,
     processRunner: ProcessRunner(),
     failureReporter: FakeFailureReporter(),
-  ).create();
+  );
   final debugServer = runtime.createDebugServer(port: port);
   return _DebugServerHarness(
     runtime: runtime,

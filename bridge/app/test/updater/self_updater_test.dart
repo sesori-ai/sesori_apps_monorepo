@@ -8,16 +8,20 @@ import 'package:sesori_bridge/src/updater/api/checksum_manifest_api.dart';
 import 'package:sesori_bridge/src/updater/api/checksum_verifier_api.dart';
 import 'package:sesori_bridge/src/updater/api/file_replacement_api.dart';
 import 'package:sesori_bridge/src/updater/api/update_download_api.dart';
+import 'package:sesori_bridge/src/updater/foundation/update_lock.dart';
+import 'package:sesori_bridge/src/updater/foundation/update_relaunch_client.dart';
 import 'package:sesori_bridge/src/updater/models/checksum_manifest.dart';
+import 'package:sesori_bridge/src/updater/models/file_replacement_result.dart';
 import 'package:sesori_bridge/src/updater/models/pending_windows_update.dart';
 import 'package:sesori_bridge/src/updater/models/release_info.dart';
+import 'package:sesori_bridge/src/updater/models/update_install_result.dart';
 import 'package:sesori_bridge/src/updater/models/update_result.dart';
 import 'package:sesori_bridge/src/updater/repositories/installed_file_repository.dart';
 import 'package:sesori_bridge/src/updater/repositories/release_repository.dart';
 import 'package:sesori_bridge/src/updater/repositories/update_artifact_repository.dart';
-import 'package:sesori_bridge/src/updater/services/update_installer_service.dart';
+import 'package:sesori_bridge/src/updater/services/update_install_service.dart';
 import 'package:sesori_bridge/src/updater/services/update_service.dart';
-import 'package:sesori_bridge/src/updater/update_lock.dart';
+
 import 'package:test/test.dart';
 
 class FakeUpdateHttpClient extends http.BaseClient {
@@ -94,26 +98,54 @@ class _FakeReleaseRepository implements ReleaseRepository {
   }
 }
 
-class _FakeUpdateInstallerService implements UpdateInstallerService {
+class _FakeUpdateInstallerService implements UpdateInstallService {
   int performUpdateCallCount = 0;
-  int reExecCallCount = 0;
-  UpdateResult performUpdateResult = UpdateResult.success;
+  UpdateInstallResult performUpdateResult = const UpdateInstallResult.completed(
+    result: UpdateResult.success,
+  );
   @override
   void Function(String message) writeToStderr = (_) {};
 
   @override
-  Future<UpdateResult> performUpdate({
+  Future<UpdateInstallResult> performUpdate({
     required ReleaseInfo release,
     required String installRoot,
   }) async {
     performUpdateCallCount++;
     return performUpdateResult;
   }
+}
+
+class _FakeInstalledFileRepository implements InstalledFileRepository {
+  @override
+  Future<String> createWindowsSwapScript({
+    required PendingWindowsUpdate pendingWindowsUpdate,
+    required List<String> args,
+  }) async {
+    throw UnimplementedError();
+  }
 
   @override
-  Future<Never> reExec({required List<String> args}) async {
-    reExecCallCount++;
-    throw StateError('reexec');
+  Future<FileReplacementResult> replaceInstalledFiles({
+    required String installRoot,
+    required String stagingPath,
+  }) async {
+    throw UnimplementedError();
+  }
+}
+
+class _FakeUpdateRelaunchClient implements UpdateRelaunchClient {
+  @override
+  Future<Never> relaunchBinary({
+    required String binaryPath,
+    required List<String> args,
+  }) async {
+    throw StateError('relaunch');
+  }
+
+  @override
+  Future<Never> relaunchWindowsSwapScript({required String scriptPath}) async {
+    throw StateError('relaunch');
   }
 }
 
@@ -131,7 +163,7 @@ void main() {
     }
   });
 
-  group('UpdateInstallerService', () {
+  group('UpdateInstallService', () {
     test('successful update replaces binary and returns success', () async {
       final String installRoot = await _createInstallRoot(
         rootTempDir: rootTempDir,
@@ -155,7 +187,7 @@ void main() {
         },
       );
 
-      final UpdateInstallerService updater = _makeUpdater(
+      final UpdateInstallService updater = _makeUpdater(
         downloadApi: UpdateDownloadApi(httpClient: httpClient),
         checksumManifestApi: FakeChecksumManifestApi.single(
           fileName: 'bridge.tar.gz',
@@ -164,7 +196,7 @@ void main() {
         checksumVerifierApi: FakeChecksumVerifierApi(shouldPass: true),
       );
 
-      final UpdateResult result = await updater.performUpdate(
+      final UpdateInstallResult result = await updater.performUpdate(
         release: ReleaseInfo(
           version: '1.2.3',
           assetUrl: 'https://example.com/bridge.tar.gz',
@@ -174,7 +206,7 @@ void main() {
         installRoot: installRoot,
       );
 
-      expect(result, equals(UpdateResult.success));
+      expect(result.result, equals(UpdateResult.success));
       expect(
         await File('$installRoot/bin/sesori-bridge').readAsString(),
         equals('new-binary'),
@@ -203,7 +235,7 @@ void main() {
         checksum: 'expected',
       );
 
-      final UpdateInstallerService updater = _makeUpdater(
+      final UpdateInstallService updater = _makeUpdater(
         downloadApi: UpdateDownloadApi(
           httpClient: FakeUpdateHttpClient(
             handler: (request) async {
@@ -215,7 +247,7 @@ void main() {
         checksumVerifierApi: FakeChecksumVerifierApi(shouldPass: true),
       );
 
-      final UpdateResult result = await updater.performUpdate(
+      final UpdateInstallResult result = await updater.performUpdate(
         release: ReleaseInfo(
           version: '1.2.3',
           assetUrl: 'https://example.com/download/sesori-bridge-macos-arm64.tar.gz',
@@ -225,7 +257,7 @@ void main() {
         installRoot: installRoot,
       );
 
-      expect(result, equals(UpdateResult.success));
+      expect(result.result, equals(UpdateResult.success));
       expect(
         fakeChecksumManifestApi.lastChecksumsUrl,
         equals('https://example.com/checksums.txt'),
@@ -246,7 +278,7 @@ void main() {
       );
       final List<int> archiveBytes = await File(archivePath).readAsBytes();
 
-      final UpdateInstallerService updater = _makeUpdater(
+      final UpdateInstallService updater = _makeUpdater(
         downloadApi: UpdateDownloadApi(
           httpClient: FakeUpdateHttpClient(
             handler: (http.BaseRequest request) async {
@@ -264,7 +296,7 @@ void main() {
         checksumVerifierApi: FakeChecksumVerifierApi(shouldPass: false),
       );
 
-      final UpdateResult result = await updater.performUpdate(
+      final UpdateInstallResult result = await updater.performUpdate(
         release: ReleaseInfo(
           version: '1.2.3',
           assetUrl: 'https://example.com/bridge.tar.gz',
@@ -274,7 +306,7 @@ void main() {
         installRoot: installRoot,
       );
 
-      expect(result, equals(UpdateResult.checksumFailed));
+      expect(result.result, equals(UpdateResult.checksumFailed));
       expect(
         await File('$installRoot/bin/sesori-bridge').readAsString(),
         equals('old-binary'),
@@ -288,7 +320,7 @@ void main() {
         binaryContent: 'old-binary',
       );
 
-      final UpdateInstallerService updater = _makeUpdater(
+      final UpdateInstallService updater = _makeUpdater(
         downloadApi: UpdateDownloadApi(
           httpClient: FakeUpdateHttpClient(
             handler: (http.BaseRequest request) async {
@@ -306,7 +338,7 @@ void main() {
         checksumVerifierApi: FakeChecksumVerifierApi(shouldPass: true),
       );
 
-      final UpdateResult result = await updater.performUpdate(
+      final UpdateInstallResult result = await updater.performUpdate(
         release: ReleaseInfo(
           version: '1.2.3',
           assetUrl: 'https://example.com/bridge.tar.gz',
@@ -316,7 +348,7 @@ void main() {
         installRoot: installRoot,
       );
 
-      expect(result, equals(UpdateResult.downloadFailed));
+      expect(result.result, equals(UpdateResult.downloadFailed));
       expect(
         await File('$installRoot/bin/sesori-bridge').readAsString(),
         equals('old-binary'),
@@ -329,32 +361,24 @@ void main() {
         rootTempDir: rootTempDir,
         binaryContent: 'old-binary',
       );
+      final updateLock = UpdateLock(
+        currentPid: pid + 1,
+        processRunner: ProcessRunner(),
+      );
 
       await File('$installRoot/.update.lock').writeAsString('$pid');
 
-      final UpdateInstallerService updater = _makeUpdater(
-        downloadApi: UpdateDownloadApi(
-          httpClient: FakeUpdateHttpClient(
-            handler: (http.BaseRequest request) async {
-              return http.StreamedResponse(const Stream<List<int>>.empty(), 200);
-            },
-          ),
-        ),
-        checksumManifestApi: FakeChecksumManifestApi.single(
-          fileName: 'bridge.tar.gz',
-          checksum: 'expected',
-        ),
-        checksumVerifierApi: FakeChecksumVerifierApi(shouldPass: true),
-      );
-
-      final UpdateResult result = await updater.performUpdate(
-        release: ReleaseInfo(
-          version: '1.2.3',
-          assetUrl: 'https://example.com/bridge.tar.gz',
-          checksumsUrl: 'https://example.com/checksums.txt',
-          publishedAt: DateTime(2024),
-        ),
-        installRoot: installRoot,
+      final UpdateResult result = await updateLock.locked<UpdateResult>(
+        lockFile: File('$installRoot/.update.lock'),
+        onLockAcquired: () async => UpdateResult.success,
+        onLockRejected: (lockResult) async {
+          return switch (lockResult) {
+            LockAcquireResult.alreadyLocked => UpdateResult.alreadyLocked,
+            LockAcquireResult.permissionDenied => UpdateResult.permissionDenied,
+            LockAcquireResult.acquired => throw StateError('unexpected'),
+          };
+        },
+        shouldReleaseLock: (_) => true,
       );
 
       expect(result, equals(UpdateResult.alreadyLocked));
@@ -375,8 +399,12 @@ void main() {
         includeLib: false,
       );
       final List<int> archiveBytes = await File(archivePath).readAsBytes();
+      final updateLock = UpdateLock(
+        currentPid: pid,
+        processRunner: ProcessRunner(),
+      );
 
-      final UpdateInstallerService updater = _makeUpdater(
+      final UpdateInstallService updater = _makeUpdater(
         downloadApi: UpdateDownloadApi(
           httpClient: FakeUpdateHttpClient(
             handler: (http.BaseRequest request) async {
@@ -394,17 +422,34 @@ void main() {
         checksumVerifierApi: FakeChecksumVerifierApi(shouldPass: true),
       );
 
-      final UpdateResult result = await updater.performUpdate(
-        release: ReleaseInfo(
-          version: '1.2.3',
-          assetUrl: 'https://example.com/bridge.tar.gz',
-          checksumsUrl: 'https://example.com/checksums.txt',
-          publishedAt: DateTime(2024),
-        ),
-        installRoot: installRoot,
+      final UpdateInstallResult result = await updateLock.locked<UpdateInstallResult>(
+        lockFile: File('$installRoot/.update.lock'),
+        onLockAcquired: () {
+          return updater.performUpdate(
+            release: ReleaseInfo(
+              version: '1.2.3',
+              assetUrl: 'https://example.com/bridge.tar.gz',
+              checksumsUrl: 'https://example.com/checksums.txt',
+              publishedAt: DateTime(2024),
+            ),
+            installRoot: installRoot,
+          );
+        },
+        onLockRejected: (lockResult) async {
+          return switch (lockResult) {
+            LockAcquireResult.alreadyLocked => const UpdateInstallResult.completed(
+              result: UpdateResult.alreadyLocked,
+            ),
+            LockAcquireResult.permissionDenied => const UpdateInstallResult.completed(
+              result: UpdateResult.permissionDenied,
+            ),
+            LockAcquireResult.acquired => throw StateError('unexpected'),
+          };
+        },
+        shouldReleaseLock: (_) => true,
       );
 
-      expect(result, equals(UpdateResult.success));
+      expect(result.result, equals(UpdateResult.success));
       expect(await File('$installRoot/bin/sesori-bridge').readAsString(), equals('fresh-binary'));
       await _expectNoTempArtifacts(installRoot: installRoot);
     });
@@ -417,7 +462,7 @@ void main() {
 
       final List<int> invalidArchive = 'not-an-archive'.codeUnits;
 
-      final UpdateInstallerService updater = _makeUpdater(
+      final UpdateInstallService updater = _makeUpdater(
         downloadApi: UpdateDownloadApi(
           httpClient: FakeUpdateHttpClient(
             handler: (http.BaseRequest request) async {
@@ -435,7 +480,7 @@ void main() {
         checksumVerifierApi: FakeChecksumVerifierApi(shouldPass: true),
       );
 
-      final UpdateResult result = await updater.performUpdate(
+      final UpdateInstallResult result = await updater.performUpdate(
         release: ReleaseInfo(
           version: '1.2.3',
           assetUrl: 'https://example.com/bridge.tar.gz',
@@ -445,7 +490,7 @@ void main() {
         installRoot: installRoot,
       );
 
-      expect(result, equals(UpdateResult.downloadFailed));
+      expect(result.result, equals(UpdateResult.downloadFailed));
       await _expectNoTempArtifacts(installRoot: installRoot);
     });
 
@@ -461,7 +506,7 @@ void main() {
 
       await Process.run('chmod', ['0555', installRoot]);
 
-      final UpdateInstallerService updater = _makeUpdater(
+      final UpdateInstallService updater = _makeUpdater(
         downloadApi: UpdateDownloadApi(
           httpClient: FakeUpdateHttpClient(
             handler: (http.BaseRequest request) async {
@@ -476,7 +521,7 @@ void main() {
         checksumVerifierApi: FakeChecksumVerifierApi(shouldPass: true),
       );
 
-      final UpdateResult result = await updater.performUpdate(
+      final UpdateInstallResult result = await updater.performUpdate(
         release: ReleaseInfo(
           version: '1.2.3',
           assetUrl: 'https://example.com/bridge.tar.gz',
@@ -486,7 +531,7 @@ void main() {
         installRoot: installRoot,
       );
 
-      expect(result, equals(UpdateResult.permissionDenied));
+      expect(result.result, equals(UpdateResult.permissionDenied));
 
       await Process.run('chmod', ['0755', installRoot]);
     });
@@ -510,7 +555,7 @@ void main() {
       );
       final List<int> archiveBytes = await File(archivePath).readAsBytes();
 
-      final UpdateInstallerService updater = _makeUpdater(
+      final UpdateInstallService updater = _makeUpdater(
         downloadApi: UpdateDownloadApi(
           httpClient: FakeUpdateHttpClient(
             handler: (http.BaseRequest request) async {
@@ -526,7 +571,7 @@ void main() {
         fileReplacementApi: FileReplacementApi(processRunner: FakeProcessRunner(exitCode: 1)),
       );
 
-      final UpdateResult result = await updater.performUpdate(
+      final UpdateInstallResult result = await updater.performUpdate(
         release: ReleaseInfo(
           version: '1.2.3',
           assetUrl: 'https://example.com/bridge.tar.gz',
@@ -536,7 +581,7 @@ void main() {
         installRoot: installRoot,
       );
 
-      expect(result, equals(UpdateResult.permissionDenied));
+      expect(result.result, equals(UpdateResult.permissionDenied));
       expect(await File('$installRoot/bin/sesori-bridge').readAsString(), equals('old-binary'));
       expect(await File('$installRoot/lib/libsqlite3.dylib').readAsString(), equals('old-lib'));
       await _expectNoTempArtifacts(installRoot: installRoot);
@@ -555,7 +600,7 @@ void main() {
       );
       final List<int> archiveBytes = await File(archivePath).readAsBytes();
 
-      final UpdateInstallerService updater = _makeUpdater(
+      final UpdateInstallService updater = _makeUpdater(
         downloadApi: UpdateDownloadApi(
           httpClient: FakeUpdateHttpClient(
             handler: (http.BaseRequest request) async {
@@ -576,7 +621,7 @@ void main() {
         ),
       );
 
-      final UpdateResult result = await updater.performUpdate(
+      final UpdateInstallResult result = await updater.performUpdate(
         release: ReleaseInfo(
           version: '1.2.3',
           assetUrl: 'https://example.com/bridge.tar.gz',
@@ -586,7 +631,7 @@ void main() {
         installRoot: installRoot,
       );
 
-      expect(result, equals(UpdateResult.checksumFailed));
+      expect(result.result, equals(UpdateResult.checksumFailed));
       expect(
         await File('$installRoot/bin/sesori-bridge').readAsString(),
         equals('old-binary'),
@@ -600,7 +645,7 @@ void main() {
         binaryContent: 'old-binary',
       );
 
-      final UpdateInstallerService updater = _makeUpdater(
+      final UpdateInstallService updater = _makeUpdater(
         downloadApi: UpdateDownloadApi(
           httpClient: FakeUpdateHttpClient(
             handler: (http.BaseRequest request) {
@@ -616,7 +661,7 @@ void main() {
         checksumVerifierApi: FakeChecksumVerifierApi(shouldPass: true),
       );
 
-      final UpdateResult result = await updater.performUpdate(
+      final UpdateInstallResult result = await updater.performUpdate(
         release: ReleaseInfo(
           version: '1.2.3',
           assetUrl: 'https://example.com/bridge.tar.gz',
@@ -626,7 +671,7 @@ void main() {
         installRoot: installRoot,
       );
 
-      expect(result, equals(UpdateResult.networkError));
+      expect(result.result, equals(UpdateResult.networkError));
       await _expectNoTempArtifacts(installRoot: installRoot);
     });
 
@@ -668,6 +713,10 @@ void main() {
       final service = UpdateService(
         releaseRepository: repository,
         updateInstallerService: updater,
+        installedFileRepository: _FakeInstalledFileRepository(),
+        updateLock: UpdateLock(currentPid: pid, processRunner: ProcessRunner()),
+        updateRelaunchClient: _FakeUpdateRelaunchClient(),
+        installRoot: '/Users/alex/.sesori',
         executablePath: '/tmp/custom/bridge',
         managedExecutablePath: '/Users/alex/.sesori/bin/sesori-bridge',
         environment: const {},
@@ -686,6 +735,10 @@ void main() {
       final service = UpdateService(
         releaseRepository: repository,
         updateInstallerService: updater,
+        installedFileRepository: _FakeInstalledFileRepository(),
+        updateLock: UpdateLock(currentPid: pid, processRunner: ProcessRunner()),
+        updateRelaunchClient: _FakeUpdateRelaunchClient(),
+        installRoot: '/Users/alex/.sesori',
         executablePath: '/Users/alex/.sesori/bin/sesori-bridge',
         managedExecutablePath: '/Users/alex/.sesori/bin/sesori-bridge',
         environment: const {},
@@ -725,7 +778,7 @@ class _NeverCompletesHttpClient extends http.BaseClient {
   }
 }
 
-UpdateInstallerService _makeUpdater({
+UpdateInstallService _makeUpdater({
   required UpdateDownloadApi downloadApi,
   required ChecksumManifestApi checksumManifestApi,
   required ChecksumVerifierApi checksumVerifierApi,
@@ -733,16 +786,12 @@ UpdateInstallerService _makeUpdater({
   FileReplacementApi? fileReplacementApi,
 }) {
   final runner = processRunner ?? ProcessRunner();
-  return UpdateInstallerService(
+  return UpdateInstallService(
     updateArtifactRepository: UpdateArtifactRepository(
       downloadApi: downloadApi,
       checksumManifestApi: checksumManifestApi,
       checksumVerifierApi: checksumVerifierApi,
       archiveExtractorApi: ArchiveExtractorApi(processRunner: runner),
-    ),
-    updateLock: UpdateLock(
-      currentPid: pid,
-      processRunner: runner,
     ),
     installedFileRepository: InstalledFileRepository(
       fileReplacementApi: fileReplacementApi ?? FileReplacementApi(processRunner: runner),

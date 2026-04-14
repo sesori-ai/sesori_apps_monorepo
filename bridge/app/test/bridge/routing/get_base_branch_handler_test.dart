@@ -1,5 +1,5 @@
-import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/get_base_branch_handler.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -10,16 +10,22 @@ import "routing_test_helpers.dart";
 void main() {
   group("GetBaseBranchHandler", () {
     late AppDatabase db;
-    late ProjectsDao dao;
+    late FakeBridgePlugin plugin;
+    late ProjectRepository projectRepository;
     late GetBaseBranchHandler handler;
 
     setUp(() {
       db = createTestDatabase();
-      dao = db.projectsDao;
-      handler = GetBaseBranchHandler(dao);
+      plugin = FakeBridgePlugin();
+      projectRepository = ProjectRepository(
+        plugin: plugin,
+        projectsDao: db.projectsDao,
+      );
+      handler = GetBaseBranchHandler(projectRepository: projectRepository);
     });
 
     tearDown(() async {
+      await plugin.close();
       await db.close();
     });
 
@@ -48,7 +54,7 @@ void main() {
     });
 
     test("returns configured baseBranch after it has been set", () async {
-      await dao.setBaseBranch(projectId: "/Users/dev/my-app", baseBranch: "develop");
+      await db.projectsDao.setBaseBranch(projectId: "/Users/dev/my-app", baseBranch: "develop");
 
       final response = await handler.handle(
         makeRequest("POST", "/project/base-branch"),
@@ -62,7 +68,7 @@ void main() {
     });
 
     test("returns baseBranch for another project", () async {
-      await dao.setBaseBranch(projectId: "proj-1", baseBranch: "main");
+      await db.projectsDao.setBaseBranch(projectId: "proj-1", baseBranch: "main");
 
       final response = await handler.handle(
         makeRequest("POST", "/project/base-branch"),

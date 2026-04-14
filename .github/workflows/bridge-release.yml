@@ -232,7 +232,45 @@ jobs:
       - name: Download release assets
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir artifacts --pattern "*.tar.gz" --pattern "*.zip"
+        run: gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir artifacts --pattern "*.tar.gz" --pattern "*.zip" --pattern "checksums.txt"
+
+      - name: Verify release archive checksums
+        shell: bash
+        run: |
+          checksum_for() {
+            local archive_name="$1"
+            awk -v name="$archive_name" '$2 == name || $2 == "*" name { print $1; exit }' artifacts/checksums.txt
+          }
+
+          verify_archive_checksum() {
+            local archive_path="$1"
+            local archive_name
+            local expected_checksum
+            local actual_checksum
+
+            archive_name="$(basename "$archive_path")"
+            expected_checksum="$(checksum_for "$archive_name")"
+
+            if [[ -z "$expected_checksum" ]]; then
+              echo "Missing checksum entry for $archive_name in release contract." >&2
+              exit 1
+            fi
+
+            actual_checksum="$(sha256sum "$archive_path" | awk '{print $1}')"
+
+            if [[ "$actual_checksum" != "$expected_checksum" ]]; then
+              echo "Checksum mismatch for $archive_name." >&2
+              echo "Expected: $expected_checksum" >&2
+              echo "Actual:   $actual_checksum" >&2
+              exit 1
+            fi
+          }
+
+          verify_archive_checksum artifacts/sesori-bridge-macos-arm64.tar.gz
+          verify_archive_checksum artifacts/sesori-bridge-macos-x64.tar.gz
+          verify_archive_checksum artifacts/sesori-bridge-linux-x64.tar.gz
+          verify_archive_checksum artifacts/sesori-bridge-linux-arm64.tar.gz
+          verify_archive_checksum artifacts/sesori-bridge-windows-x64.zip
 
       - name: Extract archives and copy runtime bundles
         shell: bash
@@ -244,15 +282,56 @@ jobs:
           copy_runtime_bundle() {
             local source_root="$1"
             local package_root="$2"
-            local binary_name="$3"
+            local package_name="$3"
+            local asset_name="$4"
 
-            rm -rf "$package_root/bin" "$package_root/lib"
-            mkdir -p "$package_root/bin"
-            cp "$source_root/bin/$binary_name" "$package_root/bin/$binary_name"
+            rm -rf "$package_root/lib/runtime"
+            mkdir -p "$package_root/lib/runtime"
+            cp -R "$source_root/bin" "$package_root/lib/runtime/bin"
+            cp -R "$source_root/lib" "$package_root/lib/runtime/lib"
 
-            if [[ -d "$source_root/lib" ]]; then
-              cp -R "$source_root/lib" "$package_root/lib"
-            fi
+            node -e '
+              const fs = require("fs");
+              const [packageJsonPath, releaseTag, version, assetName, packageName] = process.argv.slice(1);
+              const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+              const metadata = packageJson.sesoriBridge;
+              if (!metadata) {
+                throw new Error("Missing sesoriBridge metadata in " + packageJsonPath);
+              }
+              if (packageJson.version !== version) {
+                throw new Error("Package version drift in " + packageJsonPath + ": expected " + version + ", got " + packageJson.version);
+              }
+              if (packageJson.name !== packageName) {
+                throw new Error("Package name drift in " + packageJsonPath + ": expected " + packageName + ", got " + packageJson.name);
+              }
+              if (metadata.bootstrapOnly !== true) {
+                throw new Error("bootstrapOnly must stay true in " + packageJsonPath);
+              }
+              if (metadata.runtimeBundlePath !== "lib/runtime") {
+                throw new Error("runtimeBundlePath drift in " + packageJsonPath);
+              }
+              if (metadata.releaseArtifact !== assetName) {
+                throw new Error("releaseArtifact drift in " + packageJsonPath + ": expected " + assetName + ", got " + metadata.releaseArtifact);
+              }
+              if (metadata.releaseTag !== releaseTag) {
+                throw new Error("releaseTag drift in " + packageJsonPath + ": expected " + releaseTag + ", got " + metadata.releaseTag);
+              }
+              const provenancePath = packageJsonPath.replace(/package\.json$/, "lib/runtime/.bridge-release-provenance.json");
+              fs.writeFileSync(
+                provenancePath,
+                JSON.stringify({
+                  packageName,
+                  version,
+                  releaseTag,
+                  releaseArtifact: assetName,
+                  runtimeBundlePath: metadata.runtimeBundlePath,
+                  bootstrapOnly: metadata.bootstrapOnly,
+                }, null, 2) + "\n"
+              );
+            ' "$package_root/package.json" "$RELEASE_TAG" "${{ steps.version.outputs.VERSION }}" "$asset_name" "$package_name"
+
+            diff -r "$source_root/bin" "$package_root/lib/runtime/bin"
+            diff -r "$source_root/lib" "$package_root/lib/runtime/lib"
           }
 
           tar -xzf artifacts/sesori-bridge-macos-arm64.tar.gz \
@@ -260,39 +339,44 @@ jobs:
           copy_runtime_bundle \
             /tmp/bridges/macos-arm64 \
             bridge/app/npm/sesori-bridge-darwin-arm64 \
-            sesori-bridge
-          chmod +x bridge/app/npm/sesori-bridge-darwin-arm64/bin/sesori-bridge
+            @sesori/bridge-darwin-arm64 \
+            sesori-bridge-macos-arm64.tar.gz
+          chmod +x bridge/app/npm/sesori-bridge-darwin-arm64/lib/runtime/bin/sesori-bridge
 
           tar -xzf artifacts/sesori-bridge-macos-x64.tar.gz \
               -C /tmp/bridges/macos-x64
           copy_runtime_bundle \
             /tmp/bridges/macos-x64 \
             bridge/app/npm/sesori-bridge-darwin-x64 \
-            sesori-bridge
-          chmod +x bridge/app/npm/sesori-bridge-darwin-x64/bin/sesori-bridge
+            @sesori/bridge-darwin-x64 \
+            sesori-bridge-macos-x64.tar.gz
+          chmod +x bridge/app/npm/sesori-bridge-darwin-x64/lib/runtime/bin/sesori-bridge
 
           tar -xzf artifacts/sesori-bridge-linux-x64.tar.gz \
               -C /tmp/bridges/linux-x64
           copy_runtime_bundle \
             /tmp/bridges/linux-x64 \
             bridge/app/npm/sesori-bridge-linux-x64 \
-            sesori-bridge
-          chmod +x bridge/app/npm/sesori-bridge-linux-x64/bin/sesori-bridge
+            @sesori/bridge-linux-x64 \
+            sesori-bridge-linux-x64.tar.gz
+          chmod +x bridge/app/npm/sesori-bridge-linux-x64/lib/runtime/bin/sesori-bridge
 
           tar -xzf artifacts/sesori-bridge-linux-arm64.tar.gz \
               -C /tmp/bridges/linux-arm64
           copy_runtime_bundle \
             /tmp/bridges/linux-arm64 \
             bridge/app/npm/sesori-bridge-linux-arm64 \
-            sesori-bridge
-          chmod +x bridge/app/npm/sesori-bridge-linux-arm64/bin/sesori-bridge
+            @sesori/bridge-linux-arm64 \
+            sesori-bridge-linux-arm64.tar.gz
+          chmod +x bridge/app/npm/sesori-bridge-linux-arm64/lib/runtime/bin/sesori-bridge
 
           unzip artifacts/sesori-bridge-windows-x64.zip \
                 -d /tmp/bridges/windows-x64
           copy_runtime_bundle \
             /tmp/bridges/windows-x64 \
             bridge/app/npm/sesori-bridge-win32-x64 \
-            sesori-bridge.exe
+            @sesori/bridge-win32-x64 \
+            sesori-bridge-windows-x64.zip
 
       - name: Setup .npmrc
         run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc

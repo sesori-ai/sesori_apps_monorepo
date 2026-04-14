@@ -109,7 +109,7 @@ bash install.sh
 sesori-bridge --version
 ```
 
-Managed installs from these installers are the only binaries eligible for startup auto-update. npm wrapper installs are intentionally package-manager-managed and do not self-replace.
+Managed installs from these installers are the supported long-lived runtime and the only binaries eligible for startup or periodic auto-update. The npm package stays bootstrap-only: users run `npx @sesori/bridge` to install or refresh the managed runtime, then run `sesori-bridge` from the managed launcher path. Direct execution of platform package binaries inside npm-owned locations is unsupported. `npm uninstall` does not remove the managed install, so release docs and support copy must keep pointing users to manual removal of `~/.sesori/` or `%LOCALAPPDATA%\sesori\` when they want a full uninstall.
 
 ## Optional npm publish later
 
@@ -119,6 +119,6 @@ Run the workflow manually with:
 - `publish_npm=true`
 - `release_tag=bridge-vX.Y.Z`
 
-The manual npm publish path checks out the tagged bridge release and downloads its existing GitHub Release assets before publishing.
+The manual npm publish path checks out the tagged bridge release, verifies its archived asset checksums against `checksums.txt`, and then derives each platform npm package payload directly from those existing GitHub Release assets before publishing.
 
-That manual path is the final release step when npm packages are needed: first create and verify the GitHub Release, then run the manual workflow dispatch against that exact `bridge-vX.Y.Z` tag.
+That manual path is the final release step when npm packages are needed: first create and verify the GitHub Release, then run the manual workflow dispatch against that exact `bridge-vX.Y.Z` tag. Those npm packages remain bootstrap payloads for the managed runtime, and CI now fails if the package metadata, copied runtime payload, or recorded release provenance drifts from the tagged GitHub Release contract.

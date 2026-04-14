@@ -31,6 +31,18 @@ void main() {
         path: p.join('npm', 'sesori-bridge', 'package.json'),
       );
       expect(wrapperPackage['version'], equals(appVersion));
+      expect(
+        wrapperPackage['description'],
+        equals('Bootstrap launcher for the managed Sesori Bridge runtime'),
+      );
+      expect(
+        wrapperPackage['sesoriBridge'],
+        equals({
+          'bootstrapOnly': true,
+          'managedRuntimeOwner': false,
+          'runtimeBundleSource': 'github-release-assets',
+        }),
+      );
 
       final optionalDependencies = wrapperPackage['optionalDependencies'] as Map<String, dynamic>;
       const packageDirs = <String, String>{
@@ -48,6 +60,24 @@ void main() {
         final package = await _readJson(path: p.join('npm', entry.value, 'package.json'));
         expect(package['name'], equals(entry.key));
         expect(package['version'], equals(appVersion));
+        expect(package['description'], contains('Bootstrap payload for the managed Sesori Bridge runtime'));
+        expect(package['files'], equals(['lib/runtime/']));
+        expect(
+          package['sesoriBridge'],
+          equals({
+            'bootstrapOnly': true,
+            'managedRuntimeOwner': false,
+            'releaseTag': 'bridge-v$appVersion',
+            'releaseArtifact': {
+              '@sesori/bridge-darwin-arm64': 'sesori-bridge-macos-arm64.tar.gz',
+              '@sesori/bridge-darwin-x64': 'sesori-bridge-macos-x64.tar.gz',
+              '@sesori/bridge-linux-x64': 'sesori-bridge-linux-x64.tar.gz',
+              '@sesori/bridge-linux-arm64': 'sesori-bridge-linux-arm64.tar.gz',
+              '@sesori/bridge-win32-x64': 'sesori-bridge-windows-x64.zip',
+            }[entry.key],
+            'runtimeBundlePath': 'lib/runtime',
+          }),
+        );
       }
     });
   });

@@ -88,6 +88,8 @@ modules/
 - **Never pass raw JSON maps through layers** — always deserialize at the boundary (API class) and use Freezed objects downstream
 - **Never construct classes with server URLs/passwords directly** — inject an API client instance instead
 - **Never use inline JSON maps for request bodies** — always create a Freezed class in `sesori_shared` and use `toJson()`/`fromJson()`. Never write `body: {"key": value}` in service or handler code.
+- **Never split a service into fake helpers that still depend on that same service** — if logic is being extracted into a focused collaborator, it must stand on its own injected dependencies. Do not use `part` files, extensions, or pseudo-helper classes that call back into the owning service, because that keeps same-level coupling and hides circular design.
+- **Keep command primitives in standalone dependencies** — shell-facing git or worktree operations belong in a dedicated API/helper dependency that the service composes. `WorktreeService` should orchestrate those collaborators, not attach command execution as service-owned helper methods in another file.
 
 ## TESTING
 
@@ -104,4 +106,4 @@ Test helpers in `test/helpers/test_helpers.dart`: `makeRoomKey()`, `startTestRel
 
 ## RELEASE
 
-`make build` produces host binary + Linux cross-compiled binaries. GitHub Actions release workflow (on tag `v*`) builds for 5 platforms, creates GitHub release, publishes 5 npm platform packages + wrapper.
+`make build` produces host binary + Linux cross-compiled binaries. GitHub Actions release workflow builds 5 platform artifacts and a GitHub release from tags; npm publishing is a separate manual workflow-dispatch step keyed by a release tag and used only to publish bootstrap packages.

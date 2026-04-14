@@ -188,6 +188,87 @@ printf '%s\n%s\n%s\n' "\$RESOLVED_RELEASE_TAG" "\$RESOLVED_ARCHIVE_URL" "\$RESOL
       );
     });
 
+    test('paginates release resolution until a later page contains the highest eligible stable release', () async {
+      final libraryPath = await _createInstallShLibrary();
+      final tempDir = await Directory.systemTemp.createTemp('install-sh-pagination-');
+      addTearDown(() => tempDir.delete(recursive: true));
+      final pageOnePath = p.join(tempDir.path, 'page-1.json');
+      final pageTwoPath = p.join(tempDir.path, 'page-2.json');
+      await File(pageOnePath).writeAsString(
+        jsonEncode(
+          List.generate(100, (index) {
+            final version = '0.3.${index + 1}';
+            return {
+              'tag_name': 'bridge-v$version',
+              'draft': false,
+              'prerelease': false,
+              'assets': [
+                {
+                  'name': 'sesori-bridge-linux-x64.tar.gz',
+                  'browser_download_url': 'https://example.com/bridge-v$version/sesori-bridge-linux-x64.tar.gz',
+                },
+                {
+                  'name': 'checksums.txt',
+                  'browser_download_url': 'https://example.com/bridge-v$version/checksums.txt',
+                },
+              ],
+            };
+          }),
+        ),
+      );
+      await File(pageTwoPath).writeAsString(
+        jsonEncode([
+          {
+            'tag_name': 'bridge-v0.4.0',
+            'draft': false,
+            'prerelease': false,
+            'assets': [
+              {
+                'name': 'sesori-bridge-macos-arm64.tar.gz',
+                'browser_download_url': 'https://example.com/bridge-v0.4.0/sesori-bridge-macos-arm64.tar.gz',
+              },
+              {
+                'name': 'checksums.txt',
+                'browser_download_url': 'https://example.com/bridge-v0.4.0/checksums.txt',
+              },
+            ],
+          },
+        ]),
+      );
+
+      final result = await _runBashSnippet(
+        script:
+            '''
+source ${jsonEncode(libraryPath)}
+fetch_text() {
+  case "\$1" in
+    *page=1) cat ${jsonEncode(pageOnePath)} ;;
+    *page=2) cat ${jsonEncode(pageTwoPath)} ;;
+    *) printf '[]' ;;
+  esac
+}
+resolve_release_contract sesori-bridge-macos-arm64.tar.gz
+printf '%s\n%s\n%s\n' "\$RESOLVED_RELEASE_TAG" "\$RESOLVED_ARCHIVE_URL" "\$RESOLVED_CHECKSUMS_URL"
+''',
+        environment: {
+          'PATH': Platform.environment['PATH'] ?? '',
+          'HOME': tempDir.path,
+        },
+      );
+
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      expect(
+        (result.stdout as String).trim(),
+        equals(
+          [
+            'bridge-v0.4.0',
+            'https://example.com/bridge-v0.4.0/sesori-bridge-macos-arm64.tar.gz',
+            'https://example.com/bridge-v0.4.0/checksums.txt',
+          ].join('\n'),
+        ),
+      );
+    });
+
     test('verifies checksum manifests by asset basename', () async {
       final libraryPath = await _createInstallShLibrary();
       final tempDir = await Directory.systemTemp.createTemp('install-sh-checksum-');
@@ -265,6 +346,13 @@ cat "\$HOME/.zshrc"
       );
       expect(result.stdout, contains('Added ~/.sesori/bin to PATH in ${p.join(tempDir.path, '.zshrc')}.'));
     });
+
+    test('writes managed runtime manifest with resolved version', () {
+      final script = File(_installShPath()).readAsStringSync();
+
+      expect(script, contains(r'MANAGED_MANIFEST="${INSTALL_DIR}/.managed-runtime.json"'));
+      expect(script, contains(r'"${RESOLVED_RELEASE_TAG#bridge-v}" > "${MANAGED_MANIFEST}"'));
+    });
   });
 
   group('install.ps1 contract', () {
@@ -286,6 +374,8 @@ cat "\$HOME/.zshrc"
     test('resolves stable bridge-tagged release assets and checksum basenames', () {
       expect(script, contains(r"$release.tag_name.StartsWith('bridge-v')"));
       expect(script, contains(r'''$release.draft -or $release.prerelease'''));
+      expect(script, contains(r'$page -le $ReleasesMaxPages'));
+      expect(script, contains(r'"$ReleasesApiUrl?per_page=$ReleasesPerPage&page=$page"'));
       expect(script, contains('Sort-Object Version -Descending'));
       expect(script, contains(r'''Where-Object { $_.name -eq $ArchiveName }'''));
       expect(script, contains(r'''Where-Object { $_.name -eq 'checksums.txt' }'''));
@@ -299,6 +389,16 @@ cat "\$HOME/.zshrc"
       expect(script, contains(r'''$pathEntries | Where-Object { $_.TrimEnd('\') -ieq $BinDir.TrimEnd('\') }'''));
       expect(script, contains(r"[Environment]::SetEnvironmentVariable('PATH', $newPath, 'User')"));
       expect(script, contains('Open a new terminal to use sesori-bridge.'));
+    });
+
+    test('writes managed runtime manifest with resolved version', () {
+      expect(script, contains(r"$ManagedManifest = Join-Path $InstallRoot '.managed-runtime.json'"));
+      expect(
+        script,
+        contains(
+          r"@{ version = $Release.TagName.Substring(8) } | ConvertTo-Json -Compress | Set-Content -Path $ManagedManifest -Encoding UTF8",
+        ),
+      );
     });
   });
 }

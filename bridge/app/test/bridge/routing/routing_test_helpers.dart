@@ -587,6 +587,8 @@ class _NoopSessionRepository implements SessionRepository {
   }) async => false;
   @override
   Future<String?> getProjectPath({required String projectId}) async => null;
+  @override
+  Future<SessionDto?> getStoredSession({required String sessionId}) async => null;
 }
 
 /// Test-friendly [SessionRepository] that delegates to a [FakeBridgePlugin]
@@ -696,5 +698,10 @@ class FakeSessionRepository implements SessionRepository {
     } catch (_) {
       return null;
     }
+  }
+
+  @override
+  Future<SessionDto?> getStoredSession({required String sessionId}) async {
+    return _sessionDao.getSession(sessionId: sessionId);
   }
 }
