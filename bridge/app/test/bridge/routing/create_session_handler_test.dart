@@ -9,6 +9,7 @@ import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.da
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/create_session_handler.dart";
+import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -41,14 +42,15 @@ void main() {
         ),
       );
       handler = CreateSessionHandler(
-        plugin: plugin,
-        metadataService: metadataService,
-        worktreeService: worktreeService,
-        sessionRepository: sessionRepository,
-        sessionPersistenceService: SessionPersistenceService(
-          projectsDao: db.projectsDao,
-          sessionDao: db.sessionDao,
-          db: db,
+        sessionCreationService: SessionCreationService(
+          metadataService: metadataService,
+          worktreeService: worktreeService,
+          sessionRepository: sessionRepository,
+          sessionPersistenceService: SessionPersistenceService(
+            projectsDao: db.projectsDao,
+            sessionDao: db.sessionDao,
+            db: db,
+          ),
         ),
       );
     });
@@ -238,15 +240,24 @@ void main() {
 
     test("plugin failure is propagated and no session row is inserted", () async {
       final failingPlugin = _ThrowingCreateSessionPlugin();
-      final localHandler = CreateSessionHandler(
+      final localRepository = SessionRepository(
         plugin: failingPlugin,
-        metadataService: metadataService,
-        worktreeService: worktreeService,
-        sessionRepository: sessionRepository,
-        sessionPersistenceService: SessionPersistenceService(
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
-          sessionDao: db.sessionDao,
-          db: db,
+        ),
+      );
+      final localHandler = CreateSessionHandler(
+        sessionCreationService: SessionCreationService(
+          metadataService: metadataService,
+          worktreeService: worktreeService,
+          sessionRepository: localRepository,
+          sessionPersistenceService: SessionPersistenceService(
+            projectsDao: db.projectsDao,
+            sessionDao: db.sessionDao,
+            db: db,
+          ),
         ),
       );
       worktreeService.prepareResult = WorktreeSuccess(
@@ -653,14 +664,22 @@ void main() {
         summary: null,
       );
       final localHandler = CreateSessionHandler(
-        plugin: throwingPlugin,
-        metadataService: metadataService,
-        worktreeService: worktreeService,
-        sessionRepository: sessionRepository,
-        sessionPersistenceService: SessionPersistenceService(
-          projectsDao: db.projectsDao,
-          sessionDao: db.sessionDao,
-          db: db,
+        sessionCreationService: SessionCreationService(
+          metadataService: metadataService,
+          worktreeService: worktreeService,
+          sessionRepository: SessionRepository(
+            plugin: throwingPlugin,
+            sessionDao: db.sessionDao,
+            pullRequestRepository: PullRequestRepository(
+              pullRequestDao: db.pullRequestDao,
+              projectsDao: db.projectsDao,
+            ),
+          ),
+          sessionPersistenceService: SessionPersistenceService(
+            projectsDao: db.projectsDao,
+            sessionDao: db.sessionDao,
+            db: db,
+          ),
         ),
       );
 
