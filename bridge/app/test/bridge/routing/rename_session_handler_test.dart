@@ -28,7 +28,7 @@ void main() {
           projectsDao: db.projectsDao,
         ),
       );
-      handler = RenameSessionHandler(plugin: plugin, sessionRepository: sessionRepository);
+      handler = RenameSessionHandler(sessionRepository: sessionRepository);
     });
 
     tearDown(() async {

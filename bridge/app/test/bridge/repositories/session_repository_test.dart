@@ -186,15 +186,126 @@ void main() {
       expect(result[1].time?.archived, isNull);
       expect(result[1].pullRequest, isNull);
     });
+
+    test("renameSession delegates to plugin and returns enriched shared session", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+      );
+
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.sessionDao.insertSession(
+        sessionId: "s1",
+        projectId: "p1",
+        isDedicated: true,
+        createdAt: 10,
+        worktreePath: "/tmp/worktree",
+        branchName: "feature/rename",
+        baseBranch: null,
+        baseCommit: null,
+      );
+      await db.pullRequestDao.upsertPr(
+        pullRequest: const PullRequestDto(
+          projectId: "p1",
+          branchName: "feature/rename",
+          prNumber: 12,
+          url: "https://github.com/org/repo/pull/12",
+          title: "Rename PR",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.mergeable,
+          reviewDecision: PrReviewDecision.approved,
+          checkStatus: PrCheckStatus.success,
+          lastCheckedAt: 1,
+          createdAt: 1,
+        ),
+      );
+      plugin.renameSessionResult = const PluginSession(
+        id: "s1",
+        projectID: "p1",
+        directory: "/tmp/worktree",
+        parentID: null,
+        title: "Renamed",
+        time: PluginSessionTime(created: 1, updated: 2, archived: null),
+        summary: null,
+      );
+
+      final result = await repository.renameSession(sessionId: "s1", title: "Renamed");
+
+      expect(plugin.lastRenameSessionId, equals("s1"));
+      expect(plugin.lastRenameSessionTitle, equals("Renamed"));
+      expect(result.title, equals("Renamed"));
+      expect(result.hasWorktree, isTrue);
+      expect(result.pullRequest?.number, equals(12));
+    });
+
+    test("findProjectIdForSession scans projects until it finds the matching session", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+      );
+
+      plugin.projectsResult = const [
+        PluginProject(id: "/repo-a"),
+        PluginProject(id: "/repo-b"),
+      ];
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s-target",
+          projectID: "/repo-b",
+          directory: "/repo-b",
+          parentID: null,
+          title: "Session",
+          time: null,
+          summary: null,
+        ),
+      ];
+
+      final result = await repository.findProjectIdForSession(sessionId: "s-target");
+
+      expect(result, equals("/repo-a"));
+    });
   });
 }
 
 class _FakeBridgePlugin implements BridgePlugin {
+  List<PluginProject> projectsResult = const [];
+  List<PluginSession> sessionsResult = const [];
+  PluginSession? renameSessionResult;
+  String? lastRenameSessionId;
+  String? lastRenameSessionTitle;
+
   @override
   String get id => "fake";
 
   @override
   Stream<BridgeSseEvent> get events => const Stream<BridgeSseEvent>.empty();
+
+  @override
+  Future<List<PluginProject>> getProjects() async => projectsResult;
+
+  @override
+  Future<List<PluginSession>> getSessions(String worktree, {int? start, int? limit}) async => sessionsResult;
+
+  @override
+  Future<PluginSession> renameSession({required String sessionId, required String title}) async {
+    lastRenameSessionId = sessionId;
+    lastRenameSessionTitle = title;
+    return renameSessionResult!;
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
