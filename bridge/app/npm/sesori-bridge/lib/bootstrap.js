@@ -5,6 +5,7 @@ var path = require("path");
 var child_process = require("child_process");
 var launcher = require("./launcher");
 var bootstrapLock = require("./bootstrap_lock");
+var releaseAssetRuntime = require("./release_asset_runtime");
 var runtimeInstall = require("./runtime_install");
 
 var PLATFORM_PACKAGES = {
@@ -47,51 +48,71 @@ function recordInstallAttempt() {
   fs.writeFileSync(counterPath, String(currentValue + 1), "utf8");
 }
 
-function bootstrapManagedRuntime(pkgName) {
-  var payload = runtimeInstall.resolvePayload(pkgName);
+async function resolveBootstrapPayload(pkgName) {
+  var localPayload = runtimeInstall.tryResolvePayload(pkgName);
+  if (localPayload) {
+    return localPayload;
+  }
+  return releaseAssetRuntime.resolvePayload();
+}
+
+async function bootstrapManagedRuntime(pkgName) {
   var installRoot = runtimeInstall.managedInstallRoot();
-  return bootstrapLock.withBootstrapLock({
-    installRoot: installRoot,
-    onWait: function() {
-      console.error("sesori-bridge: Another bootstrap is already in progress. Waiting for the managed install lock...");
-    },
-  }, function() {
-    var currentVersion = runtimeInstall.readManagedVersion(installRoot);
-    var runtimeReady = runtimeInstall.isManagedRuntimeReady(installRoot);
-    if (currentVersion !== null) {
-      var comparison = runtimeInstall.compareVersions(currentVersion, payload.version);
-      if (comparison > 0) {
-        if (!runtimeReady) {
-          throw new Error(
-            "sesori-bridge: Managed runtime " + currentVersion + " is incomplete/corrupt and newer than npm payload " + payload.version + ".\n" +
-            "Refusing to repair it with an older npm payload. Reinstall the managed runtime explicitly, or delete the managed install directory and bootstrap again with npx."
-          );
-        }
-        return { binaryPath: runtimeInstall.managedBinaryPath(installRoot), installRoot: installRoot };
-      }
-      if (comparison === 0 && runtimeReady) {
-        return { binaryPath: runtimeInstall.managedBinaryPath(installRoot), installRoot: installRoot };
-      }
-    }
-    try {
-      runtimeInstall.installManagedRuntime(payload, installRoot, {
-        beforeInstallSwap: function() {
-          recordInstallAttempt();
-          sleepForTest();
-          if (process.env.SESORI_BRIDGE_TEST_WRITE_FAIL === "1") {
-            throw new Error("Simulated managed install write failure.");
+  var localPayload = runtimeInstall.tryResolvePayload(pkgName);
+  var preferredVersion = localPayload ? localPayload.version : releaseAssetRuntime.wrapperVersion();
+  var payload = null;
+  try {
+    return await bootstrapLock.withBootstrapLock({
+      installRoot: installRoot,
+      onWait: function() {
+        console.error("sesori-bridge: Another bootstrap is already in progress. Waiting for the managed install lock...");
+      },
+    }, async function() {
+      var currentVersion = runtimeInstall.readManagedVersion(installRoot);
+      var runtimeReady = runtimeInstall.isManagedRuntimeReady(installRoot);
+      if (currentVersion !== null) {
+        var comparison = runtimeInstall.compareVersions(currentVersion, preferredVersion);
+        if (comparison > 0) {
+          if (!runtimeReady) {
+            throw new Error(
+              "sesori-bridge: Managed runtime " + currentVersion + " is incomplete/corrupt and newer than npm payload " + preferredVersion + ".\n" +
+              "Refusing to repair it with an older npm payload. Reinstall the managed runtime explicitly, or delete the managed install directory and bootstrap again with npx."
+            );
           }
-        },
-      });
-    } catch (error) {
-      throw new Error(
-        "sesori-bridge: Failed to install the managed runtime.\n" +
-        errorMessage(error) + "\n" +
-        "Refusing to run runtime binaries from npm-owned paths. Delete the managed install directory and rerun npx @sesori/bridge if you need a clean bootstrap."
-      );
+          return { binaryPath: runtimeInstall.managedBinaryPath(installRoot), installRoot: installRoot };
+        }
+        if (comparison === 0 && runtimeReady) {
+          return { binaryPath: runtimeInstall.managedBinaryPath(installRoot), installRoot: installRoot };
+        }
+      }
+      payload = localPayload;
+      if (!payload) {
+        payload = await releaseAssetRuntime.resolvePayload();
+      }
+      try {
+        runtimeInstall.installManagedRuntime(payload, installRoot, {
+          beforeInstallSwap: function() {
+            recordInstallAttempt();
+            sleepForTest();
+            if (process.env.SESORI_BRIDGE_TEST_WRITE_FAIL === "1") {
+              throw new Error("Simulated managed install write failure.");
+            }
+          },
+        });
+      } catch (error) {
+        throw new Error(
+          "sesori-bridge: Failed to install the managed runtime.\n" +
+          errorMessage(error) + "\n" +
+          "Refusing to run runtime binaries from npm-owned paths. Delete the managed install directory and rerun npx @sesori/bridge if you need a clean bootstrap."
+        );
+      }
+      return { binaryPath: runtimeInstall.managedBinaryPath(installRoot), installRoot: installRoot };
+    });
+  } finally {
+    if (payload && typeof payload.cleanup === "function") {
+      payload.cleanup();
     }
-    return { binaryPath: runtimeInstall.managedBinaryPath(installRoot), installRoot: installRoot };
-  });
+  }
 }
 
 function spawnManagedRuntime(binaryPath, args) {
@@ -106,13 +127,8 @@ function spawnManagedRuntime(binaryPath, args) {
   process.exit(result.status === null ? 1 : result.status);
 }
 
-function main(options) {
-  var bootstrapResult;
-  try {
-    bootstrapResult = bootstrapManagedRuntime(options && options.pkgName);
-  } catch (error) {
-    fail(errorMessage(error));
-  }
+async function runMain(options) {
+  var bootstrapResult = await bootstrapManagedRuntime(options && options.pkgName);
   try {
     var launcherResult = launcher.ensureManagedCommandPath({
       binDir: managedBinDir(bootstrapResult.installRoot),
@@ -131,6 +147,12 @@ function main(options) {
     );
   }
   spawnManagedRuntime(bootstrapResult.binaryPath, process.argv.slice(2));
+}
+
+function main(options) {
+  runMain(options).catch(function(error) {
+    fail(errorMessage(error));
+  });
 }
 
 module.exports = {
