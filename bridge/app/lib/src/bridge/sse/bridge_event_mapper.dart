@@ -4,6 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../plugin_to_shared_mapping.dart";
+import "../repositories/session_repository.dart";
 
 /// Maps [BridgeSseEvent]s from the plugin to [SesoriSseEvent]s for relay delivery.
 ///
@@ -11,25 +12,28 @@ import "../plugin_to_shared_mapping.dart";
 class BridgeEventMapper {
   final BridgePlugin _plugin;
   final FailureReporter _failureReporter;
+  final SessionRepository _sessionRepository;
 
   BridgeEventMapper({
     required BridgePlugin plugin,
     required FailureReporter failureReporter,
+    required SessionRepository sessionRepository,
   }) : _plugin = plugin,
-       _failureReporter = failureReporter;
+       _failureReporter = failureReporter,
+       _sessionRepository = sessionRepository;
 
   /// Maps a [BridgeSseEvent] to a [SesoriSseEvent], or null if unmappable.
-  SesoriSseEvent? map(BridgeSseEvent event) {
+  Future<SesoriSseEvent?> map(BridgeSseEvent event) async {
     try {
-      return switch (event) {
+      return await switch (event) {
         BridgeSseServerConnected() => const SesoriSseEvent.serverConnected(),
         BridgeSseServerHeartbeat() => null,
         BridgeSseServerInstanceDisposed(:final directory) => SesoriSseEvent.serverInstanceDisposed(
           directory: directory,
         ),
         BridgeSseGlobalDisposed() => const SesoriSseEvent.globalDisposed(),
-        BridgeSseSessionCreated(:final info) => _tryParseSseEvent({"type": "session.created", "info": info}),
-        BridgeSseSessionUpdated(:final info) => _tryParseSseEvent({"type": "session.updated", "info": info}),
+        BridgeSseSessionCreated(:final info) => _mapSessionCreated(info: info),
+        BridgeSseSessionUpdated(:final info) => _mapSessionUpdated(info: info),
         BridgeSseSessionDeleted(:final info) => _tryParseSseEvent({"type": "session.deleted", "info": info}),
         BridgeSseSessionDiff(:final sessionID) => SesoriSseEvent.sessionDiff(sessionID: sessionID),
         BridgeSseSessionError(:final sessionID) => SesoriSseEvent.sessionError(sessionID: sessionID),
@@ -162,6 +166,16 @@ class BridgeEventMapper {
       );
       return null;
     }
+  }
+
+  Future<SesoriSseEvent> _mapSessionCreated({required Map<String, dynamic> info}) async {
+    final session = await _sessionRepository.enrichSession(session: Session.fromJson(info));
+    return SesoriSseEvent.sessionCreated(info: session);
+  }
+
+  Future<SesoriSseEvent> _mapSessionUpdated({required Map<String, dynamic> info}) async {
+    final session = await _sessionRepository.enrichSession(session: Session.fromJson(info));
+    return SesoriSseEvent.sessionUpdated(info: session);
   }
 
   /// Builds a projects summary event from the current active sessions.
