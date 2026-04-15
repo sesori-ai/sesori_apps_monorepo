@@ -6,14 +6,15 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "repositories/session_repository.dart";
 import "routing/request_router.dart";
+import "services/session_event_enrichment_service.dart";
 import "sse/bridge_event_mapper.dart";
 
 class DebugServer {
   final BridgePlugin _plugin;
   final RequestRouter _router;
   final BridgeEventMapper _mapper;
+  final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final int port;
   final List<HttpResponse> _sseClients = [];
   final CompositeSubscription _compositeSubscription = CompositeSubscription();
@@ -28,14 +29,14 @@ class DebugServer {
     required RequestRouter router,
     required this.port,
     required FailureReporter failureReporter,
-    required SessionRepository sessionRepository,
+    required SessionEventEnrichmentService sessionEventEnrichmentService,
   }) : _plugin = plugin,
        _router = router,
        _mapper = BridgeEventMapper(
          plugin: plugin,
          failureReporter: failureReporter,
-         sessionRepository: sessionRepository,
-       );
+       ),
+       _sessionEventEnrichmentService = sessionEventEnrichmentService;
 
   int? get boundPort => _server?.port;
   RequestRouter get router => _router;
@@ -137,7 +138,8 @@ class DebugServer {
       _sseClients.add(response);
 
       _pluginEventsSub ??= _plugin.events
-          .asyncMap(_mapper.map)
+          .asyncMap<BridgeSseEvent>((event) => _sessionEventEnrichmentService.enrich(event))
+          .map<SesoriSseEvent?>((event) => _mapper.map(event))
           .asyncMap((mapped) => _fanOutMappedEvent(mapped: mapped))
           .listen((_) {});
 

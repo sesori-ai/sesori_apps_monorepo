@@ -6,7 +6,6 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../persistence/tables/session_table.dart";
-import "../repositories/mappers/plugin_session_mapper.dart";
 import "../repositories/session_repository.dart";
 import "../services/session_persistence_service.dart";
 import "../services/worktree_service.dart";
@@ -97,7 +96,7 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
   Future<Session> _buildResponseSession({
     required PluginSession pluginSession,
   }) async {
-    return _sessionRepository.enrichSession(session: pluginSession.toSharedSession());
+    return _sessionRepository.enrichPluginSession(pluginSession: pluginSession);
   }
 
   Future<SessionDto> _getSessionDto({

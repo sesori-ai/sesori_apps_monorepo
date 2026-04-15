@@ -21,6 +21,7 @@ import "repositories/session_repository.dart";
 import "routing/get_session_diffs_handler.dart";
 import "routing/request_router.dart";
 import "services/pr_sync_service.dart";
+import "services/session_event_enrichment_service.dart";
 import "services/session_persistence_service.dart";
 import "services/worktree_service.dart";
 import "sse/bridge_event_mapper.dart";
@@ -42,6 +43,7 @@ class Orchestrator {
   final PermissionRepository _permissionRepository;
   final SessionPersistenceService _sessionPersistenceService;
   final WorktreeService _worktreeService;
+  final SessionEventEnrichmentService _sessionEventEnrichmentService;
 
   Orchestrator({
     required this.config,
@@ -57,6 +59,7 @@ class Orchestrator {
     required PermissionRepository permissionRepository,
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
+    required SessionEventEnrichmentService sessionEventEnrichmentService,
   }) : _client = client,
        _plugin = plugin,
        _metadataService = metadataService,
@@ -68,7 +71,8 @@ class Orchestrator {
        _projectRepository = projectRepository,
        _permissionRepository = permissionRepository,
        _sessionPersistenceService = sessionPersistenceService,
-       _worktreeService = worktreeService;
+       _worktreeService = worktreeService,
+       _sessionEventEnrichmentService = sessionEventEnrichmentService;
 
   /// Creates a new session with a fresh room key and SSE manager.
   OrchestratorSession create() {
@@ -98,6 +102,7 @@ class Orchestrator {
       permissionRepository: _permissionRepository,
       sessionPersistenceService: _sessionPersistenceService,
       worktreeService: _worktreeService,
+      sessionEventEnrichmentService: _sessionEventEnrichmentService,
     );
   }
 
@@ -126,7 +131,8 @@ class OrchestratorSession {
   final StreamController<int> _bytesSentController;
   final FailureReporter _failureReporter;
   final PrSyncService _prSyncService;
-  StreamSubscription<void>? _eventSubscription;
+  final SessionEventEnrichmentService _sessionEventEnrichmentService;
+  StreamSubscription<dynamic>? _eventSubscription;
 
   bool _cancelled = false;
 
@@ -147,6 +153,7 @@ class OrchestratorSession {
     required PermissionRepository permissionRepository,
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
+    required SessionEventEnrichmentService sessionEventEnrichmentService,
   }) : _client = client,
        _plugin = plugin,
        _pushNotificationService = pushNotificationService,
@@ -175,8 +182,8 @@ class OrchestratorSession {
        _mapper = BridgeEventMapper(
          plugin: plugin,
          failureReporter: failureReporter,
-         sessionRepository: sessionRepository,
-       );
+       ),
+       _sessionEventEnrichmentService = sessionEventEnrichmentService;
 
   /// Broadcast stream of byte counts emitted each time data is sent to a phone.
   ///
@@ -196,9 +203,11 @@ class OrchestratorSession {
 
     Log.d("[dbg] subscribing to plugin event stream...");
     _eventSubscription = _plugin.events
-        .asyncMap(_processPluginEvent)
+        .asyncMap<BridgeSseEvent>((event) => _sessionEventEnrichmentService.enrich(event))
         .listen(
-          (_) {},
+          (event) {
+            unawaited(_processPluginEvent(event));
+          },
           onError: (Object e) {
             Log.w("[dbg] plugin event stream error: $e");
           },
@@ -297,7 +306,7 @@ class OrchestratorSession {
   Future<void> _processPluginEvent(BridgeSseEvent event) async {
     try {
       Log.v("[sse] plugin event arrived: ${event.runtimeType}");
-      final sesoriEvent = await _mapper.map(event);
+      final sesoriEvent = _mapper.map(event);
       if (sesoriEvent != null) {
         Log.v(
           "[sse] mapped to: ${sesoriEvent.runtimeType} — enqueuing (subscribers: ${_sseManager.subscriberCount})",

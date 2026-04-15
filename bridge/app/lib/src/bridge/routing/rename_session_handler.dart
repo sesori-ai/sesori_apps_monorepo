@@ -1,7 +1,6 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../repositories/mappers/plugin_session_mapper.dart";
 import "../repositories/session_repository.dart";
 import "request_handler.dart";
 
@@ -30,6 +29,6 @@ class RenameSessionHandler extends BodyRequestHandler<RenameSessionRequest, Sess
       sessionId: body.sessionId,
       title: body.title,
     );
-    return _sessionRepository.enrichSession(session: updated.toSharedSession());
+    return _sessionRepository.enrichPluginSession(pluginSession: updated);
   }
 }

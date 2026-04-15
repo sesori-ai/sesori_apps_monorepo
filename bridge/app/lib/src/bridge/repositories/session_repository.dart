@@ -1,4 +1,4 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePlugin, Log;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePlugin, Log, PluginSession;
 import "package:sesori_shared/sesori_shared.dart" show PrState, PullRequestInfo, Session;
 
 import "../api/database/tables/pull_requests_table.dart";
@@ -39,6 +39,14 @@ class SessionRepository {
   Future<Session> enrichSession({required Session session}) async {
     final enrichedSessions = await enrichSessions(sessions: [session]);
     return enrichedSessions.single;
+  }
+
+  Future<Session> enrichPluginSession({required PluginSession pluginSession}) {
+    return enrichSession(session: pluginSession.toSharedSession());
+  }
+
+  Future<Session> enrichSessionJson({required Map<String, dynamic> sessionJson}) {
+    return enrichSession(session: Session.fromJson(sessionJson));
   }
 
   Future<List<Session>> enrichSessions({required List<Session> sessions}) async {

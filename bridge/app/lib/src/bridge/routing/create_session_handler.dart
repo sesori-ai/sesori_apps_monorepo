@@ -177,32 +177,6 @@ class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Sess
       baseCommit: baseCommit,
     );
 
-    final session = Session(
-      id: finalSession.id,
-      projectID: finalSession.projectID,
-      directory: finalSession.directory,
-      parentID: finalSession.parentID,
-      title: finalSession.title,
-      time: switch (finalSession.time) {
-        PluginSessionTime(:final created, :final updated, :final archived) => SessionTime(
-          created: created,
-          updated: updated,
-          archived: archived,
-        ),
-        null => null,
-      },
-      summary: switch (finalSession.summary) {
-        PluginSessionSummary(:final additions, :final deletions, :final files) => SessionSummary(
-          additions: additions,
-          deletions: deletions,
-          files: files,
-        ),
-        null => null,
-      },
-      pullRequest: null,
-      hasWorktree: worktreePath != null,
-    );
-
-    return _sessionRepository.enrichSession(session: session);
+    return _sessionRepository.enrichPluginSession(pluginSession: finalSession);
   }
 }
