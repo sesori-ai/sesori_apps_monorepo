@@ -7,7 +7,7 @@ import 'package:http/testing.dart';
 import 'package:sesori_bridge/src/updater/api/github_releases_api.dart';
 import 'package:sesori_bridge/src/updater/api/update_cache_api.dart';
 import 'package:sesori_bridge/src/updater/foundation/platform_info.dart';
-import 'package:sesori_bridge/src/updater/foundation/version_utils.dart';
+import 'package:sesori_bridge/src/updater/models/bridge_version.dart';
 import 'package:sesori_bridge/src/updater/models/cached_release.dart';
 import 'package:sesori_bridge/src/updater/models/distribution_target.dart';
 import 'package:sesori_bridge/src/updater/models/release_info.dart';
@@ -51,9 +51,10 @@ Map<String, dynamic> _releaseJson({
   bool draft = false,
   bool prerelease = false,
   String? tagName,
+  String? publishedAt = '2024-06-01T00:00:00Z',
 }) => {
   'tag_name': tagName ?? 'bridge-v$version',
-  'published_at': '2024-06-01T00:00:00Z',
+  'published_at': publishedAt,
   'draft': draft,
   'prerelease': prerelease,
   'assets': [
@@ -390,6 +391,7 @@ void main() {
           latestVersion: '0.9.0',
           downloadUrl: 'https://example.com/dl/asset.tar.gz',
           checksumsUrl: 'https://example.com/dl/checksums.txt',
+          assetName: _defaultTarget.assetName,
           publishedAt: DateTime.parse('2024-06-01T00:00:00Z'),
           checkedAt: DateTime.now(),
         );
@@ -418,6 +420,7 @@ void main() {
           latestVersion: '0.2.0',
           downloadUrl: 'https://example.com/dl/asset.tar.gz',
           checksumsUrl: 'https://example.com/dl/checksums.txt',
+          assetName: _defaultTarget.assetName,
           publishedAt: DateTime.parse('2024-06-01T00:00:00Z'),
           checkedAt: DateTime.now(),
         );
@@ -442,6 +445,7 @@ void main() {
           latestVersion: '0.3.0-beta',
           downloadUrl: 'https://example.com/dl/asset.tar.gz',
           checksumsUrl: 'https://example.com/dl/checksums.txt',
+          assetName: _defaultTarget.assetName,
           publishedAt: DateTime.parse('2024-06-01T00:00:00Z'),
           checkedAt: DateTime.now(),
         );
@@ -482,6 +486,7 @@ void main() {
 
         expect(cache.writtenReleases, hasLength(1));
         expect(cache.writtenReleases.first.latestVersion, equals('0.3.0'));
+        expect(cache.writtenReleases.first.assetName, equals(_defaultTarget.assetName));
         expect(
           cache.writtenReleases.first.publishedAt,
           equals(DateTime.parse('2024-06-01T00:00:00Z')),
@@ -518,6 +523,51 @@ void main() {
         await repository.checkForNewerRelease();
 
         expect(cache.writtenReleases, isEmpty);
+      });
+
+      test('draft releases with null published_at do not break stable resolution', () async {
+        final repository = _makeRepository(
+          httpClient: _mockOk(
+            body: [
+              _releaseJson(version: '0.4.0', draft: true, publishedAt: null),
+              _releaseJson(version: '0.3.1'),
+            ],
+          ),
+          currentVersion: '0.2.0',
+        );
+
+        final result = await repository.checkForNewerRelease();
+
+        expect(result, isNotNull);
+        expect(result!.version, equals('0.3.1'));
+      });
+
+      test('cache entries for another target are ignored and refreshed from HTTP', () async {
+        var httpCallCount = 0;
+        final client = MockClient((_) async {
+          httpCallCount++;
+          return http.Response(jsonEncode([_releaseJson(version: '0.3.0')]), 200);
+        });
+
+        final cached = CachedRelease(
+          latestVersion: '9.9.9',
+          downloadUrl: 'https://example.com/dl/windows.zip',
+          checksumsUrl: 'https://example.com/dl/checksums.txt',
+          assetName: 'sesori-bridge-windows-x64.zip',
+          publishedAt: DateTime.parse('2024-06-01T00:00:00Z'),
+          checkedAt: DateTime.now(),
+        );
+        final repository = _makeRepository(
+          httpClient: client,
+          cache: _FakeCache(readResult: cached),
+          currentVersion: '0.2.0',
+        );
+
+        final result = await repository.checkForNewerRelease();
+
+        expect(result, isNotNull);
+        expect(result!.version, equals('0.3.0'));
+        expect(httpCallCount, equals(1));
       });
 
       test('selects newest stable bridge release instead of repo-wide latest release', () async {
@@ -576,41 +626,79 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
-  group('compareVersions', () {
-    test('newer major → positive', () {
-      expect(compareVersions(a: '2.0.0', b: '1.0.0'), isPositive);
+  group('BridgeVersion', () {
+    test('newer major compares positive', () {
+      expect(
+        BridgeVersion.parse(value: '2.0.0').compareTo(BridgeVersion.parse(value: '1.0.0')),
+        isPositive,
+      );
     });
 
-    test('newer minor → positive', () {
-      expect(compareVersions(a: '0.3.0', b: '0.2.0'), isPositive);
+    test('newer minor compares positive', () {
+      expect(
+        BridgeVersion.parse(value: '0.3.0').compareTo(BridgeVersion.parse(value: '0.2.0')),
+        isPositive,
+      );
     });
 
-    test('newer patch → positive', () {
-      expect(compareVersions(a: '0.2.1', b: '0.2.0'), isPositive);
+    test('newer patch compares positive', () {
+      expect(
+        BridgeVersion.parse(value: '0.2.1').compareTo(BridgeVersion.parse(value: '0.2.0')),
+        isPositive,
+      );
     });
 
-    test('equal versions → zero', () {
-      expect(compareVersions(a: '1.2.3', b: '1.2.3'), equals(0));
+    test('equal versions compare to zero', () {
+      expect(
+        BridgeVersion.parse(value: '1.2.3').compareTo(BridgeVersion.parse(value: '1.2.3')),
+        equals(0),
+      );
     });
 
-    test('older major → negative', () {
-      expect(compareVersions(a: '0.1.0', b: '0.2.0'), isNegative);
+    test('older major compares negative', () {
+      expect(
+        BridgeVersion.parse(value: '0.1.0').compareTo(BridgeVersion.parse(value: '0.2.0')),
+        isNegative,
+      );
     });
 
-    test('pre-release vs stable same base → negative', () {
-      expect(compareVersions(a: '1.0.0-beta', b: '1.0.0'), isNegative);
+    test('prerelease is lower precedence than stable with same base', () {
+      expect(
+        BridgeVersion.parse(value: '1.0.0-beta').compareTo(BridgeVersion.parse(value: '1.0.0')),
+        isNegative,
+      );
     });
 
-    test('stable vs pre-release same base → positive', () {
-      expect(compareVersions(a: '1.0.0', b: '1.0.0-beta'), isPositive);
+    test('stable is higher precedence than prerelease with same base', () {
+      expect(
+        BridgeVersion.parse(value: '1.0.0').compareTo(BridgeVersion.parse(value: '1.0.0-beta')),
+        isPositive,
+      );
     });
 
-    test('pre-release with newer numeric base → positive', () {
-      expect(compareVersions(a: '2.0.0-beta', b: '1.9.9'), isPositive);
+    test('prerelease with newer numeric base still compares positive', () {
+      expect(
+        BridgeVersion.parse(value: '2.0.0-beta').compareTo(BridgeVersion.parse(value: '1.9.9')),
+        isPositive,
+      );
     });
 
-    test('two pre-releases same base → zero', () {
-      expect(compareVersions(a: '1.0.0-alpha', b: '1.0.0-beta'), equals(0));
+    test('prerelease identifiers compare lexically when numeric base matches', () {
+      expect(
+        BridgeVersion.parse(value: '1.0.0-alpha').compareTo(BridgeVersion.parse(value: '1.0.0-beta')),
+        isNegative,
+      );
+    });
+
+    test('build metadata does not affect comparison precedence', () {
+      expect(
+        BridgeVersion.parse(value: '1.2.3+build.1').compareTo(BridgeVersion.parse(value: '1.2.3+build.9')),
+        equals(0),
+      );
+    });
+
+    test('tryParse returns null for invalid strings', () {
+      expect(BridgeVersion.tryParse(value: 'not-a-version'), isNull);
     });
   });
 

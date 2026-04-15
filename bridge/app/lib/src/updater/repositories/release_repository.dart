@@ -2,7 +2,7 @@ import 'package:collection/collection.dart';
 
 import '../api/github_releases_api.dart';
 import '../api/update_cache_api.dart';
-import '../foundation/version_utils.dart';
+import '../models/bridge_version.dart';
 import '../models/cached_release.dart';
 import '../models/distribution_target.dart';
 import '../models/github_release_dto.dart';
@@ -11,7 +11,7 @@ import '../models/release_info.dart';
 class ReleaseRepository {
   final GitHubReleasesApi _api;
   final UpdateCacheApi _cache;
-  final String _currentVersion;
+  final BridgeVersion _currentVersion;
   final DistributionTarget _target;
 
   ReleaseRepository({
@@ -21,27 +21,33 @@ class ReleaseRepository {
     required DistributionTarget target,
   }) : _api = api,
        _cache = cache,
-       _currentVersion = currentVersion,
+       _currentVersion = BridgeVersion.parse(value: currentVersion),
        _target = target;
 
   Future<ReleaseInfo?> checkForNewerRelease() async {
     final cached = await _cache.read(ttl: const Duration(hours: 24));
     if (cached != null) {
-      return _evaluateCached(cached: cached);
+      if (cached.assetName == _target.assetName) {
+        return _evaluateCached(cached: cached);
+      }
     }
 
     return _fetchAndEvaluate();
   }
 
   ReleaseInfo? _evaluateCached({required CachedRelease cached}) {
-    final latestVersion = cached.latestVersion;
-    if (latestVersion.contains('-')) {
+    if (cached.assetName != _target.assetName) {
       return null;
     }
 
-    if (compareVersions(a: latestVersion, b: _currentVersion) > 0) {
+    final BridgeVersion? latestVersion = BridgeVersion.tryParse(value: cached.latestVersion);
+    if (latestVersion == null || !latestVersion.isStable) {
+      return null;
+    }
+
+    if (latestVersion.compareTo(_currentVersion) > 0) {
       return ReleaseInfo(
-        version: latestVersion,
+        version: latestVersion.toString(),
         assetUrl: cached.downloadUrl,
         checksumsUrl: cached.checksumsUrl,
         publishedAt: cached.publishedAt,
@@ -65,8 +71,13 @@ class ReleaseRepository {
   GitHubReleaseDto? _selectLatestBridgeRelease({required List<GitHubReleaseDto> releases}) {
     final filteredReleases = releases
         .where((release) => !release.draft && !release.prerelease && release.tagName.startsWith('bridge-v'))
-        .map((release) => (release: release, version: release.tagName.replaceFirst('bridge-v', '')))
-        .where((item) => !item.version.contains('-'))
+        .map(
+          (release) => (
+            release: release,
+            version: BridgeVersion.tryParse(value: release.tagName.replaceFirst('bridge-v', '')),
+          ),
+        )
+        .where((item) => item.version != null && item.version!.isStable)
         .where(
           (item) =>
               item.release.assets.any((asset) => asset.name == _target.assetName) &&
@@ -74,7 +85,7 @@ class ReleaseRepository {
         )
         .sorted(
           // sort descending
-          (a, b) => compareVersions(a: b.version, b: a.version),
+          (a, b) => b.version!.compareTo(a.version!),
         );
 
     return filteredReleases.firstOrNull?.release;
@@ -86,11 +97,20 @@ class ReleaseRepository {
       return null;
     }
 
-    final latestVersion = tagName.replaceFirst('bridge-v', '');
+    final BridgeVersion? latestVersion = BridgeVersion.tryParse(
+      value: tagName.replaceFirst('bridge-v', ''),
+    );
+    if (latestVersion == null) {
+      return null;
+    }
 
     final DateTime publishedAt;
     try {
-      publishedAt = DateTime.parse(release.publishedAt);
+      final String? publishedAtRaw = release.publishedAt;
+      if (publishedAtRaw == null) {
+        throw const FormatException('published_at is null');
+      }
+      publishedAt = DateTime.parse(publishedAtRaw);
     } on FormatException catch (error) {
       throw StateError('Invalid published_at for release $tagName: ${error.message}');
     }
@@ -113,19 +133,20 @@ class ReleaseRepository {
     if (assetUrl != null && checksumsUrl != null) {
       await _cache.write(
         release: CachedRelease(
-          latestVersion: latestVersion,
+          latestVersion: latestVersion.toString(),
           downloadUrl: assetUrl,
           checksumsUrl: checksumsUrl,
+          assetName: assetName,
           publishedAt: publishedAt,
           checkedAt: DateTime.now(),
         ),
       );
     }
 
-    if (latestVersion.contains('-')) {
+    if (!latestVersion.isStable) {
       return null;
     }
-    if (compareVersions(a: latestVersion, b: _currentVersion) <= 0) {
+    if (latestVersion.compareTo(_currentVersion) <= 0) {
       return null;
     }
     if (assetUrl == null || checksumsUrl == null) {
@@ -133,7 +154,7 @@ class ReleaseRepository {
     }
 
     return ReleaseInfo(
-      version: latestVersion,
+      version: latestVersion.toString(),
       assetUrl: assetUrl,
       checksumsUrl: checksumsUrl,
       publishedAt: publishedAt,
