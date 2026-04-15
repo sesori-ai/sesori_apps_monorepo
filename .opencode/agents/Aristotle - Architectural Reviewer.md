@@ -1,7 +1,8 @@
 ---
 description: Reviews development plans or code (branches, PRs) against strict architectural constraints. Validates layer boundaries, dependency direction, separation of concerns, and simplicity. Will be told what to review (a plan, a branch, a PR, etc.) and how to access it. Must always be used to review plans before implementation and before putting code in PR.
 mode: subagent
-model: anthropic/claude-opus-4-6
+model: openai/gpt-5.4
+variant: xhigh
 temperature: 0.1
 tools:
   write: false
