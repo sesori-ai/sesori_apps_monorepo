@@ -2,8 +2,11 @@ import "package:bloc_test/bloc_test.dart";
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:get_it/get_it.dart";
 import "package:mocktail/mocktail.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_mobile/features/session_list/session_list_screen.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -34,6 +37,39 @@ Widget _buildApp({required SessionListCubit cubit}) {
     home: BlocProvider<SessionListCubit>.value(
       value: cubit,
       child: const Scaffold(body: _TestSessionListBody()),
+    ),
+  );
+}
+
+Widget _buildScreenApp({required Widget child}) {
+  return MaterialApp(
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: child,
+  );
+}
+
+Session _testSessionWithPullRequest() {
+  return const Session(
+    id: "session-pr-1",
+    projectID: "project-1",
+    directory: "/home/user/my-project",
+    parentID: null,
+    title: "PR Session",
+    summary: SessionSummary(files: 3),
+    pullRequest: PullRequestInfo(
+      number: 42,
+      url: "https://github.com/sesori-ai/sesori_apps_monorepo/pull/42",
+      title: "Fix status rendering",
+      state: PrState.open,
+      mergeableStatus: PrMergeableStatus.mergeable,
+      reviewDecision: PrReviewDecision.approved,
+      checkStatus: PrCheckStatus.success,
+    ),
+    time: SessionTime(
+      created: 1700000000000,
+      updated: 1700000000000,
+      archived: null,
     ),
   );
 }
@@ -234,9 +270,76 @@ class _TestArchiveSheetState extends State<_TestArchiveSheet> {
 
 void main() {
   late MockSessionListCubit mockCubit;
+  late MockSessionService mockSessionService;
+  late MockProjectService mockProjectService;
+  late MockConnectionService mockConnectionService;
+  late MockSseEventRepository mockSseEventRepository;
+  late MockRouteSource mockRouteSource;
+  late MockFailureReporter mockFailureReporter;
+  late BehaviorSubject<ConnectionStatus> statusController;
+
+  setUpAll(registerAllFallbackValues);
 
   setUp(() {
     mockCubit = MockSessionListCubit();
+    mockSessionService = MockSessionService();
+    mockProjectService = MockProjectService();
+    mockConnectionService = MockConnectionService();
+    mockSseEventRepository = MockSseEventRepository();
+    mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+    mockFailureReporter = MockFailureReporter();
+    statusController = BehaviorSubject<ConnectionStatus>.seeded(
+      const ConnectionStatus.connected(
+        config: ServerConnectionConfig(relayHost: "relay.example.com"),
+        health: HealthResponse(healthy: true, version: "0.1.200"),
+      ),
+    );
+
+    when(() => mockConnectionService.events).thenAnswer((_) => const Stream<SseEvent>.empty());
+    when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
+    when(() => mockConnectionService.currentStatus).thenReturn(
+      const ConnectionStatus.connected(
+        config: ServerConnectionConfig(relayHost: "relay.example.com"),
+        health: HealthResponse(healthy: true, version: "0.1.200"),
+      ),
+    );
+    when(
+      () => mockProjectService.getBaseBranch(projectId: any(named: "projectId")),
+    ).thenAnswer((_) async => ApiResponse.success(const BaseBranchResponse(baseBranch: null)));
+    when(
+      () => mockFailureReporter.recordFailure(
+        error: any(named: "error"),
+        stackTrace: any(named: "stackTrace"),
+        uniqueIdentifier: any(named: "uniqueIdentifier"),
+        fatal: any(named: "fatal"),
+        reason: any(named: "reason"),
+        information: any(named: "information"),
+      ),
+    ).thenAnswer((_) async {});
+  });
+
+  tearDown(() async {
+    await statusController.close();
+
+    final getIt = GetIt.instance;
+    if (getIt.isRegistered<SessionService>()) {
+      getIt.unregister<SessionService>();
+    }
+    if (getIt.isRegistered<ProjectService>()) {
+      getIt.unregister<ProjectService>();
+    }
+    if (getIt.isRegistered<ConnectionService>()) {
+      getIt.unregister<ConnectionService>();
+    }
+    if (getIt.isRegistered<SseEventRepository>()) {
+      getIt.unregister<SseEventRepository>();
+    }
+    if (getIt.isRegistered<RouteSource>()) {
+      getIt.unregister<RouteSource>();
+    }
+    if (getIt.isRegistered<FailureReporter>()) {
+      getIt.unregister<FailureReporter>();
+    }
   });
 
   // ---------------------------------------------------------------------------
@@ -393,6 +496,36 @@ void main() {
           force: false,
         ),
       ).called(1);
+    });
+  });
+
+  group("Session tile PR rendering", () {
+    testWidgets("renders the PR row when a session has pullRequest data", (tester) async {
+      final getIt = GetIt.instance;
+      final session = _testSessionWithPullRequest();
+
+      when(
+        () => mockSessionService.listSessions(projectId: session.projectID),
+      ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [session])));
+
+      getIt.registerSingleton<SessionService>(mockSessionService);
+      getIt.registerSingleton<ProjectService>(mockProjectService);
+      getIt.registerSingleton<ConnectionService>(mockConnectionService);
+      getIt.registerSingleton<SseEventRepository>(mockSseEventRepository);
+      getIt.registerSingleton<RouteSource>(mockRouteSource);
+      getIt.registerSingleton<FailureReporter>(mockFailureReporter);
+
+      await tester.pumpWidget(
+        _buildScreenApp(
+          child: const SessionListScreen(projectId: "project-1"),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text("PR Session"), findsOneWidget);
+      expect(find.text("3 files changed"), findsOneWidget);
+      expect(find.text("PR #42"), findsOneWidget);
+      expect(find.text("Open"), findsOneWidget);
     });
   });
 
