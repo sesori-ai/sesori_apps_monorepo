@@ -2,56 +2,56 @@ name: Bridge Release
 
 on:
   push:
-    tags: ['bridge-v*']
+    tags: ["bridge-v*"]
   workflow_dispatch:
     inputs:
       dry_run:
-        description: 'Dry run (build only, no publish)'
+        description: "Dry run (build only, no publish)"
         required: false
-        default: 'false'
+        default: false
         type: boolean
       publish_npm:
-        description: 'Publish npm packages (manual only)'
+        description: "Publish npm packages (manual only)"
         required: false
-        default: 'false'
+        default: false
         type: boolean
       release_tag:
-        description: 'Existing bridge tag to publish from when publish_npm=true (for example bridge-v0.3.1)'
+        description: "Existing bridge tag to publish from when publish_npm=true (for example bridge-v0.3.1)"
         required: false
-        default: ''
+        default: ""
         type: string
 
 jobs:
   build:
     name: Build (${{ matrix.asset_name }})
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner }}
     env:
       PUB_CACHE: ${{ github.workspace }}/.pub-cache
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: macos-latest
+          - runner: getmac
             target_os: macos
             target_arch: arm64
             asset_name: sesori-bridge-macos-arm64
             archive_ext: tar.gz
-          - os: macos-13
+          - runner: macos-26-intel
             target_os: macos
             target_arch: x64
             asset_name: sesori-bridge-macos-x64
             archive_ext: tar.gz
-          - os: ubuntu-latest
+          - runner: ubuntu-latest
             target_os: linux
             target_arch: x64
             asset_name: sesori-bridge-linux-x64
             archive_ext: tar.gz
-          - os: ubuntu-24.04-arm
+          - runner: ubuntu-24.04-arm
             target_os: linux
             target_arch: arm64
             asset_name: sesori-bridge-linux-arm64
             archive_ext: tar.gz
-          - os: windows-latest
+          - runner: windows-latest
             target_os: windows
             target_arch: x64
             asset_name: sesori-bridge-windows-x64
@@ -192,7 +192,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - uses: actions/cache@v4
         with:
@@ -413,7 +413,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - uses: actions/cache@v4
         with:
