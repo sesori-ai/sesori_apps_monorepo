@@ -72,12 +72,17 @@ class ReleaseRepository {
     final filteredReleases = releases
         .where((release) => !release.draft && !release.prerelease && release.tagName.startsWith('bridge-v'))
         .map(
-          (release) => (
-            release: release,
-            version: BridgeVersion.tryParse(value: release.tagName.replaceFirst('bridge-v', '')),
-          ),
+          (release) {
+            final version = BridgeVersion.tryParse(value: release.tagName.replaceFirst('bridge-v', ''));
+            return version != null && version.isStable
+                ? (
+                    release: release,
+                    version: version,
+                  )
+                : null;
+          },
         )
-        .where((item) => item.version != null && item.version!.isStable)
+        .nonNulls
         .where(
           (item) =>
               item.release.assets.any((asset) => asset.name == _target.assetName) &&
@@ -85,7 +90,7 @@ class ReleaseRepository {
         )
         .sorted(
           // sort descending
-          (a, b) => b.version!.compareTo(a.version!),
+          (a, b) => b.version.compareTo(a.version),
         );
 
     return filteredReleases.firstOrNull?.release;
