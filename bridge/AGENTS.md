@@ -109,6 +109,9 @@ Do not add maintenance scripts to a Makefile by default. Only add them when they
 ### Shared Utility Placement Follows Explicit Product Choice
 If a utility is intentionally meant to live in `sesori_shared`, keep it there even if the current number of consumers is temporarily one. Do not move it out solely because present-day usage is narrow when product direction or explicit reviewer feedback says it should remain shared.
 
+### Prefer Typed Version Value Objects
+If code needs to parse or compare versions, do not expose loose helpers that accept arbitrary `String` inputs like `compareVersions(String, String)`. Parse once into a small typed value object that implements `Comparable`, keep transport-layer DTO fields as raw strings, and do the string-to-type mapping in the repository layer.
+
 ### Reviewable State Must Be Committed And Pushed
 If you want PR feedback on bridge work, commit and push the latest relevant changes before expecting review comments to reflect them. Do not assume reviewers will inspect uncommitted local changes.
 

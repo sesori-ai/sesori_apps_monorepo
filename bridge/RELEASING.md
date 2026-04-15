@@ -85,6 +85,89 @@ gh workflow run bridge-release.yml -f dry_run=true -f publish_npm=false
 
 Expected: build jobs run, release/publish jobs do not.
 
+## Manual test release and install
+
+Use this sequence when you want to test the real packaged distribution flow end to end.
+
+### A. Test a GitHub Release for the shell installers
+
+1. Bump the bridge version.
+2. Commit and push the branch.
+3. Create and push a stable release tag:
+
+```bash
+git tag bridge-vX.Y.Z
+git push origin bridge-vX.Y.Z
+```
+
+4. Wait for `bridge-release.yml` to publish the GitHub Release assets and `checksums.txt`.
+5. Verify the release contains all five platform archives plus `checksums.txt`.
+6. Test the shell installer against that release:
+
+```bash
+# from a clone of this repo
+bash install.sh
+sesori-bridge --version
+```
+
+Or with the hosted installer from that exact tag:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/bridge-vX.Y.Z/install.sh | bash
+sesori-bridge --version
+```
+
+Windows:
+
+```powershell
+irm https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/bridge-vX.Y.Z/install.ps1 | iex
+sesori-bridge --version
+```
+
+The expected result is that `sesori-bridge --version` prints `X.Y.Z` from the managed install root. If PATH has not refreshed in the current shell yet, open a new terminal or use the managed binary path directly.
+
+### B. Test the npm bootstrap path with `npx`
+
+After the GitHub Release exists, publish the npm bootstrap packages from that exact release:
+
+```bash
+gh workflow run bridge-release.yml \
+  -f dry_run=false \
+  -f publish_npm=true \
+  -f release_tag=bridge-vX.Y.Z
+```
+
+Wait for the manual publish workflow to finish, then test the exact npm package version:
+
+```bash
+npx @sesori/bridge@X.Y.Z --version
+
+# If PATH has not refreshed in this shell yet, open a new terminal
+# or run ~/.sesori/bin/sesori-bridge directly on macOS/Linux.
+sesori-bridge --version
+```
+
+The expected result is that `npx` bootstraps or refreshes the managed runtime, and the long-lived command is still `sesori-bridge`, not a binary inside `node_modules`.
+
+### C. Manual uninstall verification
+
+After either install path, confirm uninstall behavior matches the contract:
+
+- `npm uninstall @sesori/bridge` removes only the npm package, not the managed install.
+- Full uninstall is manual directory deletion:
+  - macOS / Linux: `rm -rf ~/.sesori`
+  - Windows: `Remove-Item -Recurse -Force "$env:LOCALAPPDATA\sesori"`
+
+### D. Automatic update verification
+
+Auto-update only applies when the bridge is launched from the managed install path.
+
+- Managed installs check at startup.
+- Managed installs poll again every 4 hours while running.
+- Auto-update is skipped in CI.
+- Auto-update is skipped when `SESORI_NO_UPDATE=1` is set.
+- Direct execution from npm-owned `node_modules` payloads is unsupported and not an auto-update path.
+
 ## Verify release
 
 Check the GitHub Release contains:
