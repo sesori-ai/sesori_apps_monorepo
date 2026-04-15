@@ -248,6 +248,148 @@ void main() {
     await database.close();
     await relayServer.close();
   });
+
+  test("session SSE events stay ordered while async enrichment completes", () async {
+    final relayServer = await TestRelayServer.start();
+    final database = createTestDatabase();
+    final plugin = _EventPlugin();
+    final pullRequestRepository = PullRequestRepository(
+      pullRequestDao: database.pullRequestDao,
+      projectsDao: database.projectsDao,
+    );
+    final baseSessionRepository = SessionRepository(
+      plugin: plugin,
+      sessionDao: database.sessionDao,
+      pullRequestRepository: pullRequestRepository,
+    );
+    final enrichGate = Completer<void>();
+    final sessionRepository = _DelayingSessionRepository(
+      base: baseSessionRepository,
+      delaySessionIds: {"s1": enrichGate.future},
+    );
+    final projectRepository = ProjectRepository(
+      plugin: plugin,
+      projectsDao: database.projectsDao,
+    );
+    final permissionRepository = PermissionRepository(plugin: plugin);
+    final sessionPersistenceService = SessionPersistenceService(
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      db: database,
+    );
+    final worktreeService = WorktreeService(
+      worktreeRepository: WorktreeRepository(
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        gitApi: GitCliApi(
+          processRunner: FakeProcessRunner(),
+          gitPathExists: ({required String gitPath}) => true,
+        ),
+      ),
+    );
+    final relayClient = RelayClient(
+      relayURL: "ws://127.0.0.1:${relayServer.port}",
+      accessTokenProvider: FakeAccessTokenProvider(""),
+    );
+
+    await database.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+    await database.sessionDao.insertSession(
+      sessionId: "s1",
+      projectId: "p1",
+      isDedicated: true,
+      createdAt: 10,
+      worktreePath: "/tmp/worktree",
+      branchName: "feature/one",
+      baseBranch: null,
+      baseCommit: null,
+    );
+    await database.pullRequestDao.upsertPr(
+      pullRequest: const PullRequestDto(
+        projectId: "p1",
+        branchName: "feature/one",
+        prNumber: 11,
+        url: "https://github.com/org/repo/pull/11",
+        title: "Newest open PR",
+        state: PrState.open,
+        mergeableStatus: PrMergeableStatus.mergeable,
+        reviewDecision: PrReviewDecision.approved,
+        checkStatus: PrCheckStatus.success,
+        lastCheckedAt: 2,
+        createdAt: 2,
+      ),
+    );
+
+    final pushService = _CapturingPushNotificationService();
+
+    final orchestrator = Orchestrator(
+      config: BridgeConfig(
+        relayURL: "ws://127.0.0.1:${relayServer.port}",
+        serverURL: "http://127.0.0.1:4096",
+        serverPassword: null,
+        authBackendURL: "http://127.0.0.1:8080",
+        sseReplayWindow: const Duration(minutes: 1),
+      ),
+      client: relayClient,
+      plugin: plugin,
+      metadataService: _FakeMetadataService(),
+      pushNotificationService: pushService,
+      tokenRefresher: _FakeTokenRefresher(),
+      failureReporter: FakeFailureReporter(),
+      prSyncService: _FakePrSyncService(),
+      sessionRepository: sessionRepository,
+      projectRepository: projectRepository,
+      permissionRepository: permissionRepository,
+      sessionPersistenceService: sessionPersistenceService,
+      worktreeService: worktreeService,
+    );
+
+    final session = orchestrator.create();
+    final runFuture = session.run();
+    await plugin.waitForSubscription();
+    await relayServer.nextClient();
+
+    plugin.add(
+      const BridgeSseSessionCreated(
+        info: {
+          "id": "s1",
+          "projectID": "p1",
+          "directory": "/tmp/project",
+          "parentID": null,
+          "title": "session",
+          "time": {"created": 1, "updated": 2, "archived": null},
+          "summary": null,
+        },
+      ),
+    );
+    plugin.add(const BridgeSseSessionDiff(sessionID: "s1"));
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    enrichGate.complete();
+
+    final timeoutAt = DateTime.now().add(const Duration(seconds: 2));
+    while (pushService.events.length < 3) {
+      if (DateTime.now().isAfter(timeoutAt)) {
+        fail("Timed out waiting for mapped SSE events");
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+
+    final emittedEvents = pushService.events.skip(1).toList(growable: false);
+
+    expect(
+      emittedEvents.map((event) => event.toJson()["type"]).toList(growable: false),
+      equals(["session.created", "session.diff"]),
+    );
+    expect(
+      ((emittedEvents.first.toJson()["info"] as Map<String, dynamic>)["pullRequest"] as Map<String, dynamic>)["number"],
+      equals(11),
+    );
+
+    await session.cancel();
+    await runFuture.timeout(const Duration(seconds: 5));
+    await plugin.close();
+    await database.close();
+    await relayServer.close();
+  });
 }
 
 Future<List<int>> _nextBinaryMessage({required Stream<dynamic> messages}) async {
@@ -611,6 +753,37 @@ class _NoopPlugin implements BridgePlugin {
   Future<void> dispose() async {}
 }
 
+class _EventPlugin extends _NoopPlugin {
+  int subscribeCount = 0;
+
+  @override
+  Stream<BridgeSseEvent> get events {
+    return Stream<BridgeSseEvent>.multi((controller) {
+      subscribeCount++;
+      final sub = _controller.stream.listen(
+        controller.add,
+        onError: controller.addError,
+        onDone: controller.close,
+      );
+      controller.onCancel = sub.cancel;
+    });
+  }
+
+  void add(BridgeSseEvent event) {
+    _controller.add(event);
+  }
+
+  Future<void> waitForSubscription() async {
+    final timeoutAt = DateTime.now().add(const Duration(seconds: 2));
+    while (subscribeCount == 0) {
+      if (DateTime.now().isAfter(timeoutAt)) {
+        fail("Timed out waiting for plugin event subscription");
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+  }
+}
+
 class _NoopPushNotificationClient extends PushNotificationClient {
   _NoopPushNotificationClient()
     : super(
@@ -709,6 +882,10 @@ class _NoopSessionRepository implements SessionRepository {
     required int? limit,
   }) async => const <Session>[];
   @override
+  Future<Session> enrichSession({required Session session}) async => session;
+  @override
+  Future<List<Session>> enrichSessions({required List<Session> sessions}) async => sessions;
+  @override
   Future<List<Session>> getChildSessions({required String sessionId}) async => const <Session>[];
   @override
   Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async =>
@@ -724,4 +901,73 @@ class _NoopSessionRepository implements SessionRepository {
   Future<String?> getProjectPath({required String projectId}) async => null;
   @override
   Future<SessionDto?> getStoredSession({required String sessionId}) async => null;
+}
+
+class _DelayingSessionRepository implements SessionRepository {
+  final SessionRepository _base;
+  final Map<String, Future<void>> _delaySessionIds;
+
+  _DelayingSessionRepository({
+    required SessionRepository base,
+    required Map<String, Future<void>> delaySessionIds,
+  }) : _base = base,
+       _delaySessionIds = delaySessionIds;
+
+  @override
+  Future<Session> enrichSession({required Session session}) async {
+    final delay = _delaySessionIds[session.id];
+    if (delay != null) {
+      await delay;
+    }
+    return _base.enrichSession(session: session);
+  }
+
+  @override
+  Future<List<Session>> enrichSessions({required List<Session> sessions}) async {
+    return _base.enrichSessions(sessions: sessions);
+  }
+
+  @override
+  Future<List<Session>> getSessionsForProject({
+    required String projectId,
+    required int? start,
+    required int? limit,
+  }) async {
+    return _base.getSessionsForProject(projectId: projectId, start: start, limit: limit);
+  }
+
+  @override
+  Future<List<Session>> getChildSessions({required String sessionId}) async {
+    return _base.getChildSessions(sessionId: sessionId);
+  }
+
+  @override
+  Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {
+    return _base.getStoredSessionsByProjectId(projectId: projectId);
+  }
+
+  @override
+  Future<bool> hasOtherActiveSessionsSharing({
+    required String sessionId,
+    required String projectId,
+    required String? worktreePath,
+    required String? branchName,
+  }) async {
+    return _base.hasOtherActiveSessionsSharing(
+      sessionId: sessionId,
+      projectId: projectId,
+      worktreePath: worktreePath,
+      branchName: branchName,
+    );
+  }
+
+  @override
+  Future<String?> getProjectPath({required String projectId}) async {
+    return _base.getProjectPath(projectId: projectId);
+  }
+
+  @override
+  Future<SessionDto?> getStoredSession({required String sessionId}) async {
+    return _base.getStoredSession(sessionId: sessionId);
+  }
 }

@@ -126,7 +126,7 @@ class OrchestratorSession {
   final StreamController<int> _bytesSentController;
   final FailureReporter _failureReporter;
   final PrSyncService _prSyncService;
-  StreamSubscription<BridgeSseEvent>? _eventSubscription;
+  StreamSubscription<void>? _eventSubscription;
 
   bool _cancelled = false;
 
@@ -172,7 +172,11 @@ class OrchestratorSession {
          ),
          onSessionAborted: pushNotificationService.markSessionAborted,
        ),
-       _mapper = BridgeEventMapper(plugin: plugin, failureReporter: failureReporter);
+       _mapper = BridgeEventMapper(
+         plugin: plugin,
+         failureReporter: failureReporter,
+         sessionRepository: sessionRepository,
+       );
 
   /// Broadcast stream of byte counts emitted each time data is sent to a phone.
   ///
@@ -191,43 +195,17 @@ class OrchestratorSession {
     }
 
     Log.d("[dbg] subscribing to plugin event stream...");
-    _eventSubscription = _plugin.events.listen(
-      (BridgeSseEvent event) {
-        try {
-          Log.v("[sse] plugin event arrived: ${event.runtimeType}");
-          final sesoriEvent = _mapper.map(event);
-          if (sesoriEvent != null) {
-            Log.v(
-              "[sse] mapped to: ${sesoriEvent.runtimeType} — enqueuing (subscribers: ${_sseManager.subscriberCount})",
-            );
-            _pushNotificationService.handleSseEvent(sesoriEvent);
-            _sseManager.enqueueEvent(sesoriEvent);
-          } else {
-            Log.v("[sse] mapping returned null — event dropped");
-          }
-        } catch (e, st) {
-          Log.e("[sse] error processing event ${event.runtimeType}: $e\n$st");
-          unawaited(
-            _failureReporter
-                .recordFailure(
-                  error: e,
-                  stackTrace: st,
-                  uniqueIdentifier: "sse_event_processing:${event.runtimeType}",
-                  fatal: false,
-                  reason: "Failed to process SSE event",
-                  information: [event.runtimeType.toString()],
-                )
-                .catchError((_) {}),
-          );
-        }
-      },
-      onError: (Object e) {
-        Log.w("[dbg] plugin event stream error: $e");
-      },
-      onDone: () {
-        Log.w("[dbg] plugin event stream closed");
-      },
-    );
+    _eventSubscription = _plugin.events
+        .asyncMap(_processPluginEvent)
+        .listen(
+          (_) {},
+          onError: (Object e) {
+            Log.w("[dbg] plugin event stream error: $e");
+          },
+          onDone: () {
+            Log.w("[dbg] plugin event stream closed");
+          },
+        );
     Log.d("[dbg] plugin event stream subscribed");
     final prChangesSubscription = _prSyncService.prChanges.listen((String projectId) {
       _sseManager.enqueueEvent(SesoriSseEvent.sessionsUpdated(projectID: projectId));
@@ -314,6 +292,36 @@ class OrchestratorSession {
   Future<void> cancel() async {
     _cancelled = true;
     await _client.close();
+  }
+
+  Future<void> _processPluginEvent(BridgeSseEvent event) async {
+    try {
+      Log.v("[sse] plugin event arrived: ${event.runtimeType}");
+      final sesoriEvent = await _mapper.map(event);
+      if (sesoriEvent != null) {
+        Log.v(
+          "[sse] mapped to: ${sesoriEvent.runtimeType} — enqueuing (subscribers: ${_sseManager.subscriberCount})",
+        );
+        _pushNotificationService.handleSseEvent(sesoriEvent);
+        _sseManager.enqueueEvent(sesoriEvent);
+      } else {
+        Log.v("[sse] mapping returned null — event dropped");
+      }
+    } catch (e, st) {
+      Log.e("[sse] error processing event ${event.runtimeType}: $e\n$st");
+      unawaited(
+        _failureReporter
+            .recordFailure(
+              error: e,
+              stackTrace: st,
+              uniqueIdentifier: "sse_event_processing:${event.runtimeType}",
+              fatal: false,
+              reason: "Failed to process SSE event",
+              information: [event.runtimeType.toString()],
+            )
+            .catchError((_) {}),
+      );
+    }
   }
 
   Future<void> _refreshAccessToken() async {
