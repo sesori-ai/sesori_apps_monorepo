@@ -407,6 +407,12 @@ class _FakeSessionRepository implements SessionRepository {
   }) async => const <Session>[];
 
   @override
+  Future<Session> enrichSession({required Session session}) async => session;
+
+  @override
+  Future<List<Session>> enrichSessions({required List<Session> sessions}) async => sessions;
+
+  @override
   Future<List<Session>> getChildSessions({required String sessionId}) async => const <Session>[];
 
   @override
