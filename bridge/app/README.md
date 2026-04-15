@@ -26,7 +26,7 @@ npx @sesori/bridge --version
 sesori-bridge
 ```
 
-`npx @sesori/bridge` only installs or refreshes the managed runtime under `~/.sesori/` on macOS/Linux or `%LOCALAPPDATA%\sesori\` on Windows. `sesori-bridge` is the long-lived command you keep running after that bootstrap step. Shell installers are still supported if you prefer them. `npm uninstall @sesori/bridge` does not remove the managed install, so delete that Sesori directory manually if you want a full uninstall.
+`npx @sesori/bridge` only installs or refreshes the managed runtime under `~/.sesori/` on macOS/Linux or `%LOCALAPPDATA%\sesori\` on Windows. It prefers the published platform payload when npm provides it, and otherwise falls back to the exact tagged GitHub Release asset for the wrapper version. `sesori-bridge` is the long-lived command you keep running after that bootstrap step. Shell installers are still supported if you prefer them. `npm uninstall @sesori/bridge` does not remove the managed install, so delete that Sesori directory manually if you want a full uninstall.
 
 ## Install
 
@@ -42,7 +42,7 @@ npx @sesori/bridge --version
 sesori-bridge
 ```
 
-Use `npx @sesori/bridge` when you want npm to bootstrap or refresh the managed runtime, then keep running `sesori-bridge` from your PATH. On a first-time install, the PATH change is written for future terminals, so you may need to open a new terminal first.
+Use `npx @sesori/bridge` when you want npm to bootstrap or refresh the managed runtime, then keep running `sesori-bridge` from your PATH. The bootstrap path installs the same managed runtime that the GitHub release assets and shell installers publish. On a first-time install, the PATH change is written for future terminals, so you may need to open a new terminal first.
 
 ### Shell installer
 

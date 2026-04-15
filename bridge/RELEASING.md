@@ -134,7 +134,7 @@ npx @sesori/bridge@X.Y.Z --version
 sesori-bridge --version
 ```
 
-The expected result is that `npx` bootstraps or refreshes the managed runtime, and the long-lived command is still `sesori-bridge`, not a binary inside `node_modules`.
+The expected result is that `npx` bootstraps or refreshes the managed runtime, and the long-lived command is still `sesori-bridge`, not a binary inside `node_modules`. If npm does not materialize the platform package in the exec tree, the wrapper must fall back to the exact tagged GitHub Release asset for `bridge-vX.Y.Z` and still install the same managed runtime.
 
 ### C. Manual uninstall verification
 
