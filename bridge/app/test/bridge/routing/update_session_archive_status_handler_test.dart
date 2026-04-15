@@ -378,12 +378,56 @@ void main() {
       final persisted = await db.sessionDao.getSession(sessionId: "s-pre-migration");
       expect(persisted, isNotNull);
       expect(persisted?.projectId, equals("/repo"));
-      expect(persisted?.isDedicated, isTrue);
+      expect(persisted?.isDedicated, isFalse);
       expect(persisted?.worktreePath, isNull);
       expect(persisted?.branchName, isNull);
       expect(persisted?.baseBranch, isNull);
       expect(persisted?.baseCommit, isNull);
       expect(persisted?.archivedAt, isNotNull);
+    });
+
+    test("unarchive pre-migration session auto-inserts non-dedicated row and skips restore", () async {
+      plugin.projectsResult = const [PluginProject(id: "/repo")];
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s-pre-migration-unarchive",
+          projectID: "/repo",
+          directory: "/repo",
+          parentID: null,
+          title: "Pre-migration Session",
+          time: PluginSessionTime(created: 10, updated: 20, archived: 123),
+          summary: null,
+        ),
+      ];
+
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
+
+      final result = await handler.handle(
+        makeRequest("PATCH", "/session/update/archive"),
+        body: _archiveRequest(
+          sessionId: "s-pre-migration-unarchive",
+          archived: false,
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      final persisted = await db.sessionDao.getSession(sessionId: "s-pre-migration-unarchive");
+      expect(result.id, equals("s-pre-migration-unarchive"));
+      expect(result.time?.archived, isNull);
+      expect(persisted, isNotNull);
+      expect(persisted?.projectId, equals("/repo"));
+      expect(persisted?.isDedicated, isFalse);
+      expect(persisted?.worktreePath, isNull);
+      expect(persisted?.branchName, isNull);
+      expect(persisted?.baseBranch, isNull);
+      expect(persisted?.baseCommit, isNull);
+      expect(persisted?.archivedAt, isNull);
+      expect(worktreeService.restoreCallCount, equals(0));
     });
 
     test("archives first-time project (no prior projects_table row) without FK violation", () async {
@@ -945,6 +989,8 @@ Future<void> _insertSession({
 }
 
 class _FakeWorktreeService extends WorktreeService {
+  int restoreCallCount = 0;
+
   _FakeWorktreeService({required AppDatabase database})
     : super(
         branchRepository: BranchRepository(
@@ -959,6 +1005,18 @@ class _FakeWorktreeService extends WorktreeService {
           ),
         ),
       );
+
+  @override
+  Future<bool> restoreWorktree({
+    required String projectPath,
+    required String worktreePath,
+    required String branchName,
+    required String baseBranch,
+    required String? baseCommit,
+  }) async {
+    restoreCallCount++;
+    return true;
+  }
 }
 
 class _FakeProcessRunner implements ProcessRunner {

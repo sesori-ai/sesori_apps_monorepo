@@ -132,7 +132,7 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
     await _sessionPersistenceService.createSession(
       sessionId: sessionId,
       projectId: pluginSessionLookup.projectId,
-      isDedicated: true,
+      isDedicated: false,
       createdAt: DateTime.now().millisecondsSinceEpoch,
       worktreePath: null,
       branchName: null,

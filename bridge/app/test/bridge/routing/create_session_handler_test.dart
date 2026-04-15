@@ -272,6 +272,70 @@ void main() {
       },
     );
 
+    test(
+      "stayOnBranch reusing the project checkout persists non-dedicated branch semantics",
+      () async {
+        plugin.createSessionResult = const PluginSession(
+          id: "stay-root-1",
+          projectID: "p1",
+          directory: "/repo",
+          parentID: null,
+          title: "Stay Root",
+          time: null,
+          summary: null,
+        );
+        final localHandler = CreateSessionHandler(
+          plugin: plugin,
+          metadataService: metadataService,
+          worktreeService: _StubWorktreeService(
+            database: db,
+            prepareWorktreeForBranchResult: WorktreeSuccess(
+              path: "/repo",
+              branchName: "feature-branch",
+              baseBranch: "feature-branch",
+              baseCommit: "abc123def456",
+              isDedicated: false,
+            ),
+          ),
+          sessionPersistenceService: SessionPersistenceService(
+            projectsDao: db.projectsDao,
+            sessionDao: db.sessionDao,
+            db: db,
+          ),
+        );
+
+        final result = await localHandler.handle(
+          makeRequest("POST", "/session/create"),
+          body: const CreateSessionRequest(
+            projectId: "/repo",
+            worktreeMode: WorktreeMode.stayOnBranch,
+            selectedBranch: "feature-branch",
+            parts: [PromptPart.text(text: "Continue work")],
+            agent: null,
+            model: null,
+          ),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        );
+
+        expect(result.id, equals("stay-root-1"));
+        expect(result.branchName, equals("feature-branch"));
+        expect(result.hasWorktree, isTrue);
+        expect(plugin.lastCreateSessionDirectory, equals("/repo"));
+        expect(plugin.lastCreateSessionParts, hasLength(2));
+
+        final dbSession = await db.sessionDao.getSession(sessionId: "stay-root-1");
+        expect(dbSession, isNotNull);
+        expect(dbSession!.projectId, equals("/repo"));
+        expect(dbSession.isDedicated, isFalse);
+        expect(dbSession.worktreePath, equals("/repo"));
+        expect(dbSession.branchName, equals("feature-branch"));
+        expect(dbSession.baseBranch, equals("feature-branch"));
+        expect(dbSession.baseCommit, equals("abc123def456"));
+      },
+    );
+
     test("buildWorktreeSystemPrompt includes branch, path, and base branch", () {
       final prompt = buildWorktreeSystemPrompt(
         branchName: "session-017",
@@ -749,6 +813,26 @@ class _FakeWorktreeService extends WorktreeService {
     resolveBaseBranchAndCommitCallCount++;
     lastResolveBaseBranchProjectPath = projectPath;
     return resolveBaseBranchAndCommitResult;
+  }
+}
+
+class _StubWorktreeService extends _FakeWorktreeService {
+  final WorktreeResult _prepareWorktreeForBranchResult;
+
+  _StubWorktreeService({
+    required super.database,
+    required WorktreeResult prepareWorktreeForBranchResult,
+  }) : _prepareWorktreeForBranchResult = prepareWorktreeForBranchResult;
+
+  @override
+  Future<WorktreeResult> prepareWorktreeForBranch({
+    required WorktreeMode mode,
+    required String? selectedBranch,
+    required String projectPath,
+    required String sessionId,
+    ({String branchName, String worktreeName})? preferredBranchAndWorktreeName,
+  }) async {
+    return _prepareWorktreeForBranchResult;
   }
 }
 
