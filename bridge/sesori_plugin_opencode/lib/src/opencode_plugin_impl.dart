@@ -433,6 +433,8 @@ class OpenCodePlugin implements BridgePlugin {
             _eventBuffer.add(bridgeEvent);
           }
           return;
+        case SseParseOutcome.ignoredKnownEvent:
+          return;
         case SseParseOutcome.unknownEventType:
           _logDroppedSseFrame(
             category: "unknown-event-type",

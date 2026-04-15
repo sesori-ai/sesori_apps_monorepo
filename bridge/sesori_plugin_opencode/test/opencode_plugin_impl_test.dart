@@ -251,6 +251,43 @@ void main() {
       expect(events, isEmpty);
     });
 
+    test("sync SSE frames are swallowed without emitting bridge events", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await server.waitForSseConnection();
+
+      final events = <BridgeSseEvent>[];
+      final initialProjectUpdated = Completer<void>();
+      final subscription = plugin.events.listen((event) {
+        events.add(event);
+        if (event is BridgeSseProjectUpdated && !initialProjectUpdated.isCompleted) {
+          initialProjectUpdated.complete();
+        }
+      });
+      addTearDown(subscription.cancel);
+
+      await initialProjectUpdated.future;
+      events.clear();
+
+      await server.emitRawSse(
+        jsonEncode({
+          "directory": "/repo",
+          "payload": {
+            "type": "sync",
+            "name": "message.updated.1",
+            "id": "evt-1",
+            "seq": 7,
+            "aggregateID": "sessionID",
+            "data": {
+              "sessionID": "s1",
+            },
+          },
+        }),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(events, isEmpty);
+    });
+
     test("drop log formatting includes event type when present", () {
       expect(
         formatDroppedSseFrameLog(

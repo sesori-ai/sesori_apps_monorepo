@@ -147,6 +147,31 @@ void main() {
       },
     );
 
+    test("sync event is recognized and ignored with preserved metadata", () {
+      final parser = SseEventParser();
+      final rawData = jsonEncode({
+        "directory": "/repo",
+        "payload": {
+          "type": "sync",
+          "name": "message.updated.1",
+          "id": "evt-1",
+          "seq": 7,
+          "aggregateID": "sessionID",
+          "data": {
+            "sessionID": "s1",
+          },
+        },
+      });
+
+      final result = parser.parse(rawData);
+
+      expect(result.outcome, equals(SseParseOutcome.ignoredKnownEvent));
+      expect(result.event, isNull);
+      expect(result.directory, equals("/repo"));
+      expect(result.eventType, equals("sync"));
+      expect(result.rawData, equals(rawData));
+    });
+
     test("malformed JSON returns null event and preserved rawData", () {
       final parser = SseEventParser();
       const rawData = "{not-json";

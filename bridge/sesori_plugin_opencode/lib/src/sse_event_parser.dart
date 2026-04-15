@@ -4,6 +4,7 @@ import "models/sse_event_data.dart";
 
 enum SseParseOutcome {
   validKnownEvent,
+  ignoredKnownEvent,
   unknownEventType,
   malformedEnvelope,
   malformedKnownPayload,
@@ -41,8 +42,10 @@ class SseParseResult {
 /// `ConnectionService._onSseData`:
 /// 1. JSON decode the raw string
 /// 2. Extract `payload.type` and `payload.properties`
-/// 3. Merge into `{"type": type, ...properties}`
-/// 4. Deserialize via `SseEventData.fromJson(merged)`
+/// 3. Ignore known upstream event envelopes that Sesori intentionally drops
+///    (currently `sync`)
+/// 4. Merge into `{"type": type, ...properties}`
+/// 5. Deserialize via `SseEventData.fromJson(merged)`
 ///
 /// Never throws. Callers get categorized outcomes for unknown event types,
 /// malformed envelopes, and malformed known payloads while rawData is always
@@ -76,6 +79,15 @@ class SseEventParser {
       if (type is! String) {
         return SseParseResult(
           outcome: SseParseOutcome.malformedEnvelope,
+          directory: directory,
+          rawData: rawData,
+        );
+      }
+
+      if (_ignoredEventTypes.contains(type)) {
+        return SseParseResult(
+          outcome: SseParseOutcome.ignoredKnownEvent,
+          eventType: eventType,
           directory: directory,
           rawData: rawData,
         );
@@ -177,3 +189,5 @@ const Set<String> _knownEventTypes = {
   "worktree.ready",
   "worktree.failed",
 };
+
+const Set<String> _ignoredEventTypes = {"sync"};
