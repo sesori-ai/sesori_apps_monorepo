@@ -21,7 +21,7 @@
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
     "type": "git",
-    "url": "https://github.com/sesori-ai/sesori_apps_monorepo",
+    "url": "git+https://github.com/sesori-ai/sesori_apps_monorepo.git",
     "directory": "bridge/app/npm/sesori-bridge-linux-x64"
   }
 }
