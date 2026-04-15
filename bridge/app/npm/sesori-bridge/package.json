@@ -1,7 +1,7 @@
 {
   "name": "@sesori/bridge",
   "version": "0.2.0",
-  "description": "Sesori Bridge CLI - bridges local OpenCode server to mobile phones via encrypted relay",
+  "description": "Bootstrap launcher for the managed Sesori Bridge runtime",
   "bin": {
     "sesori-bridge": "bin/bridge.js"
   },
@@ -11,6 +11,11 @@
     "@sesori/bridge-linux-x64": "0.2.0",
     "@sesori/bridge-linux-arm64": "0.2.0",
     "@sesori/bridge-win32-x64": "0.2.0"
+  },
+  "sesoriBridge": {
+    "bootstrapOnly": true,
+    "managedRuntimeOwner": false,
+    "runtimeBundleSource": "github-release-assets"
   },
   "license": "SEE LICENSE IN LICENSE",
   "repository": {

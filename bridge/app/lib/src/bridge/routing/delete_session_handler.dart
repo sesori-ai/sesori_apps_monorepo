@@ -3,10 +3,10 @@ import "dart:convert";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../persistence/daos/session_dao.dart";
 import "../persistence/tables/session_table.dart";
 import "../repositories/session_repository.dart";
-import "../worktree_service.dart";
+import "../services/session_persistence_service.dart";
+import "../services/worktree_service.dart";
 import "request_handler.dart";
 import "worktree_cleanup.dart";
 
@@ -14,18 +14,18 @@ import "worktree_cleanup.dart";
 class DeleteSessionHandler extends BodyRequestHandler<DeleteSessionRequest, SuccessEmptyResponse> {
   final BridgePlugin _plugin;
   final WorktreeService _worktreeService;
-  final SessionDao _sessionDao;
   final SessionRepository _sessionRepository;
+  final SessionPersistenceService _sessionPersistenceService;
 
   DeleteSessionHandler({
     required BridgePlugin plugin,
     required WorktreeService worktreeService,
-    required SessionDao sessionDao,
     required SessionRepository sessionRepository,
+    required SessionPersistenceService sessionPersistenceService,
   }) : _plugin = plugin,
        _worktreeService = worktreeService,
-       _sessionDao = sessionDao,
        _sessionRepository = sessionRepository,
+       _sessionPersistenceService = sessionPersistenceService,
        super(
          HttpMethod.delete,
          "/session/delete",
@@ -45,7 +45,7 @@ class DeleteSessionHandler extends BodyRequestHandler<DeleteSessionRequest, Succ
       throw buildErrorResponse(request, 400, "empty session id");
     }
 
-    final sessionDto = await _sessionDao.getSession(sessionId: sessionId);
+    final sessionDto = await _sessionRepository.getStoredSession(sessionId: sessionId);
     final wantsGitCleanup = body.deleteWorktree || body.deleteBranch;
     if (wantsGitCleanup) {
       if (sessionDto case SessionDto(
@@ -86,7 +86,7 @@ class DeleteSessionHandler extends BodyRequestHandler<DeleteSessionRequest, Succ
     }
 
     if (sessionDto != null) {
-      await _sessionDao.deleteSession(sessionId: sessionId);
+      await _sessionPersistenceService.deleteSession(sessionId: sessionId);
     }
 
     return const SuccessEmptyResponse();

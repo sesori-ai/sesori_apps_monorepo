@@ -56,3 +56,4 @@ export "src/protocol/constants.dart";
 export "src/protocol/framing.dart";
 export "src/protocol/messages.dart";
 export "src/reporting/failure_reporter.dart";
+export "src/streams/ref_count_reusable_stream.dart";

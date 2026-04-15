@@ -1,10 +1,14 @@
 import "dart:io";
 
+import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/delete_session_handler.dart";
-import "package:sesori_bridge/src/bridge/worktree_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
+import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -28,8 +32,19 @@ void main() {
       handler = DeleteSessionHandler(
         plugin: plugin,
         worktreeService: worktreeService,
-        sessionDao: db.sessionDao,
-        sessionRepository: _FakeSessionRepository(),
+        sessionRepository: SessionRepository(
+          plugin: plugin,
+          sessionDao: db.sessionDao,
+          pullRequestRepository: PullRequestRepository(
+            pullRequestDao: db.pullRequestDao,
+            projectsDao: db.projectsDao,
+          ),
+        ),
+        sessionPersistenceService: SessionPersistenceService(
+          projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
+          db: db,
+        ),
       );
     });
 
@@ -393,10 +408,14 @@ class _FakeWorktreeService extends WorktreeService {
 
   _FakeWorktreeService({required AppDatabase database, required this.operationLog})
     : super(
-        projectsDao: database.projectsDao,
-        sessionDao: database.sessionDao,
-        processRunner: _NoopProcessRunner(),
-        gitPathExists: ({required String gitPath}) => true,
+        worktreeRepository: WorktreeRepository(
+          projectsDao: database.projectsDao,
+          sessionDao: database.sessionDao,
+          gitApi: GitCliApi(
+            processRunner: _NoopProcessRunner(),
+            gitPathExists: ({required String gitPath}) => true,
+          ),
+        ),
       );
 
   @override
@@ -462,17 +481,4 @@ class _TrackingFakeBridgePlugin extends FakeBridgePlugin {
     operationLog.add("pluginDelete");
     await super.deleteSession(sessionId);
   }
-}
-
-class _FakeSessionRepository implements SessionRepository {
-  @override
-  Future<bool> hasOtherActiveSessionsSharing({
-    required String sessionId,
-    required String projectId,
-    required String? worktreePath,
-    required String? branchName,
-  }) async => false;
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

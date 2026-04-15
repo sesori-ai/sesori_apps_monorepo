@@ -31,8 +31,11 @@ import "../persistence/database.dart";
 ///   [GetSessionsHandler] post-fetch on a best-effort basis.
 /// - [createSession] — full session insert: ensures the project exists then
 ///   inserts a session row with all worktree state in one transaction.
-///   Called by [CreateSessionHandler] so the handler doesn't need a direct
-///   [SessionDao] dependency.
+///   Called by Layer 4 handlers so they never mutate stored sessions through
+///   a repository dependency.
+/// - [deleteSession], [archiveSession], [unarchiveSession] — the remaining
+///   stored-session lifecycle writes, kept here so routing stays a pure
+///   consumer of repositories/services.
 class SessionPersistenceService {
   final ProjectsDao _projectsDao;
   final SessionDao _sessionDao;
@@ -99,5 +102,20 @@ class SessionPersistenceService {
         baseCommit: baseCommit,
       );
     });
+  }
+
+  Future<void> deleteSession({required String sessionId}) async {
+    await _sessionDao.deleteSession(sessionId: sessionId);
+  }
+
+  Future<void> archiveSession({
+    required String sessionId,
+    required int archivedAt,
+  }) async {
+    await _sessionDao.setArchived(sessionId: sessionId, archivedAt: archivedAt);
+  }
+
+  Future<void> unarchiveSession({required String sessionId}) async {
+    await _sessionDao.clearArchived(sessionId: sessionId);
   }
 }

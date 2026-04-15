@@ -1,10 +1,23 @@
 {
   "name": "@sesori/bridge-linux-x64",
   "version": "0.2.0",
-  "description": "Sesori Bridge binary for Linux x64",
-  "os": ["linux"],
-  "cpu": ["x64"],
-  "files": ["bin/"],
+  "description": "Bootstrap payload for the managed Sesori Bridge runtime on Linux x64",
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "files": [
+    "lib/runtime/"
+  ],
+  "sesoriBridge": {
+    "bootstrapOnly": true,
+    "managedRuntimeOwner": false,
+    "releaseTag": "bridge-v0.2.0",
+    "releaseArtifact": "sesori-bridge-linux-x64.tar.gz",
+    "runtimeBundlePath": "lib/runtime"
+  },
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
     "type": "git",

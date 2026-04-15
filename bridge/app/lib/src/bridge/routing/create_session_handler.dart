@@ -4,7 +4,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../metadata_service.dart";
 import "../models/session_metadata.dart" as bridge_metadata;
 import "../services/session_persistence_service.dart";
-import "../worktree_service.dart";
+import "../services/worktree_service.dart";
 import "prompt_part_mapper.dart";
 import "request_handler.dart";
 

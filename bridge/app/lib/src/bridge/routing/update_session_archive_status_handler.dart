@@ -5,12 +5,11 @@ import "dart:io";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../persistence/daos/session_dao.dart";
 import "../persistence/tables/session_table.dart";
 import "../repositories/mappers/plugin_session_mapper.dart";
 import "../repositories/session_repository.dart";
 import "../services/session_persistence_service.dart";
-import "../worktree_service.dart";
+import "../services/worktree_service.dart";
 import "request_handler.dart";
 import "worktree_cleanup.dart";
 
@@ -18,19 +17,16 @@ import "worktree_cleanup.dart";
 class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSessionArchiveRequest, Session> {
   final BridgePlugin _plugin;
   final WorktreeService _worktreeService;
-  final SessionDao _sessionDao;
   final SessionRepository _sessionRepository;
   final SessionPersistenceService _sessionPersistenceService;
 
   UpdateSessionArchiveStatusHandler({
     required BridgePlugin plugin,
     required WorktreeService worktreeService,
-    required SessionDao sessionDao,
     required SessionRepository sessionRepository,
     required SessionPersistenceService sessionPersistenceService,
   }) : _plugin = plugin,
        _worktreeService = worktreeService,
-       _sessionDao = sessionDao,
        _sessionRepository = sessionRepository,
        _sessionPersistenceService = sessionPersistenceService,
        super(
@@ -123,7 +119,7 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
     required RelayRequest request,
     required String sessionId,
   }) async {
-    if (await _sessionDao.getSession(sessionId: sessionId) case final sessionDto?) {
+    if (await _sessionRepository.getStoredSession(sessionId: sessionId) case final sessionDto?) {
       return sessionDto;
     }
     final pluginSessionLookup = await _findPluginSessionAcrossProjects(
@@ -133,8 +129,7 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
       throw buildErrorResponse(request, 404, "session not found");
     }
 
-    await _sessionPersistenceService.ensureProject(projectId: pluginSessionLookup.projectId);
-    await _sessionDao.insertSession(
+    await _sessionPersistenceService.createSession(
       sessionId: sessionId,
       projectId: pluginSessionLookup.projectId,
       isDedicated: true,
@@ -145,7 +140,7 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
       baseCommit: null,
     );
 
-    if (await _sessionDao.getSession(sessionId: sessionId) case final sessionDto?) {
+    if (await _sessionRepository.getStoredSession(sessionId: sessionId) case final sessionDto?) {
       return sessionDto;
     }
     throw buildErrorResponse(request, 500, "failed to initialize session");
@@ -196,7 +191,10 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
       throw buildErrorResponse(request, 404, "session not found");
     }
 
-    await _sessionDao.setArchived(sessionId: sessionDto.sessionId, archivedAt: archivedAt);
+    await _sessionPersistenceService.archiveSession(
+      sessionId: sessionDto.sessionId,
+      archivedAt: archivedAt,
+    );
 
     // Fire-and-forget: notify the backend so it can reflect the archive state.
     // The local DB is authoritative — we don't block on or fail for this.
@@ -217,7 +215,7 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
     required RelayRequest request,
     required SessionDto sessionDto,
   }) async {
-    await _sessionDao.clearArchived(sessionId: sessionDto.sessionId);
+    await _sessionPersistenceService.unarchiveSession(sessionId: sessionDto.sessionId);
 
     if (sessionDto case SessionDto(
       isDedicated: true,

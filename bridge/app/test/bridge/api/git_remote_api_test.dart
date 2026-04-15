@@ -13,9 +13,13 @@ void main() {
         stdout: "https://github.com/org/repo.git",
       );
 
-      final result = await GitCliApi(processRunner: mockRunner).hasGitHubRemote(
-        projectPath: "/path/to/project",
-      );
+      final result =
+          await GitCliApi(
+            processRunner: mockRunner,
+            gitPathExists: ({required String gitPath}) => true,
+          ).hasGitHubRemote(
+            projectPath: "/path/to/project",
+          );
 
       expect(result, isTrue);
     });
@@ -26,9 +30,13 @@ void main() {
         stdout: "git@github.com:org/repo.git",
       );
 
-      final result = await GitCliApi(processRunner: mockRunner).hasGitHubRemote(
-        projectPath: "/path/to/project",
-      );
+      final result =
+          await GitCliApi(
+            processRunner: mockRunner,
+            gitPathExists: ({required String gitPath}) => true,
+          ).hasGitHubRemote(
+            projectPath: "/path/to/project",
+          );
 
       expect(result, isTrue);
     });
@@ -39,9 +47,13 @@ void main() {
         stdout: "https://GitHub.COM/org/repo.git",
       );
 
-      final result = await GitCliApi(processRunner: mockRunner).hasGitHubRemote(
-        projectPath: "/path/to/project",
-      );
+      final result =
+          await GitCliApi(
+            processRunner: mockRunner,
+            gitPathExists: ({required String gitPath}) => true,
+          ).hasGitHubRemote(
+            projectPath: "/path/to/project",
+          );
 
       expect(result, isTrue);
     });
@@ -52,9 +64,13 @@ void main() {
         stdout: "https://gitlab.com/org/repo.git",
       );
 
-      final result = await GitCliApi(processRunner: mockRunner).hasGitHubRemote(
-        projectPath: "/path/to/project",
-      );
+      final result =
+          await GitCliApi(
+            processRunner: mockRunner,
+            gitPathExists: ({required String gitPath}) => true,
+          ).hasGitHubRemote(
+            projectPath: "/path/to/project",
+          );
 
       expect(result, isFalse);
     });
@@ -65,9 +81,13 @@ void main() {
         stdout: "/path/to/local/repo",
       );
 
-      final result = await GitCliApi(processRunner: mockRunner).hasGitHubRemote(
-        projectPath: "/path/to/project",
-      );
+      final result =
+          await GitCliApi(
+            processRunner: mockRunner,
+            gitPathExists: ({required String gitPath}) => true,
+          ).hasGitHubRemote(
+            projectPath: "/path/to/project",
+          );
 
       expect(result, isFalse);
     });
@@ -78,9 +98,13 @@ void main() {
         stdout: "",
       );
 
-      final result = await GitCliApi(processRunner: mockRunner).hasGitHubRemote(
-        projectPath: "/path/to/project",
-      );
+      final result =
+          await GitCliApi(
+            processRunner: mockRunner,
+            gitPathExists: ({required String gitPath}) => true,
+          ).hasGitHubRemote(
+            projectPath: "/path/to/project",
+          );
 
       expect(result, isFalse);
     });
@@ -91,9 +115,13 @@ void main() {
         stdout: "   \n  \t  ",
       );
 
-      final result = await GitCliApi(processRunner: mockRunner).hasGitHubRemote(
-        projectPath: "/path/to/project",
-      );
+      final result =
+          await GitCliApi(
+            processRunner: mockRunner,
+            gitPathExists: ({required String gitPath}) => true,
+          ).hasGitHubRemote(
+            projectPath: "/path/to/project",
+          );
 
       expect(result, isFalse);
     });
@@ -104,9 +132,13 @@ void main() {
         stdout: "https://github.com/org/repo.git",
       );
 
-      final result = await GitCliApi(processRunner: mockRunner).hasGitHubRemote(
-        projectPath: "/path/to/project",
-      );
+      final result =
+          await GitCliApi(
+            processRunner: mockRunner,
+            gitPathExists: ({required String gitPath}) => true,
+          ).hasGitHubRemote(
+            projectPath: "/path/to/project",
+          );
 
       expect(result, isFalse);
     });
@@ -121,9 +153,13 @@ void main() {
         throw TimeoutException("timed out", timeout);
       });
 
-      final result = await GitCliApi(processRunner: mockRunner).hasGitHubRemote(
-        projectPath: "/path/to/project",
-      );
+      final result =
+          await GitCliApi(
+            processRunner: mockRunner,
+            gitPathExists: ({required String gitPath}) => true,
+          ).hasGitHubRemote(
+            projectPath: "/path/to/project",
+          );
 
       expect(result, isFalse);
     });
@@ -134,7 +170,10 @@ void main() {
         stdout: "https://github.com/org/repo.git",
       );
 
-      await GitCliApi(processRunner: mockRunner).hasGitHubRemote(
+      await GitCliApi(
+        processRunner: mockRunner,
+        gitPathExists: ({required String gitPath}) => true,
+      ).hasGitHubRemote(
         projectPath: "/my/project/path",
       );
 
@@ -147,7 +186,10 @@ void main() {
         stdout: "https://github.com/org/repo.git",
       );
 
-      await GitCliApi(processRunner: mockRunner).hasGitHubRemote(
+      await GitCliApi(
+        processRunner: mockRunner,
+        gitPathExists: ({required String gitPath}) => true,
+      ).hasGitHubRemote(
         projectPath: "/path/to/project",
       );
 
@@ -165,9 +207,13 @@ void main() {
         return ProcessResult(0, 127, "", "command not found");
       });
 
-      final result = await GitCliApi(processRunner: mockRunner).hasGitHubRemote(
-        projectPath: "/path/to/project",
-      );
+      final result =
+          await GitCliApi(
+            processRunner: mockRunner,
+            gitPathExists: ({required String gitPath}) => true,
+          ).hasGitHubRemote(
+            projectPath: "/path/to/project",
+          );
 
       expect(result, isFalse);
     });
@@ -178,9 +224,13 @@ void main() {
         stdout: "  \n  https://github.com/org/repo.git  \n  ",
       );
 
-      final result = await GitCliApi(processRunner: mockRunner).hasGitHubRemote(
-        projectPath: "/path/to/project",
-      );
+      final result =
+          await GitCliApi(
+            processRunner: mockRunner,
+            gitPathExists: ({required String gitPath}) => true,
+          ).hasGitHubRemote(
+            projectPath: "/path/to/project",
+          );
 
       expect(result, isTrue);
     });

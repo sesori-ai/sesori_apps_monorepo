@@ -3,6 +3,7 @@ import "package:sesori_shared/sesori_shared.dart" show PrState, Session, Session
 
 import "../api/database/tables/pull_requests_table.dart";
 import "../persistence/daos/session_dao.dart";
+import "../persistence/tables/session_table.dart";
 import "mappers/plugin_session_mapper.dart";
 import "mappers/pull_request_mapper.dart";
 import "models/stored_session.dart";
@@ -130,5 +131,9 @@ class SessionRepository {
       Log.w("[SessionRepository] getProjectPath failed for $projectId: $e");
       return null;
     }
+  }
+
+  Future<SessionDto?> getStoredSession({required String sessionId}) {
+    return _sessionDao.getSession(sessionId: sessionId);
   }
 }

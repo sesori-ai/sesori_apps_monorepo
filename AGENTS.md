@@ -42,6 +42,7 @@ Each layer has a specific responsibility, a naming convention for its classes, a
 - A Service MUST NOT call an API directly — it goes through a Repository
 - A Consumer (cubit, handler) MUST NOT import from `api/` — it goes through repositories/services
 - Within a layer: NO cross-dependency between same-level classes (unless base classes/abstractions designed for reuse within that layer)
+- Helper, use-case, and supporting classes around a Service MUST NOT depend back on that owning Service. If you split service logic into a collaborator, make it a standalone dependency with its own injected inputs, not a `part` file, extension, or pseudo-helper that calls back into the service.
 - Directory structure MUST mirror layers — when you see `import '../api/...'` in a `services/` file, that is a violation
 - Do NOT use "Manager" as a class suffix — use `Service` instead
 
@@ -313,6 +314,16 @@ MyClass([FlutterLocalNotificationsPlugin? plugin]) : _plugin = plugin ?? Flutter
 ## Analysis
 
 Strict analysis is enabled across all packages. Don't add `// ignore:` comments without a written justification in the same line.
+
+## Learning From Feedback
+
+- Treat user feedback in **PR comments** and in the **live chat** as guidance for future code, not just the current patch.
+- When the user pushes back on a coding practice, architecture choice, testing shape, utility placement, or workflow decision, proactively update the closest relevant `AGENTS.md` file so the same mistake is less likely to recur.
+- Prefer updating both the **repo-root `AGENTS.md`** for general guidance and the **workspace/module `AGENTS.md`** for domain-specific guidance when the feedback is scoped.
+- Do this proactively after the lesson is clear; do not wait for the user to ask a second time.
+- Assume the user reviews **committed and pushed code**, not your uncommitted local workspace. If you are expecting PR feedback to reflect your latest work, proactively commit and push first.
+- Never rely on users reviewing uncommitted changes. Remote PR state is the review source of truth unless the user explicitly says otherwise.
+- Never use `git commit --amend` anywhere in this repo workflow. There are no exceptions; if follow-up changes are needed, create a new commit instead.
 
 ## Forbidden
 

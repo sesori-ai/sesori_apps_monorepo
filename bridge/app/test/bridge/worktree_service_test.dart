@@ -1,10 +1,12 @@
 import "dart:io";
 
+import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/daos/session_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
-import "package:sesori_bridge/src/bridge/worktree_service.dart";
+import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
+import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:test/test.dart";
 
 import "../helpers/test_database.dart";
@@ -27,10 +29,14 @@ void main() {
       processRunner = _FakeProcessRunner();
       gitDirectoryExists = true;
       service = WorktreeService(
-        projectsDao: projectsDao,
-        sessionDao: sessionDao,
-        processRunner: processRunner,
-        gitPathExists: ({required String gitPath}) => gitDirectoryExists,
+        worktreeRepository: WorktreeRepository(
+          projectsDao: projectsDao,
+          sessionDao: sessionDao,
+          gitApi: GitCliApi(
+            processRunner: processRunner,
+            gitPathExists: ({required String gitPath}) => gitDirectoryExists,
+          ),
+        ),
       );
     });
 
@@ -646,10 +652,14 @@ void main() {
       db = createTestDatabase();
       processRunner = _FakeProcessRunner();
       service = WorktreeService(
-        projectsDao: db.projectsDao,
-        sessionDao: db.sessionDao,
-        processRunner: processRunner,
-        gitPathExists: ({required String gitPath}) => true,
+        worktreeRepository: WorktreeRepository(
+          projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
+          gitApi: GitCliApi(
+            processRunner: processRunner,
+            gitPathExists: ({required String gitPath}) => true,
+          ),
+        ),
       );
       tempDir = await Directory.systemTemp.createTemp("worktree_safety_test_");
     });
@@ -759,10 +769,14 @@ void main() {
       db = createTestDatabase();
       processRunner = _FakeProcessRunner();
       service = WorktreeService(
-        projectsDao: db.projectsDao,
-        sessionDao: db.sessionDao,
-        processRunner: processRunner,
-        gitPathExists: ({required String gitPath}) => true,
+        worktreeRepository: WorktreeRepository(
+          projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
+          gitApi: GitCliApi(
+            processRunner: processRunner,
+            gitPathExists: ({required String gitPath}) => true,
+          ),
+        ),
       );
     });
 

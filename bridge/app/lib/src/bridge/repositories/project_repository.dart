@@ -37,4 +37,25 @@ class ProjectRepository {
     );
     return projects;
   }
+
+  Future<Project> openProject({required String path}) async {
+    final pluginProject = await _plugin.getProject(path);
+    await _projectsDao.unhideProject(projectId: pluginProject.id);
+    return pluginProject.toSharedProject();
+  }
+
+  Future<void> hideProject({required String projectId}) {
+    return _projectsDao.hideProject(projectId: projectId);
+  }
+
+  Future<String?> getBaseBranch({required String projectId}) {
+    return _projectsDao.getBaseBranch(projectId: projectId);
+  }
+
+  Future<void> setBaseBranch({required String projectId, required String baseBranch}) {
+    return _projectsDao.setBaseBranch(
+      projectId: projectId,
+      baseBranch: baseBranch,
+    );
+  }
 }
