@@ -9,6 +9,7 @@ import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.da
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/update_session_archive_status_handler.dart";
+import "package:sesori_bridge/src/bridge/services/session_archive_status_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -23,13 +24,14 @@ void main() {
     late AppDatabase db;
     late FakeBridgePlugin plugin;
     late _FakeWorktreeService worktreeService;
+    late SessionArchiveStatusService archiveStatusService;
     late UpdateSessionArchiveStatusHandler handler;
 
     setUp(() {
       db = createTestDatabase();
       plugin = FakeBridgePlugin();
       worktreeService = _FakeWorktreeService(database: db);
-      handler = UpdateSessionArchiveStatusHandler(
+      archiveStatusService = SessionArchiveStatusService(
         plugin: plugin,
         worktreeService: worktreeService,
         sessionRepository: SessionRepository(
@@ -45,6 +47,9 @@ void main() {
           sessionDao: db.sessionDao,
           db: db,
         ),
+      );
+      handler = UpdateSessionArchiveStatusHandler(
+        archiveStatusService: archiveStatusService,
       );
     });
 

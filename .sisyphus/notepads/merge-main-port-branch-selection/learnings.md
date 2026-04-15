@@ -1,0 +1,53 @@
+# Learnings
+
+## 2026-04-15 Session: ses_28988ebbeffe0b0HcrD1tA8NWo
+- Latest `main` moved bridge worktree handling toward `bridge/app/lib/src/bridge/services/worktree_service.dart`, `repositories/worktree_repository.dart`, and `runtime/bridge_runtime.dart`.
+- The current branch still contains an older bridge worktree cluster under `bridge/app/lib/src/bridge/worktree_service.dart` and related `worktree_*` files; treat these as behavior source, not target structure.
+- A straight rebase already proved this is an architecture port, not simple conflict cleanup.
+- The user explicitly wants merge-main-then-port, not rebase-first recovery.
+
+## 2026-04-15 Post-merge implementation map
+- Surviving shared contract surface:
+  - `shared/sesori_shared/lib/src/models/sesori/worktree_mode.dart`
+  - `shared/sesori_shared/lib/src/models/sesori/branch_info.dart`
+  - `shared/sesori_shared/lib/src/models/sesori/branch_list_response.dart`
+  - `shared/sesori_shared/lib/src/models/sesori/create_session_request.dart`
+  - `shared/sesori_shared/lib/src/models/sesori/session.dart`
+- Surviving mobile feature surface:
+  - `mobile/module_core/lib/src/api/project_api.dart`
+  - `mobile/module_core/lib/src/repositories/project_repository.dart`
+  - `mobile/module_core/lib/src/capabilities/session/session_service.dart`
+  - `mobile/module_core/lib/src/cubits/branch_list/branch_list_cubit.dart`
+  - `mobile/app/lib/features/new_session/new_session_screen.dart`
+  - `mobile/app/lib/features/new_session/widgets/branch_picker_sheet.dart`
+  - `mobile/app/lib/features/new_session/widgets/branch_picker_selection_panel.dart`
+- Current live bridge port targets after merge:
+  - `bridge/app/lib/src/bridge/services/worktree_service.dart`
+  - `bridge/app/lib/src/bridge/services/worktree_branch_preparation_service.dart`
+  - `bridge/app/lib/src/bridge/repositories/worktree_repository.dart`
+  - `bridge/app/lib/src/bridge/repositories/branch_repository.dart`
+  - `bridge/app/lib/src/bridge/runtime/bridge_runtime.dart`
+  - `bridge/app/lib/src/bridge/routing/create_session_handler.dart`
+  - `bridge/app/lib/src/bridge/routing/get_branches_handler.dart`
+  - `bridge/app/lib/src/bridge/routing/request_router.dart`
+  - `bridge/app/lib/src/bridge/routing/update_session_archive_status_handler.dart`
+- Old-stack/obsolete execution-path candidates once the port is complete:
+  - `bridge/app/lib/src/bridge/worktree_service.dart`
+  - `bridge/app/lib/src/bridge/worktree_branch_preparation.dart`
+  - `bridge/app/lib/src/bridge/worktree_lifecycle.dart`
+  - `bridge/app/lib/src/bridge/worktree_safety.dart`
+  - any tests still asserting against those root-level files as the live execution path
+- The clean merge path was to keep `bridge/app/bin/bridge.dart` on main's `BridgeRuntimeRunner` bootstrap and re-thread branch-selection behavior through `services/worktree_service.dart`, a new `services/worktree_branch_preparation_service.dart`, and `runtime/bridge_runtime.dart` rather than reviving the deleted root-level worktree service.
+- `BranchRepository` remains the behavior source for branch-selection semantics, but runtime wiring now instantiates it alongside `WorktreeRepository` so `CreateSessionHandler` stays on the main-side service/repository seams while preserving stay-on-branch and new-branch behavior.
+- T3 persistence reconciliation: the merged-main live path for branch/worktree behavior was already centered on `WorktreeService`, `WorktreeBranchPreparationService`, `WorktreeRepository`, `BranchRepository`, and `BridgeRuntime`; no schema or migration change was needed for `branchName`, `baseBranch`, `baseCommit`, `worktreePath`, or `hasWorktree`.
+- The merge did leave one state-semantics mismatch outside the core service seam: `UpdateSessionArchiveStatusHandler` initialized plugin-only placeholder sessions as `isDedicated: true` even when `worktreePath`, `branchName`, `baseBranch`, and `baseCommit` were all null. Aligning that path to `isDedicated: false` keeps placeholder/archive persistence consistent with `SessionPersistenceService.insertSessionsIfMissing` semantics and avoids falsely classifying non-worktree rows as dedicated.
+- Added focused coverage proving the reused-vs-new persistence split still holds on the merged architecture: `CreateSessionHandler` now has an explicit stay-on-branch project-checkout reuse test (`path == project root`, `isDedicated == false`), while `UpdateSessionArchiveStatusHandler` asserts pre-migration auto-inserted placeholder rows remain non-dedicated.
+- Review follow-up verification that was worth keeping in the task gate: `bridge/app/test/bridge/routing/worktree_cleanup_test.dart` validates the shared-worktree rejection path, and `UpdateSessionArchiveStatusHandler` now also covers pre-migration *unarchive* auto-insert so non-dedicated placeholder rows are proven to skip `restoreWorktree()`.
+- T4 merged-runtime create-session port fix: `CreateSessionHandler` must treat `WorktreeSuccess.isDedicated` as the source of truth for persistence/response semantics. When `stayOnBranch` reuses the project checkout (`path == project root`, `isDedicated == false`), the session should still keep `branchName`, but it must persist `worktreePath: null` and return `hasWorktree: false` so later `/sessions` and archive/unarchive responses do not misclassify the root checkout as a removable dedicated worktree.
+- Keeping that rule centralized in shared mapping points (`SessionRepository`, `PluginSessionMapper`, and archive response merging) prevents create-session from being “locally correct” while follow-up flows regress back to `worktreePath != null` semantics.
+- T5 cleanup/archive/delete port follow-up: merged-main cleanup handlers were already structurally correct, but dedicated unarchive restore needed to treat blank persisted `baseBranch` / `baseCommit` values as missing metadata. Normalizing blank branch metadata back to `main`/`null` in `UpdateSessionArchiveStatusHandler` preserves restore behavior for legacy merged rows instead of handing git an empty restore start point.
+- Focused handler coverage is now worth preserving alongside `worktree_cleanup_test.dart`: archive and delete handler tests both assert the 409 response keeps `content-type: application/json` and still decodes as `SessionCleanupRejection`, so mobile cleanup-rejection parsing is locked to the merged architecture rather than only the lower-level helper tests.
+- T6 contract reconciliation check on the merged branch: no drift found in the shared/mobile branch-selection path. `CreateSessionRequest` still carries `worktreeMode` + `selectedBranch`, `Session` still carries `branchName`, and `BranchInfo`/`BranchListResponse` still match the bridge branch-list payload. Mobile `ProjectApi -> ProjectRepository -> SessionService -> NewSessionCubit` still targets `/project/branches`, `/session/create`, `/session/update/archive`, and `/session/delete` with the shared Freezed bodies expected by the merged bridge handlers.
+- Verification evidence for the no-op result: focused `module_core` tests for project API, repository, session service, and new-session cubit passed; `dart analyze` in `mobile/module_core` passed cleanly; `lsp_diagnostics` reported no issues on the touched core files.
+- Branch parsing should not treat a remote name like `origin` as a pseudo-ref filter; the real guard is excluding `origin/HEAD`-style refs while keeping a local branch named `origin` selectable.
+- Final-review cleanup can stay layered by moving archive/unarchive orchestration into `SessionArchiveStatusService`, routing cleanup through a service-layer helper, and pulling session worktree creation into `WorktreeSessionPreparationService`; that kept `update_session_archive_status_handler.dart` and `worktree_service.dart` comfortably under the file-size cap without changing behavior.

@@ -8,6 +8,7 @@ import "../repositories/project_repository.dart";
 import "../repositories/provider_repository.dart";
 import "../repositories/session_repository.dart";
 import "../services/pr_sync_service.dart";
+import "../services/session_archive_status_service.dart";
 import "../services/session_persistence_service.dart";
 import "../services/worktree_service.dart";
 import "abort_session_handler.dart";
@@ -113,10 +114,12 @@ class RequestRouter {
       ),
       RenameSessionHandler(plugin),
       UpdateSessionArchiveStatusHandler(
-        plugin: plugin,
-        worktreeService: worktreeService,
-        sessionRepository: sessionRepository,
-        sessionPersistenceService: sessionPersistenceService,
+        archiveStatusService: SessionArchiveStatusService(
+          plugin: plugin,
+          worktreeService: worktreeService,
+          sessionRepository: sessionRepository,
+          sessionPersistenceService: sessionPersistenceService,
+        ),
       ),
       DeleteSessionHandler(
         plugin: plugin,

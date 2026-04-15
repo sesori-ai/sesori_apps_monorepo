@@ -1,22 +1,19 @@
 import "dart:math";
 
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/branch_repository.dart";
 import "../repositories/worktree_repository.dart";
 import "../worktree_types.dart";
 import "worktree_branch_preparation_service.dart";
+import "worktree_session_preparation_service.dart";
 
 export "../worktree_types.dart";
-
-const _maxWorktreeCreationAttempts = 3;
-const _branchPrefix = "session-";
-const _worktreeDir = ".worktrees";
 
 class WorktreeService {
   final WorktreeRepository _worktreeRepository;
   final WorktreeBranchPreparationService _branchPreparationService;
+  final WorktreeSessionPreparationService _sessionPreparationService;
 
   WorktreeService({
     required WorktreeRepository worktreeRepository,
@@ -25,6 +22,12 @@ class WorktreeService {
        _branchPreparationService = WorktreeBranchPreparationService(
          branchRepository: branchRepository,
          worktreeRepository: worktreeRepository,
+         isSafeGitName: _isSafeGitName,
+         randomSuffix: _randomSuffix,
+       ),
+       _sessionPreparationService = WorktreeSessionPreparationService(
+         worktreeRepository: worktreeRepository,
+         branchRepository: branchRepository,
          isSafeGitName: _isSafeGitName,
          randomSuffix: _randomSuffix,
        );
@@ -61,128 +64,11 @@ class WorktreeService {
     required String projectId,
     required String? parentSessionId,
     ({String branchName, String worktreeName})? preferredBranchAndWorktreeName,
-  }) async {
-    if (parentSessionId != null) {
-      final parentWorktree = await _worktreeRepository.getParentWorktree(
-        parentSessionId: parentSessionId,
-      );
-      if (parentWorktree != null) {
-        return WorktreeSuccess(
-          path: parentWorktree.path,
-          branchName: parentWorktree.branchName,
-          baseBranch: parentWorktree.baseBranch,
-          baseCommit: parentWorktree.baseCommit,
-          isDedicated: true,
-        );
-      }
-    }
-
-    if (!await _worktreeRepository.isGitInitialized(projectPath: projectId)) {
-      Log.w("WorktreeService: not a git repository: $projectId");
-      return WorktreeFallback(
-        originalPath: projectId,
-        reason: "not a git repository",
-      );
-    }
-
-    if (!await _worktreeRepository.hasAtLeastOneCommit(projectPath: projectId)) {
-      Log.w("WorktreeService: repository has no commits: $projectId");
-      return WorktreeFallback(
-        originalPath: projectId,
-        reason: "repository has no commits",
-      );
-    }
-
-    final baseBranchAndCommit = await _worktreeRepository.resolveBaseBranchAndCommit(
-      projectPath: projectId,
-    );
-    if (baseBranchAndCommit == null) {
-      Log.w(
-        "WorktreeService: failed to resolve base branch/commit for: $projectId",
-      );
-      return WorktreeFallback(
-        originalPath: projectId,
-        reason: "failed to resolve base branch/commit",
-      );
-    }
-    final baseBranch = baseBranchAndCommit.baseBranch;
-    final baseCommit = baseBranchAndCommit.baseCommit;
-    final startPoint = baseBranchAndCommit.startPoint;
-
-    if (preferredBranchAndWorktreeName != null && parentSessionId == null) {
-      final preferredBranch = preferredBranchAndWorktreeName.branchName;
-      final preferredWorktree = preferredBranchAndWorktreeName.worktreeName;
-      if (!_isSafeGitName(preferredBranch) || !_isSafeGitName(preferredWorktree)) {
-        Log.w(
-          "WorktreeService: rejected unsafe preferred names: branch=$preferredBranch worktree=$preferredWorktree",
-        );
-      } else {
-        final suffix =
-            await _worktreeRepository.branchExists(
-              projectPath: projectId,
-              branchName: preferredBranch,
-            )
-            ? "-${_randomSuffix()}"
-            : "";
-        final branchName = "$preferredBranch$suffix";
-        final worktreeName = "$preferredWorktree$suffix";
-        final worktreePath = "$projectId/$_worktreeDir/$worktreeName";
-        final created = await _worktreeRepository.createWorktree(
-          projectPath: projectId,
-          worktreePath: worktreePath,
-          branchName: branchName,
-          startPoint: startPoint,
-        );
-        if (created) {
-          return WorktreeSuccess(
-            path: worktreePath,
-            branchName: branchName,
-            baseBranch: baseBranch,
-            baseCommit: baseCommit,
-            isDedicated: true,
-          );
-        }
-      }
-    }
-
-    for (var attempt = 0; attempt < _maxWorktreeCreationAttempts; attempt++) {
-      final counter = await _worktreeRepository.incrementAndGetWorktreeCounter(
-        projectId: projectId,
-      );
-      final branchName = "$_branchPrefix${counter.toString().padLeft(3, '0')}";
-      final worktreePath = "$projectId/$_worktreeDir/$branchName";
-
-      if (await _worktreeRepository.branchExists(
-        projectPath: projectId,
-        branchName: branchName,
-      )) {
-        continue;
-      }
-
-      final created = await _worktreeRepository.createWorktree(
-        projectPath: projectId,
-        worktreePath: worktreePath,
-        branchName: branchName,
-        startPoint: startPoint,
-      );
-
-      if (created) {
-        return WorktreeSuccess(
-          path: worktreePath,
-          branchName: branchName,
-          baseBranch: baseBranch,
-          baseCommit: baseCommit,
-          isDedicated: true,
-        );
-      }
-    }
-
-    Log.w(
-      "WorktreeService: failed to create worktree after 3 attempts for: $projectId",
-    );
-    return WorktreeFallback(
-      originalPath: projectId,
-      reason: "failed to create worktree after 3 attempts",
+  }) {
+    return _sessionPreparationService.prepareWorktreeForSession(
+      projectId: projectId,
+      parentSessionId: parentSessionId,
+      preferredBranchAndWorktreeName: preferredBranchAndWorktreeName,
     );
   }
 
