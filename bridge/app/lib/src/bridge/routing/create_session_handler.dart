@@ -173,11 +173,11 @@ class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Sess
       baseCommit: final resolvedBaseCommit,
       isDedicated: final resolvedIsDedicated,
     )) {
-      worktreePath = path;
+      isDedicated = resolvedIsDedicated;
+      worktreePath = isDedicated ? path : null;
       branchName = resolvedBranchName;
       baseBranch = resolvedBaseBranch;
       baseCommit = resolvedBaseCommit;
-      isDedicated = resolvedIsDedicated;
     } else {
       worktreePath = null;
       branchName = null;
@@ -226,7 +226,7 @@ class CreateSessionHandler extends BodyRequestHandler<CreateSessionRequest, Sess
         null => null,
       },
       pullRequest: null,
-      hasWorktree: worktreePath != null,
+      hasWorktree: isDedicated && worktreePath != null,
     );
 
     return session;

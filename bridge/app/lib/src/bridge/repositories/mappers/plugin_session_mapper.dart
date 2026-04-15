@@ -3,7 +3,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 /// Maps a [PluginSession] to the shared [Session] type used in relay responses.
 extension PluginSessionMapper on PluginSession {
-  Session toSharedSession({String? branchName}) {
+  Session toSharedSession({String? branchName, bool hasWorktree = false}) {
     return Session(
       id: id,
       projectID: projectID,
@@ -28,6 +28,7 @@ extension PluginSessionMapper on PluginSession {
         null => null,
       },
       pullRequest: null,
+      hasWorktree: hasWorktree,
     );
   }
 }

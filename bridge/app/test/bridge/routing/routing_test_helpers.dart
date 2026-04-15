@@ -634,7 +634,8 @@ class FakeSessionRepository implements SessionRepository {
             : SessionTime(created: 0, updated: 0, archived: dbSession.archivedAt);
         return session.copyWith(
           time: mergedTime,
-          hasWorktree: dbSession.worktreePath != null,
+          branchName: dbSession.branchName,
+          hasWorktree: dbSession.isDedicated && dbSession.worktreePath != null,
         );
       }
       return session;

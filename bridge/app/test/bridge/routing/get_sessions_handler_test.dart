@@ -575,6 +575,45 @@ void main() {
       expect(result.items.first.hasWorktree, isFalse);
     });
 
+    test("hasWorktree is false when DB row reuses the project checkout", () async {
+      plugin.sessionsResult = [
+        const PluginSession(
+          id: "s1",
+          projectID: "p1",
+          directory: "/repo",
+          parentID: null,
+          title: null,
+          time: PluginSessionTime(created: 100, updated: 200, archived: null),
+          summary: null,
+        ),
+      ];
+
+      sessionDao.setSession(
+        const SessionDto(
+          sessionId: "s1",
+          projectId: "p1",
+          worktreePath: "/repo",
+          branchName: "feature-branch",
+          isDedicated: false,
+          archivedAt: null,
+          baseBranch: null,
+          baseCommit: null,
+          createdAt: 100,
+        ),
+      );
+
+      final result = await handler.handle(
+        makeRequest("POST", "/sessions"),
+        body: const SessionListRequest(projectId: "/repo", start: null, limit: null),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.items.first.branchName, equals("feature-branch"));
+      expect(result.items.first.hasWorktree, isFalse);
+    });
+
     test("hasWorktree is false when no DB record exists", () async {
       plugin.sessionsResult = [
         const PluginSession(

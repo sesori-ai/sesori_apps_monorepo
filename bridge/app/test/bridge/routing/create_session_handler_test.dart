@@ -321,7 +321,7 @@ void main() {
 
         expect(result.id, equals("stay-root-1"));
         expect(result.branchName, equals("feature-branch"));
-        expect(result.hasWorktree, isTrue);
+        expect(result.hasWorktree, isFalse);
         expect(plugin.lastCreateSessionDirectory, equals("/repo"));
         expect(plugin.lastCreateSessionParts, hasLength(2));
 
@@ -329,7 +329,7 @@ void main() {
         expect(dbSession, isNotNull);
         expect(dbSession!.projectId, equals("/repo"));
         expect(dbSession.isDedicated, isFalse);
-        expect(dbSession.worktreePath, equals("/repo"));
+        expect(dbSession.worktreePath, isNull);
         expect(dbSession.branchName, equals("feature-branch"));
         expect(dbSession.baseBranch, equals("feature-branch"));
         expect(dbSession.baseCommit, equals("abc123def456"));

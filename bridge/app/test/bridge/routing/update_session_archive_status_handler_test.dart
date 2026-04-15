@@ -812,6 +812,48 @@ void main() {
       expect(result.hasWorktree, isFalse);
     });
 
+    test("archive response keeps root-checkout branch sessions non-worktree", () async {
+      await _insertSession(
+        db: db,
+        sessionId: "s1",
+        projectId: "/repo",
+        isDedicated: false,
+        worktreePath: "/repo",
+        branchName: "feature-branch",
+        baseBranch: null,
+        archivedAt: null,
+        baseCommit: null,
+      );
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "/repo",
+          directory: "/repo",
+          parentID: null,
+          title: "Session 1",
+          time: PluginSessionTime(created: 10, updated: 20, archived: null),
+          summary: null,
+        ),
+      ];
+
+      final result = await handler.handle(
+        makeRequest("PATCH", "/session/update/archive"),
+        body: _archiveRequest(
+          sessionId: "s1",
+          archived: true,
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.branchName, equals("feature-branch"));
+      expect(result.hasWorktree, isFalse);
+    });
+
     test("unarchive response has hasWorktree true when session has worktreePath", () async {
       final existingDir = Directory.systemTemp.createTempSync("archive-handler-worktree-");
       addTearDown(() {

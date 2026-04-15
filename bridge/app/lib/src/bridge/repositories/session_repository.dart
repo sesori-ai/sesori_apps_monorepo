@@ -52,7 +52,7 @@ class SessionRepository {
             : SessionTime(created: 0, updated: 0, archived: dbSession.archivedAt);
         result = result.copyWith(
           time: mergedTime,
-          hasWorktree: dbSession.worktreePath != null,
+          hasWorktree: dbSession.isDedicated && dbSession.worktreePath != null,
           branchName: dbSession.branchName,
         );
       }
@@ -97,8 +97,13 @@ class SessionRepository {
   Future<List<Session>> getChildSessions({required String sessionId}) async {
     final pluginSessions = await _plugin.getChildSessions(sessionId);
     final dbSessions = await _sessionDao.getSessionsByIds(sessionIds: pluginSessions.map((s) => s.id).toList());
-    final branchNamesById = {for (final entry in dbSessions.entries) entry.key: entry.value.branchName};
-    return pluginSessions.map((s) => s.toSharedSession(branchName: branchNamesById[s.id])).toList();
+    return pluginSessions.map((s) {
+      final dbSession = dbSessions[s.id];
+      return s.toSharedSession(
+        branchName: dbSession?.branchName,
+        hasWorktree: (dbSession?.isDedicated ?? false) && dbSession?.worktreePath != null,
+      );
+    }).toList();
   }
 
   Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {
