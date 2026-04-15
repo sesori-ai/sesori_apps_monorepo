@@ -555,6 +555,7 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
       expect(result.stderr, contains('Managed runtime 9.9.9 is incomplete/corrupt and newer than npm payload 1.2.3'));
       expect(result.stderr, contains('Refusing to repair it with an older npm payload'));
       expect(result.stderr, contains('bootstrap again with npx'));
+      expect(Directory(_bootstrapLockPath(homePath: homeDir.path)).existsSync(), isFalse);
       expect(File(recordPath).existsSync(), isFalse);
     });
 
@@ -585,7 +586,39 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
       expect(result.stderr, contains('Failed to install the managed runtime'));
       expect(result.stderr, contains('Refusing to run runtime binaries from npm-owned paths'));
       expect(result.stderr, contains('Delete the managed install directory and rerun npx @sesori/bridge'));
+      expect(Directory(_bootstrapLockPath(homePath: homeDir.path)).existsSync(), isFalse);
       expect(File(recordPath).existsSync(), isFalse);
+    });
+
+    test('warns and continues when PATH persistence fails', () async {
+      final wrapperRoot = await _createWrapperFixture();
+      final homeDir = await Directory.systemTemp.createTemp('npm-wrapper-home-');
+      addTearDown(() => homeDir.delete(recursive: true));
+      final recordPath = p.join(homeDir.path, 'record.json');
+
+      await _createPlatformPayload(
+        wrapperRoot: wrapperRoot,
+        version: '1.2.3',
+        binaryMarker: 'payload-runtime',
+        libMarker: 'payload-lib',
+      );
+      await File(p.join(homeDir.path, '.config')).writeAsString('not-a-directory');
+
+      final result = await _runWrapperProcess(
+        packageRoot: wrapperRoot,
+        homePath: homeDir.path,
+        args: ['status'],
+        environment: {
+          'SHELL': '/usr/bin/fish',
+          'SESORI_BRIDGE_RECORD_PATH': recordPath,
+        },
+      );
+
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      expect(result.stderr, contains('Failed to persist the managed command path'));
+      expect(result.stderr, contains('Continuing with the managed runtime for this launch.'));
+      final recorded = await _readRecordedInvocation(recordPath: recordPath);
+      expect(recorded['marker'], equals('payload-runtime'));
     });
 
     test('managed runtime stays runnable after the npm package is removed', () async {

@@ -1,6 +1,7 @@
 {
   "name": "@sesori/bridge-darwin-arm64",
   "version": "0.2.0",
+  "description": "Bootstrap payload for the managed Sesori Bridge runtime on macOS ARM64",
   
   "os": [
     "darwin"

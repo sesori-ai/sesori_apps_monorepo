@@ -9,7 +9,11 @@ function fail(message) {
   process.exit(1);
 }
 
-function readJson(filePath) { return JSON.parse(fs.readFileSync(filePath, "utf8")); }
+function stripUtf8Bom(value) {
+  return typeof value === "string" && value.charCodeAt(0) === 0xFEFF ? value.slice(1) : value;
+}
+
+function readJson(filePath) { return JSON.parse(stripUtf8Bom(fs.readFileSync(filePath, "utf8"))); }
 function exists(filePath) { return fs.existsSync(filePath); }
 
 function managedInstallRoot() {

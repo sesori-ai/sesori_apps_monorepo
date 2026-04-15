@@ -20,6 +20,10 @@ function fail(message) {
   process.exit(1);
 }
 
+function errorMessage(error) {
+  return String(error && error.message ? error.message : error);
+}
+
 function managedBinDir(installRoot) { return path.dirname(runtimeInstall.managedBinaryPath(installRoot)); }
 function sleepForTest() {
   var holdMs = Number(process.env.SESORI_BRIDGE_TEST_BOOTSTRAP_HOLD_MS || 0);
@@ -58,7 +62,7 @@ function bootstrapManagedRuntime(pkgName) {
       var comparison = runtimeInstall.compareVersions(currentVersion, payload.version);
       if (comparison > 0) {
         if (!runtimeReady) {
-          fail(
+          throw new Error(
             "sesori-bridge: Managed runtime " + currentVersion + " is incomplete/corrupt and newer than npm payload " + payload.version + ".\n" +
             "Refusing to repair it with an older npm payload. Reinstall the managed runtime explicitly, or delete the managed install directory and bootstrap again with npx."
           );
@@ -80,9 +84,9 @@ function bootstrapManagedRuntime(pkgName) {
         },
       });
     } catch (error) {
-      fail(
+      throw new Error(
         "sesori-bridge: Failed to install the managed runtime.\n" +
-        String(error && error.message ? error.message : error) + "\n" +
+        errorMessage(error) + "\n" +
         "Refusing to run runtime binaries from npm-owned paths. Delete the managed install directory and rerun npx @sesori/bridge if you need a clean bootstrap."
       );
     }
@@ -103,7 +107,12 @@ function spawnManagedRuntime(binaryPath, args) {
 }
 
 function main(options) {
-  var bootstrapResult = bootstrapManagedRuntime(options && options.pkgName);
+  var bootstrapResult;
+  try {
+    bootstrapResult = bootstrapManagedRuntime(options && options.pkgName);
+  } catch (error) {
+    fail(errorMessage(error));
+  }
   try {
     var launcherResult = launcher.ensureManagedCommandPath({
       binDir: managedBinDir(bootstrapResult.installRoot),
@@ -115,9 +124,10 @@ function main(options) {
       console.error(launcherResult.message);
     }
   } catch (error) {
-    fail(
+    console.error(
       "sesori-bridge: Failed to persist the managed command path.\n" +
-      String(error && error.message ? error.message : error)
+      errorMessage(error) + "\n" +
+      "Continuing with the managed runtime for this launch."
     );
   }
   spawnManagedRuntime(bootstrapResult.binaryPath, process.argv.slice(2));
