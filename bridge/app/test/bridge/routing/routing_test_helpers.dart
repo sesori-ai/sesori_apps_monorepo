@@ -568,6 +568,23 @@ class _NoopPullRequestRepository implements PullRequestRepository {
 
 class _NoopSessionRepository implements SessionRepository {
   @override
+  Future<Session> createSession({
+    required String directory,
+    required String? parentSessionId,
+    required List<PromptPart> parts,
+    required String? agent,
+    required PromptModel? model,
+  }) async => const Session(
+    id: "",
+    projectID: "",
+    directory: "",
+    parentID: null,
+    title: null,
+    time: null,
+    summary: null,
+    pullRequest: null,
+  );
+  @override
   Future<List<Session>> getSessionsForProject({
     required String projectId,
     required int? start,
@@ -597,6 +614,27 @@ class _NoopSessionRepository implements SessionRepository {
   Future<String?> getProjectPath({required String projectId}) async => null;
   @override
   Future<SessionDto?> getStoredSession({required String sessionId}) async => null;
+
+  @override
+  Future<String?> findProjectIdForSession({required String sessionId}) async => null;
+
+  @override
+  Future<Session?> getSessionForProject({required String projectId, required String sessionId}) async => null;
+
+  @override
+  Future<void> notifySessionArchived({required String sessionId}) async {}
+
+  @override
+  Future<Session> renameSession({required String sessionId, required String title}) async => const Session(
+    id: "",
+    projectID: "",
+    directory: "",
+    parentID: null,
+    title: null,
+    time: null,
+    summary: null,
+    pullRequest: null,
+  );
 }
 
 /// Test-friendly [SessionRepository] that delegates to a [FakeBridgePlugin]
@@ -616,6 +654,24 @@ class FakeSessionRepository implements SessionRepository {
   }) : _plugin = plugin,
        _sessionDao = sessionDao ?? FakeSessionDao(),
        _pullRequestRepository = pullRequestRepository ?? FakePullRequestRepository();
+
+  @override
+  Future<Session> createSession({
+    required String directory,
+    required String? parentSessionId,
+    required List<PromptPart> parts,
+    required String? agent,
+    required PromptModel? model,
+  }) async => const Session(
+    id: "",
+    projectID: "",
+    directory: "",
+    parentID: null,
+    title: null,
+    time: null,
+    summary: null,
+    pullRequest: null,
+  );
 
   @override
   Future<List<Session>> getSessionsForProject({
@@ -744,4 +800,33 @@ class FakeSessionRepository implements SessionRepository {
   Future<SessionDto?> getStoredSession({required String sessionId}) async {
     return _sessionDao.getSession(sessionId: sessionId);
   }
+
+  @override
+  Future<String?> findProjectIdForSession({required String sessionId}) async => null;
+
+  @override
+  Future<Session?> getSessionForProject({required String projectId, required String sessionId}) async {
+    final sessions = await getSessionsForProject(projectId: projectId, start: null, limit: null);
+    for (final session in sessions) {
+      if (session.id == sessionId) {
+        return session;
+      }
+    }
+    return null;
+  }
+
+  @override
+  Future<void> notifySessionArchived({required String sessionId}) async {}
+
+  @override
+  Future<Session> renameSession({required String sessionId, required String title}) async => const Session(
+    id: "",
+    projectID: "",
+    directory: "",
+    parentID: null,
+    title: null,
+    time: null,
+    summary: null,
+    pullRequest: null,
+  );
 }

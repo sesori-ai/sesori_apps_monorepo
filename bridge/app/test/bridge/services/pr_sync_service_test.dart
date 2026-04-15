@@ -401,6 +401,24 @@ class _FakeSessionRepository implements SessionRepository {
   _FakeSessionRepository({required this.sessionsByProject});
 
   @override
+  Future<Session> createSession({
+    required String directory,
+    required String? parentSessionId,
+    required List<PromptPart> parts,
+    required String? agent,
+    required PromptModel? model,
+  }) async => const Session(
+    id: "",
+    projectID: "",
+    directory: "",
+    parentID: null,
+    title: null,
+    time: null,
+    summary: null,
+    pullRequest: null,
+  );
+
+  @override
   Future<List<Session>> getSessionsForProject({
     required String projectId,
     required int? start,
@@ -441,4 +459,25 @@ class _FakeSessionRepository implements SessionRepository {
 
   @override
   Future<SessionDto?> getStoredSession({required String sessionId}) async => null;
+
+  @override
+  Future<String?> findProjectIdForSession({required String sessionId}) async => null;
+
+  @override
+  Future<Session?> getSessionForProject({required String projectId, required String sessionId}) async => null;
+
+  @override
+  Future<void> notifySessionArchived({required String sessionId}) async {}
+
+  @override
+  Future<Session> renameSession({required String sessionId, required String title}) async => const Session(
+    id: "",
+    projectID: "",
+    directory: "",
+    parentID: null,
+    title: null,
+    time: null,
+    summary: null,
+    pullRequest: null,
+  );
 }
