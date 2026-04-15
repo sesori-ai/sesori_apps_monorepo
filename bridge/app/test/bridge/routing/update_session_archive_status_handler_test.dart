@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:io";
 
+import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
@@ -102,6 +103,21 @@ void main() {
           summary: null,
         ),
       ];
+      await db.pullRequestDao.upsertPr(
+        pullRequest: const PullRequestDto(
+          projectId: "/repo",
+          branchName: "session-001",
+          prNumber: 21,
+          url: "https://github.com/org/repo/pull/21",
+          title: "Archive PR",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.unknown,
+          reviewDecision: PrReviewDecision.unknown,
+          checkStatus: PrCheckStatus.unknown,
+          lastCheckedAt: 1,
+          createdAt: 1,
+        ),
+      );
 
       final result = await handler.handle(
         makeRequest("PATCH", "/session/update/archive"),
@@ -124,6 +140,7 @@ void main() {
       expect(persisted?.archivedAt, isNotNull);
       expect(result.id, equals("s1"));
       expect(result.time?.archived, equals(persisted?.archivedAt));
+      expect(result.pullRequest?.number, equals(21));
     });
 
     test("archive with cleanup on clean worktree removes worktree", () async {
@@ -285,6 +302,21 @@ void main() {
           summary: null,
         ),
       ];
+      await db.pullRequestDao.upsertPr(
+        pullRequest: const PullRequestDto(
+          projectId: "/repo",
+          branchName: "session-001",
+          prNumber: 22,
+          url: "https://github.com/org/repo/pull/22",
+          title: "Unarchive PR",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.unknown,
+          reviewDecision: PrReviewDecision.unknown,
+          checkStatus: PrCheckStatus.unknown,
+          lastCheckedAt: 1,
+          createdAt: 1,
+        ),
+      );
 
       final result = await handler.handle(
         makeRequest("PATCH", "/session/update/archive"),
@@ -304,6 +336,7 @@ void main() {
       final persisted = await db.sessionDao.getSession(sessionId: "s1");
       expect(persisted?.archivedAt, isNull);
       expect(result.time?.archived, isNull);
+      expect(result.pullRequest?.number, equals(22));
     });
 
     test("unarchive with deleted worktree restores worktree", () async {

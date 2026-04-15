@@ -104,9 +104,10 @@ class RequestRouter {
         plugin: plugin,
         metadataService: metadataService,
         worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
         sessionPersistenceService: sessionPersistenceService,
       ),
-      RenameSessionHandler(plugin),
+      RenameSessionHandler(plugin: plugin, sessionRepository: sessionRepository),
       UpdateSessionArchiveStatusHandler(
         plugin: plugin,
         worktreeService: worktreeService,

@@ -574,6 +574,10 @@ class _NoopSessionRepository implements SessionRepository {
     required int? limit,
   }) async => const <Session>[];
   @override
+  Future<Session> enrichSession({required Session session}) async => session;
+  @override
+  Future<List<Session>> enrichSessions({required List<Session> sessions}) async => sessions;
+  @override
   Future<List<Session>> getChildSessions({required String sessionId}) async => const <Session>[];
   @override
   Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async =>
@@ -646,6 +650,28 @@ class FakeSessionRepository implements SessionRepository {
       if (pr == null) return session;
       return session.copyWith(pullRequest: pullRequestInfoFromDto(pr));
     }).toList();
+  }
+
+  @override
+  Future<Session> enrichSession({required Session session}) async {
+    final sessions = await enrichSessions(sessions: [session]);
+    return sessions.single;
+  }
+
+  @override
+  Future<List<Session>> enrichSessions({required List<Session> sessions}) async {
+    final sessionIds = sessions.map((session) => session.id).toList(growable: false);
+    final dbSessions = await _sessionDao.getSessionsByIds(sessionIds: sessionIds);
+    final prsBySessionId = await _pullRequestRepository.getPrsBySessionIds(sessionIds: sessionIds);
+    final pullRequestsBySessionId = <String, PullRequestInfo>{
+      for (final session in sessions)
+        if (_selectBestPr(prsBySessionId[session.id]) case final pr?) session.id: pullRequestInfoFromDto(pr),
+    };
+    return enrichSharedSessions(
+      sessions: sessions,
+      storedSessionsById: dbSessions,
+      pullRequestsBySessionId: pullRequestsBySessionId,
+    );
   }
 
   static PullRequestDto? _selectBestPr(List<PullRequestDto>? prs) {

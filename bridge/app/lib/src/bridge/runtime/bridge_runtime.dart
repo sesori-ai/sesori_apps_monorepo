@@ -38,16 +38,19 @@ class BridgeRuntime {
   final AppDatabase _database;
   final BridgePlugin _plugin;
   final FailureReporter _failureReporter;
+  final SessionRepository _sessionRepository;
   final OrchestratorSession session;
 
   BridgeRuntime({
     required AppDatabase database,
     required BridgePlugin plugin,
     required FailureReporter failureReporter,
+    required SessionRepository sessionRepository,
     required this.session,
   }) : _database = database,
        _plugin = plugin,
-       _failureReporter = failureReporter;
+       _failureReporter = failureReporter,
+       _sessionRepository = sessionRepository;
 
   static BridgeRuntime create({
     required BridgeConfig config,
@@ -73,6 +76,7 @@ class BridgeRuntime {
       database: database,
       plugin: plugin,
       failureReporter: failureReporter,
+      sessionRepository: sessionRepository,
       session: Orchestrator(
         config: config,
         client: RelayClient(relayURL: config.relayURL, accessTokenProvider: accessTokenProvider),
@@ -125,6 +129,7 @@ class BridgeRuntime {
       router: session.router,
       port: port,
       failureReporter: _failureReporter,
+      sessionRepository: _sessionRepository,
     );
   }
 

@@ -1,9 +1,12 @@
 import "dart:io";
 
+import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge_metadata;
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/create_session_handler.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
@@ -20,6 +23,7 @@ void main() {
     late FakeBridgePlugin plugin;
     late FakeMetadataService metadataService;
     late _FakeWorktreeService worktreeService;
+    late SessionRepository sessionRepository;
     late CreateSessionHandler handler;
     late AppDatabase db;
 
@@ -28,10 +32,19 @@ void main() {
       plugin = FakeBridgePlugin();
       metadataService = FakeMetadataService();
       worktreeService = _FakeWorktreeService(database: db);
+      sessionRepository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+      );
       handler = CreateSessionHandler(
         plugin: plugin,
         metadataService: metadataService,
         worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
         sessionPersistenceService: SessionPersistenceService(
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
@@ -229,6 +242,7 @@ void main() {
         plugin: failingPlugin,
         metadataService: metadataService,
         worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
         sessionPersistenceService: SessionPersistenceService(
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
@@ -296,7 +310,7 @@ void main() {
       expect(result.title, equals("Created"));
       expect(result.time?.created, equals(11));
       expect(result.time?.updated, equals(22));
-      expect(result.time?.archived, equals(33));
+      expect(result.time?.archived, isNull);
       expect(result.summary?.additions, equals(1));
       expect(result.summary?.deletions, equals(2));
       expect(result.summary?.files, equals(3));
@@ -318,6 +332,22 @@ void main() {
         baseBranch: "main",
         baseCommit: "abc123",
       );
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
+      await db.pullRequestDao.upsertPr(
+        pullRequest: const PullRequestDto(
+          projectId: "/repo",
+          branchName: "session-001",
+          prNumber: 17,
+          url: "https://github.com/org/repo/pull/17",
+          title: "Created PR",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.unknown,
+          reviewDecision: PrReviewDecision.unknown,
+          checkStatus: PrCheckStatus.unknown,
+          lastCheckedAt: 1,
+          createdAt: 1,
+        ),
+      );
 
       final result = await handler.handle(
         makeRequest("POST", "/session/create"),
@@ -334,6 +364,8 @@ void main() {
       );
 
       expect(result.hasWorktree, isTrue);
+      expect(result.pullRequest?.number, equals(17));
+      expect(result.pullRequest?.title, equals("Created PR"));
     });
 
     test("hasWorktree is false when dedicated=false", () async {
@@ -624,6 +656,7 @@ void main() {
         plugin: throwingPlugin,
         metadataService: metadataService,
         worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
         sessionPersistenceService: SessionPersistenceService(
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,

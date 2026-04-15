@@ -99,20 +99,21 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
   /// Mirrors the merge that [SessionRepository.getSessionsForProject] performs
   /// for the listing endpoint, so archive/unarchive responses stay consistent
   /// with what subsequent list refreshes will return.
-  Session _buildResponseSession({
+  Future<Session> _buildResponseSession({
     required PluginSession pluginSession,
     required SessionDto sessionDto,
     required int? archivedAt,
-  }) {
+  }) async {
     final base = pluginSession.toSharedSession();
     final time = base.time;
     final mergedTime = time != null
         ? time.copyWith(archived: archivedAt)
         : SessionTime(created: 0, updated: 0, archived: archivedAt);
-    return base.copyWith(
+    final response = base.copyWith(
       time: mergedTime,
       hasWorktree: sessionDto.worktreePath != null,
     );
+    return _sessionRepository.enrichSession(session: response);
   }
 
   Future<SessionDto> _getSessionDto({
