@@ -94,26 +94,10 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
     return null;
   }
 
-  /// Builds the response Session by merging plugin data with DB state.
-  ///
-  /// Mirrors the merge that [SessionRepository.getSessionsForProject] performs
-  /// for the listing endpoint, so archive/unarchive responses stay consistent
-  /// with what subsequent list refreshes will return.
   Future<Session> _buildResponseSession({
     required PluginSession pluginSession,
-    required SessionDto sessionDto,
-    required int? archivedAt,
   }) async {
-    final base = pluginSession.toSharedSession();
-    final time = base.time;
-    final mergedTime = time != null
-        ? time.copyWith(archived: archivedAt)
-        : SessionTime(created: 0, updated: 0, archived: archivedAt);
-    final response = base.copyWith(
-      time: mergedTime,
-      hasWorktree: sessionDto.worktreePath != null,
-    );
-    return _sessionRepository.enrichSession(session: response);
+    return _sessionRepository.enrichSession(session: pluginSession.toSharedSession());
   }
 
   Future<SessionDto> _getSessionDto({
@@ -207,8 +191,6 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
 
     return _buildResponseSession(
       pluginSession: pluginSession,
-      sessionDto: sessionDto,
-      archivedAt: archivedAt,
     );
   }
 
@@ -246,8 +228,6 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
 
     return _buildResponseSession(
       pluginSession: pluginSession,
-      sessionDto: sessionDto,
-      archivedAt: null,
     );
   }
 }
