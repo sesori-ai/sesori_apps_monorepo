@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
@@ -26,6 +27,26 @@ String _currentPlatformPackage() {
 
 String _wrapperPackageRoot() {
   return p.join(Directory.current.path, 'npm', 'sesori-bridge');
+}
+
+String _currentPlatformAssetName() {
+  const assets = <String, String>{
+    'darwin arm64': 'sesori-bridge-macos-arm64.tar.gz',
+    'darwin x64': 'sesori-bridge-macos-x64.tar.gz',
+    'linux x64': 'sesori-bridge-linux-x64.tar.gz',
+    'linux arm64': 'sesori-bridge-linux-arm64.tar.gz',
+    'win32 x64': 'sesori-bridge-windows-x64.zip',
+  };
+
+  if (Platform.isWindows) {
+    return 'sesori-bridge-windows-x64.zip';
+  }
+
+  final uname = Process.runSync('uname', ['-m']);
+  final machine = '${uname.stdout}'.toLowerCase().trim();
+  final arch = machine.contains('arm64') || machine.contains('aarch64') ? 'arm64' : 'x64';
+  final platform = Platform.isMacOS ? 'darwin' : Platform.operatingSystem;
+  return assets['$platform $arch']!;
 }
 
 String _managedInstallRoot({required String homePath}) {
@@ -158,6 +179,92 @@ Future<void> _createPlatformPayload({
   expect(chmod.exitCode, equals(0), reason: '${chmod.stdout}\n${chmod.stderr}');
 }
 
+Future<({String assetName, String archivePath, String checksumsPath})> _createReleaseAsset({
+  required String version,
+  required String binaryMarker,
+  required String libMarker,
+}) async {
+  final tempDir = await Directory.systemTemp.createTemp('npm-wrapper-release-asset-');
+  addTearDown(() => tempDir.delete(recursive: true));
+  final payloadRoot = Directory(p.join(tempDir.path, 'payload'));
+  final assetName = _currentPlatformAssetName();
+  final binaryPath = p.join(
+    payloadRoot.path,
+    'bin',
+    Platform.isWindows ? 'sesori-bridge.exe' : 'sesori-bridge',
+  );
+  final libPath = p.join(payloadRoot.path, 'lib', 'runtime-marker.txt');
+
+  await Directory(p.dirname(binaryPath)).create(recursive: true);
+  await Directory(p.dirname(libPath)).create(recursive: true);
+  await File(binaryPath).writeAsString(_runtimeBinarySource(marker: binaryMarker));
+  await File(libPath).writeAsString(libMarker);
+  if (!Platform.isWindows) {
+    final chmod = await Process.run('chmod', ['+x', binaryPath]);
+    expect(chmod.exitCode, equals(0), reason: '${chmod.stdout}\n${chmod.stderr}');
+  }
+
+  final archivePath = p.join(tempDir.path, assetName);
+  late ProcessResult archiveResult;
+  if (assetName.endsWith('.zip')) {
+    archiveResult = await Process.run(
+      'powershell.exe',
+      [
+        '-NoProfile',
+        '-Command',
+        'Compress-Archive -LiteralPath \$args[0] -DestinationPath \$args[1] -Force',
+        payloadRoot.path,
+        archivePath,
+      ],
+    );
+  } else {
+    archiveResult = await Process.run(
+      'tar',
+      ['-czf', archivePath, '-C', payloadRoot.path, '.'],
+    );
+  }
+  expect(archiveResult.exitCode, equals(0), reason: '${archiveResult.stdout}\n${archiveResult.stderr}');
+
+  final checksum = sha256.convert(await File(archivePath).readAsBytes()).toString();
+  final checksumsPath = p.join(tempDir.path, 'checksums.txt');
+  await File(checksumsPath).writeAsString('$checksum  $assetName\n');
+
+  return (assetName: assetName, archivePath: archivePath, checksumsPath: checksumsPath);
+}
+
+Future<String> _serveReleaseAssets({
+  required String version,
+  required String archivePath,
+  required String checksumsPath,
+}) async {
+  final assetName = p.basename(archivePath);
+  final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+  addTearDown(() => server.close(force: true));
+  server.listen((request) async {
+    final expectedPrefix = '/releases/download/bridge-v$version/';
+    if (!request.uri.path.startsWith(expectedPrefix)) {
+      request.response.statusCode = HttpStatus.notFound;
+      await request.response.close();
+      return;
+    }
+    final fileName = request.uri.path.substring(expectedPrefix.length);
+    final filePath = switch (fileName) {
+      'checksums.txt' => checksumsPath,
+      _ when fileName == assetName => archivePath,
+      _ => '',
+    };
+    if (filePath.isEmpty) {
+      request.response.statusCode = HttpStatus.notFound;
+      await request.response.close();
+      return;
+    }
+    request.response.statusCode = HttpStatus.ok;
+    await request.response.addStream(File(filePath).openRead());
+    await request.response.close();
+  });
+  return 'http://${server.address.host}:${server.port}/releases/download';
+}
+
 String _runtimeBinarySource({required String marker}) {
   return '''
 #!/usr/bin/env node
@@ -270,21 +377,68 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
       expect(stderr, contains('npm install @sesori/bridge-darwin-arm64'));
     });
 
-    test('fails when the optional platform package cannot be resolved', () async {
+    test('falls back to the tagged GitHub release asset when the platform package is missing', () async {
       final wrapperRoot = await _createWrapperFixture();
-      final expectedPackage = _currentPlatformPackage();
       final homeDir = await Directory.systemTemp.createTemp('npm-wrapper-home-');
       addTearDown(() => homeDir.delete(recursive: true));
+      final recordPath = p.join(homeDir.path, 'record.json');
+      final releaseAsset = await _createReleaseAsset(
+        version: '0.3.1',
+        binaryMarker: 'release-runtime',
+        libMarker: 'release-lib',
+      );
+      final releasesBaseUrl = await _serveReleaseAssets(
+        version: '0.3.1',
+        archivePath: releaseAsset.archivePath,
+        checksumsPath: releaseAsset.checksumsPath,
+      );
+
+      final result = await _runWrapperProcess(
+        packageRoot: wrapperRoot,
+        homePath: homeDir.path,
+        args: ['doctor'],
+        environment: {
+          'SESORI_BRIDGE_RECORD_PATH': recordPath,
+          'SESORI_BRIDGE_RELEASES_BASE_URL': releasesBaseUrl,
+        },
+      );
+
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      final recorded = await _readRecordedInvocation(recordPath: recordPath);
+      expect(recorded['marker'], equals('release-runtime'));
+      expect(recorded['libMarker'], equals('release-lib'));
+      expect(recorded['executedPath'], equals(_managedBinaryPath(homePath: homeDir.path)));
+    });
+
+    test('fails closed when release asset checksums do not match', () async {
+      final wrapperRoot = await _createWrapperFixture();
+      final homeDir = await Directory.systemTemp.createTemp('npm-wrapper-home-');
+      addTearDown(() => homeDir.delete(recursive: true));
+      final releaseAsset = await _createReleaseAsset(
+        version: '0.3.1',
+        binaryMarker: 'release-runtime',
+        libMarker: 'release-lib',
+      );
+      await File(releaseAsset.checksumsPath).writeAsString('deadbeef  ${releaseAsset.assetName}\n');
+      final releasesBaseUrl = await _serveReleaseAssets(
+        version: '0.3.1',
+        archivePath: releaseAsset.archivePath,
+        checksumsPath: releaseAsset.checksumsPath,
+      );
 
       final result = await _runWrapperProcess(
         packageRoot: wrapperRoot,
         homePath: homeDir.path,
         args: ['--version'],
+        environment: {'SESORI_BRIDGE_RELEASES_BASE_URL': releasesBaseUrl},
       );
 
       expect(result.exitCode, equals(1));
-      expect(result.stderr, contains("Failed to find platform package '$expectedPackage'."));
-      expect(result.stderr, contains('npm install $expectedPackage'));
+      expect(
+        result.stderr,
+        contains('Failed to download managed runtime from GitHub release assets for bridge-v0.3.1'),
+      );
+      expect(result.stderr, contains('Checksum mismatch for ${releaseAsset.assetName}'));
     });
 
     test('bootstraps a missing managed install and executes the managed binary', () async {
@@ -409,6 +563,37 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
       expect(recorded['libMarker'], equals('existing-lib'));
     });
 
+    test('same-version managed runtime does not require release download fallback', () async {
+      final wrapperRoot = await _createWrapperFixture();
+      final homeDir = await Directory.systemTemp.createTemp('npm-wrapper-home-');
+      addTearDown(() => homeDir.delete(recursive: true));
+      final recordPath = p.join(homeDir.path, 'record.json');
+
+      await _seedManagedRuntime(
+        homePath: homeDir.path,
+        version: '0.3.1',
+        binaryMarker: 'existing-managed',
+        libMarker: 'existing-lib',
+        includeBinary: true,
+        includeLib: true,
+      );
+
+      final result = await _runWrapperProcess(
+        packageRoot: wrapperRoot,
+        homePath: homeDir.path,
+        args: ['status'],
+        environment: {
+          'SESORI_BRIDGE_RECORD_PATH': recordPath,
+          'SESORI_BRIDGE_RELEASES_BASE_URL': 'http://127.0.0.1:1/releases/download',
+        },
+      );
+
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      final recorded = await _readRecordedInvocation(recordPath: recordPath);
+      expect(recorded['marker'], equals('existing-managed'));
+      expect(recorded['libMarker'], equals('existing-lib'));
+    });
+
     test('newer managed runtime is not downgraded by an older npm payload', () async {
       final wrapperRoot = await _createWrapperFixture();
       final homeDir = await Directory.systemTemp.createTemp('npm-wrapper-home-');
@@ -447,6 +632,37 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
               )
               as Map<String, dynamic>;
       expect(manifest['version'], equals('9.9.9'));
+    });
+
+    test('newer managed runtime does not require release download fallback', () async {
+      final wrapperRoot = await _createWrapperFixture();
+      final homeDir = await Directory.systemTemp.createTemp('npm-wrapper-home-');
+      addTearDown(() => homeDir.delete(recursive: true));
+      final recordPath = p.join(homeDir.path, 'record.json');
+
+      await _seedManagedRuntime(
+        homePath: homeDir.path,
+        version: '9.9.9',
+        binaryMarker: 'newer-managed',
+        libMarker: 'newer-lib',
+        includeBinary: true,
+        includeLib: true,
+      );
+
+      final result = await _runWrapperProcess(
+        packageRoot: wrapperRoot,
+        homePath: homeDir.path,
+        args: ['doctor'],
+        environment: {
+          'SESORI_BRIDGE_RECORD_PATH': recordPath,
+          'SESORI_BRIDGE_RELEASES_BASE_URL': 'http://127.0.0.1:1/releases/download',
+        },
+      );
+
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      final recorded = await _readRecordedInvocation(recordPath: recordPath);
+      expect(recorded['marker'], equals('newer-managed'));
+      expect(recorded['libMarker'], equals('newer-lib'));
     });
 
     test('older managed runtime is upgraded to the npm payload version', () async {
