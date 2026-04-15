@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.3.x] - 2026-04-15
+
+- Any patch version change is done only as an attempt of fixing the release workflow and does not contain actual changes for the bridge code.
+
 ## [v0.3.0] - 2026-04-15
 
 ### Added

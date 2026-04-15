@@ -3,14 +3,8 @@
 ## Current distribution
 
 - **Enabled by default:** GitHub Releases
-- **Disabled by default:** npm publish
+- **Enabled by default:** npm publish via npm trusted publishing
 - **Bridge release selector:** installers and updater only consider stable GitHub releases tagged `bridge-v*`
-
-npm publishing only runs from **manual workflow dispatch** with:
-
-- `dry_run=false`
-- `publish_npm=true`
-- `release_tag=bridge-vX.Y.Z` for an already-published bridge GitHub Release
 
 ## Release tag
 
@@ -50,6 +44,8 @@ cd bridge/app
 dart run tool/bump_version.dart 0.3.1
 ```
 
+That bump step is the source of truth for the release version. It must keep `bridge/app/pubspec.yaml`, `bridge/app/lib/src/version.dart`, and all six npm package manifests in `bridge/app/npm/` aligned to the same `X.Y.Z` release before you tag.
+
 ### 2. Commit and push
 
 ```bash
@@ -72,15 +68,15 @@ git push origin bridge-v0.3.1
 3. creates release archives
 4. generates basename-based `checksums.txt`
 5. creates a GitHub Release and uploads all assets
-
-The automatic tag flow stops there. It does **not** publish npm packages.
+6. publishes the five platform npm bootstrap packages from those tagged release assets
+7. publishes the `@sesori/bridge` wrapper package through npm trusted publishing
 
 ## Dry run
 
 ### GitHub CLI
 
 ```bash
-gh workflow run bridge-release.yml -f dry_run=true -f publish_npm=false
+gh workflow run bridge-release.yml -f dry_run=true
 ```
 
 Expected: build jobs run, release/publish jobs do not.
@@ -128,16 +124,7 @@ The expected result is that `sesori-bridge --version` prints `X.Y.Z` from the ma
 
 ### B. Test the npm bootstrap path with `npx`
 
-After the GitHub Release exists, publish the npm bootstrap packages from that exact release:
-
-```bash
-gh workflow run bridge-release.yml \
-  -f dry_run=false \
-  -f publish_npm=true \
-  -f release_tag=bridge-vX.Y.Z
-```
-
-Wait for the manual publish workflow to finish, then test the exact npm package version:
+After the tagged workflow finishes, test the exact npm package version:
 
 ```bash
 npx @sesori/bridge@X.Y.Z --version
@@ -194,14 +181,15 @@ sesori-bridge --version
 
 Managed installs from these installers are the supported long-lived runtime and the only binaries eligible for startup or periodic auto-update. The npm package stays bootstrap-only: users run `npx @sesori/bridge` to install or refresh the managed runtime, then run `sesori-bridge` from the managed launcher path. Direct execution of platform package binaries inside npm-owned locations is unsupported. `npm uninstall` does not remove the managed install, so release docs and support copy must keep pointing users to manual removal of `~/.sesori/` or `%LOCALAPPDATA%\sesori\` when they want a full uninstall.
 
-## Optional npm publish later
+## npm trusted publishing prerequisites
 
-Run the workflow manually with:
+Configure npm trusted publishing for all six packages in this repo against the exact workflow file `.github/workflows/bridge-release.yml`:
 
-- `dry_run=false`
-- `publish_npm=true`
-- `release_tag=bridge-vX.Y.Z`
+- `@sesori/bridge`
+- `@sesori/bridge-darwin-arm64`
+- `@sesori/bridge-darwin-x64`
+- `@sesori/bridge-linux-x64`
+- `@sesori/bridge-linux-arm64`
+- `@sesori/bridge-win32-x64`
 
-The manual npm publish path checks out the tagged bridge release, verifies its archived asset checksums against `checksums.txt`, and then derives each platform npm package payload directly from those existing GitHub Release assets before publishing.
-
-That manual path is the final release step when npm packages are needed: first create and verify the GitHub Release, then run the manual workflow dispatch against that exact `bridge-vX.Y.Z` tag. Those npm packages remain bootstrap payloads for the managed runtime, and CI now fails if the package metadata, copied runtime payload, or recorded release provenance drifts from the tagged GitHub Release contract.
+Those trusted publisher entries must match the GitHub owner, repository, and workflow filename exactly. The tag-triggered workflow verifies the archived GitHub Release assets against `checksums.txt`, derives each platform npm payload from those exact release artifacts, and then publishes through npm trusted publishing on `ubuntu-latest`.

@@ -10,16 +10,6 @@ on:
         required: false
         default: false
         type: boolean
-      publish_npm:
-        description: "Publish npm packages (manual only)"
-        required: false
-        default: false
-        type: boolean
-      release_tag:
-        description: "Existing bridge tag to publish from when publish_npm=true (for example bridge-v0.3.1)"
-        required: false
-        default: ""
-        type: string
 
 jobs:
   build:
@@ -160,74 +150,30 @@ jobs:
 
   publish-platform:
     name: Publish platform npm packages
+    needs: release
     runs-on: ubuntu-latest
-    if: >-
-      github.event_name == 'workflow_dispatch' &&
-      github.event.inputs.dry_run != 'true' &&
-      github.event.inputs.publish_npm == 'true'
+    if: github.event.inputs.dry_run != 'true' && startsWith(github.ref_name, 'bridge-v')
     permissions:
       contents: read
+      id-token: write
     env:
-      PUB_CACHE: ${{ github.workspace }}/.pub-cache
-      RELEASE_TAG: ${{ github.event.inputs.release_tag }}
+      RELEASE_TAG: ${{ github.ref_name }}
     steps:
-      - name: Validate manual publish inputs
-        shell: bash
-        run: |
-          if [[ -z "$RELEASE_TAG" ]]; then
-            echo "release_tag is required when publish_npm=true" >&2
-            exit 1
-          fi
-          if [[ "$RELEASE_TAG" != bridge-v* ]]; then
-            echo "release_tag must start with bridge-v" >&2
-            exit 1
-          fi
 
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.release_tag }}
-
-      - uses: dart-lang/setup-dart@v1
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-
-      - uses: actions/cache@v4
-        with:
-          path: ${{ github.workspace }}/.pub-cache
-          key: ${{ runner.os }}-${{ runner.arch }}-pub-${{ hashFiles('bridge/pubspec.lock') }}
-
-      - name: Get dependencies
-        run: dart pub get
-        working-directory: bridge
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
 
       - name: Extract version
         id: version
         shell: bash
         run: |
-          if [[ -n "$RELEASE_TAG" ]]; then
-            VERSION="${RELEASE_TAG#bridge-v}"
-          elif [[ "${GITHUB_REF_NAME}" == bridge-v* ]]; then
-            VERSION="${GITHUB_REF_NAME#bridge-v}"
-          else
-            VERSION=$(grep '^version:' bridge/app/pubspec.yaml | awk '{print $2}')
-          fi
+          VERSION="${RELEASE_TAG#bridge-v}"
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Bump version
-        if: startsWith(github.ref_name, 'bridge-v') || github.event.inputs.release_tag != ''
-        shell: bash
-        run: |
-          CURRENT_VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}')
-          if [[ "$CURRENT_VERSION" == "${{ steps.version.outputs.VERSION }}" ]]; then
-            echo "Version already set to $CURRENT_VERSION; skipping bump."
-            exit 0
-          fi
-
-          dart run tool/bump_version.dart ${{ steps.version.outputs.VERSION }}
-        working-directory: bridge/app
 
       - name: Download release assets
         env:
@@ -378,9 +324,6 @@ jobs:
             @sesori/bridge-win32-x64 \
             sesori-bridge-windows-x64.zip
 
-      - name: Setup .npmrc
-        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
-
       - name: Publish platform packages
         shell: bash
         working-directory: bridge/app/npm
@@ -396,62 +339,55 @@ jobs:
     name: Publish wrapper npm package
     needs: publish-platform
     runs-on: ubuntu-latest
-    if: >-
-      github.event_name == 'workflow_dispatch' &&
-      github.event.inputs.dry_run != 'true' &&
-      github.event.inputs.publish_npm == 'true'
+    if: github.event.inputs.dry_run != 'true' && startsWith(github.ref_name, 'bridge-v')
+    permissions:
+      contents: read
+      id-token: write
     env:
-      PUB_CACHE: ${{ github.workspace }}/.pub-cache
-      RELEASE_TAG: ${{ github.event.inputs.release_tag }}
+      RELEASE_TAG: ${{ github.ref_name }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.release_tag }}
-
-      - uses: dart-lang/setup-dart@v1
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-
-      - uses: actions/cache@v4
-        with:
-          path: ${{ github.workspace }}/.pub-cache
-          key: ${{ runner.os }}-${{ runner.arch }}-pub-${{ hashFiles('bridge/pubspec.lock') }}
-
-      - name: Get dependencies
-        run: dart pub get
-        working-directory: bridge
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
 
       - name: Extract version
         id: version
         shell: bash
         run: |
-          if [[ -n "$RELEASE_TAG" ]]; then
-            VERSION="${RELEASE_TAG#bridge-v}"
-          elif [[ "${GITHUB_REF_NAME}" == bridge-v* ]]; then
-            VERSION="${GITHUB_REF_NAME#bridge-v}"
-          else
-            VERSION=$(grep '^version:' bridge/app/pubspec.yaml | awk '{print $2}')
-          fi
+          VERSION="${RELEASE_TAG#bridge-v}"
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Bump version
-        if: startsWith(github.ref_name, 'bridge-v') || github.event.inputs.release_tag != ''
+      - name: Validate wrapper package metadata
         shell: bash
         run: |
-          CURRENT_VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}')
-          if [[ "$CURRENT_VERSION" == "${{ steps.version.outputs.VERSION }}" ]]; then
-            echo "Version already set to $CURRENT_VERSION; skipping bump."
-            exit 0
-          fi
-
-          dart run tool/bump_version.dart ${{ steps.version.outputs.VERSION }}
-        working-directory: bridge/app
-
-      - name: Setup .npmrc
-        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+          node -e '
+            const fs = require("fs");
+            const [packageJsonPath, releaseTag, version] = process.argv.slice(1);
+            const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+            const metadata = packageJson.sesoriBridge;
+            if (!metadata) {
+              throw new Error("Missing sesoriBridge metadata in " + packageJsonPath);
+            }
+            if (packageJson.version !== version) {
+              throw new Error("Package version drift in " + packageJsonPath + ": expected " + version + ", got " + packageJson.version);
+            }
+            if (packageJson.name !== "@sesori/bridge") {
+              throw new Error("Package name drift in " + packageJsonPath + ": expected @sesori/bridge, got " + packageJson.name);
+            }
+            if (metadata.bootstrapOnly !== true) {
+              throw new Error("bootstrapOnly must stay true in " + packageJsonPath);
+            }
+            if (metadata.managedRuntimeOwner !== false) {
+              throw new Error("managedRuntimeOwner must stay false in " + packageJsonPath);
+            }
+            if (metadata.runtimeBundleSource !== "github-release-assets") {
+              throw new Error("runtimeBundleSource drift in " + packageJsonPath + ": expected github-release-assets, got " + metadata.runtimeBundleSource);
+            }
+          ' bridge/app/npm/sesori-bridge/package.json "$RELEASE_TAG" "${{ steps.version.outputs.VERSION }}"
 
       - name: Publish wrapper package
         run: npm publish --access public

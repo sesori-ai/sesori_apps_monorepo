@@ -107,4 +107,4 @@ Test helpers in `test/helpers/test_helpers.dart`: `makeRoomKey()`, `startTestRel
 
 ## RELEASE
 
-`make build` produces host binary + Linux cross-compiled binaries. GitHub Actions release workflow builds 5 platform artifacts and a GitHub release from tags; npm publishing is a separate manual workflow-dispatch step keyed by a release tag and used only to publish bootstrap packages.
+`make build` produces host binary + Linux cross-compiled binaries. GitHub Actions release workflow builds 5 platform artifacts from `bridge-v*` tags, creates the GitHub Release, and then publishes the npm bootstrap packages automatically via npm trusted publishing from that same workflow.
