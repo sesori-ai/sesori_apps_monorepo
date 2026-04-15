@@ -62,6 +62,9 @@ class UpdateCacheApi {
     await tmpFile.writeAsString(jsonEncode(release.toJson()));
 
     final cacheFile = File(_cacheFilePath);
+    if (cacheFile.existsSync()) {
+      await cacheFile.delete();
+    }
     await tmpFile.rename(cacheFile.path);
   }
 }

@@ -35,6 +35,7 @@ void main() {
         latestVersion: '1.2.3',
         downloadUrl: 'https://example.com/download/1.2.3',
         checksumsUrl: 'https://example.com/checksums/1.2.3',
+        assetName: 'sesori-bridge-macos-arm64.tar.gz',
         publishedAt: now.subtract(const Duration(days: 1)),
         checkedAt: now,
       );
@@ -49,6 +50,7 @@ void main() {
       expect(cached!.latestVersion, equals('1.2.3'));
       expect(cached.downloadUrl, equals('https://example.com/download/1.2.3'));
       expect(cached.checksumsUrl, equals('https://example.com/checksums/1.2.3'));
+      expect(cached.assetName, equals('sesori-bridge-macos-arm64.tar.gz'));
       expect(cached.publishedAt, equals(now.subtract(const Duration(days: 1))));
       expect(cached.checkedAt, equals(now));
     });
@@ -66,6 +68,7 @@ void main() {
         latestVersion: '1.2.3',
         downloadUrl: 'https://example.com/download/1.2.3',
         checksumsUrl: 'https://example.com/checksums/1.2.3',
+        assetName: 'sesori-bridge-macos-arm64.tar.gz',
         publishedAt: checkedAt.subtract(const Duration(days: 1)),
         checkedAt: checkedAt,
       );
@@ -98,6 +101,7 @@ void main() {
         latestVersion: '1.2.3',
         downloadUrl: 'https://example.com/download/1.2.3',
         checksumsUrl: 'https://example.com/checksums/1.2.3',
+        assetName: 'sesori-bridge-macos-arm64.tar.gz',
         publishedAt: checkedAt.subtract(const Duration(days: 1)),
         checkedAt: checkedAt,
       );
@@ -159,6 +163,7 @@ void main() {
         latestVersion: '1.0.0',
         downloadUrl: 'https://example.com/download/1.0.0',
         checksumsUrl: 'https://example.com/checksums/1.0.0',
+        assetName: 'sesori-bridge-macos-arm64.tar.gz',
         publishedAt: DateTime.now(),
         checkedAt: DateTime.now(),
       );
@@ -186,6 +191,7 @@ void main() {
         latestVersion: '1.2.3',
         downloadUrl: 'https://example.com/download/1.2.3',
         checksumsUrl: 'https://example.com/checksums/1.2.3',
+        assetName: 'sesori-bridge-macos-arm64.tar.gz',
         publishedAt: checkedAt.subtract(const Duration(days: 1)),
         checkedAt: checkedAt,
       );
@@ -219,6 +225,7 @@ void main() {
         latestVersion: '1.0.0',
         downloadUrl: 'https://example.com/download/1.0.0',
         checksumsUrl: 'https://example.com/checksums/1.0.0',
+        assetName: 'sesori-bridge-macos-arm64.tar.gz',
         publishedAt: now.subtract(const Duration(days: 2)),
         checkedAt: now,
       );
@@ -229,6 +236,7 @@ void main() {
         latestVersion: '2.0.0',
         downloadUrl: 'https://example.com/download/2.0.0',
         checksumsUrl: 'https://example.com/checksums/2.0.0',
+        assetName: 'sesori-bridge-macos-arm64.tar.gz',
         publishedAt: now.subtract(const Duration(days: 1)),
         checkedAt: now,
       );
@@ -251,6 +259,7 @@ void main() {
         latestVersion: '1.0.0',
         downloadUrl: 'https://example.com/download/1.0.0',
         checksumsUrl: 'https://example.com/checksums/1.0.0',
+        assetName: 'sesori-bridge-macos-arm64.tar.gz',
         publishedAt: DateTime.now(),
         checkedAt: DateTime.now(),
       );

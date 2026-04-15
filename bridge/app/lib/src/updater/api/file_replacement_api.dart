@@ -34,7 +34,7 @@ class FileReplacementApi {
     final Directory targetLibDir = Directory(p.join(installRoot, 'lib'));
     final Directory backupLibDir = Directory(p.join(installRoot, '.lib.rollback'));
 
-    if (!newBinary.existsSync()) {
+    if (!newBinary.existsSync() || !newLibDir.existsSync()) {
       return false;
     }
 
@@ -95,8 +95,9 @@ class FileReplacementApi {
   }) async {
     const String binaryName = 'sesori-bridge.exe';
     final File newBinary = File(p.join(stagingPath, 'bin', binaryName));
+    final Directory newLibDir = Directory(p.join(stagingPath, 'lib'));
 
-    if (!newBinary.existsSync()) {
+    if (!newBinary.existsSync() || !newLibDir.existsSync()) {
       return const FileReplacementResult.failure();
     }
 
@@ -127,6 +128,9 @@ class FileReplacementApi {
       r"$newBinaryPath = Join-Path $stagingRoot 'bin\sesori-bridge.exe'",
       r"$newLibPath = Join-Path $stagingRoot 'lib'",
       r"$targetLibPath = Join-Path $installRoot 'lib'",
+      r"$oldLibPath = Join-Path $installRoot '.lib.old'",
+      r'$binaryMoved = $false',
+      r'$libMoved = $false',
       'function Wait-ForUnlockedFile {',
       r'  param([string]$Path, [int]$TimeoutSeconds)',
       r'  if (-not (Test-Path $Path)) { return }',
@@ -152,14 +156,28 @@ class FileReplacementApi {
       '}',
       '\$args = @($escapedArgs)',
       r'Wait-ForUnlockedFile -Path $binaryPath -TimeoutSeconds 30',
-      r'if (Test-Path $binaryPath) { Move-Item -Force $binaryPath $oldBinaryPath }',
-      r'Move-Item -Force $newBinaryPath $binaryPath',
-      r'if (Test-Path $newLibPath) {',
-      r'  if (Test-Path $targetLibPath) { Move-Item -Force $targetLibPath "$($targetLibPath).old" }',
+      r'if (-not (Test-Path $newBinaryPath)) { throw "Staged sesori-bridge.exe is missing." }',
+      r'if (-not (Test-Path $newLibPath)) { throw "Staged lib directory is missing." }',
+      'try {',
+      r'  if (Test-Path $oldBinaryPath) { Remove-Item -Force $oldBinaryPath }',
+      r'  if (Test-Path $oldLibPath) { Remove-Item -Recurse -Force $oldLibPath }',
+      r'  if (Test-Path $binaryPath) { Move-Item -Force $binaryPath $oldBinaryPath; $binaryMoved = $true }',
+      r'  Move-Item -Force $newBinaryPath $binaryPath',
+      r'  if (Test-Path $targetLibPath) { Move-Item -Force $targetLibPath $oldLibPath; $libMoved = $true }',
       r'  Move-Item -Force $newLibPath $targetLibPath',
-      r'  if (Test-Path "$($targetLibPath).old") { Remove-Item -Recurse -Force "$($targetLibPath).old" }',
+      '} catch {',
+      r'  if (-not (Test-Path $binaryPath) -and $binaryMoved -and (Test-Path $oldBinaryPath)) {',
+      r'    Move-Item -Force $oldBinaryPath $binaryPath',
+      r'    $binaryMoved = $false',
+      '  }',
+      r'  if (-not (Test-Path $targetLibPath) -and $libMoved -and (Test-Path $oldLibPath)) {',
+      r'    Move-Item -Force $oldLibPath $targetLibPath',
+      r'    $libMoved = $false',
+      '  }',
+      '  throw',
       '}',
       r'if (Test-Path $oldBinaryPath) { Remove-Item -Force $oldBinaryPath }',
+      r'if (Test-Path $oldLibPath) { Remove-Item -Recurse -Force $oldLibPath }',
       r'Start-Process -FilePath $binaryPath -ArgumentList $args',
       r'if (Test-Path $archivePath) { Remove-Item -Force $archivePath }',
       r'if (Test-Path $stagingRoot) { Remove-Item -Recurse -Force $stagingRoot }',

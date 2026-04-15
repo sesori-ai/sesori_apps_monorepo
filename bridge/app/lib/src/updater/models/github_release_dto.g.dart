@@ -8,7 +8,7 @@ part of 'github_release_dto.dart';
 
 _GitHubReleaseDto _$GitHubReleaseDtoFromJson(Map json) => _GitHubReleaseDto(
   tagName: json['tag_name'] as String,
-  publishedAt: json['published_at'] as String,
+  publishedAt: json['published_at'] as String?,
   draft: json['draft'] as bool,
   prerelease: json['prerelease'] as bool,
   assets: (json['assets'] as List<dynamic>)

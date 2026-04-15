@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$GitHubReleaseDto {
 
-@JsonKey(name: 'tag_name') String get tagName;@JsonKey(name: 'published_at') String get publishedAt; bool get draft; bool get prerelease; List<GitHubAssetDto> get assets;
+@JsonKey(name: 'tag_name') String get tagName;@JsonKey(name: 'published_at') String? get publishedAt; bool get draft; bool get prerelease; List<GitHubAssetDto> get assets;
 /// Create a copy of GitHubReleaseDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -46,7 +46,7 @@ abstract mixin class $GitHubReleaseDtoCopyWith<$Res>  {
   factory $GitHubReleaseDtoCopyWith(GitHubReleaseDto value, $Res Function(GitHubReleaseDto) _then) = _$GitHubReleaseDtoCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: 'tag_name') String tagName,@JsonKey(name: 'published_at') String publishedAt, bool draft, bool prerelease, List<GitHubAssetDto> assets
+@JsonKey(name: 'tag_name') String tagName,@JsonKey(name: 'published_at') String? publishedAt, bool draft, bool prerelease, List<GitHubAssetDto> assets
 });
 
 
@@ -63,11 +63,11 @@ class _$GitHubReleaseDtoCopyWithImpl<$Res>
 
 /// Create a copy of GitHubReleaseDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? tagName = null,Object? publishedAt = null,Object? draft = null,Object? prerelease = null,Object? assets = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? tagName = null,Object? publishedAt = freezed,Object? draft = null,Object? prerelease = null,Object? assets = null,}) {
   return _then(_self.copyWith(
 tagName: null == tagName ? _self.tagName : tagName // ignore: cast_nullable_to_non_nullable
-as String,publishedAt: null == publishedAt ? _self.publishedAt : publishedAt // ignore: cast_nullable_to_non_nullable
-as String,draft: null == draft ? _self.draft : draft // ignore: cast_nullable_to_non_nullable
+as String,publishedAt: freezed == publishedAt ? _self.publishedAt : publishedAt // ignore: cast_nullable_to_non_nullable
+as String?,draft: null == draft ? _self.draft : draft // ignore: cast_nullable_to_non_nullable
 as bool,prerelease: null == prerelease ? _self.prerelease : prerelease // ignore: cast_nullable_to_non_nullable
 as bool,assets: null == assets ? _self.assets : assets // ignore: cast_nullable_to_non_nullable
 as List<GitHubAssetDto>,
@@ -86,7 +86,7 @@ class _GitHubReleaseDto implements GitHubReleaseDto {
   factory _GitHubReleaseDto.fromJson(Map<String, dynamic> json) => _$GitHubReleaseDtoFromJson(json);
 
 @override@JsonKey(name: 'tag_name') final  String tagName;
-@override@JsonKey(name: 'published_at') final  String publishedAt;
+@override@JsonKey(name: 'published_at') final  String? publishedAt;
 @override final  bool draft;
 @override final  bool prerelease;
  final  List<GitHubAssetDto> _assets;
@@ -127,7 +127,7 @@ abstract mixin class _$GitHubReleaseDtoCopyWith<$Res> implements $GitHubReleaseD
   factory _$GitHubReleaseDtoCopyWith(_GitHubReleaseDto value, $Res Function(_GitHubReleaseDto) _then) = __$GitHubReleaseDtoCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: 'tag_name') String tagName,@JsonKey(name: 'published_at') String publishedAt, bool draft, bool prerelease, List<GitHubAssetDto> assets
+@JsonKey(name: 'tag_name') String tagName,@JsonKey(name: 'published_at') String? publishedAt, bool draft, bool prerelease, List<GitHubAssetDto> assets
 });
 
 
@@ -144,11 +144,11 @@ class __$GitHubReleaseDtoCopyWithImpl<$Res>
 
 /// Create a copy of GitHubReleaseDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? tagName = null,Object? publishedAt = null,Object? draft = null,Object? prerelease = null,Object? assets = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? tagName = null,Object? publishedAt = freezed,Object? draft = null,Object? prerelease = null,Object? assets = null,}) {
   return _then(_GitHubReleaseDto(
 tagName: null == tagName ? _self.tagName : tagName // ignore: cast_nullable_to_non_nullable
-as String,publishedAt: null == publishedAt ? _self.publishedAt : publishedAt // ignore: cast_nullable_to_non_nullable
-as String,draft: null == draft ? _self.draft : draft // ignore: cast_nullable_to_non_nullable
+as String,publishedAt: freezed == publishedAt ? _self.publishedAt : publishedAt // ignore: cast_nullable_to_non_nullable
+as String?,draft: null == draft ? _self.draft : draft // ignore: cast_nullable_to_non_nullable
 as bool,prerelease: null == prerelease ? _self.prerelease : prerelease // ignore: cast_nullable_to_non_nullable
 as bool,assets: null == assets ? _self._assets : assets // ignore: cast_nullable_to_non_nullable
 as List<GitHubAssetDto>,

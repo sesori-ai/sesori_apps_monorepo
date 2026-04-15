@@ -227,7 +227,7 @@ void main() {
       final String archivePath = await _createTarGzArchive(
         rootTempDir: rootTempDir,
         binaryContent: 'new-binary',
-        includeLib: false,
+        includeLib: true,
       );
       final List<int> archiveBytes = await File(archivePath).readAsBytes();
       final fakeChecksumManifestApi = FakeChecksumManifestApi.single(
@@ -263,6 +263,70 @@ void main() {
         equals('https://example.com/checksums.txt'),
       );
       await _expectNoTempArtifacts(installRoot: installRoot);
+    });
+
+    test('missing staged runtime libs rejects the update and keeps installed files unchanged', () async {
+      final String installRoot = await _createInstallRoot(
+        rootTempDir: rootTempDir,
+        binaryContent: 'old-binary',
+      );
+
+      await Directory('$installRoot/lib').create(recursive: true);
+      await File('$installRoot/lib/libsqlite3.dylib').writeAsString('old-lib');
+
+      final String archivePath = await _createTarGzArchive(
+        rootTempDir: rootTempDir,
+        binaryContent: 'new-binary',
+        includeLib: false,
+      );
+      final List<int> archiveBytes = await File(archivePath).readAsBytes();
+
+      final UpdateInstallService updater = _makeUpdater(
+        downloadApi: UpdateDownloadApi(
+          httpClient: FakeUpdateHttpClient(
+            handler: (request) async {
+              return http.StreamedResponse(Stream<List<int>>.value(archiveBytes), 200);
+            },
+          ),
+        ),
+        checksumManifestApi: FakeChecksumManifestApi.single(
+          fileName: 'bridge.tar.gz',
+          checksum: 'expected',
+        ),
+        checksumVerifierApi: FakeChecksumVerifierApi(shouldPass: true),
+      );
+
+      final UpdateInstallResult result = await updater.performUpdate(
+        release: ReleaseInfo(
+          version: '1.2.3',
+          assetUrl: 'https://example.com/bridge.tar.gz',
+          checksumsUrl: 'https://example.com/checksums.txt',
+          publishedAt: DateTime(2024),
+        ),
+        installRoot: installRoot,
+      );
+
+      expect(result.result, equals(UpdateResult.permissionDenied));
+      expect(await File('$installRoot/bin/sesori-bridge').readAsString(), equals('old-binary'));
+      expect(await File('$installRoot/lib/libsqlite3.dylib').readAsString(), equals('old-lib'));
+      await _expectNoTempArtifacts(installRoot: installRoot);
+    });
+
+    test('windows replacement rejects staged payloads without libs before handoff', () async {
+      final String installRoot = '${rootTempDir.path}/windows-install';
+      final String stagingPath = '$installRoot/.sesori-bridge-staging';
+      await Directory('$stagingPath/bin').create(recursive: true);
+      await File('$stagingPath/bin/sesori-bridge.exe').writeAsString('new-binary');
+
+      final replacementApi = FileReplacementApi(processRunner: FakeProcessRunner(exitCode: 0));
+
+      final result = await replacementApi.replaceWindows(
+        installRoot: installRoot,
+        stagingPath: stagingPath,
+      );
+
+      expect(result.success, isFalse);
+      expect(result.pendingWindowsUpdate, isNull);
     });
 
     test('checksum mismatch keeps binary unchanged and returns checksumFailed', () async {
@@ -396,7 +460,7 @@ void main() {
       final String archivePath = await _createTarGzArchive(
         rootTempDir: rootTempDir,
         binaryContent: 'fresh-binary',
-        includeLib: false,
+        includeLib: true,
       );
       final List<int> archiveBytes = await File(archivePath).readAsBytes();
       final updateLock = UpdateLock(
@@ -698,6 +762,12 @@ void main() {
       expect(script, contains('function Wait-ForUnlockedFile'));
       expect(script, contains(r'Wait-ForUnlockedFile -Path $binaryPath -TimeoutSeconds 30'));
       expect(script, isNot(contains('Start-Sleep -Seconds 2')));
+      expect(script, contains(r"$oldLibPath = Join-Path $installRoot '.lib.old'"));
+      expect(script, contains(r'if (-not (Test-Path $newLibPath)) { throw "Staged lib directory is missing." }'));
+      expect(script, contains('try {'));
+      expect(script, contains('} catch {'));
+      expect(script, contains(r'Move-Item -Force $oldBinaryPath $binaryPath'));
+      expect(script, contains(r'Move-Item -Force $oldLibPath $targetLibPath'));
       expect(script, contains(r'Start-Process -FilePath $binaryPath -ArgumentList $args'));
       expect(script, contains(r"if (Test-Path $lockPath) { Remove-Item -Force $lockPath }"));
       expect(script, contains(r"if (Test-Path $stagingRoot) { Remove-Item -Recurse -Force $stagingRoot }"));

@@ -6,10 +6,11 @@ import 'package:test/test.dart';
 
 class _RecordingProcessRunner implements ProcessRunner {
   final int exitCode;
+  final String stdout;
   String? lastExecutable;
   List<String>? lastArguments;
 
-  _RecordingProcessRunner({required this.exitCode});
+  _RecordingProcessRunner({required this.exitCode, this.stdout = ''});
 
   @override
   Future<ProcessResult> run(
@@ -20,7 +21,7 @@ class _RecordingProcessRunner implements ProcessRunner {
   }) async {
     lastExecutable = executable;
     lastArguments = arguments;
-    return ProcessResult(1, exitCode, '', '');
+    return ProcessResult(1, exitCode, stdout, '');
   }
 }
 
@@ -169,6 +170,32 @@ void main() {
 
       expect(result, equals(99));
       expect(lockFile.existsSync(), isTrue);
+    });
+
+    test('stale lock is reclaimed when the pid has been reused by another process marker', () async {
+      final lockFile = File('${tempDir.path}/.update.lock');
+      await lockFile.writeAsString(
+        '{"pid":999999,"processMarker":"old-process-marker"}',
+        flush: true,
+      );
+
+      final lock = UpdateLock(
+        currentPid: pid,
+        processRunner: _RecordingProcessRunner(
+          exitCode: 0,
+          stdout: 'new-process-marker\n',
+        ),
+      );
+
+      final result = await lock.locked<int>(
+        lockFile: lockFile,
+        onLockAcquired: () async => 1,
+        onLockRejected: (_) async => -1,
+        shouldReleaseLock: (_) => true,
+      );
+
+      expect(result, equals(1));
+      expect(lockFile.existsSync(), isFalse);
     });
 
     test('permission denied while deleting stale lock returns permissionDenied', () async {

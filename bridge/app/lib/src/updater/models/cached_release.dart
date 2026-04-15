@@ -16,6 +16,9 @@ sealed class CachedRelease with _$CachedRelease {
     /// The URL to the checksums file for verification.
     required String checksumsUrl,
 
+    /// The release asset name this cache entry was resolved for.
+    required String assetName,
+
     /// When this release was published upstream.
     required DateTime publishedAt,
 
