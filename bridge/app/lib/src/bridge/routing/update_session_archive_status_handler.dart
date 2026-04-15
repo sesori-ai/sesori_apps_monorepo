@@ -227,12 +227,20 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
     )) {
       final hasWorktreeOnDisk = Directory(worktreePath).existsSync();
       if (!hasWorktreeOnDisk) {
+        final restoreBaseBranch = switch (sessionDto.baseBranch?.trim()) {
+          final value? when value.isNotEmpty => value,
+          _ => "main",
+        };
+        final restoreBaseCommit = switch (sessionDto.baseCommit?.trim()) {
+          final value? when value.isNotEmpty => value,
+          _ => null,
+        };
         await _worktreeService.restoreWorktree(
           projectPath: projectId,
           worktreePath: worktreePath,
           branchName: branchName,
-          baseBranch: sessionDto.baseBranch ?? "main",
-          baseCommit: sessionDto.baseCommit,
+          baseBranch: restoreBaseBranch,
+          baseCommit: restoreBaseCommit,
         );
       }
     }

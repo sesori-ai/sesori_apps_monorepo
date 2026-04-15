@@ -206,6 +206,69 @@ void main() {
       expect(persisted?.archivedAt, isNull);
     });
 
+    test("archive with shared worktree returns structured 409 rejection payload", () async {
+      await _insertSession(
+        db: db,
+        sessionId: "s-shared-1",
+        projectId: "/repo",
+        isDedicated: true,
+        worktreePath: "/repo/.worktrees/session-shared",
+        branchName: "session-shared",
+        baseBranch: "main",
+        archivedAt: null,
+        baseCommit: "abc123",
+      );
+      await _insertSession(
+        db: db,
+        sessionId: "s-shared-2",
+        projectId: "/repo",
+        isDedicated: true,
+        worktreePath: "/repo/.worktrees/session-shared",
+        branchName: "session-shared",
+        baseBranch: "main",
+        archivedAt: null,
+        baseCommit: "abc123",
+      );
+
+      await expectLater(
+        () => handler.handle(
+          makeRequest("PATCH", "/session/update/archive"),
+          body: _archiveRequest(
+            sessionId: "s-shared-1",
+            archived: true,
+            deleteWorktree: true,
+            deleteBranch: true,
+            force: false,
+          ),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(
+          isA<RelayResponse>()
+              .having((response) => response.status, "status", equals(409))
+              .having(
+                (response) => response.headers["content-type"],
+                "content-type",
+                equals("application/json"),
+              )
+              .having(
+                (response) {
+                  final rejection = SessionCleanupRejection.fromJson(
+                    jsonDecodeMap(response.body.toString()),
+                  );
+                  return rejection.issues;
+                },
+                "issues",
+                equals(const [CleanupIssue.sharedWorktree()]),
+              ),
+        ),
+      );
+
+      final persisted = await db.sessionDao.getSession(sessionId: "s-shared-1");
+      expect(persisted?.archivedAt, isNull);
+    });
+
     test("archive with force skips safety check", () async {
       await _insertSession(
         db: db,
@@ -341,6 +404,55 @@ void main() {
 
       final persisted = await db.sessionDao.getSession(sessionId: "s1");
       expect(persisted?.archivedAt, isNull);
+    });
+
+    test("unarchive with blank restore metadata falls back to main and null commit", () async {
+      final deletedWorktreePath = "${Directory.systemTemp.path}/missing-worktree-blank-base";
+      final deletedWorktree = Directory(deletedWorktreePath);
+      if (deletedWorktree.existsSync()) {
+        deletedWorktree.deleteSync(recursive: true);
+      }
+
+      await _insertSession(
+        db: db,
+        sessionId: "s-blank-base",
+        projectId: "/repo",
+        isDedicated: true,
+        worktreePath: deletedWorktreePath,
+        branchName: "session-blank-base",
+        baseBranch: "",
+        archivedAt: 123,
+        baseCommit: "   ",
+      );
+      plugin.sessionsResult = [
+        PluginSession(
+          id: "s-blank-base",
+          projectID: "/repo",
+          directory: deletedWorktreePath,
+          parentID: null,
+          title: "Blank Base Session",
+          time: const PluginSessionTime(created: 10, updated: 20, archived: 123),
+          summary: null,
+        ),
+      ];
+
+      await handler.handle(
+        makeRequest("PATCH", "/session/update/archive"),
+        body: _archiveRequest(
+          sessionId: "s-blank-base",
+          archived: false,
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(worktreeService.restoreCallCount, equals(1));
+      expect(worktreeService.lastRestoreBaseBranch, equals("main"));
+      expect(worktreeService.lastRestoreBaseCommit, isNull);
     });
 
     test("archive pre-migration session auto-inserts DB row", () async {
@@ -1032,6 +1144,8 @@ Future<void> _insertSession({
 
 class _FakeWorktreeService extends WorktreeService {
   int restoreCallCount = 0;
+  String? lastRestoreBaseBranch;
+  String? lastRestoreBaseCommit;
 
   _FakeWorktreeService({required AppDatabase database})
     : super(
@@ -1057,6 +1171,8 @@ class _FakeWorktreeService extends WorktreeService {
     required String? baseCommit,
   }) async {
     restoreCallCount++;
+    lastRestoreBaseBranch = baseBranch;
+    lastRestoreBaseCommit = baseCommit;
     return true;
   }
 }

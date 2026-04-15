@@ -213,6 +213,60 @@ void main() {
       expect(await db.sessionDao.getSession(sessionId: "s5"), isNotNull);
     });
 
+    test("5b) shared worktree cleanup rejection keeps structured 409 payload", () async {
+      await _insertSession(
+        db: db,
+        sessionId: "s5b-a",
+        projectId: "/repo",
+        worktreePath: "/repo/.worktrees/session-005b",
+        branchName: "session-005b",
+      );
+      await _insertSession(
+        db: db,
+        sessionId: "s5b-b",
+        projectId: "/repo",
+        worktreePath: "/repo/.worktrees/session-005b",
+        branchName: "session-005b",
+      );
+
+      await expectLater(
+        () => handler.handle(
+          makeRequest("DELETE", "/session/delete"),
+          body: const DeleteSessionRequest(
+            sessionId: "s5b-a",
+            deleteWorktree: true,
+            deleteBranch: true,
+            force: false,
+          ),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(
+          isA<RelayResponse>()
+              .having((response) => response.status, "status", equals(409))
+              .having(
+                (response) => response.headers["content-type"],
+                "content-type",
+                equals("application/json"),
+              )
+              .having(
+                (response) {
+                  final rejection = SessionCleanupRejection.fromJson(
+                    jsonDecodeMap(response.body.toString()),
+                  );
+                  return rejection.issues;
+                },
+                "issues",
+                equals(const [CleanupIssue.sharedWorktree()]),
+              ),
+        ),
+      );
+
+      expect(plugin.lastDeleteSessionId, isNull);
+      expect(await db.sessionDao.getSession(sessionId: "s5b-a"), isNotNull);
+    });
+
     test("6) force=true on dirty worktree: cleanup proceeds", () async {
       await _insertSession(
         db: db,
