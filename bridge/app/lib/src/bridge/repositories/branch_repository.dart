@@ -211,9 +211,6 @@ class BranchRepository {
     if (rawName.isEmpty || rawName == "HEAD" || rawName.startsWith("(")) {
       return false;
     }
-    if (remoteNames.contains(rawName)) {
-      return false;
-    }
     return !rawName.endsWith("/HEAD");
   }
 

@@ -224,6 +224,32 @@ void main() {
       final featureB = response.branches.firstWhere((b) => b.name == "feature-b");
       expect(featureB.isRemoteOnly, isTrue);
     });
+
+    test("keeps a local branch even when it matches a remote name", () async {
+      final runner = _ScriptedProcessRunner({
+        ["fetch", "--all"]: ProcessResult(0, 0, "", ""),
+        ["remote"]: ProcessResult(0, 0, "origin\n", ""),
+        ["branch", "-a"]: ProcessResult(
+          0,
+          0,
+          "origin 1700000000\norigin/feature-b 1700000200\norigin/HEAD -> origin/main 1700000300\n",
+          "",
+        ),
+        ["worktree", "list", "--porcelain"]: ProcessResult(0, 0, "", ""),
+        ["rev-parse", "--abbrev-ref", "HEAD"]: ProcessResult(0, 0, "origin\n", ""),
+      });
+
+      final repo = BranchRepository(
+        gitCliApi: GitCliApi(processRunner: runner, gitPathExists: ({required String gitPath}) => true),
+      );
+      final response = await repo.listBranches(projectPath: "/repo");
+
+      expect(response.branches.map((branch) => branch.name), contains("origin"));
+      final originBranch = response.branches.firstWhere((branch) => branch.name == "origin");
+      expect(originBranch.isRemoteOnly, isFalse);
+      expect(response.branches.map((branch) => branch.name), contains("feature-b"));
+      expect(response.branches.map((branch) => branch.name), isNot(contains("HEAD")));
+    });
   });
 
   group("BranchRepository.getWorktreeForBranch", () {
