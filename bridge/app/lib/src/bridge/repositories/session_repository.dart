@@ -1,5 +1,5 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePlugin, Log;
-import "package:sesori_shared/sesori_shared.dart" show PrState, Session, SessionTime;
+import "package:sesori_shared/sesori_shared.dart" show PrState, PullRequestInfo, Session;
 
 import "../api/database/tables/pull_requests_table.dart";
 import "../persistence/daos/session_dao.dart";
@@ -33,36 +33,35 @@ class SessionRepository {
       limit: limit,
     );
 
-    final sessions = pluginSessions.map((s) => s.toSharedSession()).toList();
-    final sessionIds = sessions.map((s) => s.id).toList();
+    return enrichSessions(sessions: pluginSessions.toSharedSessions());
+  }
+
+  Future<Session> enrichSession({required Session session}) async {
+    final enrichedSessions = await enrichSessions(sessions: [session]);
+    return enrichedSessions.single;
+  }
+
+  Future<List<Session>> enrichSessions({required List<Session> sessions}) async {
+    final sessionIds = sessions.map((session) => session.id).toList(growable: false);
 
     final (dbSessions, prsBySessionId) = await (
       _sessionDao.getSessionsByIds(sessionIds: sessionIds),
       _pullRequestRepository.getPrsBySessionIds(sessionIds: sessionIds),
     ).wait;
 
-    return sessions.map((session) {
-      var result = session;
-
-      final dbSession = dbSessions[session.id];
-      if (dbSession != null) {
-        final currentTime = session.time;
-        final mergedTime = currentTime != null
-            ? currentTime.copyWith(archived: dbSession.archivedAt)
-            : SessionTime(created: 0, updated: 0, archived: dbSession.archivedAt);
-        result = result.copyWith(
-          time: mergedTime,
-          hasWorktree: dbSession.worktreePath != null,
-        );
+    final pullRequestsBySessionId = <String, PullRequestInfo>{};
+    for (final session in sessions) {
+      final selectedPr = _selectBestPr(prsBySessionId[session.id]);
+      if (selectedPr != null) {
+        pullRequestsBySessionId[session.id] = pullRequestInfoFromDto(selectedPr);
       }
+    }
 
-      final pr = _selectBestPr(prsBySessionId[session.id]);
-      if (pr != null) {
-        result = result.copyWith(pullRequest: pullRequestInfoFromDto(pr));
-      }
-
-      return result;
-    }).toList();
+    return enrichSharedSessions(
+      sessions: sessions,
+      storedSessionsById: dbSessions,
+      pullRequestsBySessionId: pullRequestsBySessionId,
+    );
   }
 
   /// Selects the most relevant PR from a list of candidates.
@@ -95,7 +94,7 @@ class SessionRepository {
 
   Future<List<Session>> getChildSessions({required String sessionId}) async {
     final pluginSessions = await _plugin.getChildSessions(sessionId);
-    return pluginSessions.map((s) => s.toSharedSession()).toList();
+    return pluginSessions.toSharedSessions();
   }
 
   Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {
