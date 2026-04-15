@@ -177,17 +177,15 @@ void main() {
       expect(script, contains(r'''if ($filePart -eq $ArchiveName) {'''));
     });
 
-    test('workflow and docs lock basename checksums and manual npm release-tag path', () async {
+    test('workflow and docs lock basename checksums and automatic trusted publishing', () async {
       final workflow = await _readRepoFile(relativePath: '.github/workflows/bridge-release.yml');
       final docs = await _readRepoFile(relativePath: 'bridge/RELEASING.md');
 
-      expect(workflow, contains('release_tag:'));
-      expect(workflow, contains('release_tag is required when publish_npm=true'));
-      expect(workflow, contains('release_tag must start with bridge-v'));
-      expect(workflow, contains(r'ref: ${{ github.event.inputs.release_tag }}'));
+      expect(workflow, contains('needs: release'));
+      expect(workflow, contains('id-token: write'));
+      expect(workflow, contains('registry-url: "https://registry.npmjs.org"'));
       expect(workflow, contains(r'gh release download "$RELEASE_TAG"'));
       expect(workflow, contains('--pattern "*.tar.gz" --pattern "*.zip" --pattern "checksums.txt"'));
-      expect(workflow, contains(r'if [[ "$CURRENT_VERSION" == "${{ steps.version.outputs.VERSION }}" ]]'));
       expect(workflow, contains('Verify release archive checksums'));
       expect(workflow, contains('checksum_for()'));
       expect(workflow, contains('verify_archive_checksum()'));
@@ -198,17 +196,23 @@ void main() {
       expect(workflow, contains(r'diff -r "$source_root/bin" "$package_root/lib/runtime/bin"'));
       expect(workflow, contains(r'diff -r "$source_root/lib" "$package_root/lib/runtime/lib"'));
       expect(workflow, contains(r'sha256sum "$file" | awk -v name="$(basename "$file")"'));
-      expect(workflow, contains(r'Version already set to $CURRENT_VERSION; skipping bump.'));
+      expect(workflow, contains('Validate wrapper package metadata'));
+      expect(workflow, isNot(contains('NPM_TOKEN')));
 
-      expect(docs, contains('- `publish_npm=true`'));
-      expect(docs, contains('- `release_tag=bridge-vX.Y.Z`'));
+      expect(docs, contains('publishes the five platform npm bootstrap packages from those tagged release assets'));
+      expect(docs, contains('publishes the `@sesori/bridge` wrapper package through npm trusted publishing'));
       expect(
         docs,
         contains(
-          'The manual npm publish path checks out the tagged bridge release, verifies its archived asset checksums against `checksums.txt`, and then derives each platform npm package payload directly from those existing GitHub Release assets before publishing.',
+          'Configure npm trusted publishing for all six packages in this repo against the exact workflow file `.github/workflows/bridge-release.yml`',
         ),
       );
-      expect(docs, contains('package metadata, copied runtime payload, or recorded release provenance drifts'));
+      expect(
+        docs,
+        contains(
+          'The tag-triggered workflow verifies the archived GitHub Release assets against `checksums.txt`, derives each platform npm payload from those exact release artifacts, and then publishes through npm trusted publishing on `ubuntu-latest`.',
+        ),
+      );
     });
 
     test('workflow asset names and npm package manifests stay aligned', () async {
@@ -259,6 +263,7 @@ void main() {
         equals({
           'bootstrapOnly': true,
           'managedRuntimeOwner': false,
+          'releaseTag': 'bridge-v$appVersion',
           'runtimeBundleSource': 'github-release-assets',
         }),
       );
