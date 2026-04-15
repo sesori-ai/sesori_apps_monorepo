@@ -6,6 +6,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "repositories/session_repository.dart";
 import "routing/request_router.dart";
 import "sse/bridge_event_mapper.dart";
 
@@ -18,7 +19,7 @@ class DebugServer {
   final CompositeSubscription _compositeSubscription = CompositeSubscription();
 
   HttpServer? _server;
-  StreamSubscription<BridgeSseEvent>? _pluginEventsSub;
+  StreamSubscription<void>? _pluginEventsSub;
 
   int _nextRequestId = 1;
 
@@ -27,9 +28,14 @@ class DebugServer {
     required RequestRouter router,
     required this.port,
     required FailureReporter failureReporter,
+    required SessionRepository sessionRepository,
   }) : _plugin = plugin,
        _router = router,
-       _mapper = BridgeEventMapper(plugin: plugin, failureReporter: failureReporter);
+       _mapper = BridgeEventMapper(
+         plugin: plugin,
+         failureReporter: failureReporter,
+         sessionRepository: sessionRepository,
+       );
 
   int? get boundPort => _server?.port;
   RequestRouter get router => _router;
@@ -130,12 +136,10 @@ class DebugServer {
 
       _sseClients.add(response);
 
-      _pluginEventsSub ??= _plugin.events.listen((event) {
-        final mapped = _mapper.map(event);
-        if (mapped != null) {
-          unawaited(_fanOutEvent(jsonEncode(mapped.toJson())));
-        }
-      });
+      _pluginEventsSub ??= _plugin.events
+          .asyncMap(_mapper.map)
+          .asyncMap((mapped) => _fanOutMappedEvent(mapped: mapped))
+          .listen((_) {});
 
       final disconnected = Completer<void>();
       unawaited(
@@ -175,6 +179,13 @@ class DebugServer {
         }
       }
     }
+  }
+
+  Future<void> _fanOutMappedEvent({required SesoriSseEvent? mapped}) async {
+    if (mapped == null) {
+      return;
+    }
+    await _fanOutEvent(jsonEncode(mapped.toJson()));
   }
 
   void _removeSseClient(HttpResponse client) {
