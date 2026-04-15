@@ -21,6 +21,8 @@ import "repositories/session_repository.dart";
 import "routing/get_session_diffs_handler.dart";
 import "routing/request_router.dart";
 import "services/pr_sync_service.dart";
+import "services/session_archive_service.dart";
+import "services/session_creation_service.dart";
 import "services/session_event_enrichment_service.dart";
 import "services/session_persistence_service.dart";
 import "services/worktree_service.dart";
@@ -78,6 +80,17 @@ class Orchestrator {
   OrchestratorSession create() {
     final roomKey = _generateRoomKey();
     final bytesSentController = StreamController<int>.broadcast();
+    final sessionCreationService = SessionCreationService(
+      metadataService: _metadataService,
+      worktreeService: _worktreeService,
+      sessionRepository: _sessionRepository,
+      sessionPersistenceService: _sessionPersistenceService,
+    );
+    final sessionArchiveService = SessionArchiveService(
+      worktreeService: _worktreeService,
+      sessionRepository: _sessionRepository,
+      sessionPersistenceService: _sessionPersistenceService,
+    );
     final sseManager = SSEManager(
       replayWindow: config.sseReplayWindow,
       onBytesSent: bytesSentController.add,
@@ -89,7 +102,6 @@ class Orchestrator {
       config: config,
       client: _client,
       plugin: _plugin,
-      metadataService: _metadataService,
       pushNotificationService: _pushNotificationService,
       tokenRefresher: _tokenRefresher,
       roomKey: roomKey,
@@ -102,6 +114,8 @@ class Orchestrator {
       permissionRepository: _permissionRepository,
       sessionPersistenceService: _sessionPersistenceService,
       worktreeService: _worktreeService,
+      sessionCreationService: sessionCreationService,
+      sessionArchiveService: sessionArchiveService,
       sessionEventEnrichmentService: _sessionEventEnrichmentService,
     );
   }
@@ -140,7 +154,6 @@ class OrchestratorSession {
     required this.config,
     required RelayClient client,
     required BridgePlugin plugin,
-    required MetadataService metadataService,
     required PushNotificationService pushNotificationService,
     required TokenRefresher tokenRefresher,
     required List<int> roomKey,
@@ -153,6 +166,8 @@ class OrchestratorSession {
     required PermissionRepository permissionRepository,
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
+    required SessionCreationService sessionCreationService,
+    required SessionArchiveService sessionArchiveService,
     required SessionEventEnrichmentService sessionEventEnrichmentService,
   }) : _client = client,
        _plugin = plugin,
@@ -165,8 +180,9 @@ class OrchestratorSession {
        _prSyncService = prSyncService,
        _router = RequestRouter(
          plugin: plugin,
-         metadataService: metadataService,
          sessionRepository: sessionRepository,
+         sessionCreationService: sessionCreationService,
+         sessionArchiveService: sessionArchiveService,
          prSyncService: prSyncService,
          projectRepository: projectRepository,
          providerRepository: ProviderRepository(plugin: plugin),
