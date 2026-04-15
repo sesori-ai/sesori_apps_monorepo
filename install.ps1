@@ -16,24 +16,34 @@ $ManagedManifest = Join-Path $InstallRoot '.managed-runtime.json'
 
 # ── Architecture detection ────────────────────────────────────────────────────
 $arch = $null
-try {
-    $procArch = [System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture
-    switch ($procArch.ToString()) {
-        'X64'   { $arch = 'x64' }
-        'Amd64' { $arch = 'x64' }
-        default { $arch = $null }
+
+function Resolve-OsArchitecture {
+    if ($env:PROCESSOR_ARCHITEW6432) {
+        return $env:PROCESSOR_ARCHITEW6432
     }
-} catch {
-    # Fallback for older PowerShell / .NET versions
-    switch ($env:PROCESSOR_ARCHITECTURE) {
-        'AMD64' { $arch = 'x64' }
-        'X64'   { $arch = 'x64' }
-        default { $arch = $null }
+
+    try {
+        $osArch = (Get-CimInstance Win32_OperatingSystem -ErrorAction Stop).OSArchitecture
+        if ($osArch) {
+            return $osArch
+        }
+    } catch {
+        # Fall back to environment-based detection below.
     }
+
+    return $env:PROCESSOR_ARCHITECTURE
+}
+
+$detectedOsArchitecture = Resolve-OsArchitecture
+switch ($detectedOsArchitecture) {
+    '64-bit' { $arch = 'x64' }
+    'AMD64'  { $arch = 'x64' }
+    'X64'    { $arch = 'x64' }
+    default  { $arch = $null }
 }
 
 if ($arch -ne 'x64') {
-    Write-Error "Unsupported architecture '$($env:PROCESSOR_ARCHITECTURE)'. Only x64 (AMD64) is supported on Windows."
+    Write-Error "Unsupported architecture '$detectedOsArchitecture'. Only x64 (AMD64) is supported on Windows."
     exit 1
 }
 
@@ -58,10 +68,17 @@ function Resolve-BridgeRelease {
 
     $eligible = @()
     foreach ($release in $releases) {
-        if (-not $release.tag_name.StartsWith('bridge-v')) {
+        $tagName = [string]$release.tag_name
+        if (-not $tagName.StartsWith('bridge-v')) {
             continue
         }
         if ($release.draft -or $release.prerelease) {
+            continue
+        }
+
+        $versionText = $tagName.Substring(8)
+        $parsedVersion = $null
+        if (-not [version]::TryParse($versionText, [ref]$parsedVersion)) {
             continue
         }
 
@@ -69,8 +86,8 @@ function Resolve-BridgeRelease {
         $checksums = $release.assets | Where-Object { $_.name -eq 'checksums.txt' } | Select-Object -First 1
         if ($asset -and $checksums) {
             $eligible += [pscustomobject]@{
-                Version = [version]($release.tag_name.Substring(8))
-                TagName = $release.tag_name
+                Version = $parsedVersion
+                TagName = $tagName
                 AssetUrl = $asset.browser_download_url
                 ChecksumsUrl = $checksums.browser_download_url
             }
@@ -154,7 +171,12 @@ try {
         exit 1
     }
 
-    @{ version = $Release.TagName.Substring(8) } | ConvertTo-Json -Compress | Set-Content -Path $ManagedManifest -Encoding UTF8
+    $managedManifestJson = @{ version = $Release.TagName.Substring(8) } | ConvertTo-Json -Compress
+    [System.IO.File]::WriteAllText(
+        $ManagedManifest,
+        $managedManifestJson,
+        [System.Text.UTF8Encoding]::new($false)
+    )
 
     # ── Check for conflicts in existing PATH ──────────────────────────────────
     $existingOnPath = Get-Command 'sesori-bridge' -ErrorAction SilentlyContinue

@@ -105,6 +105,9 @@ print(json.dumps(releases + page))
 resolved="$(RELEASES_JSON="${releases_json}" python3 -c '
 import json, os, sys
 from functools import cmp_to_key
+import re
+
+STABLE_VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
 
 def compare_versions(a: str, b: str) -> int:
     def split_pre(v: str):
@@ -137,6 +140,9 @@ def compare_versions(a: str, b: str) -> int:
         return -1
     return 0
 
+def is_valid_stable_version(v: str) -> bool:
+    return bool(STABLE_VERSION_RE.match(v))
+
 filename = sys.argv[1]
 releases = json.loads(os.environ["RELEASES_JSON"])
 eligible = []
@@ -146,6 +152,9 @@ for release in releases:
         continue
     if release.get("draft") or release.get("prerelease"):
         continue
+    version = tag_name.replace("bridge-v", "", 1)
+    if not is_valid_stable_version(version):
+        continue
     assets = {
         asset.get("name"): asset.get("browser_download_url")
         for asset in release.get("assets", [])
@@ -153,7 +162,7 @@ for release in releases:
     asset_url = assets.get(filename)
     checksums_url = assets.get("checksums.txt")
     if asset_url and checksums_url:
-        eligible.append((tag_name.replace("bridge-v", "", 1), tag_name, asset_url, checksums_url))
+        eligible.append((version, tag_name, asset_url, checksums_url))
 
 if eligible:
     eligible.sort(key=cmp_to_key(lambda left, right: compare_versions(left[0], right[0])), reverse=True)

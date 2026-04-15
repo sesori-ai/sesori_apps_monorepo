@@ -363,17 +363,21 @@ cat "\$HOME/.zshrc"
     });
 
     test('limits Windows installs to x64 architecture detection paths', () {
-      expect(script, contains(r"'X64'   { $arch = 'x64' }"));
-      expect(script, contains(r"'Amd64' { $arch = 'x64' }"));
-      expect(script, contains(r"'AMD64' { $arch = 'x64' }"));
-      expect(script, contains(r"Unsupported architecture '$($env:PROCESSOR_ARCHITECTURE)'"));
+      expect(script, contains('function Resolve-OsArchitecture'));
+      expect(script, contains(r'$env:PROCESSOR_ARCHITEW6432'));
+      expect(script, contains('Get-CimInstance Win32_OperatingSystem'));
+      expect(script, contains(r"'64-bit' { $arch = 'x64' }"));
+      expect(script, contains(r"'X64'    { $arch = 'x64' }"));
+      expect(script, contains(r"'AMD64'  { $arch = 'x64' }"));
+      expect(script, contains(r"Unsupported architecture '$detectedOsArchitecture'"));
       expect(script, contains('Only x64 (AMD64) is supported on Windows.'));
       expect(script, contains(r'sesori-bridge-windows-$arch.zip'));
     });
 
     test('resolves stable bridge-tagged release assets and checksum basenames', () {
-      expect(script, contains(r"$release.tag_name.StartsWith('bridge-v')"));
+      expect(script, contains(r"$tagName.StartsWith('bridge-v')"));
       expect(script, contains(r'''$release.draft -or $release.prerelease'''));
+      expect(script, contains(r'[version]::TryParse($versionText, [ref]$parsedVersion)'));
       expect(script, contains(r'$page -le $ReleasesMaxPages'));
       expect(script, contains(r'"$ReleasesApiUrl?per_page=$ReleasesPerPage&page=$page"'));
       expect(script, contains('Sort-Object Version -Descending'));
@@ -395,10 +399,10 @@ cat "\$HOME/.zshrc"
       expect(script, contains(r"$ManagedManifest = Join-Path $InstallRoot '.managed-runtime.json'"));
       expect(
         script,
-        contains(
-          r"@{ version = $Release.TagName.Substring(8) } | ConvertTo-Json -Compress | Set-Content -Path $ManagedManifest -Encoding UTF8",
-        ),
+        contains(r'$managedManifestJson = @{ version = $Release.TagName.Substring(8) } | ConvertTo-Json -Compress'),
       );
+      expect(script, contains('[System.IO.File]::WriteAllText('));
+      expect(script, contains(r'[System.Text.UTF8Encoding]::new($false)'));
     });
   });
 }
