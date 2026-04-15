@@ -21,6 +21,7 @@ import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.da
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
@@ -75,6 +76,9 @@ void main() {
       relayURL: "ws://127.0.0.1:${relayServer.port}",
       accessTokenProvider: FakeAccessTokenProvider(""),
     );
+    final sessionEventEnrichmentService = SessionEventEnrichmentService(
+      sessionRepository: sessionRepository,
+    );
 
     final orchestrator = Orchestrator(
       config: BridgeConfig(
@@ -96,6 +100,7 @@ void main() {
       permissionRepository: permissionRepository,
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
+      sessionEventEnrichmentService: sessionEventEnrichmentService,
     );
 
     final session = orchestrator.create();
@@ -168,6 +173,9 @@ void main() {
       relayURL: "ws://127.0.0.1:${relayServer.port}",
       accessTokenProvider: FakeAccessTokenProvider(""),
     );
+    final sessionEventEnrichmentService = SessionEventEnrichmentService(
+      sessionRepository: sessionRepository,
+    );
     final projectRepository = ProjectRepository(plugin: plugin, projectsDao: database.projectsDao);
     final permissionRepository = PermissionRepository(plugin: plugin);
     final sessionPersistenceService = SessionPersistenceService(
@@ -206,6 +214,7 @@ void main() {
       permissionRepository: permissionRepository,
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
+      sessionEventEnrichmentService: sessionEventEnrichmentService,
     );
 
     final session = orchestrator.create();
@@ -320,6 +329,9 @@ void main() {
     );
 
     final pushService = _CapturingPushNotificationService();
+    final sessionEventEnrichmentService = SessionEventEnrichmentService(
+      sessionRepository: sessionRepository,
+    );
 
     final orchestrator = Orchestrator(
       config: BridgeConfig(
@@ -341,6 +353,7 @@ void main() {
       permissionRepository: permissionRepository,
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
+      sessionEventEnrichmentService: sessionEventEnrichmentService,
     );
 
     final session = orchestrator.create();
@@ -884,6 +897,11 @@ class _NoopSessionRepository implements SessionRepository {
   @override
   Future<Session> enrichSession({required Session session}) async => session;
   @override
+  Future<Session> enrichPluginSession({required PluginSession pluginSession}) async =>
+      Session.fromJson(pluginSession.toJson());
+  @override
+  Future<Session> enrichSessionJson({required Map<String, dynamic> sessionJson}) async => Session.fromJson(sessionJson);
+  @override
   Future<List<Session>> enrichSessions({required List<Session> sessions}) async => sessions;
   @override
   Future<List<Session>> getChildSessions({required String sessionId}) async => const <Session>[];
@@ -920,6 +938,16 @@ class _DelayingSessionRepository implements SessionRepository {
       await delay;
     }
     return _base.enrichSession(session: session);
+  }
+
+  @override
+  Future<Session> enrichPluginSession({required PluginSession pluginSession}) async {
+    return enrichSession(session: Session.fromJson(pluginSession.toJson()));
+  }
+
+  @override
+  Future<Session> enrichSessionJson({required Map<String, dynamic> sessionJson}) async {
+    return enrichSession(session: Session.fromJson(sessionJson));
   }
 
   @override

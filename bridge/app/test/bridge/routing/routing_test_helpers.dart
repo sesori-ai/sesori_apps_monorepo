@@ -576,6 +576,10 @@ class _NoopSessionRepository implements SessionRepository {
   @override
   Future<Session> enrichSession({required Session session}) async => session;
   @override
+  Future<Session> enrichPluginSession({required PluginSession pluginSession}) async => pluginSession.toSharedSession();
+  @override
+  Future<Session> enrichSessionJson({required Map<String, dynamic> sessionJson}) async => Session.fromJson(sessionJson);
+  @override
   Future<List<Session>> enrichSessions({required List<Session> sessions}) async => sessions;
   @override
   Future<List<Session>> getChildSessions({required String sessionId}) async => const <Session>[];
@@ -656,6 +660,16 @@ class FakeSessionRepository implements SessionRepository {
   Future<Session> enrichSession({required Session session}) async {
     final sessions = await enrichSessions(sessions: [session]);
     return sessions.single;
+  }
+
+  @override
+  Future<Session> enrichPluginSession({required PluginSession pluginSession}) async {
+    return enrichSession(session: pluginSession.toSharedSession());
+  }
+
+  @override
+  Future<Session> enrichSessionJson({required Map<String, dynamic> sessionJson}) async {
+    return enrichSession(session: Session.fromJson(sessionJson));
   }
 
   @override

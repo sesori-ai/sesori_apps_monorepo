@@ -8,6 +8,7 @@ import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart"
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -408,6 +409,13 @@ class _FakeSessionRepository implements SessionRepository {
 
   @override
   Future<Session> enrichSession({required Session session}) async => session;
+
+  @override
+  Future<Session> enrichPluginSession({required PluginSession pluginSession}) async =>
+      Session.fromJson(pluginSession.toJson());
+
+  @override
+  Future<Session> enrichSessionJson({required Map<String, dynamic> sessionJson}) async => Session.fromJson(sessionJson);
 
   @override
   Future<List<Session>> enrichSessions({required List<Session> sessions}) async => sessions;

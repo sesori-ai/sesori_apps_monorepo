@@ -1,78 +1,32 @@
-import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
-import "package:sesori_bridge/src/bridge/persistence/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/sse/bridge_event_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-import "../../helpers/test_database.dart";
 import "../../helpers/test_helpers.dart";
 import "../routing/routing_test_helpers.dart";
 
 void main() {
   group("BridgeEventMapper", () {
     late BridgeEventMapper mapper;
-    late AppDatabase db;
     late FakeBridgePlugin plugin;
-    late SessionRepository sessionRepository;
 
     setUp(() {
-      db = createTestDatabase();
       plugin = FakeBridgePlugin();
-      sessionRepository = SessionRepository(
-        plugin: plugin,
-        sessionDao: db.sessionDao,
-        pullRequestRepository: PullRequestRepository(
-          pullRequestDao: db.pullRequestDao,
-          projectsDao: db.projectsDao,
-        ),
-      );
       mapper = BridgeEventMapper(
         plugin: plugin,
         failureReporter: FakeFailureReporter(),
-        sessionRepository: sessionRepository,
       );
     });
 
-    tearDown(() => db.close());
-
-    test("filters heartbeat events", () async {
-      final result = await mapper.map(const BridgeSseServerHeartbeat());
+    test("filters heartbeat events", () {
+      final result = mapper.map(const BridgeSseServerHeartbeat());
 
       expect(result, isNull);
     });
 
-    test("maps session.created with enriched PR payload", () async {
-      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
-      await db.sessionDao.insertSession(
-        sessionId: "s1",
-        projectId: "p1",
-        isDedicated: true,
-        createdAt: 10,
-        worktreePath: "/tmp/worktree",
-        branchName: "feature/one",
-        baseBranch: null,
-        baseCommit: null,
-      );
-      await db.pullRequestDao.upsertPr(
-        pullRequest: const PullRequestDto(
-          projectId: "p1",
-          branchName: "feature/one",
-          prNumber: 11,
-          url: "https://github.com/org/repo/pull/11",
-          title: "Newest open PR",
-          state: PrState.open,
-          mergeableStatus: PrMergeableStatus.mergeable,
-          reviewDecision: PrReviewDecision.approved,
-          checkStatus: PrCheckStatus.success,
-          lastCheckedAt: 2,
-          createdAt: 2,
-        ),
-      );
-
-      final result = await mapper.map(
+    test("maps session.created with provided enriched payload", () {
+      final result = mapper.map(
         const BridgeSseSessionCreated(
           info: {
             "id": "s1",
@@ -82,6 +36,16 @@ void main() {
             "title": "session",
             "time": {"created": 1, "updated": 2, "archived": null},
             "summary": null,
+            "pullRequest": {
+              "number": 11,
+              "url": "https://github.com/org/repo/pull/11",
+              "title": "Newest open PR",
+              "state": "open",
+              "mergeableStatus": "mergeable",
+              "reviewDecision": "approved",
+              "checkStatus": "success",
+            },
+            "hasWorktree": true,
           },
         ),
       );
@@ -92,35 +56,8 @@ void main() {
       expect(event.info.hasWorktree, isTrue);
     });
 
-    test("maps session.updated with enriched PR payload when the incoming replacement session omits it", () async {
-      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
-      await db.sessionDao.insertSession(
-        sessionId: "s1",
-        projectId: "p1",
-        isDedicated: true,
-        createdAt: 10,
-        worktreePath: "/tmp/worktree",
-        branchName: "feature/two",
-        baseBranch: null,
-        baseCommit: null,
-      );
-      await db.pullRequestDao.upsertPr(
-        pullRequest: const PullRequestDto(
-          projectId: "p1",
-          branchName: "feature/two",
-          prNumber: 19,
-          url: "https://github.com/org/repo/pull/19",
-          title: "Stored update PR",
-          state: PrState.open,
-          mergeableStatus: PrMergeableStatus.mergeable,
-          reviewDecision: PrReviewDecision.reviewRequired,
-          checkStatus: PrCheckStatus.pending,
-          lastCheckedAt: 2,
-          createdAt: 2,
-        ),
-      );
-
-      final result = await mapper.map(
+    test("maps session.updated with provided enriched payload", () {
+      final result = mapper.map(
         const BridgeSseSessionUpdated(
           info: {
             "id": "s1",
@@ -130,7 +67,15 @@ void main() {
             "title": "replacement session",
             "time": {"created": 3, "updated": 4, "archived": null},
             "summary": null,
-            "pullRequest": null,
+            "pullRequest": {
+              "number": 19,
+              "url": "https://github.com/org/repo/pull/19",
+              "title": "Stored update PR",
+              "state": "open",
+              "mergeableStatus": "mergeable",
+              "reviewDecision": "reviewRequired",
+              "checkStatus": "pending",
+            },
           },
         ),
       );
@@ -391,7 +336,6 @@ void main() {
       final throwingMapper = BridgeEventMapper(
         plugin: _ThrowingActiveSessionsPlugin(),
         failureReporter: capturingReporter,
-        sessionRepository: sessionRepository,
       );
 
       final result = await throwingMapper.map(const BridgeSseProjectUpdated());
@@ -405,7 +349,6 @@ void main() {
       final throwingMapper = BridgeEventMapper(
         plugin: _ThrowingActiveSessionsPlugin(),
         failureReporter: capturingReporter,
-        sessionRepository: sessionRepository,
       );
 
       final result = throwingMapper.buildProjectsSummaryEvent();
