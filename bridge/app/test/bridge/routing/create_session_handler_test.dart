@@ -5,9 +5,10 @@ import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge_metadata;
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/branch_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/create_session_handler.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
-import "package:sesori_bridge/src/bridge/worktree_service.dart";
+import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -728,11 +729,17 @@ class _FakeWorktreeService extends WorktreeService {
 
   _FakeWorktreeService({required AppDatabase database, bool gitPathExists = true})
     : super(
-        branchRepository: BranchRepository(gitCliApi: GitCliApi(processRunner: _FakeProcessRunner())),
-        projectsDao: database.projectsDao,
-        sessionDao: database.sessionDao,
-        processRunner: _FakeProcessRunner(),
-        gitPathExists: ({required String gitPath}) => gitPathExists,
+        branchRepository: BranchRepository(
+          gitCliApi: GitCliApi(processRunner: _FakeProcessRunner(), gitPathExists: ({required String gitPath}) => true),
+        ),
+        worktreeRepository: WorktreeRepository(
+          projectsDao: database.projectsDao,
+          sessionDao: database.sessionDao,
+          gitApi: GitCliApi(
+            processRunner: _FakeProcessRunner(),
+            gitPathExists: ({required String gitPath}) => gitPathExists,
+          ),
+        ),
       );
 
   @override

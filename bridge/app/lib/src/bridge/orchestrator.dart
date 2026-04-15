@@ -9,21 +9,23 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../auth/token_refresher.dart";
 import "../push/push_notification_service.dart";
+import "foundation/process_runner.dart";
 import "key_exchange.dart";
 import "metadata_service.dart";
 import "models/bridge_config.dart";
-import "persistence/daos/projects_dao.dart";
 import "relay_client.dart";
 import "repositories/branch_repository.dart";
 import "repositories/permission_repository.dart";
 import "repositories/project_repository.dart";
+import "repositories/provider_repository.dart";
 import "repositories/session_repository.dart";
+import "routing/get_session_diffs_handler.dart";
 import "routing/request_router.dart";
 import "services/pr_sync_service.dart";
 import "services/session_persistence_service.dart";
+import "services/worktree_service.dart";
 import "sse/bridge_event_mapper.dart";
 import "sse/sse_manager.dart";
-import "worktree_service.dart";
 
 /// Factory that creates [OrchestratorSession] instances with all runtime
 /// dependencies (room key, SSE manager) properly initialized.
@@ -34,7 +36,6 @@ class Orchestrator {
   final MetadataService _metadataService;
   final PushNotificationService _pushNotificationService;
   final TokenRefresher _tokenRefresher;
-  final ProjectsDao _projectsDao;
   final FailureReporter _failureReporter;
   final PrSyncService _prSyncService;
   final SessionRepository _sessionRepository;
@@ -51,7 +52,6 @@ class Orchestrator {
     required MetadataService metadataService,
     required PushNotificationService pushNotificationService,
     required TokenRefresher tokenRefresher,
-    required ProjectsDao projectsDao,
     required FailureReporter failureReporter,
     required PrSyncService prSyncService,
     required SessionRepository sessionRepository,
@@ -65,7 +65,6 @@ class Orchestrator {
        _metadataService = metadataService,
        _pushNotificationService = pushNotificationService,
        _tokenRefresher = tokenRefresher,
-       _projectsDao = projectsDao,
        _failureReporter = failureReporter,
        _sessionRepository = sessionRepository,
        _prSyncService = prSyncService,
@@ -93,7 +92,6 @@ class Orchestrator {
       metadataService: _metadataService,
       pushNotificationService: _pushNotificationService,
       tokenRefresher: _tokenRefresher,
-      projectsDao: _projectsDao,
       roomKey: roomKey,
       sseManager: sseManager,
       bytesSentController: bytesSentController,
@@ -144,7 +142,6 @@ class OrchestratorSession {
     required MetadataService metadataService,
     required PushNotificationService pushNotificationService,
     required TokenRefresher tokenRefresher,
-    required ProjectsDao projectsDao,
     required List<int> roomKey,
     required SSEManager sseManager,
     required StreamController<int> bytesSentController,
@@ -168,15 +165,18 @@ class OrchestratorSession {
        _router = RequestRouter(
          plugin: plugin,
          metadataService: metadataService,
-         projectsDao: projectsDao,
-         sessionDao: projectsDao.attachedDatabase.sessionDao,
          sessionRepository: sessionRepository,
          prSyncService: prSyncService,
          projectRepository: projectRepository,
+         providerRepository: ProviderRepository(plugin: plugin),
          permissionRepository: permissionRepository,
          sessionPersistenceService: sessionPersistenceService,
          worktreeService: worktreeService,
          branchRepository: branchRepository,
+         sessionDiffsHandler: GetSessionDiffsHandler(
+           sessionRepository: sessionRepository,
+           processRunner: ProcessRunner(),
+         ),
          onSessionAborted: pushNotificationService.markSessionAborted,
        ),
        _mapper = BridgeEventMapper(plugin: plugin, failureReporter: failureReporter);

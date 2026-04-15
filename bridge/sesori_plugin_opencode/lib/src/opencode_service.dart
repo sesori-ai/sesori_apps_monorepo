@@ -1,5 +1,6 @@
+import "package:json_annotation/json_annotation.dart" show CheckedFromJsonException;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show Log, PluginPermissionReply, PluginProvidersResult;
+    show Log, PluginApiException, PluginPermissionReply, PluginProvidersResult;
 import "package:sesori_shared/sesori_shared.dart" show ProjectActivitySummary;
 
 import "../opencode_plugin.dart";
@@ -35,9 +36,16 @@ class OpenCodeService {
   }) async {
     try {
       return await repository.api.getMessages(sessionId: sessionId, directory: directory);
-    } catch (e) {
-      Log.w("Failed to get messages for session $sessionId: $e");
-      return [];
+    } on OpenCodeApiException {
+      rethrow;
+    } on PluginApiException {
+      rethrow;
+    } catch (error, stackTrace) {
+      if (!_isLikelyDecodeOrSchemaDriftError(error)) {
+        rethrow;
+      }
+      Log.w("Failed to decode messages for session $sessionId: $error\n$stackTrace");
+      throw PluginApiException("GET /session/$sessionId/message", 502);
     }
   }
 
@@ -66,9 +74,9 @@ class OpenCodeService {
     }
   }
 
-  /// Best-effort hydration of pending questions and permissions from the
-  /// OpenCode API. Failures are logged but do NOT abort cold start — core
-  /// active-session tracking from [ActiveSessionTracker.coldStart] succeeds
+  /// Best-effort hydration of pending questions and permissions after the
+  /// core active-session baseline is ready. Failures are logged but do NOT
+  /// abort cold start — [ActiveSessionTracker.coldStart] succeeds
   /// independently.
   Future<void> _hydratePendingInput() async {
     await (
@@ -105,5 +113,9 @@ class OpenCodeService {
     if (limit == null || limit <= 0) return sessions;
     if (sessions.length > limit) return sessions.sublist(0, limit);
     return sessions;
+  }
+
+  bool _isLikelyDecodeOrSchemaDriftError(Object error) {
+    return error is FormatException || error is TypeError || error is CheckedFromJsonException;
   }
 }

@@ -16,7 +16,9 @@ void main() {
 
     setUp(() {
       final runner = _FakeProcessRunner();
-      final repo = BranchRepository(gitCliApi: GitCliApi(processRunner: runner));
+      final repo = BranchRepository(
+        gitCliApi: GitCliApi(processRunner: runner, gitPathExists: ({required String gitPath}) => true),
+      );
       handler = GetBranchesHandler(repo);
     });
 

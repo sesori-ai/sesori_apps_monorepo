@@ -27,7 +27,9 @@ void main() {
         ["rev-parse", "--abbrev-ref", "HEAD"]: ProcessResult(0, 0, "main\n", ""),
       });
 
-      final repo = BranchRepository(gitCliApi: GitCliApi(processRunner: runner));
+      final repo = BranchRepository(
+        gitCliApi: GitCliApi(processRunner: runner, gitPathExists: ({required String gitPath}) => true),
+      );
       final response = await repo.listBranches(projectPath: "/repo");
 
       expect(response.currentBranch, equals("main"));
@@ -63,7 +65,9 @@ void main() {
         ["rev-parse", "--abbrev-ref", "HEAD"]: ProcessResult(0, 0, "main\n", ""),
       });
 
-      final repo = BranchRepository(gitCliApi: GitCliApi(processRunner: runner));
+      final repo = BranchRepository(
+        gitCliApi: GitCliApi(processRunner: runner, gitPathExists: ({required String gitPath}) => true),
+      );
       final response = await repo.listBranches(projectPath: "/repo");
 
       expect(response.branches, hasLength(1));
@@ -79,7 +83,9 @@ void main() {
         ["rev-parse", "--abbrev-ref", "HEAD"]: ProcessResult(0, 0, "\n", ""),
       });
 
-      final repo = BranchRepository(gitCliApi: GitCliApi(processRunner: runner));
+      final repo = BranchRepository(
+        gitCliApi: GitCliApi(processRunner: runner, gitPathExists: ({required String gitPath}) => true),
+      );
       final response = await repo.listBranches(projectPath: "/repo");
 
       expect(response.branches, isEmpty);
@@ -95,7 +101,9 @@ void main() {
         ["rev-parse", "--abbrev-ref", "HEAD"]: ProcessResult(0, 0, "main\n", ""),
       });
 
-      final repo = BranchRepository(gitCliApi: GitCliApi(processRunner: runner));
+      final repo = BranchRepository(
+        gitCliApi: GitCliApi(processRunner: runner, gitPathExists: ({required String gitPath}) => true),
+      );
       final response = await repo.listBranches(projectPath: "/repo");
 
       expect(response.branches, hasLength(1));
@@ -117,7 +125,9 @@ void main() {
         ["rev-parse", "--abbrev-ref", "HEAD"]: ProcessResult(0, 0, "main\n", ""),
       });
 
-      final repo = BranchRepository(gitCliApi: GitCliApi(processRunner: runner));
+      final repo = BranchRepository(
+        gitCliApi: GitCliApi(processRunner: runner, gitPathExists: ({required String gitPath}) => true),
+      );
       final response = await repo.listBranches(projectPath: "/repo");
 
       final s001 = response.branches.firstWhere((b) => b.name == "session-001");
@@ -136,7 +146,9 @@ void main() {
         ["rev-parse", "--abbrev-ref", "HEAD"]: ProcessResult(0, 0, "main\n", ""),
       });
 
-      final repo = BranchRepository(gitCliApi: GitCliApi(processRunner: runner));
+      final repo = BranchRepository(
+        gitCliApi: GitCliApi(processRunner: runner, gitPathExists: ({required String gitPath}) => true),
+      );
       final response = await repo.listBranches(projectPath: "/repo");
 
       expect(response.branches, hasLength(2));
@@ -157,7 +169,9 @@ void main() {
         ["rev-parse", "--abbrev-ref", "HEAD"]: ProcessResult(0, 0, "main\n", ""),
       });
 
-      final repo = BranchRepository(gitCliApi: GitCliApi(processRunner: runner));
+      final repo = BranchRepository(
+        gitCliApi: GitCliApi(processRunner: runner, gitPathExists: ({required String gitPath}) => true),
+      );
       final response = await repo.listBranches(projectPath: "/repo");
 
       expect(response.branches, hasLength(2));
@@ -179,7 +193,9 @@ void main() {
         ["rev-parse", "--abbrev-ref", "HEAD"]: ProcessResult(0, 0, "main\n", ""),
       });
 
-      final repo = BranchRepository(gitCliApi: GitCliApi(processRunner: runner));
+      final repo = BranchRepository(
+        gitCliApi: GitCliApi(processRunner: runner, gitPathExists: ({required String gitPath}) => true),
+      );
       final response = await repo.listBranches(projectPath: "/repo");
 
       expect(response.branches.map((branch) => branch.name), isNot(contains("HEAD")));
@@ -200,7 +216,9 @@ void main() {
         ["rev-parse", "--abbrev-ref", "HEAD"]: ProcessResult(0, 0, "main\n", ""),
       });
 
-      final repo = BranchRepository(gitCliApi: GitCliApi(processRunner: runner));
+      final repo = BranchRepository(
+        gitCliApi: GitCliApi(processRunner: runner, gitPathExists: ({required String gitPath}) => true),
+      );
       final response = await repo.listBranches(projectPath: "/repo");
 
       final featureB = response.branches.firstWhere((b) => b.name == "feature-b");
@@ -219,7 +237,9 @@ void main() {
         ),
       });
 
-      final repo = BranchRepository(gitCliApi: GitCliApi(processRunner: runner));
+      final repo = BranchRepository(
+        gitCliApi: GitCliApi(processRunner: runner, gitPathExists: ({required String gitPath}) => true),
+      );
       final path = await repo.getWorktreeForBranch(projectPath: "/repo", branchName: "feat-x");
 
       expect(path, equals("/repo/.worktrees/feat-x"));
@@ -230,7 +250,9 @@ void main() {
         ["worktree", "list", "--porcelain"]: ProcessResult(0, 0, "", ""),
       });
 
-      final repo = BranchRepository(gitCliApi: GitCliApi(processRunner: runner));
+      final repo = BranchRepository(
+        gitCliApi: GitCliApi(processRunner: runner, gitPathExists: ({required String gitPath}) => true),
+      );
       final path = await repo.getWorktreeForBranch(projectPath: "/repo", branchName: "missing");
 
       expect(path, isNull);
@@ -245,7 +267,9 @@ void main() {
         ["rev-parse", "upstream/feature-b"]: ProcessResult(0, 0, "abc123\n", ""),
       });
 
-      final repo = BranchRepository(gitCliApi: GitCliApi(processRunner: runner));
+      final repo = BranchRepository(
+        gitCliApi: GitCliApi(processRunner: runner, gitPathExists: ({required String gitPath}) => true),
+      );
       final startPoint = await repo.resolveStartPointForBranch(
         projectPath: "/repo",
         branchName: "feature-b",

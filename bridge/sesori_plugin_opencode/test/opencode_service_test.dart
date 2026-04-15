@@ -142,6 +142,36 @@ void main() {
 
       expect(result, isEmpty);
     });
+
+    test("surfaces upstream decode failures as PluginApiException 502", () async {
+      final repository = FakeOpenCodeRepository(
+        messagesError: const FormatException("invalid message payload"),
+      );
+      final service = OpenCodeService(repository, FakeActiveSessionTracker());
+
+      await expectLater(
+        () => service.getMessages(sessionId: "ses-1", directory: null),
+        throwsA(
+          isA<PluginApiException>()
+              .having((error) => error.statusCode, "statusCode", equals(502))
+              .having((error) => error.endpoint, "endpoint", equals("GET /session/ses-1/message")),
+        ),
+      );
+      expect(repository.api.lastRequestedSessionId, equals("ses-1"));
+    });
+
+    test("rethrows unexpected non-decode bugs", () async {
+      final repository = FakeOpenCodeRepository(
+        messagesError: StateError("unexpected bug"),
+      );
+      final service = OpenCodeService(repository, FakeActiveSessionTracker());
+
+      await expectLater(
+        () => service.getMessages(sessionId: "ses-1", directory: null),
+        throwsA(isA<StateError>().having((error) => error.message, "message", equals("unexpected bug"))),
+      );
+      expect(repository.api.lastRequestedSessionId, equals("ses-1"));
+    });
   });
 
   group("OpenCodeService.handleSseEvent", () {

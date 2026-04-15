@@ -1,19 +1,42 @@
-part of "worktree_service.dart";
+import "dart:io";
 
-class _WorktreeBranchPreparationUseCase {
-  final WorktreeService _service;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
-  _WorktreeBranchPreparationUseCase({required WorktreeService service}) : _service = service;
+import "../repositories/branch_repository.dart";
+import "../repositories/worktree_repository.dart";
+import "../worktree_types.dart";
+
+const _maxWorktreeCreationAttempts = 3;
+const _branchPrefix = "session-";
+const _worktreeDir = ".worktrees";
+
+class WorktreeBranchPreparationService {
+  final BranchRepository _branchRepository;
+  final WorktreeRepository _worktreeRepository;
+  final bool Function(String name) _isSafeGitName;
+  final String Function() _randomSuffix;
+
+  WorktreeBranchPreparationService({
+    required BranchRepository branchRepository,
+    required WorktreeRepository worktreeRepository,
+    required bool Function(String name) isSafeGitName,
+    required String Function() randomSuffix,
+  }) : _branchRepository = branchRepository,
+       _worktreeRepository = worktreeRepository,
+       _isSafeGitName = isSafeGitName,
+       _randomSuffix = randomSuffix;
 
   Future<WorktreeResult> prepareWorktreeForBranch({
     required WorktreeMode mode,
     required String? selectedBranch,
     required String projectPath,
-    required String sessionId,
-    ({String branchName, String worktreeName})? preferredBranchAndWorktreeName,
-  }) async {
+    required ({String branchName, String worktreeName})? preferredBranchAndWorktreeName,
+  }) {
     return switch (mode) {
-      WorktreeMode.none => WorktreeFallback(originalPath: projectPath, reason: "worktree mode is none"),
+      WorktreeMode.none => Future.value(
+        WorktreeFallback(originalPath: projectPath, reason: "worktree mode is none"),
+      ),
       WorktreeMode.stayOnBranch => _prepareExistingBranchWorktree(
         projectPath: projectPath,
         selectedBranch: selectedBranch,
@@ -21,7 +44,6 @@ class _WorktreeBranchPreparationUseCase {
       WorktreeMode.newBranch => _prepareNewBranchWorktree(
         projectPath: projectPath,
         selectedBranch: selectedBranch,
-        sessionId: sessionId,
         preferredBranchAndWorktreeName: preferredBranchAndWorktreeName,
       ),
     };
@@ -38,7 +60,7 @@ class _WorktreeBranchPreparationUseCase {
       return WorktreeFallback(originalPath: projectPath, reason: "branch selection is required");
     }
 
-    final startPoint = await _service._branchRepository.resolveStartPointForBranch(
+    final startPoint = await _branchRepository.resolveStartPointForBranch(
       projectPath: projectPath,
       branchName: selectedBranch,
     );
@@ -46,7 +68,7 @@ class _WorktreeBranchPreparationUseCase {
       return WorktreeFallback(originalPath: projectPath, reason: "failed to resolve selected branch");
     }
 
-    final existingPath = await _service._branchRepository.getWorktreeForBranch(
+    final existingPath = await _branchRepository.getWorktreeForBranch(
       projectPath: projectPath,
       branchName: selectedBranch,
     );
@@ -60,28 +82,31 @@ class _WorktreeBranchPreparationUseCase {
           isDedicated: existingPath != projectPath,
         );
       }
-      await _service.pruneWorktrees(projectPath: projectPath);
+      await _worktreeRepository.pruneWorktrees(projectPath: projectPath);
     }
 
     final worktreePath = "$projectPath/$_worktreeDir/${_branchWorktreeName(branchName: selectedBranch)}";
-    final branchExistsLocally = await _service._branchRepository.branchExistsLocally(
+    final branchExistsLocally = await _branchRepository.branchExistsLocally(
       projectPath: projectPath,
       branchName: selectedBranch,
     );
     final success = branchExistsLocally
-        ? await _service._branchRepository.addExistingBranchWorktree(
+        ? await _branchRepository.addExistingBranchWorktree(
             workingDirectory: projectPath,
             worktreePath: worktreePath,
             branchName: selectedBranch,
           )
-        : await _service._branchRepository.createTrackingBranchWorktree(
+        : await _branchRepository.createTrackingBranchWorktree(
             workingDirectory: projectPath,
             worktreePath: worktreePath,
             localBranchName: selectedBranch,
             remoteBranch: startPoint.ref,
           );
     if (!success) {
-      return WorktreeFallback(originalPath: projectPath, reason: "failed to create worktree for selected branch");
+      return WorktreeFallback(
+        originalPath: projectPath,
+        reason: "failed to create worktree for selected branch",
+      );
     }
 
     return WorktreeSuccess(
@@ -96,7 +121,6 @@ class _WorktreeBranchPreparationUseCase {
   Future<WorktreeResult> _prepareNewBranchWorktree({
     required String projectPath,
     required String? selectedBranch,
-    required String sessionId,
     required ({String branchName, String worktreeName})? preferredBranchAndWorktreeName,
   }) async {
     if (!await _isRepositoryReady(projectPath: projectPath)) {
@@ -106,7 +130,7 @@ class _WorktreeBranchPreparationUseCase {
       return WorktreeFallback(originalPath: projectPath, reason: "branch selection is required");
     }
 
-    final startPoint = await _service._branchRepository.resolveStartPointForBranch(
+    final startPoint = await _branchRepository.resolveStartPointForBranch(
       projectPath: projectPath,
       branchName: selectedBranch,
     );
@@ -121,17 +145,19 @@ class _WorktreeBranchPreparationUseCase {
       baseCommit: startPoint.commit,
       preferredBranchAndWorktreeName: preferredBranchAndWorktreeName,
     );
-    if (preferredResult != null) return preferredResult;
+    if (preferredResult != null) {
+      return preferredResult;
+    }
 
     for (var attempt = 0; attempt < _maxWorktreeCreationAttempts; attempt++) {
-      final counter = await _service._projectsDao.incrementAndGetWorktreeCounter(projectId: projectPath);
+      final counter = await _worktreeRepository.incrementAndGetWorktreeCounter(projectId: projectPath);
       final branchName = "$_branchPrefix${counter.toString().padLeft(3, '0')}";
-      if (await _service._branchRepository.branchExistsLocally(projectPath: projectPath, branchName: branchName)) {
+      if (await _branchRepository.branchExistsLocally(projectPath: projectPath, branchName: branchName)) {
         continue;
       }
 
       final worktreePath = "$projectPath/$_worktreeDir/$branchName";
-      final success = await _service._branchRepository.createWorktree(
+      final success = await _branchRepository.createWorktree(
         projectPath: projectPath,
         worktreePath: worktreePath,
         branchName: branchName,
@@ -158,29 +184,36 @@ class _WorktreeBranchPreparationUseCase {
     required String baseCommit,
     required ({String branchName, String worktreeName})? preferredBranchAndWorktreeName,
   }) async {
-    if (preferredBranchAndWorktreeName == null) return null;
+    if (preferredBranchAndWorktreeName == null) {
+      return null;
+    }
 
     final preferredBranch = preferredBranchAndWorktreeName.branchName;
     final preferredWorktree = preferredBranchAndWorktreeName.worktreeName;
-    if (!WorktreeService._isSafeGitName(preferredBranch) || !WorktreeService._isSafeGitName(preferredWorktree)) {
+    if (!_isSafeGitName(preferredBranch) || !_isSafeGitName(preferredWorktree)) {
       Log.w("WorktreeService: rejected unsafe preferred names: branch=$preferredBranch worktree=$preferredWorktree");
       return null;
     }
 
     final suffix =
-        await _service._branchRepository.branchExistsLocally(projectPath: projectPath, branchName: preferredBranch)
-        ? "-${WorktreeService._randomSuffix()}"
+        await _branchRepository.branchExistsLocally(
+          projectPath: projectPath,
+          branchName: preferredBranch,
+        )
+        ? "-${_randomSuffix()}"
         : "";
     final branchName = "$preferredBranch$suffix";
     final worktreeName = "$preferredWorktree$suffix";
     final worktreePath = "$projectPath/$_worktreeDir/$worktreeName";
-    final success = await _service._branchRepository.createWorktree(
+    final success = await _branchRepository.createWorktree(
       projectPath: projectPath,
       worktreePath: worktreePath,
       branchName: branchName,
       startPoint: startPoint,
     );
-    if (!success) return null;
+    if (!success) {
+      return null;
+    }
 
     return WorktreeSuccess(
       path: worktreePath,
@@ -192,12 +225,12 @@ class _WorktreeBranchPreparationUseCase {
   }
 
   Future<bool> _isRepositoryReady({required String projectPath}) async {
-    return await _service.isGitInitialized(projectPath: projectPath) &&
-        await _service.hasAtLeastOneCommit(projectPath: projectPath);
+    return await _worktreeRepository.isGitInitialized(projectPath: projectPath) &&
+        await _worktreeRepository.hasAtLeastOneCommit(projectPath: projectPath);
   }
 
-  WorktreeFallback _repositoryUnavailableFallback({required String projectPath}) {
-    if (!_service._gitPathExists(gitPath: "$projectPath/.git")) {
+  Future<WorktreeFallback> _repositoryUnavailableFallback({required String projectPath}) async {
+    if (!await _worktreeRepository.isGitInitialized(projectPath: projectPath)) {
       Log.w("WorktreeService: not a git repository: $projectPath");
       return WorktreeFallback(originalPath: projectPath, reason: "not a git repository");
     }
@@ -207,6 +240,6 @@ class _WorktreeBranchPreparationUseCase {
 
   String _branchWorktreeName({required String branchName}) {
     final sanitized = branchName.replaceAll("/", "__").replaceAll(RegExp("[^A-Za-z0-9._-]"), "-");
-    return sanitized.isEmpty ? "branch-${WorktreeService._randomSuffix()}" : sanitized;
+    return sanitized.isEmpty ? "branch-${_randomSuffix()}" : sanitized;
   }
 }

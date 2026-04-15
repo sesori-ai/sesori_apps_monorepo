@@ -97,6 +97,7 @@ class FakeBridgePlugin implements BridgePlugin {
   Object? throwOnGetProjectsError;
   Object? throwOnGetProjectError;
   bool throwOnGetSessions = false;
+  Object? throwOnGetMessagesError;
   Object? throwOnDeleteSessionError;
   Object? throwOnArchiveSessionError;
   Completer<void>? archiveSessionCompleter;
@@ -225,6 +226,9 @@ class FakeBridgePlugin implements BridgePlugin {
     String sessionId,
   ) async {
     lastGetMessagesSessionId = sessionId;
+    if (throwOnGetMessagesError case final error?) {
+      throw error;
+    }
     return messagesResult;
   }
 
@@ -583,6 +587,8 @@ class _NoopSessionRepository implements SessionRepository {
   }) async => false;
   @override
   Future<String?> getProjectPath({required String projectId}) async => null;
+  @override
+  Future<SessionDto?> getStoredSession({required String sessionId}) async => null;
 }
 
 /// Test-friendly [SessionRepository] that delegates to a [FakeBridgePlugin]
@@ -692,5 +698,10 @@ class FakeSessionRepository implements SessionRepository {
     } catch (_) {
       return null;
     }
+  }
+
+  @override
+  Future<SessionDto?> getStoredSession({required String sessionId}) async {
+    return _sessionDao.getSession(sessionId: sessionId);
   }
 }

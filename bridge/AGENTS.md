@@ -94,6 +94,30 @@ DAOs execute raw queries and return raw data. No decision-making logic, no selec
 ### No Manual JSON Parsing
 Always create Freezed models with auto-generated `fromJson` when parsing JSON. Never use inline `jsonDecode` + manual field extraction. Use `jsonDecodeListMap`/`jsonDecodeMap` from `sesori_shared` as the decode step, then `Model.fromJson(map)`.
 
+### Prefer Callback-Scoped Locks
+If a lock protects a single operation, prefer a callback-scoped API like `locked<T>(...)` that acquires, runs the callback, and auto-releases in one place. Avoid manual lock bookkeeping at call sites when a scoped API can express the same flow more clearly.
+
+### Log Unexpected Degradation Paths
+When a service/repository intentionally degrades on an unexpected `catch`, emit a warning/debug log with enough context to understand what failed. Silent fallback is only acceptable when the code is explicitly best-effort and the lack of logging is intentional.
+
+### Prefer jsonDecodeMap Helpers
+When decoding JSON objects, prefer `jsonDecodeMap` / `jsonDecodeListMap` over raw `jsonDecode` plus manual type checks. Use the helper first, then `fromJson` or typed field access.
+
+### Be Conservative With Makefile Entries
+Do not add maintenance scripts to a Makefile by default. Only add them when they are part of the normal repeated workspace workflow, not one-off or occasional release chores.
+
+### Shared Utility Placement Follows Explicit Product Choice
+If a utility is intentionally meant to live in `sesori_shared`, keep it there even if the current number of consumers is temporarily one. Do not move it out solely because present-day usage is narrow when product direction or explicit reviewer feedback says it should remain shared.
+
+### Prefer Typed Version Value Objects
+If code needs to parse or compare versions, do not expose loose helpers that accept arbitrary `String` inputs like `compareVersions(String, String)`. Parse once into a small typed value object that implements `Comparable`, keep transport-layer DTO fields as raw strings, and do the string-to-type mapping in the repository layer.
+
+### Reviewable State Must Be Committed And Pushed
+If you want PR feedback on bridge work, commit and push the latest relevant changes before expecting review comments to reflect them. Do not assume reviewers will inspect uncommitted local changes.
+
+### Never Amend Commits
+Do not use `git commit --amend` for bridge work. This is a repo-wide rule with no exceptions. Add a new commit for each follow-up fix so the remote PR state advances in a way the reviewer can actually inspect.
+
 ### Streams Over Callbacks
 Use push-based communication (`StreamController`, `PublishSubject`) between services. Never pass `Function` callbacks for event notification. Services that produce events expose a `Stream`; consumers subscribe to it.
 

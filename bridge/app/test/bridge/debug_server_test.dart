@@ -2,82 +2,46 @@ import "dart:async";
 import "dart:convert";
 import "dart:io";
 
-import "package:sesori_bridge/src/bridge/api/gh_cli_api.dart";
-import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
+import "package:http/http.dart" as http;
+import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/bridge/debug_server.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
+import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/branch_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
-import "package:sesori_bridge/src/bridge/routing/request_router.dart";
-import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
-import "package:sesori_bridge/src/bridge/worktree_service.dart";
+import "package:sesori_bridge/src/bridge/runtime/bridge_runtime.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
-import "routing/routing_test_helpers.dart";
 
-DebugServer _createDebugServer({
+_DebugServerHarness _createDebugServerHarness({
   required BridgePlugin plugin,
   required AppDatabase db,
   required int port,
 }) {
-  final pullRequestRepository = PullRequestRepository(pullRequestDao: db.pullRequestDao, projectsDao: db.projectsDao);
-  final processRunner = ProcessRunner();
-  final sessionRepository = SessionRepository(
-    plugin: plugin,
-    sessionDao: db.sessionDao,
-    pullRequestRepository: pullRequestRepository,
-  );
-  final prSyncService = PrSyncService(
-    prSource: PrSourceRepository(
-      ghCli: GhCliApi(processRunner: processRunner),
-      gitCli: GitCliApi(processRunner: processRunner),
+  final httpClient = http.Client();
+  final runtime = BridgeRuntime.create(
+    config: const BridgeConfig(
+      relayURL: "ws://127.0.0.1:9999",
+      serverURL: "http://127.0.0.1:4096",
+      serverPassword: null,
+      authBackendURL: "https://api.sesori.test",
+      sseReplayWindow: Duration(minutes: 5),
     ),
-    pullRequestRepository: pullRequestRepository,
-    sessionRepository: sessionRepository,
-  );
-  final projectRepository = ProjectRepository(plugin: plugin, projectsDao: db.projectsDao);
-  final permissionRepository = PermissionRepository(plugin: plugin);
-  final sessionPersistenceService = SessionPersistenceService(
-    projectsDao: db.projectsDao,
-    sessionDao: db.sessionDao,
-    db: db,
-  );
-  final branchRepository = BranchRepository(gitCliApi: GitCliApi(processRunner: processRunner));
-  final worktreeService = WorktreeService(
-    branchRepository: branchRepository,
-    projectsDao: db.projectsDao,
-    sessionDao: db.sessionDao,
-    processRunner: processRunner,
-    gitPathExists: ({required String gitPath}) => FileSystemEntity.typeSync(gitPath) != FileSystemEntityType.notFound,
-  );
-  final router = RequestRouter(
     plugin: plugin,
-    metadataService: FakeMetadataService(),
-    projectsDao: db.projectsDao,
-    sessionDao: db.sessionDao,
-    sessionRepository: sessionRepository,
-    prSyncService: prSyncService,
-    projectRepository: projectRepository,
-    permissionRepository: permissionRepository,
-    sessionPersistenceService: sessionPersistenceService,
-    worktreeService: worktreeService,
-    branchRepository: branchRepository,
-    onSessionAborted: (_) {},
-  );
-  return DebugServer(
-    plugin: plugin,
-    router: router,
-    port: port,
+    httpClient: httpClient,
+    accessTokenProvider: FakeAccessTokenProvider(),
+    tokenRefresher: _FakeTokenRefresher(),
+    database: db,
+    processRunner: ProcessRunner(),
     failureReporter: FakeFailureReporter(),
+  );
+  final debugServer = runtime.createDebugServer(port: port);
+  return _DebugServerHarness(
+    runtime: runtime,
+    debugServer: debugServer,
+    httpClient: httpClient,
   );
 }
 
@@ -85,19 +49,20 @@ void main() {
   group("DebugServer SSE multi-client", () {
     late _FakeBridgePlugin plugin;
     late AppDatabase db;
+    late _DebugServerHarness harness;
     late DebugServer debugServer;
 
     setUp(() async {
       plugin = _FakeBridgePlugin();
       db = createTestDatabase();
-      debugServer = _createDebugServer(plugin: plugin, db: db, port: 0);
+      harness = _createDebugServerHarness(plugin: plugin, db: db, port: 0);
+      debugServer = harness.debugServer;
       await debugServer.start();
     });
 
     tearDown(() async {
-      await debugServer.stop();
+      await harness.close();
       await plugin.close();
-      await db.close();
     });
 
     test("second SSE client receives events alongside first", () async {
@@ -116,30 +81,26 @@ void main() {
       expect(secondEvent, contains("server.connected"));
     });
 
-    test(
-      "first client still receives events after second disconnects",
-      () async {
-        final first = await _SseTestClient.connect(debugServer.boundPort!);
-        addTearDown(first.close);
+    test("first client still receives events after second disconnects", () async {
+      final first = await _SseTestClient.connect(debugServer.boundPort!);
+      addTearDown(first.close);
 
-        final second = await _SseTestClient.connect(debugServer.boundPort!);
+      final second = await _SseTestClient.connect(debugServer.boundPort!);
+      await second.close();
 
-        await second.close();
-
-        plugin.add(const BridgeSseServerConnected());
-        final firstEvent = await first.nextEvent();
-        expect(firstEvent, contains("server.connected"));
-      },
-    );
+      plugin.add(const BridgeSseServerConnected());
+      final firstEvent = await first.nextEvent();
+      expect(firstEvent, contains("server.connected"));
+    });
 
     test("plugin subscription is released when last client disconnects", () async {
       final trackingPlugin = _TrackingBridgePlugin();
       final trackingDb = createTestDatabase();
-      final trackingServer = _createDebugServer(plugin: trackingPlugin, db: trackingDb, port: 0);
+      final trackingHarness = _createDebugServerHarness(plugin: trackingPlugin, db: trackingDb, port: 0);
+      final trackingServer = trackingHarness.debugServer;
       await trackingServer.start();
-      addTearDown(trackingServer.stop);
+      addTearDown(trackingHarness.close);
       addTearDown(trackingPlugin.close);
-      addTearDown(trackingDb.close);
 
       final first = await _SseTestClient.connect(trackingServer.boundPort!);
       final second = await _SseTestClient.connect(trackingServer.boundPort!);
@@ -160,32 +121,29 @@ void main() {
   group("DebugServer HTTP requests", () {
     late _FakeBridgePlugin plugin;
     late AppDatabase db;
+    late _DebugServerHarness harness;
     late DebugServer debugServer;
 
     setUp(() async {
       plugin = _FakeBridgePlugin();
       db = createTestDatabase();
-      debugServer = _createDebugServer(plugin: plugin, db: db, port: 0);
+      harness = _createDebugServerHarness(plugin: plugin, db: db, port: 0);
+      debugServer = harness.debugServer;
       await debugServer.start();
     });
 
     tearDown(() async {
-      await debugServer.stop();
+      await harness.close();
       await plugin.close();
-      await db.close();
     });
 
     test("GET /projects returns project list as JSON", () async {
-      plugin.projectsResult = [
-        const PluginProject(id: "p1", name: "My Project"),
-      ];
+      plugin.projectsResult = [const PluginProject(id: "p1", name: "My Project")];
 
       final client = HttpClient();
       addTearDown(client.close);
 
-      final request = await client.getUrl(
-        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/projects"),
-      );
+      final request = await client.getUrl(Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/projects"));
       final response = await request.close();
       final body = await utf8.decoder.bind(response).join();
 
@@ -202,9 +160,7 @@ void main() {
       final client = HttpClient();
       addTearDown(client.close);
 
-      final request = await client.postUrl(
-        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/sessions"),
-      );
+      final request = await client.postUrl(Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/sessions"));
       final response = await request.close();
       expect(response.statusCode, equals(HttpStatus.badRequest));
     });
@@ -225,9 +181,7 @@ void main() {
       final client = HttpClient();
       addTearDown(client.close);
 
-      final request = await client.postUrl(
-        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/sessions"),
-      );
+      final request = await client.postUrl(Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/sessions"));
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode({"projectId": "/tmp/test", "start": null, "limit": null}));
       final response = await request.close();
@@ -244,14 +198,7 @@ void main() {
     test("POST /session/messages returns messages", () async {
       plugin.messagesResult = [
         const PluginMessageWithParts(
-          info: PluginMessage(
-            role: "user",
-            id: "m1",
-            sessionID: "s1",
-            agent: null,
-            modelID: null,
-            providerID: null,
-          ),
+          info: PluginMessage(role: "user", id: "m1", sessionID: "s1", agent: null, modelID: null, providerID: null),
           parts: [],
         ),
       ];
@@ -259,11 +206,7 @@ void main() {
       final client = HttpClient();
       addTearDown(client.close);
 
-      final request = await client.postUrl(
-        Uri.parse(
-          "http://127.0.0.1:${debugServer.boundPort!}/session/messages",
-        ),
-      );
+      final request = await client.postUrl(Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/session/messages"));
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode({"sessionId": "s1"}));
       final response = await request.close();
@@ -281,9 +224,7 @@ void main() {
       final client = HttpClient();
       addTearDown(client.close);
 
-      final request = await client.getUrl(
-        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/projects"),
-      );
+      final request = await client.getUrl(Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/projects"));
       final response = await request.close();
       final body = await utf8.decoder.bind(response).join();
 
@@ -293,9 +234,24 @@ void main() {
   });
 }
 
-// ---------------------------------------------------------------------------
-// Fake plugin implementations
-// ---------------------------------------------------------------------------
+class _DebugServerHarness {
+  final BridgeRuntime runtime;
+  final DebugServer debugServer;
+  final http.Client httpClient;
+
+  const _DebugServerHarness({required this.runtime, required this.debugServer, required this.httpClient});
+
+  Future<void> close() async {
+    await debugServer.stop();
+    await runtime.close();
+    httpClient.close();
+  }
+}
+
+class _FakeTokenRefresher implements TokenRefresher {
+  @override
+  Future<String> getAccessToken({bool forceRefresh = false}) async => "test-token";
+}
 
 class _FakeBridgePlugin implements BridgePlugin {
   final _controller = StreamController<BridgeSseEvent>.broadcast();
@@ -318,11 +274,7 @@ class _FakeBridgePlugin implements BridgePlugin {
   }
 
   @override
-  Future<List<PluginSession>> getSessions(
-    String worktree, {
-    int? start,
-    int? limit,
-  }) async => sessionsResult;
+  Future<List<PluginSession>> getSessions(String worktree, {int? start, int? limit}) async => sessionsResult;
 
   @override
   Future<PluginSession> createSession({
@@ -331,15 +283,8 @@ class _FakeBridgePlugin implements BridgePlugin {
     required List<PluginPromptPart> parts,
     required String? agent,
     required ({String providerID, String modelID})? model,
-  }) async => const PluginSession(
-    id: "",
-    projectID: "",
-    directory: "",
-    parentID: null,
-    title: null,
-    time: null,
-    summary: null,
-  );
+  }) async =>
+      const PluginSession(id: "", projectID: "", directory: "", parentID: null, title: null, time: null, summary: null);
 
   @override
   Future<PluginSession> renameSession({required String sessionId, required String title}) async => const PluginSession(
@@ -369,9 +314,7 @@ class _FakeBridgePlugin implements BridgePlugin {
   Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => {};
 
   @override
-  Future<List<PluginMessageWithParts>> getSessionMessages(
-    String sessionId,
-  ) async => messagesResult;
+  Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async => messagesResult;
 
   @override
   Future<void> sendPrompt({
@@ -430,7 +373,6 @@ class _FakeBridgePlugin implements BridgePlugin {
   Future<void> close() => _controller.close();
 }
 
-/// Plugin that tracks subscribe/unsubscribe counts via a wrapping stream.
 class _TrackingBridgePlugin implements BridgePlugin {
   final _eventController = StreamController<BridgeSseEvent>.broadcast();
   int subscribeCount = 0;
@@ -459,11 +401,7 @@ class _TrackingBridgePlugin implements BridgePlugin {
   Future<List<PluginProject>> getProjects() async => [];
 
   @override
-  Future<List<PluginSession>> getSessions(
-    String worktree, {
-    int? start,
-    int? limit,
-  }) async => [];
+  Future<List<PluginSession>> getSessions(String worktree, {int? start, int? limit}) async => [];
 
   @override
   Future<PluginSession> createSession({
@@ -472,15 +410,8 @@ class _TrackingBridgePlugin implements BridgePlugin {
     required List<PluginPromptPart> parts,
     required String? agent,
     required ({String providerID, String modelID})? model,
-  }) async => const PluginSession(
-    id: "",
-    projectID: "",
-    directory: "",
-    parentID: null,
-    title: null,
-    time: null,
-    summary: null,
-  );
+  }) async =>
+      const PluginSession(id: "", projectID: "", directory: "", parentID: null, title: null, time: null, summary: null);
 
   @override
   Future<PluginSession> renameSession({required String sessionId, required String title}) async => const PluginSession(
@@ -510,9 +441,7 @@ class _TrackingBridgePlugin implements BridgePlugin {
   Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => {};
 
   @override
-  Future<List<PluginMessageWithParts>> getSessionMessages(
-    String sessionId,
-  ) async => [];
+  Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async => [];
 
   @override
   Future<void> sendPrompt({
@@ -570,10 +499,6 @@ class _TrackingBridgePlugin implements BridgePlugin {
   Future<void> close() => _eventController.close();
 }
 
-// ---------------------------------------------------------------------------
-// SSE test client
-// ---------------------------------------------------------------------------
-
 class _SseTestClient {
   final Socket _socket;
   final StreamIterator<String> _lines;
@@ -582,12 +507,7 @@ class _SseTestClient {
 
   static Future<_SseTestClient> connect(int port) async {
     final socket = await Socket.connect("127.0.0.1", port);
-    socket.write(
-      "GET /global/event HTTP/1.0\r\n"
-      "Host: 127.0.0.1\r\n"
-      "Accept: text/event-stream\r\n"
-      "\r\n",
-    );
+    socket.write("GET /global/event HTTP/1.0\r\nHost: 127.0.0.1\r\nAccept: text/event-stream\r\n\r\n");
 
     final lineController = StreamController<String>();
     final lines = StreamIterator(lineController.stream);
@@ -599,19 +519,15 @@ class _SseTestClient {
     socket.listen(
       (chunk) {
         buffer += utf8.decode(chunk);
-
         if (!headersParsed) {
           final headerEnd = buffer.indexOf("\r\n\r\n");
-          if (headerEnd == -1) {
-            return;
-          }
+          if (headerEnd == -1) return;
           headersParsed = true;
           buffer = buffer.substring(headerEnd + 4);
         }
 
         lineBuffer += buffer;
         buffer = "";
-
         final parts = lineBuffer.split("\n");
         lineBuffer = parts.removeLast();
         for (final part in parts) {
@@ -620,14 +536,10 @@ class _SseTestClient {
         }
       },
       onDone: () {
-        if (!lineController.isClosed) {
-          lineController.close();
-        }
+        if (!lineController.isClosed) lineController.close();
       },
       onError: (_) {
-        if (!lineController.isClosed) {
-          lineController.close();
-        }
+        if (!lineController.isClosed) lineController.close();
       },
       cancelOnError: true,
     );
@@ -640,9 +552,7 @@ class _SseTestClient {
   Future<String> nextEvent() async {
     while (await _lines.moveNext()) {
       final line = _lines.current;
-      if (line.startsWith("data: ")) {
-        return line.substring(6);
-      }
+      if (line.startsWith("data: ")) return line.substring(6);
     }
     throw StateError("SSE stream ended before event arrived");
   }
@@ -654,9 +564,7 @@ class _SseTestClient {
 
   Future<void> _waitForReady() async {
     while (await _lines.moveNext()) {
-      if (_lines.current == ": ok") {
-        return;
-      }
+      if (_lines.current == ": ok") return;
     }
     throw StateError("SSE stream ended before ready marker");
   }

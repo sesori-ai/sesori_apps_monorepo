@@ -1,6 +1,6 @@
 # Contributor License Agreement
 
-In order to clarify the intellectual property license granted with Contributions from any person or entity, Digitalblock Labs LTD ("Owner"), a company registered in the British Virgin Islands, must have a Contributor License Agreement ("Agreement") on file that has been signed by each Contributor, indicating agreement to the license terms below. This license is for your protection as a Contributor as well as the protection of the Owner and the Project; it does not change your rights to use your own Contributions for any other purpose.
+In order to clarify the intellectual property license granted with Contributions from any person or entity, Digitalblock Labs LTD ("Owner"), a company registered in the British Virgin Islands, must have a Contributor License Agreement ("Agreement") on file that has been signed by each Contributor, indicating agreement to the license terms below. This license is for your protection as a Contributor as well as the protection of the Owner and the Project; it does not change your rights to use your own Contributions for any other purpose. It is also intended to ensure that the Owner may maintain, distribute, sublicense, and relicense the Project over time under current and future license terms chosen by the Owner.
 
 You accept and agree to the following terms and conditions for Your present and future Contributions submitted to the Project. Except for the license granted herein to the Owner and recipients of software distributed by the Owner, You reserve all right, title, and interest in and to Your Contributions.
 
@@ -12,11 +12,19 @@ You accept and agree to the following terms and conditions for Your present and 
 
 ## 2. Grant of Copyright License
 
-Subject to the terms and conditions of this Agreement, You hereby grant to the Owner and to recipients of software distributed by the Owner a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright license to reproduce, prepare derivative works of, publicly display, publicly perform, sublicense, and distribute Your Contributions and such derivative works.
+Subject to the terms and conditions of this Agreement, You hereby grant to the Owner a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright license to use, reproduce, prepare derivative works of, publicly display, publicly perform, sublicense, distribute, and relicense Your Contributions and such derivative works.
+
+You also grant to recipients of software distributed by the Owner a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright license to use, reproduce, prepare derivative works of, publicly display, publicly perform, sublicense, and distribute Your Contributions and such derivative works only as permitted by the license terms under which the Owner distributes the Work to those recipients.
+
+For clarity, this license includes the right for the Owner to distribute, sublicense, and relicense Your Contributions, alone or as part of the Work, under the repository's current license, any future version of that license, Apache License 2.0, and any other open source, source-available, commercial, proprietary, or successor license selected by the Owner in its discretion.
 
 ## 3. Grant of Patent License
 
-Subject to the terms and conditions of this Agreement, You hereby grant to the Owner and to recipients of software distributed by the Owner a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable (except as stated in this section) patent license to make, have made, use, offer to sell, sell, import, and otherwise transfer the Work, where such license applies only to those patent claims licensable by You that are necessarily infringed by Your Contribution(s) alone or by combination of Your Contribution(s) with the Work to which such Contribution(s) was submitted. If any entity institutes patent litigation against You or any other entity (including a cross-claim or counterclaim in a lawsuit) alleging that your Contribution, or the Work to which you have contributed, constitutes direct or contributory patent infringement, then any patent licenses granted to that entity under this Agreement for that Contribution or Work shall terminate as of the date such litigation is filed.
+Subject to the terms and conditions of this Agreement, You hereby grant to the Owner and to recipients of software distributed by the Owner a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable (except as stated in this section) patent license to make, have made, use, offer to sell, sell, import, and otherwise transfer the Work, where such license applies only to those patent claims licensable by You that are necessarily infringed by Your Contribution(s) alone or by combination of Your Contribution(s) with the Work to which such Contribution(s) was submitted.
+
+For clarity, this patent license includes the Owner's exercise of the rights granted in Section 2, including distribution, sublicensing, and relicensing of the Work under current and future license terms chosen by the Owner.
+
+If any entity institutes patent litigation against You or any other entity (including a cross-claim or counterclaim in a lawsuit) alleging that your Contribution, or the Work to which you have contributed, constitutes direct or contributory patent infringement, then any patent licenses granted to that entity under this Agreement for that Contribution or Work shall terminate as of the date such litigation is filed.
 
 ## 4. Representations
 
@@ -56,4 +64,4 @@ To sign the CLA, please comment on a pull request with:
 I have read the CLA Document and I hereby sign the CLA
 ```
 
-The CLA Assistant bot will automatically track your agreement. This is a one-time requirement. If you have any questions, please open an issue.
+The CLA Assistant bot will automatically track your agreement. This is a one-time requirement. By signing, you agree that the Owner may use, sublicense, and relicense accepted Contributions under current and future license terms chosen by the Owner. If you have any questions, please open an issue.

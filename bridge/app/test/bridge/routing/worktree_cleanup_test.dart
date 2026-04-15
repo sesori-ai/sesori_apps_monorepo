@@ -3,10 +3,12 @@ import "dart:io";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/repositories/branch_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/worktree_cleanup.dart";
-import "package:sesori_bridge/src/bridge/worktree_service.dart";
+import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -218,6 +220,9 @@ class _FakeSessionRepository implements SessionRepository {
   }
 
   @override
+  Future<SessionDto?> getStoredSession({required String sessionId}) async => null;
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
@@ -232,11 +237,17 @@ class _FakeWorktreeService extends WorktreeService {
 
   _FakeWorktreeService({required AppDatabase database})
     : super(
-        branchRepository: BranchRepository(gitCliApi: GitCliApi(processRunner: _FakeProcessRunner())),
-        projectsDao: database.projectsDao,
-        sessionDao: database.sessionDao,
-        processRunner: _FakeProcessRunner(),
-        gitPathExists: ({required String gitPath}) => true,
+        branchRepository: BranchRepository(
+          gitCliApi: GitCliApi(processRunner: _FakeProcessRunner(), gitPathExists: ({required String gitPath}) => true),
+        ),
+        worktreeRepository: WorktreeRepository(
+          projectsDao: database.projectsDao,
+          sessionDao: database.sessionDao,
+          gitApi: GitCliApi(
+            processRunner: _FakeProcessRunner(),
+            gitPathExists: ({required String gitPath}) => true,
+          ),
+        ),
       );
 }
 

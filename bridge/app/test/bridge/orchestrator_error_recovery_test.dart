@@ -14,9 +14,10 @@ import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart"
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
-import "package:sesori_bridge/src/bridge/worktree_service.dart";
+import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
 import "package:sesori_bridge/src/push/push_notification_client.dart";
 import "package:sesori_bridge/src/push/push_notification_service.dart";
@@ -138,13 +139,26 @@ class _TestHarness {
       return ProcessResult(0, 127, "", "command not found");
     });
 
-    final branchRepository = BranchRepository(gitCliApi: GitCliApi(processRunner: failingProcessRunner));
+    final branchRepository = BranchRepository(
+      gitCliApi: GitCliApi(processRunner: failingProcessRunner, gitPathExists: ({required String gitPath}) => true),
+    );
     final worktreeService = WorktreeService(
       branchRepository: branchRepository,
-      projectsDao: database.projectsDao,
-      sessionDao: database.sessionDao,
-      processRunner: failingProcessRunner,
-      gitPathExists: ({required String gitPath}) => true,
+      worktreeRepository: WorktreeRepository(
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        gitApi: GitCliApi(
+          processRunner: FakeProcessRunner((
+            String executable,
+            List<String> arguments, {
+            String? workingDirectory,
+            Duration timeout = const Duration(seconds: 15),
+          }) async {
+            return ProcessResult(0, 127, "", "command not found");
+          }),
+          gitPathExists: ({required String gitPath}) => true,
+        ),
+      ),
     );
 
     final orchestrator = Orchestrator(
@@ -160,7 +174,6 @@ class _TestHarness {
       metadataService: metadataService,
       pushNotificationService: pushService,
       tokenRefresher: tokenRefresher,
-      projectsDao: database.projectsDao,
       failureReporter: failureReporter,
       prSyncService: prSyncService,
       sessionRepository: sessionRepository,

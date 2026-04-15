@@ -11,6 +11,7 @@ import "package:sesori_bridge/src/bridge/metadata_service.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/models/session_metadata.dart";
 import "package:sesori_bridge/src/bridge/orchestrator.dart";
+import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_bridge/src/bridge/repositories/branch_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
@@ -19,9 +20,10 @@ import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart"
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
-import "package:sesori_bridge/src/bridge/worktree_service.dart";
+import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
 import "package:sesori_bridge/src/push/push_notification_client.dart";
 import "package:sesori_bridge/src/push/push_notification_service.dart";
@@ -60,13 +62,19 @@ void main() {
       sessionDao: database.sessionDao,
       db: database,
     );
-    final branchRepository = BranchRepository(gitCliApi: GitCliApi(processRunner: FakeProcessRunner()));
+    final branchRepository = BranchRepository(
+      gitCliApi: GitCliApi(processRunner: FakeProcessRunner(), gitPathExists: ({required String gitPath}) => true),
+    );
     final worktreeService = WorktreeService(
       branchRepository: branchRepository,
-      projectsDao: database.projectsDao,
-      sessionDao: database.sessionDao,
-      processRunner: FakeProcessRunner(),
-      gitPathExists: ({required String gitPath}) => true,
+      worktreeRepository: WorktreeRepository(
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        gitApi: GitCliApi(
+          processRunner: FakeProcessRunner(),
+          gitPathExists: ({required String gitPath}) => true,
+        ),
+      ),
     );
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
@@ -86,7 +94,6 @@ void main() {
       metadataService: _FakeMetadataService(),
       pushNotificationService: _createPushNotificationService(),
       tokenRefresher: _FakeTokenRefresher(),
-      projectsDao: database.projectsDao,
       failureReporter: FakeFailureReporter(),
       prSyncService: fakePrSyncService,
       sessionRepository: sessionRepository,
@@ -174,13 +181,19 @@ void main() {
       sessionDao: database.sessionDao,
       db: database,
     );
-    final branchRepository2 = BranchRepository(gitCliApi: GitCliApi(processRunner: FakeProcessRunner()));
+    final branchRepository2 = BranchRepository(
+      gitCliApi: GitCliApi(processRunner: FakeProcessRunner(), gitPathExists: ({required String gitPath}) => true),
+    );
     final worktreeService = WorktreeService(
       branchRepository: branchRepository2,
-      projectsDao: database.projectsDao,
-      sessionDao: database.sessionDao,
-      processRunner: FakeProcessRunner(),
-      gitPathExists: ({required String gitPath}) => true,
+      worktreeRepository: WorktreeRepository(
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        gitApi: GitCliApi(
+          processRunner: FakeProcessRunner(),
+          gitPathExists: ({required String gitPath}) => true,
+        ),
+      ),
     );
 
     final orchestrator = Orchestrator(
@@ -196,7 +209,6 @@ void main() {
       metadataService: _FakeMetadataService(),
       pushNotificationService: pushService,
       tokenRefresher: _FakeTokenRefresher(),
-      projectsDao: database.projectsDao,
       failureReporter: FakeFailureReporter(),
       prSyncService: fakePrSyncService,
       sessionRepository: sessionRepository,
@@ -721,4 +733,6 @@ class _NoopSessionRepository implements SessionRepository {
   }) async => false;
   @override
   Future<String?> getProjectPath({required String projectId}) async => null;
+  @override
+  Future<SessionDto?> getStoredSession({required String sessionId}) async => null;
 }

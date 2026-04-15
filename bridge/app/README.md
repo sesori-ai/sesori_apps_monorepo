@@ -16,11 +16,76 @@ make build
 
 Press `Ctrl+C` to stop. This shuts down both the bridge and the OpenCode server it started.
 
-No Dart SDK? Use the npm distribution instead:
+No Dart SDK? You can bootstrap the managed install with npm:
 
 ```bash
-npx @sesori/bridge
+npx @sesori/bridge --version
+
+# If PATH has not refreshed in this shell yet, open a new terminal
+# or run ~/.sesori/bin/sesori-bridge directly on macOS/Linux.
+sesori-bridge
 ```
+
+`npx @sesori/bridge` only installs or refreshes the managed runtime under `~/.sesori/` on macOS/Linux or `%LOCALAPPDATA%\sesori\` on Windows. `sesori-bridge` is the long-lived command you keep running after that bootstrap step. Shell installers are still supported if you prefer them. `npm uninstall @sesori/bridge` does not remove the managed install, so delete that Sesori directory manually if you want a full uninstall.
+
+## Install
+
+Choose one supported packaged install path:
+
+### npm bootstrap
+
+```bash
+npx @sesori/bridge --version
+
+# If PATH has not refreshed in this shell yet, open a new terminal
+# or run ~/.sesori/bin/sesori-bridge directly on macOS/Linux.
+sesori-bridge
+```
+
+Use `npx @sesori/bridge` when you want npm to bootstrap or refresh the managed runtime, then keep running `sesori-bridge` from your PATH. On a first-time install, the PATH change is written for future terminals, so you may need to open a new terminal first.
+
+### Shell installer
+
+macOS / Linux:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/main/install.sh | bash
+
+# If PATH has not refreshed in this shell yet, open a new terminal
+# or run ~/.sesori/bin/sesori-bridge directly.
+sesori-bridge --version
+```
+
+Windows:
+
+```powershell
+irm https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/main/install.ps1 | iex
+
+# If PATH has not refreshed in this shell yet, open a new terminal
+# or run the managed binary directly.
+sesori-bridge --version
+```
+
+Both paths install the same managed runtime under `~/.sesori/` on macOS/Linux or `%LOCALAPPDATA%\sesori\` on Windows.
+
+## Update
+
+- Managed installs check for updates at startup.
+- Managed installs poll again every 4 hours while the bridge keeps running.
+- Auto-update is skipped in CI.
+- Auto-update is skipped when `SESORI_NO_UPDATE=1` is set.
+- If you want to refresh immediately, rerun either the shell installer or `npx @sesori/bridge`.
+
+Direct execution from npm-owned package payloads inside `node_modules` is unsupported. The supported steady-state command is always the managed `sesori-bridge` launcher.
+
+## Uninstall
+
+Delete the managed install directory to fully remove the packaged bridge runtime:
+
+- macOS / Linux: `rm -rf ~/.sesori`
+- Windows: `Remove-Item -Recurse -Force "$env:LOCALAPPDATA\sesori"`
+
+If you used the npm bootstrap path, `npm uninstall @sesori/bridge` does not remove that managed install directory.
 
 ## How It Works
 
@@ -129,6 +194,10 @@ dart run bin/bridge.dart
 # Compiled binary
 ./dist/bridge-macos-arm64
 ./dist/bridge-linux-x64
+
+# npm bootstrap, then run the managed launcher
+npx @sesori/bridge --version
+sesori-bridge
 ```
 
 ## Project Structure
@@ -147,3 +216,13 @@ The crypto and protocol types live in `sesori_shared`, shared with the Flutter m
 ```bash
 dart test
 ```
+
+## License
+
+This package is source-available under the Functional Source License, Version 1.1, Apache 2.0 Future License (`FSL-1.1-ALv2`).
+
+You may use it for permitted purposes, but you may not use it to launch a competing product or service.
+
+On the second anniversary of the date this version is made available, it automatically becomes available under Apache License 2.0.
+
+See the repo root [LICENSE](../../LICENSE) for the full terms.

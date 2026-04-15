@@ -32,6 +32,44 @@ dart pub get
 make build
 ```
 
+## Install
+
+For packaged installs, use the bridge distribution docs instead of building from source:
+
+- [INSTALL.md](INSTALL.md) — shell installer, `npx @sesori/bridge`, update behavior, and uninstall steps
+- [RELEASING.md](RELEASING.md) — release verification and manual test-release flow
+
+Quick packaged install options:
+
+```bash
+# npm bootstrap
+npx @sesori/bridge --version
+
+# If PATH has not refreshed in this shell yet, open a new terminal
+# or run ~/.sesori/bin/sesori-bridge directly on macOS/Linux.
+sesori-bridge
+
+# macOS / Linux shell installer
+curl -fsSL https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/main/install.sh | bash
+```
+
+Windows PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/main/install.ps1 | iex
+```
+
+Both install paths update PATH for future shells. On a first-time install, you may need to open a new terminal before `sesori-bridge` resolves from PATH.
+
+## Uninstall
+
+Delete the managed install directory to fully remove the packaged bridge runtime:
+
+- macOS / Linux: `~/.sesori/`
+- Windows: `%LOCALAPPDATA%\sesori\`
+
+If you used the npm bootstrap path, `npm uninstall @sesori/bridge` does not remove that managed install directory.
+
 ## Development Commands
 
 Run these from `bridge/`:

@@ -1,13 +1,27 @@
 {
   "name": "@sesori/bridge-win32-x64",
-  "version": "0.2.0",
-  "description": "Sesori Bridge binary for Windows x64",
-  "os": ["win32"],
-  "cpu": ["x64"],
-  "files": ["bin/"],
-  "license": "MIT",
+  "version": "0.3.1",
+  "description": "Bootstrap payload for the managed Sesori Bridge runtime on Windows x64",
+  "os": [
+    "win32"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "files": [
+    "lib/runtime/"
+  ],
+  "sesoriBridge": {
+    "bootstrapOnly": true,
+    "managedRuntimeOwner": false,
+    "releaseTag": "bridge-v0.3.1",
+    "releaseArtifact": "sesori-bridge-windows-x64.zip",
+    "runtimeBundlePath": "lib/runtime"
+  },
+  "license": "SEE LICENSE IN LICENSE",
   "repository": {
     "type": "git",
-    "url": "https://github.com/sesori-ai/sesori_bridge_dart"
+    "url": "git+https://github.com/sesori-ai/sesori_apps_monorepo.git",
+    "directory": "bridge/app/npm/sesori-bridge-win32-x64"
   }
 }

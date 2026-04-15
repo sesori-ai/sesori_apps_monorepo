@@ -1,3 +1,5 @@
+// ignore_for_file: no_slop_linter/avoid_dynamic_type
+
 abstract interface class FailureReporter {
   /// Sets a global key-value pair for crash report context.
   void setGlobalKey({required String key, required Object value});

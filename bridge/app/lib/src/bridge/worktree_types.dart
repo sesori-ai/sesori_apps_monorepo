@@ -1,9 +1,3 @@
-part of "worktree_service.dart";
-
-// ---------------------------------------------------------------------------
-// Result types
-// ---------------------------------------------------------------------------
-
 sealed class WorktreeSafetyResult {}
 
 class WorktreeSafe extends WorktreeSafetyResult {}
