@@ -15,6 +15,7 @@
   "sesoriBridge": {
     "bootstrapOnly": true,
     "managedRuntimeOwner": false,
+    "releaseTag": "bridge-v0.3.1",
     "runtimeBundleSource": "github-release-assets"
   },
   "license": "SEE LICENSE IN LICENSE",

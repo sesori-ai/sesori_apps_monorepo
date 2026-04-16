@@ -74,6 +74,7 @@ dependencies:
       'sesoriBridge': {
         'bootstrapOnly': true,
         'managedRuntimeOwner': false,
+        'releaseTag': 'bridge-v$oldVersion',
         'runtimeBundleSource': 'github-release-assets',
       },
       'optionalDependencies': {
@@ -165,6 +166,10 @@ void main() {
       expect(pubspec, isNot(contains('version: ${fixture.oldVersion}')));
       expect(versionDart, equals("const String appVersion = '${fixture.newVersion}';\n"));
       expect(wrapperPackage['version'], equals(fixture.newVersion));
+      expect(
+        (wrapperPackage['sesoriBridge'] as Map<String, dynamic>)['releaseTag'],
+        equals('bridge-v${fixture.newVersion}'),
+      );
 
       final optionalDependencies = wrapperPackage['optionalDependencies'] as Map<String, dynamic>;
       expect(optionalDependencies['@sesori/bridge-darwin-arm64'], equals(fixture.newVersion));

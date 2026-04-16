@@ -225,35 +225,46 @@ verify_checksum() {
 add_to_path() {
     local bin_dir="${1}"
 
-    case ":${PATH}:" in
-        *":${bin_dir}:"*) return 0 ;;
-    esac
-
     local shell_name
     shell_name="$(basename "${SHELL:-}")"
 
-    local rc_file
+    local rc_files=()
     case "${shell_name}" in
-        bash) rc_file="${HOME}/.bashrc" ;;
-        zsh)  rc_file="${HOME}/.zshrc" ;;
+        bash) rc_files=("${HOME}/.bashrc" "${HOME}/.profile") ;;
+        zsh)  rc_files=("${HOME}/.zshrc" "${HOME}/.zprofile") ;;
         fish)
-            rc_file="${HOME}/.config/fish/config.fish"
+            local rc_file="${HOME}/.config/fish/config.fish"
             mkdir -p "$(dirname "${rc_file}")"
             if ! grep -qF 'fish_add_path "$HOME/.sesori/bin"' "${rc_file}" 2>/dev/null; then
                 echo 'fish_add_path "$HOME/.sesori/bin"' >> "${rc_file}"
-                echo "Added ~/.sesori/bin to PATH in ${rc_file}."
-                echo "Run 'source ${rc_file}' or open a new terminal."
+                echo "PATH: persisted ~/.sesori/bin in ${rc_file}. Run 'source ${rc_file}' or open a new terminal."
             fi
             return 0
             ;;
-        *) rc_file="${HOME}/.profile" ;;
+        *) rc_files=("${HOME}/.profile") ;;
     esac
 
     local export_line='export PATH="$HOME/.sesori/bin:$PATH"'
-    if ! grep -qF "${export_line}" "${rc_file}" 2>/dev/null; then
-        echo "${export_line}" >> "${rc_file}"
-        echo "Added ~/.sesori/bin to PATH in ${rc_file}."
-        echo "Run 'source ${rc_file}' or open a new terminal."
+    local updated_files=()
+    local rc_file
+    for rc_file in "${rc_files[@]}"; do
+        if ! grep -qF "${export_line}" "${rc_file}" 2>/dev/null; then
+            echo "${export_line}" >> "${rc_file}"
+            updated_files+=("${rc_file}")
+        fi
+    done
+
+    if [ ${#updated_files[@]} -gt 0 ]; then
+        local joined_files="${updated_files[0]}"
+        local index
+        for (( index=1; index<${#updated_files[@]}; index++ )); do
+            if [ ${index} -eq $((${#updated_files[@]} - 1)) ]; then
+                joined_files+=" and ${updated_files[index]}"
+            else
+                joined_files+=", ${updated_files[index]}"
+            fi
+        done
+        echo "PATH: persisted ~/.sesori/bin in ${joined_files}. Run 'source ${updated_files[0]}' or open a new terminal."
     fi
 }
 
@@ -281,9 +292,13 @@ main() {
     archive_url="${RESOLVED_ARCHIVE_URL}"
     checksums_url="${RESOLVED_CHECKSUMS_URL}"
 
-    echo "Detected platform: ${os}/${arch}"
-    echo "Resolved release: ${RESOLVED_RELEASE_TAG}"
-    echo "Downloading sesori-bridge..."
+    echo "Sesori Bridge installer"
+    echo "======================="
+    echo "Platform     : ${os}/${arch}"
+    echo "Release      : ${RESOLVED_RELEASE_TAG}"
+    echo "Install root : ${INSTALL_DIR}"
+    echo ""
+    echo "[1/3] Downloading release assets..."
 
     TMPDIR_WORK="$(mktemp -d)"
     local archive="${TMPDIR_WORK}/${filename}"
@@ -292,11 +307,11 @@ main() {
     download "${archive_url}" "${archive}"
     download "${checksums_url}" "${checksums}"
 
-    echo "Verifying checksum..."
+    echo "[2/3] Verifying checksum..."
     verify_checksum "${archive}" "${checksums}" "${filename}" "${os}"
     echo "Checksum OK."
 
-    echo "Installing to ${INSTALL_DIR}..."
+    echo "[3/3] Installing managed runtime..."
     mkdir -p "${BIN_DIR}"
     tar -xzf "${archive}" -C "${INSTALL_DIR}"
 
@@ -310,10 +325,18 @@ main() {
     check_conflicts
     add_to_path "${BIN_DIR}"
 
-    echo "Installation complete."
     echo ""
-    echo "Installed version:"
-    "${BINARY}" --version
+    echo "Sesori Bridge install complete"
+    echo "============================"
+    echo "Managed binary : ${BINARY}"
+    echo ""
+    echo "Next steps"
+    echo "----------"
+    echo "1. Start the bridge:"
+    echo "   sesori-bridge"
+    echo ""
+    echo "2. If sesori-bridge is not available in this shell yet, open a new terminal or run:"
+    echo "   ${BINARY}"
 }
 
 main
