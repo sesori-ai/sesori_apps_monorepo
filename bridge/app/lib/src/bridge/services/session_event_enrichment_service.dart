@@ -26,14 +26,18 @@ class SessionEventEnrichmentService {
       };
     } catch (e, st) {
       Log.w("[sse] failed to enrich ${event.runtimeType}: $e");
-      await _failureReporter.recordFailure(
-        error: e,
-        stackTrace: st,
-        uniqueIdentifier: "bridge.sse.enrichment",
-        fatal: false,
-        reason: "failed to enrich plugin SSE event",
-        information: [event.runtimeType],
-      );
+      try {
+        await _failureReporter.recordFailure(
+          error: e,
+          stackTrace: st,
+          uniqueIdentifier: "bridge.sse.enrichment",
+          fatal: false,
+          reason: "failed to enrich plugin SSE event",
+          information: [event.runtimeType],
+        );
+      } catch (reportError, reportStackTrace) {
+        Log.w("[sse] failed to report enrichment failure: $reportError\n$reportStackTrace");
+      }
       return event;
     }
   }
