@@ -7,6 +7,13 @@ var child_process = require("child_process");
 function unixManagedBinDir() { return "$HOME/.sesori/bin"; }
 function fishManagedBinDir() { return '"$HOME/.sesori/bin"'; }
 
+function sourceHint(filePath, shellName) {
+  if (shellName === "fish") {
+    return "Run `source " + filePath + "` or open a new terminal.";
+  }
+  return "Run `source " + filePath + "` or open a new terminal.";
+}
+
 function unixPathFile(homeDir, shellName) {
   if (shellName === "bash") {
     return path.join(homeDir, ".bashrc");
@@ -38,14 +45,14 @@ function ensureUnixPathEntry(homeDir, shellPath) {
     var fishConfig = path.join(homeDir, ".config", "fish", "config.fish");
     if (ensureLine(fishConfig, "fish_add_path " + fishManagedBinDir())) {
       changed = true;
-      messages.push("Persisted ~/.sesori/bin in " + fishConfig + ".");
+      messages.push("Persisted ~/.sesori/bin in " + fishConfig + ". " + sourceHint(fishConfig, shellName));
     }
   } else {
     var exportLine = 'export PATH="' + unixManagedBinDir() + ':$PATH"';
     var rcFile = unixPathFile(homeDir, shellName);
     if (ensureLine(rcFile, exportLine)) {
       changed = true;
-      messages.push("Persisted ~/.sesori/bin in " + rcFile + ".");
+      messages.push("Persisted ~/.sesori/bin in " + rcFile + ". " + sourceHint(rcFile, shellName));
     }
   }
 

@@ -64,12 +64,13 @@ function printInstallSummary(options) {
   console.log("Managed binary : " + options.binaryPath);
   console.log("PATH update    : " + options.pathStatus);
   console.log("");
-  console.log("Next step");
-  console.log("---------");
-  console.log(commands.pathCommand);
+  console.log("Next steps");
+  console.log("----------");
+  console.log("1. Start the bridge:");
+  console.log("   " + commands.pathCommand);
   console.log("");
-  console.log("If `sesori-bridge` is not available in this shell yet, run:");
-  console.log(commands.managed);
+  console.log("2. If `sesori-bridge` is not available in this shell yet, run:");
+  console.log("   " + commands.managed);
 }
 
 function managedBinDir(installRoot) { return path.dirname(runtimeInstall.managedBinaryPath(installRoot)); }

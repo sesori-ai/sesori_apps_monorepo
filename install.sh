@@ -237,7 +237,7 @@ add_to_path() {
             mkdir -p "$(dirname "${rc_file}")"
             if ! grep -qF 'fish_add_path "$HOME/.sesori/bin"' "${rc_file}" 2>/dev/null; then
                 echo 'fish_add_path "$HOME/.sesori/bin"' >> "${rc_file}"
-                echo "PATH: persisted ~/.sesori/bin in ${rc_file}."
+                echo "PATH: persisted ~/.sesori/bin in ${rc_file}. Run 'source ${rc_file}' or open a new terminal."
             fi
             return 0
             ;;
@@ -247,7 +247,7 @@ add_to_path() {
     local export_line='export PATH="$HOME/.sesori/bin:$PATH"'
     if ! grep -qF "${export_line}" "${rc_file}" 2>/dev/null; then
         echo "${export_line}" >> "${rc_file}"
-        echo "PATH: persisted ~/.sesori/bin in ${rc_file}."
+        echo "PATH: persisted ~/.sesori/bin in ${rc_file}. Run 'source ${rc_file}' or open a new terminal."
     fi
 }
 
@@ -313,12 +313,13 @@ main() {
     echo "============================"
     echo "Managed binary : ${BINARY}"
     echo ""
-    echo "Next step"
-    echo "---------"
-    echo "sesori-bridge"
+    echo "Next steps"
+    echo "----------"
+    echo "1. Start the bridge:"
+    echo "   sesori-bridge"
     echo ""
-    echo "If sesori-bridge is not available in this shell yet, open a new terminal or run:"
-    echo "${BINARY}"
+    echo "2. If sesori-bridge is not available in this shell yet, open a new terminal or run:"
+    echo "   ${BINARY}"
 }
 
 main
