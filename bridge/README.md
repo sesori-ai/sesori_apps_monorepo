@@ -43,7 +43,7 @@ Quick packaged install options:
 
 ```bash
 # npm bootstrap
-npx @sesori/bridge --version
+npx @sesori/bridge
 
 # If PATH has not refreshed in this shell yet, open a new terminal
 # or run ~/.sesori/bin/sesori-bridge directly on macOS/Linux.

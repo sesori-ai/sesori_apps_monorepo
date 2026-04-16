@@ -19,7 +19,7 @@ Press `Ctrl+C` to stop. This shuts down both the bridge and the OpenCode server 
 No Dart SDK? You can bootstrap the managed install with npm:
 
 ```bash
-npx @sesori/bridge --version
+npx @sesori/bridge
 
 # If PATH has not refreshed in this shell yet, open a new terminal
 # or run ~/.sesori/bin/sesori-bridge directly on macOS/Linux.
@@ -35,14 +35,14 @@ Choose one supported packaged install path:
 ### npm bootstrap
 
 ```bash
-npx @sesori/bridge --version
+npx @sesori/bridge
 
 # If PATH has not refreshed in this shell yet, open a new terminal
 # or run ~/.sesori/bin/sesori-bridge directly on macOS/Linux.
 sesori-bridge
 ```
 
-Use `npx @sesori/bridge` when you want npm to bootstrap or refresh the managed runtime, then keep running `sesori-bridge` from your PATH. The bootstrap path installs the same managed runtime that the GitHub release assets and shell installers publish. On a first-time install, the PATH change is written for future terminals, so you may need to open a new terminal first.
+Use `npx @sesori/bridge` when you want npm to bootstrap or refresh the managed runtime, then keep running `sesori-bridge` from your PATH. The bootstrap path installs the same managed runtime that the GitHub release assets and shell installers publish, but it does not launch the service for you. On a first-time install, the PATH change is written for future terminals, so you may need to open a new terminal first.
 
 ### Shell installer
 
@@ -196,7 +196,7 @@ dart run bin/bridge.dart
 ./dist/bridge-linux-x64
 
 # npm bootstrap, then run the managed launcher
-npx @sesori/bridge --version
+npx @sesori/bridge
 sesori-bridge
 ```
 
