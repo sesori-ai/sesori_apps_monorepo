@@ -156,11 +156,15 @@ class SessionArchiveService {
     )) {
       final hasWorktreeOnDisk = Directory(worktreePath).existsSync();
       if (!hasWorktreeOnDisk) {
+        final restoreBaseBranch = await _resolveRestoreBaseBranch(
+          projectId: projectId,
+          storedBaseBranch: sessionDto.baseBranch,
+        );
         await _worktreeService.restoreWorktree(
           projectPath: projectId,
           worktreePath: worktreePath,
           branchName: branchName,
-          baseBranch: sessionDto.baseBranch ?? "main",
+          baseBranch: restoreBaseBranch,
           baseCommit: sessionDto.baseCommit,
         );
       }
@@ -173,5 +177,19 @@ class SessionArchiveService {
       throw SessionNotFoundException();
     }
     return session;
+  }
+
+  Future<String> _resolveRestoreBaseBranch({
+    required String projectId,
+    required String? storedBaseBranch,
+  }) async {
+    if (storedBaseBranch case final baseBranch?) {
+      return baseBranch;
+    }
+    final resolved = await _worktreeService.resolveBaseBranchAndCommit(projectPath: projectId);
+    if (resolved == null) {
+      throw SessionInitializationException();
+    }
+    return resolved.baseBranch;
   }
 }

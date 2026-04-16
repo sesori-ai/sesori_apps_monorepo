@@ -371,6 +371,11 @@ void main() {
           summary: null,
         ),
       ];
+      worktreeService.resolveBaseBranchAndCommitResult = (
+        baseBranch: "develop",
+        baseCommit: "abc123",
+        startPoint: "develop",
+      );
 
       await handler.handle(
         makeRequest("PATCH", "/session/update/archive"),
@@ -390,7 +395,7 @@ void main() {
       expect(worktreeService.lastRestoreProjectPath, equals("/repo"));
       expect(worktreeService.lastRestoreWorktreePath, equals(deletedWorktreePath));
       expect(worktreeService.lastRestoreBranchName, equals("session-001"));
-      expect(worktreeService.lastRestoreBaseBranch, equals("main"));
+      expect(worktreeService.lastRestoreBaseBranch, equals("develop"));
       expect(worktreeService.lastRestoreBaseCommit, isNull);
       final persisted = await db.sessionDao.getSession(sessionId: "s1");
       expect(persisted?.archivedAt, isNull);
@@ -1008,6 +1013,7 @@ class _FakeWorktreeService extends WorktreeService {
   bool removeResult = true;
   bool deleteBranchResult = true;
   bool restoreResult = true;
+  ({String baseBranch, String baseCommit, String startPoint})? resolveBaseBranchAndCommitResult;
 
   int checkCallCount = 0;
   int removeCallCount = 0;
@@ -1092,6 +1098,13 @@ class _FakeWorktreeService extends WorktreeService {
     lastRestoreBaseBranch = baseBranch;
     lastRestoreBaseCommit = baseCommit;
     return restoreResult;
+  }
+
+  @override
+  Future<({String baseBranch, String baseCommit, String startPoint})?> resolveBaseBranchAndCommit({
+    required String projectPath,
+  }) async {
+    return resolveBaseBranchAndCommitResult;
   }
 }
 
