@@ -7,18 +7,21 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "routing/request_router.dart";
+import "services/session_event_enrichment_service.dart";
 import "sse/bridge_event_mapper.dart";
 
 class DebugServer {
   final BridgePlugin _plugin;
   final RequestRouter _router;
   final BridgeEventMapper _mapper;
+  final SessionEventEnrichmentService _sessionEventEnrichmentService;
+  final FailureReporter _failureReporter;
   final int port;
   final List<HttpResponse> _sseClients = [];
   final CompositeSubscription _compositeSubscription = CompositeSubscription();
 
   HttpServer? _server;
-  StreamSubscription<BridgeSseEvent>? _pluginEventsSub;
+  StreamSubscription<void>? _pluginEventsSub;
 
   int _nextRequestId = 1;
 
@@ -27,9 +30,15 @@ class DebugServer {
     required RequestRouter router,
     required this.port,
     required FailureReporter failureReporter,
+    required SessionEventEnrichmentService sessionEventEnrichmentService,
   }) : _plugin = plugin,
        _router = router,
-       _mapper = BridgeEventMapper(plugin: plugin, failureReporter: failureReporter);
+       _failureReporter = failureReporter,
+       _mapper = BridgeEventMapper(
+         plugin: plugin,
+         failureReporter: failureReporter,
+       ),
+       _sessionEventEnrichmentService = sessionEventEnrichmentService;
 
   int? get boundPort => _server?.port;
   RequestRouter get router => _router;
@@ -130,12 +139,26 @@ class DebugServer {
 
       _sseClients.add(response);
 
-      _pluginEventsSub ??= _plugin.events.listen((event) {
-        final mapped = _mapper.map(event);
-        if (mapped != null) {
-          unawaited(_fanOutEvent(jsonEncode(mapped.toJson())));
-        }
-      });
+      _pluginEventsSub ??= _plugin.events
+          .asyncMap<BridgeSseEvent>((event) => _sessionEventEnrichmentService.enrich(event))
+          .map<SesoriSseEvent?>((event) => _mapper.map(event))
+          .asyncMap((mapped) => _fanOutMappedEvent(mapped: mapped))
+          .listen(
+            (_) {},
+            onError: (Object e, StackTrace st) {
+              Log.w("debug SSE stream error: $e");
+              unawaited(
+                _failureReporter.recordFailure(
+                  error: e,
+                  stackTrace: st,
+                  uniqueIdentifier: "bridge.debug_server.sse",
+                  fatal: false,
+                  reason: "debug SSE stream failure",
+                  information: const [],
+                ),
+              );
+            },
+          );
 
       final disconnected = Completer<void>();
       unawaited(
@@ -175,6 +198,13 @@ class DebugServer {
         }
       }
     }
+  }
+
+  Future<void> _fanOutMappedEvent({required SesoriSseEvent? mapped}) async {
+    if (mapped == null) {
+      return;
+    }
+    await _fanOutEvent(jsonEncode(mapped.toJson()));
   }
 
   void _removeSseClient(HttpResponse client) {

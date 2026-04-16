@@ -568,11 +568,36 @@ class _NoopPullRequestRepository implements PullRequestRepository {
 
 class _NoopSessionRepository implements SessionRepository {
   @override
+  Future<Session> createSession({
+    required String directory,
+    required String? parentSessionId,
+    required List<PromptPart> parts,
+    required String? agent,
+    required PromptModel? model,
+  }) async => const Session(
+    id: "",
+    projectID: "",
+    directory: "",
+    parentID: null,
+    title: null,
+    time: null,
+    summary: null,
+    pullRequest: null,
+  );
+  @override
   Future<List<Session>> getSessionsForProject({
     required String projectId,
     required int? start,
     required int? limit,
   }) async => const <Session>[];
+  @override
+  Future<Session> enrichSession({required Session session}) async => session;
+  @override
+  Future<Session> enrichPluginSession({required PluginSession pluginSession}) async => pluginSession.toSharedSession();
+  @override
+  Future<Session> enrichSessionJson({required Map<String, dynamic> sessionJson}) async => Session.fromJson(sessionJson);
+  @override
+  Future<List<Session>> enrichSessions({required List<Session> sessions}) async => sessions;
   @override
   Future<List<Session>> getChildSessions({required String sessionId}) async => const <Session>[];
   @override
@@ -589,6 +614,27 @@ class _NoopSessionRepository implements SessionRepository {
   Future<String?> getProjectPath({required String projectId}) async => null;
   @override
   Future<SessionDto?> getStoredSession({required String sessionId}) async => null;
+
+  @override
+  Future<String?> findProjectIdForSession({required String sessionId}) async => null;
+
+  @override
+  Future<Session?> getSessionForProject({required String projectId, required String sessionId}) async => null;
+
+  @override
+  Future<void> notifySessionArchived({required String sessionId}) async {}
+
+  @override
+  Future<Session> renameSession({required String sessionId, required String title}) async => const Session(
+    id: "",
+    projectID: "",
+    directory: "",
+    parentID: null,
+    title: null,
+    time: null,
+    summary: null,
+    pullRequest: null,
+  );
 }
 
 /// Test-friendly [SessionRepository] that delegates to a [FakeBridgePlugin]
@@ -608,6 +654,24 @@ class FakeSessionRepository implements SessionRepository {
   }) : _plugin = plugin,
        _sessionDao = sessionDao ?? FakeSessionDao(),
        _pullRequestRepository = pullRequestRepository ?? FakePullRequestRepository();
+
+  @override
+  Future<Session> createSession({
+    required String directory,
+    required String? parentSessionId,
+    required List<PromptPart> parts,
+    required String? agent,
+    required PromptModel? model,
+  }) async => const Session(
+    id: "",
+    projectID: "",
+    directory: "",
+    parentID: null,
+    title: null,
+    time: null,
+    summary: null,
+    pullRequest: null,
+  );
 
   @override
   Future<List<Session>> getSessionsForProject({
@@ -646,6 +710,38 @@ class FakeSessionRepository implements SessionRepository {
       if (pr == null) return session;
       return session.copyWith(pullRequest: pullRequestInfoFromDto(pr));
     }).toList();
+  }
+
+  @override
+  Future<Session> enrichSession({required Session session}) async {
+    final sessions = await enrichSessions(sessions: [session]);
+    return sessions.single;
+  }
+
+  @override
+  Future<Session> enrichPluginSession({required PluginSession pluginSession}) async {
+    return enrichSession(session: pluginSession.toSharedSession());
+  }
+
+  @override
+  Future<Session> enrichSessionJson({required Map<String, dynamic> sessionJson}) async {
+    return enrichSession(session: Session.fromJson(sessionJson));
+  }
+
+  @override
+  Future<List<Session>> enrichSessions({required List<Session> sessions}) async {
+    final sessionIds = sessions.map((session) => session.id).toList(growable: false);
+    final dbSessions = await _sessionDao.getSessionsByIds(sessionIds: sessionIds);
+    final prsBySessionId = await _pullRequestRepository.getPrsBySessionIds(sessionIds: sessionIds);
+    final pullRequestsBySessionId = <String, PullRequestInfo>{
+      for (final session in sessions)
+        if (_selectBestPr(prsBySessionId[session.id]) case final pr?) session.id: pullRequestInfoFromDto(pr),
+    };
+    return enrichSharedSessions(
+      sessions: sessions,
+      storedSessionsById: dbSessions,
+      pullRequestsBySessionId: pullRequestsBySessionId,
+    );
   }
 
   static PullRequestDto? _selectBestPr(List<PullRequestDto>? prs) {
@@ -704,4 +800,33 @@ class FakeSessionRepository implements SessionRepository {
   Future<SessionDto?> getStoredSession({required String sessionId}) async {
     return _sessionDao.getSession(sessionId: sessionId);
   }
+
+  @override
+  Future<String?> findProjectIdForSession({required String sessionId}) async => null;
+
+  @override
+  Future<Session?> getSessionForProject({required String projectId, required String sessionId}) async {
+    final sessions = await getSessionsForProject(projectId: projectId, start: null, limit: null);
+    for (final session in sessions) {
+      if (session.id == sessionId) {
+        return session;
+      }
+    }
+    return null;
+  }
+
+  @override
+  Future<void> notifySessionArchived({required String sessionId}) async {}
+
+  @override
+  Future<Session> renameSession({required String sessionId, required String title}) async => const Session(
+    id: "",
+    projectID: "",
+    directory: "",
+    parentID: null,
+    title: null,
+    time: null,
+    summary: null,
+    pullRequest: null,
+  );
 }
