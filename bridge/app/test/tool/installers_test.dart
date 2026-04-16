@@ -331,6 +331,7 @@ source ${jsonEncode(libraryPath)}
 add_to_path "\$HOME/.sesori/bin"
 add_to_path "\$HOME/.sesori/bin"
 cat "\$HOME/.zshrc"
+cat "\$HOME/.zprofile"
 ''',
         environment: {
           'PATH': '/usr/bin:/bin',
