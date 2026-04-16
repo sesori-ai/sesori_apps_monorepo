@@ -6,6 +6,8 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../auth/token_refresh_exception.dart";
 import "completion_notifier.dart";
+import "push_maintenance_loop.dart";
+import "push_maintenance_telemetry.dart";
 import "push_notification_client.dart";
 import "push_rate_limiter.dart";
 import "push_send_exception.dart";
@@ -16,6 +18,7 @@ class PushNotificationService {
   final PushRateLimiter _rateLimiter;
   final PushSessionStateTracker _tracker;
   final CompletionNotifier _completionNotifier;
+  late final PushMaintenanceLoop _maintenanceLoop;
   late final StreamSubscription<String> _completionSubscription;
 
   PushNotificationService({
@@ -23,12 +26,26 @@ class PushNotificationService {
     required PushRateLimiter rateLimiter,
     required PushSessionStateTracker tracker,
     required CompletionNotifier completionNotifier,
+    Duration maintenanceInterval = const Duration(minutes: 10),
+    int? Function()? rssBytesReader,
+    void Function(String)? debugLogger,
   }) : _client = client,
        _rateLimiter = rateLimiter,
        _tracker = tracker,
        _completionNotifier = completionNotifier {
     _completionSubscription = _completionNotifier.completions.listen(_sendCompletionNotification);
+    _maintenanceLoop = PushMaintenanceLoop(
+      tracker: _tracker,
+      completionNotifier: _completionNotifier,
+      rateLimiter: _rateLimiter,
+      maintenanceInterval: maintenanceInterval,
+      rssBytesReader: rssBytesReader,
+      debugLogger: debugLogger,
+    );
   }
+
+  @visibleForTesting
+  PushMaintenanceTelemetrySnapshot? get lastMaintenanceTelemetry => _maintenanceLoop.lastSnapshot;
 
   void handleSseEvent(SesoriSseEvent event) {
     _tracker.handleEvent(event);
@@ -43,6 +60,7 @@ class PushNotificationService {
   }
 
   Future<void> dispose() async {
+    _maintenanceLoop.dispose();
     await _completionSubscription.cancel();
     _completionNotifier.dispose();
   }
@@ -77,6 +95,8 @@ class PushNotificationService {
     final body = truncateToWords(
       (latestAssistantText == null || latestAssistantText.trim().isEmpty) ? "Task completed" : latestAssistantText,
     );
+
+    _tracker.clearLatestAssistantTextForRootSubtree(rootSessionId: rootSessionId);
 
     _sendNotification(
       category: NotificationCategory.sessionMessage,

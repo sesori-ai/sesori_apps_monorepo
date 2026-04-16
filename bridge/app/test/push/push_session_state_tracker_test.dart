@@ -1,4 +1,5 @@
 import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
+import "package:sesori_bridge/src/push/push_session_state_tracker_models.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -634,6 +635,83 @@ void main() {
       expect(tracker.resolveRootSessionId("child"), equals("child"));
     });
 
+    test("session delete removes only indexed message roles for that session", () {
+      final tracker = PushSessionStateTracker();
+
+      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
+      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "other")));
+      tracker.handleEvent(
+        const SesoriSseEvent.messageUpdated(
+          info: Message(
+            id: "root-msg",
+            role: "assistant",
+            sessionID: "root",
+            agent: null,
+            modelID: null,
+            providerID: null,
+          ),
+        ),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.messageUpdated(
+          info: Message(
+            id: "other-msg",
+            role: "assistant",
+            sessionID: "other",
+            agent: null,
+            modelID: null,
+            providerID: null,
+          ),
+        ),
+      );
+
+      tracker.handleEvent(SesoriSseEvent.sessionDeleted(info: _session(id: "root")));
+
+      expect(tracker.createTelemetrySnapshot().messageRoleCount, equals(1));
+
+      tracker.handleEvent(
+        const SesoriSseEvent.messagePartUpdated(
+          part: MessagePart(
+            id: "root-part",
+            sessionID: "root",
+            messageID: "root-msg",
+            type: MessagePartType.text,
+            text: "removed",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
+          ),
+        ),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.messagePartUpdated(
+          part: MessagePart(
+            id: "other-part",
+            sessionID: "other",
+            messageID: "other-msg",
+            type: MessagePartType.text,
+            text: "survived delete",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
+          ),
+        ),
+      );
+
+      expect(tracker.getLatestAssistantText("root"), isNull);
+      expect(tracker.getLatestAssistantText("other"), equals("survived delete"));
+    });
+
     test("ignores message part updates with non-text type", () {
       final tracker = PushSessionStateTracker();
 
@@ -964,7 +1042,530 @@ void main() {
       );
       expect(tracker.resolveRootSessionId("child"), equals("unknown-parent"));
     });
+
+    test("prunes an idle subtree and reports telemetry snapshot data", () {
+      final clock = _FakeClock(initial: DateTime.utc(2026, 1, 1, 12));
+      final tracker = PushSessionStateTracker.testable(now: clock.now);
+
+      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
+      clock.advance(const Duration(seconds: 1));
+      tracker.handleEvent(
+        SesoriSseEvent.sessionCreated(
+          info: _session(id: "child", parentID: "root"),
+        ),
+      );
+      clock.advance(const Duration(seconds: 1));
+      tracker.handleEvent(
+        const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+      );
+      clock.advance(const Duration(seconds: 1));
+      tracker.handleEvent(
+        const SesoriSseEvent.messageUpdated(
+          info: Message(
+            id: "assistant-msg",
+            role: "assistant",
+            sessionID: "child",
+            agent: null,
+            modelID: null,
+            providerID: null,
+          ),
+        ),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.messagePartUpdated(
+          part: MessagePart(
+            id: "part-1",
+            sessionID: "child",
+            messageID: "assistant-msg",
+            type: MessagePartType.text,
+            text: "latest child reply",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
+          ),
+        ),
+      );
+      clock.advance(const Duration(seconds: 1));
+      tracker.handleEvent(
+        const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
+      );
+
+      clock.advance(const Duration(minutes: 31));
+
+      expect(tracker.findPrunableRootSessionIds(), equals(["root"]));
+
+      final snapshot = tracker.createTelemetrySnapshot();
+      expect(snapshot.sessionCount, equals(2));
+      expect(snapshot.rootSessionCount, equals(1));
+      expect(snapshot.previouslyBusyCount, equals(1));
+      expect(snapshot.latestAssistantTextCount, equals(1));
+      expect(snapshot.messageRoleCount, equals(1));
+      expect(snapshot.assistantMessageRoleCount, equals(1));
+      expect(snapshot.oldestSessionActivityAt, isNotNull);
+      expect(snapshot.oldestMessageRoleUpdatedAt, isNotNull);
+      expect(snapshot.prunableRoots, hasLength(1));
+      expect(snapshot.prunableRoots.single.rootSessionId, equals("root"));
+      expect(
+        snapshot.prunableRoots.single.retainedSessionCount,
+        equals(2),
+      );
+
+      tracker.clearLatestAssistantTextForRootSubtree(rootSessionId: "root");
+      expect(tracker.getLatestAssistantText("child"), isNull);
+
+      final pruneResult = tracker.pruneRootSubtree(rootSessionId: "root");
+      expect(pruneResult.rootSessionId, equals("root"));
+      expect(pruneResult.removedSessionCount, equals(2));
+      expect(pruneResult.removedMessageRoleCount, equals(1));
+      expect(pruneResult.removedPermissionMappingCount, equals(0));
+      expect(tracker.createTelemetrySnapshot().sessionCount, equals(0));
+      expect(tracker.resolveRootSessionId("child"), equals("child"));
+    });
+
+    test("subtree prune removes only indexed message roles for that subtree", () {
+      final tracker = PushSessionStateTracker();
+
+      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root-a")));
+      tracker.handleEvent(
+        SesoriSseEvent.sessionCreated(
+          info: _session(id: "child-a", parentID: "root-a"),
+        ),
+      );
+      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root-b")));
+
+      tracker.handleEvent(
+        const SesoriSseEvent.messageUpdated(
+          info: Message(
+            id: "pruned-msg",
+            role: "assistant",
+            sessionID: "child-a",
+            agent: null,
+            modelID: null,
+            providerID: null,
+          ),
+        ),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.messageUpdated(
+          info: Message(
+            id: "survivor-msg",
+            role: "assistant",
+            sessionID: "root-b",
+            agent: null,
+            modelID: null,
+            providerID: null,
+          ),
+        ),
+      );
+
+      final pruneResult = tracker.pruneRootSubtree(rootSessionId: "root-a");
+      expect(pruneResult.removedSessionCount, equals(2));
+      expect(pruneResult.removedMessageRoleCount, equals(1));
+      expect(tracker.createTelemetrySnapshot().messageRoleCount, equals(1));
+
+      tracker.handleEvent(
+        const SesoriSseEvent.messagePartUpdated(
+          part: MessagePart(
+            id: "pruned-part",
+            sessionID: "child-a",
+            messageID: "pruned-msg",
+            type: MessagePartType.text,
+            text: "should stay pruned",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
+          ),
+        ),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.messagePartUpdated(
+          part: MessagePart(
+            id: "survivor-part",
+            sessionID: "root-b",
+            messageID: "survivor-msg",
+            type: MessagePartType.text,
+            text: "survivor text",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
+          ),
+        ),
+      );
+
+      expect(tracker.getLatestAssistantText("child-a"), isNull);
+      expect(tracker.getLatestAssistantText("root-b"), equals("survivor text"));
+    });
+
+    test("does not prune busy or pending roots before they become idle long enough", () {
+      final clock = _FakeClock(initial: DateTime.utc(2026, 1, 1, 12));
+      final tracker = PushSessionStateTracker.testable(now: clock.now);
+
+      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
+      tracker.handleEvent(
+        SesoriSseEvent.sessionCreated(
+          info: _session(id: "child", parentID: "root"),
+        ),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+      );
+
+      clock.advance(const Duration(minutes: 40));
+      expect(tracker.findPrunableRootSessionIds(), isEmpty);
+
+      tracker.handleEvent(
+        const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.questionAsked(
+          id: "q-1",
+          sessionID: "child",
+          questions: [QuestionInfo(header: "h", question: "q")],
+        ),
+      );
+
+      clock.advance(const Duration(minutes: 40));
+      expect(tracker.findPrunableRootSessionIds(), isEmpty);
+
+      tracker.handleEvent(
+        const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "child"),
+      );
+
+      clock.advance(const Duration(minutes: 31));
+      expect(tracker.findPrunableRootSessionIds(), equals(["root"]));
+    });
+
+    test("late events can rebuild state after a subtree prune", () {
+      final clock = _FakeClock(initial: DateTime.utc(2026, 1, 1, 12));
+      final tracker = PushSessionStateTracker.testable(now: clock.now);
+
+      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
+      tracker.handleEvent(
+        SesoriSseEvent.sessionCreated(
+          info: _session(id: "child", parentID: "root"),
+        ),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+      );
+
+      clock.advance(const Duration(minutes: 31));
+      tracker.pruneRootSubtree(rootSessionId: "root");
+
+      tracker.handleEvent(
+        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+      );
+      expect(tracker.isSessionGroupFullyIdle("child"), isFalse);
+      expect(tracker.resolveRootSessionId("child"), equals("child"));
+
+      tracker.handleEvent(
+        const SesoriSseEvent.messageUpdated(
+          info: Message(
+            id: "late-msg",
+            role: "assistant",
+            sessionID: "child",
+            agent: null,
+            modelID: null,
+            providerID: null,
+          ),
+        ),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.messagePartUpdated(
+          part: MessagePart(
+            id: "late-part",
+            sessionID: "child",
+            messageID: "late-msg",
+            type: MessagePartType.text,
+            text: "rebuilt text",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
+          ),
+        ),
+      );
+      expect(tracker.getLatestAssistantText("child"), equals("rebuilt text"));
+
+      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
+      tracker.handleEvent(
+        SesoriSseEvent.sessionUpdated(
+          info: _session(id: "child", parentID: "root"),
+        ),
+      );
+      expect(tracker.resolveRootSessionId("child"), equals("root"));
+    });
+
+    test("prunes stale message roles and enforces the hard cap", () {
+      final clock = _FakeClock(initial: DateTime.utc(2026, 1, 1, 12));
+      final tracker = PushSessionStateTracker.testable(now: clock.now);
+
+      tracker.handleEvent(
+        const SesoriSseEvent.messageUpdated(
+          info: Message(
+            id: "expired-msg",
+            role: "assistant",
+            sessionID: "expired-session",
+            agent: null,
+            modelID: null,
+            providerID: null,
+          ),
+        ),
+      );
+
+      clock.advance(const Duration(minutes: 31));
+      tracker.pruneMessageRoleMetadata();
+      tracker.handleEvent(
+        const SesoriSseEvent.messagePartUpdated(
+          part: MessagePart(
+            id: "expired-part",
+            sessionID: "expired-session",
+            messageID: "expired-msg",
+            type: MessagePartType.text,
+            text: "ignored",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
+          ),
+        ),
+      );
+      expect(tracker.getLatestAssistantText("expired-session"), isNull);
+
+      for (var index = 0; index <= PushSessionMaintenancePolicy.messageRoleHardCap; index++) {
+        tracker.handleEvent(
+          SesoriSseEvent.messageUpdated(
+            info: Message(
+              id: "msg-$index",
+              role: "assistant",
+              sessionID: "session-$index",
+              agent: null,
+              modelID: null,
+              providerID: null,
+            ),
+          ),
+        );
+        clock.advance(const Duration(milliseconds: 1));
+      }
+
+      tracker.pruneMessageRoleMetadata();
+      expect(
+        tracker.createTelemetrySnapshot().messageRoleCount,
+        equals(PushSessionMaintenancePolicy.messageRoleHardCap),
+      );
+
+      tracker.handleEvent(
+        const SesoriSseEvent.messagePartUpdated(
+          part: MessagePart(
+            id: "oldest-part",
+            sessionID: "session-0",
+            messageID: "msg-0",
+            type: MessagePartType.text,
+            text: "should stay pruned",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
+          ),
+        ),
+      );
+      expect(tracker.getLatestAssistantText("session-0"), isNull);
+
+      tracker.handleEvent(
+        const SesoriSseEvent.messagePartUpdated(
+          part: MessagePart(
+            id: "newest-part",
+            sessionID: "session-10000",
+            messageID: "msg-10000",
+            type: MessagePartType.text,
+            text: "latest kept role",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
+          ),
+        ),
+      );
+      expect(tracker.getLatestAssistantText("session-10000"), equals("latest kept role"));
+    });
+
+    test("active assistant message parts refresh role retention timestamps", () {
+      final clock = _FakeClock(initial: DateTime.utc(2026, 1, 1, 12));
+      final tracker = PushSessionStateTracker.testable(now: clock.now);
+
+      tracker.handleEvent(
+        const SesoriSseEvent.messageUpdated(
+          info: Message(
+            id: "stream-msg",
+            role: "assistant",
+            sessionID: "stream-session",
+            agent: null,
+            modelID: null,
+            providerID: null,
+          ),
+        ),
+      );
+
+      clock.advance(const Duration(minutes: 29));
+      tracker.handleEvent(
+        const SesoriSseEvent.messagePartUpdated(
+          part: MessagePart(
+            id: "stream-part-1",
+            sessionID: "stream-session",
+            messageID: "stream-msg",
+            type: MessagePartType.text,
+            text: "still streaming",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
+          ),
+        ),
+      );
+
+      clock.advance(const Duration(minutes: 2));
+      tracker.pruneMessageRoleMetadata();
+      tracker.handleEvent(
+        const SesoriSseEvent.messagePartUpdated(
+          part: MessagePart(
+            id: "stream-part-2",
+            sessionID: "stream-session",
+            messageID: "stream-msg",
+            type: MessagePartType.text,
+            text: "fresh after prune",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
+          ),
+        ),
+      );
+
+      expect(tracker.getLatestAssistantText("stream-session"), equals("fresh after prune"));
+    });
+
+    test("subtree prune helpers are safe no-ops after a prior prune", () {
+      final tracker = PushSessionStateTracker();
+
+      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
+      tracker.handleEvent(
+        SesoriSseEvent.sessionCreated(
+          info: _session(id: "child", parentID: "root"),
+        ),
+      );
+
+      final firstPrune = tracker.pruneRootSubtree(rootSessionId: "root");
+      expect(firstPrune.removedSessionCount, equals(2));
+
+      tracker.clearLatestAssistantTextForRootSubtree(rootSessionId: "root");
+      final secondPrune = tracker.pruneRootSubtree(rootSessionId: "root");
+      expect(secondPrune.removedSessionCount, equals(0));
+      expect(secondPrune.removedMessageRoleCount, equals(0));
+      expect(secondPrune.removedPermissionMappingCount, equals(0));
+      expect(tracker.findPrunableRootSessionIds(), isEmpty);
+    });
+
+    test("stale project summaries do not break reparented prune roots", () {
+      final clock = _FakeClock(initial: DateTime.utc(2026, 1, 1, 12));
+      final tracker = PushSessionStateTracker.testable(now: clock.now);
+
+      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root-a")));
+      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root-b")));
+      tracker.handleEvent(
+        SesoriSseEvent.sessionCreated(
+          info: _session(id: "child", parentID: "root-a"),
+        ),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+      );
+      tracker.handleEvent(
+        SesoriSseEvent.sessionUpdated(
+          info: _session(id: "child", parentID: "root-b"),
+        ),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+      );
+
+      tracker.handleEvent(
+        const SesoriSseEvent.projectsSummary(
+          projects: [
+            ProjectActivitySummary(
+              id: "project-a",
+              activeSessions: [
+                ActiveSession(id: "root-a", mainAgentRunning: false, childSessionIds: ["child"]),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      expect(tracker.resolveRootSessionId("child"), equals("root-b"));
+
+      clock.advance(const Duration(minutes: 31));
+      final pruneResult = tracker.pruneRootSubtree(rootSessionId: "root-a");
+      expect(pruneResult.removedSessionCount, equals(1));
+      expect(tracker.resolveRootSessionId("child"), equals("root-b"));
+      expect(tracker.findPrunableRootSessionIds(), contains("root-b"));
+    });
   });
+}
+
+class _FakeClock {
+  DateTime _current;
+
+  _FakeClock({required DateTime initial}) : _current = initial;
+
+  DateTime now() {
+    return _current;
+  }
+
+  void advance(Duration delta) {
+    _current = _current.add(delta);
+  }
 }
 
 Session _session({

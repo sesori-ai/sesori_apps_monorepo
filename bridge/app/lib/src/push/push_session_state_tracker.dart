@@ -1,147 +1,143 @@
-import "dart:collection";
-
 import "package:sesori_shared/sesori_shared.dart";
 
-class PushSessionStateTracker {
-  final Map<String, _SessionState> _sessions = {};
-  final Map<String, String> _messageRoles = {};
-  final Map<String, String> _permissionRequestToSession = {};
+import "push_session_state_tracker_graph.dart";
+import "push_session_state_tracker_maintenance.dart";
+import "push_session_state_tracker_models.dart";
+import "push_session_state_tracker_mutations.dart";
+import "push_session_state_tracker_state.dart";
 
-  PushSessionStateTracker();
+class PushSessionStateTracker {
+  final Map<String, PushTrackedSessionState> _sessions = {};
+  final Map<String, PushTrackedMessageRole> _messageRoles = {};
+  final Map<String, String> _permissionRequestToSession = {};
+  final DateTime Function() _now;
+
+  PushSessionStateTracker() : _now = DateTime.now;
+
+  PushSessionStateTracker.testable({required DateTime Function() now}) : _now = now;
 
   void handleEvent(SesoriSseEvent event) {
+    final now = _now();
+
     switch (event) {
       case SesoriSessionCreated(:final info):
-        _upsertSession(info);
+        upsertTrackedSession(session: info, touchedAt: now, sessions: _sessions);
       case SesoriSessionUpdated(:final info):
-        _upsertSession(info);
+        upsertTrackedSession(session: info, touchedAt: now, sessions: _sessions);
       case SesoriSessionDeleted(:final info):
-        _deleteSession(info.id);
+        deleteTrackedSession(
+          sessionId: info.id,
+          sessions: _sessions,
+          messageRoles: _messageRoles,
+          permissionRequestToSession: _permissionRequestToSession,
+        );
       case SesoriSessionStatus(:final sessionID, :final status):
+        final sessionState = stateForTrackedSession(
+          sessionId: sessionID,
+          sessions: _sessions,
+          touchedAt: now,
+        );
         switch (status) {
           case SessionStatusIdle():
-            final sessionState = _sessions[sessionID];
-            if (sessionState != null) {
-              sessionState.status = null;
-            }
+            sessionState.status = null;
           case SessionStatusBusy():
           case SessionStatusRetry():
-            final sessionState = _stateForWrite(sessionID);
             sessionState.status = status;
             sessionState.previouslyBusy = true;
         }
       case SesoriMessageUpdated(:final info):
-        _messageRoles[info.id] = info.role;
+        _messageRoles[info.id] = PushTrackedMessageRole(
+          role: info.role,
+          sessionId: info.sessionID,
+          updatedAt: now,
+        );
+        trackMessageForSession(
+          sessionId: info.sessionID,
+          messageId: info.id,
+          sessions: _sessions,
+          touchedAt: now,
+        );
+        stateForTrackedSession(sessionId: info.sessionID, sessions: _sessions, touchedAt: now);
       case SesoriMessageRemoved(:final messageID):
-        _messageRoles.remove(messageID);
+        final sessionId = untrackMessage(
+          messageId: messageID,
+          sessions: _sessions,
+          messageRoles: _messageRoles,
+        );
+        if (sessionId != null) {
+          stateForTrackedSession(sessionId: sessionId, sessions: _sessions, touchedAt: now);
+        }
       case SesoriMessagePartUpdated(:final part):
-        _handleMessagePartUpdated(part);
+        final messageRole = _messageRoles[part.messageID];
+        if (messageRole != null) {
+          _messageRoles[part.messageID] = PushTrackedMessageRole(
+            role: messageRole.role,
+            sessionId: messageRole.sessionId,
+            updatedAt: now,
+          );
+        }
+        stateForTrackedSession(sessionId: part.sessionID, sessions: _sessions, touchedAt: now);
+        updateTrackedLatestAssistantText(part: part, sessions: _sessions, messageRoles: _messageRoles);
       case SesoriQuestionAsked(:final sessionID):
-        _stateForWrite(sessionID).hasPendingQuestion = true;
+        stateForTrackedSession(
+          sessionId: sessionID,
+          sessions: _sessions,
+          touchedAt: now,
+        ).hasPendingQuestion = true;
       case SesoriQuestionReplied(:final sessionID):
         final sessionState = _sessions[sessionID];
         if (sessionState != null) {
           sessionState.hasPendingQuestion = false;
+          sessionState.lastTouchedAt = now;
         }
       case SesoriQuestionRejected(:final sessionID):
         final sessionState = _sessions[sessionID];
         if (sessionState != null) {
           sessionState.hasPendingQuestion = false;
+          sessionState.lastTouchedAt = now;
         }
       case SesoriPermissionAsked(:final requestID, :final sessionID):
         _permissionRequestToSession[requestID] = sessionID;
-        _stateForWrite(sessionID).hasPendingPermission = true;
+        stateForTrackedSession(
+          sessionId: sessionID,
+          sessions: _sessions,
+          touchedAt: now,
+        ).hasPendingPermission = true;
       case SesoriPermissionReplied(:final requestID):
         final sessionID = _permissionRequestToSession.remove(requestID);
         if (sessionID != null) {
           final sessionState = _sessions[sessionID];
           if (sessionState != null) {
             sessionState.hasPendingPermission = false;
+            sessionState.lastTouchedAt = now;
           }
         }
       case SesoriProjectsSummary(:final projects):
-        _applyProjectsSummaryChildLinks(projects);
+        applyTrackedProjectsSummaryChildLinks(projects: projects, sessions: _sessions);
       default:
         break;
     }
   }
 
   bool isSessionGroupFullyIdle(String sessionId) {
-    final queue = Queue<String>()..add(sessionId);
-    final visited = <String>{};
-
-    while (queue.isNotEmpty) {
-      final currentId = queue.removeFirst();
-      if (!visited.add(currentId)) {
-        continue;
-      }
-
-      final sessionState = _sessions[currentId];
-      if (sessionState == null) {
-        continue;
-      }
-
-      if (sessionState.status != null) {
-        return false;
-      }
-
-      queue.addAll(sessionState.childIds);
-    }
-
-    return true;
+    return collectTrackedSubtreeStates(
+      rootSessionId: sessionId,
+      sessions: _sessions,
+    ).every((sessionState) => sessionState.status == null);
   }
 
-  /// True if [sessionId] or any of its descendants has a pending
-  /// question or permission.
   bool hasPendingInteraction(String sessionId) {
-    final queue = Queue<String>()..add(sessionId);
-    final visited = <String>{};
-
-    while (queue.isNotEmpty) {
-      final currentId = queue.removeFirst();
-      if (!visited.add(currentId)) {
-        continue;
-      }
-
-      final sessionState = _sessions[currentId];
-      if (sessionState == null) {
-        continue;
-      }
-
-      if (sessionState.hasPendingQuestion || sessionState.hasPendingPermission) {
-        return true;
-      }
-
-      queue.addAll(sessionState.childIds);
-    }
-
-    return false;
+    return collectTrackedSubtreeStates(
+      rootSessionId: sessionId,
+      sessions: _sessions,
+    ).any((sessionState) => sessionState.hasPendingQuestion || sessionState.hasPendingPermission);
   }
 
-  /// True if [sessionId] or any of its descendants was previously busy.
   bool wasPreviouslyBusy(String sessionId) {
-    final queue = Queue<String>()..add(sessionId);
-    final visited = <String>{};
-
-    while (queue.isNotEmpty) {
-      final currentId = queue.removeFirst();
-      if (!visited.add(currentId)) {
-        continue;
-      }
-
-      final sessionState = _sessions[currentId];
-      if (sessionState == null) {
-        continue;
-      }
-
-      if (sessionState.previouslyBusy) {
-        return true;
-      }
-
-      queue.addAll(sessionState.childIds);
-    }
-
-    return false;
+    return collectTrackedSubtreeStates(
+      rootSessionId: sessionId,
+      sessions: _sessions,
+    ).any((sessionState) => sessionState.previouslyBusy);
   }
 
   String? getSessionTitle(String sessionId) {
@@ -156,26 +152,113 @@ class PushSessionStateTracker {
     return _sessions[sessionId]?.latestAssistantText;
   }
 
-  String resolveRootSessionId(String sessionId) {
-    var current = sessionId;
-    final visited = <String>{};
+  DateTime? getRootIdleSince({required String rootSessionId}) {
+    return resolveTrackedRootIdleSince(rootSessionId: rootSessionId, sessions: _sessions);
+  }
 
-    while (true) {
-      if (!visited.add(current)) {
-        return current;
-      }
+  List<String> findPrunableRootSessionIds() {
+    return findPrunableRoots().map((root) => root.rootSessionId).toList(growable: false);
+  }
 
-      final parentId = _sessions[current]?.parentId;
-      if (parentId == null) {
-        return current;
-      }
+  List<PushPrunableRoot> findPrunableRoots() {
+    return findTrackedPrunableRoots(sessions: _sessions, now: _now());
+  }
 
-      if (!_sessions.containsKey(parentId)) {
-        return current;
-      }
-
-      current = parentId;
+  PushPrunedSubtree pruneRootSubtree({required String rootSessionId}) {
+    final subtreeSessionIds = collectTrackedSubtreeSessionIds(
+      rootSessionId: rootSessionId,
+      sessions: _sessions,
+    );
+    final subtreeMessageIds = subtreeSessionIds
+        .expand((sessionId) => _sessions[sessionId]?.messageIds ?? const <String>{})
+        .toList(growable: false);
+    if (subtreeSessionIds.isEmpty) {
+      return PushPrunedSubtree(
+        rootSessionId: rootSessionId,
+        prunedSessionIds: const <String>[],
+        removedSessionCount: 0,
+        removedMessageRoleCount: 0,
+        removedPermissionMappingCount: 0,
+      );
     }
+
+    final rootParentId = _sessions[rootSessionId]?.parentId;
+    _sessions[rootParentId]?.childIds.remove(rootSessionId);
+    subtreeSessionIds.forEach(_sessions.remove);
+
+    for (final sessionState in _sessions.values) {
+      sessionState.childIds.removeWhere(subtreeSessionIds.contains);
+    }
+
+    var removedMessageRoleCount = 0;
+    for (final messageId in subtreeMessageIds) {
+      if (_messageRoles.remove(messageId) != null) {
+        removedMessageRoleCount += 1;
+      }
+    }
+
+    var removedPermissionMappingCount = 0;
+    _permissionRequestToSession.removeWhere((_, value) {
+      final shouldRemove = subtreeSessionIds.contains(value);
+      if (shouldRemove) {
+        removedPermissionMappingCount += 1;
+      }
+      return shouldRemove;
+    });
+
+    return PushPrunedSubtree(
+      rootSessionId: rootSessionId,
+      prunedSessionIds: subtreeSessionIds.toList(growable: false),
+      removedSessionCount: subtreeSessionIds.length,
+      removedMessageRoleCount: removedMessageRoleCount,
+      removedPermissionMappingCount: removedPermissionMappingCount,
+    );
+  }
+
+  void clearLatestAssistantTextForRootSubtree({required String rootSessionId}) {
+    final subtreeSessionIds = collectTrackedSubtreeSessionIds(
+      rootSessionId: rootSessionId,
+      sessions: _sessions,
+    );
+    for (final sessionId in subtreeSessionIds) {
+      _sessions[sessionId]?.latestAssistantText = null;
+    }
+  }
+
+  void pruneMessageRoleMetadata() {
+    final now = _now();
+    final cutoff = now.subtract(PushSessionMaintenancePolicy.messageRoleTtl);
+    final expiredMessageIds = _messageRoles.entries
+        .where((entry) => entry.value.updatedAt.isBefore(cutoff))
+        .map((entry) => entry.key)
+        .toList(growable: false);
+    for (final messageId in expiredMessageIds) {
+      untrackMessage(messageId: messageId, sessions: _sessions, messageRoles: _messageRoles);
+    }
+
+    if (_messageRoles.length <= PushSessionMaintenancePolicy.messageRoleHardCap) {
+      return;
+    }
+
+    final staleEntries = _messageRoles.entries.toList()
+      ..sort((left, right) => left.value.updatedAt.compareTo(right.value.updatedAt));
+    final overflow = _messageRoles.length - PushSessionMaintenancePolicy.messageRoleHardCap;
+    for (final entry in staleEntries.take(overflow)) {
+      untrackMessage(messageId: entry.key, sessions: _sessions, messageRoles: _messageRoles);
+    }
+  }
+
+  PushSessionTelemetrySnapshot createTelemetrySnapshot() {
+    return buildTrackedTelemetrySnapshot(
+      sessions: _sessions,
+      messageRoles: _messageRoles,
+      permissionRequestCount: _permissionRequestToSession.length,
+      now: _now(),
+    );
+  }
+
+  String resolveRootSessionId(String sessionId) {
+    return resolveTrackedRootSessionId(sessionId: sessionId, sessions: _sessions);
   }
 
   void reset() {
@@ -183,108 +266,4 @@ class PushSessionStateTracker {
     _messageRoles.clear();
     _permissionRequestToSession.clear();
   }
-
-  void _upsertSession(Session session) {
-    final sessionId = session.id;
-    final sessionState = _stateForWrite(sessionId);
-    final prevParentId = sessionState.parentId;
-    final nextParentId = session.parentID;
-
-    if (prevParentId != null && prevParentId != nextParentId) {
-      _sessions[prevParentId]?.childIds.remove(sessionId);
-    }
-
-    sessionState.parentId = nextParentId;
-
-    if (nextParentId != null) {
-      final parentState = _sessions[nextParentId];
-      if (parentState != null) {
-        parentState.childIds.add(sessionId);
-      }
-    }
-
-    sessionState.title = session.title;
-    sessionState.projectId = session.projectID;
-
-    _rebuildChildLinksForParent(sessionId);
-  }
-
-  void _deleteSession(String sessionId) {
-    _sessions.remove(sessionId);
-
-    for (final sessionState in _sessions.values) {
-      sessionState.childIds.remove(sessionId);
-      if (sessionState.parentId == sessionId) {
-        sessionState.parentId = null;
-      }
-    }
-
-    _permissionRequestToSession.removeWhere((_, value) => value == sessionId);
-  }
-
-  void _handleMessagePartUpdated(MessagePart part) {
-    if (part.type != MessagePartType.text) {
-      return;
-    }
-
-    if (_messageRoles[part.messageID] != "assistant") {
-      return;
-    }
-
-    _stateForWrite(part.sessionID).latestAssistantText = part.text ?? "";
-  }
-
-  _SessionState _stateForWrite(String sessionId) {
-    return _sessions.putIfAbsent(sessionId, _SessionState.new);
-  }
-
-  /// Learns parent-child relationships from a [SesoriProjectsSummary] event.
-  ///
-  /// The summary lists root sessions together with their [childSessionIds].
-  /// For any child whose parent is not yet known, this sets the link so that
-  /// [resolveRootSessionId] can walk up to the correct root. This is critical
-  /// after a bridge restart where [SesoriSessionCreated] events are not
-  /// replayed for already-existing sessions.
-  void _applyProjectsSummaryChildLinks(List<ProjectActivitySummary> projects) {
-    for (final project in projects) {
-      for (final activeSession in project.activeSessions) {
-        final parentId = activeSession.id;
-        _stateForWrite(parentId).projectId = project.id;
-        for (final childId in activeSession.childSessionIds) {
-          final childState = _stateForWrite(childId);
-          childState.projectId = project.id;
-          if (childState.parentId == null) {
-            childState.parentId = parentId;
-            _stateForWrite(parentId).childIds.add(childId);
-          }
-        }
-      }
-    }
-  }
-
-  void _rebuildChildLinksForParent(String parentId) {
-    final parentState = _sessions[parentId];
-    if (parentState == null) {
-      return;
-    }
-
-    parentState.childIds.removeWhere((childId) => _sessions[childId]?.parentId != parentId);
-    for (final entry in _sessions.entries) {
-      if (entry.value.parentId == parentId) {
-        parentState.childIds.add(entry.key);
-      }
-    }
-  }
-}
-
-class _SessionState {
-  String? parentId;
-  String? projectId;
-  String? title;
-  SessionStatus? status;
-  bool previouslyBusy = false;
-  final Set<String> childIds = <String>{};
-  String? latestAssistantText;
-  bool hasPendingQuestion = false;
-  bool hasPendingPermission = false;
 }

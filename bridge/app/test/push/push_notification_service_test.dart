@@ -207,6 +207,76 @@ void main() {
         );
         expect(completion.title, equals(title));
         expect(completion.body, equals("I implemented user auth using JWT, refresh tokens, secure cookies,..."));
+        expect(harness.tracker.getLatestAssistantText("session-a"), isNull);
+      });
+    });
+
+    test("AC4b: completion clears root subtree assistant text before rate-limit gating", () {
+      fakeAsync((async) {
+        final harness = _newHarness(
+          rateLimiter: FakePushRateLimiter(shouldAllowSend: false),
+        );
+
+        harness.service.handleSseEvent(
+          SesoriSseEvent.sessionCreated(
+            info: _session(id: "root", title: "Root task"),
+          ),
+        );
+        harness.service.handleSseEvent(
+          SesoriSseEvent.sessionCreated(
+            info: _session(id: "child", parentID: "root"),
+          ),
+        );
+        harness.service.handleSseEvent(
+          const SesoriSseEvent.messageUpdated(
+            info: Message(
+              id: "msg-1",
+              role: "assistant",
+              sessionID: "child",
+              agent: null,
+              modelID: null,
+              providerID: null,
+            ),
+          ),
+        );
+        harness.service.handleSseEvent(
+          const SesoriSseEvent.messagePartUpdated(
+            part: MessagePart(
+              id: "part-1",
+              sessionID: "child",
+              messageID: "msg-1",
+              type: MessagePartType.text,
+              text: "Child preview survives payload derivation but should be cleared after.",
+              tool: null,
+              state: null,
+              prompt: null,
+              description: null,
+              agent: null,
+              agentName: null,
+              attempt: null,
+              retryError: null,
+            ),
+          ),
+        );
+        harness.service.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+        );
+        harness.service.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+        );
+        harness.service.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+        );
+        harness.service.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
+        );
+
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+
+        expect(harness.client.sentPayloads, isEmpty);
+        expect(harness.tracker.getLatestAssistantText("root"), isNull);
+        expect(harness.tracker.getLatestAssistantText("child"), isNull);
       });
     });
 
@@ -354,6 +424,26 @@ void main() {
         payload.data?.eventType,
         equals(NotificationEventType.installationUpdateAvailable),
       );
+    });
+
+    test("AC9c: permission asked still sends immediate aiInteraction notification", () {
+      final harness = _newHarness();
+
+      harness.service.handleSseEvent(
+        const SesoriSseEvent.permissionAsked(
+          requestID: "perm-1",
+          sessionID: "session-a",
+          tool: "bash",
+          description: "Run command",
+        ),
+      );
+
+      expect(harness.client.sentPayloads.length, equals(1));
+      final payload = harness.client.sentPayloads.single;
+      expect(payload.category, equals(NotificationCategory.aiInteraction));
+      expect(payload.data?.eventType, equals(NotificationEventType.permissionAsked));
+      expect(payload.title, equals("Permission requested"));
+      expect(payload.body, equals("Run command"));
     });
 
     test("AC10a: tool message part does not affect completion body", () {
@@ -744,6 +834,221 @@ void main() {
       expect(harness.client.sentPayloads.length, equals(1));
       expect(harness.client.sentPayloads.single.category, equals(NotificationCategory.aiInteraction));
     });
+
+    test("M1: maintenance loop fires on a 10-minute cadence", () {
+      fakeAsync((async) {
+        final logs = <String>[];
+        final harness = _newHarness(
+          now: () => DateTime(2026, 4, 16).add(async.elapsed),
+          debugLogger: logs.add,
+        );
+
+        expect(harness.service.lastMaintenanceTelemetry, isNull);
+        expect(logs, isEmpty);
+
+        async.elapse(const Duration(minutes: 9, seconds: 59));
+        async.flushMicrotasks();
+        expect(harness.service.lastMaintenanceTelemetry, isNull);
+        expect(logs, isEmpty);
+
+        async.elapse(const Duration(seconds: 1));
+        async.flushMicrotasks();
+        expect(harness.service.lastMaintenanceTelemetry, isNotNull);
+        expect(logs.length, equals(1));
+
+        async.elapse(const Duration(minutes: 10));
+        async.flushMicrotasks();
+        expect(logs.length, equals(2));
+      });
+    });
+
+    test("M2: prunable roots trigger tracker prune, notifier cleanup, and rate-limiter stale cleanup", () {
+      fakeAsync((async) {
+        final logs = <String>[];
+        final harness = _newHarness(
+          now: () => DateTime(2026, 4, 16).add(async.elapsed),
+          debugLogger: logs.add,
+        );
+
+        harness.service.handleSseEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
+        harness.service.handleSseEvent(
+          SesoriSseEvent.sessionCreated(
+            info: _session(id: "child", parentID: "root"),
+          ),
+        );
+        harness.service.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+        );
+        harness.service.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+        );
+        harness.service.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+        );
+        harness.service.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
+        );
+
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+        harness.service.markSessionAborted("child");
+
+        expect(
+          harness.client.sentPayloads.where(
+            (payload) => payload.data?.eventType == NotificationEventType.agentTurnCompleted,
+          ),
+          hasLength(1),
+        );
+
+        async.elapse(const Duration(minutes: 30));
+        async.flushMicrotasks();
+
+        expect(harness.tracker.findPrunableRootSessionIds(), isEmpty);
+
+        async.elapse(const Duration(minutes: 10));
+        async.flushMicrotasks();
+
+        final telemetry = harness.service.lastMaintenanceTelemetry;
+        expect(telemetry, isNotNull);
+        expect(telemetry!.sessions, equals(0));
+        expect(telemetry.prunableRoots, equals(0));
+        expect(telemetry.completionSentRoots, equals(0));
+        expect(telemetry.abortedRoots, equals(0));
+        expect(telemetry.rateLimiterKeys, equals(0));
+        expect(logs.last, contains("completion_sent_roots=0"));
+        expect(logs.last, contains("aborted_roots=0"));
+        expect(logs.last, contains("rate_limiter_keys=0"));
+      });
+    });
+
+    test("M3: post-maintenance telemetry snapshot reflects maintained state", () {
+      fakeAsync((async) {
+        final logs = <String>[];
+        const activeText = "Busy assistant text";
+        final harness = _newHarness(
+          now: () => DateTime(2026, 4, 16).add(async.elapsed),
+          debugLogger: logs.add,
+          rssBytesReader: () => 5 * 1024 * 1024,
+        );
+
+        harness.service.handleSseEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
+        harness.service.handleSseEvent(
+          SesoriSseEvent.sessionCreated(
+            info: _session(id: "child", parentID: "root"),
+          ),
+        );
+        harness.service.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+        );
+        harness.service.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+        );
+        harness.service.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+        );
+        harness.service.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
+        );
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+        harness.service.markSessionAborted("child");
+
+        harness.service.handleSseEvent(SesoriSseEvent.sessionCreated(info: _session(id: "active")));
+        harness.service.handleSseEvent(
+          const SesoriSseEvent.messageUpdated(
+            info: Message(
+              id: "msg-active",
+              role: "assistant",
+              sessionID: "active",
+              agent: null,
+              modelID: null,
+              providerID: null,
+            ),
+          ),
+        );
+        harness.service.handleSseEvent(
+          const SesoriSseEvent.messagePartUpdated(
+            part: MessagePart(
+              id: "part-active",
+              sessionID: "active",
+              messageID: "msg-active",
+              type: MessagePartType.text,
+              text: activeText,
+              tool: null,
+              state: null,
+              prompt: null,
+              description: null,
+              agent: null,
+              agentName: null,
+              attempt: null,
+              retryError: null,
+            ),
+          ),
+        );
+        harness.service.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "active", status: SessionStatus.busy()),
+        );
+        harness.service.handleSseEvent(
+          const SesoriSseEvent.permissionAsked(
+            requestID: "perm-active",
+            sessionID: "active",
+            tool: "bash",
+            description: "Run command",
+          ),
+        );
+
+        async.elapse(const Duration(minutes: 35));
+        async.flushMicrotasks();
+
+        harness.service.handleSseEvent(SesoriSseEvent.sessionCreated(info: _session(id: "idle")));
+
+        async.elapse(const Duration(minutes: 5));
+        async.flushMicrotasks();
+
+        final telemetry = harness.service.lastMaintenanceTelemetry;
+        expect(telemetry, isNotNull);
+        expect(telemetry!.rssMb, closeTo(5, 0.001));
+        expect(telemetry.sessions, equals(2));
+        expect(telemetry.idleRoots, equals(1));
+        expect(telemetry.prunableRoots, equals(0));
+        expect(telemetry.messageRoles, equals(1));
+        expect(telemetry.assistantTextSessions, equals(1));
+        expect(telemetry.assistantTextChars, equals(activeText.length));
+        expect(telemetry.trackerPermissionRequests, equals(1));
+        expect(telemetry.notifierPermissionRequests, equals(1));
+        expect(telemetry.completionSentRoots, equals(0));
+        expect(telemetry.abortedRoots, equals(0));
+        expect(telemetry.rateLimiterKeys, equals(0));
+        expect(logs.last, contains("rss_mb=5.00"));
+        expect(logs.last, contains("sessions=2"));
+        expect(logs.last, contains("assistant_text_chars=${activeText.length}"));
+        expect(logs.last, contains("tracker_permission_requests=1"));
+        expect(logs.last, contains("notifier_permission_requests=1"));
+      });
+    });
+
+    test("M4: maintenance loop does not change immediate question notifications", () {
+      fakeAsync((async) {
+        final harness = _newHarness(
+          now: () => DateTime(2026, 4, 16).add(async.elapsed),
+        );
+
+        async.elapse(const Duration(minutes: 20));
+        async.flushMicrotasks();
+
+        harness.service.handleSseEvent(
+          const SesoriSseEvent.questionAsked(
+            id: "q-maintenance",
+            sessionID: "session-a",
+            questions: [QuestionInfo(header: "Prompt", question: "Continue?")],
+          ),
+        );
+
+        expect(harness.client.sentPayloads.length, equals(1));
+        expect(harness.client.sentPayloads.single.category, equals(NotificationCategory.aiInteraction));
+        expect(harness.client.sentPayloads.single.data?.eventType, equals(NotificationEventType.questionAsked));
+      });
+    });
   });
 
   group("truncate helpers", () {
@@ -762,22 +1067,38 @@ void main() {
 ({
   PushNotificationService service,
   FakePushNotificationClient client,
+  PushSessionStateTracker tracker,
+  FakePushRateLimiter rateLimiter,
 })
-_newHarness() {
-  final client = FakePushNotificationClient();
-  final tracker = PushSessionStateTracker();
+_newHarness({
+  FakePushNotificationClient? client,
+  FakePushRateLimiter? rateLimiter,
+  DateTime Function()? now,
+  int? Function()? rssBytesReader,
+  void Function(String)? debugLogger,
+}) {
+  final resolvedClient = client ?? FakePushNotificationClient();
+  final tracker = now == null ? PushSessionStateTracker() : PushSessionStateTracker.testable(now: now);
   final notifier = CompletionNotifier(
     tracker: tracker,
     debounceDuration: const Duration(milliseconds: 500),
   );
+  final resolvedRateLimiter = rateLimiter ?? FakePushRateLimiter(now: now);
   final service = PushNotificationService(
-    client: client,
-    rateLimiter: FakePushRateLimiter(),
+    client: resolvedClient,
+    rateLimiter: resolvedRateLimiter,
     tracker: tracker,
     completionNotifier: notifier,
+    rssBytesReader: rssBytesReader,
+    debugLogger: debugLogger,
   );
 
-  return (service: service, client: client);
+  return (
+    service: service,
+    client: resolvedClient,
+    tracker: tracker,
+    rateLimiter: resolvedRateLimiter,
+  );
 }
 
 class FakePushNotificationClient extends PushNotificationClient {
@@ -796,7 +1117,9 @@ class FakePushNotificationClient extends PushNotificationClient {
 }
 
 class FakePushRateLimiter extends PushRateLimiter {
-  FakePushRateLimiter();
+  bool shouldAllowSend;
+
+  FakePushRateLimiter({this.shouldAllowSend = true, super.now});
 
   @override
   bool shouldSend({
@@ -804,7 +1127,15 @@ class FakePushRateLimiter extends PushRateLimiter {
     required String? sessionId,
     required String collapseKey,
   }) {
-    return true;
+    if (!shouldAllowSend) {
+      return false;
+    }
+
+    return super.shouldSend(
+      category: category,
+      sessionId: sessionId,
+      collapseKey: collapseKey,
+    );
   }
 }
 

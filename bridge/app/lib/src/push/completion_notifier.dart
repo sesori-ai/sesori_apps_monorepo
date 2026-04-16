@@ -20,6 +20,12 @@ class CompletionNotifier {
 
   Stream<String> get completions => _completionController.stream;
 
+  int get permissionRequestCount => _permissionRequestToSession.length;
+
+  int get completionSentRootCount => _completionSentForRoots.length;
+
+  int get abortedRootCount => _abortedRoots.length;
+
   CompletionNotifier({
     required PushSessionStateTracker tracker,
     Duration debounceDuration = const Duration(milliseconds: 500),
@@ -80,6 +86,20 @@ class CompletionNotifier {
       default:
         break;
     }
+  }
+
+  /// Removes notifier-retained state for a pruned root subtree.
+  void cleanupPrunedRootSubtree({
+    required String rootSessionId,
+    required Iterable<String> prunedSessionIds,
+  }) {
+    final prunedRootIds = {rootSessionId, ...prunedSessionIds};
+    for (final sessionId in prunedRootIds) {
+      _cancelDebounceForRoot(sessionId);
+      _completionSentForRoots.remove(sessionId);
+      _abortedRoots.remove(sessionId);
+    }
+    _permissionRequestToSession.removeWhere((_, sessionId) => prunedRootIds.contains(sessionId));
   }
 
   /// Cancels all timers and closes the completion stream.
