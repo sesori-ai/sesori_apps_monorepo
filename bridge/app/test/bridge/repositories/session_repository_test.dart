@@ -177,8 +177,8 @@ void main() {
       );
 
       expect(result, hasLength(2));
-      expect(result[0].time?.created, equals(0));
-      expect(result[0].time?.updated, equals(0));
+      expect(result[0].time?.created, equals(10));
+      expect(result[0].time?.updated, equals(10));
       expect(result[0].time?.archived, equals(1234));
       expect(result[0].pullRequest?.number, equals(5));
       expect(result[1].time?.created, equals(3));

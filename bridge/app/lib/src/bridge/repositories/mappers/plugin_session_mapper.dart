@@ -50,7 +50,11 @@ Session enrichSharedSession({
     final currentTime = session.time;
     final mergedTime = currentTime != null
         ? currentTime.copyWith(archived: storedSession.archivedAt)
-        : SessionTime(created: 0, updated: 0, archived: storedSession.archivedAt);
+        : SessionTime(
+            created: storedSession.createdAt,
+            updated: storedSession.createdAt,
+            archived: storedSession.archivedAt,
+          );
     result = result.copyWith(
       time: mergedTime,
       hasWorktree: storedSession.worktreePath != null,
