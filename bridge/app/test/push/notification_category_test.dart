@@ -1,4 +1,4 @@
-import "package:sesori_bridge/src/push/push_notification_service.dart";
+import "package:sesori_bridge/src/push/push_notification_service_helpers.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
