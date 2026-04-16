@@ -3,7 +3,7 @@ import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
 import "package:sesori_bridge/src/push/push_notification_client.dart";
 import "package:sesori_bridge/src/push/push_notification_service.dart";
-import "package:sesori_bridge/src/push/push_notification_service_helpers.dart";
+import "package:sesori_bridge/src/push/push_notification_content_service.dart";
 import "package:sesori_bridge/src/push/push_rate_limiter.dart";
 import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
 import "package:sesori_bridge/src/push/push_session_state_tracker_models.dart";
@@ -839,37 +839,30 @@ void main() {
 
     test("M1: maintenance loop fires on a 10-minute cadence", () {
       fakeAsync((async) {
-        final logs = <String>[];
         final harness = _newHarness(
           now: () => DateTime(2026, 4, 16).add(async.elapsed),
-          debugLogger: logs.add,
         );
 
         expect(harness.service.lastMaintenanceTelemetry, isNull);
-        expect(logs, isEmpty);
 
         async.elapse(const Duration(minutes: 9, seconds: 59));
         async.flushMicrotasks();
         expect(harness.service.lastMaintenanceTelemetry, isNull);
-        expect(logs, isEmpty);
 
         async.elapse(const Duration(seconds: 1));
         async.flushMicrotasks();
         expect(harness.service.lastMaintenanceTelemetry, isNotNull);
-        expect(logs.length, equals(1));
 
         async.elapse(const Duration(minutes: 10));
         async.flushMicrotasks();
-        expect(logs.length, equals(2));
+        expect(harness.service.lastMaintenanceTelemetry, isNotNull);
       });
     });
 
     test("M2: prunable roots trigger tracker prune, notifier cleanup, and rate-limiter stale cleanup", () {
       fakeAsync((async) {
-        final logs = <String>[];
         final harness = _newHarness(
           now: () => DateTime(2026, 4, 16).add(async.elapsed),
-          debugLogger: logs.add,
         );
 
         harness.service.handleSseEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
@@ -917,19 +910,14 @@ void main() {
         expect(telemetry.completionSentRoots, equals(0));
         expect(telemetry.abortedRoots, equals(0));
         expect(telemetry.rateLimiterKeys, equals(0));
-        expect(logs.last, contains("completion_sent_roots=0"));
-        expect(logs.last, contains("aborted_roots=0"));
-        expect(logs.last, contains("rate_limiter_keys=0"));
       });
     });
 
     test("M3: post-maintenance telemetry snapshot reflects maintained state", () {
       fakeAsync((async) {
-        final logs = <String>[];
         const activeText = "Busy assistant text";
         final harness = _newHarness(
           now: () => DateTime(2026, 4, 16).add(async.elapsed),
-          debugLogger: logs.add,
           rssBytesReader: () => 5 * 1024 * 1024,
         );
 
@@ -1021,25 +1009,17 @@ void main() {
         expect(telemetry.completionSentRoots, equals(0));
         expect(telemetry.abortedRoots, equals(0));
         expect(telemetry.rateLimiterKeys, equals(0));
-        expect(logs.last, contains("rss_mb=5.00"));
-        expect(logs.last, contains("sessions=2"));
-        expect(logs.last, contains("message_roles=0"));
-        expect(logs.last, contains("assistant_text_chars=${activeText.length}"));
-        expect(logs.last, contains("tracker_permission_requests=1"));
-        expect(logs.last, contains("notifier_permission_requests=1"));
       });
     });
 
     test("M3b: maintenance continues when root pruning throws", () {
       fakeAsync((async) {
-        final logs = <String>[];
         final tracker = ThrowingPushSessionStateTracker(
           now: () => DateTime(2026, 4, 16).add(async.elapsed),
           throwFindPrunableRoots: true,
         );
         final harness = _newHarness(
           tracker: tracker,
-          debugLogger: logs.add,
           rssBytesReader: () => 3 * 1024 * 1024,
         );
 
@@ -1056,7 +1036,6 @@ void main() {
         expect(telemetry, isNotNull);
         expect(telemetry!.rssMb, closeTo(3, 0.001));
         expect(telemetry.rateLimiterKeys, equals(1));
-        expect(logs.single, contains("rss_mb=3.00"));
       });
     });
 
@@ -1085,14 +1064,19 @@ void main() {
   });
 
   group("truncate helpers", () {
+    const contentService = PushNotificationContentService();
+
     test("truncateTitle truncates at word boundary with ellipsis", () {
       const title = "One two three four five six seven eight nine ten eleven twelve";
-      expect(truncateTitle(title, maxChars: 25), equals("One two three four five..."));
+      expect(contentService.truncateTitle(title, maxChars: 25), equals("One two three four five..."));
     });
 
     test("truncateToWords truncates to max word count with ellipsis", () {
       const text = "one two three four five six seven eight nine ten eleven";
-      expect(truncateToWords(text, maxWords: 10), equals("one two three four five six seven eight nine ten..."));
+      expect(
+        contentService.truncateToWords(text, maxWords: 10),
+        equals("one two three four five six seven eight nine ten..."),
+      );
     });
   });
 }
@@ -1109,7 +1093,6 @@ _newHarness({
   PushSessionStateTracker? tracker,
   DateTime Function()? now,
   int? Function()? rssBytesReader,
-  void Function(String)? debugLogger,
 }) {
   final resolvedClient = client ?? FakePushNotificationClient();
   final resolvedTracker =
@@ -1119,13 +1102,14 @@ _newHarness({
     debounceDuration: const Duration(milliseconds: 500),
   );
   final resolvedRateLimiter = rateLimiter ?? FakePushRateLimiter(now: now);
+  final contentService = const PushNotificationContentService();
   final service = PushNotificationService(
     client: resolvedClient,
     rateLimiter: resolvedRateLimiter,
     tracker: resolvedTracker,
     completionNotifier: notifier,
+    contentService: contentService,
     rssBytesReader: rssBytesReader,
-    debugLogger: debugLogger,
   );
 
   return (

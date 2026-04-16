@@ -91,6 +91,7 @@ modules/
 - **Never construct classes with server URLs/passwords directly** — inject an API client instance instead
 - **Never use inline JSON maps for request bodies** — always create a Freezed class in `sesori_shared` and use `toJson()`/`fromJson()`. Never write `body: {"key": value}` in service or handler code.
 - **Never split a service into fake helpers that still depend on that same service** — if logic is being extracted into a focused collaborator, it must stand on its own injected dependencies. Do not use `part` files, extensions, or pseudo-helper classes that call back into the owning service, because that keeps same-level coupling and hides circular design.
+- **Do not use top-level/global functions for non-trivial bridge logic** — extracting 20-100 lines of decision-making into free functions is not an acceptable file-splitting strategy. If logic is substantial enough to deserve its own file, make it a named collaborator class with explicit constructor-injected dependencies and test it directly.
 - **Keep command primitives in standalone dependencies** — shell-facing git or worktree operations belong in a dedicated API/helper dependency that the service composes. `WorktreeService` should orchestrate those collaborators, not attach command execution as service-owned helper methods in another file.
 
 ## TESTING

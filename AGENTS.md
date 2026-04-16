@@ -43,6 +43,7 @@ Each layer has a specific responsibility, a naming convention for its classes, a
 - A Consumer (cubit, handler) MUST NOT import from `api/` — it goes through repositories/services
 - Within a layer: NO cross-dependency between same-level classes (unless base classes/abstractions designed for reuse within that layer)
 - Helper, use-case, and supporting classes around a Service MUST NOT depend back on that owning Service. If you split service logic into a collaborator, make it a standalone dependency with its own injected inputs, not a `part` file, extension, or pseudo-helper that calls back into the service.
+- Do NOT extract non-trivial business logic into top-level/global functions just to satisfy file-size limits. If the extracted logic is more than a tiny pure helper, split it into a named collaborator class with explicit dependencies and a clear ownership boundary so it can be tested in isolation.
 - Directory structure MUST mirror layers — when you see `import '../api/...'` in a `services/` file, that is a violation
 - Do NOT use "Manager" as a class suffix — use `Service` instead
 

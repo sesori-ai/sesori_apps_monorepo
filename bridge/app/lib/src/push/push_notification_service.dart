@@ -9,7 +9,7 @@ import "completion_notifier.dart";
 import "push_maintenance_loop.dart";
 import "push_maintenance_telemetry.dart";
 import "push_notification_client.dart";
-import "push_notification_service_helpers.dart";
+import "push_notification_content_service.dart";
 import "push_rate_limiter.dart";
 import "push_send_exception.dart";
 import "push_session_state_tracker.dart";
@@ -19,6 +19,7 @@ class PushNotificationService {
   final PushRateLimiter _rateLimiter;
   final PushSessionStateTracker _tracker;
   final CompletionNotifier _completionNotifier;
+  final PushNotificationContentService _contentService;
   late final PushMaintenanceLoop _maintenanceLoop;
   late final StreamSubscription<String> _completionSubscription;
 
@@ -27,13 +28,14 @@ class PushNotificationService {
     required PushRateLimiter rateLimiter,
     required PushSessionStateTracker tracker,
     required CompletionNotifier completionNotifier,
+    required PushNotificationContentService contentService,
     Duration maintenanceInterval = const Duration(minutes: 10),
     int? Function()? rssBytesReader,
-    void Function(String)? debugLogger,
   }) : _client = client,
        _rateLimiter = rateLimiter,
        _tracker = tracker,
-       _completionNotifier = completionNotifier {
+       _completionNotifier = completionNotifier,
+       _contentService = contentService {
     _completionSubscription = _completionNotifier.completions.listen(_sendCompletionNotification);
     _maintenanceLoop = PushMaintenanceLoop(
       tracker: _tracker,
@@ -41,7 +43,6 @@ class PushNotificationService {
       rateLimiter: _rateLimiter,
       maintenanceInterval: maintenanceInterval,
       rssBytesReader: rssBytesReader,
-      debugLogger: debugLogger,
     );
   }
 
@@ -72,7 +73,7 @@ class PushNotificationService {
   }
 
   void _sendImmediateNotificationIfApplicable(SesoriSseEvent event) {
-    final notificationData = extractNotificationData(event);
+    final notificationData = _contentService.extractNotificationData(event);
     if (notificationData == null) {
       return;
     }
@@ -82,7 +83,7 @@ class PushNotificationService {
       eventType: notificationData.eventType,
       title: notificationData.title,
       body: notificationData.body,
-      sessionId: extractSessionId(event),
+      sessionId: _contentService.extractSessionId(event),
     );
   }
 
@@ -90,10 +91,10 @@ class PushNotificationService {
     final sessionTitle = _tracker.getSessionTitle(rootSessionId);
     final latestAssistantText = _tracker.getLatestAssistantText(rootSessionId);
 
-    final title = truncateTitle(
+    final title = _contentService.truncateTitle(
       (sessionTitle == null || sessionTitle.trim().isEmpty) ? "Session completed" : sessionTitle,
     );
-    final body = truncateToWords(
+    final body = _contentService.truncateToWords(
       (latestAssistantText == null || latestAssistantText.trim().isEmpty) ? "Task completed" : latestAssistantText,
     );
 
@@ -124,7 +125,7 @@ class PushNotificationService {
       return;
     }
 
-    final payload = buildNotificationPayload(
+    final payload = _contentService.buildNotificationPayload(
       category: category,
       eventType: eventType,
       title: title,

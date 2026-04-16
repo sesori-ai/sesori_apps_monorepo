@@ -26,6 +26,7 @@ import "package:sesori_bridge/src/bridge/services/session_persistence_service.da
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
 import "package:sesori_bridge/src/push/push_notification_client.dart";
+import "package:sesori_bridge/src/push/push_notification_content_service.dart";
 import "package:sesori_bridge/src/push/push_notification_service.dart";
 import "package:sesori_bridge/src/push/push_rate_limiter.dart";
 import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
@@ -486,6 +487,7 @@ PushNotificationService _createPushNotificationService() {
     rateLimiter: PushRateLimiter(),
     tracker: tracker,
     completionNotifier: completionNotifier,
+    contentService: const PushNotificationContentService(),
   );
 }
 
@@ -502,6 +504,7 @@ class _CapturingPushNotificationService extends PushNotificationService {
         client: _NoopPushNotificationClient(),
         rateLimiter: PushRateLimiter(),
         completionNotifier: CompletionNotifier(tracker: tracker),
+        contentService: const PushNotificationContentService(),
       );
 
   @override

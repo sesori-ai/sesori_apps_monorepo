@@ -1,10 +1,10 @@
 import "package:sesori_shared/sesori_shared.dart";
 
-import "push_session_state_tracker_events.dart";
-import "push_session_state_tracker_graph.dart";
-import "push_session_state_tracker_maintenance.dart";
+import "push_session_event_reducer.dart";
+import "push_session_maintenance_service.dart";
+import "push_session_state_graph.dart";
+import "push_session_state_mutator.dart";
 import "push_session_state_tracker_models.dart";
-import "push_session_state_tracker_mutations.dart";
 import "push_session_state_tracker_state.dart";
 
 class PushSessionStateTracker {
@@ -12,40 +12,57 @@ class PushSessionStateTracker {
   final Map<String, PushTrackedMessageRole> _messageRoles = {};
   final Map<String, String> _permissionRequestToSession = {};
   final DateTime Function() _now;
+  late final PushSessionStateGraph _graph;
+  late final PushSessionStateMutator _mutator;
+  late final PushSessionMaintenanceService _maintenance;
+  late final PushSessionEventReducer _eventReducer;
 
-  PushSessionStateTracker() : _now = DateTime.now;
+  PushSessionStateTracker() : _now = DateTime.now {
+    _initializeCollaborators();
+  }
 
-  PushSessionStateTracker.testable({required DateTime Function() now}) : _now = now;
+  PushSessionStateTracker.testable({required DateTime Function() now}) : _now = now {
+    _initializeCollaborators();
+  }
 
-  void handleEvent(SesoriSseEvent event) {
-    handleTrackedEvent(
-      event: event,
-      now: _now(),
+  void _initializeCollaborators() {
+    _graph = PushSessionStateGraph(sessions: _sessions);
+    _mutator = PushSessionStateMutator(
       sessions: _sessions,
       messageRoles: _messageRoles,
       permissionRequestToSession: _permissionRequestToSession,
     );
+    _maintenance = PushSessionMaintenanceService(
+      sessions: _sessions,
+      messageRoles: _messageRoles,
+      permissionRequestCount: () => _permissionRequestToSession.length,
+      graph: _graph,
+      now: _now,
+    );
+    _eventReducer = PushSessionEventReducer(
+      sessions: _sessions,
+      messageRoles: _messageRoles,
+      permissionRequestToSession: _permissionRequestToSession,
+      mutator: _mutator,
+    );
+  }
+
+  void handleEvent(SesoriSseEvent event) {
+    _eventReducer.handleEvent(event: event, now: _now());
   }
 
   bool isSessionGroupFullyIdle(String sessionId) {
-    return collectTrackedSubtreeStates(
-      rootSessionId: sessionId,
-      sessions: _sessions,
-    ).every((sessionState) => sessionState.status == null);
+    return _graph.collectSubtreeStates(rootSessionId: sessionId).every((sessionState) => sessionState.status == null);
   }
 
   bool hasPendingInteraction(String sessionId) {
-    return collectTrackedSubtreeStates(
-      rootSessionId: sessionId,
-      sessions: _sessions,
-    ).any((sessionState) => sessionState.hasPendingQuestion || sessionState.hasPendingPermission);
+    return _graph
+        .collectSubtreeStates(rootSessionId: sessionId)
+        .any((sessionState) => sessionState.hasPendingQuestion || sessionState.hasPendingPermission);
   }
 
   bool wasPreviouslyBusy(String sessionId) {
-    return collectTrackedSubtreeStates(
-      rootSessionId: sessionId,
-      sessions: _sessions,
-    ).any((sessionState) => sessionState.previouslyBusy);
+    return _graph.collectSubtreeStates(rootSessionId: sessionId).any((sessionState) => sessionState.previouslyBusy);
   }
 
   String? getSessionTitle(String sessionId) {
@@ -61,7 +78,7 @@ class PushSessionStateTracker {
   }
 
   DateTime? getRootIdleSince({required String rootSessionId}) {
-    return resolveTrackedRootIdleSince(rootSessionId: rootSessionId, sessions: _sessions);
+    return _graph.resolveRootIdleSince(rootSessionId: rootSessionId);
   }
 
   List<String> findPrunableRootSessionIds() {
@@ -69,13 +86,12 @@ class PushSessionStateTracker {
   }
 
   List<PushPrunableRoot> findPrunableRoots() {
-    return findTrackedPrunableRoots(sessions: _sessions, now: _now());
+    return _maintenance.findPrunableRoots();
   }
 
   PushPrunedSubtree pruneRootSubtree({required String rootSessionId}) {
-    final subtreeSessionIds = collectTrackedSubtreeSessionIds(
+    final subtreeSessionIds = _graph.collectSubtreeSessionIds(
       rootSessionId: rootSessionId,
-      sessions: _sessions,
     );
     final subtreeMessageIds = subtreeSessionIds
         .expand((sessionId) => _sessions[sessionId]?.messageIds ?? const <String>{})
@@ -124,9 +140,8 @@ class PushSessionStateTracker {
   }
 
   void clearLatestAssistantTextForRootSubtree({required String rootSessionId}) {
-    final subtreeSessionIds = collectTrackedSubtreeSessionIds(
+    final subtreeSessionIds = _graph.collectSubtreeSessionIds(
       rootSessionId: rootSessionId,
-      sessions: _sessions,
     );
     for (final sessionId in subtreeSessionIds) {
       _sessions[sessionId]?.latestAssistantText = null;
@@ -141,7 +156,7 @@ class PushSessionStateTracker {
         .map((entry) => entry.key)
         .toList(growable: false);
     for (final messageId in expiredMessageIds) {
-      untrackMessage(messageId: messageId, sessions: _sessions, messageRoles: _messageRoles);
+      _mutator.untrackMessage(messageId: messageId);
     }
 
     if (_messageRoles.length <= PushSessionMaintenancePolicy.messageRoleHardCap) {
@@ -152,21 +167,16 @@ class PushSessionStateTracker {
       ..sort((left, right) => left.value.updatedAt.compareTo(right.value.updatedAt));
     final overflow = _messageRoles.length - PushSessionMaintenancePolicy.messageRoleHardCap;
     for (final entry in staleEntries.take(overflow)) {
-      untrackMessage(messageId: entry.key, sessions: _sessions, messageRoles: _messageRoles);
+      _mutator.untrackMessage(messageId: entry.key);
     }
   }
 
   PushSessionTelemetrySnapshot createTelemetrySnapshot() {
-    return buildTrackedTelemetrySnapshot(
-      sessions: _sessions,
-      messageRoles: _messageRoles,
-      permissionRequestCount: _permissionRequestToSession.length,
-      now: _now(),
-    );
+    return _maintenance.buildTelemetrySnapshot();
   }
 
   String resolveRootSessionId(String sessionId) {
-    return resolveTrackedRootSessionId(sessionId: sessionId, sessions: _sessions);
+    return _graph.resolveRootSessionId(sessionId: sessionId);
   }
 
   void reset() {

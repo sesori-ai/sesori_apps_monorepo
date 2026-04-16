@@ -10,6 +10,7 @@ import "../../auth/access_token_provider.dart";
 import "../../auth/token_refresher.dart";
 import "../../push/completion_notifier.dart";
 import "../../push/push_notification_client.dart";
+import "../../push/push_notification_content_service.dart";
 import "../../push/push_notification_service.dart";
 import "../../push/push_rate_limiter.dart";
 import "../../push/push_session_state_tracker.dart";
@@ -191,6 +192,7 @@ PushNotificationService _createPushNotificationService({
       tracker: tracker,
       debounceDuration: const Duration(milliseconds: 500),
     ),
+    contentService: const PushNotificationContentService(),
   );
 }
 
