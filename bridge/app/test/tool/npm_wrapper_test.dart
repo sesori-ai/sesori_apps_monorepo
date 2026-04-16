@@ -365,8 +365,9 @@ void _expectInstallSummary({
   final nextStep = ['sesori-bridge', ...args].join(' ');
   expect(result.stdout, contains('Sesori Bridge install complete'));
   expect(result.stdout, contains('Managed binary : ${_managedBinaryPath(homePath: homePath)}'));
-  expect(result.stdout, contains('Next step'));
-  expect(result.stdout, contains(nextStep));
+  expect(result.stdout, contains('Next steps'));
+  expect(result.stdout, contains('1. Start the bridge:'));
+  expect(result.stdout, contains('   $nextStep'));
 }
 
 Future<({int exitCode, String stdout, String stderr})> _waitForProcess(Process process) async {
@@ -586,6 +587,12 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
 
       expect(bootstrapResult.exitCode, equals(0), reason: '${bootstrapResult.stdout}\n${bootstrapResult.stderr}');
       _expectInstallSummary(result: bootstrapResult, homePath: homeDir.path, args: ['serve']);
+      expect(
+        bootstrapResult.stdout,
+        contains(
+          'PATH update    : Persisted ~/.sesori/bin in ${p.join(homeDir.path, '.bashrc')}. Run `source ${p.join(homeDir.path, '.bashrc')}` or open a new terminal.',
+        ),
+      );
       expect(
         File(p.join(homeDir.path, '.bashrc')).readAsStringSync(),
         contains(r'export PATH="$HOME/.sesori/bin:$PATH"'),

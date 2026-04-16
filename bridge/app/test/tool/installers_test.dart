@@ -344,7 +344,12 @@ cat "\$HOME/.zshrc"
         RegExp(r'export PATH="\$HOME/.sesori/bin:\$PATH"').allMatches(result.stdout as String).length,
         equals(1),
       );
-      expect(result.stdout, contains('PATH: persisted ~/.sesori/bin in ${p.join(tempDir.path, '.zshrc')}.'));
+      expect(
+        result.stdout,
+        contains(
+          "PATH: persisted ~/.sesori/bin in ${p.join(tempDir.path, '.zshrc')}. Run 'source ${p.join(tempDir.path, '.zshrc')}' or open a new terminal.",
+        ),
+      );
     });
 
     test('writes managed runtime manifest with resolved version', () {
@@ -393,8 +398,9 @@ cat "\$HOME/.zshrc"
       expect(script, contains(r'''$pathEntries | Where-Object { $_.TrimEnd('\') -ieq $BinDir.TrimEnd('\') }'''));
       expect(script, contains(r"[Environment]::SetEnvironmentVariable('PATH', $newPath, 'User')"));
       expect(script, contains(r'PATH: persisted $BinDir in the user PATH.'));
-      expect(script, contains('Write-Host "sesori-bridge"'));
-      expect(script, contains(r'Write-Host "& \"$BinaryPath\""'));
+      expect(script, contains('Write-Host "1. Start the bridge:"'));
+      expect(script, contains('Write-Host "   sesori-bridge"'));
+      expect(script, contains(r'Write-Host "   & \"$BinaryPath\""'));
     });
 
     test('writes managed runtime manifest with resolved version', () {
