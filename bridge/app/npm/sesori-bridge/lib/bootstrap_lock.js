@@ -112,12 +112,22 @@ function withBootstrapLock(options, callback) {
   var lockPath = path.join(path.dirname(options.installRoot), ".sesori-bootstrap.lock");
   fs.mkdirSync(path.dirname(options.installRoot), { recursive: true });
   var heartbeatProcess = acquireLock(lockPath, options);
+  var callbackResult;
   try {
-    return callback();
+    callbackResult = callback();
   } finally {
-    stopHeartbeat(heartbeatProcess);
-    removeRecursive(lockPath);
+    if (!callbackResult || typeof callbackResult.then !== "function") {
+      stopHeartbeat(heartbeatProcess);
+      removeRecursive(lockPath);
+    }
   }
+  if (callbackResult && typeof callbackResult.then === "function") {
+    return Promise.resolve(callbackResult).finally(function() {
+      stopHeartbeat(heartbeatProcess);
+      removeRecursive(lockPath);
+    });
+  }
+  return callbackResult;
 }
 
 module.exports = {

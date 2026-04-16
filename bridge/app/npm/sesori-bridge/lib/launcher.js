@@ -7,6 +7,33 @@ var child_process = require("child_process");
 function unixManagedBinDir() { return "$HOME/.sesori/bin"; }
 function fishManagedBinDir() { return '"$HOME/.sesori/bin"'; }
 
+function sourceHint(filePath, shellName) {
+  if (shellName === "fish") {
+    return "Run `source " + filePath + "` or open a new terminal.";
+  }
+  return "Run `source " + filePath + "` or open a new terminal.";
+}
+
+function unixPathFiles(homeDir, shellName) {
+  if (shellName === "bash") {
+    return [path.join(homeDir, ".bashrc"), path.join(homeDir, ".profile")];
+  }
+  if (shellName === "zsh") {
+    return [path.join(homeDir, ".zshrc"), path.join(homeDir, ".zprofile")];
+  }
+  return [path.join(homeDir, ".profile")];
+}
+
+function joinWithAnd(values) {
+  if (values.length === 1) {
+    return values[0];
+  }
+  if (values.length === 2) {
+    return values[0] + " and " + values[1];
+  }
+  return values.slice(0, -1).join(", ") + ", and " + values[values.length - 1];
+}
+
 function ensureLine(filePath, line) {
   var existing = fs.existsSync(filePath) ? fs.readFileSync(filePath, "utf8") : "";
   var normalized = existing.replace(/\r\n/g, "\n");
@@ -28,28 +55,28 @@ function ensureUnixPathEntry(homeDir, shellPath) {
     var fishConfig = path.join(homeDir, ".config", "fish", "config.fish");
     if (ensureLine(fishConfig, "fish_add_path " + fishManagedBinDir())) {
       changed = true;
-      messages.push("Added ~/.sesori/bin to PATH in " + fishConfig + ".");
+      messages.push("Persisted ~/.sesori/bin in " + fishConfig + ". " + sourceHint(fishConfig, shellName));
     }
   } else {
     var exportLine = 'export PATH="' + unixManagedBinDir() + ':$PATH"';
-    var rcFiles = [path.join(homeDir, ".profile")];
-    if (shellName === "bash") {
-      rcFiles.unshift(path.join(homeDir, ".bashrc"));
-    } else if (shellName === "zsh") {
-      rcFiles.unshift(path.join(homeDir, ".zshrc"));
-      rcFiles.push(path.join(homeDir, ".zprofile"));
-    }
+    var rcFiles = unixPathFiles(homeDir, shellName);
+    var updatedFiles = [];
     rcFiles.forEach(function(filePath) {
       if (ensureLine(filePath, exportLine)) {
         changed = true;
-        messages.push("Added ~/.sesori/bin to PATH in " + filePath + ".");
+        updatedFiles.push(filePath);
       }
     });
+    if (updatedFiles.length > 0) {
+      messages.push(
+        "Persisted ~/.sesori/bin in " + joinWithAnd(updatedFiles) + ". " + sourceHint(updatedFiles[0], shellName)
+      );
+    }
   }
 
   return {
     changed: changed,
-    message: changed ? messages.join("\n") + "\nOpen a new terminal to use sesori-bridge." : null,
+    message: changed ? messages.join("\n") : null,
   };
 }
 
@@ -79,7 +106,7 @@ function ensureWindowsPathEntry(binDir) {
   return {
     changed: String(result.stdout || "").indexOf("UPDATED") !== -1,
     message: String(result.stdout || "").indexOf("UPDATED") !== -1
-      ? "Added %LOCALAPPDATA%\\sesori\\bin to the user PATH.\nOpen a new terminal to use sesori-bridge."
+      ? "Persisted %LOCALAPPDATA%\\sesori\\bin in the user PATH."
       : null,
   };
 }
