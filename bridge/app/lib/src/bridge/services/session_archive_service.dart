@@ -62,7 +62,7 @@ class SessionArchiveService {
     await _sessionPersistenceService.createSession(
       sessionId: sessionId,
       projectId: projectId,
-      isDedicated: true,
+      isDedicated: false,
       createdAt: DateTime.now().millisecondsSinceEpoch,
       worktreePath: null,
       branchName: null,
@@ -183,8 +183,8 @@ class SessionArchiveService {
     required String projectId,
     required String? storedBaseBranch,
   }) async {
-    if (storedBaseBranch case final baseBranch?) {
-      return baseBranch;
+    if (storedBaseBranch != null && storedBaseBranch.trim().isNotEmpty) {
+      return storedBaseBranch.trim();
     }
     final resolved = await _worktreeService.resolveBaseBranchAndCommit(projectPath: projectId);
     if (resolved == null) {

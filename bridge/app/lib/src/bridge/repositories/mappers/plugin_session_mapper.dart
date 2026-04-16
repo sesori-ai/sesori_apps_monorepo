@@ -59,7 +59,8 @@ Session enrichSharedSession({
           );
     result = result.copyWith(
       time: mergedTime,
-      hasWorktree: storedSession.worktreePath != null,
+      hasWorktree: storedSession.isDedicated && storedSession.worktreePath != null,
+      branchName: storedSession.branchName,
     );
   }
 

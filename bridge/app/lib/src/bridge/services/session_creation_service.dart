@@ -25,6 +25,21 @@ IMPORTANT: Do NOT create new worktrees, branches, or working directories for thi
 ''';
 }
 
+String buildContinueBranchSystemPrompt({
+  required String branchName,
+  required String path,
+  required String? baseBranch,
+}) {
+  return '''
+[SYSTEM CONTEXT — IMPORTANT]
+A dedicated git worktree has been set up for this session. You are continuing work on an existing branch: `$branchName`. The worktree is at `$path`.${baseBranch != null ? ' Based on: $baseBranch.' : ''}
+
+IMPORTANT: Do NOT create new branches or worktrees — the branch already exists and is checked out in the worktree above.
+
+---
+''';
+}
+
 class SessionCreationService {
   final MetadataService _metadataService;
   final WorktreeService _worktreeService;
@@ -47,20 +62,24 @@ class SessionCreationService {
     final created = await _sessionRepository.createSession(
       directory: _resolveDirectory(request: request, worktreeResult: worktreeResult),
       parentSessionId: null,
-      parts: _buildPromptParts(parts: request.parts, worktreeResult: worktreeResult),
+      parts: _buildPromptParts(
+        parts: request.parts,
+        worktreeMode: request.worktreeMode,
+        worktreeResult: worktreeResult,
+      ),
       agent: request.agent,
       model: request.model,
     );
     final finalSession = await _maybeRenameSession(session: created, metadata: metadata);
     final worktreeState = await _resolveWorktreeState(
       projectId: request.projectId,
-      dedicatedWorktree: request.dedicatedWorktree,
+      worktreeMode: request.worktreeMode,
       worktreeResult: worktreeResult,
     );
     await _sessionPersistenceService.createSession(
       sessionId: created.id,
       projectId: request.projectId,
-      isDedicated: request.dedicatedWorktree,
+      isDedicated: worktreeState.isDedicated,
       createdAt: DateTime.now().millisecondsSinceEpoch,
       worktreePath: worktreeState.worktreePath,
       branchName: worktreeState.branchName,
@@ -86,27 +105,39 @@ class SessionCreationService {
     required CreateSessionRequest request,
     required bridge_metadata.SessionMetadata? metadata,
   }) async {
-    if (!request.dedicatedWorktree) {
+    if (request.worktreeMode == WorktreeMode.none) {
       return null;
     }
-    return _worktreeService.prepareWorktreeForSession(
-      projectId: request.projectId,
-      parentSessionId: null,
+    return _worktreeService.prepareWorktreeForBranch(
+      mode: request.worktreeMode,
+      selectedBranch: request.selectedBranch,
+      projectPath: request.projectId,
+      sessionId: "",
       preferredBranchAndWorktreeName: metadata != null
           ? (branchName: metadata.branchName, worktreeName: metadata.worktreeName)
           : null,
     );
   }
 
-  List<PromptPart> _buildPromptParts({required List<PromptPart> parts, required WorktreeResult? worktreeResult}) {
+  List<PromptPart> _buildPromptParts({
+    required List<PromptPart> parts,
+    required WorktreeMode worktreeMode,
+    required WorktreeResult? worktreeResult,
+  }) {
     if (worktreeResult case WorktreeSuccess(:final path, :final branchName, :final baseBranch)) {
       return [
         PromptPart.text(
-          text: buildWorktreeSystemPrompt(
-            branchName: branchName,
-            worktreePath: path,
-            baseBranch: baseBranch,
-          ),
+          text: worktreeMode == WorktreeMode.stayOnBranch
+              ? buildContinueBranchSystemPrompt(
+                  branchName: branchName,
+                  path: path,
+                  baseBranch: baseBranch,
+                )
+              : buildWorktreeSystemPrompt(
+                  branchName: branchName,
+                  worktreePath: path,
+                  baseBranch: baseBranch,
+                ),
         ),
         ...parts,
       ];
@@ -115,7 +146,7 @@ class SessionCreationService {
   }
 
   String _resolveDirectory({required CreateSessionRequest request, required WorktreeResult? worktreeResult}) {
-    if (!request.dedicatedWorktree) {
+    if (request.worktreeMode == WorktreeMode.none) {
       return request.projectId;
     }
     return switch (worktreeResult) {
@@ -139,9 +170,10 @@ class SessionCreationService {
     return session;
   }
 
-  Future<({String? worktreePath, String? branchName, String? baseBranch, String? baseCommit})> _resolveWorktreeState({
+  Future<({bool isDedicated, String? worktreePath, String? branchName, String? baseBranch, String? baseCommit})>
+  _resolveWorktreeState({
     required String projectId,
-    required bool dedicatedWorktree,
+    required WorktreeMode worktreeMode,
     required WorktreeResult? worktreeResult,
   }) async {
     if (worktreeResult case WorktreeSuccess(
@@ -149,19 +181,25 @@ class SessionCreationService {
       branchName: final resolvedBranchName,
       baseBranch: final resolvedBaseBranch,
       baseCommit: final resolvedBaseCommit,
+      isDedicated: final resolvedIsDedicated,
     )) {
       return (
-        worktreePath: path,
+        isDedicated: resolvedIsDedicated,
+        worktreePath: resolvedIsDedicated ? path : null,
         branchName: resolvedBranchName,
         baseBranch: resolvedBaseBranch,
         baseCommit: resolvedBaseCommit,
       );
     }
-    if (dedicatedWorktree) {
-      return (worktreePath: null, branchName: null, baseBranch: null, baseCommit: null);
+    if (worktreeResult case WorktreeFallback()) {
+      return (isDedicated: true, worktreePath: null, branchName: null, baseBranch: null, baseCommit: null);
+    }
+    if (worktreeMode != WorktreeMode.none) {
+      return (isDedicated: false, worktreePath: null, branchName: null, baseBranch: null, baseCommit: null);
     }
     final baseBranchAndCommit = await _worktreeService.resolveBaseBranchAndCommit(projectPath: projectId);
     return (
+      isDedicated: false,
       worktreePath: null,
       branchName: null,
       baseBranch: baseBranchAndCommit?.baseBranch,
