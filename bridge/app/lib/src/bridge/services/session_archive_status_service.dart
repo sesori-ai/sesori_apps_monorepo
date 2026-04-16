@@ -83,7 +83,6 @@ class SessionArchiveStatusService {
     required int? archivedAt,
   }) {
     final base = pluginSession.toSharedSession(
-      branchName: sessionDto.branchName,
       hasWorktree: sessionDto.isDedicated && sessionDto.worktreePath != null,
     );
     final time = base.time;

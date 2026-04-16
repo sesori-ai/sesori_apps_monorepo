@@ -5,8 +5,10 @@ import "../../persistence/tables/session_table.dart";
 
 /// Maps a [PluginSession] to the shared [Session] type used in relay responses.
 extension PluginSessionMapper on PluginSession {
-  Session toSharedSession() {
-    return Session(
+  Session toSharedSession({
+    bool? hasWorktree,
+  }) {
+    var session = Session(
       id: id,
       projectID: projectID,
       directory: directory,
@@ -30,6 +32,10 @@ extension PluginSessionMapper on PluginSession {
       },
       pullRequest: null,
     );
+    if (hasWorktree != null) {
+      session = session.copyWith(hasWorktree: hasWorktree);
+    }
+    return session;
   }
 }
 

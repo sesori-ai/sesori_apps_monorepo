@@ -77,13 +77,12 @@ class BranchRepository {
     required String branchName,
     required String startPoint,
   }) async {
-    final result = await _gitCliApi.createWorktree(
-      workingDirectory: projectPath,
+    return _gitCliApi.createWorktree(
+      projectPath: projectPath,
       worktreePath: worktreePath,
       branchName: branchName,
       startPoint: startPoint,
     );
-    return result.exitCode == 0;
   }
 
   Future<bool> branchExistsLocally({

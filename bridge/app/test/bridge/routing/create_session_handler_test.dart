@@ -83,6 +83,7 @@ void main() {
         branchName: "session-001",
         baseBranch: "main",
         baseCommit: "abc123def456",
+        isDedicated: true,
       );
 
       final result = await handler.handle(
@@ -265,6 +266,7 @@ void main() {
         branchName: "session-001",
         baseBranch: "main",
         baseCommit: "abc123def456",
+        isDedicated: true,
       );
 
       await expectLater(
@@ -342,6 +344,7 @@ void main() {
         branchName: "session-001",
         baseBranch: "main",
         baseCommit: "abc123",
+        isDedicated: true,
       );
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
       await db.pullRequestDao.upsertPr(
@@ -489,6 +492,7 @@ void main() {
         branchName: "fix-login-bug",
         baseBranch: "main",
         baseCommit: "abc123",
+        isDedicated: true,
       );
 
       final result = await handler.handle(
@@ -527,6 +531,7 @@ void main() {
         branchName: "session-001",
         baseBranch: "main",
         baseCommit: "abc123",
+        isDedicated: true,
       );
 
       final result = await handler.handle(
