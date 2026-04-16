@@ -74,6 +74,7 @@ class BridgeRuntime {
     );
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
+      failureReporter: failureReporter,
     );
 
     return BridgeRuntime(

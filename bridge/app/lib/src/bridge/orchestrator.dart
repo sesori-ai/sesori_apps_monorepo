@@ -224,8 +224,18 @@ class OrchestratorSession {
           (event) {
             unawaited(_processPluginEvent(event));
           },
-          onError: (Object e) {
+          onError: (Object e, StackTrace st) {
             Log.w("[dbg] plugin event stream error: $e");
+            unawaited(
+              _failureReporter.recordFailure(
+                error: e,
+                stackTrace: st,
+                uniqueIdentifier: "bridge.plugin.events",
+                fatal: false,
+                reason: "plugin event stream failure",
+                information: const [],
+              ),
+            );
           },
           onDone: () {
             Log.w("[dbg] plugin event stream closed");

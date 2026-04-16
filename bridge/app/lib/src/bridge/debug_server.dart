@@ -15,6 +15,7 @@ class DebugServer {
   final RequestRouter _router;
   final BridgeEventMapper _mapper;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
+  final FailureReporter _failureReporter;
   final int port;
   final List<HttpResponse> _sseClients = [];
   final CompositeSubscription _compositeSubscription = CompositeSubscription();
@@ -32,6 +33,7 @@ class DebugServer {
     required SessionEventEnrichmentService sessionEventEnrichmentService,
   }) : _plugin = plugin,
        _router = router,
+       _failureReporter = failureReporter,
        _mapper = BridgeEventMapper(
          plugin: plugin,
          failureReporter: failureReporter,
@@ -141,7 +143,22 @@ class DebugServer {
           .asyncMap<BridgeSseEvent>((event) => _sessionEventEnrichmentService.enrich(event))
           .map<SesoriSseEvent?>((event) => _mapper.map(event))
           .asyncMap((mapped) => _fanOutMappedEvent(mapped: mapped))
-          .listen((_) {});
+          .listen(
+            (_) {},
+            onError: (Object e, StackTrace st) {
+              Log.w("debug SSE stream error: $e");
+              unawaited(
+                _failureReporter.recordFailure(
+                  error: e,
+                  stackTrace: st,
+                  uniqueIdentifier: "bridge.debug_server.sse",
+                  fatal: false,
+                  reason: "debug SSE stream failure",
+                  information: const [],
+                ),
+              );
+            },
+          );
 
       final disconnected = Completer<void>();
       unawaited(
