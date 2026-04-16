@@ -2,7 +2,6 @@
 
 var fs = require("fs");
 var path = require("path");
-var child_process = require("child_process");
 var launcher = require("./launcher");
 var bootstrapLock = require("./bootstrap_lock");
 var releaseAssetRuntime = require("./release_asset_runtime");
@@ -23,6 +22,54 @@ function fail(message) {
 
 function errorMessage(error) {
   return String(error && error.message ? error.message : error);
+}
+
+function shellQuote(value) {
+  if (!value) {
+    return "''";
+  }
+  if (/^[A-Za-z0-9_./:-]+$/.test(value)) {
+    return value;
+  }
+  return "'" + String(value).replace(/'/g, "'\\''") + "'";
+}
+
+function powershellQuote(value) {
+  if (!value) {
+    return "''";
+  }
+  return "'" + String(value).replace(/'/g, "''") + "'";
+}
+
+function nextCommand(binaryPath, args) {
+  var commandArgs = Array.isArray(args) ? args : [];
+  var managedCommand;
+  if (process.platform === "win32") {
+    managedCommand = "& " + [binaryPath].concat(commandArgs).map(powershellQuote).join(" ");
+  } else {
+    managedCommand = [binaryPath].concat(commandArgs).map(shellQuote).join(" ");
+  }
+  return {
+    managed: managedCommand,
+    pathCommand: ["sesori-bridge"].concat(commandArgs).map(shellQuote).join(" "),
+  };
+}
+
+function printInstallSummary(options) {
+  var commands = nextCommand(options.binaryPath, options.args);
+  console.log("");
+  console.log("Sesori Bridge install complete");
+  console.log("============================");
+  console.log("Managed install: " + options.installRoot);
+  console.log("Managed binary : " + options.binaryPath);
+  console.log("PATH update    : " + options.pathStatus);
+  console.log("");
+  console.log("Next step");
+  console.log("---------");
+  console.log(commands.pathCommand);
+  console.log("");
+  console.log("If `sesori-bridge` is not available in this shell yet, run:");
+  console.log(commands.managed);
 }
 
 function managedBinDir(installRoot) { return path.dirname(runtimeInstall.managedBinaryPath(installRoot)); }
@@ -107,38 +154,32 @@ async function bootstrapManagedRuntime(pkgName) {
   }
 }
 
-function spawnManagedRuntime(binaryPath, args) {
-  var managedBinDir = path.dirname(binaryPath);
-  var result = child_process.spawnSync(binaryPath, args, {
-    env: Object.assign({}, process.env, { PATH: managedBinDir + path.delimiter + (process.env.PATH || "") }),
-    stdio: "inherit",
-  });
-  if (result.error) {
-    fail("sesori-bridge: Failed to launch managed runtime.\n" + result.error.message);
-  }
-  process.exit(result.status === null ? 1 : result.status);
-}
-
 async function runMain(options) {
   var bootstrapResult = await bootstrapManagedRuntime(options && options.pkgName);
+  var launcherResult = null;
+  var pathStatus = "already configured";
   try {
-    var launcherResult = launcher.ensureManagedCommandPath({
+    launcherResult = launcher.ensureManagedCommandPath({
       binDir: managedBinDir(bootstrapResult.installRoot),
       homeDir: process.env.HOME,
       platform: process.platform,
       shellPath: process.env.SHELL || "",
     });
-    if (launcherResult && launcherResult.message) {
-      console.error(launcherResult.message);
-    }
+    pathStatus = launcherResult && launcherResult.message ? launcherResult.message : "already configured";
   } catch (error) {
+    pathStatus = "manual action required";
     console.error(
       "sesori-bridge: Failed to persist the managed command path.\n" +
       errorMessage(error) + "\n" +
-      "Continuing with the managed runtime for this launch."
+      "The managed runtime is installed, but you may need to add it to PATH manually."
     );
   }
-  spawnManagedRuntime(bootstrapResult.binaryPath, process.argv.slice(2));
+  printInstallSummary({
+    installRoot: bootstrapResult.installRoot,
+    binaryPath: bootstrapResult.binaryPath,
+    pathStatus: pathStatus,
+    args: process.argv.slice(2),
+  });
 }
 
 function main(options) {

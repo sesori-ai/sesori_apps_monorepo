@@ -7,6 +7,16 @@ var child_process = require("child_process");
 function unixManagedBinDir() { return "$HOME/.sesori/bin"; }
 function fishManagedBinDir() { return '"$HOME/.sesori/bin"'; }
 
+function unixPathFile(homeDir, shellName) {
+  if (shellName === "bash") {
+    return path.join(homeDir, ".bashrc");
+  }
+  if (shellName === "zsh") {
+    return path.join(homeDir, ".zshrc");
+  }
+  return path.join(homeDir, ".profile");
+}
+
 function ensureLine(filePath, line) {
   var existing = fs.existsSync(filePath) ? fs.readFileSync(filePath, "utf8") : "";
   var normalized = existing.replace(/\r\n/g, "\n");
@@ -28,28 +38,20 @@ function ensureUnixPathEntry(homeDir, shellPath) {
     var fishConfig = path.join(homeDir, ".config", "fish", "config.fish");
     if (ensureLine(fishConfig, "fish_add_path " + fishManagedBinDir())) {
       changed = true;
-      messages.push("Added ~/.sesori/bin to PATH in " + fishConfig + ".");
+      messages.push("Persisted ~/.sesori/bin in " + fishConfig + ".");
     }
   } else {
     var exportLine = 'export PATH="' + unixManagedBinDir() + ':$PATH"';
-    var rcFiles = [path.join(homeDir, ".profile")];
-    if (shellName === "bash") {
-      rcFiles.unshift(path.join(homeDir, ".bashrc"));
-    } else if (shellName === "zsh") {
-      rcFiles.unshift(path.join(homeDir, ".zshrc"));
-      rcFiles.push(path.join(homeDir, ".zprofile"));
+    var rcFile = unixPathFile(homeDir, shellName);
+    if (ensureLine(rcFile, exportLine)) {
+      changed = true;
+      messages.push("Persisted ~/.sesori/bin in " + rcFile + ".");
     }
-    rcFiles.forEach(function(filePath) {
-      if (ensureLine(filePath, exportLine)) {
-        changed = true;
-        messages.push("Added ~/.sesori/bin to PATH in " + filePath + ".");
-      }
-    });
   }
 
   return {
     changed: changed,
-    message: changed ? messages.join("\n") + "\nOpen a new terminal to use sesori-bridge." : null,
+    message: changed ? messages.join("\n") : null,
   };
 }
 
@@ -79,7 +81,7 @@ function ensureWindowsPathEntry(binDir) {
   return {
     changed: String(result.stdout || "").indexOf("UPDATED") !== -1,
     message: String(result.stdout || "").indexOf("UPDATED") !== -1
-      ? "Added %LOCALAPPDATA%\\sesori\\bin to the user PATH.\nOpen a new terminal to use sesori-bridge."
+      ? "Persisted %LOCALAPPDATA%\\sesori\\bin in the user PATH."
       : null,
   };
 }
