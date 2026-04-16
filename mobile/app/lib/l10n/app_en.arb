@@ -317,57 +317,5 @@
          "prChecksFailing": "Checks failing",
          "prChecksPending": "Checks pending",
          "prMergeable": "Ready to merge",
-         "prConflicting": "Has merge conflicts",
-         "branchPickerTitle": "Select Branch",
-         "branchPickerSearch": "Search branches...",
-         "branchPickerProjectDir": "Use project directory",
-         "branchPickerProjectDirSubtitle": "Currently on {branch}",
-         "@branchPickerProjectDirSubtitle": {
-           "placeholders": {
-             "branch": {
-               "type": "String"
-             }
-           }
-         },
-         "branchPickerRemote": "remote",
-  "branchPickerModeStay": "Stay on this branch",
-  "branchPickerModeNew": "Create new branch from this",
-  "branchPickerModeStayDescription": "Continue directly on the selected branch. If a worktree already exists, Sesori will reuse it.",
-  "branchPickerModeNewDescription": "Start a fresh branch and worktree from the selected branch.",
-  "branchPickerActionTitle": "How should Sesori start from {branch}?",
-  "@branchPickerActionTitle": {
-    "placeholders": {
-      "branch": {
-        "type": "String"
-      }
-    }
-  },
-  "branchPickerConfirmSelection": "Continue",
-  "branchPickerLoadError": "Could not load branches",
-         "branchPickerUsingProjectDir": "Using project directory",
-         "branchPickerSelectedBranch": "Branch: {branch}",
-         "@branchPickerSelectedBranch": {
-           "placeholders": {
-             "branch": {
-               "type": "String"
-             }
-           }
-         },
-         "branchPickerModeLabel": "{mode}",
-         "@branchPickerModeLabel": {
-           "placeholders": {
-             "mode": {
-               "type": "String"
-             }
-           }
-         },
-         "branchPickerNoWorktree": "no worktree",
-         "branchPickerTimeAgo": "{time} ago",
-         "@branchPickerTimeAgo": {
-           "placeholders": {
-             "time": {
-               "type": "String"
-             }
-           }
-         }
+         "prConflicting": "Has merge conflicts"
 }

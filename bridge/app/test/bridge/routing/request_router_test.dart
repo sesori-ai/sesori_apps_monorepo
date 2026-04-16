@@ -3,7 +3,6 @@ import "dart:convert";
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/branch_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/provider_repository.dart";
@@ -48,11 +47,7 @@ void main() {
         sessionDao: db.sessionDao,
         db: db,
       );
-      final branchRepository = BranchRepository(
-        gitCliApi: GitCliApi(processRunner: FakeProcessRunner(), gitPathExists: ({required String gitPath}) => true),
-      );
       final worktreeService = WorktreeService(
-        branchRepository: branchRepository,
         worktreeRepository: WorktreeRepository(
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
@@ -88,7 +83,6 @@ void main() {
         permissionRepository: permissionRepository,
         sessionPersistenceService: sessionPersistenceService,
         worktreeService: worktreeService,
-        branchRepository: branchRepository,
         sessionDiffsHandler: sessionDiffsHandler,
         onSessionAborted: (_) {},
       );
@@ -197,8 +191,7 @@ void main() {
           body: jsonEncode(
             const CreateSessionRequest(
               projectId: "/tmp",
-              worktreeMode: WorktreeMode.none,
-              selectedBranch: null,
+              dedicatedWorktree: false,
               parts: [PromptPart.text(text: "Start")],
               agent: "architect",
               model: PromptModel(providerID: "openai", modelID: "gpt-5"),
@@ -330,11 +323,7 @@ void main() {
         sessionDao: db.sessionDao,
         db: db,
       );
-      final branchRepository2 = BranchRepository(
-        gitCliApi: GitCliApi(processRunner: FakeProcessRunner(), gitPathExists: ({required String gitPath}) => true),
-      );
       final worktreeService = WorktreeService(
-        branchRepository: branchRepository2,
         worktreeRepository: WorktreeRepository(
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
@@ -376,7 +365,6 @@ void main() {
         permissionRepository: permissionRepository,
         sessionPersistenceService: sessionPersistenceService,
         worktreeService: worktreeService,
-        branchRepository: branchRepository2,
         sessionDiffsHandler: sessionDiffsHandler,
         onSessionAborted: (_) {},
       );

@@ -10,15 +10,6 @@ on:
         required: false
         default: false
         type: boolean
-      publish_npm:
-        description: "Publish npm packages from an existing bridge release tag"
-        required: false
-        default: false
-        type: boolean
-      release_tag:
-        description: "Existing bridge release tag to publish from when publish_npm=true"
-        required: false
-        type: string
 
 jobs:
   build:
@@ -161,31 +152,15 @@ jobs:
     name: Publish platform npm packages
     needs: release
     runs-on: ubuntu-latest
-    if: github.event.inputs.dry_run != 'true' && (startsWith(github.ref_name, 'bridge-v') || github.event.inputs.publish_npm == 'true')
+    if: github.event.inputs.dry_run != 'true' && startsWith(github.ref_name, 'bridge-v')
     permissions:
       contents: read
       id-token: write
     env:
-      RELEASE_TAG: ${{ github.event.inputs.release_tag || github.ref_name }}
+      RELEASE_TAG: ${{ github.ref_name }}
     steps:
 
-      - name: Validate manual npm publish inputs
-        if: github.event_name == 'workflow_dispatch'
-        shell: bash
-        run: |
-          if [[ "${{ github.event.inputs.publish_npm }}" == "true" && -z "${{ github.event.inputs.release_tag }}" ]]; then
-            echo "release_tag is required when publish_npm=true" >&2
-            exit 1
-          fi
-
-          if [[ -n "${{ github.event.inputs.release_tag }}" && "${{ github.event.inputs.release_tag }}" != bridge-v* ]]; then
-            echo "release_tag must start with bridge-v" >&2
-            exit 1
-          fi
-
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.release_tag }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -364,16 +339,14 @@ jobs:
     name: Publish wrapper npm package
     needs: publish-platform
     runs-on: ubuntu-latest
-    if: github.event.inputs.dry_run != 'true' && (startsWith(github.ref_name, 'bridge-v') || github.event.inputs.publish_npm == 'true')
+    if: github.event.inputs.dry_run != 'true' && startsWith(github.ref_name, 'bridge-v')
     permissions:
       contents: read
       id-token: write
     env:
-      RELEASE_TAG: ${{ github.event.inputs.release_tag || github.ref_name }}
+      RELEASE_TAG: ${{ github.ref_name }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.release_tag }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

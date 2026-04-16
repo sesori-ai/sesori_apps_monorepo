@@ -61,14 +61,13 @@ class WorktreeRepository {
     required String worktreePath,
     required String branchName,
     required String startPoint,
-  }) async {
-    final result = await _gitApi.createWorktree(
-      workingDirectory: projectPath,
+  }) {
+    return _gitApi.createWorktree(
+      projectPath: projectPath,
       worktreePath: worktreePath,
       branchName: branchName,
       startPoint: startPoint,
     );
-    return result.exitCode == 0;
   }
 
   Future<int> incrementAndGetWorktreeCounter({required String projectId}) {

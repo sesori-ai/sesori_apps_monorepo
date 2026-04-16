@@ -62,7 +62,7 @@ class SessionArchiveService {
     await _sessionPersistenceService.createSession(
       sessionId: sessionId,
       projectId: projectId,
-      isDedicated: false,
+      isDedicated: true,
       createdAt: DateTime.now().millisecondsSinceEpoch,
       worktreePath: null,
       branchName: null,
@@ -165,7 +165,7 @@ class SessionArchiveService {
           worktreePath: worktreePath,
           branchName: branchName,
           baseBranch: restoreBaseBranch,
-          baseCommit: sessionDto.baseCommit,
+          baseCommit: _normalizeBaseCommit(baseCommit: sessionDto.baseCommit),
         );
       }
     }
@@ -191,5 +191,16 @@ class SessionArchiveService {
       throw SessionInitializationException();
     }
     return resolved.baseBranch;
+  }
+
+  String? _normalizeBaseCommit({required String? baseCommit}) {
+    if (baseCommit == null) {
+      return null;
+    }
+    final trimmed = baseCommit.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    return trimmed;
   }
 }

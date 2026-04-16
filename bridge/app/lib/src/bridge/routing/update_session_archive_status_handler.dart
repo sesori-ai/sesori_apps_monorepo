@@ -1,10 +1,10 @@
-import 'dart:async';
-import 'dart:convert';
+import "dart:async";
+import "dart:convert";
 
-import 'package:sesori_shared/sesori_shared.dart';
+import "package:sesori_shared/sesori_shared.dart";
 
-import '../services/session_archive_service.dart';
-import 'request_handler.dart';
+import "../services/session_archive_service.dart";
+import "request_handler.dart";
 
 /// Handles `PATCH /session/update/archive` — updates archive status for a session.
 class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSessionArchiveRequest, Session> {
@@ -15,7 +15,7 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
   }) : _sessionArchiveService = sessionArchiveService,
        super(
          HttpMethod.patch,
-         '/session/update/archive',
+         "/session/update/archive",
          fromJson: UpdateSessionArchiveRequest.fromJson,
        );
 
@@ -29,9 +29,8 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
   }) async {
     final sessionId = body.sessionId;
     if (sessionId.isEmpty) {
-      throw buildErrorResponse(request, 400, 'empty session id');
+      throw buildErrorResponse(request, 400, "empty session id");
     }
-
     try {
       return await _sessionArchiveService.updateArchiveStatus(
         sessionId: sessionId,
@@ -44,13 +43,13 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
       throw RelayResponse(
         id: request.id,
         status: 409,
-        headers: {'content-type': 'application/json'},
+        headers: {"content-type": "application/json"},
         body: jsonEncode(e.rejection.toJson()),
       );
     } on SessionNotFoundException {
-      throw buildErrorResponse(request, 404, 'session not found');
+      throw buildErrorResponse(request, 404, "session not found");
     } on SessionInitializationException {
-      throw buildErrorResponse(request, 500, 'failed to initialize session');
+      throw buildErrorResponse(request, 500, "failed to initialize session");
     }
   }
 }

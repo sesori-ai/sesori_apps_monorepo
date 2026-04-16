@@ -192,7 +192,6 @@ Session testSession({
     title: title,
     summary: null,
     pullRequest: null,
-    branchName: null,
     time: SessionTime(
       created: createdAt ?? 1700000000000,
       updated: updatedAt ?? 1700000000000,

@@ -828,7 +828,6 @@ Session _session({
     directory: directory,
     parentID: parentID,
     title: title,
-    branchName: null,
     time: null,
     summary: null,
     pullRequest: null,

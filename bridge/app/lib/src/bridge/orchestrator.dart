@@ -14,7 +14,6 @@ import "key_exchange.dart";
 import "metadata_service.dart";
 import "models/bridge_config.dart";
 import "relay_client.dart";
-import "repositories/branch_repository.dart";
 import "repositories/permission_repository.dart";
 import "repositories/project_repository.dart";
 import "repositories/provider_repository.dart";
@@ -32,15 +31,10 @@ import "sse/sse_manager.dart";
 
 /// Factory that creates [OrchestratorSession] instances with all runtime
 /// dependencies (room key, SSE manager) properly initialized.
-///
-/// [MetadataService] is held here because [SessionCreationService] needs it,
-/// but [Orchestrator] itself does not use it directly — only passes it into
-/// [SessionCreationService] via [BridgeRuntime.create].
 class Orchestrator {
   final BridgeConfig config;
   final RelayClient _client;
   final BridgePlugin _plugin;
-  // ignore: unused_field — MetadataService is passed to SessionCreationService, not used by Orchestrator itself
   final MetadataService _metadataService;
   final PushNotificationService _pushNotificationService;
   final TokenRefresher _tokenRefresher;
@@ -51,10 +45,7 @@ class Orchestrator {
   final PermissionRepository _permissionRepository;
   final SessionPersistenceService _sessionPersistenceService;
   final WorktreeService _worktreeService;
-  final BranchRepository _branchRepository;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
-  final SessionCreationService _sessionCreationService;
-  final SessionArchiveService _sessionArchiveService;
 
   Orchestrator({
     required this.config,
@@ -70,10 +61,7 @@ class Orchestrator {
     required PermissionRepository permissionRepository,
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
-    required BranchRepository branchRepository,
     required SessionEventEnrichmentService sessionEventEnrichmentService,
-    required SessionCreationService sessionCreationService,
-    required SessionArchiveService sessionArchiveService,
   }) : _client = client,
        _plugin = plugin,
        _metadataService = metadataService,
@@ -86,15 +74,23 @@ class Orchestrator {
        _permissionRepository = permissionRepository,
        _sessionPersistenceService = sessionPersistenceService,
        _worktreeService = worktreeService,
-       _branchRepository = branchRepository,
-       _sessionEventEnrichmentService = sessionEventEnrichmentService,
-       _sessionCreationService = sessionCreationService,
-       _sessionArchiveService = sessionArchiveService;
+       _sessionEventEnrichmentService = sessionEventEnrichmentService;
 
   /// Creates a new session with a fresh room key and SSE manager.
   OrchestratorSession create() {
     final roomKey = _generateRoomKey();
     final bytesSentController = StreamController<int>.broadcast();
+    final sessionCreationService = SessionCreationService(
+      metadataService: _metadataService,
+      worktreeService: _worktreeService,
+      sessionRepository: _sessionRepository,
+      sessionPersistenceService: _sessionPersistenceService,
+    );
+    final sessionArchiveService = SessionArchiveService(
+      worktreeService: _worktreeService,
+      sessionRepository: _sessionRepository,
+      sessionPersistenceService: _sessionPersistenceService,
+    );
     final sseManager = SSEManager(
       replayWindow: config.sseReplayWindow,
       onBytesSent: bytesSentController.add,
@@ -118,10 +114,9 @@ class Orchestrator {
       permissionRepository: _permissionRepository,
       sessionPersistenceService: _sessionPersistenceService,
       worktreeService: _worktreeService,
-      branchRepository: _branchRepository,
+      sessionCreationService: sessionCreationService,
+      sessionArchiveService: sessionArchiveService,
       sessionEventEnrichmentService: _sessionEventEnrichmentService,
-      sessionCreationService: _sessionCreationService,
-      sessionArchiveService: _sessionArchiveService,
     );
   }
 
@@ -171,10 +166,9 @@ class OrchestratorSession {
     required PermissionRepository permissionRepository,
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
-    required BranchRepository branchRepository,
-    required SessionEventEnrichmentService sessionEventEnrichmentService,
     required SessionCreationService sessionCreationService,
     required SessionArchiveService sessionArchiveService,
+    required SessionEventEnrichmentService sessionEventEnrichmentService,
   }) : _client = client,
        _plugin = plugin,
        _pushNotificationService = pushNotificationService,
@@ -184,29 +178,28 @@ class OrchestratorSession {
        _bytesSentController = bytesSentController,
        _failureReporter = failureReporter,
        _prSyncService = prSyncService,
-       _sessionEventEnrichmentService = sessionEventEnrichmentService,
        _router = RequestRouter(
          plugin: plugin,
          sessionRepository: sessionRepository,
+         sessionCreationService: sessionCreationService,
+         sessionArchiveService: sessionArchiveService,
          prSyncService: prSyncService,
          projectRepository: projectRepository,
          providerRepository: ProviderRepository(plugin: plugin),
          permissionRepository: permissionRepository,
          sessionPersistenceService: sessionPersistenceService,
          worktreeService: worktreeService,
-         branchRepository: branchRepository,
          sessionDiffsHandler: GetSessionDiffsHandler(
            sessionRepository: sessionRepository,
            processRunner: ProcessRunner(),
          ),
          onSessionAborted: pushNotificationService.markSessionAborted,
-         sessionCreationService: sessionCreationService,
-         sessionArchiveService: sessionArchiveService,
        ),
        _mapper = BridgeEventMapper(
          plugin: plugin,
          failureReporter: failureReporter,
-       );
+       ),
+       _sessionEventEnrichmentService = sessionEventEnrichmentService;
 
   /// Broadcast stream of byte counts emitted each time data is sent to a phone.
   ///

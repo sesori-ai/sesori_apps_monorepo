@@ -1,7 +1,6 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
 import "send_prompt_request.dart";
-import "worktree_mode.dart";
 
 part "create_session_request.freezed.dart";
 
@@ -14,8 +13,7 @@ sealed class CreateSessionRequest with _$CreateSessionRequest {
     required List<PromptPart> parts,
     required String? agent,
     required PromptModel? model,
-    required WorktreeMode worktreeMode,
-    required String? selectedBranch,
+    required bool dedicatedWorktree,
   }) = _CreateSessionRequest;
 
   factory CreateSessionRequest.fromJson(Map<String, dynamic> json) => _$CreateSessionRequestFromJson(json);

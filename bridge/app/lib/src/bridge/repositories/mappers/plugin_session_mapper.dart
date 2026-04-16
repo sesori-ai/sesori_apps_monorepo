@@ -5,14 +5,13 @@ import "../../persistence/tables/session_table.dart";
 
 /// Maps a [PluginSession] to the shared [Session] type used in relay responses.
 extension PluginSessionMapper on PluginSession {
-  Session toSharedSession({String? branchName, bool hasWorktree = false}) {
+  Session toSharedSession() {
     return Session(
       id: id,
       projectID: projectID,
       directory: directory,
       parentID: parentID,
       title: title,
-      branchName: branchName,
       time: switch (time) {
         PluginSessionTime(:final created, :final updated, :final archived) => SessionTime(
           created: created,
@@ -30,7 +29,6 @@ extension PluginSessionMapper on PluginSession {
         null => null,
       },
       pullRequest: null,
-      hasWorktree: hasWorktree,
     );
   }
 }
@@ -59,8 +57,7 @@ Session enrichSharedSession({
           );
     result = result.copyWith(
       time: mergedTime,
-      hasWorktree: storedSession.isDedicated && storedSession.worktreePath != null,
-      branchName: storedSession.branchName,
+      hasWorktree: storedSession.worktreePath != null,
     );
   }
 

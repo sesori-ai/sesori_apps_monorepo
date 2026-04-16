@@ -24,14 +24,12 @@ class WorktreeSuccess extends WorktreeResult {
   final String branchName;
   final String baseBranch;
   final String baseCommit;
-  final bool isDedicated;
 
   WorktreeSuccess({
     required this.path,
     required this.branchName,
     required this.baseBranch,
     required this.baseCommit,
-    required this.isDedicated,
   });
 }
 

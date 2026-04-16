@@ -239,7 +239,6 @@ Session _session({
     directory: "/tmp/$projectId",
     parentID: null,
     title: null,
-    branchName: null,
     time: SessionTime(created: createdAt, updated: createdAt, archived: archivedAt),
     summary: null,
     pullRequest: null,

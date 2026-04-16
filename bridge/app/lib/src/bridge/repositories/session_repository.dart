@@ -151,14 +151,7 @@ class SessionRepository {
 
   Future<List<Session>> getChildSessions({required String sessionId}) async {
     final pluginSessions = await _plugin.getChildSessions(sessionId);
-    final dbSessions = await _sessionDao.getSessionsByIds(sessionIds: pluginSessions.map((s) => s.id).toList());
-    return pluginSessions.map((s) {
-      final dbSession = dbSessions[s.id];
-      return s.toSharedSession(
-        branchName: dbSession?.branchName,
-        hasWorktree: (dbSession?.isDedicated ?? false) && dbSession?.worktreePath != null,
-      );
-    }).toList();
+    return pluginSessions.toSharedSessions();
   }
 
   Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {

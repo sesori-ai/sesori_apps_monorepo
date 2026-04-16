@@ -83,17 +83,21 @@ void main() {
       expect(secondEvent, contains("server.connected"));
     });
 
-    test("first client still receives events after second disconnects", () async {
-      final first = await _SseTestClient.connect(debugServer.boundPort!);
-      addTearDown(first.close);
+    test(
+      "first client still receives events after second disconnects",
+      () async {
+        final first = await _SseTestClient.connect(debugServer.boundPort!);
+        addTearDown(first.close);
 
-      final second = await _SseTestClient.connect(debugServer.boundPort!);
-      await second.close();
+        final second = await _SseTestClient.connect(debugServer.boundPort!);
 
-      plugin.add(const BridgeSseServerConnected());
-      final firstEvent = await first.nextEvent();
-      expect(firstEvent, contains("server.connected"));
-    });
+        await second.close();
+
+        plugin.add(const BridgeSseServerConnected());
+        final firstEvent = await first.nextEvent();
+        expect(firstEvent, contains("server.connected"));
+      },
+    );
 
     test("async-mapped session events preserve order for SSE clients", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
@@ -155,7 +159,11 @@ void main() {
     test("plugin subscription is released when last client disconnects", () async {
       final trackingPlugin = _TrackingBridgePlugin();
       final trackingDb = createTestDatabase();
-      final trackingHarness = _createDebugServerHarness(plugin: trackingPlugin, db: trackingDb, port: 0);
+      final trackingHarness = _createDebugServerHarness(
+        plugin: trackingPlugin,
+        db: trackingDb,
+        port: 0,
+      );
       final trackingServer = trackingHarness.debugServer;
       await trackingServer.start();
       addTearDown(trackingHarness.close);
@@ -197,12 +205,16 @@ void main() {
     });
 
     test("GET /projects returns project list as JSON", () async {
-      plugin.projectsResult = [const PluginProject(id: "p1", name: "My Project")];
+      plugin.projectsResult = [
+        const PluginProject(id: "p1", name: "My Project"),
+      ];
 
       final client = HttpClient();
       addTearDown(client.close);
 
-      final request = await client.getUrl(Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/projects"));
+      final request = await client.getUrl(
+        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/projects"),
+      );
       final response = await request.close();
       final body = await utf8.decoder.bind(response).join();
 
@@ -219,7 +231,9 @@ void main() {
       final client = HttpClient();
       addTearDown(client.close);
 
-      final request = await client.postUrl(Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/sessions"));
+      final request = await client.postUrl(
+        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/sessions"),
+      );
       final response = await request.close();
       expect(response.statusCode, equals(HttpStatus.badRequest));
     });
@@ -240,7 +254,9 @@ void main() {
       final client = HttpClient();
       addTearDown(client.close);
 
-      final request = await client.postUrl(Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/sessions"));
+      final request = await client.postUrl(
+        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/sessions"),
+      );
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode({"projectId": "/tmp/test", "start": null, "limit": null}));
       final response = await request.close();
@@ -257,7 +273,14 @@ void main() {
     test("POST /session/messages returns messages", () async {
       plugin.messagesResult = [
         const PluginMessageWithParts(
-          info: PluginMessage(role: "user", id: "m1", sessionID: "s1", agent: null, modelID: null, providerID: null),
+          info: PluginMessage(
+            role: "user",
+            id: "m1",
+            sessionID: "s1",
+            agent: null,
+            modelID: null,
+            providerID: null,
+          ),
           parts: [],
         ),
       ];
@@ -265,7 +288,11 @@ void main() {
       final client = HttpClient();
       addTearDown(client.close);
 
-      final request = await client.postUrl(Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/session/messages"));
+      final request = await client.postUrl(
+        Uri.parse(
+          "http://127.0.0.1:${debugServer.boundPort!}/session/messages",
+        ),
+      );
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode({"sessionId": "s1"}));
       final response = await request.close();
@@ -283,7 +310,9 @@ void main() {
       final client = HttpClient();
       addTearDown(client.close);
 
-      final request = await client.getUrl(Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/projects"));
+      final request = await client.getUrl(
+        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/projects"),
+      );
       final response = await request.close();
       final body = await utf8.decoder.bind(response).join();
 
@@ -298,7 +327,11 @@ class _DebugServerHarness {
   final DebugServer debugServer;
   final http.Client httpClient;
 
-  const _DebugServerHarness({required this.runtime, required this.debugServer, required this.httpClient});
+  const _DebugServerHarness({
+    required this.runtime,
+    required this.debugServer,
+    required this.httpClient,
+  });
 
   Future<void> close() async {
     await debugServer.stop();
@@ -311,6 +344,10 @@ class _FakeTokenRefresher implements TokenRefresher {
   @override
   Future<String> getAccessToken({bool forceRefresh = false}) async => "test-token";
 }
+
+// ---------------------------------------------------------------------------
+// Fake plugin implementations
+// ---------------------------------------------------------------------------
 
 class _FakeBridgePlugin implements BridgePlugin {
   final _controller = StreamController<BridgeSseEvent>.broadcast();
@@ -333,7 +370,11 @@ class _FakeBridgePlugin implements BridgePlugin {
   }
 
   @override
-  Future<List<PluginSession>> getSessions(String worktree, {int? start, int? limit}) async => sessionsResult;
+  Future<List<PluginSession>> getSessions(
+    String worktree, {
+    int? start,
+    int? limit,
+  }) async => sessionsResult;
 
   @override
   Future<PluginSession> createSession({
@@ -342,8 +383,15 @@ class _FakeBridgePlugin implements BridgePlugin {
     required List<PluginPromptPart> parts,
     required String? agent,
     required ({String providerID, String modelID})? model,
-  }) async =>
-      const PluginSession(id: "", projectID: "", directory: "", parentID: null, title: null, time: null, summary: null);
+  }) async => const PluginSession(
+    id: "",
+    projectID: "",
+    directory: "",
+    parentID: null,
+    title: null,
+    time: null,
+    summary: null,
+  );
 
   @override
   Future<PluginSession> renameSession({required String sessionId, required String title}) async => const PluginSession(
@@ -373,7 +421,9 @@ class _FakeBridgePlugin implements BridgePlugin {
   Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => {};
 
   @override
-  Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async => messagesResult;
+  Future<List<PluginMessageWithParts>> getSessionMessages(
+    String sessionId,
+  ) async => messagesResult;
 
   @override
   Future<void> sendPrompt({
@@ -432,6 +482,7 @@ class _FakeBridgePlugin implements BridgePlugin {
   Future<void> close() => _controller.close();
 }
 
+/// Plugin that tracks subscribe/unsubscribe counts via a wrapping stream.
 class _TrackingBridgePlugin implements BridgePlugin {
   final _eventController = StreamController<BridgeSseEvent>.broadcast();
   int subscribeCount = 0;
@@ -460,7 +511,11 @@ class _TrackingBridgePlugin implements BridgePlugin {
   Future<List<PluginProject>> getProjects() async => [];
 
   @override
-  Future<List<PluginSession>> getSessions(String worktree, {int? start, int? limit}) async => [];
+  Future<List<PluginSession>> getSessions(
+    String worktree, {
+    int? start,
+    int? limit,
+  }) async => [];
 
   @override
   Future<PluginSession> createSession({
@@ -469,8 +524,15 @@ class _TrackingBridgePlugin implements BridgePlugin {
     required List<PluginPromptPart> parts,
     required String? agent,
     required ({String providerID, String modelID})? model,
-  }) async =>
-      const PluginSession(id: "", projectID: "", directory: "", parentID: null, title: null, time: null, summary: null);
+  }) async => const PluginSession(
+    id: "",
+    projectID: "",
+    directory: "",
+    parentID: null,
+    title: null,
+    time: null,
+    summary: null,
+  );
 
   @override
   Future<PluginSession> renameSession({required String sessionId, required String title}) async => const PluginSession(
@@ -500,7 +562,9 @@ class _TrackingBridgePlugin implements BridgePlugin {
   Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => {};
 
   @override
-  Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async => [];
+  Future<List<PluginMessageWithParts>> getSessionMessages(
+    String sessionId,
+  ) async => [];
 
   @override
   Future<void> sendPrompt({
@@ -558,6 +622,10 @@ class _TrackingBridgePlugin implements BridgePlugin {
   Future<void> close() => _eventController.close();
 }
 
+// ---------------------------------------------------------------------------
+// SSE test client
+// ---------------------------------------------------------------------------
+
 class _SseTestClient {
   final Socket _socket;
   final StreamIterator<String> _lines;
@@ -566,7 +634,12 @@ class _SseTestClient {
 
   static Future<_SseTestClient> connect(int port) async {
     final socket = await Socket.connect("127.0.0.1", port);
-    socket.write("GET /global/event HTTP/1.0\r\nHost: 127.0.0.1\r\nAccept: text/event-stream\r\n\r\n");
+    socket.write(
+      "GET /global/event HTTP/1.0\r\n"
+      "Host: 127.0.0.1\r\n"
+      "Accept: text/event-stream\r\n"
+      "\r\n",
+    );
 
     final lineController = StreamController<String>();
     final lines = StreamIterator(lineController.stream);
@@ -578,15 +651,19 @@ class _SseTestClient {
     socket.listen(
       (chunk) {
         buffer += utf8.decode(chunk);
+
         if (!headersParsed) {
           final headerEnd = buffer.indexOf("\r\n\r\n");
-          if (headerEnd == -1) return;
+          if (headerEnd == -1) {
+            return;
+          }
           headersParsed = true;
           buffer = buffer.substring(headerEnd + 4);
         }
 
         lineBuffer += buffer;
         buffer = "";
+
         final parts = lineBuffer.split("\n");
         lineBuffer = parts.removeLast();
         for (final part in parts) {
@@ -595,10 +672,14 @@ class _SseTestClient {
         }
       },
       onDone: () {
-        if (!lineController.isClosed) lineController.close();
+        if (!lineController.isClosed) {
+          lineController.close();
+        }
       },
       onError: (_) {
-        if (!lineController.isClosed) lineController.close();
+        if (!lineController.isClosed) {
+          lineController.close();
+        }
       },
       cancelOnError: true,
     );
@@ -611,7 +692,9 @@ class _SseTestClient {
   Future<String> nextEvent() async {
     while (await _lines.moveNext()) {
       final line = _lines.current;
-      if (line.startsWith("data: ")) return line.substring(6);
+      if (line.startsWith("data: ")) {
+        return line.substring(6);
+      }
     }
     throw StateError("SSE stream ended before event arrived");
   }
@@ -623,7 +706,9 @@ class _SseTestClient {
 
   Future<void> _waitForReady() async {
     while (await _lines.moveNext()) {
-      if (_lines.current == ": ok") return;
+      if (_lines.current == ": ok") {
+        return;
+      }
     }
     throw StateError("SSE stream ended before ready marker");
   }

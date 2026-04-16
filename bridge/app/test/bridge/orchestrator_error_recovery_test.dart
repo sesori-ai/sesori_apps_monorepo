@@ -8,7 +8,6 @@ import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
-import "package:sesori_bridge/src/bridge/repositories/branch_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
@@ -16,8 +15,6 @@ import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.da
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_archive_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
@@ -133,20 +130,7 @@ class _TestHarness {
       sessionDao: database.sessionDao,
       db: database,
     );
-    final failingProcessRunner = FakeProcessRunner((
-      String executable,
-      List<String> arguments, {
-      String? workingDirectory,
-      Duration timeout = const Duration(seconds: 15),
-    }) async {
-      return ProcessResult(0, 127, "", "command not found");
-    });
-
-    final branchRepository = BranchRepository(
-      gitCliApi: GitCliApi(processRunner: failingProcessRunner, gitPathExists: ({required String gitPath}) => true),
-    );
     final worktreeService = WorktreeService(
-      branchRepository: branchRepository,
       worktreeRepository: WorktreeRepository(
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
@@ -166,17 +150,6 @@ class _TestHarness {
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
       failureReporter: FakeFailureReporter(),
-    );
-    final sessionCreationService = SessionCreationService(
-      metadataService: metadataService,
-      worktreeService: worktreeService,
-      sessionRepository: sessionRepository,
-      sessionPersistenceService: sessionPersistenceService,
-    );
-    final sessionArchiveService = SessionArchiveService(
-      worktreeService: worktreeService,
-      sessionRepository: sessionRepository,
-      sessionPersistenceService: sessionPersistenceService,
     );
 
     final orchestrator = Orchestrator(
@@ -199,10 +172,7 @@ class _TestHarness {
       permissionRepository: permissionRepository,
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
-      branchRepository: branchRepository,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
-      sessionCreationService: sessionCreationService,
-      sessionArchiveService: sessionArchiveService,
     );
 
     final session = orchestrator.create();

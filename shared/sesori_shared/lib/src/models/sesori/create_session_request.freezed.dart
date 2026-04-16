@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$CreateSessionRequest {
 
- String get projectId; List<PromptPart> get parts; String? get agent; PromptModel? get model; WorktreeMode get worktreeMode; String? get selectedBranch;
+ String get projectId; List<PromptPart> get parts; String? get agent; PromptModel? get model; bool get dedicatedWorktree;
 /// Create a copy of CreateSessionRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $CreateSessionRequestCopyWith<CreateSessionRequest> get copyWith => _$CreateSess
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CreateSessionRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&const DeepCollectionEquality().equals(other.parts, parts)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.model, model) || other.model == model)&&(identical(other.worktreeMode, worktreeMode) || other.worktreeMode == worktreeMode)&&(identical(other.selectedBranch, selectedBranch) || other.selectedBranch == selectedBranch));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CreateSessionRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&const DeepCollectionEquality().equals(other.parts, parts)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.model, model) || other.model == model)&&(identical(other.dedicatedWorktree, dedicatedWorktree) || other.dedicatedWorktree == dedicatedWorktree));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projectId,const DeepCollectionEquality().hash(parts),agent,model,worktreeMode,selectedBranch);
+int get hashCode => Object.hash(runtimeType,projectId,const DeepCollectionEquality().hash(parts),agent,model,dedicatedWorktree);
 
 @override
 String toString() {
-  return 'CreateSessionRequest(projectId: $projectId, parts: $parts, agent: $agent, model: $model, worktreeMode: $worktreeMode, selectedBranch: $selectedBranch)';
+  return 'CreateSessionRequest(projectId: $projectId, parts: $parts, agent: $agent, model: $model, dedicatedWorktree: $dedicatedWorktree)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $CreateSessionRequestCopyWith<$Res>  {
   factory $CreateSessionRequestCopyWith(CreateSessionRequest value, $Res Function(CreateSessionRequest) _then) = _$CreateSessionRequestCopyWithImpl;
 @useResult
 $Res call({
- String projectId, List<PromptPart> parts, String? agent, PromptModel? model, WorktreeMode worktreeMode, String? selectedBranch
+ String projectId, List<PromptPart> parts, String? agent, PromptModel? model, bool dedicatedWorktree
 });
 
 
@@ -65,15 +65,14 @@ class _$CreateSessionRequestCopyWithImpl<$Res>
 
 /// Create a copy of CreateSessionRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? projectId = null,Object? parts = null,Object? agent = freezed,Object? model = freezed,Object? worktreeMode = null,Object? selectedBranch = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? projectId = null,Object? parts = null,Object? agent = freezed,Object? model = freezed,Object? dedicatedWorktree = null,}) {
   return _then(_self.copyWith(
 projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
 as String,parts: null == parts ? _self.parts : parts // ignore: cast_nullable_to_non_nullable
 as List<PromptPart>,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
-as PromptModel?,worktreeMode: null == worktreeMode ? _self.worktreeMode : worktreeMode // ignore: cast_nullable_to_non_nullable
-as WorktreeMode,selectedBranch: freezed == selectedBranch ? _self.selectedBranch : selectedBranch // ignore: cast_nullable_to_non_nullable
-as String?,
+as PromptModel?,dedicatedWorktree: null == dedicatedWorktree ? _self.dedicatedWorktree : dedicatedWorktree // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 /// Create a copy of CreateSessionRequest
@@ -97,7 +96,7 @@ $PromptModelCopyWith<$Res>? get model {
 @JsonSerializable()
 
 class _CreateSessionRequest implements CreateSessionRequest {
-  const _CreateSessionRequest({required this.projectId, required final  List<PromptPart> parts, required this.agent, required this.model, required this.worktreeMode, required this.selectedBranch}): _parts = parts;
+  const _CreateSessionRequest({required this.projectId, required final  List<PromptPart> parts, required this.agent, required this.model, required this.dedicatedWorktree}): _parts = parts;
   factory _CreateSessionRequest.fromJson(Map<String, dynamic> json) => _$CreateSessionRequestFromJson(json);
 
 @override final  String projectId;
@@ -110,8 +109,7 @@ class _CreateSessionRequest implements CreateSessionRequest {
 
 @override final  String? agent;
 @override final  PromptModel? model;
-@override final  WorktreeMode worktreeMode;
-@override final  String? selectedBranch;
+@override final  bool dedicatedWorktree;
 
 /// Create a copy of CreateSessionRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -126,16 +124,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CreateSessionRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&const DeepCollectionEquality().equals(other._parts, _parts)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.model, model) || other.model == model)&&(identical(other.worktreeMode, worktreeMode) || other.worktreeMode == worktreeMode)&&(identical(other.selectedBranch, selectedBranch) || other.selectedBranch == selectedBranch));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CreateSessionRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&const DeepCollectionEquality().equals(other._parts, _parts)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.model, model) || other.model == model)&&(identical(other.dedicatedWorktree, dedicatedWorktree) || other.dedicatedWorktree == dedicatedWorktree));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projectId,const DeepCollectionEquality().hash(_parts),agent,model,worktreeMode,selectedBranch);
+int get hashCode => Object.hash(runtimeType,projectId,const DeepCollectionEquality().hash(_parts),agent,model,dedicatedWorktree);
 
 @override
 String toString() {
-  return 'CreateSessionRequest(projectId: $projectId, parts: $parts, agent: $agent, model: $model, worktreeMode: $worktreeMode, selectedBranch: $selectedBranch)';
+  return 'CreateSessionRequest(projectId: $projectId, parts: $parts, agent: $agent, model: $model, dedicatedWorktree: $dedicatedWorktree)';
 }
 
 
@@ -146,7 +144,7 @@ abstract mixin class _$CreateSessionRequestCopyWith<$Res> implements $CreateSess
   factory _$CreateSessionRequestCopyWith(_CreateSessionRequest value, $Res Function(_CreateSessionRequest) _then) = __$CreateSessionRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String projectId, List<PromptPart> parts, String? agent, PromptModel? model, WorktreeMode worktreeMode, String? selectedBranch
+ String projectId, List<PromptPart> parts, String? agent, PromptModel? model, bool dedicatedWorktree
 });
 
 
@@ -163,15 +161,14 @@ class __$CreateSessionRequestCopyWithImpl<$Res>
 
 /// Create a copy of CreateSessionRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? projectId = null,Object? parts = null,Object? agent = freezed,Object? model = freezed,Object? worktreeMode = null,Object? selectedBranch = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? projectId = null,Object? parts = null,Object? agent = freezed,Object? model = freezed,Object? dedicatedWorktree = null,}) {
   return _then(_CreateSessionRequest(
 projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
 as String,parts: null == parts ? _self._parts : parts // ignore: cast_nullable_to_non_nullable
 as List<PromptPart>,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
-as PromptModel?,worktreeMode: null == worktreeMode ? _self.worktreeMode : worktreeMode // ignore: cast_nullable_to_non_nullable
-as WorktreeMode,selectedBranch: freezed == selectedBranch ? _self.selectedBranch : selectedBranch // ignore: cast_nullable_to_non_nullable
-as String?,
+as PromptModel?,dedicatedWorktree: null == dedicatedWorktree ? _self.dedicatedWorktree : dedicatedWorktree // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

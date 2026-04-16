@@ -13,7 +13,6 @@ import "package:sesori_bridge/src/bridge/models/session_metadata.dart";
 import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
-import "package:sesori_bridge/src/bridge/repositories/branch_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
@@ -22,8 +21,6 @@ import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.da
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_archive_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
@@ -65,11 +62,7 @@ void main() {
       sessionDao: database.sessionDao,
       db: database,
     );
-    final branchRepository = BranchRepository(
-      gitCliApi: GitCliApi(processRunner: FakeProcessRunner(), gitPathExists: ({required String gitPath}) => true),
-    );
     final worktreeService = WorktreeService(
-      branchRepository: branchRepository,
       worktreeRepository: WorktreeRepository(
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
@@ -86,17 +79,6 @@ void main() {
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
       failureReporter: FakeFailureReporter(),
-    );
-    final sessionCreationService = SessionCreationService(
-      metadataService: _FakeMetadataService(),
-      worktreeService: worktreeService,
-      sessionRepository: sessionRepository,
-      sessionPersistenceService: sessionPersistenceService,
-    );
-    final sessionArchiveService = SessionArchiveService(
-      worktreeService: worktreeService,
-      sessionRepository: sessionRepository,
-      sessionPersistenceService: sessionPersistenceService,
     );
 
     final orchestrator = Orchestrator(
@@ -119,10 +101,7 @@ void main() {
       permissionRepository: permissionRepository,
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
-      branchRepository: branchRepository,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
-      sessionCreationService: sessionCreationService,
-      sessionArchiveService: sessionArchiveService,
     );
 
     final session = orchestrator.create();
@@ -206,11 +185,7 @@ void main() {
       sessionDao: database.sessionDao,
       db: database,
     );
-    final branchRepository2 = BranchRepository(
-      gitCliApi: GitCliApi(processRunner: FakeProcessRunner(), gitPathExists: ({required String gitPath}) => true),
-    );
     final worktreeService = WorktreeService(
-      branchRepository: branchRepository2,
       worktreeRepository: WorktreeRepository(
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
@@ -219,17 +194,6 @@ void main() {
           gitPathExists: ({required String gitPath}) => true,
         ),
       ),
-    );
-    final sessionCreationService = SessionCreationService(
-      metadataService: _FakeMetadataService(),
-      worktreeService: worktreeService,
-      sessionRepository: sessionRepository,
-      sessionPersistenceService: sessionPersistenceService,
-    );
-    final sessionArchiveService = SessionArchiveService(
-      worktreeService: worktreeService,
-      sessionRepository: sessionRepository,
-      sessionPersistenceService: sessionPersistenceService,
     );
 
     final orchestrator = Orchestrator(
@@ -252,10 +216,7 @@ void main() {
       permissionRepository: permissionRepository,
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
-      branchRepository: branchRepository2,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
-      sessionCreationService: sessionCreationService,
-      sessionArchiveService: sessionArchiveService,
     );
 
     final session = orchestrator.create();
@@ -327,9 +288,6 @@ void main() {
       sessionDao: database.sessionDao,
       db: database,
     );
-    final branchRepository = BranchRepository(
-      gitCliApi: GitCliApi(processRunner: FakeProcessRunner(), gitPathExists: ({required String gitPath}) => true),
-    );
     final worktreeService = WorktreeService(
       worktreeRepository: WorktreeRepository(
         projectsDao: database.projectsDao,
@@ -339,7 +297,6 @@ void main() {
           gitPathExists: ({required String gitPath}) => true,
         ),
       ),
-      branchRepository: branchRepository,
     );
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
@@ -378,17 +335,6 @@ void main() {
       sessionRepository: sessionRepository,
       failureReporter: FakeFailureReporter(),
     );
-    final sessionCreationService = SessionCreationService(
-      metadataService: _FakeMetadataService(),
-      worktreeService: worktreeService,
-      sessionRepository: sessionRepository,
-      sessionPersistenceService: sessionPersistenceService,
-    );
-    final sessionArchiveService = SessionArchiveService(
-      worktreeService: worktreeService,
-      sessionRepository: sessionRepository,
-      sessionPersistenceService: sessionPersistenceService,
-    );
 
     final orchestrator = Orchestrator(
       config: BridgeConfig(
@@ -410,10 +356,7 @@ void main() {
       permissionRepository: permissionRepository,
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
-      branchRepository: branchRepository,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
-      sessionCreationService: sessionCreationService,
-      sessionArchiveService: sessionArchiveService,
     );
 
     final session = orchestrator.create();
@@ -961,11 +904,9 @@ class _NoopSessionRepository implements SessionRepository {
     directory: "",
     parentID: null,
     title: null,
-    branchName: null,
     time: null,
     summary: null,
     pullRequest: null,
-    hasWorktree: false,
   );
   @override
   Future<List<Session>> getSessionsForProject({
@@ -1011,11 +952,9 @@ class _NoopSessionRepository implements SessionRepository {
     directory: "",
     parentID: null,
     title: null,
-    branchName: null,
     time: null,
     summary: null,
     pullRequest: null,
-    hasWorktree: false,
   );
 }
 

@@ -413,11 +413,9 @@ class _FakeSessionRepository implements SessionRepository {
     directory: "",
     parentID: null,
     title: null,
-    branchName: null,
     time: null,
     summary: null,
     pullRequest: null,
-    hasWorktree: false,
   );
 
   @override
@@ -478,10 +476,8 @@ class _FakeSessionRepository implements SessionRepository {
     directory: "",
     parentID: null,
     title: null,
-    branchName: null,
     time: null,
     summary: null,
     pullRequest: null,
-    hasWorktree: false,
   );
 }

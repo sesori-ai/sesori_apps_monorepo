@@ -1,7 +1,6 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../repositories/branch_repository.dart";
 import "../repositories/permission_repository.dart";
 import "../repositories/project_repository.dart";
 import "../repositories/provider_repository.dart";
@@ -18,7 +17,6 @@ import "delete_session_handler.dart";
 import "filesystem_suggestions_handler.dart";
 import "get_agents_handler.dart";
 import "get_base_branch_handler.dart";
-import "get_branches_handler.dart";
 import "get_child_sessions_handler.dart";
 import "get_current_project_handler.dart";
 import "get_project_questions_handler.dart";
@@ -55,17 +53,16 @@ class RequestRouter {
   RequestRouter({
     required BridgePlugin plugin,
     required SessionRepository sessionRepository,
+    required SessionCreationService sessionCreationService,
+    required SessionArchiveService sessionArchiveService,
     required PrSyncService prSyncService,
     required ProjectRepository projectRepository,
     required ProviderRepository providerRepository,
     required PermissionRepository permissionRepository,
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
-    required BranchRepository branchRepository,
     required GetSessionDiffsHandler sessionDiffsHandler,
     required void Function(String sessionId) onSessionAborted,
-    required SessionCreationService sessionCreationService,
-    required SessionArchiveService sessionArchiveService,
   }) : _handlers = _buildHandlers(
          plugin: plugin,
          sessionRepository: sessionRepository,
@@ -77,7 +74,6 @@ class RequestRouter {
          permissionRepository: permissionRepository,
          sessionPersistenceService: sessionPersistenceService,
          worktreeService: worktreeService,
-         branchRepository: branchRepository,
          sessionDiffsHandler: sessionDiffsHandler,
          onSessionAborted: onSessionAborted,
        );
@@ -85,17 +81,16 @@ class RequestRouter {
   static List<RequestHandlerBase> _buildHandlers({
     required BridgePlugin plugin,
     required SessionRepository sessionRepository,
+    required SessionCreationService sessionCreationService,
+    required SessionArchiveService sessionArchiveService,
     required PrSyncService prSyncService,
     required ProjectRepository projectRepository,
     required ProviderRepository providerRepository,
     required PermissionRepository permissionRepository,
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
-    required BranchRepository branchRepository,
     required GetSessionDiffsHandler sessionDiffsHandler,
     required void Function(String sessionId) onSessionAborted,
-    required SessionCreationService sessionCreationService,
-    required SessionArchiveService sessionArchiveService,
   }) {
     return [
       HealthCheckHandler(plugin),
@@ -132,7 +127,6 @@ class RequestRouter {
       OpenProjectHandler(projectRepository: projectRepository),
       HideProjectHandler(projectRepository: projectRepository),
       GetBaseBranchHandler(projectRepository: projectRepository),
-      GetBranchesHandler(branchRepository),
       SetBaseBranchHandler(projectRepository: projectRepository),
       FilesystemSuggestionsHandler(),
       sessionDiffsHandler,

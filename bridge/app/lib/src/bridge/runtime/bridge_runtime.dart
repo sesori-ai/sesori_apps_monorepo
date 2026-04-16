@@ -23,7 +23,6 @@ import "../models/bridge_config.dart";
 import "../orchestrator.dart";
 import "../persistence/database.dart";
 import "../relay_client.dart";
-import "../repositories/branch_repository.dart";
 import "../repositories/permission_repository.dart";
 import "../repositories/pr_source_repository.dart";
 import "../repositories/project_repository.dart";
@@ -31,8 +30,6 @@ import "../repositories/pull_request_repository.dart";
 import "../repositories/session_repository.dart";
 import "../repositories/worktree_repository.dart";
 import "../services/pr_sync_service.dart";
-import "../services/session_archive_service.dart";
-import "../services/session_creation_service.dart";
 import "../services/session_event_enrichment_service.dart";
 import "../services/session_persistence_service.dart";
 import "../services/worktree_service.dart";
@@ -75,40 +72,9 @@ class BridgeRuntime {
       sessionDao: database.sessionDao,
       pullRequestRepository: pullRequestRepository,
     );
-    final gitCliApi = GitCliApi(processRunner: processRunner, gitPathExists: _gitPathExists);
-    final branchRepository = BranchRepository(gitCliApi: gitCliApi);
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
       failureReporter: failureReporter,
-    );
-    final sessionPersistenceService = SessionPersistenceService(
-      projectsDao: database.projectsDao,
-      sessionDao: database.sessionDao,
-      db: database,
-    );
-    final worktreeService = WorktreeService(
-      branchRepository: branchRepository,
-      worktreeRepository: WorktreeRepository(
-        projectsDao: database.projectsDao,
-        sessionDao: database.sessionDao,
-        gitApi: gitCliApi,
-      ),
-    );
-    final metadataService = MetadataService(
-      client: httpClient,
-      baseUrl: config.authBackendURL,
-      tokenRefresher: tokenRefresher,
-    );
-    final sessionCreationService = SessionCreationService(
-      metadataService: metadataService,
-      worktreeService: worktreeService,
-      sessionRepository: sessionRepository,
-      sessionPersistenceService: sessionPersistenceService,
-    );
-    final sessionArchiveService = SessionArchiveService(
-      worktreeService: worktreeService,
-      sessionRepository: sessionRepository,
-      sessionPersistenceService: sessionPersistenceService,
     );
 
     return BridgeRuntime(
@@ -120,7 +86,11 @@ class BridgeRuntime {
         config: config,
         client: RelayClient(relayURL: config.relayURL, accessTokenProvider: accessTokenProvider),
         plugin: plugin,
-        metadataService: metadataService,
+        metadataService: MetadataService(
+          client: httpClient,
+          baseUrl: config.authBackendURL,
+          tokenRefresher: tokenRefresher,
+        ),
         pushNotificationService: _createPushNotificationService(
           authBackendURL: config.authBackendURL,
           tokenRefresher: tokenRefresher,
@@ -130,7 +100,7 @@ class BridgeRuntime {
         prSyncService: PrSyncService(
           prSource: PrSourceRepository(
             ghCli: GhCliApi(processRunner: processRunner),
-            gitCli: gitCliApi,
+            gitCli: GitCliApi(processRunner: processRunner, gitPathExists: _gitPathExists),
           ),
           pullRequestRepository: pullRequestRepository,
           sessionRepository: sessionRepository,
@@ -138,12 +108,19 @@ class BridgeRuntime {
         sessionRepository: sessionRepository,
         projectRepository: ProjectRepository(plugin: plugin, projectsDao: database.projectsDao),
         permissionRepository: PermissionRepository(plugin: plugin),
-        sessionPersistenceService: sessionPersistenceService,
-        worktreeService: worktreeService,
-        branchRepository: branchRepository,
+        sessionPersistenceService: SessionPersistenceService(
+          projectsDao: database.projectsDao,
+          sessionDao: database.sessionDao,
+          db: database,
+        ),
+        worktreeService: WorktreeService(
+          worktreeRepository: WorktreeRepository(
+            projectsDao: database.projectsDao,
+            sessionDao: database.sessionDao,
+            gitApi: GitCliApi(processRunner: processRunner, gitPathExists: _gitPathExists),
+          ),
+        ),
         sessionEventEnrichmentService: sessionEventEnrichmentService,
-        sessionCreationService: sessionCreationService,
-        sessionArchiveService: sessionArchiveService,
       ).create(),
     );
   }

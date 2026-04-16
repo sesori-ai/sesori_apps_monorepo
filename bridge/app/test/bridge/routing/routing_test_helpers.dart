@@ -578,7 +578,6 @@ class _NoopSessionRepository implements SessionRepository {
     id: "",
     projectID: "",
     directory: "",
-    branchName: null,
     parentID: null,
     title: null,
     time: null,
@@ -630,7 +629,6 @@ class _NoopSessionRepository implements SessionRepository {
     id: "",
     projectID: "",
     directory: "",
-    branchName: null,
     parentID: null,
     title: null,
     time: null,
@@ -668,7 +666,6 @@ class FakeSessionRepository implements SessionRepository {
     id: "",
     projectID: "",
     directory: "",
-    branchName: null,
     parentID: null,
     title: null,
     time: null,
@@ -701,8 +698,7 @@ class FakeSessionRepository implements SessionRepository {
             : SessionTime(created: 0, updated: 0, archived: dbSession.archivedAt);
         return session.copyWith(
           time: mergedTime,
-          branchName: dbSession.branchName,
-          hasWorktree: dbSession.isDedicated && dbSession.worktreePath != null,
+          hasWorktree: dbSession.worktreePath != null,
         );
       }
       return session;
@@ -827,7 +823,6 @@ class FakeSessionRepository implements SessionRepository {
     id: "",
     projectID: "",
     directory: "",
-    branchName: null,
     parentID: null,
     title: null,
     time: null,

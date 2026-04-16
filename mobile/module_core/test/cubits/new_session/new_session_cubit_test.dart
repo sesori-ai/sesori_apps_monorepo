@@ -9,10 +9,6 @@ import "package:test/test.dart";
 import "../../helpers/test_helpers.dart";
 
 void main() {
-  setUpAll(() {
-    registerFallbackValue(WorktreeMode.none);
-  });
-
   group("NewSessionCubit", () {
     late MockSessionService mockSessionService;
 
@@ -36,7 +32,7 @@ void main() {
     );
 
     blocTest<NewSessionCubit, NewSessionState>(
-      "createSessionWithMessage forwards worktree mode to service",
+      "createSessionWithMessage forwards dedicatedWorktree to service",
       build: () {
         when(
           () => mockSessionService.createSessionWithMessage(
@@ -44,8 +40,7 @@ void main() {
             text: any(named: "text"),
             agent: any(named: "agent"),
             model: any(named: "model"),
-            worktreeMode: any(named: "worktreeMode"),
-            selectedBranch: any(named: "selectedBranch"),
+            dedicatedWorktree: any(named: "dedicatedWorktree"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s1")));
         return buildCubit();
@@ -53,8 +48,7 @@ void main() {
       act: (cubit) async {
         await cubit.createSessionWithMessage(
           text: "hello",
-          worktreeMode: WorktreeMode.none,
-          selectedBranch: null,
+          dedicatedWorktree: false,
         );
       },
       expect: () => [
@@ -72,8 +66,7 @@ void main() {
             text: "hello",
             agent: null,
             model: null,
-            worktreeMode: WorktreeMode.none,
-            selectedBranch: null,
+            dedicatedWorktree: false,
           ),
         ).called(1);
       },

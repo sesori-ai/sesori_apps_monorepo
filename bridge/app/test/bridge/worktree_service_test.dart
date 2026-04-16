@@ -5,10 +5,8 @@ import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/daos/session_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/branch_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
-import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../helpers/test_database.dart";
@@ -31,12 +29,6 @@ void main() {
       processRunner = _FakeProcessRunner();
       gitDirectoryExists = true;
       service = WorktreeService(
-        branchRepository: BranchRepository(
-          gitCliApi: GitCliApi(
-            processRunner: processRunner,
-            gitPathExists: ({required String gitPath}) => gitDirectoryExists,
-          ),
-        ),
         worktreeRepository: WorktreeRepository(
           projectsDao: projectsDao,
           sessionDao: sessionDao,
@@ -660,9 +652,6 @@ void main() {
       db = createTestDatabase();
       processRunner = _FakeProcessRunner();
       service = WorktreeService(
-        branchRepository: BranchRepository(
-          gitCliApi: GitCliApi(processRunner: processRunner, gitPathExists: ({required String gitPath}) => true),
-        ),
         worktreeRepository: WorktreeRepository(
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
@@ -780,9 +769,6 @@ void main() {
       db = createTestDatabase();
       processRunner = _FakeProcessRunner();
       service = WorktreeService(
-        branchRepository: BranchRepository(
-          gitCliApi: GitCliApi(processRunner: processRunner, gitPathExists: ({required String gitPath}) => true),
-        ),
         worktreeRepository: WorktreeRepository(
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
@@ -964,172 +950,6 @@ void main() {
       expect(
         addInv.arguments,
         equals(["worktree", "add", "-b", "session-001", "--", "$_projectId/.worktrees/session-001", "abc123def"]),
-      );
-    });
-  });
-
-  group("WorktreeService.prepareWorktreeForBranch", () {
-    late _FakeProcessRunner processRunner;
-    late AppDatabase db;
-    late WorktreeService service;
-
-    setUp(() {
-      db = createTestDatabase();
-      processRunner = _FakeProcessRunner();
-      service = WorktreeService(
-        branchRepository: BranchRepository(
-          gitCliApi: GitCliApi(processRunner: processRunner, gitPathExists: ({required String gitPath}) => true),
-        ),
-        worktreeRepository: WorktreeRepository(
-          projectsDao: db.projectsDao,
-          sessionDao: db.sessionDao,
-          gitApi: GitCliApi(processRunner: processRunner, gitPathExists: ({required String gitPath}) => true),
-        ),
-      );
-    });
-
-    tearDown(() async {
-      await db.close();
-    });
-
-    test("none mode returns project directory fallback", () async {
-      final result = await service.prepareWorktreeForBranch(
-        mode: WorktreeMode.none,
-        selectedBranch: null,
-        projectPath: _projectId,
-        sessionId: "ses-1",
-      );
-
-      expect(result, isA<WorktreeFallback>());
-      final fallback = result as WorktreeFallback;
-      expect(fallback.originalPath, equals(_projectId));
-      expect(fallback.reason, equals("worktree mode is none"));
-      expect(processRunner.invocations, isEmpty);
-    });
-
-    test("stayOnBranch reuses existing project checkout", () async {
-      processRunner.enqueue(result: _ok());
-      processRunner.enqueue(result: _ok(stdout: "branch-sha\n"));
-      processRunner.enqueue(result: _ok(stdout: "\n"));
-      processRunner.enqueue(
-        result: _ok(stdout: "worktree $_projectId\nHEAD branch-sha\nbranch refs/heads/feature/test\n\n"),
-      );
-
-      final result = await service.prepareWorktreeForBranch(
-        mode: WorktreeMode.stayOnBranch,
-        selectedBranch: "feature/test",
-        projectPath: _projectId,
-        sessionId: "ses-2",
-      );
-
-      expect(result, isA<WorktreeSuccess>());
-      final success = result as WorktreeSuccess;
-      expect(success.path, equals(_projectId));
-      expect(success.branchName, equals("feature/test"));
-      expect(success.baseBranch, equals("feature/test"));
-      expect(success.baseCommit, equals("branch-sha"));
-    });
-
-    test("stayOnBranch creates tracking worktree for remote-only branch", () async {
-      processRunner.enqueue(result: _ok());
-      processRunner.enqueue(result: _fail(exitCode: 128));
-      processRunner.enqueue(result: _ok(stdout: "origin\n"));
-      processRunner.enqueue(result: _ok(stdout: "remote-sha\n"));
-      processRunner.enqueue(result: _ok(stdout: ""));
-      processRunner.enqueue(result: _ok(stdout: ""));
-      processRunner.enqueue(result: _ok());
-
-      final result = await service.prepareWorktreeForBranch(
-        mode: WorktreeMode.stayOnBranch,
-        selectedBranch: "feature/test",
-        projectPath: _projectId,
-        sessionId: "ses-3",
-      );
-
-      expect(result, isA<WorktreeSuccess>());
-      final success = result as WorktreeSuccess;
-      expect(success.path, equals("$_projectId/.worktrees/feature__test"));
-      expect(success.baseBranch, equals("origin/feature/test"));
-      expect(success.baseCommit, equals("remote-sha"));
-      expect(
-        processRunner.invocations.last.arguments,
-        equals([
-          "worktree",
-          "add",
-          "-b",
-          "feature/test",
-          "--",
-          "$_projectId/.worktrees/feature__test",
-          "origin/feature/test",
-        ]),
-      );
-    });
-
-    test("stayOnBranch recreates a missing prunable worktree", () async {
-      processRunner.enqueue(result: _ok());
-      processRunner.enqueue(result: _ok(stdout: "branch-sha\n"));
-      processRunner.enqueue(result: _ok(stdout: "origin\n"));
-      processRunner.enqueue(result: _fail(exitCode: 128));
-      processRunner.enqueue(
-        result: _ok(
-          stdout: "worktree $_projectId/.worktrees/feature__test\nHEAD branch-sha\nbranch refs/heads/feature/test\n\n",
-        ),
-      );
-      processRunner.enqueue(result: _ok());
-      processRunner.enqueue(result: _ok(stdout: "  feature/test\n"));
-      processRunner.enqueue(result: _ok());
-
-      final result = await service.prepareWorktreeForBranch(
-        mode: WorktreeMode.stayOnBranch,
-        selectedBranch: "feature/test",
-        projectPath: _projectId,
-        sessionId: "ses-prunable",
-      );
-
-      expect(result, isA<WorktreeSuccess>());
-      final success = result as WorktreeSuccess;
-      expect(success.path, equals("$_projectId/.worktrees/feature__test"));
-      expect(
-        processRunner.invocations.map((invocation) => invocation.arguments),
-        contains(
-          predicate<List<String>>(
-            (arguments) => arguments.length == 2 && arguments[0] == "worktree" && arguments[1] == "prune",
-          ),
-        ),
-      );
-    });
-
-    test("newBranch creates dedicated worktree from selected branch", () async {
-      processRunner.enqueue(result: _ok());
-      processRunner.enqueue(result: _ok(stdout: "branch-sha\n"));
-      processRunner.enqueue(result: _ok(stdout: "\n"));
-      processRunner.enqueue(result: _ok(stdout: ""));
-      processRunner.enqueue(result: _ok());
-
-      final result = await service.prepareWorktreeForBranch(
-        mode: WorktreeMode.newBranch,
-        selectedBranch: "develop",
-        projectPath: _projectId,
-        sessionId: "ses-4",
-      );
-
-      expect(result, isA<WorktreeSuccess>());
-      final success = result as WorktreeSuccess;
-      expect(success.path, equals("$_projectId/.worktrees/session-001"));
-      expect(success.branchName, equals("session-001"));
-      expect(success.baseBranch, equals("develop"));
-      expect(success.baseCommit, equals("branch-sha"));
-      expect(
-        processRunner.invocations.last.arguments,
-        equals([
-          "worktree",
-          "add",
-          "-b",
-          "session-001",
-          "--",
-          "$_projectId/.worktrees/session-001",
-          "develop",
-        ]),
       );
     });
   });
