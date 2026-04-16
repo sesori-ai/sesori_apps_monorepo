@@ -10,20 +10,10 @@ on:
         required: false
         default: false
         type: boolean
-      publish_npm:
-        description: "Publish npm packages from an existing bridge-v release tag"
-        required: false
-        default: false
-        type: boolean
-      release_tag:
-        description: "Existing bridge-v tag to publish from when publish_npm=true"
-        required: false
-        type: string
 
 jobs:
   build:
     name: Build (${{ matrix.asset_name }})
-    if: github.event.inputs.publish_npm != 'true'
     runs-on: ${{ matrix.runner }}
     env:
       PUB_CACHE: ${{ github.workspace }}/.pub-cache
@@ -70,9 +60,7 @@ jobs:
         id: version
         shell: bash
         run: |
-          if [[ "${{ github.event.inputs.release_tag }}" == bridge-v* ]]; then
-            VERSION="${{ github.event.inputs.release_tag#bridge-v }}"
-          elif [[ "${GITHUB_REF_NAME}" == bridge-v* ]]; then
+          if [[ "${GITHUB_REF_NAME}" == bridge-v* ]]; then
             VERSION="${GITHUB_REF_NAME#bridge-v}"
           else
             VERSION=$(grep '^version:' bridge/app/pubspec.yaml | awk '{print $2}')
@@ -162,37 +150,17 @@ jobs:
 
   publish-platform:
     name: Publish platform npm packages
-    needs: [build, release]
+    needs: release
     runs-on: ubuntu-latest
-    if: github.event.inputs.dry_run != 'true' && (startsWith(github.ref_name, 'bridge-v') || github.event.inputs.publish_npm == 'true')
+    if: github.event.inputs.dry_run != 'true' && startsWith(github.ref_name, 'bridge-v')
     permissions:
       contents: read
       id-token: write
     env:
-      RELEASE_TAG: ${{ github.event.inputs.publish_npm == 'true' && github.event.inputs.release_tag || github.ref_name }}
+      RELEASE_TAG: ${{ github.ref_name }}
     steps:
 
-      - name: Validate manual publish inputs
-        if: github.event.inputs.publish_npm == 'true'
-        shell: bash
-        run: |
-          if [[ -z "${{ github.event.inputs.release_tag }}" ]]; then
-            echo "release_tag is required when publish_npm=true" >&2
-            exit 1
-          fi
-
-          if [[ "${{ github.event.inputs.release_tag }}" != bridge-v* ]]; then
-            echo "release_tag must start with bridge-v" >&2
-            exit 1
-          fi
-
       - uses: actions/checkout@v4
-        if: github.event.inputs.publish_npm != 'true'
-
-      - uses: actions/checkout@v4
-        if: github.event.inputs.publish_npm == 'true'
-        with:
-          ref: ${{ github.event.inputs.release_tag }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -371,20 +339,14 @@ jobs:
     name: Publish wrapper npm package
     needs: publish-platform
     runs-on: ubuntu-latest
-    if: github.event.inputs.dry_run != 'true' && (startsWith(github.ref_name, 'bridge-v') || github.event.inputs.publish_npm == 'true')
+    if: github.event.inputs.dry_run != 'true' && startsWith(github.ref_name, 'bridge-v')
     permissions:
       contents: read
       id-token: write
     env:
-      RELEASE_TAG: ${{ github.event.inputs.publish_npm == 'true' && github.event.inputs.release_tag || github.ref_name }}
+      RELEASE_TAG: ${{ github.ref_name }}
     steps:
       - uses: actions/checkout@v4
-        if: github.event.inputs.publish_npm != 'true'
-
-      - uses: actions/checkout@v4
-        if: github.event.inputs.publish_npm == 'true'
-        with:
-          ref: ${{ github.event.inputs.release_tag }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

@@ -81,23 +81,6 @@ gh workflow run bridge-release.yml -f dry_run=true
 
 Expected: build jobs run, release/publish jobs do not.
 
-## Manual npm publish from an existing release tag
-
-Use this only when the GitHub Release assets already exist and you need to republish the npm packages from that exact tagged release payload.
-
-```bash
-gh workflow run bridge-release.yml \
-  -f publish_npm=true \
-  -f release_tag=bridge-vX.Y.Z
-```
-
-- `publish_npm=true`
-- `release_tag=bridge-vX.Y.Z`
-
-The manual npm publish path checks out the tagged bridge release, verifies its archived asset checksums against `checksums.txt`, and then derives each platform npm package payload directly from those existing GitHub Release assets before publishing.
-
-This path should fail fast if package metadata, copied runtime payload, or recorded release provenance drifts from the tagged release contract.
-
 ## Manual test release and install
 
 Use this sequence when you want to test the real packaged distribution flow end to end.
