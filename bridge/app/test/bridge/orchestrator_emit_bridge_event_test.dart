@@ -78,6 +78,7 @@ void main() {
     );
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
+      failureReporter: FakeFailureReporter(),
     );
 
     final orchestrator = Orchestrator(
@@ -175,6 +176,7 @@ void main() {
     );
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
+      failureReporter: FakeFailureReporter(),
     );
     final projectRepository = ProjectRepository(plugin: plugin, projectsDao: database.projectsDao);
     final permissionRepository = PermissionRepository(plugin: plugin);
@@ -331,6 +333,7 @@ void main() {
     final pushService = _CapturingPushNotificationService();
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
+      failureReporter: FakeFailureReporter(),
     );
 
     final orchestrator = Orchestrator(

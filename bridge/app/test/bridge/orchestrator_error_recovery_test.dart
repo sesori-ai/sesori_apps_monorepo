@@ -149,6 +149,7 @@ class _TestHarness {
     );
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
+      failureReporter: FakeFailureReporter(),
     );
 
     final orchestrator = Orchestrator(
