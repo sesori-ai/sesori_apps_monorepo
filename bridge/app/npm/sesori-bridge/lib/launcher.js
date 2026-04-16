@@ -14,14 +14,24 @@ function sourceHint(filePath, shellName) {
   return "Run `source " + filePath + "` or open a new terminal.";
 }
 
-function unixPathFile(homeDir, shellName) {
+function unixPathFiles(homeDir, shellName) {
   if (shellName === "bash") {
-    return path.join(homeDir, ".bashrc");
+    return [path.join(homeDir, ".bashrc"), path.join(homeDir, ".profile")];
   }
   if (shellName === "zsh") {
-    return path.join(homeDir, ".zshrc");
+    return [path.join(homeDir, ".zshrc"), path.join(homeDir, ".zprofile")];
   }
-  return path.join(homeDir, ".profile");
+  return [path.join(homeDir, ".profile")];
+}
+
+function joinWithAnd(values) {
+  if (values.length === 1) {
+    return values[0];
+  }
+  if (values.length === 2) {
+    return values[0] + " and " + values[1];
+  }
+  return values.slice(0, -1).join(", ") + ", and " + values[values.length - 1];
 }
 
 function ensureLine(filePath, line) {
@@ -49,10 +59,18 @@ function ensureUnixPathEntry(homeDir, shellPath) {
     }
   } else {
     var exportLine = 'export PATH="' + unixManagedBinDir() + ':$PATH"';
-    var rcFile = unixPathFile(homeDir, shellName);
-    if (ensureLine(rcFile, exportLine)) {
-      changed = true;
-      messages.push("Persisted ~/.sesori/bin in " + rcFile + ". " + sourceHint(rcFile, shellName));
+    var rcFiles = unixPathFiles(homeDir, shellName);
+    var updatedFiles = [];
+    rcFiles.forEach(function(filePath) {
+      if (ensureLine(filePath, exportLine)) {
+        changed = true;
+        updatedFiles.push(filePath);
+      }
+    });
+    if (updatedFiles.length > 0) {
+      messages.push(
+        "Persisted ~/.sesori/bin in " + joinWithAnd(updatedFiles) + ". " + sourceHint(updatedFiles[0], shellName)
+      );
     }
   }
 

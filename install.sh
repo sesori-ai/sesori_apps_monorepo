@@ -228,12 +228,12 @@ add_to_path() {
     local shell_name
     shell_name="$(basename "${SHELL:-}")"
 
-    local rc_file
+    local rc_files=()
     case "${shell_name}" in
-        bash) rc_file="${HOME}/.bashrc" ;;
-        zsh)  rc_file="${HOME}/.zshrc" ;;
+        bash) rc_files=("${HOME}/.bashrc" "${HOME}/.profile") ;;
+        zsh)  rc_files=("${HOME}/.zshrc" "${HOME}/.zprofile") ;;
         fish)
-            rc_file="${HOME}/.config/fish/config.fish"
+            local rc_file="${HOME}/.config/fish/config.fish"
             mkdir -p "$(dirname "${rc_file}")"
             if ! grep -qF 'fish_add_path "$HOME/.sesori/bin"' "${rc_file}" 2>/dev/null; then
                 echo 'fish_add_path "$HOME/.sesori/bin"' >> "${rc_file}"
@@ -241,13 +241,30 @@ add_to_path() {
             fi
             return 0
             ;;
-        *) rc_file="${HOME}/.profile" ;;
+        *) rc_files=("${HOME}/.profile") ;;
     esac
 
     local export_line='export PATH="$HOME/.sesori/bin:$PATH"'
-    if ! grep -qF "${export_line}" "${rc_file}" 2>/dev/null; then
-        echo "${export_line}" >> "${rc_file}"
-        echo "PATH: persisted ~/.sesori/bin in ${rc_file}. Run 'source ${rc_file}' or open a new terminal."
+    local updated_files=()
+    local rc_file
+    for rc_file in "${rc_files[@]}"; do
+        if ! grep -qF "${export_line}" "${rc_file}" 2>/dev/null; then
+            echo "${export_line}" >> "${rc_file}"
+            updated_files+=("${rc_file}")
+        fi
+    done
+
+    if [ ${#updated_files[@]} -gt 0 ]; then
+        local joined_files="${updated_files[0]}"
+        local index
+        for (( index=1; index<${#updated_files[@]}; index++ )); do
+            if [ ${index} -eq $((${#updated_files[@]} - 1)) ]; then
+                joined_files+=" and ${updated_files[index]}"
+            else
+                joined_files+=", ${updated_files[index]}"
+            fi
+        done
+        echo "PATH: persisted ~/.sesori/bin in ${joined_files}. Run 'source ${updated_files[0]}' or open a new terminal."
     fi
 }
 
