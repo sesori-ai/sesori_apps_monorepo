@@ -438,6 +438,7 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
       final wrapperRoot = await _createWrapperFixture();
       final homeDir = await Directory.systemTemp.createTemp('npm-wrapper-home-');
       addTearDown(() => homeDir.delete(recursive: true));
+      final bootstrapRecordPath = p.join(homeDir.path, 'bootstrap-record.json');
       final recordPath = p.join(homeDir.path, 'record.json');
       final releaseAsset = await _createReleaseAsset(
         version: '0.3.1',
@@ -455,13 +456,14 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
         homePath: homeDir.path,
         args: ['doctor'],
         environment: {
+          'SESORI_BRIDGE_RECORD_PATH': bootstrapRecordPath,
           'SESORI_BRIDGE_RELEASES_BASE_URL': releasesBaseUrl,
         },
       );
 
       expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
       _expectInstallSummary(result: result, homePath: homeDir.path, args: ['doctor']);
-      expect(File(recordPath).existsSync(), isFalse);
+      expect(File(bootstrapRecordPath).existsSync(), isFalse);
       final directRun = await _runManagedBinary(
         homePath: homeDir.path,
         args: ['doctor'],
@@ -590,11 +592,15 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
       expect(
         bootstrapResult.stdout,
         contains(
-          'PATH update    : Persisted ~/.sesori/bin in ${p.join(homeDir.path, '.bashrc')}. Run `source ${p.join(homeDir.path, '.bashrc')}` or open a new terminal.',
+          'PATH update    : Persisted ~/.sesori/bin in ${p.join(homeDir.path, '.bashrc')} and ${p.join(homeDir.path, '.profile')}. Run `source ${p.join(homeDir.path, '.bashrc')}` or open a new terminal.',
         ),
       );
       expect(
         File(p.join(homeDir.path, '.bashrc')).readAsStringSync(),
+        contains(r'export PATH="$HOME/.sesori/bin:$PATH"'),
+      );
+      expect(
+        File(p.join(homeDir.path, '.profile')).readAsStringSync(),
         contains(r'export PATH="$HOME/.sesori/bin:$PATH"'),
       );
 

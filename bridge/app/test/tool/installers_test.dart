@@ -342,12 +342,12 @@ cat "\$HOME/.zshrc"
       expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
       expect(
         RegExp(r'export PATH="\$HOME/.sesori/bin:\$PATH"').allMatches(result.stdout as String).length,
-        equals(1),
+        equals(2),
       );
       expect(
         result.stdout,
         contains(
-          "PATH: persisted ~/.sesori/bin in ${p.join(tempDir.path, '.zshrc')}. Run 'source ${p.join(tempDir.path, '.zshrc')}' or open a new terminal.",
+          "PATH: persisted ~/.sesori/bin in ${p.join(tempDir.path, '.zshrc')} and ${p.join(tempDir.path, '.zprofile')}. Run 'source ${p.join(tempDir.path, '.zshrc')}' or open a new terminal.",
         ),
       );
     });
