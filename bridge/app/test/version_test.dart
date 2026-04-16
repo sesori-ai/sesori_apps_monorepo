@@ -40,6 +40,7 @@ void main() {
         equals({
           'bootstrapOnly': true,
           'managedRuntimeOwner': false,
+          'releaseTag': 'bridge-v$appVersion',
           'runtimeBundleSource': 'github-release-assets',
         }),
       );

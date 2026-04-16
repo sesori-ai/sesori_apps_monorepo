@@ -104,16 +104,17 @@ function copyRecursive(sourcePath, targetPath) {
   fs.chmodSync(targetPath, stat.mode);
 }
 
-function resolvePayload(pkgName) {
+function packageRootFor(pkgName) {
   var packageRoot;
   try {
     packageRoot = path.dirname(require.resolve(pkgName + "/package.json"));
   } catch (_) {
-    fail(
-      "sesori-bridge: Failed to find platform package '" + pkgName + "'.\n" +
-      "Try installing it manually:\n  npm install " + pkgName
-    );
+    return null;
   }
+  return packageRoot;
+}
+
+function payloadFromPackageRoot(packageRoot) {
   var manifest = readJson(path.join(packageRoot, "package.json"));
   return {
     runtimeBundlePath: path.join(
@@ -124,6 +125,25 @@ function resolvePayload(pkgName) {
     ),
     version: manifest.version,
   };
+}
+
+function resolvePayload(pkgName) {
+  var packageRoot = packageRootFor(pkgName);
+  if (!packageRoot) {
+    fail(
+      "sesori-bridge: Failed to find platform package '" + pkgName + "'.\n" +
+      "Try installing it manually:\n  npm install " + pkgName
+    );
+  }
+  return payloadFromPackageRoot(packageRoot);
+}
+
+function tryResolvePayload(pkgName) {
+  var packageRoot = packageRootFor(pkgName);
+  if (!packageRoot) {
+    return null;
+  }
+  return payloadFromPackageRoot(packageRoot);
 }
 
 function writeManagedManifest(installRoot, version) {
@@ -168,5 +188,6 @@ module.exports = {
   managedInstallRoot: managedInstallRoot,
   readManagedVersion: readManagedVersion,
   resolvePayload: resolvePayload,
+  tryResolvePayload: tryResolvePayload,
   isManagedRuntimeReady: isManagedRuntimeReady,
 };

@@ -331,6 +331,7 @@ source ${jsonEncode(libraryPath)}
 add_to_path "\$HOME/.sesori/bin"
 add_to_path "\$HOME/.sesori/bin"
 cat "\$HOME/.zshrc"
+cat "\$HOME/.zprofile"
 ''',
         environment: {
           'PATH': '/usr/bin:/bin',
@@ -342,9 +343,14 @@ cat "\$HOME/.zshrc"
       expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
       expect(
         RegExp(r'export PATH="\$HOME/.sesori/bin:\$PATH"').allMatches(result.stdout as String).length,
-        equals(1),
+        equals(2),
       );
-      expect(result.stdout, contains('Added ~/.sesori/bin to PATH in ${p.join(tempDir.path, '.zshrc')}.'));
+      expect(
+        result.stdout,
+        contains(
+          "PATH: persisted ~/.sesori/bin in ${p.join(tempDir.path, '.zshrc')} and ${p.join(tempDir.path, '.zprofile')}. Run 'source ${p.join(tempDir.path, '.zshrc')}' or open a new terminal.",
+        ),
+      );
     });
 
     test('writes managed runtime manifest with resolved version', () {
@@ -392,7 +398,10 @@ cat "\$HOME/.zshrc"
       expect(script, contains("Write-Warning \"Another sesori-bridge was found at '"));
       expect(script, contains(r'''$pathEntries | Where-Object { $_.TrimEnd('\') -ieq $BinDir.TrimEnd('\') }'''));
       expect(script, contains(r"[Environment]::SetEnvironmentVariable('PATH', $newPath, 'User')"));
-      expect(script, contains('Open a new terminal to use sesori-bridge.'));
+      expect(script, contains(r'PATH: persisted $BinDir in the user PATH.'));
+      expect(script, contains('Write-Host "1. Start the bridge:"'));
+      expect(script, contains('Write-Host "   sesori-bridge"'));
+      expect(script, contains(r'Write-Host "   & \"$BinaryPath\""'));
     });
 
     test('writes managed runtime manifest with resolved version', () {

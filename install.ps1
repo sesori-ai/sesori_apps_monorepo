@@ -110,8 +110,9 @@ $TempDir       = Join-Path ([System.IO.Path]::GetTempPath()) "sesori-install-$([
 $TempZip       = Join-Path $TempDir $ArchiveName
 $TempChecksums = Join-Path $TempDir 'checksums.txt'
 
-Write-Host "Sesori Bridge CLI Installer" -ForegroundColor Cyan
-Write-Host "Architecture : $arch"
+Write-Host "Sesori Bridge installer" -ForegroundColor Cyan
+Write-Host "=======================" -ForegroundColor Cyan
+Write-Host "Platform     : windows/$arch"
 Write-Host "Release      : $($Release.TagName)"
 Write-Host "Install root : $InstallRoot"
 Write-Host ""
@@ -121,15 +122,14 @@ try {
     New-Item -ItemType Directory -Force -Path $TempDir | Out-Null
 
     # ── Download archive ──────────────────────────────────────────────────────
-    Write-Host "Downloading $ArchiveName ..." -ForegroundColor Yellow
+    Write-Host "[1/3] Downloading release assets..." -ForegroundColor Yellow
     Invoke-WebRequest -Uri $AssetUrl -OutFile $TempZip -UseBasicParsing
 
     # ── Download checksums ────────────────────────────────────────────────────
-    Write-Host "Downloading checksums.txt ..." -ForegroundColor Yellow
     Invoke-WebRequest -Uri $ChecksumsUrl -OutFile $TempChecksums -UseBasicParsing
 
     # ── Verify SHA256 ─────────────────────────────────────────────────────────
-    Write-Host "Verifying checksum ..." -ForegroundColor Yellow
+    Write-Host "[2/3] Verifying checksum..." -ForegroundColor Yellow
 
     $actualHash = (Get-FileHash -Path $TempZip -Algorithm SHA256).Hash.ToLower()
 
@@ -161,7 +161,7 @@ try {
     New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
 
     # ── Extract archive ───────────────────────────────────────────────────────
-    Write-Host "Extracting to $InstallRoot ..." -ForegroundColor Yellow
+    Write-Host "[3/3] Installing managed runtime..." -ForegroundColor Yellow
     Expand-Archive -Path $TempZip -DestinationPath $InstallRoot -Force
 
     # ── Verify binary ─────────────────────────────────────────────────────────
@@ -193,10 +193,9 @@ try {
     if (-not $alreadyInPath) {
         $newPath = ($pathEntries + $BinDir) -join ';'
         [Environment]::SetEnvironmentVariable('PATH', $newPath, 'User')
-        Write-Host "Added $BinDir to user PATH." -ForegroundColor Green
-        Write-Host "Open a new terminal to use sesori-bridge." -ForegroundColor Cyan
+        Write-Host "PATH: persisted $BinDir in the user PATH." -ForegroundColor Green
     } else {
-        Write-Host "$BinDir is already in user PATH." -ForegroundColor Green
+        Write-Host "PATH: already configured." -ForegroundColor Green
     }
 
     # Also update the current session PATH so --version works immediately
@@ -204,11 +203,18 @@ try {
         $env:PATH = "$env:PATH;$BinDir"
     }
 
-    # ── Print version ─────────────────────────────────────────────────────────
     Write-Host ""
-    Write-Host "Installation complete!" -ForegroundColor Green
-    Write-Host "Running: sesori-bridge --version" -ForegroundColor Cyan
-    & $BinaryPath --version
+    Write-Host "Sesori Bridge install complete" -ForegroundColor Green
+    Write-Host "============================" -ForegroundColor Green
+    Write-Host "Managed binary : $BinaryPath"
+    Write-Host ""
+    Write-Host "Next steps" -ForegroundColor Cyan
+    Write-Host "----------" -ForegroundColor Cyan
+    Write-Host "1. Start the bridge:"
+    Write-Host "   sesori-bridge"
+    Write-Host ""
+    Write-Host "2. If 'sesori-bridge' is not available in this shell yet, run:" -ForegroundColor Cyan
+    Write-Host "   & \"$BinaryPath\""
 
 } finally {
     # ── Cleanup temp files ────────────────────────────────────────────────────

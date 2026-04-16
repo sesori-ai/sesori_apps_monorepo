@@ -43,7 +43,7 @@ Quick packaged install options:
 
 ```bash
 # npm bootstrap
-npx @sesori/bridge --version
+npx @sesori/bridge
 
 # If PATH has not refreshed in this shell yet, open a new terminal
 # or run ~/.sesori/bin/sesori-bridge directly on macOS/Linux.
@@ -60,6 +60,8 @@ irm https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/main/instal
 ```
 
 Both install paths update PATH for future shells. On a first-time install, you may need to open a new terminal before `sesori-bridge` resolves from PATH.
+
+The npm bootstrap path uses `npx @sesori/bridge` only as a launcher: it installs or refreshes the managed native runtime under the Sesori install root and then gets out of the way. The steady-state command remains `sesori-bridge`, not a binary inside `node_modules`.
 
 ## Uninstall
 

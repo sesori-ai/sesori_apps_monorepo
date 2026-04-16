@@ -425,6 +425,9 @@ jobs:
             if (metadata.runtimeBundleSource !== "github-release-assets") {
               throw new Error("runtimeBundleSource drift in " + packageJsonPath + ": expected github-release-assets, got " + metadata.runtimeBundleSource);
             }
+            if (metadata.releaseTag !== releaseTag) {
+              throw new Error("releaseTag drift in " + packageJsonPath + ": expected " + releaseTag + ", got " + metadata.releaseTag);
+            }
           ' bridge/app/npm/sesori-bridge/package.json "$RELEASE_TAG" "${{ steps.version.outputs.VERSION }}"
 
       - name: Publish wrapper package
