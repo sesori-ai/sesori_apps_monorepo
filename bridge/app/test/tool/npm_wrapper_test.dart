@@ -90,6 +90,22 @@ Future<ProcessResult> _runWrapperProcess({
   );
 }
 
+Future<ProcessResult> _runManagedBinary({
+  required String homePath,
+  required List<String> args,
+  Map<String, String> environment = const {},
+}) {
+  return Process.run(
+    _managedBinaryPath(homePath: homePath),
+    args,
+    environment: {
+      'HOME': homePath,
+      if (Platform.isWindows) 'LOCALAPPDATA': p.join(homePath, 'AppData', 'Local'),
+      ...environment,
+    },
+  );
+}
+
 Future<Process> _startWrapperProcess({
   required Directory packageRoot,
   required String homePath,
@@ -265,6 +281,24 @@ Future<String> _serveReleaseAssets({
   return 'http://${server.address.host}:${server.port}/releases/download';
 }
 
+Future<String> _serveInvalidRedirectReleaseAssets({required String version}) async {
+  final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+  addTearDown(() => server.close(force: true));
+  server.listen((request) async {
+    final expectedPrefix = '/releases/download/bridge-v$version/';
+    if (!request.uri.path.startsWith(expectedPrefix)) {
+      request.response.statusCode = HttpStatus.notFound;
+      await request.response.close();
+      return;
+    }
+
+    request.response.statusCode = HttpStatus.found;
+    request.response.headers.set(HttpHeaders.locationHeader, 'http://[invalid');
+    await request.response.close();
+  });
+  return 'http://${server.address.host}:${server.port}/releases/download';
+}
+
 String _runtimeBinarySource({required String marker}) {
   return '''
 #!/usr/bin/env node
@@ -323,6 +357,18 @@ Future<Map<String, dynamic>> _readRecordedInvocation({required String recordPath
   return jsonDecode(await File(recordPath).readAsString()) as Map<String, dynamic>;
 }
 
+void _expectInstallSummary({
+  required ProcessResult result,
+  required String homePath,
+  required List<String> args,
+}) {
+  final nextStep = ['sesori-bridge', ...args].join(' ');
+  expect(result.stdout, contains('Sesori Bridge install complete'));
+  expect(result.stdout, contains('Managed binary : ${_managedBinaryPath(homePath: homePath)}'));
+  expect(result.stdout, contains('Next step'));
+  expect(result.stdout, contains(nextStep));
+}
+
 Future<({int exitCode, String stdout, String stderr})> _waitForProcess(Process process) async {
   final stdoutFuture = process.stdout.transform(utf8.decoder).join();
   final stderrFuture = process.stderr.transform(utf8.decoder).join();
@@ -377,6 +423,16 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
       expect(stderr, contains('npm install @sesori/bridge-darwin-arm64'));
     });
 
+    test('bootstrap source renders Windows managed fallback commands via PowerShell invocation', () async {
+      final source = await File(p.join(_wrapperPackageRoot(), 'lib', 'bootstrap.js')).readAsString();
+
+      expect(source, contains('function powershellQuote(value)'));
+      expect(
+        source,
+        contains('managedCommand = "& " + [binaryPath].concat(commandArgs).map(powershellQuote).join(" ")'),
+      );
+    });
+
     test('falls back to the tagged GitHub release asset when the platform package is missing', () async {
       final wrapperRoot = await _createWrapperFixture();
       final homeDir = await Directory.systemTemp.createTemp('npm-wrapper-home-');
@@ -398,12 +454,19 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
         homePath: homeDir.path,
         args: ['doctor'],
         environment: {
-          'SESORI_BRIDGE_RECORD_PATH': recordPath,
           'SESORI_BRIDGE_RELEASES_BASE_URL': releasesBaseUrl,
         },
       );
 
       expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      _expectInstallSummary(result: result, homePath: homeDir.path, args: ['doctor']);
+      expect(File(recordPath).existsSync(), isFalse);
+      final directRun = await _runManagedBinary(
+        homePath: homeDir.path,
+        args: ['doctor'],
+        environment: {'SESORI_BRIDGE_RECORD_PATH': recordPath},
+      );
+      expect(directRun.exitCode, equals(0), reason: '${directRun.stdout}\n${directRun.stderr}');
       final recorded = await _readRecordedInvocation(recordPath: recordPath);
       expect(recorded['marker'], equals('release-runtime'));
       expect(recorded['libMarker'], equals('release-lib'));
@@ -441,7 +504,28 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
       expect(result.stderr, contains('Checksum mismatch for ${releaseAsset.assetName}'));
     });
 
-    test('bootstraps a missing managed install and executes the managed binary', () async {
+    test('fails closed when a redirect location is malformed', () async {
+      final wrapperRoot = await _createWrapperFixture();
+      final homeDir = await Directory.systemTemp.createTemp('npm-wrapper-home-');
+      addTearDown(() => homeDir.delete(recursive: true));
+      final releasesBaseUrl = await _serveInvalidRedirectReleaseAssets(version: '0.3.1');
+
+      final result = await _runWrapperProcess(
+        packageRoot: wrapperRoot,
+        homePath: homeDir.path,
+        args: ['doctor'],
+        environment: {'SESORI_BRIDGE_RELEASES_BASE_URL': releasesBaseUrl},
+      );
+
+      expect(result.exitCode, equals(1));
+      expect(
+        result.stderr,
+        contains('Failed to download managed runtime from GitHub release assets for bridge-v0.3.1'),
+      );
+      expect(result.stderr, contains('Invalid redirect URL'));
+    });
+
+    test('bootstraps a missing managed install without launching it', () async {
       final wrapperRoot = await _createWrapperFixture();
       final homeDir = await Directory.systemTemp.createTemp('npm-wrapper-home-');
       addTearDown(() => homeDir.delete(recursive: true));
@@ -458,19 +542,22 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
         packageRoot: wrapperRoot,
         homePath: homeDir.path,
         args: ['serve', '--port', '4096'],
-        environment: {'SESORI_BRIDGE_RECORD_PATH': recordPath},
       );
 
       expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
-      final recorded = await _readRecordedInvocation(recordPath: recordPath);
+      _expectInstallSummary(result: result, homePath: homeDir.path, args: ['serve', '--port', '4096']);
+      expect(File(recordPath).existsSync(), isFalse);
       final managedBinary = _managedBinaryPath(homePath: homeDir.path);
+      final directRun = await _runManagedBinary(
+        homePath: homeDir.path,
+        args: ['serve', '--port', '4096'],
+        environment: {'SESORI_BRIDGE_RECORD_PATH': recordPath},
+      );
+      expect(directRun.exitCode, equals(0), reason: '${directRun.stdout}\n${directRun.stderr}');
+      final recorded = await _readRecordedInvocation(recordPath: recordPath);
       expect(recorded['marker'], equals('payload-runtime'));
       expect(recorded['executedPath'], equals(managedBinary));
       expect(recorded['args'], equals(['serve', '--port', '4096']));
-      expect(
-        (recorded['path'] as String).split(Platform.isWindows ? ';' : ':').first,
-        equals(p.dirname(managedBinary)),
-      );
       expect(recorded['libMarker'], equals('payload-lib'));
       expect(File(p.join(_managedInstallRoot(homePath: homeDir.path), '.managed-runtime.json')).existsSync(), isTrue);
     });
@@ -479,7 +566,6 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
       final wrapperRoot = await _createWrapperFixture();
       final homeDir = await Directory.systemTemp.createTemp('npm-wrapper-home-');
       addTearDown(() => homeDir.delete(recursive: true));
-      final bootstrapRecordPath = p.join(homeDir.path, 'bootstrap-record.json');
       final freshShellRecordPath = p.join(homeDir.path, 'fresh-shell-record.json');
 
       await _createPlatformPayload(
@@ -495,11 +581,11 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
         args: ['serve'],
         environment: {
           'SHELL': '/bin/bash',
-          'SESORI_BRIDGE_RECORD_PATH': bootstrapRecordPath,
         },
       );
 
       expect(bootstrapResult.exitCode, equals(0), reason: '${bootstrapResult.stdout}\n${bootstrapResult.stderr}');
+      _expectInstallSummary(result: bootstrapResult, homePath: homeDir.path, args: ['serve']);
       expect(
         File(p.join(homeDir.path, '.bashrc')).readAsStringSync(),
         contains(r'export PATH="$HOME/.sesori/bin:$PATH"'),
@@ -554,10 +640,15 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
         packageRoot: wrapperRoot,
         homePath: homeDir.path,
         args: ['status'],
-        environment: {'SESORI_BRIDGE_RECORD_PATH': recordPath},
       );
 
       expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      final directRun = await _runManagedBinary(
+        homePath: homeDir.path,
+        args: ['status'],
+        environment: {'SESORI_BRIDGE_RECORD_PATH': recordPath},
+      );
+      expect(directRun.exitCode, equals(0), reason: '${directRun.stdout}\n${directRun.stderr}');
       final recorded = await _readRecordedInvocation(recordPath: recordPath);
       expect(recorded['marker'], equals('existing-managed'));
       expect(recorded['libMarker'], equals('existing-lib'));
@@ -583,12 +674,17 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
         homePath: homeDir.path,
         args: ['status'],
         environment: {
-          'SESORI_BRIDGE_RECORD_PATH': recordPath,
           'SESORI_BRIDGE_RELEASES_BASE_URL': 'http://127.0.0.1:1/releases/download',
         },
       );
 
       expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      final directRun = await _runManagedBinary(
+        homePath: homeDir.path,
+        args: ['status'],
+        environment: {'SESORI_BRIDGE_RECORD_PATH': recordPath},
+      );
+      expect(directRun.exitCode, equals(0), reason: '${directRun.stdout}\n${directRun.stderr}');
       final recorded = await _readRecordedInvocation(recordPath: recordPath);
       expect(recorded['marker'], equals('existing-managed'));
       expect(recorded['libMarker'], equals('existing-lib'));
@@ -619,10 +715,15 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
         packageRoot: wrapperRoot,
         homePath: homeDir.path,
         args: ['doctor'],
-        environment: {'SESORI_BRIDGE_RECORD_PATH': recordPath},
       );
 
       expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      final directRun = await _runManagedBinary(
+        homePath: homeDir.path,
+        args: ['doctor'],
+        environment: {'SESORI_BRIDGE_RECORD_PATH': recordPath},
+      );
+      expect(directRun.exitCode, equals(0), reason: '${directRun.stdout}\n${directRun.stderr}');
       final recorded = await _readRecordedInvocation(recordPath: recordPath);
       expect(recorded['marker'], equals('newer-managed'));
       expect(recorded['libMarker'], equals('newer-lib'));
@@ -654,12 +755,17 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
         homePath: homeDir.path,
         args: ['doctor'],
         environment: {
-          'SESORI_BRIDGE_RECORD_PATH': recordPath,
           'SESORI_BRIDGE_RELEASES_BASE_URL': 'http://127.0.0.1:1/releases/download',
         },
       );
 
       expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      final directRun = await _runManagedBinary(
+        homePath: homeDir.path,
+        args: ['doctor'],
+        environment: {'SESORI_BRIDGE_RECORD_PATH': recordPath},
+      );
+      expect(directRun.exitCode, equals(0), reason: '${directRun.stdout}\n${directRun.stderr}');
       final recorded = await _readRecordedInvocation(recordPath: recordPath);
       expect(recorded['marker'], equals('newer-managed'));
       expect(recorded['libMarker'], equals('newer-lib'));
@@ -690,10 +796,15 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
         packageRoot: wrapperRoot,
         homePath: homeDir.path,
         args: ['status'],
-        environment: {'SESORI_BRIDGE_RECORD_PATH': recordPath},
       );
 
       expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      final directRun = await _runManagedBinary(
+        homePath: homeDir.path,
+        args: ['status'],
+        environment: {'SESORI_BRIDGE_RECORD_PATH': recordPath},
+      );
+      expect(directRun.exitCode, equals(0), reason: '${directRun.stdout}\n${directRun.stderr}');
       final recorded = await _readRecordedInvocation(recordPath: recordPath);
       expect(recorded['marker'], equals('payload-runtime'));
       expect(recorded['libMarker'], equals('payload-lib'));
@@ -730,10 +841,15 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
         packageRoot: wrapperRoot,
         homePath: homeDir.path,
         args: ['status'],
-        environment: {'SESORI_BRIDGE_RECORD_PATH': recordPath},
       );
 
       expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      final directRun = await _runManagedBinary(
+        homePath: homeDir.path,
+        args: ['status'],
+        environment: {'SESORI_BRIDGE_RECORD_PATH': recordPath},
+      );
+      expect(directRun.exitCode, equals(0), reason: '${directRun.stdout}\n${directRun.stderr}');
       final recorded = await _readRecordedInvocation(recordPath: recordPath);
       expect(recorded['marker'], equals('payload-runtime'));
       expect(recorded['libMarker'], equals('payload-lib'));
@@ -793,7 +909,6 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
         homePath: homeDir.path,
         args: ['status'],
         environment: {
-          'SESORI_BRIDGE_RECORD_PATH': recordPath,
           'SESORI_BRIDGE_TEST_WRITE_FAIL': '1',
         },
       );
@@ -826,13 +941,20 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
         args: ['status'],
         environment: {
           'SHELL': '/usr/bin/fish',
-          'SESORI_BRIDGE_RECORD_PATH': recordPath,
         },
       );
 
       expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
       expect(result.stderr, contains('Failed to persist the managed command path'));
-      expect(result.stderr, contains('Continuing with the managed runtime for this launch.'));
+      expect(result.stderr, contains('The managed runtime is installed, but you may need to add it to PATH manually.'));
+      expect(result.stdout, contains('PATH update    : manual action required'));
+      expect(result.stdout, isNot(contains('PATH update    : already configured')));
+      final directRun = await _runManagedBinary(
+        homePath: homeDir.path,
+        args: ['status'],
+        environment: {'SESORI_BRIDGE_RECORD_PATH': recordPath},
+      );
+      expect(directRun.exitCode, equals(0), reason: '${directRun.stdout}\n${directRun.stderr}');
       final recorded = await _readRecordedInvocation(recordPath: recordPath);
       expect(recorded['marker'], equals('payload-runtime'));
     });
@@ -841,7 +963,6 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
       final wrapperRoot = await _createWrapperFixture();
       final homeDir = await Directory.systemTemp.createTemp('npm-wrapper-home-');
       addTearDown(() => homeDir.delete(recursive: true));
-      final bootstrapRecordPath = p.join(homeDir.path, 'bootstrap-record.json');
       final directRecordPath = p.join(homeDir.path, 'direct-record.json');
 
       await _createPlatformPayload(
@@ -855,7 +976,6 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
         packageRoot: wrapperRoot,
         homePath: homeDir.path,
         args: ['serve'],
-        environment: {'SESORI_BRIDGE_RECORD_PATH': bootstrapRecordPath},
       );
       expect(bootstrapResult.exitCode, equals(0), reason: '${bootstrapResult.stdout}\n${bootstrapResult.stderr}');
 
@@ -924,8 +1044,6 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
       final wrapperRoot = await _createWrapperFixture();
       final homeDir = await Directory.systemTemp.createTemp('npm-wrapper-home-');
       addTearDown(() => homeDir.delete(recursive: true));
-      final firstRecordPath = p.join(homeDir.path, 'first-record.json');
-      final secondRecordPath = p.join(homeDir.path, 'second-record.json');
       final installCounterPath = p.join(homeDir.path, 'install-count.txt');
 
       await _createPlatformPayload(
@@ -940,7 +1058,6 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
         homePath: homeDir.path,
         args: ['serve', 'first'],
         environment: {
-          'SESORI_BRIDGE_RECORD_PATH': firstRecordPath,
           'SESORI_BRIDGE_TEST_BOOTSTRAP_HOLD_MS': '800',
           'SESORI_BRIDGE_TEST_INSTALL_COUNTER_PATH': installCounterPath,
         },
@@ -953,7 +1070,6 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
         homePath: homeDir.path,
         args: ['serve', 'second'],
         environment: {
-          'SESORI_BRIDGE_RECORD_PATH': secondRecordPath,
           'SESORI_BRIDGE_TEST_INSTALL_COUNTER_PATH': installCounterPath,
         },
       );
@@ -968,20 +1084,13 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
         contains('Another bootstrap is already in progress. Waiting for the managed install lock'),
       );
       expect(await File(installCounterPath).readAsString(), equals('1'));
-
-      final firstRecorded = await _readRecordedInvocation(recordPath: firstRecordPath);
-      final secondRecorded = await _readRecordedInvocation(recordPath: secondRecordPath);
-      expect(firstRecorded['marker'], equals('payload-runtime'));
-      expect(secondRecorded['marker'], equals('payload-runtime'));
-      expect(secondRecorded['executedPath'], equals(_managedBinaryPath(homePath: homeDir.path)));
+      expect(File(_managedBinaryPath(homePath: homeDir.path)).existsSync(), isTrue);
     });
 
     test('active bootstrap holder is not evicted after crossing the stale threshold', () async {
       final wrapperRoot = await _createWrapperFixture();
       final homeDir = await Directory.systemTemp.createTemp('npm-wrapper-home-');
       addTearDown(() => homeDir.delete(recursive: true));
-      final firstRecordPath = p.join(homeDir.path, 'first-record.json');
-      final secondRecordPath = p.join(homeDir.path, 'second-record.json');
       final installCounterPath = p.join(homeDir.path, 'install-count.txt');
 
       await _createPlatformPayload(
@@ -996,7 +1105,6 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
         homePath: homeDir.path,
         args: ['serve', 'first'],
         environment: {
-          'SESORI_BRIDGE_RECORD_PATH': firstRecordPath,
           'SESORI_BRIDGE_TEST_BOOTSTRAP_HOLD_MS': '1200',
           'SESORI_BRIDGE_TEST_BOOTSTRAP_LOCK_STALE_MS': '300',
           'SESORI_BRIDGE_TEST_BOOTSTRAP_LOCK_TIMEOUT_MS': '4000',
@@ -1011,7 +1119,6 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
         homePath: homeDir.path,
         args: ['serve', 'second'],
         environment: {
-          'SESORI_BRIDGE_RECORD_PATH': secondRecordPath,
           'SESORI_BRIDGE_TEST_BOOTSTRAP_LOCK_STALE_MS': '300',
           'SESORI_BRIDGE_TEST_BOOTSTRAP_LOCK_TIMEOUT_MS': '4000',
           'SESORI_BRIDGE_TEST_INSTALL_COUNTER_PATH': installCounterPath,
@@ -1028,12 +1135,7 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
         contains('Another bootstrap is already in progress. Waiting for the managed install lock'),
       );
       expect(await File(installCounterPath).readAsString(), equals('1'));
-
-      final firstRecorded = await _readRecordedInvocation(recordPath: firstRecordPath);
-      final secondRecorded = await _readRecordedInvocation(recordPath: secondRecordPath);
-      expect(firstRecorded['marker'], equals('payload-runtime'));
-      expect(secondRecorded['marker'], equals('payload-runtime'));
-      expect(secondRecorded['executedPath'], equals(_managedBinaryPath(homePath: homeDir.path)));
+      expect(File(_managedBinaryPath(homePath: homeDir.path)).existsSync(), isTrue);
     });
 
     test('stale abandoned bootstrap locks are reclaimed', () async {
@@ -1063,13 +1165,18 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
         homePath: homeDir.path,
         args: ['status'],
         environment: {
-          'SESORI_BRIDGE_RECORD_PATH': recordPath,
           'SESORI_BRIDGE_TEST_BOOTSTRAP_LOCK_STALE_MS': '200',
           'SESORI_BRIDGE_TEST_BOOTSTRAP_LOCK_TIMEOUT_MS': '2000',
         },
       );
 
       expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      final directRun = await _runManagedBinary(
+        homePath: homeDir.path,
+        args: ['status'],
+        environment: {'SESORI_BRIDGE_RECORD_PATH': recordPath},
+      );
+      expect(directRun.exitCode, equals(0), reason: '${directRun.stdout}\n${directRun.stderr}');
       final recorded = await _readRecordedInvocation(recordPath: recordPath);
       expect(recorded['marker'], equals('payload-runtime'));
       expect(recorded['executedPath'], equals(_managedBinaryPath(homePath: homeDir.path)));

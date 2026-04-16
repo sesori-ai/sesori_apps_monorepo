@@ -119,7 +119,14 @@ function downloadToFile(url, destinationPath, redirectsRemaining) {
         redirectsRemaining > 0
       ) {
         response.resume();
-        downloadToFile(new URL(response.headers.location, url).toString(), destinationPath, redirectsRemaining - 1)
+        var redirectUrl;
+        try {
+          redirectUrl = new URL(response.headers.location, url).toString();
+        } catch (error) {
+          reject(new Error("Invalid redirect URL '" + response.headers.location + "' for " + url + "."));
+          return;
+        }
+        downloadToFile(redirectUrl, destinationPath, redirectsRemaining - 1)
           .then(resolve, reject);
         return;
       }
