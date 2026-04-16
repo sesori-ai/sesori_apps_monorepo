@@ -1,5 +1,6 @@
 import "package:sesori_shared/sesori_shared.dart";
 
+import "push_session_state_tracker_events.dart";
 import "push_session_state_tracker_graph.dart";
 import "push_session_state_tracker_maintenance.dart";
 import "push_session_state_tracker_models.dart";
@@ -17,106 +18,13 @@ class PushSessionStateTracker {
   PushSessionStateTracker.testable({required DateTime Function() now}) : _now = now;
 
   void handleEvent(SesoriSseEvent event) {
-    final now = _now();
-
-    switch (event) {
-      case SesoriSessionCreated(:final info):
-        upsertTrackedSession(session: info, touchedAt: now, sessions: _sessions);
-      case SesoriSessionUpdated(:final info):
-        upsertTrackedSession(session: info, touchedAt: now, sessions: _sessions);
-      case SesoriSessionDeleted(:final info):
-        deleteTrackedSession(
-          sessionId: info.id,
-          sessions: _sessions,
-          messageRoles: _messageRoles,
-          permissionRequestToSession: _permissionRequestToSession,
-        );
-      case SesoriSessionStatus(:final sessionID, :final status):
-        final sessionState = stateForTrackedSession(
-          sessionId: sessionID,
-          sessions: _sessions,
-          touchedAt: now,
-        );
-        switch (status) {
-          case SessionStatusIdle():
-            sessionState.status = null;
-          case SessionStatusBusy():
-          case SessionStatusRetry():
-            sessionState.status = status;
-            sessionState.previouslyBusy = true;
-        }
-      case SesoriMessageUpdated(:final info):
-        _messageRoles[info.id] = PushTrackedMessageRole(
-          role: info.role,
-          sessionId: info.sessionID,
-          updatedAt: now,
-        );
-        trackMessageForSession(
-          sessionId: info.sessionID,
-          messageId: info.id,
-          sessions: _sessions,
-          touchedAt: now,
-        );
-        stateForTrackedSession(sessionId: info.sessionID, sessions: _sessions, touchedAt: now);
-      case SesoriMessageRemoved(:final messageID):
-        final sessionId = untrackMessage(
-          messageId: messageID,
-          sessions: _sessions,
-          messageRoles: _messageRoles,
-        );
-        if (sessionId != null) {
-          stateForTrackedSession(sessionId: sessionId, sessions: _sessions, touchedAt: now);
-        }
-      case SesoriMessagePartUpdated(:final part):
-        final messageRole = _messageRoles[part.messageID];
-        if (messageRole != null) {
-          _messageRoles[part.messageID] = PushTrackedMessageRole(
-            role: messageRole.role,
-            sessionId: messageRole.sessionId,
-            updatedAt: now,
-          );
-        }
-        stateForTrackedSession(sessionId: part.sessionID, sessions: _sessions, touchedAt: now);
-        updateTrackedLatestAssistantText(part: part, sessions: _sessions, messageRoles: _messageRoles);
-      case SesoriQuestionAsked(:final sessionID):
-        stateForTrackedSession(
-          sessionId: sessionID,
-          sessions: _sessions,
-          touchedAt: now,
-        ).hasPendingQuestion = true;
-      case SesoriQuestionReplied(:final sessionID):
-        final sessionState = _sessions[sessionID];
-        if (sessionState != null) {
-          sessionState.hasPendingQuestion = false;
-          sessionState.lastTouchedAt = now;
-        }
-      case SesoriQuestionRejected(:final sessionID):
-        final sessionState = _sessions[sessionID];
-        if (sessionState != null) {
-          sessionState.hasPendingQuestion = false;
-          sessionState.lastTouchedAt = now;
-        }
-      case SesoriPermissionAsked(:final requestID, :final sessionID):
-        _permissionRequestToSession[requestID] = sessionID;
-        stateForTrackedSession(
-          sessionId: sessionID,
-          sessions: _sessions,
-          touchedAt: now,
-        ).hasPendingPermission = true;
-      case SesoriPermissionReplied(:final requestID):
-        final sessionID = _permissionRequestToSession.remove(requestID);
-        if (sessionID != null) {
-          final sessionState = _sessions[sessionID];
-          if (sessionState != null) {
-            sessionState.hasPendingPermission = false;
-            sessionState.lastTouchedAt = now;
-          }
-        }
-      case SesoriProjectsSummary(:final projects):
-        applyTrackedProjectsSummaryChildLinks(projects: projects, sessions: _sessions);
-      default:
-        break;
-    }
+    handleTrackedEvent(
+      event: event,
+      now: _now(),
+      sessions: _sessions,
+      messageRoles: _messageRoles,
+      permissionRequestToSession: _permissionRequestToSession,
+    );
   }
 
   bool isSessionGroupFullyIdle(String sessionId) {
