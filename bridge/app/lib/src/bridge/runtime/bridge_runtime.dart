@@ -31,6 +31,8 @@ import "../repositories/pull_request_repository.dart";
 import "../repositories/session_repository.dart";
 import "../repositories/worktree_repository.dart";
 import "../services/pr_sync_service.dart";
+import "../services/session_archive_service.dart";
+import "../services/session_creation_service.dart";
 import "../services/session_event_enrichment_service.dart";
 import "../services/session_persistence_service.dart";
 import "../services/worktree_service.dart";
@@ -79,6 +81,35 @@ class BridgeRuntime {
       sessionRepository: sessionRepository,
       failureReporter: failureReporter,
     );
+    final sessionPersistenceService = SessionPersistenceService(
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      db: database,
+    );
+    final worktreeService = WorktreeService(
+      branchRepository: branchRepository,
+      worktreeRepository: WorktreeRepository(
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        gitApi: gitCliApi,
+      ),
+    );
+    final metadataService = MetadataService(
+      client: httpClient,
+      baseUrl: config.authBackendURL,
+      tokenRefresher: tokenRefresher,
+    );
+    final sessionCreationService = SessionCreationService(
+      metadataService: metadataService,
+      worktreeService: worktreeService,
+      sessionRepository: sessionRepository,
+      sessionPersistenceService: sessionPersistenceService,
+    );
+    final sessionArchiveService = SessionArchiveService(
+      worktreeService: worktreeService,
+      sessionRepository: sessionRepository,
+      sessionPersistenceService: sessionPersistenceService,
+    );
 
     return BridgeRuntime(
       database: database,
@@ -89,11 +120,7 @@ class BridgeRuntime {
         config: config,
         client: RelayClient(relayURL: config.relayURL, accessTokenProvider: accessTokenProvider),
         plugin: plugin,
-        metadataService: MetadataService(
-          client: httpClient,
-          baseUrl: config.authBackendURL,
-          tokenRefresher: tokenRefresher,
-        ),
+        metadataService: metadataService,
         pushNotificationService: _createPushNotificationService(
           authBackendURL: config.authBackendURL,
           tokenRefresher: tokenRefresher,
@@ -111,21 +138,12 @@ class BridgeRuntime {
         sessionRepository: sessionRepository,
         projectRepository: ProjectRepository(plugin: plugin, projectsDao: database.projectsDao),
         permissionRepository: PermissionRepository(plugin: plugin),
-        sessionPersistenceService: SessionPersistenceService(
-          projectsDao: database.projectsDao,
-          sessionDao: database.sessionDao,
-          db: database,
-        ),
-        worktreeService: WorktreeService(
-          branchRepository: branchRepository,
-          worktreeRepository: WorktreeRepository(
-            projectsDao: database.projectsDao,
-            sessionDao: database.sessionDao,
-            gitApi: gitCliApi,
-          ),
-        ),
+        sessionPersistenceService: sessionPersistenceService,
+        worktreeService: worktreeService,
         branchRepository: branchRepository,
         sessionEventEnrichmentService: sessionEventEnrichmentService,
+        sessionCreationService: sessionCreationService,
+        sessionArchiveService: sessionArchiveService,
       ).create(),
     );
   }

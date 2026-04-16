@@ -64,8 +64,8 @@ class RequestRouter {
     required BranchRepository branchRepository,
     required GetSessionDiffsHandler sessionDiffsHandler,
     required void Function(String sessionId) onSessionAborted,
-    SessionCreationService? sessionCreationService,
-    SessionArchiveService? sessionArchiveService,
+    required SessionCreationService sessionCreationService,
+    required SessionArchiveService sessionArchiveService,
   }) : _handlers = _buildHandlers(
          plugin: plugin,
          sessionRepository: sessionRepository,
@@ -94,8 +94,8 @@ class RequestRouter {
     required BranchRepository branchRepository,
     required GetSessionDiffsHandler sessionDiffsHandler,
     required void Function(String sessionId) onSessionAborted,
-    SessionCreationService? sessionCreationService,
-    SessionArchiveService? sessionArchiveService,
+    required SessionCreationService sessionCreationService,
+    required SessionArchiveService sessionArchiveService,
   }) {
     return [
       HealthCheckHandler(plugin),
@@ -109,10 +109,9 @@ class RequestRouter {
         prSyncService: prSyncService,
         sessionPersistenceService: sessionPersistenceService,
       ),
-      if (sessionCreationService != null) CreateSessionHandler(sessionCreationService: sessionCreationService),
+      CreateSessionHandler(sessionCreationService: sessionCreationService),
       RenameSessionHandler(sessionRepository: sessionRepository),
-      if (sessionArchiveService != null)
-        UpdateSessionArchiveStatusHandler(sessionArchiveService: sessionArchiveService),
+      UpdateSessionArchiveStatusHandler(sessionArchiveService: sessionArchiveService),
       DeleteSessionHandler(
         plugin: plugin,
         worktreeService: worktreeService,

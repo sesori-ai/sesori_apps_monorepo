@@ -32,10 +32,15 @@ import "sse/sse_manager.dart";
 
 /// Factory that creates [OrchestratorSession] instances with all runtime
 /// dependencies (room key, SSE manager) properly initialized.
+///
+/// [MetadataService] is held here because [SessionCreationService] needs it,
+/// but [Orchestrator] itself does not use it directly — only passes it into
+/// [SessionCreationService] via [BridgeRuntime.create].
 class Orchestrator {
   final BridgeConfig config;
   final RelayClient _client;
   final BridgePlugin _plugin;
+  // ignore: unused_field — MetadataService is passed to SessionCreationService, not used by Orchestrator itself
   final MetadataService _metadataService;
   final PushNotificationService _pushNotificationService;
   final TokenRefresher _tokenRefresher;
@@ -48,6 +53,8 @@ class Orchestrator {
   final WorktreeService _worktreeService;
   final BranchRepository _branchRepository;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
+  final SessionCreationService _sessionCreationService;
+  final SessionArchiveService _sessionArchiveService;
 
   Orchestrator({
     required this.config,
@@ -65,6 +72,8 @@ class Orchestrator {
     required WorktreeService worktreeService,
     required BranchRepository branchRepository,
     required SessionEventEnrichmentService sessionEventEnrichmentService,
+    required SessionCreationService sessionCreationService,
+    required SessionArchiveService sessionArchiveService,
   }) : _client = client,
        _plugin = plugin,
        _metadataService = metadataService,
@@ -78,7 +87,9 @@ class Orchestrator {
        _sessionPersistenceService = sessionPersistenceService,
        _worktreeService = worktreeService,
        _branchRepository = branchRepository,
-       _sessionEventEnrichmentService = sessionEventEnrichmentService;
+       _sessionEventEnrichmentService = sessionEventEnrichmentService,
+       _sessionCreationService = sessionCreationService,
+       _sessionArchiveService = sessionArchiveService;
 
   /// Creates a new session with a fresh room key and SSE manager.
   OrchestratorSession create() {
@@ -109,6 +120,8 @@ class Orchestrator {
       worktreeService: _worktreeService,
       branchRepository: _branchRepository,
       sessionEventEnrichmentService: _sessionEventEnrichmentService,
+      sessionCreationService: _sessionCreationService,
+      sessionArchiveService: _sessionArchiveService,
     );
   }
 
@@ -160,6 +173,8 @@ class OrchestratorSession {
     required WorktreeService worktreeService,
     required BranchRepository branchRepository,
     required SessionEventEnrichmentService sessionEventEnrichmentService,
+    required SessionCreationService sessionCreationService,
+    required SessionArchiveService sessionArchiveService,
   }) : _client = client,
        _plugin = plugin,
        _pushNotificationService = pushNotificationService,
@@ -185,6 +200,8 @@ class OrchestratorSession {
            processRunner: ProcessRunner(),
          ),
          onSessionAborted: pushNotificationService.markSessionAborted,
+         sessionCreationService: sessionCreationService,
+         sessionArchiveService: sessionArchiveService,
        ),
        _mapper = BridgeEventMapper(
          plugin: plugin,

@@ -22,6 +22,8 @@ import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.da
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_archive_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
@@ -85,6 +87,17 @@ void main() {
       sessionRepository: sessionRepository,
       failureReporter: FakeFailureReporter(),
     );
+    final sessionCreationService = SessionCreationService(
+      metadataService: _FakeMetadataService(),
+      worktreeService: worktreeService,
+      sessionRepository: sessionRepository,
+      sessionPersistenceService: sessionPersistenceService,
+    );
+    final sessionArchiveService = SessionArchiveService(
+      worktreeService: worktreeService,
+      sessionRepository: sessionRepository,
+      sessionPersistenceService: sessionPersistenceService,
+    );
 
     final orchestrator = Orchestrator(
       config: BridgeConfig(
@@ -108,6 +121,8 @@ void main() {
       worktreeService: worktreeService,
       branchRepository: branchRepository,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
+      sessionCreationService: sessionCreationService,
+      sessionArchiveService: sessionArchiveService,
     );
 
     final session = orchestrator.create();
@@ -205,6 +220,17 @@ void main() {
         ),
       ),
     );
+    final sessionCreationService = SessionCreationService(
+      metadataService: _FakeMetadataService(),
+      worktreeService: worktreeService,
+      sessionRepository: sessionRepository,
+      sessionPersistenceService: sessionPersistenceService,
+    );
+    final sessionArchiveService = SessionArchiveService(
+      worktreeService: worktreeService,
+      sessionRepository: sessionRepository,
+      sessionPersistenceService: sessionPersistenceService,
+    );
 
     final orchestrator = Orchestrator(
       config: BridgeConfig(
@@ -228,6 +254,8 @@ void main() {
       worktreeService: worktreeService,
       branchRepository: branchRepository2,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
+      sessionCreationService: sessionCreationService,
+      sessionArchiveService: sessionArchiveService,
     );
 
     final session = orchestrator.create();
@@ -350,6 +378,17 @@ void main() {
       sessionRepository: sessionRepository,
       failureReporter: FakeFailureReporter(),
     );
+    final sessionCreationService = SessionCreationService(
+      metadataService: _FakeMetadataService(),
+      worktreeService: worktreeService,
+      sessionRepository: sessionRepository,
+      sessionPersistenceService: sessionPersistenceService,
+    );
+    final sessionArchiveService = SessionArchiveService(
+      worktreeService: worktreeService,
+      sessionRepository: sessionRepository,
+      sessionPersistenceService: sessionPersistenceService,
+    );
 
     final orchestrator = Orchestrator(
       config: BridgeConfig(
@@ -373,6 +412,8 @@ void main() {
       worktreeService: worktreeService,
       branchRepository: branchRepository,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
+      sessionCreationService: sessionCreationService,
+      sessionArchiveService: sessionArchiveService,
     );
 
     final session = orchestrator.create();
