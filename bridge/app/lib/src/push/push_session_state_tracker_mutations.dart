@@ -35,16 +35,23 @@ void deleteTrackedSession({
   required Map<String, PushTrackedMessageRole> messageRoles,
   required Map<String, String> permissionRequestToSession,
 }) {
-  final sessionState = sessions.remove(sessionId);
-  for (final sessionState in sessions.values) {
-    sessionState.childIds.remove(sessionId);
-    if (sessionState.parentId == sessionId) {
-      sessionState.parentId = null;
+  final removedSessionState = sessions.remove(sessionId);
+  if (removedSessionState != null) {
+    if (removedSessionState.parentId != null) {
+      sessions[removedSessionState.parentId]?.childIds.remove(sessionId);
     }
+
+    for (final childId in removedSessionState.childIds) {
+      final childState = sessions[childId];
+      if (childState != null && childState.parentId == sessionId) {
+        childState.parentId = null;
+      }
+    }
+
+    removedSessionState.messageIds.forEach(messageRoles.remove);
   }
 
   permissionRequestToSession.removeWhere((_, value) => value == sessionId);
-  (sessionState?.messageIds ?? const <String>{}).forEach(messageRoles.remove);
 }
 
 void applyTrackedProjectsSummaryChildLinks({

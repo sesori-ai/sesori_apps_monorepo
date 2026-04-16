@@ -5,6 +5,7 @@ import "package:sesori_bridge/src/push/push_notification_client.dart";
 import "package:sesori_bridge/src/push/push_notification_service.dart";
 import "package:sesori_bridge/src/push/push_rate_limiter.dart";
 import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
+import "package:sesori_bridge/src/push/push_session_state_tracker_models.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -1011,7 +1012,7 @@ void main() {
         expect(telemetry.sessions, equals(2));
         expect(telemetry.idleRoots, equals(1));
         expect(telemetry.prunableRoots, equals(0));
-        expect(telemetry.messageRoles, equals(1));
+        expect(telemetry.messageRoles, equals(0));
         expect(telemetry.assistantTextSessions, equals(1));
         expect(telemetry.assistantTextChars, equals(activeText.length));
         expect(telemetry.trackerPermissionRequests, equals(1));
@@ -1021,9 +1022,40 @@ void main() {
         expect(telemetry.rateLimiterKeys, equals(0));
         expect(logs.last, contains("rss_mb=5.00"));
         expect(logs.last, contains("sessions=2"));
+        expect(logs.last, contains("message_roles=0"));
         expect(logs.last, contains("assistant_text_chars=${activeText.length}"));
         expect(logs.last, contains("tracker_permission_requests=1"));
         expect(logs.last, contains("notifier_permission_requests=1"));
+      });
+    });
+
+    test("M3b: maintenance continues when root pruning throws", () {
+      fakeAsync((async) {
+        final logs = <String>[];
+        final tracker = ThrowingPushSessionStateTracker(
+          now: () => DateTime(2026, 4, 16).add(async.elapsed),
+          throwFindPrunableRoots: true,
+        );
+        final harness = _newHarness(
+          tracker: tracker,
+          debugLogger: logs.add,
+          rssBytesReader: () => 3 * 1024 * 1024,
+        );
+
+        harness.rateLimiter.shouldSend(
+          category: NotificationCategory.sessionMessage,
+          sessionId: "session-a",
+          collapseKey: "sessionMessage-session-a",
+        );
+
+        async.elapse(const Duration(minutes: 10));
+        async.flushMicrotasks();
+
+        final telemetry = harness.service.lastMaintenanceTelemetry;
+        expect(telemetry, isNotNull);
+        expect(telemetry!.rssMb, closeTo(3, 0.001));
+        expect(telemetry.rateLimiterKeys, equals(1));
+        expect(logs.single, contains("rss_mb=3.00"));
       });
     });
 
@@ -1073,21 +1105,23 @@ void main() {
 _newHarness({
   FakePushNotificationClient? client,
   FakePushRateLimiter? rateLimiter,
+  PushSessionStateTracker? tracker,
   DateTime Function()? now,
   int? Function()? rssBytesReader,
   void Function(String)? debugLogger,
 }) {
   final resolvedClient = client ?? FakePushNotificationClient();
-  final tracker = now == null ? PushSessionStateTracker() : PushSessionStateTracker.testable(now: now);
+  final resolvedTracker =
+      tracker ?? (now == null ? PushSessionStateTracker() : PushSessionStateTracker.testable(now: now));
   final notifier = CompletionNotifier(
-    tracker: tracker,
+    tracker: resolvedTracker,
     debounceDuration: const Duration(milliseconds: 500),
   );
   final resolvedRateLimiter = rateLimiter ?? FakePushRateLimiter(now: now);
   final service = PushNotificationService(
     client: resolvedClient,
     rateLimiter: resolvedRateLimiter,
-    tracker: tracker,
+    tracker: resolvedTracker,
     completionNotifier: notifier,
     rssBytesReader: rssBytesReader,
     debugLogger: debugLogger,
@@ -1096,9 +1130,27 @@ _newHarness({
   return (
     service: service,
     client: resolvedClient,
-    tracker: tracker,
+    tracker: resolvedTracker,
     rateLimiter: resolvedRateLimiter,
   );
+}
+
+class ThrowingPushSessionStateTracker extends PushSessionStateTracker {
+  final bool throwFindPrunableRoots;
+
+  ThrowingPushSessionStateTracker({
+    required DateTime Function() now,
+    this.throwFindPrunableRoots = false,
+  }) : super.testable(now: now);
+
+  @override
+  List<PushPrunableRoot> findPrunableRoots() {
+    if (throwFindPrunableRoots) {
+      throw StateError("findPrunableRoots boom");
+    }
+
+    return super.findPrunableRoots();
+  }
 }
 
 class FakePushNotificationClient extends PushNotificationClient {

@@ -40,24 +40,42 @@ class PushMaintenanceLoop {
   }
 
   void runNow() {
-    final prunableRoots = _tracker.findPrunableRoots();
-    for (final prunableRoot in prunableRoots) {
-      final prunedSubtree = _tracker.pruneRootSubtree(rootSessionId: prunableRoot.rootSessionId);
-      _completionNotifier.cleanupPrunedRootSubtree(
-        rootSessionId: prunableRoot.rootSessionId,
-        prunedSessionIds: prunedSubtree.prunedSessionIds,
-      );
-    }
-
-    _rateLimiter.pruneStaleEntries();
-
-    final snapshot = buildPushMaintenanceTelemetrySnapshot(
-      trackerSnapshot: _tracker.createTelemetrySnapshot(),
-      completionNotifier: _completionNotifier,
-      rateLimiter: _rateLimiter,
-      rssBytes: _rssBytesReader(),
+    _runMaintenanceStep(
+      label: "root-prune",
+      action: () {
+        final prunableRoots = _tracker.findPrunableRoots();
+        for (final prunableRoot in prunableRoots) {
+          final prunedSubtree = _tracker.pruneRootSubtree(rootSessionId: prunableRoot.rootSessionId);
+          _completionNotifier.cleanupPrunedRootSubtree(
+            rootSessionId: prunableRoot.rootSessionId,
+            prunedSessionIds: prunedSubtree.prunedSessionIds,
+          );
+        }
+      },
     );
-    _lastSnapshot = snapshot;
-    _debugLogger(snapshot.toLogMessage());
+
+    _runMaintenanceStep(label: "message-role-prune", action: _tracker.pruneMessageRoleMetadata);
+    _runMaintenanceStep(label: "rate-limiter-prune", action: _rateLimiter.pruneStaleEntries);
+    _runMaintenanceStep(
+      label: "telemetry",
+      action: () {
+        final snapshot = buildPushMaintenanceTelemetrySnapshot(
+          trackerSnapshot: _tracker.createTelemetrySnapshot(),
+          completionNotifier: _completionNotifier,
+          rateLimiter: _rateLimiter,
+          rssBytes: _rssBytesReader(),
+        );
+        _lastSnapshot = snapshot;
+        _debugLogger(snapshot.toLogMessage());
+      },
+    );
+  }
+
+  void _runMaintenanceStep({required String label, required void Function() action}) {
+    try {
+      action();
+    } catch (error, stackTrace) {
+      Log.w("[push] maintenance step '$label' failed: $error\n$stackTrace");
+    }
   }
 }

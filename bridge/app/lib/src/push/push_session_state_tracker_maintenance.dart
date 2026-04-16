@@ -37,11 +37,39 @@ PushSessionTelemetrySnapshot buildTrackedTelemetrySnapshot({
   required DateTime now,
 }) {
   final rootSessionIds = findTrackedRootSessionIds(sessions: sessions);
-  final idleRootCount = rootSessionIds
-      .where((rootSessionId) => resolveTrackedRootIdleSince(rootSessionId: rootSessionId, sessions: sessions) != null)
-      .length;
+  var idleRootCount = 0;
+  for (final rootSessionId in rootSessionIds) {
+    if (resolveTrackedRootIdleSince(rootSessionId: rootSessionId, sessions: sessions) != null) {
+      idleRootCount += 1;
+    }
+  }
+
+  var busySessionCount = 0;
+  var pendingQuestionCount = 0;
+  var pendingPermissionCount = 0;
+  var previouslyBusyCount = 0;
+  var latestAssistantTextCount = 0;
+  var latestAssistantTextCharCount = 0;
   DateTime? oldestSessionActivityAt;
   for (final sessionState in sessions.values) {
+    if (sessionState.status != null) {
+      busySessionCount += 1;
+    }
+    if (sessionState.hasPendingQuestion) {
+      pendingQuestionCount += 1;
+    }
+    if (sessionState.hasPendingPermission) {
+      pendingPermissionCount += 1;
+    }
+    if (sessionState.previouslyBusy) {
+      previouslyBusyCount += 1;
+    }
+    final latestAssistantText = sessionState.latestAssistantText;
+    if (latestAssistantText != null) {
+      latestAssistantTextCount += 1;
+      latestAssistantTextCharCount += latestAssistantText.length;
+    }
+
     final touchedAt = sessionState.lastTouchedAt;
     if (touchedAt == null) {
       continue;
@@ -62,15 +90,13 @@ PushSessionTelemetrySnapshot buildTrackedTelemetrySnapshot({
     sessionCount: sessions.length,
     rootSessionCount: rootSessionIds.length,
     idleRootCount: idleRootCount,
-    busySessionCount: sessions.values.where((sessionState) => sessionState.status != null).length,
-    pendingQuestionCount: sessions.values.where((sessionState) => sessionState.hasPendingQuestion).length,
-    pendingPermissionCount: sessions.values.where((sessionState) => sessionState.hasPendingPermission).length,
+    busySessionCount: busySessionCount,
+    pendingQuestionCount: pendingQuestionCount,
+    pendingPermissionCount: pendingPermissionCount,
     permissionRequestCount: permissionRequestCount,
-    previouslyBusyCount: sessions.values.where((sessionState) => sessionState.previouslyBusy).length,
-    latestAssistantTextCount: sessions.values.where((sessionState) => sessionState.latestAssistantText != null).length,
-    latestAssistantTextCharCount: sessions.values
-        .map((sessionState) => sessionState.latestAssistantText?.length ?? 0)
-        .fold(0, (sum, count) => sum + count),
+    previouslyBusyCount: previouslyBusyCount,
+    latestAssistantTextCount: latestAssistantTextCount,
+    latestAssistantTextCharCount: latestAssistantTextCharCount,
     messageRoleCount: messageRoles.length,
     assistantMessageRoleCount: messageRoles.values.where((messageRole) => messageRole.role == "assistant").length,
     oldestSessionActivityAt: oldestSessionActivityAt,
