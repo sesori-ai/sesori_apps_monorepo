@@ -181,6 +181,14 @@ void main() {
       final workflow = await _readRepoFile(relativePath: '.github/workflows/bridge-release.yml');
       final docs = await _readRepoFile(relativePath: 'bridge/RELEASING.md');
 
+      expect(workflow, contains('tags: ["bridge-v*"]'));
+      expect(workflow, contains('workflow_dispatch:'));
+      expect(workflow, contains('dry_run:'));
+      expect(
+        workflow,
+        contains("if: github.event.inputs.dry_run != 'true' && startsWith(github.ref_name, 'bridge-v')"),
+      );
+      expect(workflow, contains(r'RELEASE_TAG: ${{ github.ref_name }}'));
       expect(workflow, contains('needs: release'));
       expect(workflow, contains('id-token: write'));
       expect(workflow, contains('registry-url: "https://registry.npmjs.org"'));
@@ -199,8 +207,17 @@ void main() {
       expect(workflow, contains('Validate wrapper package metadata'));
       expect(workflow, isNot(contains('NPM_TOKEN')));
 
-      expect(docs, contains('publishes the five platform npm bootstrap packages from those tagged release assets'));
-      expect(docs, contains('publishes the `@sesori/bridge` wrapper package through npm trusted publishing'));
+      expect(docs, contains('## What the workflow does on tag push'));
+      expect(docs, contains('6. publishes the five platform npm bootstrap packages from those tagged release assets'));
+      expect(docs, contains('7. publishes the `@sesori/bridge` wrapper package through npm trusted publishing'));
+      expect(docs, contains('gh workflow run bridge-release.yml -f dry_run=true'));
+      expect(
+        docs,
+        contains(
+          'The tag-triggered workflow verifies the archived GitHub Release assets against `checksums.txt`, derives each platform npm payload from those exact release artifacts, and then publishes through npm trusted publishing on `ubuntu-latest`.',
+        ),
+      );
+      expect(docs, contains('Use this sequence when you want to test the real packaged distribution flow end to end.'));
       expect(
         docs,
         contains(

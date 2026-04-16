@@ -21,6 +21,9 @@ import "repositories/session_repository.dart";
 import "routing/get_session_diffs_handler.dart";
 import "routing/request_router.dart";
 import "services/pr_sync_service.dart";
+import "services/session_archive_service.dart";
+import "services/session_creation_service.dart";
+import "services/session_event_enrichment_service.dart";
 import "services/session_persistence_service.dart";
 import "services/worktree_service.dart";
 import "sse/bridge_event_mapper.dart";
@@ -42,6 +45,7 @@ class Orchestrator {
   final PermissionRepository _permissionRepository;
   final SessionPersistenceService _sessionPersistenceService;
   final WorktreeService _worktreeService;
+  final SessionEventEnrichmentService _sessionEventEnrichmentService;
 
   Orchestrator({
     required this.config,
@@ -57,6 +61,7 @@ class Orchestrator {
     required PermissionRepository permissionRepository,
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
+    required SessionEventEnrichmentService sessionEventEnrichmentService,
   }) : _client = client,
        _plugin = plugin,
        _metadataService = metadataService,
@@ -68,12 +73,24 @@ class Orchestrator {
        _projectRepository = projectRepository,
        _permissionRepository = permissionRepository,
        _sessionPersistenceService = sessionPersistenceService,
-       _worktreeService = worktreeService;
+       _worktreeService = worktreeService,
+       _sessionEventEnrichmentService = sessionEventEnrichmentService;
 
   /// Creates a new session with a fresh room key and SSE manager.
   OrchestratorSession create() {
     final roomKey = _generateRoomKey();
     final bytesSentController = StreamController<int>.broadcast();
+    final sessionCreationService = SessionCreationService(
+      metadataService: _metadataService,
+      worktreeService: _worktreeService,
+      sessionRepository: _sessionRepository,
+      sessionPersistenceService: _sessionPersistenceService,
+    );
+    final sessionArchiveService = SessionArchiveService(
+      worktreeService: _worktreeService,
+      sessionRepository: _sessionRepository,
+      sessionPersistenceService: _sessionPersistenceService,
+    );
     final sseManager = SSEManager(
       replayWindow: config.sseReplayWindow,
       onBytesSent: bytesSentController.add,
@@ -85,7 +102,6 @@ class Orchestrator {
       config: config,
       client: _client,
       plugin: _plugin,
-      metadataService: _metadataService,
       pushNotificationService: _pushNotificationService,
       tokenRefresher: _tokenRefresher,
       roomKey: roomKey,
@@ -98,6 +114,9 @@ class Orchestrator {
       permissionRepository: _permissionRepository,
       sessionPersistenceService: _sessionPersistenceService,
       worktreeService: _worktreeService,
+      sessionCreationService: sessionCreationService,
+      sessionArchiveService: sessionArchiveService,
+      sessionEventEnrichmentService: _sessionEventEnrichmentService,
     );
   }
 
@@ -126,7 +145,8 @@ class OrchestratorSession {
   final StreamController<int> _bytesSentController;
   final FailureReporter _failureReporter;
   final PrSyncService _prSyncService;
-  StreamSubscription<BridgeSseEvent>? _eventSubscription;
+  final SessionEventEnrichmentService _sessionEventEnrichmentService;
+  StreamSubscription<dynamic>? _eventSubscription;
 
   bool _cancelled = false;
 
@@ -134,7 +154,6 @@ class OrchestratorSession {
     required this.config,
     required RelayClient client,
     required BridgePlugin plugin,
-    required MetadataService metadataService,
     required PushNotificationService pushNotificationService,
     required TokenRefresher tokenRefresher,
     required List<int> roomKey,
@@ -147,6 +166,9 @@ class OrchestratorSession {
     required PermissionRepository permissionRepository,
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
+    required SessionCreationService sessionCreationService,
+    required SessionArchiveService sessionArchiveService,
+    required SessionEventEnrichmentService sessionEventEnrichmentService,
   }) : _client = client,
        _plugin = plugin,
        _pushNotificationService = pushNotificationService,
@@ -158,8 +180,9 @@ class OrchestratorSession {
        _prSyncService = prSyncService,
        _router = RequestRouter(
          plugin: plugin,
-         metadataService: metadataService,
          sessionRepository: sessionRepository,
+         sessionCreationService: sessionCreationService,
+         sessionArchiveService: sessionArchiveService,
          prSyncService: prSyncService,
          projectRepository: projectRepository,
          providerRepository: ProviderRepository(plugin: plugin),
@@ -172,7 +195,11 @@ class OrchestratorSession {
          ),
          onSessionAborted: pushNotificationService.markSessionAborted,
        ),
-       _mapper = BridgeEventMapper(plugin: plugin, failureReporter: failureReporter);
+       _mapper = BridgeEventMapper(
+         plugin: plugin,
+         failureReporter: failureReporter,
+       ),
+       _sessionEventEnrichmentService = sessionEventEnrichmentService;
 
   /// Broadcast stream of byte counts emitted each time data is sent to a phone.
   ///
@@ -191,43 +218,29 @@ class OrchestratorSession {
     }
 
     Log.d("[dbg] subscribing to plugin event stream...");
-    _eventSubscription = _plugin.events.listen(
-      (BridgeSseEvent event) {
-        try {
-          Log.v("[sse] plugin event arrived: ${event.runtimeType}");
-          final sesoriEvent = _mapper.map(event);
-          if (sesoriEvent != null) {
-            Log.v(
-              "[sse] mapped to: ${sesoriEvent.runtimeType} — enqueuing (subscribers: ${_sseManager.subscriberCount})",
+    _eventSubscription = _plugin.events
+        .asyncMap<BridgeSseEvent>((event) => _sessionEventEnrichmentService.enrich(event))
+        .listen(
+          (event) {
+            unawaited(_processPluginEvent(event));
+          },
+          onError: (Object e, StackTrace st) {
+            Log.w("[dbg] plugin event stream error: $e");
+            unawaited(
+              _failureReporter.recordFailure(
+                error: e,
+                stackTrace: st,
+                uniqueIdentifier: "bridge.plugin.events",
+                fatal: false,
+                reason: "plugin event stream failure",
+                information: const [],
+              ),
             );
-            _pushNotificationService.handleSseEvent(sesoriEvent);
-            _sseManager.enqueueEvent(sesoriEvent);
-          } else {
-            Log.v("[sse] mapping returned null — event dropped");
-          }
-        } catch (e, st) {
-          Log.e("[sse] error processing event ${event.runtimeType}: $e\n$st");
-          unawaited(
-            _failureReporter
-                .recordFailure(
-                  error: e,
-                  stackTrace: st,
-                  uniqueIdentifier: "sse_event_processing:${event.runtimeType}",
-                  fatal: false,
-                  reason: "Failed to process SSE event",
-                  information: [event.runtimeType.toString()],
-                )
-                .catchError((_) {}),
-          );
-        }
-      },
-      onError: (Object e) {
-        Log.w("[dbg] plugin event stream error: $e");
-      },
-      onDone: () {
-        Log.w("[dbg] plugin event stream closed");
-      },
-    );
+          },
+          onDone: () {
+            Log.w("[dbg] plugin event stream closed");
+          },
+        );
     Log.d("[dbg] plugin event stream subscribed");
     final prChangesSubscription = _prSyncService.prChanges.listen((String projectId) {
       _sseManager.enqueueEvent(SesoriSseEvent.sessionsUpdated(projectID: projectId));
@@ -314,6 +327,36 @@ class OrchestratorSession {
   Future<void> cancel() async {
     _cancelled = true;
     await _client.close();
+  }
+
+  Future<void> _processPluginEvent(BridgeSseEvent event) async {
+    try {
+      Log.v("[sse] plugin event arrived: ${event.runtimeType}");
+      final sesoriEvent = _mapper.map(event);
+      if (sesoriEvent != null) {
+        Log.v(
+          "[sse] mapped to: ${sesoriEvent.runtimeType} — enqueuing (subscribers: ${_sseManager.subscriberCount})",
+        );
+        _pushNotificationService.handleSseEvent(sesoriEvent);
+        _sseManager.enqueueEvent(sesoriEvent);
+      } else {
+        Log.v("[sse] mapping returned null — event dropped");
+      }
+    } catch (e, st) {
+      Log.e("[sse] error processing event ${event.runtimeType}: $e\n$st");
+      unawaited(
+        _failureReporter
+            .recordFailure(
+              error: e,
+              stackTrace: st,
+              uniqueIdentifier: "sse_event_processing:${event.runtimeType}",
+              fatal: false,
+              reason: "Failed to process SSE event",
+              information: [event.runtimeType.toString()],
+            )
+            .catchError((_) {}),
+      );
+    }
   }
 
   Future<void> _refreshAccessToken() async {

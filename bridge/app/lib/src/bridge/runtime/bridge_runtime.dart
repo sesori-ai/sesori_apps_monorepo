@@ -30,6 +30,7 @@ import "../repositories/pull_request_repository.dart";
 import "../repositories/session_repository.dart";
 import "../repositories/worktree_repository.dart";
 import "../services/pr_sync_service.dart";
+import "../services/session_event_enrichment_service.dart";
 import "../services/session_persistence_service.dart";
 import "../services/worktree_service.dart";
 import "bridge_shutdown_coordinator.dart";
@@ -38,16 +39,19 @@ class BridgeRuntime {
   final AppDatabase _database;
   final BridgePlugin _plugin;
   final FailureReporter _failureReporter;
+  final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final OrchestratorSession session;
 
   BridgeRuntime({
     required AppDatabase database,
     required BridgePlugin plugin,
     required FailureReporter failureReporter,
+    required SessionEventEnrichmentService sessionEventEnrichmentService,
     required this.session,
   }) : _database = database,
        _plugin = plugin,
-       _failureReporter = failureReporter;
+       _failureReporter = failureReporter,
+       _sessionEventEnrichmentService = sessionEventEnrichmentService;
 
   static BridgeRuntime create({
     required BridgeConfig config,
@@ -68,11 +72,16 @@ class BridgeRuntime {
       sessionDao: database.sessionDao,
       pullRequestRepository: pullRequestRepository,
     );
+    final sessionEventEnrichmentService = SessionEventEnrichmentService(
+      sessionRepository: sessionRepository,
+      failureReporter: failureReporter,
+    );
 
     return BridgeRuntime(
       database: database,
       plugin: plugin,
       failureReporter: failureReporter,
+      sessionEventEnrichmentService: sessionEventEnrichmentService,
       session: Orchestrator(
         config: config,
         client: RelayClient(relayURL: config.relayURL, accessTokenProvider: accessTokenProvider),
@@ -111,6 +120,7 @@ class BridgeRuntime {
             gitApi: GitCliApi(processRunner: processRunner, gitPathExists: _gitPathExists),
           ),
         ),
+        sessionEventEnrichmentService: sessionEventEnrichmentService,
       ).create(),
     );
   }
@@ -125,6 +135,7 @@ class BridgeRuntime {
       router: session.router,
       port: port,
       failureReporter: _failureReporter,
+      sessionEventEnrichmentService: _sessionEventEnrichmentService,
     );
   }
 

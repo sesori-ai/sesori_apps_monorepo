@@ -65,6 +65,7 @@ modules/
 - **Linting**: `package:lints/recommended.yaml` (lighter than mobile's `all_lint_rules`)
 - **Binary distribution**: npm wrapper package with platform-specific optional deps (darwin/linux/windows × arm64/x64)
 - **Proper architecture** — network calls go in dedicated API classes (e.g. `OpenCodeApi`), not inlined in business logic. Classes receive dependencies via constructor injection.
+- **BridgePlugin is API-layer in app/** — request handlers must not access `BridgePlugin` directly for session lifecycle flows. Put thin plugin-backed session operations in `SessionRepository`, and put multi-step session workflows like create/archive/unarchive in services.
 - **Always use typed models** — deserialize JSON responses into Freezed objects immediately. Never pass raw `Map<String, dynamic>` or `List<dynamic>` through business logic.
 - **API classes return Freezed types** — e.g. `Future<List<Project>>` not `Future<http.Response>`. Parsing lives in the API layer.
 - **Constructor injection for testability** — business logic classes (e.g. `ActiveSessionTracker`) receive their API dependency via constructor, enabling fake/mock injection in tests.

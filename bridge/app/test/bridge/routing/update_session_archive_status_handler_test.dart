@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:io";
 
+import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
@@ -8,6 +9,7 @@ import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.da
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/update_session_archive_status_handler.dart";
+import "package:sesori_bridge/src/bridge/services/session_archive_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -28,21 +30,23 @@ void main() {
       db = createTestDatabase();
       plugin = FakeBridgePlugin();
       worktreeService = _FakeWorktreeService(database: db);
-      handler = UpdateSessionArchiveStatusHandler(
+      final sessionRepository = SessionRepository(
         plugin: plugin,
-        worktreeService: worktreeService,
-        sessionRepository: SessionRepository(
-          plugin: plugin,
-          sessionDao: db.sessionDao,
-          pullRequestRepository: PullRequestRepository(
-            pullRequestDao: db.pullRequestDao,
-            projectsDao: db.projectsDao,
-          ),
-        ),
-        sessionPersistenceService: SessionPersistenceService(
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
-          sessionDao: db.sessionDao,
-          db: db,
+        ),
+      );
+      handler = UpdateSessionArchiveStatusHandler(
+        sessionArchiveService: SessionArchiveService(
+          worktreeService: worktreeService,
+          sessionRepository: sessionRepository,
+          sessionPersistenceService: SessionPersistenceService(
+            projectsDao: db.projectsDao,
+            sessionDao: db.sessionDao,
+            db: db,
+          ),
         ),
       );
     });
@@ -102,6 +106,21 @@ void main() {
           summary: null,
         ),
       ];
+      await db.pullRequestDao.upsertPr(
+        pullRequest: const PullRequestDto(
+          projectId: "/repo",
+          branchName: "session-001",
+          prNumber: 21,
+          url: "https://github.com/org/repo/pull/21",
+          title: "Archive PR",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.unknown,
+          reviewDecision: PrReviewDecision.unknown,
+          checkStatus: PrCheckStatus.unknown,
+          lastCheckedAt: 1,
+          createdAt: 1,
+        ),
+      );
 
       final result = await handler.handle(
         makeRequest("PATCH", "/session/update/archive"),
@@ -124,6 +143,7 @@ void main() {
       expect(persisted?.archivedAt, isNotNull);
       expect(result.id, equals("s1"));
       expect(result.time?.archived, equals(persisted?.archivedAt));
+      expect(result.pullRequest?.number, equals(21));
     });
 
     test("archive with cleanup on clean worktree removes worktree", () async {
@@ -285,6 +305,21 @@ void main() {
           summary: null,
         ),
       ];
+      await db.pullRequestDao.upsertPr(
+        pullRequest: const PullRequestDto(
+          projectId: "/repo",
+          branchName: "session-001",
+          prNumber: 22,
+          url: "https://github.com/org/repo/pull/22",
+          title: "Unarchive PR",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.unknown,
+          reviewDecision: PrReviewDecision.unknown,
+          checkStatus: PrCheckStatus.unknown,
+          lastCheckedAt: 1,
+          createdAt: 1,
+        ),
+      );
 
       final result = await handler.handle(
         makeRequest("PATCH", "/session/update/archive"),
@@ -304,6 +339,7 @@ void main() {
       final persisted = await db.sessionDao.getSession(sessionId: "s1");
       expect(persisted?.archivedAt, isNull);
       expect(result.time?.archived, isNull);
+      expect(result.pullRequest?.number, equals(22));
     });
 
     test("unarchive with deleted worktree restores worktree", () async {
@@ -335,6 +371,11 @@ void main() {
           summary: null,
         ),
       ];
+      worktreeService.resolveBaseBranchAndCommitResult = (
+        baseBranch: "develop",
+        baseCommit: "abc123",
+        startPoint: "develop",
+      );
 
       await handler.handle(
         makeRequest("PATCH", "/session/update/archive"),
@@ -354,7 +395,7 @@ void main() {
       expect(worktreeService.lastRestoreProjectPath, equals("/repo"));
       expect(worktreeService.lastRestoreWorktreePath, equals(deletedWorktreePath));
       expect(worktreeService.lastRestoreBranchName, equals("session-001"));
-      expect(worktreeService.lastRestoreBaseBranch, equals("main"));
+      expect(worktreeService.lastRestoreBaseBranch, equals("develop"));
       expect(worktreeService.lastRestoreBaseCommit, isNull);
       final persisted = await db.sessionDao.getSession(sessionId: "s1");
       expect(persisted?.archivedAt, isNull);
@@ -972,6 +1013,7 @@ class _FakeWorktreeService extends WorktreeService {
   bool removeResult = true;
   bool deleteBranchResult = true;
   bool restoreResult = true;
+  ({String baseBranch, String baseCommit, String startPoint})? resolveBaseBranchAndCommitResult;
 
   int checkCallCount = 0;
   int removeCallCount = 0;
@@ -1056,6 +1098,13 @@ class _FakeWorktreeService extends WorktreeService {
     lastRestoreBaseBranch = baseBranch;
     lastRestoreBaseCommit = baseCommit;
     return restoreResult;
+  }
+
+  @override
+  Future<({String baseBranch, String baseCommit, String startPoint})?> resolveBaseBranchAndCommit({
+    required String projectPath,
+  }) async {
+    return resolveBaseBranchAndCommitResult;
   }
 }
 
