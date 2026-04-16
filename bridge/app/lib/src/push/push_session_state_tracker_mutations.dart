@@ -36,19 +36,26 @@ void deleteTrackedSession({
   required Map<String, String> permissionRequestToSession,
 }) {
   final removedSessionState = sessions.remove(sessionId);
+  final orphanedChildIds =
+      removedSessionState?.childIds.toList(growable: false) ??
+      sessions.entries
+          .where((entry) => entry.value.parentId == sessionId)
+          .map((entry) => entry.key)
+          .toList(growable: false);
+
   if (removedSessionState != null) {
     if (removedSessionState.parentId != null) {
       sessions[removedSessionState.parentId]?.childIds.remove(sessionId);
     }
 
-    for (final childId in removedSessionState.childIds) {
-      final childState = sessions[childId];
-      if (childState != null && childState.parentId == sessionId) {
-        childState.parentId = null;
-      }
-    }
-
     removedSessionState.messageIds.forEach(messageRoles.remove);
+  }
+
+  for (final childId in orphanedChildIds) {
+    final childState = sessions[childId];
+    if (childState != null && childState.parentId == sessionId) {
+      childState.parentId = null;
+    }
   }
 
   permissionRequestToSession.removeWhere((_, value) => value == sessionId);
@@ -57,16 +64,20 @@ void deleteTrackedSession({
 void applyTrackedProjectsSummaryChildLinks({
   required List<ProjectActivitySummary> projects,
   required Map<String, PushTrackedSessionState> sessions,
+  required DateTime touchedAt,
 }) {
   for (final project in projects) {
     for (final activeSession in project.activeSessions) {
-      stateForTrackedSession(sessionId: activeSession.id, sessions: sessions).projectId = project.id;
+      stateForTrackedSession(sessionId: activeSession.id, sessions: sessions, touchedAt: touchedAt).projectId =
+          project.id;
       for (final childId in activeSession.childSessionIds) {
-        final childState = stateForTrackedSession(sessionId: childId, sessions: sessions);
+        final childState = stateForTrackedSession(sessionId: childId, sessions: sessions, touchedAt: touchedAt);
         childState.projectId = project.id;
         if (childState.parentId == null) {
           childState.parentId = activeSession.id;
-          stateForTrackedSession(sessionId: activeSession.id, sessions: sessions).childIds.add(childId);
+          stateForTrackedSession(sessionId: activeSession.id, sessions: sessions, touchedAt: touchedAt).childIds.add(
+            childId,
+          );
         }
       }
     }

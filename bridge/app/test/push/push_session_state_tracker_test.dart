@@ -1551,6 +1551,58 @@ void main() {
       expect(tracker.resolveRootSessionId("child"), equals("root-b"));
       expect(tracker.findPrunableRootSessionIds(), contains("root-b"));
     });
+
+    test("unknown session deletes clear stale parent links so summaries can repair them", () {
+      final tracker = PushSessionStateTracker();
+
+      tracker.handleEvent(
+        SesoriSseEvent.sessionUpdated(
+          info: _session(id: "child", parentID: "missing-root"),
+        ),
+      );
+      expect(tracker.resolveRootSessionId("child"), equals("child"));
+
+      tracker.handleEvent(
+        SesoriSseEvent.sessionDeleted(info: _session(id: "missing-root")),
+      );
+
+      tracker.handleEvent(
+        const SesoriSseEvent.projectsSummary(
+          projects: [
+            ProjectActivitySummary(
+              id: "project-a",
+              activeSessions: [
+                ActiveSession(id: "repaired-root", mainAgentRunning: false, childSessionIds: ["child"]),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      expect(tracker.resolveRootSessionId("child"), equals("repaired-root"));
+    });
+
+    test("projectsSummary-only roots receive timestamps and become prunable", () {
+      final clock = _FakeClock(initial: DateTime.utc(2026, 1, 1, 12));
+      final tracker = PushSessionStateTracker.testable(now: clock.now);
+
+      tracker.handleEvent(
+        const SesoriSseEvent.projectsSummary(
+          projects: [
+            ProjectActivitySummary(
+              id: "project-a",
+              activeSessions: [
+                ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"]),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      clock.advance(const Duration(minutes: 31));
+
+      expect(tracker.findPrunableRootSessionIds(), equals(["root"]));
+    });
   });
 }
 
