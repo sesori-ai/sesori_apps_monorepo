@@ -1,6 +1,8 @@
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
+import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/get_sessions_handler.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -684,6 +686,72 @@ void main() {
       expect(pr?.mergeableStatus, equals(PrMergeableStatus.mergeable));
       expect(pr?.reviewDecision, equals(PrReviewDecision.approved));
       expect(pr?.checkStatus, equals(PrCheckStatus.success));
+    });
+
+    test("preserves stored pull request metadata when plugin list replaces the session payload", () async {
+      final realHandler = GetSessionsHandler(
+        sessionRepository: SessionRepository(
+          plugin: plugin,
+          sessionDao: db.sessionDao,
+          pullRequestRepository: PullRequestRepository(
+            pullRequestDao: db.pullRequestDao,
+            projectsDao: db.projectsDao,
+          ),
+        ),
+        prSyncService: prSyncService,
+        sessionPersistenceService: sessionPersistenceService,
+      );
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.sessionDao.insertSession(
+        sessionId: "s1",
+        projectId: "p1",
+        isDedicated: true,
+        createdAt: 10,
+        worktreePath: "/tmp/worktree",
+        branchName: "feature/preserved-pr",
+        baseBranch: null,
+        baseCommit: null,
+      );
+      await db.pullRequestDao.upsertPr(
+        pullRequest: const PullRequestDto(
+          projectId: "p1",
+          branchName: "feature/preserved-pr",
+          prNumber: 84,
+          url: "https://github.com/org/repo/pull/84",
+          title: "Stored PR survives replacement",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.mergeable,
+          reviewDecision: PrReviewDecision.approved,
+          checkStatus: PrCheckStatus.success,
+          lastCheckedAt: 1,
+          createdAt: 1,
+        ),
+      );
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "p1",
+          directory: "/tmp/project",
+          parentID: null,
+          title: "replacement payload",
+          time: PluginSessionTime(created: 100, updated: 200, archived: null),
+          summary: null,
+        ),
+      ];
+
+      final result = await realHandler.handle(
+        makeRequest("POST", "/sessions"),
+        body: const SessionListRequest(projectId: "p1", start: null, limit: null),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.items, hasLength(1));
+      expect(result.items.single.title, equals("replacement payload"));
+      expect(result.items.single.hasWorktree, isTrue);
+      expect(result.items.single.pullRequest?.number, equals(84));
+      expect(result.items.single.pullRequest?.title, equals("Stored PR survives replacement"));
     });
 
     test("keeps pullRequest null when session has no PR", () async {

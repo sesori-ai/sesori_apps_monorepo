@@ -12,6 +12,8 @@ import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/get_session_diffs_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/request_router.dart";
+import "package:sesori_bridge/src/bridge/services/session_archive_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -64,10 +66,22 @@ void main() {
         sessionRepository: sessionRepository,
         processRunner: FakeProcessRunner(),
       );
+      final sessionCreationService = SessionCreationService(
+        metadataService: metadataService,
+        worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
+        sessionPersistenceService: sessionPersistenceService,
+      );
+      final sessionArchiveService = SessionArchiveService(
+        worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
+        sessionPersistenceService: sessionPersistenceService,
+      );
       router = RequestRouter(
         plugin: plugin,
-        metadataService: metadataService,
         sessionRepository: sessionRepository,
+        sessionCreationService: sessionCreationService,
+        sessionArchiveService: sessionArchiveService,
         prSyncService: FakePrSyncService(),
         projectRepository: projectRepository,
         providerRepository: providerRepository,
@@ -345,8 +359,18 @@ void main() {
       router = RequestRouter(
         plugin: plugin,
         sessionRepository: sessionRepository,
+        sessionCreationService: SessionCreationService(
+          metadataService: metadataService,
+          worktreeService: worktreeService,
+          sessionRepository: sessionRepository,
+          sessionPersistenceService: sessionPersistenceService,
+        ),
+        sessionArchiveService: SessionArchiveService(
+          worktreeService: worktreeService,
+          sessionRepository: sessionRepository,
+          sessionPersistenceService: sessionPersistenceService,
+        ),
         prSyncService: spyPrSyncService,
-        metadataService: metadataService,
         projectRepository: projectRepository,
         providerRepository: providerRepository,
         permissionRepository: permissionRepository,

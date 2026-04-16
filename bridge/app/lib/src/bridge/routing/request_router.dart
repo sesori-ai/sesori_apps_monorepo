@@ -1,14 +1,14 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../metadata_service.dart";
 import "../repositories/branch_repository.dart";
 import "../repositories/permission_repository.dart";
 import "../repositories/project_repository.dart";
 import "../repositories/provider_repository.dart";
 import "../repositories/session_repository.dart";
 import "../services/pr_sync_service.dart";
-import "../services/session_archive_status_service.dart";
+import "../services/session_archive_service.dart";
+import "../services/session_creation_service.dart";
 import "../services/session_persistence_service.dart";
 import "../services/worktree_service.dart";
 import "abort_session_handler.dart";
@@ -54,7 +54,6 @@ class RequestRouter {
 
   RequestRouter({
     required BridgePlugin plugin,
-    required MetadataService metadataService,
     required SessionRepository sessionRepository,
     required PrSyncService prSyncService,
     required ProjectRepository projectRepository,
@@ -65,10 +64,13 @@ class RequestRouter {
     required BranchRepository branchRepository,
     required GetSessionDiffsHandler sessionDiffsHandler,
     required void Function(String sessionId) onSessionAborted,
+    SessionCreationService? sessionCreationService,
+    SessionArchiveService? sessionArchiveService,
   }) : _handlers = _buildHandlers(
          plugin: plugin,
-         metadataService: metadataService,
          sessionRepository: sessionRepository,
+         sessionCreationService: sessionCreationService,
+         sessionArchiveService: sessionArchiveService,
          prSyncService: prSyncService,
          projectRepository: projectRepository,
          providerRepository: providerRepository,
@@ -82,7 +84,6 @@ class RequestRouter {
 
   static List<RequestHandlerBase> _buildHandlers({
     required BridgePlugin plugin,
-    required MetadataService metadataService,
     required SessionRepository sessionRepository,
     required PrSyncService prSyncService,
     required ProjectRepository projectRepository,
@@ -93,6 +94,8 @@ class RequestRouter {
     required BranchRepository branchRepository,
     required GetSessionDiffsHandler sessionDiffsHandler,
     required void Function(String sessionId) onSessionAborted,
+    SessionCreationService? sessionCreationService,
+    SessionArchiveService? sessionArchiveService,
   }) {
     return [
       HealthCheckHandler(plugin),
@@ -106,21 +109,10 @@ class RequestRouter {
         prSyncService: prSyncService,
         sessionPersistenceService: sessionPersistenceService,
       ),
-      CreateSessionHandler(
-        plugin: plugin,
-        metadataService: metadataService,
-        worktreeService: worktreeService,
-        sessionPersistenceService: sessionPersistenceService,
-      ),
-      RenameSessionHandler(plugin),
-      UpdateSessionArchiveStatusHandler(
-        archiveStatusService: SessionArchiveStatusService(
-          plugin: plugin,
-          worktreeService: worktreeService,
-          sessionRepository: sessionRepository,
-          sessionPersistenceService: sessionPersistenceService,
-        ),
-      ),
+      if (sessionCreationService != null) CreateSessionHandler(sessionCreationService: sessionCreationService),
+      RenameSessionHandler(sessionRepository: sessionRepository),
+      if (sessionArchiveService != null)
+        UpdateSessionArchiveStatusHandler(sessionArchiveService: sessionArchiveService),
       DeleteSessionHandler(
         plugin: plugin,
         worktreeService: worktreeService,

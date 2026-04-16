@@ -1,15 +1,15 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../repositories/mappers/plugin_session_mapper.dart";
+import "../repositories/session_repository.dart";
 import "request_handler.dart";
 
 /// Handles `PATCH /session/title` — renames a session.
 class RenameSessionHandler extends BodyRequestHandler<RenameSessionRequest, Session> {
-  final BridgePlugin _plugin;
+  final SessionRepository _sessionRepository;
 
-  RenameSessionHandler(this._plugin)
-    : super(HttpMethod.patch, "/session/title", fromJson: RenameSessionRequest.fromJson);
+  RenameSessionHandler({required SessionRepository sessionRepository})
+    : _sessionRepository = sessionRepository,
+      super(HttpMethod.patch, "/session/title", fromJson: RenameSessionRequest.fromJson);
 
   @override
   Future<Session> handle(
@@ -22,10 +22,6 @@ class RenameSessionHandler extends BodyRequestHandler<RenameSessionRequest, Sess
     if (body.sessionId.isEmpty) {
       throw buildErrorResponse(request, 400, "empty session id");
     }
-    final updated = await _plugin.renameSession(
-      sessionId: body.sessionId,
-      title: body.title,
-    );
-    return updated.toSharedSession();
+    return _sessionRepository.renameSession(sessionId: body.sessionId, title: body.title);
   }
 }

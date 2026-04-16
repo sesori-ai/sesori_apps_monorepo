@@ -209,6 +209,12 @@ class _FakeSessionRepository implements SessionRepository {
   int hasSharingCallCount = 0;
 
   @override
+  Future<Session> enrichSession({required Session session}) async => session;
+
+  @override
+  Future<List<Session>> enrichSessions({required List<Session> sessions}) async => sessions;
+
+  @override
   Future<bool> hasOtherActiveSessionsSharing({
     required String sessionId,
     required String projectId,

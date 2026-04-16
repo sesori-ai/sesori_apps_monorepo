@@ -99,6 +99,7 @@ app/lib/src/
 
 - BridgePlugin is semantically a Layer 1 data source (it exposes a public API for projects/sessions/messages)
 - Routing handlers use Repositories/Services — they MUST NOT call APIs (Layer 1) directly
+- For bridge session lifecycle flows, routing handlers MUST NOT depend on `BridgePlugin` directly. Treat `BridgePlugin` as Layer 1/API. Thin plugin-backed session commands and lookups belong in `SessionRepository`; multi-step session orchestration (create, archive, unarchive) belongs in services.
 - All mappers belong in `repositories/mappers/`, NOT in `routing/`
 - `auth/`, `push/`, `server/` are self-contained subsystems outside the layer hierarchy
 

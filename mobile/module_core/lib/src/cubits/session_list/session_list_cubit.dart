@@ -13,6 +13,8 @@ import "../../capabilities/session/session_service.dart";
 import "../../capabilities/sse/session_activity_info.dart";
 import "../../capabilities/sse/sse_event_repository.dart";
 import "../../logging/logging.dart";
+import "../../platform/route_source.dart";
+import "../../routing/app_routes.dart";
 import "session_list_state.dart";
 
 class SessionListCubit extends Cubit<SessionListState> {
@@ -22,6 +24,7 @@ class SessionListCubit extends Cubit<SessionListState> {
   final ProjectService _projectService;
   final ConnectionService _connectionService;
   final SseEventRepository _sseEventRepository;
+  final RouteSource _routeSource;
   final String _projectId;
   final FailureReporter _failureReporter;
 
@@ -39,17 +42,32 @@ class SessionListCubit extends Cubit<SessionListState> {
     required ProjectService projectService,
     required ConnectionService connectionService,
     required SseEventRepository sseEventRepository,
+    required RouteSource routeSource,
     required String projectId,
     required FailureReporter failureReporter,
   }) : _service = service,
        _projectService = projectService,
        _connectionService = connectionService,
        _sseEventRepository = sseEventRepository,
+       _routeSource = routeSource,
        _projectId = projectId,
        _failureReporter = failureReporter,
        super(const SessionListState.loading()) {
     loadSessions();
     _subscriptions.add(_connectionService.events.listen(_handleEvent));
+    // 1. Navigate-back refresh: one immediate fetch when the user returns to
+    //    the sessions page. pairwise() ensures this doesn't fire on the
+    //    initial route emission (needs two values before it emits).
+    _subscriptions.add(
+      _routeSource.currentRouteStream
+          .distinct()
+          .pairwise()
+          .where((pair) => pair.first != AppRouteDef.sessions && pair.last == AppRouteDef.sessions)
+          .listen((_) {
+            if (isClosed) return;
+            unawaited(refreshSessions());
+          }),
+    );
     // skip(1) ignores the BehaviorSubject replay of the current status —
     // we only want to react to actual transitions (e.g. disconnected → connected).
     _subscriptions.add(_connectionService.status.skip(1).listen(_onConnectionStatusChanged));

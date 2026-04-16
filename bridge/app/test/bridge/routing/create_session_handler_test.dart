@@ -1,12 +1,17 @@
 import "dart:io";
 
+import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge_metadata;
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/branch_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
-import "package:sesori_bridge/src/bridge/routing/create_session_handler.dart";
+import "package:sesori_bridge/src/bridge/routing/create_session_handler.dart"
+    hide buildContinueBranchSystemPrompt, buildWorktreeSystemPrompt;
+import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -21,6 +26,7 @@ void main() {
     late FakeBridgePlugin plugin;
     late FakeMetadataService metadataService;
     late _FakeWorktreeService worktreeService;
+    late SessionRepository sessionRepository;
     late CreateSessionHandler handler;
     late AppDatabase db;
 
@@ -30,14 +36,24 @@ void main() {
       plugin = FakeBridgePlugin();
       metadataService = FakeMetadataService();
       worktreeService = _FakeWorktreeService(database: db);
-      handler = CreateSessionHandler(
+      sessionRepository = SessionRepository(
         plugin: plugin,
-        metadataService: metadataService,
-        worktreeService: worktreeService,
-        sessionPersistenceService: SessionPersistenceService(
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
-          sessionDao: db.sessionDao,
-          db: db,
+        ),
+      );
+      handler = CreateSessionHandler(
+        sessionCreationService: SessionCreationService(
+          metadataService: metadataService,
+          worktreeService: worktreeService,
+          sessionRepository: sessionRepository,
+          sessionPersistenceService: SessionPersistenceService(
+            projectsDao: db.projectsDao,
+            sessionDao: db.sessionDao,
+            db: db,
+          ),
         ),
       );
     });
@@ -173,13 +189,15 @@ void main() {
         // Use a worktree service where git is not initialized → triggers fallback
         final fallbackWs = _FakeWorktreeService(database: db, gitPathExists: false);
         final localHandler = CreateSessionHandler(
-          plugin: plugin,
-          metadataService: metadataService,
-          worktreeService: fallbackWs,
-          sessionPersistenceService: SessionPersistenceService(
-            projectsDao: db.projectsDao,
-            sessionDao: db.sessionDao,
-            db: db,
+          sessionCreationService: SessionCreationService(
+            metadataService: metadataService,
+            worktreeService: fallbackWs,
+            sessionRepository: sessionRepository,
+            sessionPersistenceService: SessionPersistenceService(
+              projectsDao: db.projectsDao,
+              sessionDao: db.sessionDao,
+              db: db,
+            ),
           ),
         );
 
@@ -285,22 +303,24 @@ void main() {
           summary: null,
         );
         final localHandler = CreateSessionHandler(
-          plugin: plugin,
-          metadataService: metadataService,
-          worktreeService: _StubWorktreeService(
-            database: db,
-            prepareWorktreeForBranchResult: WorktreeSuccess(
-              path: "/repo",
-              branchName: "feature-branch",
-              baseBranch: "feature-branch",
-              baseCommit: "abc123def456",
-              isDedicated: false,
+          sessionCreationService: SessionCreationService(
+            metadataService: metadataService,
+            worktreeService: _StubWorktreeService(
+              database: db,
+              prepareWorktreeForBranchResult: WorktreeSuccess(
+                path: "/repo",
+                branchName: "feature-branch",
+                baseBranch: "feature-branch",
+                baseCommit: "abc123def456",
+                isDedicated: false,
+              ),
             ),
-          ),
-          sessionPersistenceService: SessionPersistenceService(
-            projectsDao: db.projectsDao,
-            sessionDao: db.sessionDao,
-            db: db,
+            sessionRepository: sessionRepository,
+            sessionPersistenceService: SessionPersistenceService(
+              projectsDao: db.projectsDao,
+              sessionDao: db.sessionDao,
+              db: db,
+            ),
           ),
         );
 
@@ -364,14 +384,24 @@ void main() {
 
     test("plugin failure is propagated and no session row is inserted", () async {
       final failingPlugin = _ThrowingCreateSessionPlugin();
-      final localHandler = CreateSessionHandler(
+      final localRepository = SessionRepository(
         plugin: failingPlugin,
-        metadataService: metadataService,
-        worktreeService: worktreeService,
-        sessionPersistenceService: SessionPersistenceService(
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
-          sessionDao: db.sessionDao,
-          db: db,
+        ),
+      );
+      final localHandler = CreateSessionHandler(
+        sessionCreationService: SessionCreationService(
+          metadataService: metadataService,
+          worktreeService: worktreeService,
+          sessionRepository: localRepository,
+          sessionPersistenceService: SessionPersistenceService(
+            projectsDao: db.projectsDao,
+            sessionDao: db.sessionDao,
+            db: db,
+          ),
         ),
       );
 
@@ -431,7 +461,7 @@ void main() {
       expect(result.title, equals("Created"));
       expect(result.time?.created, equals(11));
       expect(result.time?.updated, equals(22));
-      expect(result.time?.archived, equals(33));
+      expect(result.time?.archived, isNull);
       expect(result.summary?.additions, equals(1));
       expect(result.summary?.deletions, equals(2));
       expect(result.summary?.files, equals(3));
@@ -446,6 +476,29 @@ void main() {
         title: "Created",
         time: null,
         summary: null,
+      );
+      worktreeService.prepareResult = WorktreeSuccess(
+        path: "/repo/.worktrees/session-001",
+        branchName: "session-001",
+        baseBranch: "main",
+        baseCommit: "abc123",
+        isDedicated: true,
+      );
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
+      await db.pullRequestDao.upsertPr(
+        pullRequest: const PullRequestDto(
+          projectId: "/repo",
+          branchName: "session-001",
+          prNumber: 17,
+          url: "https://github.com/org/repo/pull/17",
+          title: "Created PR",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.unknown,
+          reviewDecision: PrReviewDecision.unknown,
+          checkStatus: PrCheckStatus.unknown,
+          lastCheckedAt: 1,
+          createdAt: 1,
+        ),
       );
 
       final result = await handler.handle(
@@ -464,6 +517,8 @@ void main() {
       );
 
       expect(result.hasWorktree, isTrue);
+      expect(result.pullRequest?.number, equals(17));
+      expect(result.pullRequest?.title, equals("Created PR"));
     });
 
     test("hasWorktree is false when dedicated=false", () async {
@@ -508,13 +563,15 @@ void main() {
       // Use a worktree service where git is not initialized → triggers fallback
       final fallbackWs = _FakeWorktreeService(database: db, gitPathExists: false);
       final localHandler = CreateSessionHandler(
-        plugin: plugin,
-        metadataService: metadataService,
-        worktreeService: fallbackWs,
-        sessionPersistenceService: SessionPersistenceService(
-          projectsDao: db.projectsDao,
-          sessionDao: db.sessionDao,
-          db: db,
+        sessionCreationService: SessionCreationService(
+          metadataService: metadataService,
+          worktreeService: fallbackWs,
+          sessionRepository: sessionRepository,
+          sessionPersistenceService: SessionPersistenceService(
+            projectsDao: db.projectsDao,
+            sessionDao: db.sessionDao,
+            db: db,
+          ),
         ),
       );
 
@@ -755,13 +812,22 @@ void main() {
         summary: null,
       );
       final localHandler = CreateSessionHandler(
-        plugin: throwingPlugin,
-        metadataService: metadataService,
-        worktreeService: worktreeService,
-        sessionPersistenceService: SessionPersistenceService(
-          projectsDao: db.projectsDao,
-          sessionDao: db.sessionDao,
-          db: db,
+        sessionCreationService: SessionCreationService(
+          metadataService: metadataService,
+          worktreeService: worktreeService,
+          sessionRepository: SessionRepository(
+            plugin: throwingPlugin,
+            sessionDao: db.sessionDao,
+            pullRequestRepository: PullRequestRepository(
+              pullRequestDao: db.pullRequestDao,
+              projectsDao: db.projectsDao,
+            ),
+          ),
+          sessionPersistenceService: SessionPersistenceService(
+            projectsDao: db.projectsDao,
+            sessionDao: db.sessionDao,
+            db: db,
+          ),
         ),
       );
 
@@ -787,12 +853,15 @@ void main() {
 }
 
 class _FakeWorktreeService extends WorktreeService {
+  final bool _gitPathExists;
+  WorktreeResult? prepareResult;
   String? lastResolveBaseBranchProjectPath;
   int resolveBaseBranchAndCommitCallCount = 0;
   ({String baseBranch, String baseCommit, String startPoint})? resolveBaseBranchAndCommitResult;
 
   _FakeWorktreeService({required AppDatabase database, bool gitPathExists = true})
-    : super(
+    : _gitPathExists = gitPathExists,
+      super(
         branchRepository: BranchRepository(
           gitCliApi: GitCliApi(processRunner: _FakeProcessRunner(), gitPathExists: ({required String gitPath}) => true),
         ),
@@ -805,6 +874,41 @@ class _FakeWorktreeService extends WorktreeService {
           ),
         ),
       );
+
+  @override
+  Future<WorktreeResult> prepareWorktreeForBranch({
+    required WorktreeMode mode,
+    required String? selectedBranch,
+    required String projectPath,
+    required String sessionId,
+    ({String branchName, String worktreeName})? preferredBranchAndWorktreeName,
+  }) async {
+    if (prepareResult case final explicitResult?) {
+      return explicitResult;
+    }
+    if (!_gitPathExists) {
+      return WorktreeFallback(originalPath: projectPath, reason: "not a git repository");
+    }
+
+    final preferredBranchName = preferredBranchAndWorktreeName?.branchName;
+    return switch (mode) {
+      WorktreeMode.newBranch => WorktreeSuccess(
+        path: "$projectPath/.worktrees/${preferredBranchName ?? 'session-001'}",
+        branchName: preferredBranchName ?? "session-001",
+        baseBranch: selectedBranch ?? "main",
+        baseCommit: "abc123def456",
+        isDedicated: true,
+      ),
+      WorktreeMode.stayOnBranch => WorktreeSuccess(
+        path: "$projectPath/.worktrees/${selectedBranch ?? preferredBranchName ?? 'session-001'}",
+        branchName: selectedBranch ?? preferredBranchName ?? "session-001",
+        baseBranch: selectedBranch ?? preferredBranchName ?? "main",
+        baseCommit: "abc123def456",
+        isDedicated: true,
+      ),
+      WorktreeMode.none => WorktreeFallback(originalPath: projectPath, reason: "worktree mode disabled"),
+    };
+  }
 
   @override
   Future<({String baseBranch, String baseCommit, String startPoint})?> resolveBaseBranchAndCommit({
