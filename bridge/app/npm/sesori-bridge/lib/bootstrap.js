@@ -48,14 +48,6 @@ function recordInstallAttempt() {
   fs.writeFileSync(counterPath, String(currentValue + 1), "utf8");
 }
 
-async function resolveBootstrapPayload(pkgName) {
-  var localPayload = runtimeInstall.tryResolvePayload(pkgName);
-  if (localPayload) {
-    return localPayload;
-  }
-  return releaseAssetRuntime.resolvePayload();
-}
-
 async function bootstrapManagedRuntime(pkgName) {
   var installRoot = runtimeInstall.managedInstallRoot();
   var localPayload = runtimeInstall.tryResolvePayload(pkgName);

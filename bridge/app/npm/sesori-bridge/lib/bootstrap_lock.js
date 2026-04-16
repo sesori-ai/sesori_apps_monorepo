@@ -122,7 +122,7 @@ function withBootstrapLock(options, callback) {
     }
   }
   if (callbackResult && typeof callbackResult.then === "function") {
-    return callbackResult.finally(function() {
+    return Promise.resolve(callbackResult).finally(function() {
       stopHeartbeat(heartbeatProcess);
       removeRecursive(lockPath);
     });

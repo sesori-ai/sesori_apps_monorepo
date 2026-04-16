@@ -10,6 +10,7 @@ var path = require("path");
 
 var WRAPPER_MANIFEST_PATH = path.join(__dirname, "..", "package.json");
 var DEFAULT_REPO_SLUG = "sesori-ai/sesori_apps_monorepo";
+var DOWNLOAD_TIMEOUT_MS = 30000;
 var PLATFORM_ASSETS = {
   "darwin arm64": "sesori-bridge-macos-arm64.tar.gz",
   "darwin x64": "sesori-bridge-macos-x64.tar.gz",
@@ -118,7 +119,7 @@ function downloadToFile(url, destinationPath, redirectsRemaining) {
         redirectsRemaining > 0
       ) {
         response.resume();
-        downloadToFile(response.headers.location, destinationPath, redirectsRemaining - 1)
+        downloadToFile(new URL(response.headers.location, url).toString(), destinationPath, redirectsRemaining - 1)
           .then(resolve, reject);
         return;
       }
@@ -143,28 +144,27 @@ function downloadToFile(url, destinationPath, redirectsRemaining) {
       });
       response.pipe(file);
     });
+    request.setTimeout(DOWNLOAD_TIMEOUT_MS, function() {
+      request.destroy(new Error("Request timed out for " + url + "."));
+    });
     request.on("error", reject);
   });
 }
 
 function extractArchive(archivePath, extractRoot) {
   fs.mkdirSync(extractRoot, { recursive: true });
-  if (/\.zip$/i.test(archivePath)) {
-    if (process.platform === "win32") {
-      child_process.execFileSync(
-        "powershell.exe",
-        [
-          "-NoProfile",
-          "-Command",
-          "Expand-Archive -LiteralPath $args[0] -DestinationPath $args[1] -Force",
-          archivePath,
-          extractRoot,
-        ],
-        { stdio: "pipe" }
-      );
-      return;
-    }
-    child_process.execFileSync("unzip", ["-q", archivePath, "-d", extractRoot], { stdio: "pipe" });
+  if (/\.zip$/i.test(archivePath) && process.platform === "win32") {
+    child_process.execFileSync(
+      "powershell.exe",
+      [
+        "-NoProfile",
+        "-Command",
+        "Expand-Archive -LiteralPath $args[0] -DestinationPath $args[1] -Force",
+        archivePath,
+        extractRoot,
+      ],
+      { stdio: "pipe" }
+    );
     return;
   }
   child_process.execFileSync("tar", ["-xzf", archivePath, "-C", extractRoot], { stdio: "pipe" });
