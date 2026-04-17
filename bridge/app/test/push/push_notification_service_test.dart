@@ -3,7 +3,7 @@ import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
 import "package:sesori_bridge/src/push/push_maintenance_telemetry.dart";
 import "package:sesori_bridge/src/push/push_notification_client.dart";
-import "package:sesori_bridge/src/push/push_notification_content_service.dart";
+import "package:sesori_bridge/src/push/push_notification_content_builder.dart";
 import "package:sesori_bridge/src/push/push_notification_service.dart";
 import "package:sesori_bridge/src/push/push_rate_limiter.dart";
 import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
@@ -1065,7 +1065,7 @@ void main() {
   });
 
   group("truncate helpers", () {
-    const contentService = PushNotificationContentService();
+    const contentService = PushNotificationContentBuilder();
 
     test("truncateTitle truncates at word boundary with ellipsis", () {
       const title = "One two three four five six seven eight nine ten eleven twelve";
@@ -1108,7 +1108,7 @@ _newHarness({
     rateLimiter: resolvedRateLimiter,
     rssBytesReader: resolvedRssBytesReader,
   );
-  const contentService = PushNotificationContentService();
+  const contentService = PushNotificationContentBuilder();
   final service = PushNotificationService(
     client: resolvedClient,
     rateLimiter: resolvedRateLimiter,
