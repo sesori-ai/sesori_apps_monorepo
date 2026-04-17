@@ -1,5 +1,7 @@
 import "dart:async";
 
+import "package:meta/meta.dart";
+
 import "completion_notifier.dart";
 import "push_dispatcher.dart";
 
@@ -15,6 +17,9 @@ class CompletionPushListener {
     required PushDispatcher dispatcher,
   }) : _completionNotifier = completionNotifier,
        _dispatcher = dispatcher;
+
+  @visibleForTesting
+  bool get isStarted => _completionSubscription != null;
 
   void start() {
     if (_completionSubscription != null) {

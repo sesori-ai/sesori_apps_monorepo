@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:io";
 
 import "package:http/http.dart" as http;
+import "package:meta/meta.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePlugin, Log;
 import "package:sesori_shared/sesori_shared.dart";
@@ -9,6 +10,8 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../auth/access_token_provider.dart";
 import "../../auth/token_refresher.dart";
 import "../../push/completion_notifier.dart";
+import "../../push/completion_push_listener.dart";
+import "../../push/maintenance_push_listener.dart";
 import "../../push/push_dispatcher.dart";
 import "../../push/push_maintenance_telemetry.dart" show PushMaintenanceTelemetryBuilder, readCurrentRssBytes;
 import "../../push/push_notification_client.dart";
@@ -78,6 +81,10 @@ class BridgeRuntime {
       sessionRepository: sessionRepository,
       failureReporter: failureReporter,
     );
+    final pushSubsystem = createPushSubsystem(
+      authBackendURL: config.authBackendURL,
+      tokenRefresher: tokenRefresher,
+    );
 
     return BridgeRuntime(
       database: database,
@@ -93,10 +100,7 @@ class BridgeRuntime {
           baseUrl: config.authBackendURL,
           tokenRefresher: tokenRefresher,
         ),
-        pushDispatcher: _createPushDispatcher(
-          authBackendURL: config.authBackendURL,
-          tokenRefresher: tokenRefresher,
-        ),
+        pushDispatcher: pushSubsystem.dispatcher,
         tokenRefresher: tokenRefresher,
         failureReporter: failureReporter,
         prSyncService: PrSyncService(
@@ -146,6 +150,12 @@ class BridgeRuntime {
   }
 }
 
+typedef PushSubsystem = ({
+  PushDispatcher dispatcher,
+  CompletionPushListener completionListener,
+  MaintenancePushListener maintenanceListener,
+});
+
 Future<void> startDebugServerIfRequested({
   required int? debugPort,
   required BridgeRuntime runtime,
@@ -177,7 +187,8 @@ void registerSignalHandlers({
   }
 }
 
-PushDispatcher _createPushDispatcher({
+@visibleForTesting
+PushSubsystem createPushSubsystem({
   required String authBackendURL,
   required TokenRefresher tokenRefresher,
 }) {
@@ -192,7 +203,8 @@ PushDispatcher _createPushDispatcher({
     rateLimiter: rateLimiter,
     rssBytesReader: readCurrentRssBytes,
   );
-  return PushDispatcher(
+  const contentBuilder = PushNotificationContentBuilder();
+  final dispatcher = PushDispatcher(
     client: PushNotificationClient(
       authBackendURL: authBackendURL,
       tokenRefreshManager: tokenRefresher,
@@ -200,8 +212,19 @@ PushDispatcher _createPushDispatcher({
     rateLimiter: rateLimiter,
     tracker: tracker,
     completionNotifier: completionNotifier,
-    contentBuilder: const PushNotificationContentBuilder(),
+    contentBuilder: contentBuilder,
     telemetryBuilder: telemetryBuilder,
+  );
+  return (
+    dispatcher: dispatcher,
+    completionListener: CompletionPushListener(
+      completionNotifier: completionNotifier,
+      dispatcher: dispatcher,
+    ),
+    maintenanceListener: MaintenancePushListener(
+      dispatcher: dispatcher,
+      maintenanceInterval: const Duration(minutes: 10),
+    ),
   );
 }
 

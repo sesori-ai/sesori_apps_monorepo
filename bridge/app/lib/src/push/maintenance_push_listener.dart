@@ -1,5 +1,7 @@
 import "dart:async";
 
+import "package:meta/meta.dart";
+
 import "push_dispatcher.dart";
 
 class MaintenancePushListener {
@@ -12,6 +14,9 @@ class MaintenancePushListener {
     Duration maintenanceInterval = const Duration(minutes: 10),
   }) : _dispatcher = dispatcher,
        _maintenanceInterval = maintenanceInterval;
+
+  @visibleForTesting
+  bool get isStarted => _timer != null;
 
   void start() {
     _timer ??= Timer.periodic(_maintenanceInterval, (_) => runNow());
