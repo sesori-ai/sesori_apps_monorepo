@@ -1,5 +1,6 @@
 import "dart:convert";
 
+import "package:freezed_annotation/freezed_annotation.dart";
 import "package:http/http.dart" as http;
 import "package:sesori_shared/sesori_shared.dart" show SendNotificationPayload;
 
@@ -9,12 +10,21 @@ import "push_send_exception.dart";
 class PushNotificationClient {
   final String authBackendURL;
   final TokenRefresher _tokenRefreshManager;
-  final http.Client _client = http.Client();
+  final http.Client _client;
 
   PushNotificationClient({
     required this.authBackendURL,
     required TokenRefresher tokenRefreshManager,
-  }) : _tokenRefreshManager = tokenRefreshManager;
+  }) : _tokenRefreshManager = tokenRefreshManager,
+       _client = http.Client();
+
+  @visibleForTesting
+  PushNotificationClient.withClient({
+    required this.authBackendURL,
+    required TokenRefresher tokenRefreshManager,
+    required http.Client client,
+  }) : _tokenRefreshManager = tokenRefreshManager,
+       _client = client;
 
   Future<void> sendNotification(SendNotificationPayload payload) async {
     final token = await _tokenRefreshManager.getAccessToken();
@@ -45,5 +55,9 @@ class PushNotificationClient {
       },
       body: jsonEncode(payload.toJson()),
     );
+  }
+
+  Future<void> dispose() async {
+    _client.close();
   }
 }

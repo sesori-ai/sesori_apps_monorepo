@@ -109,6 +109,7 @@ class PushDispatcher {
 
   Future<void> dispose() async {
     _completionNotifier.dispose();
+    await _client.dispose();
   }
 
   void reset() {

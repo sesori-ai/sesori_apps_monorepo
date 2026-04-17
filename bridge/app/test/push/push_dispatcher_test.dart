@@ -514,6 +514,7 @@ void main() {
       await harness.dispatcher.dispose();
 
       await done;
+      expect(harness.client.disposeCallCount, equals(1));
     });
   });
 }
@@ -587,6 +588,7 @@ class ThrowingPushSessionStateTracker extends PushSessionStateTracker {
 
 class FakePushNotificationClient extends PushNotificationClient {
   final List<SendNotificationPayload> sentPayloads = [];
+  int disposeCallCount = 0;
 
   FakePushNotificationClient()
     : super(
@@ -597,6 +599,11 @@ class FakePushNotificationClient extends PushNotificationClient {
   @override
   Future<void> sendNotification(SendNotificationPayload payload) async {
     sentPayloads.add(payload);
+  }
+
+  @override
+  Future<void> dispose() async {
+    disposeCallCount += 1;
   }
 }
 
