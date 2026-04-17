@@ -19,6 +19,8 @@ import "package:sesori_bridge/src/bridge/services/session_event_enrichment_servi
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
+import "package:sesori_bridge/src/push/completion_push_listener.dart";
+import "package:sesori_bridge/src/push/maintenance_push_listener.dart";
 import "package:sesori_bridge/src/push/push_dispatcher.dart";
 import "package:sesori_bridge/src/push/push_maintenance_telemetry.dart";
 import "package:sesori_bridge/src/push/push_notification_client.dart";
@@ -166,6 +168,8 @@ class _TestHarness {
       plugin: plugin,
       metadataService: metadataService,
       pushDispatcher: pushService,
+      completionListener: _NoopCompletionPushListener(),
+      maintenanceListener: _NoopMaintenancePushListener(),
       tokenRefresher: tokenRefresher,
       failureReporter: failureReporter,
       prSyncService: prSyncService,
@@ -219,6 +223,31 @@ class _TestHarness {
     await database.close();
     await relayServer.close();
   }
+}
+
+class _NoopCompletionPushListener implements CompletionPushListener {
+  @override
+  Future<void> dispose() async {}
+
+  @override
+  bool get isStarted => false;
+
+  @override
+  void start() {}
+}
+
+class _NoopMaintenancePushListener implements MaintenancePushListener {
+  @override
+  void dispose() {}
+
+  @override
+  bool get isStarted => false;
+
+  @override
+  void runNow() {}
+
+  @override
+  void start() {}
 }
 
 PushDispatcher _createPushDispatcher() {

@@ -25,6 +25,8 @@ import "package:sesori_bridge/src/bridge/services/session_event_enrichment_servi
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
+import "package:sesori_bridge/src/push/completion_push_listener.dart";
+import "package:sesori_bridge/src/push/maintenance_push_listener.dart";
 import "package:sesori_bridge/src/push/push_dispatcher.dart";
 import "package:sesori_bridge/src/push/push_maintenance_telemetry.dart";
 import "package:sesori_bridge/src/push/push_notification_client.dart";
@@ -95,6 +97,8 @@ void main() {
       plugin: plugin,
       metadataService: _FakeMetadataService(),
       pushDispatcher: _createPushDispatcher(),
+      completionListener: _NoopCompletionPushListener(),
+      maintenanceListener: _NoopMaintenancePushListener(),
       tokenRefresher: _FakeTokenRefresher(),
       failureReporter: FakeFailureReporter(),
       prSyncService: fakePrSyncService,
@@ -210,6 +214,8 @@ void main() {
       plugin: plugin,
       metadataService: _FakeMetadataService(),
       pushDispatcher: pushDispatcher,
+      completionListener: _NoopCompletionPushListener(),
+      maintenanceListener: _NoopMaintenancePushListener(),
       tokenRefresher: _FakeTokenRefresher(),
       failureReporter: FakeFailureReporter(),
       prSyncService: fakePrSyncService,
@@ -350,6 +356,8 @@ void main() {
       plugin: plugin,
       metadataService: _FakeMetadataService(),
       pushDispatcher: pushDispatcher,
+      completionListener: _NoopCompletionPushListener(),
+      maintenanceListener: _NoopMaintenancePushListener(),
       tokenRefresher: _FakeTokenRefresher(),
       failureReporter: FakeFailureReporter(),
       prSyncService: _FakePrSyncService(),
@@ -401,6 +409,100 @@ void main() {
       ((emittedEvents.first.toJson()["info"] as Map<String, dynamic>)["pullRequest"] as Map<String, dynamic>)["number"],
       equals(11),
     );
+
+    await session.cancel();
+    await runFuture.timeout(const Duration(seconds: 5));
+    await plugin.close();
+    await database.close();
+    await relayServer.close();
+  });
+
+  test("abort stream forwards session ids to push dispatcher", () async {
+    final relayServer = await TestRelayServer.start();
+    final database = createTestDatabase();
+    final pushDispatcher = _CapturingPushDispatcher();
+    final plugin = _AbortPlugin();
+    final pullRequestRepository = PullRequestRepository(
+      pullRequestDao: database.pullRequestDao,
+      projectsDao: database.projectsDao,
+    );
+    final sessionRepository = SessionRepository(
+      plugin: plugin,
+      sessionDao: database.sessionDao,
+      pullRequestRepository: pullRequestRepository,
+    );
+    final projectRepository = ProjectRepository(
+      plugin: plugin,
+      projectsDao: database.projectsDao,
+    );
+    final permissionRepository = PermissionRepository(plugin: plugin);
+    final sessionPersistenceService = SessionPersistenceService(
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      db: database,
+    );
+    final worktreeService = WorktreeService(
+      worktreeRepository: WorktreeRepository(
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        gitApi: GitCliApi(
+          processRunner: FakeProcessRunner(),
+          gitPathExists: ({required String gitPath}) => true,
+        ),
+      ),
+    );
+    final relayClient = RelayClient(
+      relayURL: "ws://127.0.0.1:${relayServer.port}",
+      accessTokenProvider: FakeAccessTokenProvider(""),
+    );
+    final sessionEventEnrichmentService = SessionEventEnrichmentService(
+      sessionRepository: sessionRepository,
+      failureReporter: FakeFailureReporter(),
+    );
+
+    final orchestrator = Orchestrator(
+      config: BridgeConfig(
+        relayURL: "ws://127.0.0.1:${relayServer.port}",
+        serverURL: "http://127.0.0.1:4096",
+        serverPassword: null,
+        authBackendURL: "http://127.0.0.1:8080",
+        sseReplayWindow: const Duration(minutes: 1),
+      ),
+      client: relayClient,
+      plugin: plugin,
+      metadataService: _FakeMetadataService(),
+      pushDispatcher: pushDispatcher,
+      completionListener: _NoopCompletionPushListener(),
+      maintenanceListener: _NoopMaintenancePushListener(),
+      tokenRefresher: _FakeTokenRefresher(),
+      failureReporter: FakeFailureReporter(),
+      prSyncService: _FakePrSyncService(),
+      sessionRepository: sessionRepository,
+      projectRepository: projectRepository,
+      permissionRepository: permissionRepository,
+      sessionPersistenceService: sessionPersistenceService,
+      worktreeService: worktreeService,
+      sessionEventEnrichmentService: sessionEventEnrichmentService,
+    );
+
+    final session = orchestrator.create();
+    final runFuture = session.run();
+    await relayServer.nextClient();
+
+    final request =
+        RelayMessage.request(
+              id: "abort-request",
+              method: "POST",
+              path: "/session/abort",
+              headers: const <String, String>{},
+              body: jsonEncode(const SessionIdRequest(sessionId: "session-42").toJson()),
+            )
+            as RelayRequest;
+    final response = await session.router.route(request);
+
+    expect(response.status, equals(200));
+    expect(pushDispatcher.abortedSessionIds, equals(["session-42"]));
+    expect(plugin.abortedSessionIds, equals(["session-42"]));
 
     await session.cancel();
     await runFuture.timeout(const Duration(seconds: 5));
@@ -501,6 +603,7 @@ PushDispatcher _createPushDispatcher() {
 
 class _CapturingPushDispatcher extends PushDispatcher {
   final List<SesoriSseEvent> events = <SesoriSseEvent>[];
+  final List<String> abortedSessionIds = <String>[];
 
   factory _CapturingPushDispatcher() {
     final tracker = PushSessionStateTracker(now: DateTime.now);
@@ -535,8 +638,47 @@ class _CapturingPushDispatcher extends PushDispatcher {
   }
 
   @override
+  void markSessionAborted(String sessionId) {
+    abortedSessionIds.add(sessionId);
+  }
+
+  @override
   Future<void> dispose() async {
     await super.dispose();
+  }
+}
+
+class _NoopCompletionPushListener implements CompletionPushListener {
+  @override
+  Future<void> dispose() async {}
+
+  @override
+  bool get isStarted => false;
+
+  @override
+  void start() {}
+}
+
+class _NoopMaintenancePushListener implements MaintenancePushListener {
+  @override
+  void dispose() {}
+
+  @override
+  bool get isStarted => false;
+
+  @override
+  void runNow() {}
+
+  @override
+  void start() {}
+}
+
+class _AbortPlugin extends _NoopPlugin {
+  final List<String> abortedSessionIds = <String>[];
+
+  @override
+  Future<void> abortSession({required String sessionId}) async {
+    abortedSessionIds.add(sessionId);
   }
 }
 
@@ -970,6 +1112,10 @@ class _NoopSessionRepository implements SessionRepository {
   Future<String?> findProjectIdForSession({required String sessionId}) async => null;
   @override
   Future<Session?> getSessionForProject({required String projectId, required String sessionId}) async => null;
+
+  @override
+  Future<void> abortSession({required String sessionId}) async {}
+
   @override
   Future<void> notifySessionArchived({required String sessionId}) async {}
   @override
@@ -1088,6 +1234,11 @@ class _DelayingSessionRepository implements SessionRepository {
   @override
   Future<Session?> getSessionForProject({required String projectId, required String sessionId}) {
     return _base.getSessionForProject(projectId: projectId, sessionId: sessionId);
+  }
+
+  @override
+  Future<void> abortSession({required String sessionId}) {
+    return _base.abortSession(sessionId: sessionId);
   }
 
   @override
