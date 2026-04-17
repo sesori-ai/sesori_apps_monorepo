@@ -8,7 +8,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../auth/token_refresher.dart";
-import "../push/push_notification_service.dart";
+import "../push/push_dispatcher.dart";
 import "foundation/process_runner.dart";
 import "key_exchange.dart";
 import "metadata_service.dart";
@@ -36,7 +36,7 @@ class Orchestrator {
   final RelayClient _client;
   final BridgePlugin _plugin;
   final MetadataService _metadataService;
-  final PushNotificationService _pushNotificationService;
+  final PushDispatcher _pushDispatcher;
   final TokenRefresher _tokenRefresher;
   final FailureReporter _failureReporter;
   final PrSyncService _prSyncService;
@@ -52,7 +52,7 @@ class Orchestrator {
     required RelayClient client,
     required BridgePlugin plugin,
     required MetadataService metadataService,
-    required PushNotificationService pushNotificationService,
+    required PushDispatcher pushDispatcher,
     required TokenRefresher tokenRefresher,
     required FailureReporter failureReporter,
     required PrSyncService prSyncService,
@@ -65,7 +65,7 @@ class Orchestrator {
   }) : _client = client,
        _plugin = plugin,
        _metadataService = metadataService,
-       _pushNotificationService = pushNotificationService,
+       _pushDispatcher = pushDispatcher,
        _tokenRefresher = tokenRefresher,
        _failureReporter = failureReporter,
        _sessionRepository = sessionRepository,
@@ -102,7 +102,7 @@ class Orchestrator {
       config: config,
       client: _client,
       plugin: _plugin,
-      pushNotificationService: _pushNotificationService,
+      pushDispatcher: _pushDispatcher,
       tokenRefresher: _tokenRefresher,
       roomKey: roomKey,
       sseManager: sseManager,
@@ -140,7 +140,7 @@ class OrchestratorSession {
   final SSEManager _sseManager;
   final RequestRouter _router;
   final BridgeEventMapper _mapper;
-  final PushNotificationService _pushNotificationService;
+  final PushDispatcher _pushDispatcher;
   final TokenRefresher _tokenRefresher;
   final StreamController<int> _bytesSentController;
   final FailureReporter _failureReporter;
@@ -154,7 +154,7 @@ class OrchestratorSession {
     required this.config,
     required RelayClient client,
     required BridgePlugin plugin,
-    required PushNotificationService pushNotificationService,
+    required PushDispatcher pushDispatcher,
     required TokenRefresher tokenRefresher,
     required List<int> roomKey,
     required SSEManager sseManager,
@@ -171,7 +171,7 @@ class OrchestratorSession {
     required SessionEventEnrichmentService sessionEventEnrichmentService,
   }) : _client = client,
        _plugin = plugin,
-       _pushNotificationService = pushNotificationService,
+       _pushDispatcher = pushDispatcher,
        _tokenRefresher = tokenRefresher,
        _roomKey = roomKey,
        _sseManager = sseManager,
@@ -193,7 +193,7 @@ class OrchestratorSession {
            sessionRepository: sessionRepository,
            processRunner: ProcessRunner(),
          ),
-         onSessionAborted: pushNotificationService.markSessionAborted,
+         onSessionAborted: pushDispatcher.markSessionAborted,
        ),
        _mapper = BridgeEventMapper(
          plugin: plugin,
@@ -214,12 +214,12 @@ class OrchestratorSession {
 
     final startupSummary = _mapper.buildProjectsSummaryEvent();
     if (startupSummary != null) {
-      _pushNotificationService.handleSseEvent(startupSummary);
+      _pushDispatcher.handleSseEvent(startupSummary);
     }
 
     Log.d("[dbg] subscribing to plugin event stream...");
     _eventSubscription = _plugin.events
-        .asyncMap<BridgeSseEvent>((event) => _sessionEventEnrichmentService.enrich(event))
+        .asyncMap<BridgeSseEvent>(_sessionEventEnrichmentService.enrich)
         .listen(
           (event) {
             unawaited(_processPluginEvent(event));
@@ -311,7 +311,7 @@ class OrchestratorSession {
       _sseManager.stop();
       Log.d("[dbg] sse manager stopped");
       Log.d("[dbg] disposing push notification service...");
-      await _pushNotificationService.dispose();
+      await _pushDispatcher.dispose();
       Log.d("[dbg] push notification service disposed");
       await _bytesSentController.close();
       try {
@@ -337,7 +337,7 @@ class OrchestratorSession {
         Log.v(
           "[sse] mapped to: ${sesoriEvent.runtimeType} — enqueuing (subscribers: ${_sseManager.subscriberCount})",
         );
-        _pushNotificationService.handleSseEvent(sesoriEvent);
+        _pushDispatcher.handleSseEvent(sesoriEvent);
         _sseManager.enqueueEvent(sesoriEvent);
       } else {
         Log.v("[sse] mapping returned null — event dropped");
@@ -583,7 +583,7 @@ class OrchestratorSession {
           final projSummary = _mapper.buildProjectsSummaryEvent();
           if (projSummary != null) {
             _sseManager.enqueueEvent(projSummary);
-            _pushNotificationService.handleSseEvent(projSummary);
+            _pushDispatcher.handleSseEvent(projSummary);
           }
           Log.v("[dbg] initial projectsSummary enqueued");
         } catch (e) {

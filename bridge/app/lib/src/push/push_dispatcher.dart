@@ -6,7 +6,6 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../auth/token_refresh_exception.dart";
 import "completion_notifier.dart";
-import "push_maintenance_loop.dart";
 import "push_maintenance_telemetry.dart";
 import "push_notification_client.dart";
 import "push_notification_content_builder.dart";
@@ -14,40 +13,31 @@ import "push_rate_limiter.dart";
 import "push_send_exception.dart";
 import "push_session_state_tracker.dart";
 
-class PushNotificationService {
+class PushDispatcher {
   final PushNotificationClient _client;
   final PushRateLimiter _rateLimiter;
   final PushSessionStateTracker _tracker;
   final CompletionNotifier _completionNotifier;
-  final PushNotificationContentBuilder _contentService;
-  late final PushMaintenanceLoop _maintenanceLoop;
-  late final StreamSubscription<String> _completionSubscription;
+  final PushNotificationContentBuilder _contentBuilder;
+  final PushMaintenanceTelemetryBuilder _telemetryBuilder;
+  PushMaintenanceTelemetrySnapshot? _lastMaintenanceTelemetry;
 
-  PushNotificationService({
+  PushDispatcher({
     required PushNotificationClient client,
     required PushRateLimiter rateLimiter,
     required PushSessionStateTracker tracker,
     required CompletionNotifier completionNotifier,
-    required PushNotificationContentBuilder contentService,
+    required PushNotificationContentBuilder contentBuilder,
     required PushMaintenanceTelemetryBuilder telemetryBuilder,
-    Duration maintenanceInterval = const Duration(minutes: 10),
   }) : _client = client,
        _rateLimiter = rateLimiter,
        _tracker = tracker,
        _completionNotifier = completionNotifier,
-       _contentService = contentService {
-    _completionSubscription = _completionNotifier.completions.listen(_sendCompletionNotification);
-    _maintenanceLoop = PushMaintenanceLoop(
-      tracker: _tracker,
-      completionNotifier: _completionNotifier,
-      rateLimiter: _rateLimiter,
-      telemetryBuilder: telemetryBuilder,
-      maintenanceInterval: maintenanceInterval,
-    );
-  }
+       _contentBuilder = contentBuilder,
+       _telemetryBuilder = telemetryBuilder;
 
   @visibleForTesting
-  PushMaintenanceTelemetrySnapshot? get lastMaintenanceTelemetry => _maintenanceLoop.lastSnapshot;
+  PushMaintenanceTelemetrySnapshot? get lastMaintenanceTelemetry => _lastMaintenanceTelemetry;
 
   void handleSseEvent(SesoriSseEvent event) {
     _tracker.handleEvent(event);
@@ -61,40 +51,14 @@ class PushNotificationService {
     _completionNotifier.markSessionAborted(sessionId);
   }
 
-  Future<void> dispose() async {
-    _maintenanceLoop.dispose();
-    await _completionSubscription.cancel();
-    _completionNotifier.dispose();
-  }
-
-  void reset() {
-    _completionNotifier.reset();
-    _tracker.reset();
-  }
-
-  void _sendImmediateNotificationIfApplicable(SesoriSseEvent event) {
-    final notificationData = _contentService.extractNotificationData(event);
-    if (notificationData == null) {
-      return;
-    }
-
-    _sendNotification(
-      category: notificationData.category,
-      eventType: notificationData.eventType,
-      title: notificationData.title,
-      body: notificationData.body,
-      sessionId: _contentService.extractSessionId(event),
-    );
-  }
-
-  void _sendCompletionNotification(String rootSessionId) {
+  void dispatchCompletionForRoot({required String rootSessionId}) {
     final sessionTitle = _tracker.getSessionTitle(rootSessionId);
     final latestAssistantText = _tracker.getLatestAssistantText(rootSessionId);
 
-    final title = _contentService.truncateTitle(
+    final title = _contentBuilder.truncateTitle(
       (sessionTitle == null || sessionTitle.trim().isEmpty) ? "Session completed" : sessionTitle,
     );
-    final body = _contentService.truncateToWords(
+    final body = _contentBuilder.truncateToWords(
       (latestAssistantText == null || latestAssistantText.trim().isEmpty) ? "Task completed" : latestAssistantText,
     );
 
@@ -106,6 +70,64 @@ class PushNotificationService {
       title: title,
       body: body,
       sessionId: rootSessionId,
+    );
+  }
+
+  void runMaintenancePass() {
+    _runMaintenanceStep(
+      label: "root-prune",
+      action: () {
+        final prunableRoots = _tracker.findPrunableRoots();
+        for (final prunableRoot in prunableRoots) {
+          _runMaintenanceStep(
+            label: "root-prune:${prunableRoot.rootSessionId}",
+            action: () {
+              final prunedSubtree = _tracker.pruneRootSubtree(rootSessionId: prunableRoot.rootSessionId);
+              _completionNotifier.cleanupPrunedRootSubtree(
+                rootSessionId: prunableRoot.rootSessionId,
+                prunedSessionIds: prunedSubtree.prunedSessionIds,
+              );
+            },
+          );
+        }
+      },
+    );
+
+    _runMaintenanceStep(label: "message-role-prune", action: _tracker.pruneMessageRoleMetadata);
+    _runMaintenanceStep(label: "rate-limiter-prune", action: _rateLimiter.pruneStaleEntries);
+    _runMaintenanceStep(
+      label: "telemetry",
+      action: () {
+        final snapshot = _telemetryBuilder.build(
+          trackerSnapshot: _tracker.createTelemetrySnapshot(),
+        );
+        _lastMaintenanceTelemetry = snapshot;
+        Log.d(snapshot.toLogMessage());
+      },
+    );
+  }
+
+  Future<void> dispose() async {
+    _completionNotifier.dispose();
+  }
+
+  void reset() {
+    _completionNotifier.reset();
+    _tracker.reset();
+  }
+
+  void _sendImmediateNotificationIfApplicable(SesoriSseEvent event) {
+    final notificationData = _contentBuilder.extractNotificationData(event);
+    if (notificationData == null) {
+      return;
+    }
+
+    _sendNotification(
+      category: notificationData.category,
+      eventType: notificationData.eventType,
+      title: notificationData.title,
+      body: notificationData.body,
+      sessionId: _contentBuilder.extractSessionId(event),
     );
   }
 
@@ -125,7 +147,7 @@ class PushNotificationService {
       return;
     }
 
-    final payload = _contentService.buildNotificationPayload(
+    final payload = _contentBuilder.buildNotificationPayload(
       category: category,
       eventType: eventType,
       title: title,
@@ -144,5 +166,13 @@ class PushNotificationService {
         }
       }),
     );
+  }
+
+  void _runMaintenanceStep({required String label, required void Function() action}) {
+    try {
+      action();
+    } catch (error, stackTrace) {
+      Log.w("[push] maintenance step '$label' failed: $error\n$stackTrace");
+    }
   }
 }

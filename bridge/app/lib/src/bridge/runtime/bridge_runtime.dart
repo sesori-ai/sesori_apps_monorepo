@@ -9,10 +9,10 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../auth/access_token_provider.dart";
 import "../../auth/token_refresher.dart";
 import "../../push/completion_notifier.dart";
-import "../../push/push_maintenance_telemetry.dart" show readCurrentRssBytes, PushMaintenanceTelemetryBuilder;
+import "../../push/push_dispatcher.dart";
+import "../../push/push_maintenance_telemetry.dart" show PushMaintenanceTelemetryBuilder, readCurrentRssBytes;
 import "../../push/push_notification_client.dart";
 import "../../push/push_notification_content_builder.dart";
-import "../../push/push_notification_service.dart";
 import "../../push/push_rate_limiter.dart";
 import "../../push/push_session_state_tracker.dart";
 import "../api/gh_cli_api.dart";
@@ -93,7 +93,7 @@ class BridgeRuntime {
           baseUrl: config.authBackendURL,
           tokenRefresher: tokenRefresher,
         ),
-        pushNotificationService: _createPushNotificationService(
+        pushDispatcher: _createPushDispatcher(
           authBackendURL: config.authBackendURL,
           tokenRefresher: tokenRefresher,
         ),
@@ -177,7 +177,7 @@ void registerSignalHandlers({
   }
 }
 
-PushNotificationService _createPushNotificationService({
+PushDispatcher _createPushDispatcher({
   required String authBackendURL,
   required TokenRefresher tokenRefresher,
 }) {
@@ -192,7 +192,7 @@ PushNotificationService _createPushNotificationService({
     rateLimiter: rateLimiter,
     rssBytesReader: readCurrentRssBytes,
   );
-  return PushNotificationService(
+  return PushDispatcher(
     client: PushNotificationClient(
       authBackendURL: authBackendURL,
       tokenRefreshManager: tokenRefresher,
@@ -200,7 +200,7 @@ PushNotificationService _createPushNotificationService({
     rateLimiter: rateLimiter,
     tracker: tracker,
     completionNotifier: completionNotifier,
-    contentService: const PushNotificationContentBuilder(),
+    contentBuilder: const PushNotificationContentBuilder(),
     telemetryBuilder: telemetryBuilder,
   );
 }
