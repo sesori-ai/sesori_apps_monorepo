@@ -653,11 +653,11 @@ Target architecture: a single dispatcher owns the push pipeline, with one listen
    └─ Exposes: dispatch(PushRequest)
 │
 ├─ CompletionPushListener — reactive trigger
-│  └─ Subscribes to CompletionNotifier stream, delegates to PushDispatcher
+│  └─ Subscribes to CompletionNotifier stream, owns completion-state bookkeeping/abort suppression, delegates outbound sends to PushDispatcher
 │
 ├─ MaintenancePushListener — scheduled trigger
-│  └─ Runs periodic sweep via Timer.periodic, delegates to PushDispatcher
-│  └─ Uses: PushSessionStateTracker, PushMaintenanceTelemetryBuilder
+│  └─ Runs periodic sweep via Timer.periodic, owns maintenance-step sequencing and telemetry/logging
+│  └─ Uses: PushSessionStateTracker, CompletionNotifier, PushRateLimiter, PushMaintenanceTelemetryBuilder
 │
 └─ Support classes (injected, not constructed by the listeners):
    ├─ PushNotificationClient — HTTP transport
@@ -671,7 +671,7 @@ Target architecture: a single dispatcher owns the push pipeline, with one listen
 └─ Location: app/lib/src/push/
 ```
 
-Plans that introduce new push triggers (another stream, another timer) MUST add another listener class and delegate to the existing `PushDispatcher`. Plans that grow a single class to own multiple triggers violate A9 and must be rejected.
+Plans that introduce new push triggers (another stream, another timer) MUST add another listener class. `PushDispatcher` remains the outbound push choke point, while the listener owns the trigger-specific bookkeeping/scheduling pipeline before delegating outbound sends. Plans that grow a single class to own multiple triggers violate A9 and must be rejected.
 
 **Subsystem: `server/` (minimal)**
 

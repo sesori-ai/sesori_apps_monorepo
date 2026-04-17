@@ -154,7 +154,7 @@ app/lib/src/
 - For bridge session lifecycle flows, routing handlers MUST NOT depend on `BridgePlugin` directly. Treat `BridgePlugin` as Layer 1/API. Thin plugin-backed session commands and lookups belong in `SessionRepository`; multi-step session orchestration (create, archive, unarchive) belongs in services.
 - All mappers belong in `repositories/mappers/`, NOT in `routing/`
 - `auth/`, `push/`, `server/` are self-contained subsystems outside the layer hierarchy
-- **New push triggers** (another stream, another timer) MUST be added as a new Listener class delegating to the existing `PushDispatcher`. Do not grow a single class to own multiple triggers.
+- **New push triggers** (another stream, another timer) MUST be added as a new Listener class. `PushDispatcher` remains the outbound push choke point, while each listener owns its own trigger-specific bookkeeping, scheduling, and pre-send state handling before delegating outbound sends to the dispatcher. Do not grow a single class to own multiple triggers.
 
 **`sesori_plugin_opencode` — internal layers:**
 ```
