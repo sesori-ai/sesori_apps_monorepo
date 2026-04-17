@@ -1,5 +1,7 @@
 # Bridge Workspace — Agent Rules
 
+This file covers bridge-specific guidance. For general architecture, layering, class suffixes, cohesion rules, commit discipline, and review workflow, see the repo-root `AGENTS.md`.
+
 ## Commands
 
 From `bridge/`:
@@ -23,34 +25,38 @@ Dependencies flow in one direction:
 
 When changing shared types, update in this order.
 
-## Forbidden
-
-- Don't edit `*.freezed.dart` or `*.g.dart` — these are generated; run `make codegen` instead.
-- Don't modify `sesori_plugin_interface` without checking all implementors (`sesori_plugin_opencode` and any others).
-- Don't add Flutter dependencies — this is a pure Dart workspace.
-- Don't modify `sesori_shared` from here; it lives in the monorepo root and is shared with the mobile app.
-
 ## Testing
 
 - `dart test` from `app/` and `sesori_plugin_opencode/`
 - `sesori_plugin_interface` has no tests (it's a contract package)
-
-## File Size
-- Maximum file length: 250 lines per production code file
-- If a file exceeds 250 lines, split it into smaller focused files (by use-case, component, or concern)
-- Prefer many small files over few large files
-- Test files are explicitly excluded from this limit
 
 ## Conventions
 
 - Freezed models use `build.yaml` options: `format: false`, `map: false`, `when: false`
 - Plugin implementations must implement all 8 `BridgePlugin` methods — no partial implementations
 - SSE events use sealed classes (see `bridge_sse_event.dart`)
+- Pure Dart only — no Flutter dependencies anywhere in this workspace
 
-## Forbidden Patterns
+## Class Suffix Guidance
+
+Root `AGENTS.md` has the full suffix vocabulary. Concrete bridge examples:
+
+- **Tool wrappers** use `Api`: `GhCliApi` (gh), `GitCliApi` (git), `SesoriServerApi` (HTTP)
+- **Transport wrappers** use `Client`: `RelayClient`, `PushNotificationClient`
+- **Layer 3 orchestration** uses `Service`: `WorktreeService`, `MetadataService`, `TokenService`
+- **Pipeline choke points** use `Dispatcher`: `PushDispatcher` (owns the full push output pipeline)
+- **Stream-driven triggers** use `Listener`: `CompletionPushListener`, `MaintenancePushListener`
+- **State derived from events** uses `Tracker`: `ActiveSessionTracker`, `PushSessionStateTracker`
+- **Pure transformations** use `Builder`/`Mapper`/`Parser`: `PushNotificationContentBuilder`, `BridgeEventMapper`, `SseEventParser`
+
+If a new class doesn't fit one of these, reconsider its responsibilities before labeling it `Manager`, `Helper`, or `Wrapper`.
+
+## Bridge-Specific Patterns
 
 ### No Pointless Interfaces
+
 Only create an interface if **at least one** of these is true:
+
 1. It has **multiple production implementations** (e.g., platform-specific variants, different backend adapters)
 2. It splits a class into **semantic single-purpose use-cases** (e.g., `AccessTokenReader` vs `AccessTokenWriter` to limit write surface)
 3. It is **defined in a shared layer** and implemented in another (e.g., `ErrorReporter` in shared, implemented by app)
@@ -64,65 +70,76 @@ Only create an interface if **at least one** of these is true:
 - `PullRequestDaoLike` wrapping `PullRequestDao`
 - `PullRequestRepositoryLike` / `SessionRepositoryLike` / `PrSourceRepositoryLike`
 
+### API Classes Are Per-Tool, Not Per-Use-Case
+
+One API class wraps one external binary/tool. Use separate classes for separate tools (for example, `GhCliApi` for `gh`, `GitCliApi` for `git`). Do not merge tool wrappers just because features are related. Within one tool wrapper, keep all operations together instead of splitting by use-case. This also applies to external providers — e.g., a `GithubApi` wrapping GitHub's web API is separate from `GhCliApi`.
+
+### DAOs Are Dumb
+
+DAOs execute raw queries and return raw data. No decision-making logic, no selection algorithms, no business rules. All mapping and selection logic belongs in the Repository layer.
+
+### No Default-Constructed Dependencies
+
+Constructor parameters for injected dependencies (services, runners, checkers) must be `required` with no default values. Never do `ProcessRunner? processRunner` with `?? ProcessRunner()` — if a test forgets to pass the dependency, it silently uses a real implementation instead of failing fast. This ties into the class-cohesion rules in root: if defaults tempt you to avoid threading a dependency, you likely have pass-through parameters or a peer-as-child problem higher up.
+
+### DebugServer Shares Instances
+
+`DebugServer` must receive the same service/repository instances as the main `Orchestrator`. Never create new instances inside `DebugServer` — it must be wired with injected dependencies.
+
+### Streams Over Callbacks
+
+Use push-based communication (`StreamController`, `PublishSubject`) between services. Never pass `Function` callbacks for event notification. Services that produce events expose a `Stream`; consumers subscribe to it. This also unlocks symmetric trigger handling — two consumers of the same stream are structurally symmetric by construction.
+
+### Orchestrator Owns SSE Decisions
+
+No component below the Orchestrator may emit SSE events directly. The Orchestrator subscribes to streams (`plugin.events`, `prSyncService.prChanges`) and decides what to emit to phones. No `emitBridgeEvent()` or similar public methods on the Orchestrator.
+
 ### No Magic Strings for Known Enumerations
+
 If a concept has a fixed set of values (PR state, mergeable status, review decision, check status), **use an enum**. Never compare strings like `state.toUpperCase() == "OPEN"` in business logic. Map the raw string to an enum at the deserialization boundary (API/mapper layer), then use the enum everywhere else.
 
 ### No Swallowing Errors with Empty Defaults
+
 API methods must **throw** on unexpected errors. Never return empty lists, `null`, or `false` to hide failures — the caller should decide how to handle the error. A single `catch` block is fine if all errors are handled identically; don't split into multiple catches that do the same thing.
 
-### No Redundant Model Layers
-If a DTO and a "Record" model have the same fields and no meaningful transformation between them, **use the DTO directly**. Don't create parallel data classes just to rename things.
-
-### API Classes Are Per-Tool, Not Per-Use-Case
-One API class wraps one external binary/tool.
-Use separate classes for separate tools (for example, `GhCliApi` for `gh`, `GitCliApi` for `git`).
-Do not merge tool wrappers just because features are related.
-Within one tool wrapper, keep all operations together instead of splitting by use-case.
-This also applies to external providers — e.g., a `GithubApi` wrapping GitHub's web API is separate from `GhCliApi`.
-
-### No Default-Constructed Dependencies
-Constructor parameters for injected dependencies (services, runners, checkers) must be `required` with no default values. Never do `ProcessRunner? processRunner` with `?? ProcessRunner()` — if a test forgets to pass the dependency, it silently uses a real implementation instead of failing fast.
-
-### DebugServer Shares Instances
-`DebugServer` must receive the same service/repository instances as the main `Orchestrator`. Never create new instances inside `DebugServer` — it must be wired with injected dependencies.
-
-### DAOs Are Dumb
-DAOs execute raw queries and return raw data. No decision-making logic, no selection algorithms, no business rules. All mapping and selection logic belongs in the Repository layer.
-
-## Architectural Rules
-
-### No Manual JSON Parsing
-Always create Freezed models with auto-generated `fromJson` when parsing JSON. Never use inline `jsonDecode` + manual field extraction. Use `jsonDecodeListMap`/`jsonDecodeMap` from `sesori_shared` as the decode step, then `Model.fromJson(map)`.
-
-### Prefer Callback-Scoped Locks
-If a lock protects a single operation, prefer a callback-scoped API like `locked<T>(...)` that acquires, runs the callback, and auto-releases in one place. Avoid manual lock bookkeeping at call sites when a scoped API can express the same flow more clearly.
-
 ### Log Unexpected Degradation Paths
+
 When a service/repository intentionally degrades on an unexpected `catch`, emit a warning/debug log with enough context to understand what failed. Silent fallback is only acceptable when the code is explicitly best-effort and the lack of logging is intentional.
 
+### No Redundant Model Layers
+
+If a DTO and a "Record" model have the same fields and no meaningful transformation between them, **use the DTO directly**. Don't create parallel data classes just to rename things.
+
+### No Manual JSON Parsing
+
+Always create Freezed models with auto-generated `fromJson` when parsing JSON. Never use inline `jsonDecode` + manual field extraction. Use `jsonDecodeListMap`/`jsonDecodeMap` from `sesori_shared` as the decode step, then `Model.fromJson(map)`.
+
 ### Prefer jsonDecodeMap Helpers
+
 When decoding JSON objects, prefer `jsonDecodeMap` / `jsonDecodeListMap` over raw `jsonDecode` plus manual type checks. Use the helper first, then `fromJson` or typed field access.
 
-### Be Conservative With Makefile Entries
-Do not add maintenance scripts to a Makefile by default. Only add them when they are part of the normal repeated workspace workflow, not one-off or occasional release chores.
+### Prefer Callback-Scoped Locks
 
-### Shared Utility Placement Follows Explicit Product Choice
-If a utility is intentionally meant to live in `sesori_shared`, keep it there even if the current number of consumers is temporarily one. Do not move it out solely because present-day usage is narrow when product direction or explicit reviewer feedback says it should remain shared.
+If a lock protects a single operation, prefer a callback-scoped API like `locked<T>(...)` that acquires, runs the callback, and auto-releases in one place. Avoid manual lock bookkeeping at call sites when a scoped API can express the same flow more clearly.
 
 ### Prefer Typed Version Value Objects
+
 If code needs to parse or compare versions, do not expose loose helpers that accept arbitrary `String` inputs like `compareVersions(String, String)`. Parse once into a small typed value object that implements `Comparable`, keep transport-layer DTO fields as raw strings, and do the string-to-type mapping in the repository layer.
 
-### Reviewable State Must Be Committed And Pushed
-If you want PR feedback on bridge work, commit and push the latest relevant changes before expecting review comments to reflect them. Do not assume reviewers will inspect uncommitted local changes.
+### Shared Utility Placement Follows Explicit Product Choice
 
-### Never Amend Commits
-Do not use `git commit --amend` for bridge work. This is a repo-wide rule with no exceptions. Add a new commit for each follow-up fix so the remote PR state advances in a way the reviewer can actually inspect.
+If a utility is intentionally meant to live in `sesori_shared`, keep it there even if the current number of consumers is temporarily one. Do not move it out solely because present-day usage is narrow when product direction or explicit reviewer feedback says it should remain shared.
 
-### Streams Over Callbacks
-Use push-based communication (`StreamController`, `PublishSubject`) between services. Never pass `Function` callbacks for event notification. Services that produce events expose a `Stream`; consumers subscribe to it.
+### Be Conservative With Makefile Entries
 
-### Orchestrator Owns SSE Decisions
-No component below the Orchestrator may emit SSE events directly. The Orchestrator subscribes to streams (`plugin.events`, `prSyncService.prChanges`) and decides what to emit to phones. No `emitBridgeEvent()` or similar public methods on the Orchestrator.
+Do not add maintenance scripts to a Makefile by default. Only add them when they are part of the normal repeated workspace workflow, not one-off or occasional release chores.
+
+## Forbidden
+
+- Don't edit `*.freezed.dart`, `*.g.dart`, or `*.steps.dart` — these are generated; run `make codegen` instead.
+- Don't modify `sesori_plugin_interface` without checking all implementors (`sesori_plugin_opencode` and any others).
+- Don't add Flutter dependencies — this is a pure Dart workspace.
+- Don't modify `sesori_shared` from here; it lives in the monorepo root and is shared with the mobile app.
 
 ## Definition of Done
 
