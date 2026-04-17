@@ -1,8 +1,9 @@
 import "package:fake_async/fake_async.dart";
+import "package:sesori_bridge/src/push/completion_notifier.dart";
 import "package:sesori_bridge/src/push/maintenance_push_listener.dart";
-import "package:sesori_bridge/src/push/push_dispatcher.dart";
 import "package:sesori_bridge/src/push/push_maintenance_telemetry.dart";
-import "package:sesori_shared/sesori_shared.dart";
+import "package:sesori_bridge/src/push/push_rate_limiter.dart";
+import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -14,24 +15,24 @@ void main() {
         );
         addTearDown(harness.dispose);
 
-        expect(harness.dispatcher.runMaintenancePassCalls, equals(0));
+        expect(harness.listener.lastMaintenanceTelemetry, isNull);
 
         async.elapse(const Duration(minutes: 3));
         async.flushMicrotasks();
 
-        expect(harness.dispatcher.runMaintenancePassCalls, equals(0));
+        expect(harness.listener.lastMaintenanceTelemetry, isNull);
 
         harness.listener.start();
 
         async.elapse(const Duration(minutes: 1, seconds: 59));
         async.flushMicrotasks();
 
-        expect(harness.dispatcher.runMaintenancePassCalls, equals(0));
+        expect(harness.listener.lastMaintenanceTelemetry, isNull);
 
         async.elapse(const Duration(seconds: 1));
         async.flushMicrotasks();
 
-        expect(harness.dispatcher.runMaintenancePassCalls, equals(1));
+        expect(harness.listener.lastMaintenanceTelemetry, isNotNull);
       });
     });
 
@@ -47,23 +48,23 @@ void main() {
 
         async.elapse(const Duration(minutes: 1));
         async.flushMicrotasks();
-
-        expect(harness.dispatcher.runMaintenancePassCalls, equals(1));
+        final firstTelemetry = harness.listener.lastMaintenanceTelemetry;
 
         async.elapse(const Duration(minutes: 1));
         async.flushMicrotasks();
 
-        expect(harness.dispatcher.runMaintenancePassCalls, equals(2));
+        expect(firstTelemetry, isNotNull);
+        expect(harness.listener.lastMaintenanceTelemetry, isNotNull);
       });
     });
 
-    test("runNow delegates exactly one maintenance pass", () {
+    test("runNow captures exactly one maintenance snapshot", () {
       final harness = _newHarness();
       addTearDown(harness.dispose);
 
       harness.listener.runNow();
 
-      expect(harness.dispatcher.runMaintenancePassCalls, equals(1));
+      expect(harness.listener.lastMaintenanceTelemetry, isNotNull);
     });
 
     test("dispose cancels the periodic timer", () {
@@ -77,13 +78,14 @@ void main() {
 
         async.elapse(const Duration(minutes: 1));
         async.flushMicrotasks();
-        expect(harness.dispatcher.runMaintenancePassCalls, equals(1));
+        final firstTelemetry = harness.listener.lastMaintenanceTelemetry;
+        expect(firstTelemetry, isNotNull);
 
         harness.listener.dispose();
 
         async.elapse(const Duration(minutes: 5));
         async.flushMicrotasks();
-        expect(harness.dispatcher.runMaintenancePassCalls, equals(1));
+        expect(identical(harness.listener.lastMaintenanceTelemetry, firstTelemetry), isTrue);
       });
     });
   });
@@ -91,57 +93,32 @@ void main() {
 
 class _Harness {
   final MaintenancePushListener listener;
-  final FakePushDispatcher dispatcher;
 
-  _Harness({
-    required this.listener,
-    required this.dispatcher,
-  });
+  _Harness({required this.listener});
 
   void dispose() {
     listener.dispose();
   }
 }
 
-_Harness _newHarness({
-  FakePushDispatcher? dispatcher,
-  Duration maintenanceInterval = const Duration(minutes: 10),
-}) {
-  final resolvedDispatcher = dispatcher ?? FakePushDispatcher();
+_Harness _newHarness({Duration maintenanceInterval = const Duration(minutes: 10)}) {
+  final tracker = PushSessionStateTracker(now: DateTime.now);
+  final notifier = CompletionNotifier(
+    tracker: tracker,
+    debounceDuration: const Duration(milliseconds: 500),
+  );
+  final rateLimiter = PushRateLimiter(now: DateTime.now);
   final listener = MaintenancePushListener(
-    dispatcher: resolvedDispatcher,
+    tracker: tracker,
+    completionNotifier: notifier,
+    rateLimiter: rateLimiter,
+    telemetryBuilder: PushMaintenanceTelemetryBuilder(
+      completionNotifier: notifier,
+      rateLimiter: rateLimiter,
+      rssBytesReader: () => null,
+    ),
     maintenanceInterval: maintenanceInterval,
   );
 
-  return _Harness(
-    listener: listener,
-    dispatcher: resolvedDispatcher,
-  );
-}
-
-class FakePushDispatcher implements PushDispatcher {
-  int runMaintenancePassCalls = 0;
-
-  @override
-  PushMaintenanceTelemetrySnapshot? get lastMaintenanceTelemetry => null;
-
-  @override
-  void dispatchCompletionForRoot({required String rootSessionId}) {}
-
-  @override
-  Future<void> dispose() async {}
-
-  @override
-  void handleSseEvent(SesoriSseEvent event) {}
-
-  @override
-  void markSessionAborted(String sessionId) {}
-
-  @override
-  void reset() {}
-
-  @override
-  void runMaintenancePass() {
-    runMaintenancePassCalls += 1;
-  }
+  return _Harness(listener: listener);
 }
