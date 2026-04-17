@@ -1,3 +1,4 @@
+import "package:fake_async/fake_async.dart";
 import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
@@ -10,6 +11,25 @@ import "../../helpers/test_helpers.dart";
 import "../routing/routing_test_helpers.dart" show FakeBridgePlugin;
 
 void main() {
+  test("push subsystem listeners stay passive during runtime composition", () {
+    fakeAsync((async) {
+      final pushSubsystem = createPushSubsystem(
+        authBackendURL: "https://api.sesori.test",
+        tokenRefresher: _FakeTokenRefresher(),
+      );
+
+      expect(pushSubsystem.completionListener.isStarted, isFalse);
+      expect(pushSubsystem.maintenanceListener.isStarted, isFalse);
+      expect(pushSubsystem.dispatcher.lastMaintenanceTelemetry, isNull);
+
+      async.elapse(const Duration(minutes: 10));
+
+      expect(pushSubsystem.dispatcher.lastMaintenanceTelemetry, isNull);
+      expect(pushSubsystem.completionListener.isStarted, isFalse);
+      expect(pushSubsystem.maintenanceListener.isStarted, isFalse);
+    });
+  });
+
   test("runtime-created debug server reuses the session router", () async {
     final plugin = FakeBridgePlugin();
     final database = createTestDatabase();
