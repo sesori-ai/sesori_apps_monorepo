@@ -3,6 +3,7 @@ import "dart:io";
 import "package:fake_async/fake_async.dart";
 import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
+import "package:sesori_bridge/src/push/completion_push_listener.dart";
 import "package:sesori_bridge/src/push/push_dispatcher.dart";
 import "package:sesori_bridge/src/push/push_maintenance_telemetry.dart";
 import "package:sesori_bridge/src/push/push_notification_client.dart";
@@ -174,6 +175,200 @@ void main() {
       expect(harness.notifier.abortedRootCount, equals(1));
     });
 
+    test("AC2: parent+child idle completion sends one agentTurnCompleted notification", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+        harness.completionListener.start();
+
+        harness.dispatcher.handleSseEvent(
+          SesoriSseEvent.sessionCreated(
+            info: _session(id: "root", title: "Root task title"),
+          ),
+        );
+        harness.dispatcher.handleSseEvent(
+          SesoriSseEvent.sessionCreated(
+            info: _session(id: "child", parentID: "root"),
+          ),
+        );
+        harness.dispatcher.handleSseEvent(
+          const SesoriSseEvent.messageUpdated(
+            info: Message(
+              id: "msg-1",
+              role: "assistant",
+              sessionID: "child",
+              agent: null,
+              modelID: null,
+              providerID: null,
+            ),
+          ),
+        );
+        harness.dispatcher.handleSseEvent(
+          const SesoriSseEvent.messagePartUpdated(
+            part: MessagePart(
+              id: "part-1",
+              sessionID: "child",
+              messageID: "msg-1",
+              type: MessagePartType.text,
+              text: "Finished the child work and rolled the result up to the parent.",
+              tool: null,
+              state: null,
+              prompt: null,
+              description: null,
+              agent: null,
+              agentName: null,
+              attempt: null,
+              retryError: null,
+            ),
+          ),
+        );
+        harness.dispatcher.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+        );
+        harness.dispatcher.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+        );
+        harness.dispatcher.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+        );
+        harness.dispatcher.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
+        );
+
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+
+        expect(harness.client.sentPayloads, hasLength(1));
+        final payload = harness.client.sentPayloads.single;
+        expect(payload.category, equals(NotificationCategory.sessionMessage));
+        expect(payload.data?.eventType, equals(NotificationEventType.agentTurnCompleted));
+        expect(payload.data?.sessionId, equals("root"));
+        expect(payload.data?.projectId, equals("project-a"));
+      });
+    });
+
+    test("abort suppression keeps the next completion notification from dispatching", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+        harness.completionListener.start();
+
+        harness.dispatcher.handleSseEvent(
+          SesoriSseEvent.sessionCreated(info: _session(id: "root")),
+        );
+        harness.dispatcher.handleSseEvent(
+          SesoriSseEvent.sessionCreated(
+            info: _session(id: "child", parentID: "root"),
+          ),
+        );
+        harness.dispatcher.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+        );
+        harness.dispatcher.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+        );
+
+        harness.dispatcher.markSessionAborted("child");
+
+        harness.dispatcher.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+        );
+        harness.dispatcher.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
+        );
+
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+
+        expect(harness.client.sentPayloads, isEmpty);
+        expect(harness.notifier.abortedRootCount, equals(1));
+      });
+    });
+
+    test("seeded projects summary redirects completion payloads to the real root", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+        harness.completionListener.start();
+
+        harness.dispatcher.handleSseEvent(
+          const SesoriSseEvent.projectsSummary(
+            projects: [
+              ProjectActivitySummary(
+                id: "project-from-summary",
+                activeSessions: [
+                  ActiveSession(
+                    id: "root",
+                    mainAgentRunning: false,
+                    childSessionIds: ["child"],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+        harness.dispatcher.handleSseEvent(
+          SesoriSseEvent.sessionUpdated(
+            info: _session(id: "root", projectID: "project-from-summary", title: "Seeded root"),
+          ),
+        );
+        harness.dispatcher.handleSseEvent(
+          const SesoriSseEvent.messageUpdated(
+            info: Message(
+              id: "msg-1",
+              role: "assistant",
+              sessionID: "child",
+              agent: null,
+              modelID: null,
+              providerID: null,
+            ),
+          ),
+        );
+        harness.dispatcher.handleSseEvent(
+          const SesoriSseEvent.messagePartUpdated(
+            part: MessagePart(
+              id: "part-1",
+              sessionID: "child",
+              messageID: "msg-1",
+              type: MessagePartType.text,
+              text: "Summary-seeded child completion should still notify as the root session.",
+              tool: null,
+              state: null,
+              prompt: null,
+              description: null,
+              agent: null,
+              agentName: null,
+              attempt: null,
+              retryError: null,
+            ),
+          ),
+        );
+        harness.dispatcher.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+        );
+        harness.dispatcher.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+        );
+        harness.dispatcher.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
+        );
+        harness.dispatcher.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+        );
+
+        async.elapse(const Duration(milliseconds: 200));
+        async.flushMicrotasks();
+
+        expect(harness.client.sentPayloads, isEmpty);
+
+        async.elapse(const Duration(milliseconds: 800));
+        async.flushMicrotasks();
+
+        expect(harness.client.sentPayloads, hasLength(1));
+        final payload = harness.client.sentPayloads.single;
+        expect(payload.data?.eventType, equals(NotificationEventType.agentTurnCompleted));
+        expect(payload.data?.sessionId, equals("root"));
+        expect(payload.data?.projectId, equals("project-from-summary"));
+      });
+    });
+
     test("M2: prunable roots trigger tracker prune, notifier cleanup, and rate-limiter stale cleanup", () {
       fakeAsync((async) {
         final harness = _newHarness(
@@ -216,6 +411,36 @@ void main() {
         expect(telemetry.completionSentRoots, equals(0));
         expect(telemetry.abortedRoots, equals(0));
         expect(telemetry.rateLimiterKeys, equals(0));
+      });
+    });
+
+    test("M3: post-maintenance telemetry snapshot reflects maintained state", () {
+      fakeAsync((async) {
+        final harness = _newHarness(
+          now: () => DateTime(2026, 4, 16).add(async.elapsed),
+        );
+
+        harness.dispatcher.handleSseEvent(
+          SesoriSseEvent.sessionCreated(info: _session(id: "root")),
+        );
+        harness.dispatcher.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+        );
+        harness.dispatcher.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
+        );
+
+        async.elapse(const Duration(minutes: 40));
+        async.flushMicrotasks();
+        harness.dispatcher.runMaintenancePass();
+
+        final telemetry = harness.dispatcher.lastMaintenanceTelemetry;
+        expect(telemetry, isNotNull);
+        expect(telemetry!.sessions, equals(0));
+        expect(telemetry.idleRoots, equals(0));
+        expect(telemetry.prunableRoots, equals(0));
+        expect(telemetry.completionSentRoots, equals(0));
+        expect(telemetry.abortedRoots, equals(0));
       });
     });
 
@@ -298,6 +523,7 @@ void main() {
   FakePushNotificationClient client,
   PushSessionStateTracker tracker,
   CompletionNotifier notifier,
+  CompletionPushListener completionListener,
   FakePushRateLimiter rateLimiter,
 })
 _newHarness({
@@ -329,12 +555,17 @@ _newHarness({
     telemetryBuilder: telemetryBuilder,
     contentBuilder: contentBuilder,
   );
+  final completionListener = CompletionPushListener(
+    completionNotifier: notifier,
+    dispatcher: dispatcher,
+  );
 
   return (
     dispatcher: dispatcher,
     client: resolvedClient,
     tracker: resolvedTracker,
     notifier: notifier,
+    completionListener: completionListener,
     rateLimiter: resolvedRateLimiter,
   );
 }
