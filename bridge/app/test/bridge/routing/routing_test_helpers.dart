@@ -622,6 +622,9 @@ class _NoopSessionRepository implements SessionRepository {
   Future<Session?> getSessionForProject({required String projectId, required String sessionId}) async => null;
 
   @override
+  Future<void> abortSession({required String sessionId}) async {}
+
+  @override
   Future<void> notifySessionArchived({required String sessionId}) async {}
 
   @override
@@ -813,6 +816,11 @@ class FakeSessionRepository implements SessionRepository {
       }
     }
     return null;
+  }
+
+  @override
+  Future<void> abortSession({required String sessionId}) async {
+    await _plugin.abortSession(sessionId: sessionId);
   }
 
   @override
