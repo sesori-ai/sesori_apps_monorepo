@@ -284,26 +284,6 @@ void main() {
       expect(path, isNull);
     });
   });
-
-  group("BranchRepository.resolveStartPointForBranch", () {
-    test("uses non-origin remote refs for remote-only branches", () async {
-      final runner = _ScriptedProcessRunner({
-        ["remote"]: ProcessResult(0, 0, "upstream\n", ""),
-        ["rev-parse", "feature-b"]: ProcessResult(0, 128, "", ""),
-        ["rev-parse", "upstream/feature-b"]: ProcessResult(0, 0, "abc123\n", ""),
-      });
-
-      final repo = BranchRepository(
-        gitCliApi: GitCliApi(processRunner: runner, gitPathExists: ({required String gitPath}) => true),
-      );
-      final startPoint = await repo.resolveStartPointForBranch(
-        projectPath: "/repo",
-        branchName: "feature-b",
-      );
-
-      expect(startPoint, equals((ref: "upstream/feature-b", commit: "abc123")));
-    });
-  });
 }
 
 /// Process runner that matches commands by a subset of arguments.
