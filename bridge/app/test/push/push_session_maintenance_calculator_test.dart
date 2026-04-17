@@ -1,20 +1,20 @@
-import "package:sesori_bridge/src/push/push_session_maintenance_service.dart";
+import "package:sesori_bridge/src/push/push_session_maintenance_calculator.dart";
 import "package:sesori_bridge/src/push/push_session_state_graph.dart";
 import "package:sesori_bridge/src/push/push_session_state_tracker_state.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
-  group("PushSessionMaintenanceService", () {
+  group("PushSessionMaintenanceCalculator", () {
     group("findPrunableRoots", () {
       test("returns empty list when no sessions", () {
         final sessions = <String, PushTrackedSessionState>{};
-        final service = _createService(
+        final calculator = _createCalculator(
           sessions: sessions,
           now: () => DateTime(2026, 4, 16, 12, 0),
         );
 
-        expect(service.findPrunableRoots(), isEmpty);
+        expect(calculator.findPrunableRoots(), isEmpty);
       });
 
       test("active non-idle roots are not prunable", () {
@@ -23,12 +23,12 @@ void main() {
             ..status = SessionStatus.busy()
             ..lastTouchedAt = DateTime(2026, 4, 16, 11, 0),
         };
-        final service = _createService(
+        final calculator = _createCalculator(
           sessions: sessions,
           now: () => DateTime(2026, 4, 16, 12, 0),
         );
 
-        expect(service.findPrunableRoots(), isEmpty);
+        expect(calculator.findPrunableRoots(), isEmpty);
       });
 
       test("idle roots within TTL are not prunable", () {
@@ -37,12 +37,12 @@ void main() {
             ..status = null
             ..lastTouchedAt = DateTime(2026, 4, 16, 11, 45),
         };
-        final service = _createService(
+        final calculator = _createCalculator(
           sessions: sessions,
           now: () => DateTime(2026, 4, 16, 12, 0),
         );
 
-        expect(service.findPrunableRoots(), isEmpty);
+        expect(calculator.findPrunableRoots(), isEmpty);
       });
 
       test("idle roots past TTL are prunable", () {
@@ -51,12 +51,12 @@ void main() {
             ..status = null
             ..lastTouchedAt = DateTime(2026, 4, 16, 10, 0),
         };
-        final service = _createService(
+        final calculator = _createCalculator(
           sessions: sessions,
           now: () => DateTime(2026, 4, 16, 12, 0),
         );
 
-        final prunable = service.findPrunableRoots();
+        final prunable = calculator.findPrunableRoots();
         expect(prunable.length, equals(1));
         expect(prunable.first.rootSessionId, equals("root1"));
       });
@@ -68,16 +68,16 @@ void main() {
           "s1": PushTrackedSessionState(),
           "s2": PushTrackedSessionState(),
         };
-        final service = _createService(sessions: sessions);
+        final calculator = _createCalculator(sessions: sessions);
 
-        final snapshot = service.buildTelemetrySnapshot();
+        final snapshot = calculator.buildTelemetrySnapshot();
         expect(snapshot.sessionCount, equals(2));
       });
     });
   });
 }
 
-PushSessionMaintenanceService _createService({
+PushSessionMaintenanceCalculator _createCalculator({
   Map<String, PushTrackedSessionState>? sessions,
   Map<String, PushTrackedMessageRole>? messageRoles,
   DateTime Function()? now,
@@ -88,7 +88,7 @@ PushSessionMaintenanceService _createService({
 
   final graph = PushSessionStateGraph(sessions: resolvedSessions);
 
-  return PushSessionMaintenanceService(
+  return PushSessionMaintenanceCalculator(
     sessions: resolvedSessions,
     messageRoles: resolvedMessageRoles,
     permissionRequestCount: () => 0,
