@@ -11,8 +11,8 @@ class SessionAbortService {
   Stream<String> get abortedSessions => _abortedSessionsController.stream;
 
   Future<void> abortSession({required String sessionId}) async {
-    _abortedSessionsController.add(sessionId);
     await _sessionRepository.abortSession(sessionId: sessionId);
+    _abortedSessionsController.add(sessionId);
   }
 
   Future<void> dispose() {

@@ -16,7 +16,7 @@ void main() {
 
     tearDown(() => service.dispose());
 
-    test("emits aborted session before awaiting repository abort", () async {
+    test("emits aborted session only after repository abort succeeds", () async {
       final emittedSessionIds = <String>[];
       final abortStarted = Completer<void>();
       sessionRepository.onAbort = ({required String sessionId}) async {
@@ -27,10 +27,32 @@ void main() {
       final subscription = service.abortedSessions.listen(emittedSessionIds.add);
       addTearDown(subscription.cancel);
 
-      unawaited(service.abortSession(sessionId: "session-1"));
+      final abortFuture = service.abortSession(sessionId: "session-1");
       await abortStarted.future;
 
+      expect(emittedSessionIds, isEmpty);
+
+      sessionRepository.abortCompleter.complete();
+      await abortFuture;
+
       expect(emittedSessionIds, equals(["session-1"]));
+    });
+
+    test("does not emit aborted session when repository abort fails", () async {
+      final emittedSessionIds = <String>[];
+      sessionRepository.onAbort = ({required String sessionId}) async {
+        throw StateError("abort failed for $sessionId");
+      };
+
+      final subscription = service.abortedSessions.listen(emittedSessionIds.add);
+      addTearDown(subscription.cancel);
+
+      await expectLater(
+        service.abortSession(sessionId: "session-1"),
+        throwsA(isA<StateError>()),
+      );
+
+      expect(emittedSessionIds, isEmpty);
     });
   });
 }
