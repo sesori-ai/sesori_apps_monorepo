@@ -54,6 +54,7 @@ modules/
 ## FILE SIZE
 - Maximum file length: 250 lines per production code file
 - If a file exceeds 250 lines, split it into smaller focused files (by use-case, component, or concern)
+- File length alone never justifies a new class. Ask this before extracting: **Would this class still deserve to exist if the original file were under the line limit?** If the answer is no, keep cohesive private methods instead.
 - Prefer many small files over few large files
 - Test files are explicitly excluded from this limit
 
@@ -92,7 +93,10 @@ modules/
 - **Never use inline JSON maps for request bodies** — always create a Freezed class in `sesori_shared` and use `toJson()`/`fromJson()`. Never write `body: {"key": value}` in service or handler code.
 - **Never split a service into fake helpers that still depend on that same service** — if logic is being extracted into a focused collaborator, it must stand on its own injected dependencies. Do not use `part` files, extensions, or pseudo-helper classes that call back into the owning service, because that keeps same-level coupling and hides circular design.
 - **Do not use top-level/global functions for non-trivial bridge logic** — extracting 20-100 lines of decision-making into free functions is not an acceptable file-splitting strategy. If logic is substantial enough to deserve its own file, make it a named collaborator class with explicit constructor-injected dependencies and test it directly.
+- **Never extract a class only for file-length pressure** — the extracted collaborator must own lifecycle, state or invariants, a stable domain responsibility, or a multi-caller decision boundary. If it owns none of those, keep the logic as private methods in the original class.
 - **Keep command primitives in standalone dependencies** — shell-facing git or worktree operations belong in a dedicated API/helper dependency that the service composes. `WorktreeService` should orchestrate those collaborators, not attach command execution as service-owned helper methods in another file.
+
+For push code specifically, `PushDispatcher` owns the outbound push pipeline, and `CompletionPushListener` plus `MaintenancePushListener` are peer trigger owners that only manage subscription or timer lifecycle before delegating to the dispatcher.
 
 ## TESTING
 

@@ -51,6 +51,8 @@ Root `AGENTS.md` has the full suffix vocabulary. Concrete bridge examples:
 
 If a new class doesn't fit one of these, reconsider its responsibilities before labeling it `Manager`, `Helper`, or `Wrapper`.
 
+Ask this before extracting any new bridge class: **Would this class still deserve to exist if the original file were under the line limit?** If the answer is no, keep the logic as cohesive private methods. File length alone never justifies a new class.
+
 ## Bridge-Specific Patterns
 
 ### No Pointless Interfaces
@@ -89,6 +91,12 @@ Constructor parameters for injected dependencies (services, runners, checkers) m
 ### Streams Over Callbacks
 
 Use push-based communication (`StreamController`, `PublishSubject`) between services. Never pass `Function` callbacks for event notification. Services that produce events expose a `Stream`; consumers subscribe to it. This also unlocks symmetric trigger handling — two consumers of the same stream are structurally symmetric by construction.
+
+### Honest Ownership Boundaries
+
+Do not extract a bridge collaborator only to make a file shorter. The extracted class must own lifecycle, state or invariants, a stable domain responsibility, or a multi-caller decision boundary. If it owns none of those, keep the logic as private methods on the cohesive owner.
+
+In the push subsystem, `PushDispatcher` owns the outbound push pipeline, and listener peers own only their trigger lifecycles before delegating into that dispatcher.
 
 ### Orchestrator Owns SSE Decisions
 
