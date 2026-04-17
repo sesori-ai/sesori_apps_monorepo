@@ -61,8 +61,11 @@ _ProviderModelStatus _parseProviderModelStatus({
 
 bool _isModelAvailable({required _ProviderModelStatus status}) {
   return switch (status) {
+    _ProviderModelStatus.active ||
+    _ProviderModelStatus.alpha ||
+    _ProviderModelStatus.beta ||
+    _ProviderModelStatus.unknown => true,
     _ProviderModelStatus.deprecated => false,
-    _ => true,
   };
 }
 
