@@ -98,7 +98,7 @@ modules/
 - **Never extract a class only for file-length pressure** — the extracted collaborator must own lifecycle, state or invariants, a stable domain responsibility, or a multi-caller decision boundary. If it owns none of those, keep the logic as private methods in the original class.
 - **Keep command primitives in standalone dependencies** — shell-facing git or worktree operations belong in a dedicated API/helper dependency that the service composes. `WorktreeService` should orchestrate those collaborators, not attach command execution as service-owned helper methods in another file.
 
-For push code specifically, `PushDispatcher` owns the outbound push pipeline, and `CompletionPushListener` plus `MaintenancePushListener` are peer trigger owners that only manage subscription or timer lifecycle before delegating to the dispatcher.
+For push code specifically, `PushDispatcher` owns only outbound push sends (immediate sends, completion sends, rate limiting, payload construction, and client disposal). `CompletionPushListener` owns SSE-driven tracker/notifier bookkeeping plus abort suppression, and `MaintenancePushListener` owns the timer lifecycle, maintenance-step sequencing, and maintenance telemetry/logging.
 
 ## TESTING
 

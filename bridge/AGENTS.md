@@ -44,7 +44,7 @@ Root `AGENTS.md` has the full suffix vocabulary. Concrete bridge examples:
 - **Tool wrappers** use `Api`: `GhCliApi` (gh), `GitCliApi` (git), `SesoriServerApi` (HTTP)
 - **Transport wrappers** use `Client`: `RelayClient`, `PushNotificationClient`
 - **Layer 3 orchestration** uses `Service`: `WorktreeService`, `MetadataService`, `TokenService`
-- **Pipeline choke points** use `Dispatcher`: `PushDispatcher` (owns the full push output pipeline)
+- **Pipeline choke points** use `Dispatcher`: `PushDispatcher` (owns only outbound push sends: immediate sends, completion sends, rate limiting, payload building, and client disposal)
 - **Stream-driven triggers** use `Listener`: `CompletionPushListener`, `MaintenancePushListener`
 - **State derived from events** uses `Tracker`: `ActiveSessionTracker`, `PushSessionStateTracker`
 - **Pure transformations** use `Builder`/`Mapper`/`Parser`: `PushNotificationContentBuilder`, `BridgeEventMapper`, `SseEventParser`
@@ -96,7 +96,7 @@ Use push-based communication (`StreamController`, `PublishSubject`) between serv
 
 Do not extract a bridge collaborator only to make a file shorter. The extracted class must own lifecycle, state or invariants, a stable domain responsibility, or a multi-caller decision boundary. If it owns none of those, keep the logic as private methods on the cohesive owner.
 
-In the push subsystem, `PushDispatcher` owns the outbound push pipeline, and listener peers own only their trigger lifecycles before delegating into that dispatcher.
+In the push subsystem, `PushDispatcher` owns only outbound push sends. `CompletionPushListener` owns SSE-driven tracker/notifier bookkeeping plus abort suppression, and `MaintenancePushListener` owns the timer lifecycle, maintenance-step sequencing, and maintenance telemetry/logging.
 
 ### Orchestrator Owns SSE Decisions
 
