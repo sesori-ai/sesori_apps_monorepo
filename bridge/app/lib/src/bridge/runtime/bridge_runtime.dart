@@ -101,6 +101,8 @@ class BridgeRuntime {
           tokenRefresher: tokenRefresher,
         ),
         pushDispatcher: pushSubsystem.dispatcher,
+        completionListener: pushSubsystem.completionListener,
+        maintenanceListener: pushSubsystem.maintenanceListener,
         tokenRefresher: tokenRefresher,
         failureReporter: failureReporter,
         prSyncService: PrSyncService(
