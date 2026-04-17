@@ -93,13 +93,12 @@ class BridgeRuntime {
       ),
       rateLimiter: pushRateLimiter,
       tracker: pushTracker,
-      completionNotifier: completionNotifier,
       contentBuilder: const PushNotificationContentBuilder(),
-      telemetryBuilder: PushMaintenanceTelemetryBuilder(
-        completionNotifier: completionNotifier,
-        rateLimiter: pushRateLimiter,
-        rssBytesReader: readCurrentRssBytes,
-      ),
+    );
+    final telemetryBuilder = PushMaintenanceTelemetryBuilder(
+      completionNotifier: completionNotifier,
+      rateLimiter: pushRateLimiter,
+      rssBytesReader: readCurrentRssBytes,
     );
 
     return BridgeRuntime(
@@ -118,10 +117,16 @@ class BridgeRuntime {
         ),
         pushDispatcher: pushDispatcher,
         completionListener: CompletionPushListener(
+          tracker: pushTracker,
           completionNotifier: completionNotifier,
           dispatcher: pushDispatcher,
         ),
-        maintenanceListener: MaintenancePushListener(dispatcher: pushDispatcher),
+        maintenanceListener: MaintenancePushListener(
+          tracker: pushTracker,
+          completionNotifier: completionNotifier,
+          rateLimiter: pushRateLimiter,
+          telemetryBuilder: telemetryBuilder,
+        ),
         tokenRefresher: tokenRefresher,
         failureReporter: failureReporter,
         prSyncService: PrSyncService(

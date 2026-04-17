@@ -26,11 +26,11 @@ void main() {
 
       expect(pushSubsystem.completionListener.isStarted, isFalse);
       expect(pushSubsystem.maintenanceListener.isStarted, isFalse);
-      expect(pushSubsystem.dispatcher.lastMaintenanceTelemetry, isNull);
+      expect(pushSubsystem.maintenanceListener.lastMaintenanceTelemetry, isNull);
 
       async.elapse(const Duration(minutes: 10));
 
-      expect(pushSubsystem.dispatcher.lastMaintenanceTelemetry, isNull);
+      expect(pushSubsystem.maintenanceListener.lastMaintenanceTelemetry, isNull);
       expect(pushSubsystem.completionListener.isStarted, isFalse);
       expect(pushSubsystem.maintenanceListener.isStarted, isFalse);
     });
@@ -91,21 +91,26 @@ _createPushSubsystemForTest() {
     ),
     rateLimiter: rateLimiter,
     tracker: tracker,
-    completionNotifier: completionNotifier,
     contentBuilder: const PushNotificationContentBuilder(),
-    telemetryBuilder: PushMaintenanceTelemetryBuilder(
-      completionNotifier: completionNotifier,
-      rateLimiter: rateLimiter,
-      rssBytesReader: () => 0,
-    ),
+  );
+  final telemetryBuilder = PushMaintenanceTelemetryBuilder(
+    completionNotifier: completionNotifier,
+    rateLimiter: rateLimiter,
+    rssBytesReader: () => 0,
   );
 
   return (
     dispatcher: dispatcher,
     completionListener: CompletionPushListener(
+      tracker: tracker,
       completionNotifier: completionNotifier,
       dispatcher: dispatcher,
     ),
-    maintenanceListener: MaintenancePushListener(dispatcher: dispatcher),
+    maintenanceListener: MaintenancePushListener(
+      tracker: tracker,
+      completionNotifier: completionNotifier,
+      rateLimiter: rateLimiter,
+      telemetryBuilder: telemetryBuilder,
+    ),
   );
 }
