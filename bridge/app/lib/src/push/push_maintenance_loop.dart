@@ -12,7 +12,7 @@ class PushMaintenanceLoop {
   final CompletionNotifier _completionNotifier;
   final PushRateLimiter _rateLimiter;
   final Duration _maintenanceInterval;
-  final int? Function() _rssBytesReader;
+  final PushMaintenanceTelemetryBuilder _telemetryBuilder;
   late final Timer _timer;
   PushMaintenanceTelemetrySnapshot? _lastSnapshot;
 
@@ -20,13 +20,13 @@ class PushMaintenanceLoop {
     required PushSessionStateTracker tracker,
     required CompletionNotifier completionNotifier,
     required PushRateLimiter rateLimiter,
+    required PushMaintenanceTelemetryBuilder telemetryBuilder,
     Duration maintenanceInterval = const Duration(minutes: 10),
-    int? Function()? rssBytesReader,
   }) : _tracker = tracker,
        _completionNotifier = completionNotifier,
        _rateLimiter = rateLimiter,
        _maintenanceInterval = maintenanceInterval,
-       _rssBytesReader = rssBytesReader ?? readCurrentRssBytes {
+       _telemetryBuilder = telemetryBuilder {
     _timer = Timer.periodic(_maintenanceInterval, (_) => runNow());
   }
 
@@ -56,11 +56,8 @@ class PushMaintenanceLoop {
     _runMaintenanceStep(
       label: "telemetry",
       action: () {
-        final snapshot = buildPushMaintenanceTelemetrySnapshot(
+        final snapshot = _telemetryBuilder.build(
           trackerSnapshot: _tracker.createTelemetrySnapshot(),
-          completionNotifier: _completionNotifier,
-          rateLimiter: _rateLimiter,
-          rssBytes: _rssBytesReader(),
         );
         _lastSnapshot = snapshot;
         Log.d(snapshot.toLogMessage());

@@ -56,26 +56,36 @@ class PushMaintenanceTelemetrySnapshot {
   }
 }
 
-PushMaintenanceTelemetrySnapshot buildPushMaintenanceTelemetrySnapshot({
-  required PushSessionTelemetrySnapshot trackerSnapshot,
-  required CompletionNotifier completionNotifier,
-  required PushRateLimiter rateLimiter,
-  required int? rssBytes,
-}) {
-  return PushMaintenanceTelemetrySnapshot(
-    rssMb: rssBytes == null ? null : rssBytes / (1024 * 1024),
-    sessions: trackerSnapshot.sessionCount,
-    idleRoots: trackerSnapshot.idleRootCount,
-    prunableRoots: trackerSnapshot.prunableRoots.length,
-    messageRoles: trackerSnapshot.messageRoleCount,
-    assistantTextSessions: trackerSnapshot.latestAssistantTextCount,
-    assistantTextChars: trackerSnapshot.latestAssistantTextCharCount,
-    trackerPermissionRequests: trackerSnapshot.permissionRequestCount,
-    notifierPermissionRequests: completionNotifier.permissionRequestCount,
-    completionSentRoots: completionNotifier.completionSentRootCount,
-    abortedRoots: completionNotifier.abortedRootCount,
-    rateLimiterKeys: rateLimiter.retainedKeyCount,
-  );
+class PushMaintenanceTelemetryBuilder {
+  final CompletionNotifier _completionNotifier;
+  final PushRateLimiter _rateLimiter;
+  final int? Function() _rssBytesReader;
+
+  const PushMaintenanceTelemetryBuilder({
+    required CompletionNotifier completionNotifier,
+    required PushRateLimiter rateLimiter,
+    required int? Function() rssBytesReader,
+  }) : _completionNotifier = completionNotifier,
+       _rateLimiter = rateLimiter,
+       _rssBytesReader = rssBytesReader;
+
+  PushMaintenanceTelemetrySnapshot build({required PushSessionTelemetrySnapshot trackerSnapshot}) {
+    final rssBytes = _rssBytesReader();
+    return PushMaintenanceTelemetrySnapshot(
+      rssMb: rssBytes == null ? null : rssBytes / (1024 * 1024),
+      sessions: trackerSnapshot.sessionCount,
+      idleRoots: trackerSnapshot.idleRootCount,
+      prunableRoots: trackerSnapshot.prunableRoots.length,
+      messageRoles: trackerSnapshot.messageRoleCount,
+      assistantTextSessions: trackerSnapshot.latestAssistantTextCount,
+      assistantTextChars: trackerSnapshot.latestAssistantTextCharCount,
+      trackerPermissionRequests: trackerSnapshot.permissionRequestCount,
+      notifierPermissionRequests: _completionNotifier.permissionRequestCount,
+      completionSentRoots: _completionNotifier.completionSentRootCount,
+      abortedRoots: _completionNotifier.abortedRootCount,
+      rateLimiterKeys: _rateLimiter.retainedKeyCount,
+    );
+  }
 }
 
 int? readCurrentRssBytes() {

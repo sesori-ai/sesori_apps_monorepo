@@ -1,3 +1,4 @@
+import "package:freezed_annotation/freezed_annotation.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "push_session_event_reducer.dart";
@@ -17,10 +18,11 @@ class PushSessionStateTracker {
   late final PushSessionMaintenanceService _maintenance;
   late final PushSessionEventReducer _eventReducer;
 
-  PushSessionStateTracker() : _now = DateTime.now {
+  PushSessionStateTracker({required DateTime Function() now}) : _now = now {
     _initializeCollaborators();
   }
 
+  @visibleForTesting
   PushSessionStateTracker.testable({required DateTime Function() now}) : _now = now {
     _initializeCollaborators();
   }

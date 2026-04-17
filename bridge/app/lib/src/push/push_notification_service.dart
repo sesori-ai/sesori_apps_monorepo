@@ -29,8 +29,8 @@ class PushNotificationService {
     required PushSessionStateTracker tracker,
     required CompletionNotifier completionNotifier,
     required PushNotificationContentService contentService,
+    required PushMaintenanceTelemetryBuilder telemetryBuilder,
     Duration maintenanceInterval = const Duration(minutes: 10),
-    int? Function()? rssBytesReader,
   }) : _client = client,
        _rateLimiter = rateLimiter,
        _tracker = tracker,
@@ -41,8 +41,8 @@ class PushNotificationService {
       tracker: _tracker,
       completionNotifier: _completionNotifier,
       rateLimiter: _rateLimiter,
+      telemetryBuilder: telemetryBuilder,
       maintenanceInterval: maintenanceInterval,
-      rssBytesReader: rssBytesReader,
     );
   }
 

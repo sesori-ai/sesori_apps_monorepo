@@ -9,6 +9,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../auth/access_token_provider.dart";
 import "../../auth/token_refresher.dart";
 import "../../push/completion_notifier.dart";
+import "../../push/push_maintenance_telemetry.dart" show readCurrentRssBytes, PushMaintenanceTelemetryBuilder;
 import "../../push/push_notification_client.dart";
 import "../../push/push_notification_content_service.dart";
 import "../../push/push_notification_service.dart";
@@ -180,19 +181,27 @@ PushNotificationService _createPushNotificationService({
   required String authBackendURL,
   required TokenRefresher tokenRefresher,
 }) {
-  final tracker = PushSessionStateTracker();
+  final tracker = PushSessionStateTracker(now: DateTime.now);
+  final rateLimiter = PushRateLimiter(now: DateTime.now);
+  final completionNotifier = CompletionNotifier(
+    tracker: tracker,
+    debounceDuration: const Duration(milliseconds: 500),
+  );
+  final telemetryBuilder = PushMaintenanceTelemetryBuilder(
+    completionNotifier: completionNotifier,
+    rateLimiter: rateLimiter,
+    rssBytesReader: readCurrentRssBytes,
+  );
   return PushNotificationService(
     client: PushNotificationClient(
       authBackendURL: authBackendURL,
       tokenRefreshManager: tokenRefresher,
     ),
-    rateLimiter: PushRateLimiter(),
+    rateLimiter: rateLimiter,
     tracker: tracker,
-    completionNotifier: CompletionNotifier(
-      tracker: tracker,
-      debounceDuration: const Duration(milliseconds: 500),
-    ),
+    completionNotifier: completionNotifier,
     contentService: const PushNotificationContentService(),
+    telemetryBuilder: telemetryBuilder,
   );
 }
 
