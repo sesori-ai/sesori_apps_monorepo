@@ -235,13 +235,13 @@ class OrchestratorSession {
     final kxManager = KeyExchangeManager(_roomKey);
     final activePhones = <int, bool>{};
 
-    _abortedSessionsSubscription = _sessionAbortService.abortedSessions.listen(_pushDispatcher.markSessionAborted);
+    _abortedSessionsSubscription = _sessionAbortService.abortedSessions.listen(_completionListener.markSessionAborted);
     _completionListener.start();
     _maintenanceListener.start();
 
     final startupSummary = _mapper.buildProjectsSummaryEvent();
     if (startupSummary != null) {
-      _pushDispatcher.handleSseEvent(startupSummary);
+      _completionListener.handleSseEvent(startupSummary);
     }
 
     Log.d("[dbg] subscribing to plugin event stream...");
@@ -368,7 +368,7 @@ class OrchestratorSession {
         Log.v(
           "[sse] mapped to: ${sesoriEvent.runtimeType} — enqueuing (subscribers: ${_sseManager.subscriberCount})",
         );
-        _pushDispatcher.handleSseEvent(sesoriEvent);
+        _completionListener.handleSseEvent(sesoriEvent);
         _sseManager.enqueueEvent(sesoriEvent);
       } else {
         Log.v("[sse] mapping returned null — event dropped");
@@ -614,7 +614,7 @@ class OrchestratorSession {
           final projSummary = _mapper.buildProjectsSummaryEvent();
           if (projSummary != null) {
             _sseManager.enqueueEvent(projSummary);
-            _pushDispatcher.handleSseEvent(projSummary);
+            _completionListener.handleSseEvent(projSummary);
           }
           Log.v("[dbg] initial projectsSummary enqueued");
         } catch (e) {

@@ -244,18 +244,20 @@ _TestPushSubsystem _createPushSubsystem() {
     client: _NoopPushNotificationClient(),
     rateLimiter: rateLimiter,
     tracker: tracker,
-    completionNotifier: completionNotifier,
-    telemetryBuilder: telemetryBuilder,
     contentBuilder: const PushNotificationContentBuilder(),
   );
   return (
     dispatcher: dispatcher,
     completionListener: CompletionPushListener(
+      tracker: tracker,
       completionNotifier: completionNotifier,
       dispatcher: dispatcher,
     ),
     maintenanceListener: MaintenancePushListener(
-      dispatcher: dispatcher,
+      tracker: tracker,
+      completionNotifier: completionNotifier,
+      rateLimiter: rateLimiter,
+      telemetryBuilder: telemetryBuilder,
       maintenanceInterval: const Duration(minutes: 10),
     ),
   );

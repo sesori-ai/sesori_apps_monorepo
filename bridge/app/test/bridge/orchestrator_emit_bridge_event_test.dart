@@ -163,7 +163,10 @@ void main() {
     final database = createTestDatabase();
     final pushDispatcher = _CapturingPushDispatcher();
     final pushListeners = _createPushListeners(
+      tracker: pushDispatcher.tracker,
       completionNotifier: pushDispatcher.completionNotifier,
+      rateLimiter: pushDispatcher.rateLimiter,
+      telemetryBuilder: pushDispatcher.telemetryBuilder,
       dispatcher: pushDispatcher,
     );
     final plugin = _SummaryPlugin(
@@ -279,7 +282,10 @@ void main() {
     final plugin = _EventPlugin();
     final pushDispatcher = _CapturingPushDispatcher();
     final pushListeners = _createPushListeners(
+      tracker: pushDispatcher.tracker,
       completionNotifier: pushDispatcher.completionNotifier,
+      rateLimiter: pushDispatcher.rateLimiter,
+      telemetryBuilder: pushDispatcher.telemetryBuilder,
       dispatcher: pushDispatcher,
     );
     final pullRequestRepository = PullRequestRepository(
@@ -431,7 +437,10 @@ void main() {
     final database = createTestDatabase();
     final pushDispatcher = _CapturingPushDispatcher();
     final pushListeners = _createPushListeners(
+      tracker: pushDispatcher.tracker,
       completionNotifier: pushDispatcher.completionNotifier,
+      rateLimiter: pushDispatcher.rateLimiter,
+      telemetryBuilder: pushDispatcher.telemetryBuilder,
       dispatcher: pushDispatcher,
     );
     final plugin = _AbortPlugin();
@@ -514,7 +523,6 @@ void main() {
     final response = await session.router.route(request);
 
     expect(response.status, equals(200));
-    expect(pushDispatcher.abortedSessionIds, equals(["session-42"]));
     expect(plugin.abortedSessionIds, equals(["session-42"]));
 
     await session.cancel();
@@ -737,12 +745,13 @@ _TestPushSubsystem _createPushSubsystem({PushNotificationClient? client}) {
     client: client ?? _NoopPushNotificationClient(),
     rateLimiter: rateLimiter,
     tracker: tracker,
-    completionNotifier: completionNotifier,
-    telemetryBuilder: telemetryBuilder,
     contentBuilder: const PushNotificationContentBuilder(),
   );
   final listeners = _createPushListeners(
+    tracker: tracker,
     completionNotifier: completionNotifier,
+    rateLimiter: rateLimiter,
+    telemetryBuilder: telemetryBuilder,
     dispatcher: dispatcher,
   );
   return (
@@ -754,16 +763,23 @@ _TestPushSubsystem _createPushSubsystem({PushNotificationClient? client}) {
 }
 
 _TestPushListeners _createPushListeners({
+  required PushSessionStateTracker tracker,
   required CompletionNotifier completionNotifier,
+  required PushRateLimiter rateLimiter,
+  required PushMaintenanceTelemetryBuilder telemetryBuilder,
   required PushDispatcher dispatcher,
 }) {
   return (
     completionListener: CompletionPushListener(
+      tracker: tracker,
       completionNotifier: completionNotifier,
       dispatcher: dispatcher,
     ),
     maintenanceListener: MaintenancePushListener(
-      dispatcher: dispatcher,
+      tracker: tracker,
+      completionNotifier: completionNotifier,
+      rateLimiter: rateLimiter,
+      telemetryBuilder: telemetryBuilder,
       maintenanceInterval: const Duration(minutes: 10),
     ),
   );
@@ -773,6 +789,9 @@ class _CapturingPushDispatcher extends PushDispatcher {
   final List<SesoriSseEvent> events = <SesoriSseEvent>[];
   final List<String> abortedSessionIds = <String>[];
   final CompletionNotifier completionNotifier;
+  final PushSessionStateTracker tracker;
+  final PushRateLimiter rateLimiter;
+  final PushMaintenanceTelemetryBuilder telemetryBuilder;
 
   factory _CapturingPushDispatcher() {
     final tracker = PushSessionStateTracker(now: DateTime.now);
@@ -792,24 +811,20 @@ class _CapturingPushDispatcher extends PushDispatcher {
   }
 
   _CapturingPushDispatcher._({
-    required super.tracker,
+    required this.tracker,
     required this.completionNotifier,
-    required super.rateLimiter,
-    required super.telemetryBuilder,
+    required this.rateLimiter,
+    required this.telemetryBuilder,
   }) : super(
-         completionNotifier: completionNotifier,
+         tracker: tracker,
+         rateLimiter: rateLimiter,
          client: _NoopPushNotificationClient(),
          contentBuilder: const PushNotificationContentBuilder(),
        );
 
   @override
-  void handleSseEvent(SesoriSseEvent event) {
+  void dispatchImmediateIfApplicable(SesoriSseEvent event) {
     events.add(event);
-  }
-
-  @override
-  void markSessionAborted(String sessionId) {
-    abortedSessionIds.add(sessionId);
   }
 
   @override
