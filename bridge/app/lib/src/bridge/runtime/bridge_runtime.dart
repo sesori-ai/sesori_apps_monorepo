@@ -95,6 +95,7 @@ class BridgeRuntime {
       tracker: pushTracker,
       contentBuilder: const PushNotificationContentBuilder(),
     );
+    const pushContentBuilder = PushNotificationContentBuilder();
     final telemetryBuilder = PushMaintenanceTelemetryBuilder(
       completionNotifier: completionNotifier,
       rateLimiter: pushRateLimiter,
@@ -119,6 +120,7 @@ class BridgeRuntime {
         completionListener: CompletionPushListener(
           tracker: pushTracker,
           completionNotifier: completionNotifier,
+          contentBuilder: pushContentBuilder,
           dispatcher: pushDispatcher,
         ),
         maintenanceListener: MaintenancePushListener(

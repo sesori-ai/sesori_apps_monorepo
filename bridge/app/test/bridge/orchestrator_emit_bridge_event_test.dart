@@ -773,6 +773,7 @@ _TestPushListeners _createPushListeners({
     completionListener: CompletionPushListener(
       tracker: tracker,
       completionNotifier: completionNotifier,
+      contentBuilder: const PushNotificationContentBuilder(),
       dispatcher: dispatcher,
     ),
     maintenanceListener: MaintenancePushListener(

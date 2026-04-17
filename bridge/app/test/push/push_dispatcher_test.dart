@@ -54,109 +54,23 @@ void main() {
       expect(payload.data?.eventType, equals(NotificationEventType.questionAsked));
     });
 
-    test("completion dispatch uses session title and assistant text preview", () {
+    test("completion dispatch sends provided outbound completion payload", () {
       final harness = _newHarness();
       const title = "Implement user authentication for the dashboard";
+      const body = "I implemented user auth using JWT, refresh tokens, secure cookies,...";
 
-      harness.completionListener.handleSseEvent(
-        SesoriSseEvent.sessionCreated(
-          info: _session(id: "session-a", title: title),
-        ),
+      harness.dispatcher.dispatchCompletion(
+        rootSessionId: "session-a",
+        title: title,
+        body: body,
+        projectId: "project-a",
       );
-      harness.completionListener.handleSseEvent(
-        const SesoriSseEvent.messageUpdated(
-          info: Message(
-            id: "msg-1",
-            role: "assistant",
-            sessionID: "session-a",
-            agent: null,
-            modelID: null,
-            providerID: null,
-          ),
-        ),
-      );
-      harness.completionListener.handleSseEvent(
-        const SesoriSseEvent.messagePartUpdated(
-          part: MessagePart(
-            id: "part-1",
-            sessionID: "session-a",
-            messageID: "msg-1",
-            type: MessagePartType.text,
-            text: "I implemented user auth using JWT, refresh tokens, secure cookies, and role checks.",
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-          ),
-        ),
-      );
-
-      harness.dispatcher.dispatchCompletionForRoot(rootSessionId: "session-a");
 
       final completion = harness.client.sentPayloads.singleWhere(
         (payload) => payload.data?.eventType == NotificationEventType.agentTurnCompleted,
       );
       expect(completion.title, equals(title));
-      expect(completion.body, equals("I implemented user auth using JWT, refresh tokens, secure cookies,..."));
-      expect(harness.tracker.getLatestAssistantText("session-a"), isNull);
-    });
-
-    test("completion clears root subtree assistant text before rate-limit gating", () {
-      final harness = _newHarness(
-        rateLimiter: FakePushRateLimiter(shouldAllowSend: false),
-      );
-
-      harness.completionListener.handleSseEvent(
-        SesoriSseEvent.sessionCreated(
-          info: _session(id: "root", title: "Root task"),
-        ),
-      );
-      harness.completionListener.handleSseEvent(
-        SesoriSseEvent.sessionCreated(
-          info: _session(id: "child", parentID: "root"),
-        ),
-      );
-      harness.completionListener.handleSseEvent(
-        const SesoriSseEvent.messageUpdated(
-          info: Message(
-            id: "msg-1",
-            role: "assistant",
-            sessionID: "child",
-            agent: null,
-            modelID: null,
-            providerID: null,
-          ),
-        ),
-      );
-      harness.completionListener.handleSseEvent(
-        const SesoriSseEvent.messagePartUpdated(
-          part: MessagePart(
-            id: "part-1",
-            sessionID: "child",
-            messageID: "msg-1",
-            type: MessagePartType.text,
-            text: "Child preview survives payload derivation but should be cleared after.",
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-          ),
-        ),
-      );
-
-      harness.dispatcher.dispatchCompletionForRoot(rootSessionId: "root");
-
-      expect(harness.client.sentPayloads, isEmpty);
-      expect(harness.tracker.getLatestAssistantText("root"), isNull);
-      expect(harness.tracker.getLatestAssistantText("child"), isNull);
+      expect(completion.body, equals(body));
     });
 
     test("markSessionAborted delegates abort suppression to the notifier", () {
@@ -557,6 +471,7 @@ _newHarness({
   final completionListener = CompletionPushListener(
     tracker: resolvedTracker,
     completionNotifier: notifier,
+    contentBuilder: contentBuilder,
     dispatcher: dispatcher,
   );
   final maintenanceListener = MaintenancePushListener(

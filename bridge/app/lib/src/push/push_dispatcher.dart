@@ -30,25 +30,19 @@ class PushDispatcher {
     _sendImmediateNotificationIfApplicable(event);
   }
 
-  void dispatchCompletionForRoot({required String rootSessionId}) {
-    final sessionTitle = _tracker.getSessionTitle(rootSessionId);
-    final latestAssistantText = _tracker.getLatestAssistantText(rootSessionId);
-
-    final title = _contentBuilder.truncateTitle(
-      (sessionTitle == null || sessionTitle.trim().isEmpty) ? "Session completed" : sessionTitle,
-    );
-    final body = _contentBuilder.truncateToWords(
-      (latestAssistantText == null || latestAssistantText.trim().isEmpty) ? "Task completed" : latestAssistantText,
-    );
-
-    _tracker.clearLatestAssistantTextForRootSubtree(rootSessionId: rootSessionId);
-
+  void dispatchCompletion({
+    required String rootSessionId,
+    required String title,
+    required String body,
+    required String? projectId,
+  }) {
     _sendNotification(
       category: NotificationCategory.sessionMessage,
       eventType: NotificationEventType.agentTurnCompleted,
       title: title,
       body: body,
       sessionId: rootSessionId,
+      projectId: projectId,
     );
   }
 
@@ -62,12 +56,15 @@ class PushDispatcher {
       return;
     }
 
+    final sessionId = _contentBuilder.extractSessionId(event);
+
     _sendNotification(
       category: notificationData.category,
       eventType: notificationData.eventType,
       title: notificationData.title,
       body: notificationData.body,
-      sessionId: _contentBuilder.extractSessionId(event),
+      sessionId: sessionId,
+      projectId: sessionId != null ? _tracker.getSessionProjectId(sessionId: sessionId) : null,
     );
   }
 
@@ -77,6 +74,7 @@ class PushDispatcher {
     required String title,
     required String body,
     required String? sessionId,
+    required String? projectId,
   }) {
     final collapseKey = "${category.id}-${sessionId ?? "global"}";
     if (!_rateLimiter.shouldSend(
@@ -94,7 +92,7 @@ class PushDispatcher {
       body: body,
       sessionId: sessionId,
       collapseKey: collapseKey,
-      projectId: sessionId != null ? _tracker.getSessionProjectId(sessionId: sessionId) : null,
+      projectId: projectId,
     );
 
     unawaited(

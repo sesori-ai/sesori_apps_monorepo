@@ -2,6 +2,7 @@ import "package:fake_async/fake_async.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
 import "package:sesori_bridge/src/push/completion_push_listener.dart";
 import "package:sesori_bridge/src/push/push_dispatcher.dart";
+import "package:sesori_bridge/src/push/push_notification_content_builder.dart";
 import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -113,6 +114,63 @@ void main() {
 
       expect(harness.notifier.abortedRootCount, equals(1));
     });
+
+    test("completion flow clears root subtree assistant text before dispatching outbound data", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+        harness.listener.start();
+
+        harness.listener.handleSseEvent(
+          SesoriSseEvent.sessionCreated(
+            info: _session(id: "root", title: "Root task"),
+          ),
+        );
+        harness.listener.handleSseEvent(
+          SesoriSseEvent.sessionCreated(
+            info: _session(id: "child", parentID: "root"),
+          ),
+        );
+        harness.listener.handleSseEvent(
+          const SesoriSseEvent.messageUpdated(
+            info: Message(
+              id: "msg-1",
+              role: "assistant",
+              sessionID: "child",
+              agent: null,
+              modelID: null,
+              providerID: null,
+            ),
+          ),
+        );
+        harness.listener.handleSseEvent(
+          const SesoriSseEvent.messagePartUpdated(
+            part: MessagePart(
+              id: "part-1",
+              sessionID: "child",
+              messageID: "msg-1",
+              type: MessagePartType.text,
+              text: "Child preview survives payload derivation but should be cleared after.",
+              tool: null,
+              state: null,
+              prompt: null,
+              description: null,
+              agent: null,
+              agentName: null,
+              attempt: null,
+              retryError: null,
+            ),
+          ),
+        );
+        harness.emitCompletion(rootSessionId: "root");
+
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+
+        expect(harness.tracker.getLatestAssistantText("root"), isNull);
+        expect(harness.tracker.getLatestAssistantText("child"), isNull);
+        expect(harness.dispatcher.dispatchedRootSessionIds, equals(["root"]));
+      });
+    });
   });
 }
 
@@ -167,6 +225,7 @@ _Harness _newHarness() {
   final listener = CompletionPushListener(
     tracker: tracker,
     completionNotifier: notifier,
+    contentBuilder: const PushNotificationContentBuilder(),
     dispatcher: dispatcher,
   );
   return _Harness(
@@ -180,10 +239,19 @@ _Harness _newHarness() {
 class _FakePushDispatcher implements PushDispatcher {
   final List<String> dispatchedRootSessionIds = [];
   final List<SesoriSseEvent> immediateEvents = [];
+  final List<String> completionTitles = [];
+  final List<String> completionBodies = [];
 
   @override
-  void dispatchCompletionForRoot({required String rootSessionId}) {
+  void dispatchCompletion({
+    required String rootSessionId,
+    required String title,
+    required String body,
+    required String? projectId,
+  }) {
     dispatchedRootSessionIds.add(rootSessionId);
+    completionTitles.add(title);
+    completionBodies.add(body);
   }
 
   @override

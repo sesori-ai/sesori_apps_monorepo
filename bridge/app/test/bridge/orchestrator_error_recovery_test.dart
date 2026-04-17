@@ -251,6 +251,7 @@ _TestPushSubsystem _createPushSubsystem() {
     completionListener: CompletionPushListener(
       tracker: tracker,
       completionNotifier: completionNotifier,
+      contentBuilder: const PushNotificationContentBuilder(),
       dispatcher: dispatcher,
     ),
     maintenanceListener: MaintenancePushListener(
