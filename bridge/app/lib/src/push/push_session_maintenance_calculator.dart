@@ -2,14 +2,14 @@ import "push_session_state_graph.dart";
 import "push_session_state_tracker_models.dart";
 import "push_session_state_tracker_state.dart";
 
-class PushSessionMaintenanceService {
+class PushSessionMaintenanceCalculator {
   final Map<String, PushTrackedSessionState> _sessions;
   final Map<String, PushTrackedMessageRole> _messageRoles;
   final int Function() _permissionRequestCount;
   final PushSessionStateGraph _graph;
   final DateTime Function() _now;
 
-  PushSessionMaintenanceService({
+  PushSessionMaintenanceCalculator({
     required Map<String, PushTrackedSessionState> sessions,
     required Map<String, PushTrackedMessageRole> messageRoles,
     required int Function() permissionRequestCount,

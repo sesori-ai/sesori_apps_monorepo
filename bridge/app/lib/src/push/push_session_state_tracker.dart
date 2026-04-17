@@ -1,7 +1,7 @@
 import "package:sesori_shared/sesori_shared.dart";
 
 import "push_session_event_reducer.dart";
-import "push_session_maintenance_service.dart";
+import "push_session_maintenance_calculator.dart";
 import "push_session_state_graph.dart";
 import "push_session_state_mutator.dart";
 import "push_session_state_tracker_models.dart";
@@ -14,7 +14,7 @@ class PushSessionStateTracker {
   final DateTime Function() _now;
   late final PushSessionStateGraph _graph;
   late final PushSessionStateMutator _mutator;
-  late final PushSessionMaintenanceService _maintenance;
+  late final PushSessionMaintenanceCalculator _maintenance;
   late final PushSessionEventReducer _eventReducer;
 
   PushSessionStateTracker({required DateTime Function() now}) : _now = now {
@@ -28,7 +28,7 @@ class PushSessionStateTracker {
       messageRoles: _messageRoles,
       permissionRequestToSession: _permissionRequestToSession,
     );
-    _maintenance = PushSessionMaintenanceService(
+    _maintenance = PushSessionMaintenanceCalculator(
       sessions: _sessions,
       messageRoles: _messageRoles,
       permissionRequestCount: () => _permissionRequestToSession.length,
