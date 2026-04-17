@@ -46,6 +46,7 @@ void main() {
     final relayServer = await TestRelayServer.start();
     final database = createTestDatabase();
     final plugin = _NoopPlugin();
+    final pushSubsystem = _createPushSubsystem();
     final fakePrSyncService = _FakePrSyncService();
     final pullRequestRepository = PullRequestRepository(
       pullRequestDao: database.pullRequestDao,
@@ -96,9 +97,9 @@ void main() {
       client: relayClient,
       plugin: plugin,
       metadataService: _FakeMetadataService(),
-      pushDispatcher: _createPushDispatcher(),
-      completionListener: _NoopCompletionPushListener(),
-      maintenanceListener: _NoopMaintenancePushListener(),
+      pushDispatcher: pushSubsystem.dispatcher,
+      completionListener: pushSubsystem.completionListener,
+      maintenanceListener: pushSubsystem.maintenanceListener,
       tokenRefresher: _FakeTokenRefresher(),
       failureReporter: FakeFailureReporter(),
       prSyncService: fakePrSyncService,
@@ -161,6 +162,10 @@ void main() {
     final relayServer = await TestRelayServer.start();
     final database = createTestDatabase();
     final pushDispatcher = _CapturingPushDispatcher();
+    final pushListeners = _createPushListeners(
+      completionNotifier: pushDispatcher.completionNotifier,
+      dispatcher: pushDispatcher,
+    );
     final plugin = _SummaryPlugin(
       onSubscribe: () {
         expect(pushDispatcher.events.length, 1);
@@ -214,8 +219,8 @@ void main() {
       plugin: plugin,
       metadataService: _FakeMetadataService(),
       pushDispatcher: pushDispatcher,
-      completionListener: _NoopCompletionPushListener(),
-      maintenanceListener: _NoopMaintenancePushListener(),
+      completionListener: pushListeners.completionListener,
+      maintenanceListener: pushListeners.maintenanceListener,
       tokenRefresher: _FakeTokenRefresher(),
       failureReporter: FakeFailureReporter(),
       prSyncService: fakePrSyncService,
@@ -272,6 +277,11 @@ void main() {
     final relayServer = await TestRelayServer.start();
     final database = createTestDatabase();
     final plugin = _EventPlugin();
+    final pushDispatcher = _CapturingPushDispatcher();
+    final pushListeners = _createPushListeners(
+      completionNotifier: pushDispatcher.completionNotifier,
+      dispatcher: pushDispatcher,
+    );
     final pullRequestRepository = PullRequestRepository(
       pullRequestDao: database.pullRequestDao,
       projectsDao: database.projectsDao,
@@ -338,7 +348,6 @@ void main() {
       ),
     );
 
-    final pushDispatcher = _CapturingPushDispatcher();
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
       failureReporter: FakeFailureReporter(),
@@ -356,8 +365,8 @@ void main() {
       plugin: plugin,
       metadataService: _FakeMetadataService(),
       pushDispatcher: pushDispatcher,
-      completionListener: _NoopCompletionPushListener(),
-      maintenanceListener: _NoopMaintenancePushListener(),
+      completionListener: pushListeners.completionListener,
+      maintenanceListener: pushListeners.maintenanceListener,
       tokenRefresher: _FakeTokenRefresher(),
       failureReporter: FakeFailureReporter(),
       prSyncService: _FakePrSyncService(),
@@ -421,6 +430,10 @@ void main() {
     final relayServer = await TestRelayServer.start();
     final database = createTestDatabase();
     final pushDispatcher = _CapturingPushDispatcher();
+    final pushListeners = _createPushListeners(
+      completionNotifier: pushDispatcher.completionNotifier,
+      dispatcher: pushDispatcher,
+    );
     final plugin = _AbortPlugin();
     final pullRequestRepository = PullRequestRepository(
       pullRequestDao: database.pullRequestDao,
@@ -472,8 +485,8 @@ void main() {
       plugin: plugin,
       metadataService: _FakeMetadataService(),
       pushDispatcher: pushDispatcher,
-      completionListener: _NoopCompletionPushListener(),
-      maintenanceListener: _NoopMaintenancePushListener(),
+      completionListener: pushListeners.completionListener,
+      maintenanceListener: pushListeners.maintenanceListener,
       tokenRefresher: _FakeTokenRefresher(),
       failureReporter: FakeFailureReporter(),
       prSyncService: _FakePrSyncService(),
@@ -502,6 +515,123 @@ void main() {
 
     expect(response.status, equals(200));
     expect(pushDispatcher.abortedSessionIds, equals(["session-42"]));
+    expect(plugin.abortedSessionIds, equals(["session-42"]));
+
+    await session.cancel();
+    await runFuture.timeout(const Duration(seconds: 5));
+    await plugin.close();
+    await database.close();
+    await relayServer.close();
+  });
+
+  test("abort stream suppresses completion notifications end to end", () async {
+    final relayServer = await TestRelayServer.start();
+    final database = createTestDatabase();
+    final notificationClient = _CapturingPushNotificationClient();
+    final pushSubsystem = _createPushSubsystem(client: notificationClient);
+    final plugin = _AbortEventPlugin();
+    final pullRequestRepository = PullRequestRepository(
+      pullRequestDao: database.pullRequestDao,
+      projectsDao: database.projectsDao,
+    );
+    final sessionRepository = SessionRepository(
+      plugin: plugin,
+      sessionDao: database.sessionDao,
+      pullRequestRepository: pullRequestRepository,
+    );
+    final projectRepository = ProjectRepository(
+      plugin: plugin,
+      projectsDao: database.projectsDao,
+    );
+    final permissionRepository = PermissionRepository(plugin: plugin);
+    final sessionPersistenceService = SessionPersistenceService(
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      db: database,
+    );
+    final worktreeService = WorktreeService(
+      worktreeRepository: WorktreeRepository(
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        gitApi: GitCliApi(
+          processRunner: FakeProcessRunner(),
+          gitPathExists: ({required String gitPath}) => true,
+        ),
+      ),
+    );
+    final relayClient = RelayClient(
+      relayURL: "ws://127.0.0.1:${relayServer.port}",
+      accessTokenProvider: FakeAccessTokenProvider(""),
+    );
+    final sessionEventEnrichmentService = SessionEventEnrichmentService(
+      sessionRepository: sessionRepository,
+      failureReporter: FakeFailureReporter(),
+    );
+
+    final orchestrator = Orchestrator(
+      config: BridgeConfig(
+        relayURL: "ws://127.0.0.1:${relayServer.port}",
+        serverURL: "http://127.0.0.1:4096",
+        serverPassword: null,
+        authBackendURL: "http://127.0.0.1:8080",
+        sseReplayWindow: const Duration(minutes: 1),
+      ),
+      client: relayClient,
+      plugin: plugin,
+      metadataService: _FakeMetadataService(),
+      pushDispatcher: pushSubsystem.dispatcher,
+      completionListener: pushSubsystem.completionListener,
+      maintenanceListener: pushSubsystem.maintenanceListener,
+      tokenRefresher: _FakeTokenRefresher(),
+      failureReporter: FakeFailureReporter(),
+      prSyncService: _FakePrSyncService(),
+      sessionRepository: sessionRepository,
+      projectRepository: projectRepository,
+      permissionRepository: permissionRepository,
+      sessionPersistenceService: sessionPersistenceService,
+      worktreeService: worktreeService,
+      sessionEventEnrichmentService: sessionEventEnrichmentService,
+    );
+
+    final session = orchestrator.create();
+    final runFuture = session.run();
+    await plugin.waitForSubscription();
+    await relayServer.nextClient();
+
+    plugin.add(
+      BridgeSseSessionStatus(
+        sessionID: "session-42",
+        status: const SessionStatus.busy().toJson(),
+      ),
+    );
+    await _waitForCondition(
+      check: () => pushSubsystem.tracker.wasPreviouslyBusy("session-42"),
+      failureMessage: "Timed out waiting for busy status to reach push tracker",
+    );
+
+    final request =
+        RelayMessage.request(
+              id: "abort-request",
+              method: "POST",
+              path: "/session/abort",
+              headers: const <String, String>{},
+              body: jsonEncode(const SessionIdRequest(sessionId: "session-42").toJson()),
+            )
+            as RelayRequest;
+    final response = await session.router.route(request);
+
+    expect(response.status, equals(200));
+
+    plugin.add(
+      BridgeSseSessionStatus(
+        sessionID: "session-42",
+        status: const SessionStatus.idle().toJson(),
+      ),
+    );
+
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+
+    expect(notificationClient.payloads, isEmpty);
     expect(plugin.abortedSessionIds, equals(["session-42"]));
 
     await session.cancel();
@@ -582,7 +712,19 @@ List<int> _withConnID({required int connID, required List<int> payload}) {
   return <int>[header.getUint8(0), header.getUint8(1), ...payload];
 }
 
-PushDispatcher _createPushDispatcher() {
+typedef _TestPushSubsystem = ({
+  PushDispatcher dispatcher,
+  CompletionPushListener completionListener,
+  MaintenancePushListener maintenanceListener,
+  PushSessionStateTracker tracker,
+});
+
+typedef _TestPushListeners = ({
+  CompletionPushListener completionListener,
+  MaintenancePushListener maintenanceListener,
+});
+
+_TestPushSubsystem _createPushSubsystem({PushNotificationClient? client}) {
   final tracker = PushSessionStateTracker(now: DateTime.now);
   final completionNotifier = CompletionNotifier(tracker: tracker);
   final rateLimiter = PushRateLimiter();
@@ -591,19 +733,46 @@ PushDispatcher _createPushDispatcher() {
     rateLimiter: rateLimiter,
     rssBytesReader: () => null,
   );
-  return PushDispatcher(
-    client: _NoopPushNotificationClient(),
+  final dispatcher = PushDispatcher(
+    client: client ?? _NoopPushNotificationClient(),
     rateLimiter: rateLimiter,
     tracker: tracker,
     completionNotifier: completionNotifier,
     telemetryBuilder: telemetryBuilder,
     contentBuilder: const PushNotificationContentBuilder(),
   );
+  final listeners = _createPushListeners(
+    completionNotifier: completionNotifier,
+    dispatcher: dispatcher,
+  );
+  return (
+    dispatcher: dispatcher,
+    completionListener: listeners.completionListener,
+    maintenanceListener: listeners.maintenanceListener,
+    tracker: tracker,
+  );
+}
+
+_TestPushListeners _createPushListeners({
+  required CompletionNotifier completionNotifier,
+  required PushDispatcher dispatcher,
+}) {
+  return (
+    completionListener: CompletionPushListener(
+      completionNotifier: completionNotifier,
+      dispatcher: dispatcher,
+    ),
+    maintenanceListener: MaintenancePushListener(
+      dispatcher: dispatcher,
+      maintenanceInterval: const Duration(minutes: 10),
+    ),
+  );
 }
 
 class _CapturingPushDispatcher extends PushDispatcher {
   final List<SesoriSseEvent> events = <SesoriSseEvent>[];
   final List<String> abortedSessionIds = <String>[];
+  final CompletionNotifier completionNotifier;
 
   factory _CapturingPushDispatcher() {
     final tracker = PushSessionStateTracker(now: DateTime.now);
@@ -624,10 +793,11 @@ class _CapturingPushDispatcher extends PushDispatcher {
 
   _CapturingPushDispatcher._({
     required super.tracker,
-    required super.completionNotifier,
+    required this.completionNotifier,
     required super.rateLimiter,
     required super.telemetryBuilder,
   }) : super(
+         completionNotifier: completionNotifier,
          client: _NoopPushNotificationClient(),
          contentBuilder: const PushNotificationContentBuilder(),
        );
@@ -648,32 +818,16 @@ class _CapturingPushDispatcher extends PushDispatcher {
   }
 }
 
-class _NoopCompletionPushListener implements CompletionPushListener {
-  @override
-  Future<void> dispose() async {}
-
-  @override
-  bool get isStarted => false;
-
-  @override
-  void start() {}
-}
-
-class _NoopMaintenancePushListener implements MaintenancePushListener {
-  @override
-  void dispose() {}
-
-  @override
-  bool get isStarted => false;
-
-  @override
-  void runNow() {}
-
-  @override
-  void start() {}
-}
-
 class _AbortPlugin extends _NoopPlugin {
+  final List<String> abortedSessionIds = <String>[];
+
+  @override
+  Future<void> abortSession({required String sessionId}) async {
+    abortedSessionIds.add(sessionId);
+  }
+}
+
+class _AbortEventPlugin extends _EventPlugin {
   final List<String> abortedSessionIds = <String>[];
 
   @override
@@ -978,6 +1132,28 @@ class _NoopPushNotificationClient extends PushNotificationClient {
 
   @override
   Future<void> sendNotification(SendNotificationPayload payload) async {}
+}
+
+class _CapturingPushNotificationClient extends _NoopPushNotificationClient {
+  final List<SendNotificationPayload> payloads = <SendNotificationPayload>[];
+
+  @override
+  Future<void> sendNotification(SendNotificationPayload payload) async {
+    payloads.add(payload);
+  }
+}
+
+Future<void> _waitForCondition({
+  required bool Function() check,
+  required String failureMessage,
+}) async {
+  final timeoutAt = DateTime.now().add(const Duration(seconds: 2));
+  while (!check()) {
+    if (DateTime.now().isAfter(timeoutAt)) {
+      fail(failureMessage);
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+  }
 }
 
 class _FakeMetadataService implements MetadataService {

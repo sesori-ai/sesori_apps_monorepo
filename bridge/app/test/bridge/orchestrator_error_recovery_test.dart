@@ -104,7 +104,7 @@ class _TestHarness {
     final relayServer = await TestRelayServer.start();
     final database = createTestDatabase();
     final failureReporter = CapturingFailureReporter();
-    final pushService = _createPushDispatcher();
+    final pushSubsystem = _createPushSubsystem();
     final tokenRefresher = _FakeTokenRefresher();
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
@@ -167,9 +167,9 @@ class _TestHarness {
       client: relayClient,
       plugin: plugin,
       metadataService: metadataService,
-      pushDispatcher: pushService,
-      completionListener: _NoopCompletionPushListener(),
-      maintenanceListener: _NoopMaintenancePushListener(),
+      pushDispatcher: pushSubsystem.dispatcher,
+      completionListener: pushSubsystem.completionListener,
+      maintenanceListener: pushSubsystem.maintenanceListener,
       tokenRefresher: tokenRefresher,
       failureReporter: failureReporter,
       prSyncService: prSyncService,
@@ -225,32 +225,13 @@ class _TestHarness {
   }
 }
 
-class _NoopCompletionPushListener implements CompletionPushListener {
-  @override
-  Future<void> dispose() async {}
+typedef _TestPushSubsystem = ({
+  PushDispatcher dispatcher,
+  CompletionPushListener completionListener,
+  MaintenancePushListener maintenanceListener,
+});
 
-  @override
-  bool get isStarted => false;
-
-  @override
-  void start() {}
-}
-
-class _NoopMaintenancePushListener implements MaintenancePushListener {
-  @override
-  void dispose() {}
-
-  @override
-  bool get isStarted => false;
-
-  @override
-  void runNow() {}
-
-  @override
-  void start() {}
-}
-
-PushDispatcher _createPushDispatcher() {
+_TestPushSubsystem _createPushSubsystem() {
   final tracker = PushSessionStateTracker(now: DateTime.now);
   final completionNotifier = CompletionNotifier(tracker: tracker);
   final rateLimiter = PushRateLimiter();
@@ -259,13 +240,24 @@ PushDispatcher _createPushDispatcher() {
     rateLimiter: rateLimiter,
     rssBytesReader: () => null,
   );
-  return PushDispatcher(
+  final dispatcher = PushDispatcher(
     client: _NoopPushNotificationClient(),
     rateLimiter: rateLimiter,
     tracker: tracker,
     completionNotifier: completionNotifier,
     telemetryBuilder: telemetryBuilder,
     contentBuilder: const PushNotificationContentBuilder(),
+  );
+  return (
+    dispatcher: dispatcher,
+    completionListener: CompletionPushListener(
+      completionNotifier: completionNotifier,
+      dispatcher: dispatcher,
+    ),
+    maintenanceListener: MaintenancePushListener(
+      dispatcher: dispatcher,
+      maintenanceInterval: const Duration(minutes: 10),
+    ),
   );
 }
 
