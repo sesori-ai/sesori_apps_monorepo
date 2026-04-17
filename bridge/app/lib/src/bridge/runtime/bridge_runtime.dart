@@ -2,7 +2,6 @@ import "dart:async";
 import "dart:io";
 
 import "package:http/http.dart" as http;
-import "package:meta/meta.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePlugin, Log;
 import "package:sesori_shared/sesori_shared.dart";
@@ -81,9 +80,26 @@ class BridgeRuntime {
       sessionRepository: sessionRepository,
       failureReporter: failureReporter,
     );
-    final pushSubsystem = createPushSubsystem(
-      authBackendURL: config.authBackendURL,
-      tokenRefresher: tokenRefresher,
+    final pushTracker = PushSessionStateTracker(now: DateTime.now);
+    final pushRateLimiter = PushRateLimiter(now: DateTime.now);
+    final completionNotifier = CompletionNotifier(
+      tracker: pushTracker,
+      debounceDuration: const Duration(milliseconds: 500),
+    );
+    final pushDispatcher = PushDispatcher(
+      client: PushNotificationClient(
+        authBackendURL: config.authBackendURL,
+        tokenRefreshManager: tokenRefresher,
+      ),
+      rateLimiter: pushRateLimiter,
+      tracker: pushTracker,
+      completionNotifier: completionNotifier,
+      contentBuilder: const PushNotificationContentBuilder(),
+      telemetryBuilder: PushMaintenanceTelemetryBuilder(
+        completionNotifier: completionNotifier,
+        rateLimiter: pushRateLimiter,
+        rssBytesReader: readCurrentRssBytes,
+      ),
     );
 
     return BridgeRuntime(
@@ -100,9 +116,12 @@ class BridgeRuntime {
           baseUrl: config.authBackendURL,
           tokenRefresher: tokenRefresher,
         ),
-        pushDispatcher: pushSubsystem.dispatcher,
-        completionListener: pushSubsystem.completionListener,
-        maintenanceListener: pushSubsystem.maintenanceListener,
+        pushDispatcher: pushDispatcher,
+        completionListener: CompletionPushListener(
+          completionNotifier: completionNotifier,
+          dispatcher: pushDispatcher,
+        ),
+        maintenanceListener: MaintenancePushListener(dispatcher: pushDispatcher),
         tokenRefresher: tokenRefresher,
         failureReporter: failureReporter,
         prSyncService: PrSyncService(
@@ -152,12 +171,6 @@ class BridgeRuntime {
   }
 }
 
-typedef PushSubsystem = ({
-  PushDispatcher dispatcher,
-  CompletionPushListener completionListener,
-  MaintenancePushListener maintenanceListener,
-});
-
 Future<void> startDebugServerIfRequested({
   required int? debugPort,
   required BridgeRuntime runtime,
@@ -187,47 +200,6 @@ void registerSignalHandlers({
   if (!Platform.isWindows) {
     ProcessSignal.sigterm.watch().listen((_) => unawaited(session.cancel())).addTo(subscriptions);
   }
-}
-
-@visibleForTesting
-PushSubsystem createPushSubsystem({
-  required String authBackendURL,
-  required TokenRefresher tokenRefresher,
-}) {
-  final tracker = PushSessionStateTracker(now: DateTime.now);
-  final rateLimiter = PushRateLimiter(now: DateTime.now);
-  final completionNotifier = CompletionNotifier(
-    tracker: tracker,
-    debounceDuration: const Duration(milliseconds: 500),
-  );
-  final telemetryBuilder = PushMaintenanceTelemetryBuilder(
-    completionNotifier: completionNotifier,
-    rateLimiter: rateLimiter,
-    rssBytesReader: readCurrentRssBytes,
-  );
-  const contentBuilder = PushNotificationContentBuilder();
-  final dispatcher = PushDispatcher(
-    client: PushNotificationClient(
-      authBackendURL: authBackendURL,
-      tokenRefreshManager: tokenRefresher,
-    ),
-    rateLimiter: rateLimiter,
-    tracker: tracker,
-    completionNotifier: completionNotifier,
-    contentBuilder: contentBuilder,
-    telemetryBuilder: telemetryBuilder,
-  );
-  return (
-    dispatcher: dispatcher,
-    completionListener: CompletionPushListener(
-      completionNotifier: completionNotifier,
-      dispatcher: dispatcher,
-    ),
-    maintenanceListener: MaintenancePushListener(
-      dispatcher: dispatcher,
-      maintenanceInterval: const Duration(minutes: 10),
-    ),
-  );
 }
 
 bool _gitPathExists({required String gitPath}) {
