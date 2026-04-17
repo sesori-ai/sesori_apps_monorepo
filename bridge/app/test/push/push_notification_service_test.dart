@@ -1,6 +1,7 @@
 import "package:fake_async/fake_async.dart";
 import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
+import "package:sesori_bridge/src/push/push_maintenance_telemetry.dart";
 import "package:sesori_bridge/src/push/push_notification_client.dart";
 import "package:sesori_bridge/src/push/push_notification_service.dart";
 import "package:sesori_bridge/src/push/push_notification_content_service.dart";
@@ -1095,21 +1096,26 @@ _newHarness({
   int? Function()? rssBytesReader,
 }) {
   final resolvedClient = client ?? FakePushNotificationClient();
-  final resolvedTracker =
-      tracker ?? (now == null ? PushSessionStateTracker() : PushSessionStateTracker.testable(now: now));
+  final resolvedTracker = tracker ?? PushSessionStateTracker(now: now ?? DateTime.now);
   final notifier = CompletionNotifier(
     tracker: resolvedTracker,
     debounceDuration: const Duration(milliseconds: 500),
   );
   final resolvedRateLimiter = rateLimiter ?? FakePushRateLimiter(now: now);
+  final resolvedRssBytesReader = rssBytesReader ?? readCurrentRssBytes;
+  final telemetryBuilder = PushMaintenanceTelemetryBuilder(
+    completionNotifier: notifier,
+    rateLimiter: resolvedRateLimiter,
+    rssBytesReader: resolvedRssBytesReader,
+  );
   final contentService = const PushNotificationContentService();
   final service = PushNotificationService(
     client: resolvedClient,
     rateLimiter: resolvedRateLimiter,
     tracker: resolvedTracker,
     completionNotifier: notifier,
+    telemetryBuilder: telemetryBuilder,
     contentService: contentService,
-    rssBytesReader: rssBytesReader,
   );
 
   return (
@@ -1126,7 +1132,7 @@ class ThrowingPushSessionStateTracker extends PushSessionStateTracker {
   ThrowingPushSessionStateTracker({
     required DateTime Function() now,
     this.throwFindPrunableRoots = false,
-  }) : super.testable(now: now);
+  }) : super(now: now);
 
   @override
   List<PushPrunableRoot> findPrunableRoots() {

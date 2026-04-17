@@ -676,7 +676,7 @@ class _Harness {
 }
 
 _Harness _newHarness() {
-  final tracker = PushSessionStateTracker();
+  final tracker = PushSessionStateTracker(now: DateTime.now);
   final completedRoots = <String>[];
   final notifier = CompletionNotifier(
     tracker: tracker,

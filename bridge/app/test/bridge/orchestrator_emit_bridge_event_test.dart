@@ -25,6 +25,7 @@ import "package:sesori_bridge/src/bridge/services/session_event_enrichment_servi
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
+import "package:sesori_bridge/src/push/push_maintenance_telemetry.dart";
 import "package:sesori_bridge/src/push/push_notification_client.dart";
 import "package:sesori_bridge/src/push/push_notification_content_service.dart";
 import "package:sesori_bridge/src/push/push_notification_service.dart";
@@ -480,13 +481,20 @@ List<int> _withConnID({required int connID, required List<int> payload}) {
 }
 
 PushNotificationService _createPushNotificationService() {
-  final tracker = PushSessionStateTracker();
+  final tracker = PushSessionStateTracker(now: DateTime.now);
   final completionNotifier = CompletionNotifier(tracker: tracker);
+  final rateLimiter = PushRateLimiter();
+  final telemetryBuilder = PushMaintenanceTelemetryBuilder(
+    completionNotifier: completionNotifier,
+    rateLimiter: rateLimiter,
+    rssBytesReader: () => null,
+  );
   return PushNotificationService(
     client: _NoopPushNotificationClient(),
-    rateLimiter: PushRateLimiter(),
+    rateLimiter: rateLimiter,
     tracker: tracker,
     completionNotifier: completionNotifier,
+    telemetryBuilder: telemetryBuilder,
     contentService: const PushNotificationContentService(),
   );
 }
@@ -494,18 +502,35 @@ PushNotificationService _createPushNotificationService() {
 class _CapturingPushNotificationService extends PushNotificationService {
   final List<SesoriSseEvent> events = <SesoriSseEvent>[];
 
-  _CapturingPushNotificationService()
-    : this._(
-        tracker: PushSessionStateTracker(),
-      );
+  factory _CapturingPushNotificationService() {
+    final tracker = PushSessionStateTracker(now: DateTime.now);
+    final completionNotifier = CompletionNotifier(tracker: tracker);
+    final rateLimiter = PushRateLimiter();
+    final telemetryBuilder = PushMaintenanceTelemetryBuilder(
+      completionNotifier: completionNotifier,
+      rateLimiter: rateLimiter,
+      rssBytesReader: () => null,
+    );
+    return _CapturingPushNotificationService._(
+      tracker: tracker,
+      completionNotifier: completionNotifier,
+      rateLimiter: rateLimiter,
+      telemetryBuilder: telemetryBuilder,
+    );
+  }
 
-  _CapturingPushNotificationService._({required super.tracker})
-    : super(
-        client: _NoopPushNotificationClient(),
-        rateLimiter: PushRateLimiter(),
-        completionNotifier: CompletionNotifier(tracker: tracker),
-        contentService: const PushNotificationContentService(),
-      );
+  _CapturingPushNotificationService._({
+    required super.tracker,
+    required CompletionNotifier completionNotifier,
+    required PushRateLimiter rateLimiter,
+    required PushMaintenanceTelemetryBuilder telemetryBuilder,
+  }) : super(
+         client: _NoopPushNotificationClient(),
+         rateLimiter: rateLimiter,
+         completionNotifier: completionNotifier,
+         telemetryBuilder: telemetryBuilder,
+         contentService: const PushNotificationContentService(),
+       );
 
   @override
   void handleSseEvent(SesoriSseEvent event) {

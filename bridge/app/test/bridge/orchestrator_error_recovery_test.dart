@@ -19,6 +19,7 @@ import "package:sesori_bridge/src/bridge/services/session_event_enrichment_servi
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
+import "package:sesori_bridge/src/push/push_maintenance_telemetry.dart";
 import "package:sesori_bridge/src/push/push_notification_client.dart";
 import "package:sesori_bridge/src/push/push_notification_content_service.dart";
 import "package:sesori_bridge/src/push/push_notification_service.dart";
@@ -221,13 +222,20 @@ class _TestHarness {
 }
 
 PushNotificationService _createPushNotificationService() {
-  final tracker = PushSessionStateTracker();
+  final tracker = PushSessionStateTracker(now: DateTime.now);
   final completionNotifier = CompletionNotifier(tracker: tracker);
+  final rateLimiter = PushRateLimiter();
+  final telemetryBuilder = PushMaintenanceTelemetryBuilder(
+    completionNotifier: completionNotifier,
+    rateLimiter: rateLimiter,
+    rssBytesReader: () => null,
+  );
   return PushNotificationService(
     client: _NoopPushNotificationClient(),
-    rateLimiter: PushRateLimiter(),
+    rateLimiter: rateLimiter,
     tracker: tracker,
     completionNotifier: completionNotifier,
+    telemetryBuilder: telemetryBuilder,
     contentService: const PushNotificationContentService(),
   );
 }

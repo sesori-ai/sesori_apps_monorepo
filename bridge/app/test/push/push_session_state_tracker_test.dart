@@ -6,7 +6,7 @@ import "package:test/test.dart";
 void main() {
   group("PushSessionStateTracker", () {
     test("tracks session statuses from SesoriSessionStatus events", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
         const SesoriSseEvent.sessionStatus(
@@ -40,7 +40,7 @@ void main() {
     });
 
     test("tracks parent-child relationships from session created and updated", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
         SesoriSseEvent.sessionCreated(
@@ -73,7 +73,7 @@ void main() {
     });
 
     test("tracks session titles from session created and updated", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
         SesoriSseEvent.sessionCreated(
@@ -91,7 +91,7 @@ void main() {
     });
 
     test("tracks messageID to role from message updated events", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
         const SesoriSseEvent.messageUpdated(
@@ -130,7 +130,7 @@ void main() {
     });
 
     test("tracks latest assistant text only for assistant text parts", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
         const SesoriSseEvent.messageUpdated(
@@ -187,7 +187,7 @@ void main() {
     });
 
     test("tracks pending questions and clears on replied or rejected", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
         const SesoriSseEvent.questionAsked(
@@ -225,7 +225,7 @@ void main() {
     });
 
     test("tracks pending permissions using requestID to sessionID mapping", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
         const SesoriSseEvent.permissionAsked(
@@ -250,7 +250,7 @@ void main() {
     });
 
     test("isSessionGroupFullyIdle is true only when session and direct children are idle", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
       tracker.handleEvent(
@@ -284,7 +284,7 @@ void main() {
     });
 
     test("isSessionGroupFullyIdle returns false when a grandchild is busy", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
       tracker.handleEvent(
@@ -318,7 +318,7 @@ void main() {
     });
 
     test("hasPendingInteraction returns true for pending question or permission", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
         const SesoriSseEvent.questionAsked(
@@ -346,7 +346,7 @@ void main() {
     });
 
     test("hasPendingInteraction includes direct child sessions", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       // Register parent and child.
       tracker.handleEvent(
@@ -382,7 +382,7 @@ void main() {
     });
 
     test("hasPendingInteraction includes grandchild sessions", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
       tracker.handleEvent(
@@ -417,7 +417,7 @@ void main() {
     });
 
     test("getSessionTitle returns cached title or null", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       expect(tracker.getSessionTitle("missing"), isNull);
 
@@ -431,7 +431,7 @@ void main() {
     });
 
     test("getLatestAssistantText returns cached text or null", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       expect(tracker.getLatestAssistantText("session-a"), isNull);
 
@@ -471,7 +471,7 @@ void main() {
     });
 
     test("wasPreviouslyBusy true only when session was seen busy before idle", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       expect(tracker.wasPreviouslyBusy("session-a"), isFalse);
 
@@ -492,7 +492,7 @@ void main() {
     });
 
     test("reset clears all maps and state", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker
         ..handleEvent(
@@ -566,7 +566,7 @@ void main() {
     });
 
     test("handleEvent processes events and updates state", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
         SesoriSseEvent.sessionCreated(
@@ -590,7 +590,7 @@ void main() {
     });
 
     test("cleans up session state on session deleted", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker
         ..handleEvent(
@@ -636,7 +636,7 @@ void main() {
     });
 
     test("session delete removes only indexed message roles for that session", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
       tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "other")));
@@ -713,7 +713,7 @@ void main() {
     });
 
     test("ignores message part updates with non-text type", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker
         ..handleEvent(
@@ -752,7 +752,7 @@ void main() {
     });
 
     test("ignores message part updates for non-assistant messages", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker
         ..handleEvent(
@@ -791,7 +791,7 @@ void main() {
     });
 
     test("idle without prior busy does not mark session as previously busy", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
         const SesoriSseEvent.sessionStatus(
@@ -805,7 +805,7 @@ void main() {
     });
 
     test("getSessionProjectId returns stored projectId after session upsert", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
         SesoriSseEvent.sessionCreated(
@@ -817,13 +817,13 @@ void main() {
     });
 
     test("getSessionProjectId returns null for unknown sessionId", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       expect(tracker.getSessionProjectId(sessionId: "unknown"), isNull);
     });
 
     test("wasPreviouslyBusy returns true if only a descendant was busy", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
         SesoriSseEvent.sessionCreated(info: _session(id: "root")),
@@ -847,7 +847,7 @@ void main() {
     });
 
     test("projectsSummary establishes parent-child links for status-only sessions", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       // Sessions created implicitly via status events (e.g., after bridge restart).
       tracker.handleEvent(
@@ -879,7 +879,7 @@ void main() {
     });
 
     test("projectsSummary does not overwrite parent links from sessionCreated", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       // Proper creation events establish parent link.
       tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
@@ -908,7 +908,7 @@ void main() {
     });
 
     test("root session gets projectId from projects summary", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
         const SesoriSseEvent.projectsSummary(
@@ -927,7 +927,7 @@ void main() {
     });
 
     test("child session gets projectId from projects summary", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
         const SesoriSseEvent.projectsSummary(
@@ -950,7 +950,7 @@ void main() {
     });
 
     test("projects summary overwrites existing projectId", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
         SesoriSseEvent.sessionCreated(
@@ -974,7 +974,7 @@ void main() {
     });
 
     test("projectsSummary establishes multi-level hierarchy for status-only sessions", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       // Three sessions known only via status events.
       tracker.handleEvent(
@@ -1021,7 +1021,7 @@ void main() {
     });
 
     test("resolveRootSessionId stops at child when parent entry is missing", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       // Child has parentId set via sessionCreated, but parent was never seen.
       tracker.handleEvent(
@@ -1128,7 +1128,7 @@ void main() {
     });
 
     test("subtree prune removes only indexed message roles for that subtree", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root-a")));
       tracker.handleEvent(
@@ -1487,7 +1487,7 @@ void main() {
     });
 
     test("subtree prune helpers are safe no-ops after a prior prune", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
       tracker.handleEvent(
@@ -1553,7 +1553,7 @@ void main() {
     });
 
     test("unknown session deletes clear stale parent links so summaries can repair them", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
         SesoriSseEvent.sessionUpdated(
