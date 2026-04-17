@@ -1,12 +1,9 @@
 import "dart:async";
 
-import "package:freezed_annotation/freezed_annotation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../auth/token_refresh_exception.dart";
-import "completion_notifier.dart";
-import "push_maintenance_telemetry.dart";
 import "push_notification_client.dart";
 import "push_notification_content_builder.dart";
 import "push_rate_limiter.dart";
@@ -17,38 +14,20 @@ class PushDispatcher {
   final PushNotificationClient _client;
   final PushRateLimiter _rateLimiter;
   final PushSessionStateTracker _tracker;
-  final CompletionNotifier _completionNotifier;
   final PushNotificationContentBuilder _contentBuilder;
-  final PushMaintenanceTelemetryBuilder _telemetryBuilder;
-  PushMaintenanceTelemetrySnapshot? _lastMaintenanceTelemetry;
 
   PushDispatcher({
     required PushNotificationClient client,
     required PushRateLimiter rateLimiter,
     required PushSessionStateTracker tracker,
-    required CompletionNotifier completionNotifier,
     required PushNotificationContentBuilder contentBuilder,
-    required PushMaintenanceTelemetryBuilder telemetryBuilder,
   }) : _client = client,
        _rateLimiter = rateLimiter,
        _tracker = tracker,
-       _completionNotifier = completionNotifier,
-       _contentBuilder = contentBuilder,
-       _telemetryBuilder = telemetryBuilder;
+       _contentBuilder = contentBuilder;
 
-  @visibleForTesting
-  PushMaintenanceTelemetrySnapshot? get lastMaintenanceTelemetry => _lastMaintenanceTelemetry;
-
-  void handleSseEvent(SesoriSseEvent event) {
-    _tracker.handleEvent(event);
-    _completionNotifier.handleEvent(event);
+  void dispatchImmediateIfApplicable(SesoriSseEvent event) {
     _sendImmediateNotificationIfApplicable(event);
-  }
-
-  /// Marks a session as user-aborted so the completion notification is
-  /// suppressed for the current busy→idle transition.
-  void markSessionAborted(String sessionId) {
-    _completionNotifier.markSessionAborted(sessionId);
   }
 
   void dispatchCompletionForRoot({required String rootSessionId}) {
@@ -73,47 +52,11 @@ class PushDispatcher {
     );
   }
 
-  void runMaintenancePass() {
-    _runMaintenanceStep(
-      label: "root-prune",
-      action: () {
-        final prunableRoots = _tracker.findPrunableRoots();
-        for (final prunableRoot in prunableRoots) {
-          _runMaintenanceStep(
-            label: "root-prune:${prunableRoot.rootSessionId}",
-            action: () {
-              final prunedSubtree = _tracker.pruneRootSubtree(rootSessionId: prunableRoot.rootSessionId);
-              _completionNotifier.cleanupPrunedRootSubtree(
-                rootSessionId: prunableRoot.rootSessionId,
-                prunedSessionIds: prunedSubtree.prunedSessionIds,
-              );
-            },
-          );
-        }
-      },
-    );
-
-    _runMaintenanceStep(label: "message-role-prune", action: _tracker.pruneMessageRoleMetadata);
-    _runMaintenanceStep(label: "rate-limiter-prune", action: _rateLimiter.pruneStaleEntries);
-    _runMaintenanceStep(
-      label: "telemetry",
-      action: () {
-        final snapshot = _telemetryBuilder.build(
-          trackerSnapshot: _tracker.createTelemetrySnapshot(),
-        );
-        _lastMaintenanceTelemetry = snapshot;
-        Log.d(snapshot.toLogMessage());
-      },
-    );
-  }
-
   Future<void> dispose() async {
-    _completionNotifier.dispose();
     await _client.dispose();
   }
 
   void reset() {
-    _completionNotifier.reset();
     _tracker.reset();
   }
 
@@ -167,13 +110,5 @@ class PushDispatcher {
         }
       }),
     );
-  }
-
-  void _runMaintenanceStep({required String label, required void Function() action}) {
-    try {
-      action();
-    } catch (error, stackTrace) {
-      Log.w("[push] maintenance step '$label' failed: $error\n$stackTrace");
-    }
   }
 }

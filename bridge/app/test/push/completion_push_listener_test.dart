@@ -2,7 +2,6 @@ import "package:fake_async/fake_async.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
 import "package:sesori_bridge/src/push/completion_push_listener.dart";
 import "package:sesori_bridge/src/push/push_dispatcher.dart";
-import "package:sesori_bridge/src/push/push_maintenance_telemetry.dart";
 import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -79,6 +78,41 @@ void main() {
         expect(harness.dispatcher.dispatchedRootSessionIds, equals(["session-a"]));
       });
     });
+
+    test("handleSseEvent updates tracker/notifier state and forwards immediate sends", () {
+      final harness = _newHarness();
+
+      harness.listener.handleSseEvent(
+        SesoriSseEvent.sessionCreated(
+          info: _session(id: "session-a", title: "Session A"),
+        ),
+      );
+      harness.listener.handleSseEvent(
+        const SesoriSseEvent.questionAsked(
+          id: "q-1",
+          sessionID: "session-a",
+          questions: [QuestionInfo(header: "Prompt", question: "Continue?")],
+        ),
+      );
+
+      expect(harness.tracker.getSessionTitle("session-a"), equals("Session A"));
+      expect(harness.dispatcher.immediateEvents, hasLength(2));
+    });
+
+    test("markSessionAborted updates abort suppression state", () {
+      final harness = _newHarness();
+
+      harness.listener.handleSseEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
+      harness.listener.handleSseEvent(
+        SesoriSseEvent.sessionCreated(
+          info: _session(id: "child", parentID: "root"),
+        ),
+      );
+
+      harness.listener.markSessionAborted("child");
+
+      expect(harness.notifier.abortedRootCount, equals(1));
+    });
   });
 }
 
@@ -96,10 +130,10 @@ class _Harness {
   });
 
   void emitCompletion({required String rootSessionId}) {
-    tracker.handleEvent(
+    listener.handleSseEvent(
       SesoriSseEvent.sessionCreated(info: _session(id: rootSessionId)),
     );
-    tracker.handleEvent(
+    listener.handleSseEvent(
       SesoriSseEvent.sessionUpdated(
         info: _session(id: rootSessionId, title: "Session $rootSessionId"),
       ),
@@ -119,8 +153,7 @@ class _Harness {
   }
 
   void _dispatch(SesoriSseEvent event) {
-    tracker.handleEvent(event);
-    notifier.handleEvent(event);
+    listener.handleSseEvent(event);
   }
 }
 
@@ -132,6 +165,7 @@ _Harness _newHarness() {
   );
   final dispatcher = _FakePushDispatcher();
   final listener = CompletionPushListener(
+    tracker: tracker,
     completionNotifier: notifier,
     dispatcher: dispatcher,
   );
@@ -145,9 +179,7 @@ _Harness _newHarness() {
 
 class _FakePushDispatcher implements PushDispatcher {
   final List<String> dispatchedRootSessionIds = [];
-
-  @override
-  PushMaintenanceTelemetrySnapshot? get lastMaintenanceTelemetry => null;
+  final List<SesoriSseEvent> immediateEvents = [];
 
   @override
   void dispatchCompletionForRoot({required String rootSessionId}) {
@@ -155,19 +187,15 @@ class _FakePushDispatcher implements PushDispatcher {
   }
 
   @override
+  void dispatchImmediateIfApplicable(SesoriSseEvent event) {
+    immediateEvents.add(event);
+  }
+
+  @override
   Future<void> dispose() async {}
 
   @override
-  void handleSseEvent(SesoriSseEvent event) {}
-
-  @override
-  void markSessionAborted(String sessionId) {}
-
-  @override
   void reset() {}
-
-  @override
-  void runMaintenancePass() {}
 }
 
 Session _session({
