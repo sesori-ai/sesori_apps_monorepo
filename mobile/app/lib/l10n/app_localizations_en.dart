@@ -161,6 +161,51 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListNewSession => 'New session';
 
   @override
+  String get branchPickerTitle => 'Select branch';
+
+  @override
+  String get branchPickerSearch => 'Search branches';
+
+  @override
+  String get branchPickerRemote => 'Remote';
+
+  @override
+  String branchPickerTimeAgo(String timeAgo) {
+    return 'Updated $timeAgo ago';
+  }
+
+  @override
+  String get branchPickerProjectDir => 'Project directory';
+
+  @override
+  String branchPickerProjectDirSubtitle(String branch) {
+    return 'Current branch: $branch';
+  }
+
+  @override
+  String get branchPickerNoWorktree => 'No dedicated worktree';
+
+  @override
+  String branchPickerActionTitle(String branch) {
+    return 'What do you want to do with $branch?';
+  }
+
+  @override
+  String get branchPickerConfirmSelection => 'Confirm selection';
+
+  @override
+  String get branchPickerModeStay => 'Stay on branch';
+
+  @override
+  String get branchPickerModeNew => 'Create new branch';
+
+  @override
+  String get branchPickerModeStayDescription => 'Open sessions in the selected branch';
+
+  @override
+  String get branchPickerModeNewDescription => 'Create a new branch from the selected branch';
+
+  @override
   String get sessionDetailTitle => 'Session';
 
   @override

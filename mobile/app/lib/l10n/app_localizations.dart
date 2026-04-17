@@ -349,6 +349,84 @@ abstract class AppLocalizations {
   /// **'New session'**
   String get sessionListNewSession;
 
+  /// No description provided for @branchPickerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Select branch'**
+  String get branchPickerTitle;
+
+  /// No description provided for @branchPickerSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search branches'**
+  String get branchPickerSearch;
+
+  /// No description provided for @branchPickerRemote.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote'**
+  String get branchPickerRemote;
+
+  /// No description provided for @branchPickerTimeAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated {timeAgo} ago'**
+  String branchPickerTimeAgo(String timeAgo);
+
+  /// No description provided for @branchPickerProjectDir.
+  ///
+  /// In en, this message translates to:
+  /// **'Project directory'**
+  String get branchPickerProjectDir;
+
+  /// No description provided for @branchPickerProjectDirSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Current branch: {branch}'**
+  String branchPickerProjectDirSubtitle(String branch);
+
+  /// No description provided for @branchPickerNoWorktree.
+  ///
+  /// In en, this message translates to:
+  /// **'No dedicated worktree'**
+  String get branchPickerNoWorktree;
+
+  /// No description provided for @branchPickerActionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What do you want to do with {branch}?'**
+  String branchPickerActionTitle(String branch);
+
+  /// No description provided for @branchPickerConfirmSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm selection'**
+  String get branchPickerConfirmSelection;
+
+  /// No description provided for @branchPickerModeStay.
+  ///
+  /// In en, this message translates to:
+  /// **'Stay on branch'**
+  String get branchPickerModeStay;
+
+  /// No description provided for @branchPickerModeNew.
+  ///
+  /// In en, this message translates to:
+  /// **'Create new branch'**
+  String get branchPickerModeNew;
+
+  /// No description provided for @branchPickerModeStayDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Open sessions in the selected branch'**
+  String get branchPickerModeStayDescription;
+
+  /// No description provided for @branchPickerModeNewDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a new branch from the selected branch'**
+  String get branchPickerModeNewDescription;
+
   /// No description provided for @sessionDetailTitle.
   ///
   /// In en, this message translates to:

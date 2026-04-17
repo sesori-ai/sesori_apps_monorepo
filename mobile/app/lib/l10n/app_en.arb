@@ -102,6 +102,40 @@
   "sessionListErrorTitle": "Failed to load sessions",
   "sessionListRetry": "Retry",
   "sessionListNewSession": "New session",
+  "branchPickerTitle": "Select branch",
+  "branchPickerSearch": "Search branches",
+  "branchPickerRemote": "Remote",
+  "branchPickerTimeAgo": "Updated {timeAgo} ago",
+  "@branchPickerTimeAgo": {
+    "placeholders": {
+      "timeAgo": {
+        "type": "String"
+      }
+    }
+  },
+  "branchPickerProjectDir": "Project directory",
+  "branchPickerProjectDirSubtitle": "Current branch: {branch}",
+  "@branchPickerProjectDirSubtitle": {
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
+  "branchPickerNoWorktree": "No dedicated worktree",
+  "branchPickerActionTitle": "What do you want to do with {branch}?",
+  "@branchPickerActionTitle": {
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
+  "branchPickerConfirmSelection": "Confirm selection",
+  "branchPickerModeStay": "Stay on branch",
+  "branchPickerModeNew": "Create new branch",
+  "branchPickerModeStayDescription": "Open sessions in the selected branch",
+  "branchPickerModeNewDescription": "Create a new branch from the selected branch",
   "sessionDetailTitle": "Session",
   "sessionDetailEmpty": "No messages yet",
   "sessionDetailErrorTitle": "Failed to load messages",
