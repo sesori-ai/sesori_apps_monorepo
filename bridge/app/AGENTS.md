@@ -52,10 +52,12 @@ modules/
 | Process mgmt     | `lib/src/server/`                  | Spawns OpenCode, health poll, SIGTERM cleanup         |
 
 ## FILE SIZE
-- Maximum file length: 250 lines per production code file
-- If a file exceeds 250 lines, split it into smaller focused files (by use-case, component, or concern)
+- Target production file length: about 250 lines per file
+- Treat 250 lines as a pressure signal and default target, not an automatic blocker or automatic extraction rule by itself
+- If a file grows past the target, first look for honest splits by use-case, component, or concern that preserve clear ownership boundaries
 - File length alone never justifies a new class. Ask this before extracting: **Would this class still deserve to exist if the original file were under the line limit?** If the answer is no, keep cohesive private methods instead.
-- Prefer many small files over few large files
+- If splitting would create a fake collaborator or violate cohesion and ownership-boundary rules, keep the cohesive owner intact even when it stays above the target
+- Prefer many small files over few large files when the boundaries are real
 - Test files are explicitly excluded from this limit
 
 ## CONVENTIONS
