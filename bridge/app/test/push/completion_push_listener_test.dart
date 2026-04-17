@@ -193,9 +193,6 @@ class _FakePushDispatcher implements PushDispatcher {
 
   @override
   Future<void> dispose() async {}
-
-  @override
-  void reset() {}
 }
 
 Session _session({

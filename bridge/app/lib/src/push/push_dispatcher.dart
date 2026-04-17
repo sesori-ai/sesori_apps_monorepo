@@ -56,10 +56,6 @@ class PushDispatcher {
     await _client.dispose();
   }
 
-  void reset() {
-    _tracker.reset();
-  }
-
   void _sendImmediateNotificationIfApplicable(SesoriSseEvent event) {
     final notificationData = _contentBuilder.extractNotificationData(event);
     if (notificationData == null) {
