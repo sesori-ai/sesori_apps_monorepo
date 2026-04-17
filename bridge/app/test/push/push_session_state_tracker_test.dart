@@ -1045,7 +1045,7 @@ void main() {
 
     test("prunes an idle subtree and reports telemetry snapshot data", () {
       final clock = _FakeClock(initial: DateTime.utc(2026, 1, 1, 12));
-      final tracker = PushSessionStateTracker.testable(now: clock.now);
+      final tracker = PushSessionStateTracker(now: clock.now);
 
       tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
       clock.advance(const Duration(seconds: 1));
@@ -1213,7 +1213,7 @@ void main() {
 
     test("does not prune busy or pending roots before they become idle long enough", () {
       final clock = _FakeClock(initial: DateTime.utc(2026, 1, 1, 12));
-      final tracker = PushSessionStateTracker.testable(now: clock.now);
+      final tracker = PushSessionStateTracker(now: clock.now);
 
       tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
       tracker.handleEvent(
@@ -1252,7 +1252,7 @@ void main() {
 
     test("late events can rebuild state after a subtree prune", () {
       final clock = _FakeClock(initial: DateTime.utc(2026, 1, 1, 12));
-      final tracker = PushSessionStateTracker.testable(now: clock.now);
+      final tracker = PushSessionStateTracker(now: clock.now);
 
       tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
       tracker.handleEvent(
@@ -1320,7 +1320,7 @@ void main() {
 
     test("prunes stale message roles and enforces the hard cap", () {
       final clock = _FakeClock(initial: DateTime.utc(2026, 1, 1, 12));
-      final tracker = PushSessionStateTracker.testable(now: clock.now);
+      final tracker = PushSessionStateTracker(now: clock.now);
 
       tracker.handleEvent(
         const SesoriSseEvent.messageUpdated(
@@ -1425,7 +1425,7 @@ void main() {
 
     test("active assistant message parts refresh role retention timestamps", () {
       final clock = _FakeClock(initial: DateTime.utc(2026, 1, 1, 12));
-      final tracker = PushSessionStateTracker.testable(now: clock.now);
+      final tracker = PushSessionStateTracker(now: clock.now);
 
       tracker.handleEvent(
         const SesoriSseEvent.messageUpdated(
@@ -1509,7 +1509,7 @@ void main() {
 
     test("stale project summaries do not break reparented prune roots", () {
       final clock = _FakeClock(initial: DateTime.utc(2026, 1, 1, 12));
-      final tracker = PushSessionStateTracker.testable(now: clock.now);
+      final tracker = PushSessionStateTracker(now: clock.now);
 
       tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root-a")));
       tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root-b")));
@@ -1584,7 +1584,7 @@ void main() {
 
     test("projectsSummary-only roots receive timestamps and become prunable", () {
       final clock = _FakeClock(initial: DateTime.utc(2026, 1, 1, 12));
-      final tracker = PushSessionStateTracker.testable(now: clock.now);
+      final tracker = PushSessionStateTracker(now: clock.now);
 
       tracker.handleEvent(
         const SesoriSseEvent.projectsSummary(

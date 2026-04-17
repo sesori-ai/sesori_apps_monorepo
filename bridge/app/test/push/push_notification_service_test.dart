@@ -3,8 +3,8 @@ import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
 import "package:sesori_bridge/src/push/push_maintenance_telemetry.dart";
 import "package:sesori_bridge/src/push/push_notification_client.dart";
-import "package:sesori_bridge/src/push/push_notification_service.dart";
 import "package:sesori_bridge/src/push/push_notification_content_service.dart";
+import "package:sesori_bridge/src/push/push_notification_service.dart";
 import "package:sesori_bridge/src/push/push_rate_limiter.dart";
 import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
 import "package:sesori_bridge/src/push/push_session_state_tracker_models.dart";
@@ -1108,7 +1108,7 @@ _newHarness({
     rateLimiter: resolvedRateLimiter,
     rssBytesReader: resolvedRssBytesReader,
   );
-  final contentService = const PushNotificationContentService();
+  const contentService = PushNotificationContentService();
   final service = PushNotificationService(
     client: resolvedClient,
     rateLimiter: resolvedRateLimiter,
@@ -1129,10 +1129,7 @@ _newHarness({
 class ThrowingPushSessionStateTracker extends PushSessionStateTracker {
   final bool throwFindPrunableRoots;
 
-  ThrowingPushSessionStateTracker({
-    required DateTime Function() now,
-    this.throwFindPrunableRoots = false,
-  }) : super(now: now);
+  ThrowingPushSessionStateTracker({required super.now, this.throwFindPrunableRoots = false});
 
   @override
   List<PushPrunableRoot> findPrunableRoots() {
