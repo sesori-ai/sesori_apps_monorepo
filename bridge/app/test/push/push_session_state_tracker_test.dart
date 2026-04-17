@@ -1,5 +1,5 @@
 import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
-import "package:sesori_bridge/src/push/push_session_state_tracker_models.dart";
+import "package:sesori_bridge/src/push/push_session_state_tracker_types.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 

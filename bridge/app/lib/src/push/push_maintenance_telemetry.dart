@@ -2,7 +2,7 @@ import "dart:io";
 
 import "completion_notifier.dart";
 import "push_rate_limiter.dart";
-import "push_session_state_tracker_models.dart";
+import "push_session_state_tracker_types.dart";
 
 class PushMaintenanceTelemetrySnapshot {
   final double? rssMb;
