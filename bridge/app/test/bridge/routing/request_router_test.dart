@@ -9,6 +9,7 @@ import "package:sesori_bridge/src/bridge/repositories/provider_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
+import "package:sesori_bridge/src/bridge/routing/abort_session_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/get_session_diffs_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/request_router.dart";
 import "package:sesori_bridge/src/bridge/services/session_abort_service.dart";
@@ -76,7 +77,9 @@ void main() {
       router = RequestRouter(
         plugin: plugin,
         sessionRepository: sessionRepository,
-        sessionAbortService: SessionAbortService(sessionRepository: sessionRepository),
+        abortSessionHandler: AbortSessionHandler(
+          sessionAbortService: SessionAbortService(sessionRepository: sessionRepository),
+        ),
         sessionCreationService: sessionCreationService,
         sessionArchiveService: sessionArchiveService,
         prSyncService: FakePrSyncService(),
@@ -349,7 +352,9 @@ void main() {
       router = RequestRouter(
         plugin: plugin,
         sessionRepository: sessionRepository,
-        sessionAbortService: SessionAbortService(sessionRepository: sessionRepository),
+        abortSessionHandler: AbortSessionHandler(
+          sessionAbortService: SessionAbortService(sessionRepository: sessionRepository),
+        ),
         sessionCreationService: SessionCreationService(
           metadataService: metadataService,
           worktreeService: worktreeService,

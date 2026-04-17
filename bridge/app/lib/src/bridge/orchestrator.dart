@@ -20,6 +20,7 @@ import "repositories/permission_repository.dart";
 import "repositories/project_repository.dart";
 import "repositories/provider_repository.dart";
 import "repositories/session_repository.dart";
+import "routing/abort_session_handler.dart";
 import "routing/get_session_diffs_handler.dart";
 import "routing/request_router.dart";
 import "services/pr_sync_service.dart";
@@ -204,7 +205,7 @@ class OrchestratorSession {
        _router = RequestRouter(
          plugin: plugin,
          sessionRepository: sessionRepository,
-         sessionAbortService: sessionAbortService,
+         abortSessionHandler: AbortSessionHandler(sessionAbortService: sessionAbortService),
          sessionCreationService: sessionCreationService,
          sessionArchiveService: sessionArchiveService,
          prSyncService: prSyncService,

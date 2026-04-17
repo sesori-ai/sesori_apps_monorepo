@@ -6,7 +6,6 @@ import "../repositories/project_repository.dart";
 import "../repositories/provider_repository.dart";
 import "../repositories/session_repository.dart";
 import "../services/pr_sync_service.dart";
-import "../services/session_abort_service.dart";
 import "../services/session_archive_service.dart";
 import "../services/session_creation_service.dart";
 import "../services/session_persistence_service.dart";
@@ -54,7 +53,7 @@ class RequestRouter {
   RequestRouter({
     required BridgePlugin plugin,
     required SessionRepository sessionRepository,
-    required SessionAbortService sessionAbortService,
+    required AbortSessionHandler abortSessionHandler,
     required SessionCreationService sessionCreationService,
     required SessionArchiveService sessionArchiveService,
     required PrSyncService prSyncService,
@@ -67,7 +66,7 @@ class RequestRouter {
   }) : _handlers = _buildHandlers(
          plugin: plugin,
          sessionRepository: sessionRepository,
-         sessionAbortService: sessionAbortService,
+         abortSessionHandler: abortSessionHandler,
          sessionCreationService: sessionCreationService,
          sessionArchiveService: sessionArchiveService,
          prSyncService: prSyncService,
@@ -82,7 +81,7 @@ class RequestRouter {
   static List<RequestHandlerBase> _buildHandlers({
     required BridgePlugin plugin,
     required SessionRepository sessionRepository,
-    required SessionAbortService sessionAbortService,
+    required AbortSessionHandler abortSessionHandler,
     required SessionCreationService sessionCreationService,
     required SessionArchiveService sessionArchiveService,
     required PrSyncService prSyncService,
@@ -115,7 +114,7 @@ class RequestRouter {
         sessionPersistenceService: sessionPersistenceService,
       ),
       SendPromptHandler(plugin),
-      AbortSessionHandler(sessionAbortService: sessionAbortService),
+      abortSessionHandler,
       GetProvidersHandler(providerRepository),
       GetAgentsHandler(plugin),
       GetSessionQuestionsHandler(plugin),
