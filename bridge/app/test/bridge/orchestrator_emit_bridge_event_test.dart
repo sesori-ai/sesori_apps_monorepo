@@ -538,7 +538,9 @@ class _CapturingPushNotificationService extends PushNotificationService {
   }
 
   @override
-  Future<void> dispose() async {}
+  Future<void> dispose() async {
+    await super.dispose();
+  }
 }
 
 class _SummaryPlugin implements BridgePlugin {
