@@ -42,10 +42,15 @@ class PushMaintenanceLoop {
       action: () {
         final prunableRoots = _tracker.findPrunableRoots();
         for (final prunableRoot in prunableRoots) {
-          final prunedSubtree = _tracker.pruneRootSubtree(rootSessionId: prunableRoot.rootSessionId);
-          _completionNotifier.cleanupPrunedRootSubtree(
-            rootSessionId: prunableRoot.rootSessionId,
-            prunedSessionIds: prunedSubtree.prunedSessionIds,
+          _runMaintenanceStep(
+            label: "root-prune:${prunableRoot.rootSessionId}",
+            action: () {
+              final prunedSubtree = _tracker.pruneRootSubtree(rootSessionId: prunableRoot.rootSessionId);
+              _completionNotifier.cleanupPrunedRootSubtree(
+                rootSessionId: prunableRoot.rootSessionId,
+                prunedSessionIds: prunedSubtree.prunedSessionIds,
+              );
+            },
           );
         }
       },

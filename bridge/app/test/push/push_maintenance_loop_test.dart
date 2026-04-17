@@ -134,11 +134,23 @@ void main() {
           idleSince: DateTime.utc(2026, 1, 1, 12, 5),
           retainedSessionCount: 1,
         ),
+        PushPrunableRoot(
+          rootSessionId: "root-c",
+          idleSince: DateTime.utc(2026, 1, 1, 12, 10),
+          retainedSessionCount: 1,
+        ),
       ];
       harness.tracker.pruneResults["root-a"] = const PushPrunedSubtree(
         rootSessionId: "root-a",
         prunedSessionIds: <String>["child-a"],
         removedSessionCount: 2,
+        removedMessageRoleCount: 0,
+        removedPermissionMappingCount: 0,
+      );
+      harness.tracker.pruneResults["root-c"] = const PushPrunedSubtree(
+        rootSessionId: "root-c",
+        prunedSessionIds: <String>["child-c"],
+        removedSessionCount: 1,
         removedMessageRoleCount: 0,
         removedPermissionMappingCount: 0,
       );
@@ -149,10 +161,11 @@ void main() {
         action: harness.loop.runNow,
       );
 
-      expect(stdout, contains("[push] maintenance step 'root-prune' failed:"));
-      expect(harness.tracker.pruneRootSubtreeCalls, equals(<String>["root-a", "root-b"]));
-      expect(harness.notifier.cleanupCalls, hasLength(1));
-      expect(harness.notifier.cleanupCalls.single.rootSessionId, equals("root-a"));
+      expect(stdout, contains("[push] maintenance step 'root-prune:root-b' failed:"));
+      expect(harness.tracker.pruneRootSubtreeCalls, equals(<String>["root-a", "root-b", "root-c"]));
+      expect(harness.notifier.cleanupCalls, hasLength(2));
+      expect(harness.notifier.cleanupCalls[0].rootSessionId, equals("root-a"));
+      expect(harness.notifier.cleanupCalls[1].rootSessionId, equals("root-c"));
       expect(harness.tracker.pruneMessageRoleMetadataCalls, equals(1));
       expect(harness.rateLimiter.pruneStaleEntriesCalls, equals(1));
       expect(harness.telemetryBuilder.buildCalls, hasLength(1));
@@ -307,8 +320,7 @@ class SpyCompletionNotifier extends CompletionNotifier {
   final List<({String rootSessionId, List<String> prunedSessionIds})> cleanupCalls =
       <({String rootSessionId, List<String> prunedSessionIds})>[];
 
-  SpyCompletionNotifier({required super.tracker})
-    : super(debounceDuration: const Duration(milliseconds: 500));
+  SpyCompletionNotifier({required super.tracker}) : super(debounceDuration: const Duration(milliseconds: 500));
 
   @override
   void cleanupPrunedRootSubtree({
