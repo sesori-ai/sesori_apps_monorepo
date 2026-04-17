@@ -25,10 +25,10 @@ import "package:sesori_bridge/src/bridge/services/session_event_enrichment_servi
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
+import "package:sesori_bridge/src/push/push_dispatcher.dart";
 import "package:sesori_bridge/src/push/push_maintenance_telemetry.dart";
 import "package:sesori_bridge/src/push/push_notification_client.dart";
 import "package:sesori_bridge/src/push/push_notification_content_builder.dart";
-import "package:sesori_bridge/src/push/push_notification_service.dart";
 import "package:sesori_bridge/src/push/push_rate_limiter.dart";
 import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -94,7 +94,7 @@ void main() {
       client: relayClient,
       plugin: plugin,
       metadataService: _FakeMetadataService(),
-      pushNotificationService: _createPushNotificationService(),
+      pushDispatcher: _createPushDispatcher(),
       tokenRefresher: _FakeTokenRefresher(),
       failureReporter: FakeFailureReporter(),
       prSyncService: fakePrSyncService,
@@ -153,13 +153,13 @@ void main() {
     await relayServer.close();
   });
 
-  test("pre-seeds and forwards projects summary to push service", () async {
+  test("pre-seeds and forwards projects summary to push dispatcher", () async {
     final relayServer = await TestRelayServer.start();
     final database = createTestDatabase();
-    final pushService = _CapturingPushNotificationService();
+    final pushDispatcher = _CapturingPushDispatcher();
     final plugin = _SummaryPlugin(
       onSubscribe: () {
-        expect(pushService.events.length, 1);
+        expect(pushDispatcher.events.length, 1);
       },
     );
     final fakePrSyncService = _FakePrSyncService();
@@ -209,7 +209,7 @@ void main() {
       client: relayClient,
       plugin: plugin,
       metadataService: _FakeMetadataService(),
-      pushNotificationService: pushService,
+      pushDispatcher: pushDispatcher,
       tokenRefresher: _FakeTokenRefresher(),
       failureReporter: FakeFailureReporter(),
       prSyncService: fakePrSyncService,
@@ -253,7 +253,7 @@ void main() {
 
     await Future<void>.delayed(const Duration(milliseconds: 100));
 
-    expect(pushService.events, hasLength(2));
+    expect(pushDispatcher.events, hasLength(2));
 
     await session.cancel();
     await runFuture.timeout(const Duration(seconds: 5));
@@ -332,7 +332,7 @@ void main() {
       ),
     );
 
-    final pushService = _CapturingPushNotificationService();
+    final pushDispatcher = _CapturingPushDispatcher();
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
       failureReporter: FakeFailureReporter(),
@@ -349,7 +349,7 @@ void main() {
       client: relayClient,
       plugin: plugin,
       metadataService: _FakeMetadataService(),
-      pushNotificationService: pushService,
+      pushDispatcher: pushDispatcher,
       tokenRefresher: _FakeTokenRefresher(),
       failureReporter: FakeFailureReporter(),
       prSyncService: _FakePrSyncService(),
@@ -384,14 +384,14 @@ void main() {
     enrichGate.complete();
 
     final timeoutAt = DateTime.now().add(const Duration(seconds: 2));
-    while (pushService.events.length < 3) {
+    while (pushDispatcher.events.length < 3) {
       if (DateTime.now().isAfter(timeoutAt)) {
         fail("Timed out waiting for mapped SSE events");
       }
       await Future<void>.delayed(const Duration(milliseconds: 10));
     }
 
-    final emittedEvents = pushService.events.skip(1).toList(growable: false);
+    final emittedEvents = pushDispatcher.events.skip(1).toList(growable: false);
 
     expect(
       emittedEvents.map((event) => event.toJson()["type"]).toList(growable: false),
@@ -480,7 +480,7 @@ List<int> _withConnID({required int connID, required List<int> payload}) {
   return <int>[header.getUint8(0), header.getUint8(1), ...payload];
 }
 
-PushNotificationService _createPushNotificationService() {
+PushDispatcher _createPushDispatcher() {
   final tracker = PushSessionStateTracker(now: DateTime.now);
   final completionNotifier = CompletionNotifier(tracker: tracker);
   final rateLimiter = PushRateLimiter();
@@ -489,20 +489,20 @@ PushNotificationService _createPushNotificationService() {
     rateLimiter: rateLimiter,
     rssBytesReader: () => null,
   );
-  return PushNotificationService(
+  return PushDispatcher(
     client: _NoopPushNotificationClient(),
     rateLimiter: rateLimiter,
     tracker: tracker,
     completionNotifier: completionNotifier,
     telemetryBuilder: telemetryBuilder,
-    contentService: const PushNotificationContentBuilder(),
+    contentBuilder: const PushNotificationContentBuilder(),
   );
 }
 
-class _CapturingPushNotificationService extends PushNotificationService {
+class _CapturingPushDispatcher extends PushDispatcher {
   final List<SesoriSseEvent> events = <SesoriSseEvent>[];
 
-  factory _CapturingPushNotificationService() {
+  factory _CapturingPushDispatcher() {
     final tracker = PushSessionStateTracker(now: DateTime.now);
     final completionNotifier = CompletionNotifier(tracker: tracker);
     final rateLimiter = PushRateLimiter();
@@ -511,7 +511,7 @@ class _CapturingPushNotificationService extends PushNotificationService {
       rateLimiter: rateLimiter,
       rssBytesReader: () => null,
     );
-    return _CapturingPushNotificationService._(
+    return _CapturingPushDispatcher._(
       tracker: tracker,
       completionNotifier: completionNotifier,
       rateLimiter: rateLimiter,
@@ -519,17 +519,14 @@ class _CapturingPushNotificationService extends PushNotificationService {
     );
   }
 
-  _CapturingPushNotificationService._({
+  _CapturingPushDispatcher._({
     required super.tracker,
-    required CompletionNotifier completionNotifier,
-    required PushRateLimiter rateLimiter,
-    required PushMaintenanceTelemetryBuilder telemetryBuilder,
+    required super.completionNotifier,
+    required super.rateLimiter,
+    required super.telemetryBuilder,
   }) : super(
          client: _NoopPushNotificationClient(),
-         rateLimiter: rateLimiter,
-         completionNotifier: completionNotifier,
-         telemetryBuilder: telemetryBuilder,
-         contentService: const PushNotificationContentBuilder(),
+         contentBuilder: const PushNotificationContentBuilder(),
        );
 
   @override

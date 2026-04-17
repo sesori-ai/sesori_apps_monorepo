@@ -19,10 +19,10 @@ import "package:sesori_bridge/src/bridge/services/session_event_enrichment_servi
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
+import "package:sesori_bridge/src/push/push_dispatcher.dart";
 import "package:sesori_bridge/src/push/push_maintenance_telemetry.dart";
 import "package:sesori_bridge/src/push/push_notification_client.dart";
 import "package:sesori_bridge/src/push/push_notification_content_builder.dart";
-import "package:sesori_bridge/src/push/push_notification_service.dart";
 import "package:sesori_bridge/src/push/push_rate_limiter.dart";
 import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -102,7 +102,7 @@ class _TestHarness {
     final relayServer = await TestRelayServer.start();
     final database = createTestDatabase();
     final failureReporter = CapturingFailureReporter();
-    final pushService = _createPushNotificationService();
+    final pushService = _createPushDispatcher();
     final tokenRefresher = _FakeTokenRefresher();
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
@@ -165,7 +165,7 @@ class _TestHarness {
       client: relayClient,
       plugin: plugin,
       metadataService: metadataService,
-      pushNotificationService: pushService,
+      pushDispatcher: pushService,
       tokenRefresher: tokenRefresher,
       failureReporter: failureReporter,
       prSyncService: prSyncService,
@@ -221,7 +221,7 @@ class _TestHarness {
   }
 }
 
-PushNotificationService _createPushNotificationService() {
+PushDispatcher _createPushDispatcher() {
   final tracker = PushSessionStateTracker(now: DateTime.now);
   final completionNotifier = CompletionNotifier(tracker: tracker);
   final rateLimiter = PushRateLimiter();
@@ -230,13 +230,13 @@ PushNotificationService _createPushNotificationService() {
     rateLimiter: rateLimiter,
     rssBytesReader: () => null,
   );
-  return PushNotificationService(
+  return PushDispatcher(
     client: _NoopPushNotificationClient(),
     rateLimiter: rateLimiter,
     tracker: tracker,
     completionNotifier: completionNotifier,
     telemetryBuilder: telemetryBuilder,
-    contentService: const PushNotificationContentBuilder(),
+    contentBuilder: const PushNotificationContentBuilder(),
   );
 }
 
