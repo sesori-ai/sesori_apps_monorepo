@@ -11,7 +11,7 @@ import "../../auth/token_refresher.dart";
 import "../../push/completion_notifier.dart";
 import "../../push/push_maintenance_telemetry.dart" show readCurrentRssBytes, PushMaintenanceTelemetryBuilder;
 import "../../push/push_notification_client.dart";
-import "../../push/push_notification_content_service.dart";
+import "../../push/push_notification_content_builder.dart";
 import "../../push/push_notification_service.dart";
 import "../../push/push_rate_limiter.dart";
 import "../../push/push_session_state_tracker.dart";
@@ -200,7 +200,7 @@ PushNotificationService _createPushNotificationService({
     rateLimiter: rateLimiter,
     tracker: tracker,
     completionNotifier: completionNotifier,
-    contentService: const PushNotificationContentService(),
+    contentService: const PushNotificationContentBuilder(),
     telemetryBuilder: telemetryBuilder,
   );
 }

@@ -9,7 +9,7 @@ import "completion_notifier.dart";
 import "push_maintenance_loop.dart";
 import "push_maintenance_telemetry.dart";
 import "push_notification_client.dart";
-import "push_notification_content_service.dart";
+import "push_notification_content_builder.dart";
 import "push_rate_limiter.dart";
 import "push_send_exception.dart";
 import "push_session_state_tracker.dart";
@@ -19,7 +19,7 @@ class PushNotificationService {
   final PushRateLimiter _rateLimiter;
   final PushSessionStateTracker _tracker;
   final CompletionNotifier _completionNotifier;
-  final PushNotificationContentService _contentService;
+  final PushNotificationContentBuilder _contentService;
   late final PushMaintenanceLoop _maintenanceLoop;
   late final StreamSubscription<String> _completionSubscription;
 
@@ -28,7 +28,7 @@ class PushNotificationService {
     required PushRateLimiter rateLimiter,
     required PushSessionStateTracker tracker,
     required CompletionNotifier completionNotifier,
-    required PushNotificationContentService contentService,
+    required PushNotificationContentBuilder contentService,
     required PushMaintenanceTelemetryBuilder telemetryBuilder,
     Duration maintenanceInterval = const Duration(minutes: 10),
   }) : _client = client,
