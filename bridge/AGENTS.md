@@ -92,6 +92,10 @@ Constructor parameters for injected dependencies (services, runners, checkers) m
 
 Use push-based communication (`StreamController`, `PublishSubject`) between services. Never pass `Function` callbacks for event notification. Services that produce events expose a `Stream`; consumers subscribe to it. This also unlocks symmetric trigger handling — two consumers of the same stream are structurally symmetric by construction.
 
+### Prefer CompositeSubscription For Multiple Owned Streams
+
+When a class owns more than one long-lived `StreamSubscription`, prefer a single `CompositeSubscription` and add each owned subscription to it. Cancel the composite in one place during teardown instead of manually tracking several nullable subscription fields.
+
 ### Honest Ownership Boundaries
 
 Do not extract a bridge collaborator only to make a file shorter. The extracted class must own lifecycle, state or invariants, a stable domain responsibility, or a multi-caller decision boundary. If it owns none of those, keep the logic as private methods on the cohesive owner.
