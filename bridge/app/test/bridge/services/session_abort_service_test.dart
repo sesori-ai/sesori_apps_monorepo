@@ -17,6 +17,7 @@ void main() {
     tearDown(() => service.dispose());
 
     test("emits aborted session only after repository abort succeeds", () async {
+      final startedSessionIds = <String>[];
       final emittedSessionIds = <String>[];
       final abortStarted = Completer<void>();
       sessionRepository.onAbort = ({required String sessionId}) async {
@@ -24,12 +25,15 @@ void main() {
         await sessionRepository.abortCompleter.future;
       };
 
+      final startedSubscription = service.abortStartedSessions.listen(startedSessionIds.add);
       final subscription = service.abortedSessions.listen(emittedSessionIds.add);
+      addTearDown(startedSubscription.cancel);
       addTearDown(subscription.cancel);
 
       final abortFuture = service.abortSession(sessionId: "session-1");
       await abortStarted.future;
 
+      expect(startedSessionIds, equals(["session-1"]));
       expect(emittedSessionIds, isEmpty);
 
       sessionRepository.abortCompleter.complete();
@@ -39,20 +43,28 @@ void main() {
     });
 
     test("does not emit aborted session when repository abort fails", () async {
+      final startedSessionIds = <String>[];
       final emittedSessionIds = <String>[];
+      final failedSessionIds = <String>[];
       sessionRepository.onAbort = ({required String sessionId}) async {
         throw StateError("abort failed for $sessionId");
       };
 
+      final startedSubscription = service.abortStartedSessions.listen(startedSessionIds.add);
       final subscription = service.abortedSessions.listen(emittedSessionIds.add);
+      final failedSubscription = service.abortFailedSessions.listen(failedSessionIds.add);
+      addTearDown(startedSubscription.cancel);
       addTearDown(subscription.cancel);
+      addTearDown(failedSubscription.cancel);
 
       await expectLater(
         service.abortSession(sessionId: "session-1"),
         throwsA(isA<StateError>()),
       );
 
+      expect(startedSessionIds, equals(["session-1"]));
       expect(emittedSessionIds, isEmpty);
+      expect(failedSessionIds, equals(["session-1"]));
     });
   });
 }

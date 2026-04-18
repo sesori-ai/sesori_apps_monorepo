@@ -164,7 +164,9 @@ class OrchestratorSession {
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final SessionAbortService _sessionAbortService;
   StreamSubscription<dynamic>? _eventSubscription;
+  StreamSubscription<String>? _abortStartedSessionsSubscription;
   StreamSubscription<String>? _abortedSessionsSubscription;
+  StreamSubscription<String>? _abortFailedSessionsSubscription;
 
   bool _cancelled = false;
 
@@ -235,49 +237,58 @@ class OrchestratorSession {
   Future<void> run() async {
     final kxManager = KeyExchangeManager(_roomKey);
     final activePhones = <int, bool>{};
-
-    _abortedSessionsSubscription = _sessionAbortService.abortedSessions.listen(_completionListener.markSessionAborted);
-    _completionListener.start();
-    _maintenanceListener.start();
-
-    final startupSummary = _mapper.buildProjectsSummaryEvent();
-    if (startupSummary != null) {
-      _completionListener.handleSseEvent(startupSummary);
-    }
-
-    Log.d("[dbg] subscribing to plugin event stream...");
-    _eventSubscription = _plugin.events
-        .asyncMap<BridgeSseEvent>(_sessionEventEnrichmentService.enrich)
-        .listen(
-          (event) {
-            unawaited(_processPluginEvent(event));
-          },
-          onError: (Object e, StackTrace st) {
-            Log.w("[dbg] plugin event stream error: $e");
-            unawaited(
-              _failureReporter.recordFailure(
-                error: e,
-                stackTrace: st,
-                uniqueIdentifier: "bridge.plugin.events",
-                fatal: false,
-                reason: "plugin event stream failure",
-                information: const [],
-              ),
-            );
-          },
-          onDone: () {
-            Log.w("[dbg] plugin event stream closed");
-          },
-        );
-    Log.d("[dbg] plugin event stream subscribed");
-    final prChangesSubscription = _prSyncService.prChanges.listen((String projectId) {
-      _sseManager.enqueueEvent(SesoriSseEvent.sessionsUpdated(projectID: projectId));
-    });
+    StreamSubscription<String>? prChangesSubscription;
 
     try {
       Log.d("[dbg] connecting to relay...");
       await _client.connect();
       Log.d("[dbg] relay connected");
+
+      _abortStartedSessionsSubscription = _sessionAbortService.abortStartedSessions.listen(
+        _completionListener.markSessionAbortPending,
+      );
+      _abortedSessionsSubscription = _sessionAbortService.abortedSessions.listen(
+        _completionListener.markSessionAborted,
+      );
+      _abortFailedSessionsSubscription = _sessionAbortService.abortFailedSessions.listen(
+        _completionListener.clearPendingAbort,
+      );
+      _completionListener.start();
+      _maintenanceListener.start();
+
+      final startupSummary = _mapper.buildProjectsSummaryEvent();
+      if (startupSummary != null) {
+        _completionListener.handleSseEvent(startupSummary);
+      }
+
+      Log.d("[dbg] subscribing to plugin event stream...");
+      _eventSubscription = _plugin.events
+          .asyncMap<BridgeSseEvent>(_sessionEventEnrichmentService.enrich)
+          .listen(
+            (event) {
+              unawaited(_processPluginEvent(event));
+            },
+            onError: (Object e, StackTrace st) {
+              Log.w("[dbg] plugin event stream error: $e");
+              unawaited(
+                _failureReporter.recordFailure(
+                  error: e,
+                  stackTrace: st,
+                  uniqueIdentifier: "bridge.plugin.events",
+                  fatal: false,
+                  reason: "plugin event stream failure",
+                  information: const [],
+                ),
+              );
+            },
+            onDone: () {
+              Log.w("[dbg] plugin event stream closed");
+            },
+          );
+      Log.d("[dbg] plugin event stream subscribed");
+      prChangesSubscription = _prSyncService.prChanges.listen((String projectId) {
+        _sseManager.enqueueEvent(SesoriSseEvent.sessionsUpdated(projectID: projectId));
+      });
     } catch (e) {
       throw Exception("failed to connect to relay: $e");
     }
@@ -331,7 +342,9 @@ class OrchestratorSession {
       await _eventSubscription?.cancel();
       Log.d("[dbg] event subscription cancelled");
       await prChangesSubscription.cancel();
+      await _abortStartedSessionsSubscription?.cancel();
       await _abortedSessionsSubscription?.cancel();
+      await _abortFailedSessionsSubscription?.cancel();
       await _sessionAbortService.dispose();
       await _completionListener.dispose();
       _maintenanceListener.dispose();

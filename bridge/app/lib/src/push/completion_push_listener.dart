@@ -38,8 +38,16 @@ class CompletionPushListener {
 
   /// Marks a session as user-aborted so the completion notification is
   /// suppressed for the current busy→idle transition.
+  void markSessionAbortPending(String sessionId) {
+    _completionNotifier.markSessionAbortPending(sessionId);
+  }
+
   void markSessionAborted(String sessionId) {
     _completionNotifier.markSessionAborted(sessionId);
+  }
+
+  void clearPendingAbort(String sessionId) {
+    _completionNotifier.clearPendingAbort(sessionId);
   }
 
   void start() {

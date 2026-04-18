@@ -417,6 +417,59 @@ void main() {
       });
     });
 
+    test("abort pending cancels debounce immediately and reschedules on failure", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
+        );
+        async.elapse(const Duration(milliseconds: 200));
+        async.flushMicrotasks();
+
+        harness.notifier.markSessionAbortPending("session-a");
+
+        async.elapse(const Duration(milliseconds: 400));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, isEmpty);
+
+        harness.notifier.clearPendingAbort("session-a");
+
+        async.elapse(const Duration(milliseconds: 499));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, isEmpty);
+
+        async.elapse(const Duration(milliseconds: 1));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, equals(["session-a"]));
+      });
+    });
+
+    test("abort success keeps completion suppressed after pending abort", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
+        );
+        async.elapse(const Duration(milliseconds: 200));
+        async.flushMicrotasks();
+
+        harness.notifier.markSessionAbortPending("session-a");
+        harness.notifier.markSessionAborted("session-a");
+
+        async.elapse(const Duration(seconds: 1));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, isEmpty);
+      });
+    });
+
     test("dispose cancels timers", () {
       fakeAsync((async) {
         final harness = _newHarness();

@@ -38,6 +38,85 @@ import "routing/routing_test_helpers.dart";
 
 void main() {
   group("OrchestratorSession SSE error recovery", () {
+    test("initial relay connect failure does not leave push listeners running", () async {
+      final plugin = _ThrowingSummaryPlugin();
+      final pushSubsystem = _createPushSubsystem();
+      final database = createTestDatabase();
+      final sessionRepository = SessionRepository(
+        plugin: plugin,
+        sessionDao: database.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: database.pullRequestDao,
+          projectsDao: database.projectsDao,
+        ),
+      );
+      final orchestrator = Orchestrator(
+        config: const BridgeConfig(
+          relayURL: "ws://127.0.0.1:9999",
+          serverURL: "http://127.0.0.1:4096",
+          serverPassword: null,
+          authBackendURL: "http://127.0.0.1:8080",
+          sseReplayWindow: Duration(minutes: 1),
+        ),
+        client: _ThrowingConnectRelayClient(),
+        plugin: plugin,
+        metadataService: FakeMetadataService(),
+        pushDispatcher: pushSubsystem.dispatcher,
+        completionListener: pushSubsystem.completionListener,
+        maintenanceListener: pushSubsystem.maintenanceListener,
+        tokenRefresher: _FakeTokenRefresher(),
+        failureReporter: FakeFailureReporter(),
+        prSyncService: PrSyncService(
+          prSource: _NoopPrSource(),
+          pullRequestRepository: PullRequestRepository(
+            pullRequestDao: database.pullRequestDao,
+            projectsDao: database.projectsDao,
+          ),
+          sessionRepository: sessionRepository,
+        ),
+        sessionRepository: sessionRepository,
+        projectRepository: ProjectRepository(plugin: plugin, projectsDao: database.projectsDao),
+        permissionRepository: PermissionRepository(plugin: plugin),
+        sessionPersistenceService: SessionPersistenceService(
+          projectsDao: database.projectsDao,
+          sessionDao: database.sessionDao,
+          db: database,
+        ),
+        worktreeService: WorktreeService(
+          worktreeRepository: WorktreeRepository(
+            projectsDao: database.projectsDao,
+            sessionDao: database.sessionDao,
+            gitApi: GitCliApi(
+              processRunner: FakeProcessRunner((
+                String executable,
+                List<String> arguments, {
+                String? workingDirectory,
+                Duration timeout = const Duration(seconds: 15),
+              }) async {
+                return ProcessResult(0, 127, "", "command not found");
+              }),
+              gitPathExists: ({required String gitPath}) => true,
+            ),
+          ),
+        ),
+        sessionEventEnrichmentService: SessionEventEnrichmentService(
+          sessionRepository: sessionRepository,
+          failureReporter: FakeFailureReporter(),
+        ),
+      );
+
+      final session = orchestrator.create();
+
+      await expectLater(session.run(), throwsA(isA<Exception>()));
+
+      expect(pushSubsystem.completionListener.isStarted, isFalse);
+      expect(pushSubsystem.maintenanceListener.isStarted, isFalse);
+      expect(plugin.subscribeCount, equals(0));
+
+      await plugin.close();
+      await database.close();
+    });
+
     test("stream continues after mapper throws", () async {
       final harness = await _TestHarness.start(
         plugin: _ThrowingSummaryPlugin(),
@@ -423,6 +502,19 @@ class _NoopPushNotificationClient extends PushNotificationClient {
 
   @override
   Future<void> sendNotification(SendNotificationPayload payload) async {}
+}
+
+class _ThrowingConnectRelayClient extends RelayClient {
+  _ThrowingConnectRelayClient()
+    : super(
+        relayURL: "ws://127.0.0.1:1",
+        accessTokenProvider: FakeAccessTokenProvider(""),
+      );
+
+  @override
+  Future<void> connect() async {
+    throw StateError("connect failed");
+  }
 }
 
 class _FakeTokenRefresher implements TokenRefresher {

@@ -648,6 +648,129 @@ void main() {
     await database.close();
     await relayServer.close();
   });
+
+  test("slow abort still suppresses completion before abort succeeds", () async {
+    final relayServer = await TestRelayServer.start();
+    final database = createTestDatabase();
+    final notificationClient = _CapturingPushNotificationClient();
+    final pushSubsystem = _createPushSubsystem(client: notificationClient);
+    final plugin = _AbortEventPlugin()
+      ..abortStartedCompleter = Completer<void>()
+      ..abortCompleter = Completer<void>();
+    final pullRequestRepository = PullRequestRepository(
+      pullRequestDao: database.pullRequestDao,
+      projectsDao: database.projectsDao,
+    );
+    final sessionRepository = SessionRepository(
+      plugin: plugin,
+      sessionDao: database.sessionDao,
+      pullRequestRepository: pullRequestRepository,
+    );
+    final projectRepository = ProjectRepository(
+      plugin: plugin,
+      projectsDao: database.projectsDao,
+    );
+    final permissionRepository = PermissionRepository(plugin: plugin);
+    final sessionPersistenceService = SessionPersistenceService(
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      db: database,
+    );
+    final worktreeService = WorktreeService(
+      worktreeRepository: WorktreeRepository(
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        gitApi: GitCliApi(
+          processRunner: FakeProcessRunner(),
+          gitPathExists: ({required String gitPath}) => true,
+        ),
+      ),
+    );
+    final relayClient = RelayClient(
+      relayURL: "ws://127.0.0.1:${relayServer.port}",
+      accessTokenProvider: FakeAccessTokenProvider(""),
+    );
+    final sessionEventEnrichmentService = SessionEventEnrichmentService(
+      sessionRepository: sessionRepository,
+      failureReporter: FakeFailureReporter(),
+    );
+
+    final orchestrator = Orchestrator(
+      config: BridgeConfig(
+        relayURL: "ws://127.0.0.1:${relayServer.port}",
+        serverURL: "http://127.0.0.1:4096",
+        serverPassword: null,
+        authBackendURL: "http://127.0.0.1:8080",
+        sseReplayWindow: const Duration(minutes: 1),
+      ),
+      client: relayClient,
+      plugin: plugin,
+      metadataService: _FakeMetadataService(),
+      pushDispatcher: pushSubsystem.dispatcher,
+      completionListener: pushSubsystem.completionListener,
+      maintenanceListener: pushSubsystem.maintenanceListener,
+      tokenRefresher: _FakeTokenRefresher(),
+      failureReporter: FakeFailureReporter(),
+      prSyncService: _FakePrSyncService(),
+      sessionRepository: sessionRepository,
+      projectRepository: projectRepository,
+      permissionRepository: permissionRepository,
+      sessionPersistenceService: sessionPersistenceService,
+      worktreeService: worktreeService,
+      sessionEventEnrichmentService: sessionEventEnrichmentService,
+    );
+
+    final session = orchestrator.create();
+    final runFuture = session.run();
+    await plugin.waitForSubscription();
+    await relayServer.nextClient();
+
+    plugin.add(
+      BridgeSseSessionStatus(
+        sessionID: "session-42",
+        status: const SessionStatus.busy().toJson(),
+      ),
+    );
+    await _waitForCondition(
+      check: () => pushSubsystem.tracker.wasPreviouslyBusy("session-42"),
+      failureMessage: "Timed out waiting for busy status to reach push tracker",
+    );
+
+    final request =
+        RelayMessage.request(
+              id: "abort-request",
+              method: "POST",
+              path: "/session/abort",
+              headers: const <String, String>{},
+              body: jsonEncode(const SessionIdRequest(sessionId: "session-42").toJson()),
+            )
+            as RelayRequest;
+    final responseFuture = session.router.route(request);
+    await plugin.abortStartedCompleter!.future;
+
+    plugin.add(
+      BridgeSseSessionStatus(
+        sessionID: "session-42",
+        status: const SessionStatus.idle().toJson(),
+      ),
+    );
+
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    expect(notificationClient.payloads, isEmpty);
+
+    plugin.abortCompleter!.complete();
+    final response = await responseFuture;
+
+    expect(response.status, equals(200));
+    expect(plugin.abortedSessionIds, equals(["session-42"]));
+    expect(notificationClient.payloads, isEmpty);
+
+    await session.cancel();
+    await runFuture.timeout(const Duration(seconds: 5));
+    await plugin.close();
+    await database.close();
+    await relayServer.close();
+  });
 }
 
 Future<List<int>> _nextBinaryMessage({required Stream<dynamic> messages}) async {
@@ -845,10 +968,20 @@ class _AbortPlugin extends _NoopPlugin {
 
 class _AbortEventPlugin extends _EventPlugin {
   final List<String> abortedSessionIds = <String>[];
+  Completer<void>? abortCompleter;
+  Completer<void>? abortStartedCompleter;
+  Object? abortError;
 
   @override
   Future<void> abortSession({required String sessionId}) async {
     abortedSessionIds.add(sessionId);
+    abortStartedCompleter?.complete();
+    if (abortError case final Object error?) {
+      throw error;
+    }
+    if (abortCompleter case final completer?) {
+      await completer.future;
+    }
   }
 }
 
