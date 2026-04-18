@@ -51,15 +51,6 @@ modules/
 | OpenCode plugin  | `modules/opencode_plugin/`         | OpenCode backend implementation + models + tests        |
 | Process mgmt     | `lib/src/server/`                  | Spawns OpenCode, health poll, SIGTERM cleanup         |
 
-## FILE SIZE
-- Target production file length: about 250 lines per file
-- Treat 250 lines as a pressure signal and default target, not an automatic blocker or automatic extraction rule by itself
-- If a file grows past the target, first look for honest splits by use-case, component, or concern that preserve clear ownership boundaries
-- File length alone never justifies a new class. Ask this before extracting: **Would this class still deserve to exist if the original file were under the line limit?** If the answer is no, keep cohesive private methods instead.
-- If splitting would create a fake collaborator or violate cohesion and ownership-boundary rules, keep the cohesive owner intact even when it stays above the target
-- Prefer many small files over few large files when the boundaries are real
-- Test files are explicitly excluded from this limit
-
 ## CONVENTIONS
 
 - **Plugin architecture** — all backend-specific code lives in plugin modules under `modules/`. The bridge `lib/src/` is plugin-agnostic — it only imports from `sesori_plugin_interface`, never from concrete plugins.
@@ -73,6 +64,7 @@ modules/
 - **API classes return Freezed types** — e.g. `Future<List<Project>>` not `Future<http.Response>`. Parsing lives in the API layer.
 - **Constructor injection for testability** — business logic classes (e.g. `ActiveSessionTracker`) receive their API dependency via constructor, enabling fake/mock injection in tests.
 - **Prefer typed version value objects** — when bridge code needs version parsing/comparison, parse once into a small typed value object that implements `Comparable`. Keep raw version strings in API/transport DTOs and map them into typed versions in repository code rather than exposing loose `String` comparison helpers.
+- **Prefer `CompositeSubscription` for multiple owned stream subscriptions** — when a class owns more than one long-lived `StreamSubscription`, store them in a single `CompositeSubscription` and cancel that composite in one place during teardown instead of manually tracking multiple nullable subscription fields.
 - **Request bodies use shared Freezed models** — every handler that accepts a JSON body must have a corresponding Freezed request class in `sesori_shared` (e.g. `HideProjectRequest`, `CreateProjectRequest`). Parse with `FooRequest.fromJson(map)` inside a try/catch:
   ```dart
   final FooRequest fooRequest;
