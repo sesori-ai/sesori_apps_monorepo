@@ -107,6 +107,14 @@ class _QuestionModalState extends State<QuestionModal> {
   }
 
   void _onCustomTileTap() {
+    if (_customSelected) {
+      _customFocus.unfocus();
+      setState(() {
+        _customSelected = false;
+      });
+      return;
+    }
+
     setState(() {
       _customSelected = true;
       if (!_currentInfo.multiple) {
@@ -442,6 +450,7 @@ class _CustomAnswerTile extends StatelessWidget {
               crossAxisAlignment: .start,
               children: [
                 Padding(
+                  key: const Key("custom-answer-toggle"),
                   padding: const EdgeInsetsDirectional.only(top: 10),
                   child: Icon(
                     isMultiple

@@ -178,6 +178,46 @@ void main() {
     ]);
   });
 
+  testWidgets("multi-select questions can deselect custom text without clearing the option or text", (tester) async {
+    final capture = _ReplyCapture();
+    final router = _createRouter(
+      question: _questionAsked(
+        questions: const [
+          QuestionInfo(
+            question: "Choose deployment targets",
+            header: "Targets",
+            multiple: true,
+            custom: true,
+            options: [
+              QuestionOption(label: "iOS", description: "Ship to iPhone"),
+            ],
+          ),
+        ],
+      ),
+      capture: capture,
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openQuestionModal(tester);
+
+    await tester.tap(find.text("iOS"));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), "Web preview");
+    await tester.pump();
+    await tester.tap(find.byKey(const Key("custom-answer-toggle")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Web preview"), findsOneWidget);
+
+    await tester.tap(find.byType(FilledButton).last);
+    await tester.pumpAndSettle();
+
+    expect(capture.answers, [
+      const ReplyAnswer(values: ["iOS"]),
+    ]);
+  });
+
   testWidgets("single-select questions keep custom answers exclusive", (tester) async {
     final capture = _ReplyCapture();
     final router = _createRouter(
@@ -215,6 +255,46 @@ void main() {
         const ReplyAnswer(values: ["Need a follow-up pass"]),
       ],
     );
+  });
+
+  testWidgets("single-select questions can deselect custom text before choosing an option", (tester) async {
+    final capture = _ReplyCapture();
+    final router = _createRouter(
+      question: _questionAsked(
+        questions: const [
+          QuestionInfo(
+            question: "Pick one response",
+            header: "Response",
+            custom: true,
+            options: [
+              QuestionOption(label: "Approve", description: "Looks good"),
+            ],
+          ),
+        ],
+      ),
+      capture: capture,
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openQuestionModal(tester);
+
+    await tester.enterText(find.byType(TextField), "Need a follow-up pass");
+    await tester.pump();
+    await tester.tap(find.byKey(const Key("custom-answer-toggle")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Need a follow-up pass"), findsOneWidget);
+    expect(tester.widget<FilledButton>(find.byType(FilledButton).last).onPressed, isNull);
+
+    await tester.tap(find.text("Approve"));
+    await tester.pump();
+    await tester.tap(find.byType(FilledButton).last);
+    await tester.pumpAndSettle();
+
+    expect(capture.answers, [
+      const ReplyAnswer(values: ["Approve"]),
+    ]);
   });
 
   testWidgets("custom-only questions submit trimmed text", (tester) async {
