@@ -3,16 +3,20 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../capabilities/session/session_service.dart";
+import "../../services/slash_command_service.dart";
 import "new_session_state.dart";
 
 class NewSessionCubit extends Cubit<NewSessionState> {
   final SessionService _sessionService;
+  final SlashCommandService _slashCommandService;
   final String _projectId;
 
   NewSessionCubit({
     required SessionService sessionService,
+    required SlashCommandService slashCommandService,
     required String projectId,
   }) : _sessionService = sessionService,
+       _slashCommandService = slashCommandService,
        _projectId = projectId,
        super(
          const NewSessionState.idle(
@@ -30,11 +34,11 @@ class NewSessionCubit extends Cubit<NewSessionState> {
 
   Future<void> _loadComposerData() async {
     try {
-      final (agentsResponse, providersResponse, commandsResponse) = await wait3(
-        _sessionService.listAgents(),
-        _sessionService.listProviders(),
-        _sessionService.listCommands(projectId: _projectId),
-      );
+        final (agentsResponse, providersResponse, commandsResponse) = await wait3(
+          _sessionService.listAgents(),
+          _sessionService.listProviders(),
+          _slashCommandService.listCommands(projectId: _projectId),
+        );
 
       if (isClosed) return;
 
@@ -180,28 +184,11 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   }) async {
     if (state is NewSessionSending) return;
 
-    final hasCommand = command != null && command.isNotEmpty;
+    final hasCommand = command != null;
     final trimmed = text.trim();
     if (trimmed.isEmpty && !hasCommand) return;
 
     final config = state.agentModelData;
-
-    // When executing a command, agent/model selection is irrelevant.
-    final String? agent = hasCommand ? null : config?.agent;
-    final PromptModel? model;
-    if (hasCommand) {
-      model = null;
-    } else {
-      final selectedProviderID = config?.providerID;
-      final selectedModelID = config?.modelID;
-      model =
-          selectedProviderID != null &&
-              selectedProviderID.isNotEmpty &&
-              selectedModelID != null &&
-              selectedModelID.isNotEmpty
-          ? PromptModel(providerID: selectedProviderID, modelID: selectedModelID)
-          : null;
-    }
 
     emit(
       NewSessionState.sending(
@@ -215,11 +202,12 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       ),
     );
 
-    final response = await _sessionService.createSessionWithMessage(
+    final response = await _slashCommandService.createSessionWithMessage(
       projectId: _projectId,
       text: trimmed,
-      agent: agent,
-      model: model,
+      agent: config?.agent,
+      providerID: config?.providerID,
+      modelID: config?.modelID,
       command: command,
       dedicatedWorktree: dedicatedWorktree,
     );

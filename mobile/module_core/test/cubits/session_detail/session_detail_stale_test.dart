@@ -37,6 +37,7 @@ void main() {
 
   group("SessionDetailCubit stale reconnect", () {
     late MockSessionService mockSessionService;
+    late MockSlashCommandService mockSlashCommandService;
     late MockConnectionService mockConnectionService;
     late MockNotificationCanceller mockNotificationCanceller;
     late MockPermissionRepository mockPermissionRepository;
@@ -46,6 +47,7 @@ void main() {
 
     setUp(() {
       mockSessionService = MockSessionService();
+      mockSlashCommandService = MockSlashCommandService();
       mockConnectionService = MockConnectionService();
       mockNotificationCanceller = MockNotificationCanceller();
       mockPermissionRepository = MockPermissionRepository();
@@ -70,6 +72,9 @@ void main() {
           reply: any(named: "reply"),
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
+      when(() => mockSlashCommandService.listCommands(projectId: any(named: "projectId"))).thenAnswer(
+        (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
+      );
 
       _stubLoadApis(mockSessionService, sessionId: sessionId);
     });
@@ -86,6 +91,7 @@ void main() {
         final cubit = SessionDetailCubit(
           mockSessionService,
           mockConnectionService,
+          slashCommandService: mockSlashCommandService,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
@@ -137,6 +143,7 @@ void main() {
       final cubit = SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        slashCommandService: mockSlashCommandService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -180,6 +187,7 @@ void main() {
       final cubit = SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        slashCommandService: mockSlashCommandService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -239,6 +247,7 @@ void main() {
       final cubit = SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        slashCommandService: mockSlashCommandService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -301,6 +310,7 @@ void main() {
       final cubit = SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        slashCommandService: mockSlashCommandService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -334,6 +344,7 @@ void main() {
       final cubit = SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        slashCommandService: mockSlashCommandService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -364,6 +375,7 @@ void main() {
       final cubit = SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        slashCommandService: mockSlashCommandService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -383,11 +395,12 @@ void main() {
     test(
       "silent refresh failure logs warning and resets isRefreshing to false without changing state",
       () async {
-        final cubit = SessionDetailCubit(
-          mockSessionService,
-          mockConnectionService,
-          permissionRepository: mockPermissionRepository,
-          sessionId: sessionId,
+      final cubit = SessionDetailCubit(
+        mockSessionService,
+        mockConnectionService,
+        slashCommandService: mockSlashCommandService,
+        permissionRepository: mockPermissionRepository,
+        sessionId: sessionId,
           projectId: "test-project",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: MockFailureReporter(),
@@ -423,6 +436,7 @@ void main() {
       final cubit = SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        slashCommandService: mockSlashCommandService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -451,7 +465,7 @@ void main() {
         () => mockSessionService.listAgents(),
       ).thenAnswer((_) async => ApiResponse.success(Agents(agents: _agents())));
       when(() => mockSessionService.listProviders()).thenAnswer((_) async => ApiResponse.success(_providers()));
-      when(() => mockSessionService.listCommands(projectId: any(named: "projectId"))).thenAnswer(
+      when(() => mockSlashCommandService.listCommands(projectId: any(named: "projectId"))).thenAnswer(
         (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
       );
 
@@ -508,11 +522,6 @@ void _stubLoadApis(MockSessionService service, {required String sessionId}) {
   );
   when(() => service.listProviders()).thenAnswer(
     (_) => Future<ApiResponse<ProviderListResponse>>.value(ApiResponse.success(_providers())),
-  );
-  when(() => service.listCommands(projectId: any(named: "projectId"))).thenAnswer(
-    (_) => Future<ApiResponse<CommandListResponse>>.value(
-      ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
-    ),
   );
 }
 

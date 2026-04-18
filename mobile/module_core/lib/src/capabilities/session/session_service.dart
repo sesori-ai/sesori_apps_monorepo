@@ -31,42 +31,12 @@ class SessionService {
     );
   }
 
-  Future<ApiResponse<CommandListResponse>> listCommands({required String projectId}) {
-    return _client.post(
-      "/command",
-      fromJson: CommandListResponse.fromJson,
-      body: ProjectIdRequest(projectId: projectId),
-    );
-  }
-
   /// Lists sessions for the current project.
   Future<ApiResponse<SessionListResponse>> listSessions({required String projectId}) {
     return _client.post(
       "/sessions",
       fromJson: SessionListResponse.fromJson,
       body: SessionListRequest(projectId: projectId, start: null, limit: null),
-    );
-  }
-
-  Future<ApiResponse<Session>> createSessionWithMessage({
-    required String projectId,
-    required String text,
-    required String? agent,
-    required PromptModel? model,
-    required String? command,
-    required bool dedicatedWorktree,
-  }) {
-    return _client.post(
-      "/session/create",
-      fromJson: Session.fromJson,
-      body: CreateSessionRequest(
-        projectId: projectId,
-        parts: [PromptPart.text(text: text)],
-        agent: agent,
-        model: model,
-        command: command,
-        dedicatedWorktree: dedicatedWorktree,
-      ),
     );
   }
 
@@ -183,28 +153,6 @@ class SessionService {
       "/session/messages",
       fromJson: MessageWithPartsResponse.fromJson,
       body: SessionIdRequest(sessionId: sessionId),
-    );
-  }
-
-  // ignore: no_slop_linter/prefer_required_named_parameters, public API with optional model selection
-  Future<ApiResponse<void>> sendMessage(
-    String sessionId,
-    String text, {
-    String? agent,
-    String? providerID,
-    String? modelID,
-    String? command,
-  }) {
-    return _client.post(
-      "/session/prompt_async",
-      fromJson: SuccessEmptyResponse.fromJson,
-      body: SendPromptRequest(
-        sessionId: sessionId,
-        parts: [PromptPart.text(text: text)],
-        agent: agent,
-        model: providerID != null && modelID != null ? PromptModel(providerID: providerID, modelID: modelID) : null,
-        command: command,
-      ),
     );
   }
 

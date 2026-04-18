@@ -22,6 +22,7 @@ import "package:sesori_dart_core/src/platform/deep_link_source.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/platform/notification_canceller.dart";
 import "package:sesori_dart_core/src/routing/auth_redirect_service.dart";
+import "package:sesori_dart_core/src/services/slash_command_service.dart";
 import "package:sesori_mobile/capabilities/voice/audio_format_config.dart";
 import "package:sesori_mobile/capabilities/voice/recording_file_provider.dart";
 import "package:sesori_mobile/capabilities/voice/wake_lock_service.dart";
@@ -34,6 +35,8 @@ import "package:sesori_shared/sesori_shared.dart";
 class MockProjectService extends Mock implements ProjectService {}
 
 class MockSessionService extends Mock implements SessionService {}
+
+class MockSlashCommandService extends Mock implements SlashCommandService {}
 
 class MockConnectionService extends Mock implements ConnectionService {
   final StreamController<void> _dataMayBeStale = StreamController<void>.broadcast();

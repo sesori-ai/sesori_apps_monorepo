@@ -41,6 +41,7 @@ class SessionDetailScreen extends StatelessWidget {
       create: (_) => SessionDetailCubit(
         getIt<SessionService>(),
         getIt<ConnectionService>(),
+        slashCommandService: getIt<SlashCommandService>(),
         permissionRepository: getIt<PermissionRepository>(),
         sessionId: sessionId,
         projectId: projectId,

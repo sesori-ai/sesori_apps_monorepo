@@ -12,19 +12,23 @@ import "../../capabilities/session/session_service.dart";
 import "../../logging/logging.dart";
 import "../../platform/notification_canceller.dart";
 import "../../repositories/permission_repository.dart";
-import "prompt_send_service.dart";
+import "../../services/slash_command_service.dart";
+import "prompt_send_queue.dart";
+import "queued_session_submission.dart";
 import "session_detail_state.dart";
 import "streaming_text_buffer.dart";
 
 class SessionDetailCubit extends Cubit<SessionDetailState> {
   final SessionService _service;
+  final SlashCommandService _slashCommandService;
   final ConnectionService _connectionService;
   final PermissionRepository _permissionRepository;
   final String _sessionId;
   final String? _projectId;
   final NotificationCanceller _notificationCanceller;
   final FailureReporter _failureReporter;
-  late final PromptSendService _sendService;
+  final PromptSendQueue _promptQueue = PromptSendQueue();
+  bool _isSending = false;
 
   late final StreamSubscription<SesoriSessionEvent> _eventSubscription;
   late final StreamSubscription<SseEvent> _globalEventSubscription;
@@ -48,34 +52,21 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   SessionDetailCubit(
     SessionService service,
     ConnectionService connectionService, {
+    required SlashCommandService slashCommandService,
     required PermissionRepository permissionRepository,
     required String sessionId,
     required String? projectId,
     required NotificationCanceller notificationCanceller,
     required FailureReporter failureReporter,
   }) : _service = service,
+       _slashCommandService = slashCommandService,
        _connectionService = connectionService,
        _permissionRepository = permissionRepository,
        _sessionId = sessionId,
-       _projectId = projectId,
-       _notificationCanceller = notificationCanceller,
-       _failureReporter = failureReporter,
-       super(const SessionDetailState.loading()) {
-    _sendService = PromptSendService(
-      service: _service,
-      sessionId: _sessionId,
-      onQueueChanged: _emitQueueUpdate,
-      stateProvider: () {
-        final current = state;
-        return (
-          agent: current is SessionDetailLoaded ? current.selectedAgent : null,
-          providerID: current is SessionDetailLoaded ? current.selectedProviderID : null,
-          modelID: current is SessionDetailLoaded ? current.selectedModelID : null,
-          isConnected: _isConnected,
-          isLoaded: current is SessionDetailLoaded && !isClosed,
-        );
-      },
-    );
+        _projectId = projectId,
+        _notificationCanceller = notificationCanceller,
+        _failureReporter = failureReporter,
+        super(const SessionDetailState.loading()) {
     _streamingBuffer = StreamingTextBuffer(onFlush: _emitStreamingSnapshot);
     _eventSubscription = _connectionService.sessionEvents(_sessionId).listen(_handleEvent);
     _globalEventSubscription = _connectionService.events.listen(_handleGlobalEvent);
@@ -286,7 +277,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       _service.getSessionStatuses(),
       _service.listAgents(),
       _service.listProviders(),
-      _service.listCommands(projectId: _projectId ?? ""),
+      _slashCommandService.listCommands(projectId: _projectId),
     ).wait;
 
     final messages = switch (messagesResponse) {
@@ -385,7 +376,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         case SesoriSessionUpdated(:final info):
           _onSessionUpdated(info);
         case SesoriCommandExecuted():
-          break;
+          _onDataMayBeStale();
         case SesoriSessionCreated() ||
             SesoriSessionDeleted() ||
             SesoriSessionDiff() ||
@@ -692,26 +683,44 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (isClosed) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
-    _sendService.drain();
+    unawaited(_drainQueuedMessages());
   }
 
   Future<void> sendMessage({required String text, String? command}) async {
     final current = state;
-    await _sendService.sendMessage(
-      text: text,
-      agent: current is SessionDetailLoaded ? current.selectedAgent : null,
-      providerID: current is SessionDetailLoaded ? current.selectedProviderID : null,
-      modelID: current is SessionDetailLoaded ? current.selectedModelID : null,
-      isConnected: current is SessionDetailLoaded && _isConnected,
+    final trimmed = text.trim();
+    if (trimmed.isEmpty && command == null) return;
+
+    final submission = QueuedSessionSubmission(text: trimmed, command: command);
+    if (current is! SessionDetailLoaded || !_isConnected) {
+      _promptQueue.enqueue(submission);
+      _emitQueueUpdate(current is SessionDetailLoaded ? current : null);
+      return;
+    }
+
+    final result = await _slashCommandService.sendMessage(
+      sessionId: _sessionId,
+      text: trimmed,
+      agent: current.selectedAgent,
+      providerID: current.selectedProviderID,
+      modelID: current.selectedModelID,
       command: command,
     );
+
+    if (result case ErrorResponse()) {
+      _promptQueue.requeue(submission);
+      _emitQueueUpdate(_latestLoadedState());
+    }
   }
 
   void cancelQueuedMessage(int index) {
     final current = state;
     if (current is! SessionDetailLoaded) return;
 
-    _sendService.cancelQueuedMessage(index);
+    final removed = _promptQueue.cancel(index);
+    if (removed != null) {
+      _emitQueueUpdate(current);
+    }
   }
 
   /// Syncs queued prompt items into the cubit state.
@@ -719,7 +728,54 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (isClosed) return;
     final current = known ?? state;
     if (current is! SessionDetailLoaded) return;
-    emit(current.copyWith(queuedMessages: _sendService.queuedMessages));
+    emit(current.copyWith(queuedMessages: _promptQueue.items));
+  }
+
+  Future<void> _drainQueuedMessages() async {
+    if (_isSending) return;
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
+    if (!_isConnected) return;
+
+    final submission = _promptQueue.dequeue();
+    if (submission == null) return;
+
+    _isSending = true;
+    _emitQueueUpdate(current);
+
+    var sendSucceeded = false;
+    try {
+      final result = await _slashCommandService.sendMessage(
+        sessionId: _sessionId,
+        text: submission.text,
+        agent: current.selectedAgent,
+        providerID: current.selectedProviderID,
+        modelID: current.selectedModelID,
+        command: submission.command,
+      );
+
+      if (result case ErrorResponse()) {
+        _promptQueue.requeue(submission);
+        _emitQueueUpdate(_latestLoadedState());
+      } else {
+        sendSucceeded = true;
+      }
+    } finally {
+      _isSending = false;
+    }
+
+    if (sendSucceeded) {
+      final latest = state;
+      if (latest is SessionDetailLoaded && _isConnected) {
+        _emitQueueUpdate(latest);
+        unawaited(_drainQueuedMessages());
+      }
+    }
+  }
+
+  SessionDetailLoaded? _latestLoadedState() {
+    final current = state;
+    return current is SessionDetailLoaded ? current : null;
   }
 
   // ---------------------------------------------------------------------------

@@ -34,6 +34,7 @@ void main() {
 
   group("SessionDetailCubit permission handling", () {
     late MockSessionService mockSessionService;
+    late MockSlashCommandService mockSlashCommandService;
     late MockConnectionService mockConnectionService;
     late MockNotificationCanceller mockNotificationCanceller;
     late MockPermissionRepository mockPermissionRepository;
@@ -44,6 +45,7 @@ void main() {
 
     setUp(() {
       mockSessionService = MockSessionService();
+      mockSlashCommandService = MockSlashCommandService();
       mockConnectionService = MockConnectionService();
       mockNotificationCanceller = MockNotificationCanceller();
       mockPermissionRepository = MockPermissionRepository();
@@ -79,6 +81,9 @@ void main() {
           reply: any(named: "reply"),
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
+      when(() => mockSlashCommandService.listCommands(projectId: any(named: "projectId"))).thenAnswer(
+        (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
+      );
 
       _stubLoadApis(mockSessionService, sessionId: sessionId);
     });
@@ -94,6 +99,7 @@ void main() {
         sessionId: sessionId,
         sessionService: mockSessionService,
         connectionService: mockConnectionService,
+        slashCommandService: mockSlashCommandService,
         notificationCanceller: mockNotificationCanceller,
         permissionRepository: mockPermissionRepository,
         failureReporter: mockFailureReporter,
@@ -125,6 +131,7 @@ void main() {
         sessionId: sessionId,
         sessionService: mockSessionService,
         connectionService: mockConnectionService,
+        slashCommandService: mockSlashCommandService,
         notificationCanceller: mockNotificationCanceller,
         permissionRepository: mockPermissionRepository,
         failureReporter: mockFailureReporter,
@@ -162,6 +169,7 @@ void main() {
         sessionId: sessionId,
         sessionService: mockSessionService,
         connectionService: mockConnectionService,
+        slashCommandService: mockSlashCommandService,
         notificationCanceller: mockNotificationCanceller,
         permissionRepository: mockPermissionRepository,
         failureReporter: mockFailureReporter,
@@ -218,6 +226,7 @@ void main() {
         sessionId: sessionId,
         sessionService: mockSessionService,
         connectionService: mockConnectionService,
+        slashCommandService: mockSlashCommandService,
         notificationCanceller: mockNotificationCanceller,
         permissionRepository: mockPermissionRepository,
         failureReporter: mockFailureReporter,
@@ -259,6 +268,7 @@ void main() {
         sessionId: sessionId,
         sessionService: mockSessionService,
         connectionService: mockConnectionService,
+        slashCommandService: mockSlashCommandService,
         notificationCanceller: mockNotificationCanceller,
         permissionRepository: mockPermissionRepository,
         failureReporter: mockFailureReporter,
@@ -289,6 +299,7 @@ SessionDetailCubit _buildCubit({
   required String sessionId,
   required MockSessionService sessionService,
   required MockConnectionService connectionService,
+  required MockSlashCommandService slashCommandService,
   required MockNotificationCanceller notificationCanceller,
   required MockPermissionRepository permissionRepository,
   required MockFailureReporter failureReporter,
@@ -296,6 +307,7 @@ SessionDetailCubit _buildCubit({
   return SessionDetailCubit(
     sessionService,
     connectionService,
+    slashCommandService: slashCommandService,
     permissionRepository: permissionRepository,
     sessionId: sessionId,
     projectId: "test-project",

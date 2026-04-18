@@ -10,11 +10,14 @@ import "package:sesori_dart_core/src/capabilities/sse/session_activity_info.dart
 import "package:sesori_dart_core/src/capabilities/sse/sse_event_repository.dart";
 import "package:sesori_dart_core/src/platform/route_source.dart";
 import "package:sesori_dart_core/src/routing/app_routes.dart";
+import "package:sesori_dart_core/src/services/slash_command_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 class MockProjectService extends Mock implements ProjectService {}
 
 class MockSessionService extends Mock implements SessionService {}
+
+class MockSlashCommandService extends Mock implements SlashCommandService {}
 
 class MockFailureReporter extends Mock implements FailureReporter {}
 

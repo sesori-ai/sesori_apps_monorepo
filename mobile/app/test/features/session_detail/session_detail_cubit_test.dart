@@ -26,6 +26,7 @@ void main() {
 
   group("SessionDetailCubit", () {
     late MockSessionService mockSessionService;
+  late MockSlashCommandService mockSlashCommandService;
     late MockConnectionService mockConnectionService;
     late MockNotificationCanceller mockNotificationCanceller;
     late MockPermissionRepository mockPermissionRepository;
@@ -36,6 +37,7 @@ void main() {
 
     setUp(() {
       mockSessionService = MockSessionService();
+      mockSlashCommandService = MockSlashCommandService();
       mockConnectionService = MockConnectionService();
       mockNotificationCanceller = MockNotificationCanceller();
       mockPermissionRepository = MockPermissionRepository();
@@ -65,6 +67,7 @@ void main() {
 
       _stubAllDefaults(
         mockSessionService,
+        mockSlashCommandService,
         mockConnectionService,
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
@@ -85,6 +88,7 @@ void main() {
       build: () => SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        slashCommandService: mockSlashCommandService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -101,6 +105,7 @@ void main() {
         verify(() => mockSessionService.getSessionStatuses()).called(1);
         verify(() => mockSessionService.listAgents()).called(1);
         verify(() => mockSessionService.listProviders()).called(1);
+        verify(() => mockSlashCommandService.listCommands(projectId: "test-project")).called(1);
         verify(() => mockConnectionService.sessionEvents(sessionId)).called(1);
         verify(() => mockConnectionService.events).called(1);
       },
@@ -116,6 +121,7 @@ void main() {
         return SessionDetailCubit(
           mockSessionService,
           mockConnectionService,
+          slashCommandService: mockSlashCommandService,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
@@ -133,6 +139,7 @@ void main() {
       build: () => SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        slashCommandService: mockSlashCommandService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -155,6 +162,7 @@ void main() {
         verify(() => mockSessionService.getSessionStatuses()).called(2);
         verify(() => mockSessionService.listAgents()).called(2);
         verify(() => mockSessionService.listProviders()).called(2);
+        verify(() => mockSlashCommandService.listCommands(projectId: "test-project")).called(2);
       },
     );
 
@@ -163,6 +171,7 @@ void main() {
       build: () => SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        slashCommandService: mockSlashCommandService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -178,12 +187,13 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(
-            sessionId,
-            "hi",
+          () => mockSlashCommandService.sendMessage(
+            sessionId: sessionId,
+            text: "hi",
             agent: "coder",
             providerID: "anthropic",
             modelID: "claude-3-5-sonnet",
+          command: null,
           ),
         ).called(1);
       },
@@ -194,7 +204,10 @@ void main() {
       build: () => SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        slashCommandService: mockSlashCommandService,
+        permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
+        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -207,9 +220,9 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(
-            sessionId,
-            "lib/main.dart",
+          () => mockSlashCommandService.sendMessage(
+            sessionId: sessionId,
+            text: "lib/main.dart",
             agent: "coder",
             providerID: "anthropic",
             modelID: "claude-3-5-sonnet",
@@ -224,6 +237,7 @@ void main() {
       build: () => SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        slashCommandService: mockSlashCommandService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -254,12 +268,13 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(
-            sessionId,
-            "hello",
+          () => mockSlashCommandService.sendMessage(
+            sessionId: sessionId,
+            text: "hello",
             agent: "coder",
             providerID: "anthropic",
             modelID: "claude-3-5-sonnet",
+          command: null,
           ),
         ).called(1);
       },
@@ -270,6 +285,7 @@ void main() {
       build: () => SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        slashCommandService: mockSlashCommandService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -295,6 +311,7 @@ void main() {
       build: () => SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        slashCommandService: mockSlashCommandService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -318,6 +335,7 @@ void main() {
       build: () => SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        slashCommandService: mockSlashCommandService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -346,6 +364,7 @@ void main() {
         return SessionDetailCubit(
           mockSessionService,
           mockConnectionService,
+          slashCommandService: mockSlashCommandService,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
@@ -396,6 +415,7 @@ void main() {
         return SessionDetailCubit(
           mockSessionService,
           mockConnectionService,
+          slashCommandService: mockSlashCommandService,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
@@ -427,6 +447,7 @@ void main() {
       build: () => SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        slashCommandService: mockSlashCommandService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -469,6 +490,7 @@ void main() {
         return SessionDetailCubit(
           mockSessionService,
           mockConnectionService,
+          slashCommandService: mockSlashCommandService,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
@@ -501,6 +523,7 @@ void main() {
       build: () => SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        slashCommandService: mockSlashCommandService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -531,6 +554,7 @@ void main() {
       build: () => SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        slashCommandService: mockSlashCommandService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -559,6 +583,7 @@ void main() {
         return SessionDetailCubit(
           mockSessionService,
           mockConnectionService,
+          slashCommandService: mockSlashCommandService,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
@@ -586,6 +611,7 @@ void main() {
       build: () => SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        slashCommandService: mockSlashCommandService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -628,6 +654,7 @@ void main() {
         return SessionDetailCubit(
           mockSessionService,
           mockConnectionService,
+          slashCommandService: mockSlashCommandService,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
@@ -656,6 +683,7 @@ void main() {
         return SessionDetailCubit(
           mockSessionService,
           mockConnectionService,
+          slashCommandService: mockSlashCommandService,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
@@ -692,6 +720,7 @@ void main() {
       build: () => SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        slashCommandService: mockSlashCommandService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -723,6 +752,7 @@ void main() {
         return SessionDetailCubit(
           mockSessionService,
           mockConnectionService,
+          slashCommandService: mockSlashCommandService,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
@@ -744,12 +774,13 @@ void main() {
       ],
       verify: (_) {
         verifyNever(
-          () => mockSessionService.sendMessage(
-            any(),
-            any(),
+          () => mockSlashCommandService.sendMessage(
+            sessionId: any(named: "sessionId"),
+            text: any(named: "text"),
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
+          command: null,
           ),
         );
       },
@@ -766,6 +797,7 @@ void main() {
         return SessionDetailCubit(
           mockSessionService,
           mockConnectionService,
+          slashCommandService: mockSlashCommandService,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
@@ -787,12 +819,13 @@ void main() {
       ],
       verify: (_) {
         verifyNever(
-          () => mockSessionService.sendMessage(
-            any(),
-            any(),
+          () => mockSlashCommandService.sendMessage(
+            sessionId: any(named: "sessionId"),
+            text: any(named: "text"),
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
+          command: null,
           ),
         );
       },
@@ -802,18 +835,20 @@ void main() {
       "sendMessage re-queues on send failure",
       build: () {
         when(
-          () => mockSessionService.sendMessage(
-            any(),
-            any(),
+          () => mockSlashCommandService.sendMessage(
+            sessionId: any(named: "sessionId"),
+            text: any(named: "text"),
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
+          command: null,
           ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
 
         return SessionDetailCubit(
           mockSessionService,
           mockConnectionService,
+          slashCommandService: mockSlashCommandService,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
@@ -836,12 +871,13 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(
-            sessionId,
-            "hello",
+          () => mockSlashCommandService.sendMessage(
+            sessionId: sessionId,
+            text: "hello",
             agent: "coder",
             providerID: "anthropic",
             modelID: "claude-3-5-sonnet",
+          command: null,
           ),
         ).called(1);
       },
@@ -863,6 +899,7 @@ void main() {
         return SessionDetailCubit(
           mockSessionService,
           mockConnectionService,
+          slashCommandService: mockSlashCommandService,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
@@ -909,12 +946,13 @@ void main() {
       ],
       verify: (_) {
         verifyNever(
-          () => mockSessionService.sendMessage(
-            any(),
-            any(),
+          () => mockSlashCommandService.sendMessage(
+            sessionId: any(named: "sessionId"),
+            text: any(named: "text"),
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
+          command: null,
           ),
         );
       },
@@ -925,6 +963,7 @@ void main() {
       build: () => SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        slashCommandService: mockSlashCommandService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -977,12 +1016,13 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(
-            sessionId,
-            "retry me",
+          () => mockSlashCommandService.sendMessage(
+            sessionId: sessionId,
+            text: "retry me",
             agent: "coder",
             providerID: "anthropic",
             modelID: "claude-3-5-sonnet",
+          command: null,
           ),
         ).called(1);
       },
@@ -993,6 +1033,7 @@ void main() {
       build: () => SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
+        slashCommandService: mockSlashCommandService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -1032,21 +1073,23 @@ void main() {
       },
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(
-            sessionId,
-            "first",
+          () => mockSlashCommandService.sendMessage(
+            sessionId: sessionId,
+            text: "first",
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
+          command: null,
           ),
         ).called(1);
         verify(
-          () => mockSessionService.sendMessage(
-            sessionId,
-            "second",
+          () => mockSlashCommandService.sendMessage(
+            sessionId: sessionId,
+            text: "second",
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
+          command: null,
           ),
         ).called(1);
       },
@@ -1058,18 +1101,20 @@ void main() {
         // Make sendMessage always fail — it is only called during drain,
         // not during initial load, so this is safe.
         when(
-          () => mockSessionService.sendMessage(
-            any(),
-            any(),
+          () => mockSlashCommandService.sendMessage(
+            sessionId: any(named: "sessionId"),
+            text: any(named: "text"),
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
+          command: null,
           ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
 
         return SessionDetailCubit(
           mockSessionService,
           mockConnectionService,
+          slashCommandService: mockSlashCommandService,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
@@ -1129,12 +1174,13 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(
-            sessionId,
-            "will fail",
+          () => mockSlashCommandService.sendMessage(
+            sessionId: sessionId,
+            text: "will fail",
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
+          command: null,
           ),
         ).called(1);
       },
@@ -1151,6 +1197,7 @@ Future<void> _awaitLoaded(SessionDetailCubit cubit) async {
 
 void _stubAllDefaults(
   MockSessionService service,
+  MockSlashCommandService slashCommandService,
   MockConnectionService connectionService, {
   required String sessionId,
   required MockNotificationCanceller notificationCanceller,
@@ -1201,7 +1248,7 @@ void _stubAllDefaults(
     ),
   );
   when(
-    () => service.listCommands(projectId: any(named: "projectId")),
+    () => slashCommandService.listCommands(projectId: any(named: "projectId")),
   ).thenAnswer(
     (_) => Future<ApiResponse<CommandListResponse>>.value(
       ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
@@ -1234,9 +1281,9 @@ void _stubAllDefaults(
   ).thenReturn(null);
 
   when(
-    () => service.sendMessage(
-      any(),
-      any(),
+    () => slashCommandService.sendMessage(
+      sessionId: any(named: "sessionId"),
+      text: any(named: "text"),
       agent: any(named: "agent"),
       providerID: any(named: "providerID"),
       modelID: any(named: "modelID"),
