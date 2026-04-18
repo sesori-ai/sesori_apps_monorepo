@@ -94,7 +94,9 @@ class _QuestionModalState extends State<QuestionModal> {
     if (_customFocus.hasFocus && !_customSelected) {
       setState(() {
         _customSelected = true;
-        _selectedLabels.clear();
+        if (!_currentInfo.multiple) {
+          _selectedLabels.clear();
+        }
       });
     }
   }
@@ -107,7 +109,9 @@ class _QuestionModalState extends State<QuestionModal> {
   void _onCustomTileTap() {
     setState(() {
       _customSelected = true;
-      _selectedLabels.clear();
+      if (!_currentInfo.multiple) {
+        _selectedLabels.clear();
+      }
     });
     _customFocus.requestFocus();
   }
@@ -115,7 +119,6 @@ class _QuestionModalState extends State<QuestionModal> {
   void _onOptionTap(String label) {
     _customFocus.unfocus();
     setState(() {
-      _customSelected = false;
       if (_currentInfo.multiple) {
         if (_selectedLabels.contains(label)) {
           _selectedLabels.remove(label);
@@ -123,6 +126,7 @@ class _QuestionModalState extends State<QuestionModal> {
           _selectedLabels.add(label);
         }
       } else {
+        _customSelected = false;
         // Single-select: toggle — only one at a time.
         if (_selectedLabels.contains(label)) {
           _selectedLabels.clear();
@@ -135,24 +139,22 @@ class _QuestionModalState extends State<QuestionModal> {
     });
   }
 
+  String get _trimmedCustomAnswer => _customController.text.trim();
+  bool get _hasSelectedCustomAnswer => _customSelected && _trimmedCustomAnswer.isNotEmpty;
+
   bool get _canProceed {
-    if (_customSelected) return _customController.text.trim().isNotEmpty;
-    return _selectedLabels.isNotEmpty;
+    return _selectedLabels.isNotEmpty || _hasSelectedCustomAnswer;
   }
 
   /// Collects the current answer and either advances to the next question
   /// or submits all answers if this is the last one.
   void _onProceed() {
     // Build the answer for the current question.
-    final List<String> answer;
-    if (_customSelected) {
-      final text = _customController.text.trim();
-      if (text.isEmpty) return;
-      answer = [text];
-    } else {
-      if (_selectedLabels.isEmpty) return;
-      answer = _selectedLabels.toList();
+    final answer = _selectedLabels.toList();
+    if (_hasSelectedCustomAnswer) {
+      answer.add(_trimmedCustomAnswer);
     }
+    if (answer.isEmpty) return;
 
     _collectedAnswers.add(ReplyAnswer(values: answer));
 
