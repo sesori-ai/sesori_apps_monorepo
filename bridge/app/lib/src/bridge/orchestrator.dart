@@ -4,11 +4,14 @@ import "dart:math";
 import "dart:typed_data";
 
 import "package:cryptography/cryptography.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../auth/token_refresher.dart";
-import "../push/push_notification_service.dart";
+import "../push/completion_push_listener.dart";
+import "../push/maintenance_push_listener.dart";
+import "../push/push_dispatcher.dart";
 import "foundation/process_runner.dart";
 import "key_exchange.dart";
 import "metadata_service.dart";
@@ -18,9 +21,11 @@ import "repositories/permission_repository.dart";
 import "repositories/project_repository.dart";
 import "repositories/provider_repository.dart";
 import "repositories/session_repository.dart";
+import "routing/abort_session_handler.dart";
 import "routing/get_session_diffs_handler.dart";
 import "routing/request_router.dart";
 import "services/pr_sync_service.dart";
+import "services/session_abort_service.dart";
 import "services/session_archive_service.dart";
 import "services/session_creation_service.dart";
 import "services/session_event_enrichment_service.dart";
@@ -36,7 +41,9 @@ class Orchestrator {
   final RelayClient _client;
   final BridgePlugin _plugin;
   final MetadataService _metadataService;
-  final PushNotificationService _pushNotificationService;
+  final PushDispatcher _pushDispatcher;
+  final CompletionPushListener _completionListener;
+  final MaintenancePushListener _maintenanceListener;
   final TokenRefresher _tokenRefresher;
   final FailureReporter _failureReporter;
   final PrSyncService _prSyncService;
@@ -52,7 +59,9 @@ class Orchestrator {
     required RelayClient client,
     required BridgePlugin plugin,
     required MetadataService metadataService,
-    required PushNotificationService pushNotificationService,
+    required PushDispatcher pushDispatcher,
+    required CompletionPushListener completionListener,
+    required MaintenancePushListener maintenanceListener,
     required TokenRefresher tokenRefresher,
     required FailureReporter failureReporter,
     required PrSyncService prSyncService,
@@ -65,7 +74,9 @@ class Orchestrator {
   }) : _client = client,
        _plugin = plugin,
        _metadataService = metadataService,
-       _pushNotificationService = pushNotificationService,
+       _pushDispatcher = pushDispatcher,
+       _completionListener = completionListener,
+       _maintenanceListener = maintenanceListener,
        _tokenRefresher = tokenRefresher,
        _failureReporter = failureReporter,
        _sessionRepository = sessionRepository,
@@ -91,6 +102,7 @@ class Orchestrator {
       sessionRepository: _sessionRepository,
       sessionPersistenceService: _sessionPersistenceService,
     );
+    final sessionAbortService = SessionAbortService(sessionRepository: _sessionRepository);
     final sseManager = SSEManager(
       replayWindow: config.sseReplayWindow,
       onBytesSent: bytesSentController.add,
@@ -102,7 +114,9 @@ class Orchestrator {
       config: config,
       client: _client,
       plugin: _plugin,
-      pushNotificationService: _pushNotificationService,
+      pushDispatcher: _pushDispatcher,
+      completionListener: _completionListener,
+      maintenanceListener: _maintenanceListener,
       tokenRefresher: _tokenRefresher,
       roomKey: roomKey,
       sseManager: sseManager,
@@ -116,6 +130,7 @@ class Orchestrator {
       worktreeService: _worktreeService,
       sessionCreationService: sessionCreationService,
       sessionArchiveService: sessionArchiveService,
+      sessionAbortService: sessionAbortService,
       sessionEventEnrichmentService: _sessionEventEnrichmentService,
     );
   }
@@ -140,13 +155,16 @@ class OrchestratorSession {
   final SSEManager _sseManager;
   final RequestRouter _router;
   final BridgeEventMapper _mapper;
-  final PushNotificationService _pushNotificationService;
+  final PushDispatcher _pushDispatcher;
+  final CompletionPushListener _completionListener;
+  final MaintenancePushListener _maintenanceListener;
   final TokenRefresher _tokenRefresher;
   final StreamController<int> _bytesSentController;
   final FailureReporter _failureReporter;
   final PrSyncService _prSyncService;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
-  StreamSubscription<dynamic>? _eventSubscription;
+  final SessionAbortService _sessionAbortService;
+  final CompositeSubscription _subscriptions = CompositeSubscription();
 
   bool _cancelled = false;
 
@@ -154,7 +172,9 @@ class OrchestratorSession {
     required this.config,
     required RelayClient client,
     required BridgePlugin plugin,
-    required PushNotificationService pushNotificationService,
+    required PushDispatcher pushDispatcher,
+    required CompletionPushListener completionListener,
+    required MaintenancePushListener maintenanceListener,
     required TokenRefresher tokenRefresher,
     required List<int> roomKey,
     required SSEManager sseManager,
@@ -168,19 +188,24 @@ class OrchestratorSession {
     required WorktreeService worktreeService,
     required SessionCreationService sessionCreationService,
     required SessionArchiveService sessionArchiveService,
+    required SessionAbortService sessionAbortService,
     required SessionEventEnrichmentService sessionEventEnrichmentService,
   }) : _client = client,
        _plugin = plugin,
-       _pushNotificationService = pushNotificationService,
+       _pushDispatcher = pushDispatcher,
+       _completionListener = completionListener,
+       _maintenanceListener = maintenanceListener,
        _tokenRefresher = tokenRefresher,
        _roomKey = roomKey,
        _sseManager = sseManager,
        _bytesSentController = bytesSentController,
        _failureReporter = failureReporter,
        _prSyncService = prSyncService,
+       _sessionAbortService = sessionAbortService,
        _router = RequestRouter(
          plugin: plugin,
          sessionRepository: sessionRepository,
+         abortSessionHandler: AbortSessionHandler(sessionAbortService: sessionAbortService),
          sessionCreationService: sessionCreationService,
          sessionArchiveService: sessionArchiveService,
          prSyncService: prSyncService,
@@ -193,7 +218,6 @@ class OrchestratorSession {
            sessionRepository: sessionRepository,
            processRunner: ProcessRunner(),
          ),
-         onSessionAborted: pushNotificationService.markSessionAborted,
        ),
        _mapper = BridgeEventMapper(
          plugin: plugin,
@@ -212,44 +236,55 @@ class OrchestratorSession {
     final kxManager = KeyExchangeManager(_roomKey);
     final activePhones = <int, bool>{};
 
-    final startupSummary = _mapper.buildProjectsSummaryEvent();
-    if (startupSummary != null) {
-      _pushNotificationService.handleSseEvent(startupSummary);
-    }
-
-    Log.d("[dbg] subscribing to plugin event stream...");
-    _eventSubscription = _plugin.events
-        .asyncMap<BridgeSseEvent>((event) => _sessionEventEnrichmentService.enrich(event))
-        .listen(
-          (event) {
-            unawaited(_processPluginEvent(event));
-          },
-          onError: (Object e, StackTrace st) {
-            Log.w("[dbg] plugin event stream error: $e");
-            unawaited(
-              _failureReporter.recordFailure(
-                error: e,
-                stackTrace: st,
-                uniqueIdentifier: "bridge.plugin.events",
-                fatal: false,
-                reason: "plugin event stream failure",
-                information: const [],
-              ),
-            );
-          },
-          onDone: () {
-            Log.w("[dbg] plugin event stream closed");
-          },
-        );
-    Log.d("[dbg] plugin event stream subscribed");
-    final prChangesSubscription = _prSyncService.prChanges.listen((String projectId) {
-      _sseManager.enqueueEvent(SesoriSseEvent.sessionsUpdated(projectID: projectId));
-    });
-
     try {
       Log.d("[dbg] connecting to relay...");
       await _client.connect();
       Log.d("[dbg] relay connected");
+
+      _sessionAbortService.abortStartedSessions
+          .listen(_completionListener.markSessionAbortPending)
+          .addTo(_subscriptions);
+      _sessionAbortService.abortedSessions.listen(_completionListener.markSessionAborted).addTo(_subscriptions);
+      _sessionAbortService.abortFailedSessions.listen(_completionListener.clearPendingAbort).addTo(_subscriptions);
+      _completionListener.start();
+      _maintenanceListener.start();
+
+      final startupSummary = _mapper.buildProjectsSummaryEvent();
+      if (startupSummary != null) {
+        _completionListener.handleSseEvent(startupSummary);
+      }
+
+      Log.d("[dbg] subscribing to plugin event stream...");
+      _plugin.events
+          .asyncMap<BridgeSseEvent>(_sessionEventEnrichmentService.enrich)
+          .listen(
+            (event) {
+              unawaited(_processPluginEvent(event));
+            },
+            onError: (Object e, StackTrace st) {
+              Log.w("[dbg] plugin event stream error: $e");
+              unawaited(
+                _failureReporter.recordFailure(
+                  error: e,
+                  stackTrace: st,
+                  uniqueIdentifier: "bridge.plugin.events",
+                  fatal: false,
+                  reason: "plugin event stream failure",
+                  information: const [],
+                ),
+              );
+            },
+            onDone: () {
+              Log.w("[dbg] plugin event stream closed");
+            },
+          )
+          .addTo(_subscriptions);
+      Log.d("[dbg] plugin event stream subscribed");
+      _prSyncService.prChanges
+          .listen((String projectId) {
+            _sseManager.enqueueEvent(SesoriSseEvent.sessionsUpdated(projectID: projectId));
+          })
+          .addTo(_subscriptions);
     } catch (e) {
       throw Exception("failed to connect to relay: $e");
     }
@@ -299,10 +334,10 @@ class OrchestratorSession {
       }
     } finally {
       Log.i("Disconnecting...");
-      Log.d("[dbg] cancelling event subscription...");
-      await _eventSubscription?.cancel();
-      Log.d("[dbg] event subscription cancelled");
-      await prChangesSubscription.cancel();
+      await _subscriptions.cancel();
+      await _sessionAbortService.dispose();
+      await _completionListener.dispose();
+      _maintenanceListener.dispose();
       _prSyncService.dispose();
       Log.d("[dbg] disposing plugin...");
       await _plugin.dispose();
@@ -311,7 +346,7 @@ class OrchestratorSession {
       _sseManager.stop();
       Log.d("[dbg] sse manager stopped");
       Log.d("[dbg] disposing push notification service...");
-      await _pushNotificationService.dispose();
+      await _pushDispatcher.dispose();
       Log.d("[dbg] push notification service disposed");
       await _bytesSentController.close();
       try {
@@ -337,7 +372,7 @@ class OrchestratorSession {
         Log.v(
           "[sse] mapped to: ${sesoriEvent.runtimeType} — enqueuing (subscribers: ${_sseManager.subscriberCount})",
         );
-        _pushNotificationService.handleSseEvent(sesoriEvent);
+        _completionListener.handleSseEvent(sesoriEvent);
         _sseManager.enqueueEvent(sesoriEvent);
       } else {
         Log.v("[sse] mapping returned null — event dropped");
@@ -583,7 +618,7 @@ class OrchestratorSession {
           final projSummary = _mapper.buildProjectsSummaryEvent();
           if (projSummary != null) {
             _sseManager.enqueueEvent(projSummary);
-            _pushNotificationService.handleSseEvent(projSummary);
+            _completionListener.handleSseEvent(projSummary);
           }
           Log.v("[dbg] initial projectsSummary enqueued");
         } catch (e) {

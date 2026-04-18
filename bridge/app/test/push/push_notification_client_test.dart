@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:convert";
 import "dart:io";
 
+import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/auth/token_refresh_exception.dart";
 import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/push/push_notification_client.dart";
@@ -52,6 +53,7 @@ void main() {
       final client = PushNotificationClient(
         authBackendURL: "http://127.0.0.1:${server.port}",
         tokenRefreshManager: fakeManager,
+        client: http.Client(),
       );
 
       await client.sendNotification(
@@ -90,6 +92,7 @@ void main() {
       final client = PushNotificationClient(
         authBackendURL: "http://127.0.0.1:1",
         tokenRefreshManager: _FakeTokenRefreshManager("token-123"),
+        client: http.Client(),
       );
 
       await expectLater(
@@ -129,6 +132,7 @@ void main() {
       final client = PushNotificationClient(
         authBackendURL: "http://127.0.0.1:${server.port}",
         tokenRefreshManager: fakeManager,
+        client: http.Client(),
       );
 
       await client.sendNotification(
@@ -176,6 +180,7 @@ void main() {
       final client = PushNotificationClient(
         authBackendURL: "http://127.0.0.1:${server.port}",
         tokenRefreshManager: fakeManager,
+        client: http.Client(),
       );
 
       await client.sendNotification(
@@ -220,6 +225,7 @@ void main() {
       final client = PushNotificationClient(
         authBackendURL: "http://127.0.0.1:${server.port}",
         tokenRefreshManager: fakeManager,
+        client: http.Client(),
       );
 
       await expectLater(
@@ -260,6 +266,7 @@ void main() {
       final client = PushNotificationClient(
         authBackendURL: "http://127.0.0.1:${server.port}",
         tokenRefreshManager: fakeManager,
+        client: http.Client(),
       );
 
       await expectLater(
@@ -301,6 +308,7 @@ void main() {
       final client = PushNotificationClient(
         authBackendURL: "http://127.0.0.1:${server.port}",
         tokenRefreshManager: fakeManager,
+        client: http.Client(),
       );
 
       await expectLater(
@@ -324,5 +332,32 @@ void main() {
       expect(requestCount, equals(1));
       expect(fakeManager.forceRefreshCalled, isFalse);
     });
+
+    test("dispose does not close the shared http transport", () async {
+      final httpClient = _FakeHttpClient();
+      final client = PushNotificationClient(
+        authBackendURL: "https://api.sesori.test",
+        tokenRefreshManager: _FakeTokenRefreshManager("token"),
+        client: httpClient,
+      );
+
+      await client.dispose();
+
+      expect(httpClient.closeCallCount, equals(0));
+    });
   });
+}
+
+class _FakeHttpClient extends http.BaseClient {
+  int closeCallCount = 0;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    throw UnimplementedError();
+  }
+
+  @override
+  void close() {
+    closeCallCount += 1;
+  }
 }

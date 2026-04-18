@@ -1,11 +1,12 @@
 import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
+import "package:sesori_bridge/src/push/push_session_state_tracker_types.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
   group("PushSessionStateTracker", () {
     test("tracks session statuses from SesoriSessionStatus events", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
         const SesoriSseEvent.sessionStatus(
@@ -39,7 +40,7 @@ void main() {
     });
 
     test("tracks parent-child relationships from session created and updated", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
         SesoriSseEvent.sessionCreated(
@@ -72,7 +73,7 @@ void main() {
     });
 
     test("tracks session titles from session created and updated", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
         SesoriSseEvent.sessionCreated(
@@ -90,7 +91,7 @@ void main() {
     });
 
     test("tracks messageID to role from message updated events", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
         const SesoriSseEvent.messageUpdated(
@@ -129,7 +130,7 @@ void main() {
     });
 
     test("tracks latest assistant text only for assistant text parts", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
         const SesoriSseEvent.messageUpdated(
@@ -186,7 +187,7 @@ void main() {
     });
 
     test("tracks pending questions and clears on replied or rejected", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
         const SesoriSseEvent.questionAsked(
@@ -224,7 +225,7 @@ void main() {
     });
 
     test("tracks pending permissions using requestID to sessionID mapping", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
         const SesoriSseEvent.permissionAsked(
@@ -249,7 +250,7 @@ void main() {
     });
 
     test("isSessionGroupFullyIdle is true only when session and direct children are idle", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
       tracker.handleEvent(
@@ -283,7 +284,7 @@ void main() {
     });
 
     test("isSessionGroupFullyIdle returns false when a grandchild is busy", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
       tracker.handleEvent(
@@ -317,7 +318,7 @@ void main() {
     });
 
     test("hasPendingInteraction returns true for pending question or permission", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
         const SesoriSseEvent.questionAsked(
@@ -345,7 +346,7 @@ void main() {
     });
 
     test("hasPendingInteraction includes direct child sessions", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       // Register parent and child.
       tracker.handleEvent(
@@ -381,7 +382,7 @@ void main() {
     });
 
     test("hasPendingInteraction includes grandchild sessions", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
       tracker.handleEvent(
@@ -416,7 +417,7 @@ void main() {
     });
 
     test("getSessionTitle returns cached title or null", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       expect(tracker.getSessionTitle("missing"), isNull);
 
@@ -430,7 +431,7 @@ void main() {
     });
 
     test("getLatestAssistantText returns cached text or null", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       expect(tracker.getLatestAssistantText("session-a"), isNull);
 
@@ -470,7 +471,7 @@ void main() {
     });
 
     test("wasPreviouslyBusy true only when session was seen busy before idle", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       expect(tracker.wasPreviouslyBusy("session-a"), isFalse);
 
@@ -491,7 +492,7 @@ void main() {
     });
 
     test("reset clears all maps and state", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker
         ..handleEvent(
@@ -565,7 +566,7 @@ void main() {
     });
 
     test("handleEvent processes events and updates state", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
         SesoriSseEvent.sessionCreated(
@@ -589,7 +590,7 @@ void main() {
     });
 
     test("cleans up session state on session deleted", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker
         ..handleEvent(
@@ -634,8 +635,85 @@ void main() {
       expect(tracker.resolveRootSessionId("child"), equals("child"));
     });
 
+    test("session delete removes only indexed message roles for that session", () {
+      final tracker = PushSessionStateTracker(now: DateTime.now);
+
+      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
+      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "other")));
+      tracker.handleEvent(
+        const SesoriSseEvent.messageUpdated(
+          info: Message(
+            id: "root-msg",
+            role: "assistant",
+            sessionID: "root",
+            agent: null,
+            modelID: null,
+            providerID: null,
+          ),
+        ),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.messageUpdated(
+          info: Message(
+            id: "other-msg",
+            role: "assistant",
+            sessionID: "other",
+            agent: null,
+            modelID: null,
+            providerID: null,
+          ),
+        ),
+      );
+
+      tracker.handleEvent(SesoriSseEvent.sessionDeleted(info: _session(id: "root")));
+
+      expect(tracker.createTelemetrySnapshot().messageRoleCount, equals(1));
+
+      tracker.handleEvent(
+        const SesoriSseEvent.messagePartUpdated(
+          part: MessagePart(
+            id: "root-part",
+            sessionID: "root",
+            messageID: "root-msg",
+            type: MessagePartType.text,
+            text: "removed",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
+          ),
+        ),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.messagePartUpdated(
+          part: MessagePart(
+            id: "other-part",
+            sessionID: "other",
+            messageID: "other-msg",
+            type: MessagePartType.text,
+            text: "survived delete",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
+          ),
+        ),
+      );
+
+      expect(tracker.getLatestAssistantText("root"), isNull);
+      expect(tracker.getLatestAssistantText("other"), equals("survived delete"));
+    });
+
     test("ignores message part updates with non-text type", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker
         ..handleEvent(
@@ -674,7 +752,7 @@ void main() {
     });
 
     test("ignores message part updates for non-assistant messages", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker
         ..handleEvent(
@@ -713,7 +791,7 @@ void main() {
     });
 
     test("idle without prior busy does not mark session as previously busy", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
         const SesoriSseEvent.sessionStatus(
@@ -727,7 +805,7 @@ void main() {
     });
 
     test("getSessionProjectId returns stored projectId after session upsert", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
         SesoriSseEvent.sessionCreated(
@@ -739,13 +817,13 @@ void main() {
     });
 
     test("getSessionProjectId returns null for unknown sessionId", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       expect(tracker.getSessionProjectId(sessionId: "unknown"), isNull);
     });
 
     test("wasPreviouslyBusy returns true if only a descendant was busy", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
         SesoriSseEvent.sessionCreated(info: _session(id: "root")),
@@ -769,7 +847,7 @@ void main() {
     });
 
     test("projectsSummary establishes parent-child links for status-only sessions", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       // Sessions created implicitly via status events (e.g., after bridge restart).
       tracker.handleEvent(
@@ -801,7 +879,7 @@ void main() {
     });
 
     test("projectsSummary does not overwrite parent links from sessionCreated", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       // Proper creation events establish parent link.
       tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
@@ -830,7 +908,7 @@ void main() {
     });
 
     test("root session gets projectId from projects summary", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
         const SesoriSseEvent.projectsSummary(
@@ -849,7 +927,7 @@ void main() {
     });
 
     test("child session gets projectId from projects summary", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
         const SesoriSseEvent.projectsSummary(
@@ -872,7 +950,7 @@ void main() {
     });
 
     test("projects summary overwrites existing projectId", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       tracker.handleEvent(
         SesoriSseEvent.sessionCreated(
@@ -896,7 +974,7 @@ void main() {
     });
 
     test("projectsSummary establishes multi-level hierarchy for status-only sessions", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       // Three sessions known only via status events.
       tracker.handleEvent(
@@ -943,7 +1021,7 @@ void main() {
     });
 
     test("resolveRootSessionId stops at child when parent entry is missing", () {
-      final tracker = PushSessionStateTracker();
+      final tracker = PushSessionStateTracker(now: DateTime.now);
 
       // Child has parentId set via sessionCreated, but parent was never seen.
       tracker.handleEvent(
@@ -964,7 +1042,605 @@ void main() {
       );
       expect(tracker.resolveRootSessionId("child"), equals("unknown-parent"));
     });
+
+    test("prunes an idle subtree and reports telemetry snapshot data", () {
+      final clock = _FakeClock(initial: DateTime.utc(2026, 1, 1, 12));
+      final tracker = PushSessionStateTracker(now: clock.now);
+
+      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
+      clock.advance(const Duration(seconds: 1));
+      tracker.handleEvent(
+        SesoriSseEvent.sessionCreated(
+          info: _session(id: "child", parentID: "root"),
+        ),
+      );
+      clock.advance(const Duration(seconds: 1));
+      tracker.handleEvent(
+        const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+      );
+      clock.advance(const Duration(seconds: 1));
+      tracker.handleEvent(
+        const SesoriSseEvent.messageUpdated(
+          info: Message(
+            id: "assistant-msg",
+            role: "assistant",
+            sessionID: "child",
+            agent: null,
+            modelID: null,
+            providerID: null,
+          ),
+        ),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.messagePartUpdated(
+          part: MessagePart(
+            id: "part-1",
+            sessionID: "child",
+            messageID: "assistant-msg",
+            type: MessagePartType.text,
+            text: "latest child reply",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
+          ),
+        ),
+      );
+      clock.advance(const Duration(seconds: 1));
+      tracker.handleEvent(
+        const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
+      );
+
+      clock.advance(const Duration(minutes: 31));
+
+      expect(tracker.findPrunableRootSessionIds(), equals(["root"]));
+
+      final snapshot = tracker.createTelemetrySnapshot();
+      expect(snapshot.sessionCount, equals(2));
+      expect(snapshot.rootSessionCount, equals(1));
+      expect(snapshot.previouslyBusyCount, equals(1));
+      expect(snapshot.latestAssistantTextCount, equals(1));
+      expect(snapshot.messageRoleCount, equals(1));
+      expect(snapshot.assistantMessageRoleCount, equals(1));
+      expect(snapshot.oldestSessionActivityAt, isNotNull);
+      expect(snapshot.oldestMessageRoleUpdatedAt, isNotNull);
+      expect(snapshot.prunableRoots, hasLength(1));
+      expect(snapshot.prunableRoots.single.rootSessionId, equals("root"));
+      expect(
+        snapshot.prunableRoots.single.retainedSessionCount,
+        equals(2),
+      );
+
+      tracker.clearLatestAssistantTextForRootSubtree(rootSessionId: "root");
+      expect(tracker.getLatestAssistantText("child"), isNull);
+
+      final pruneResult = tracker.pruneRootSubtree(rootSessionId: "root");
+      expect(pruneResult.rootSessionId, equals("root"));
+      expect(pruneResult.removedSessionCount, equals(2));
+      expect(pruneResult.removedMessageRoleCount, equals(1));
+      expect(pruneResult.removedPermissionMappingCount, equals(0));
+      expect(tracker.createTelemetrySnapshot().sessionCount, equals(0));
+      expect(tracker.resolveRootSessionId("child"), equals("child"));
+    });
+
+    test("subtree prune removes only indexed message roles for that subtree", () {
+      final tracker = PushSessionStateTracker(now: DateTime.now);
+
+      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root-a")));
+      tracker.handleEvent(
+        SesoriSseEvent.sessionCreated(
+          info: _session(id: "child-a", parentID: "root-a"),
+        ),
+      );
+      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root-b")));
+
+      tracker.handleEvent(
+        const SesoriSseEvent.messageUpdated(
+          info: Message(
+            id: "pruned-msg",
+            role: "assistant",
+            sessionID: "child-a",
+            agent: null,
+            modelID: null,
+            providerID: null,
+          ),
+        ),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.messageUpdated(
+          info: Message(
+            id: "survivor-msg",
+            role: "assistant",
+            sessionID: "root-b",
+            agent: null,
+            modelID: null,
+            providerID: null,
+          ),
+        ),
+      );
+
+      final pruneResult = tracker.pruneRootSubtree(rootSessionId: "root-a");
+      expect(pruneResult.removedSessionCount, equals(2));
+      expect(pruneResult.removedMessageRoleCount, equals(1));
+      expect(tracker.createTelemetrySnapshot().messageRoleCount, equals(1));
+
+      tracker.handleEvent(
+        const SesoriSseEvent.messagePartUpdated(
+          part: MessagePart(
+            id: "pruned-part",
+            sessionID: "child-a",
+            messageID: "pruned-msg",
+            type: MessagePartType.text,
+            text: "should stay pruned",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
+          ),
+        ),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.messagePartUpdated(
+          part: MessagePart(
+            id: "survivor-part",
+            sessionID: "root-b",
+            messageID: "survivor-msg",
+            type: MessagePartType.text,
+            text: "survivor text",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
+          ),
+        ),
+      );
+
+      expect(tracker.getLatestAssistantText("child-a"), isNull);
+      expect(tracker.getLatestAssistantText("root-b"), equals("survivor text"));
+    });
+
+    test("does not prune busy or pending roots before they become idle long enough", () {
+      final clock = _FakeClock(initial: DateTime.utc(2026, 1, 1, 12));
+      final tracker = PushSessionStateTracker(now: clock.now);
+
+      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
+      tracker.handleEvent(
+        SesoriSseEvent.sessionCreated(
+          info: _session(id: "child", parentID: "root"),
+        ),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+      );
+
+      clock.advance(const Duration(minutes: 40));
+      expect(tracker.findPrunableRootSessionIds(), isEmpty);
+
+      tracker.handleEvent(
+        const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.questionAsked(
+          id: "q-1",
+          sessionID: "child",
+          questions: [QuestionInfo(header: "h", question: "q")],
+        ),
+      );
+
+      clock.advance(const Duration(minutes: 40));
+      expect(tracker.findPrunableRootSessionIds(), isEmpty);
+
+      tracker.handleEvent(
+        const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "child"),
+      );
+
+      clock.advance(const Duration(minutes: 31));
+      expect(tracker.findPrunableRootSessionIds(), equals(["root"]));
+    });
+
+    test("late events can rebuild state after a subtree prune", () {
+      final clock = _FakeClock(initial: DateTime.utc(2026, 1, 1, 12));
+      final tracker = PushSessionStateTracker(now: clock.now);
+
+      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
+      tracker.handleEvent(
+        SesoriSseEvent.sessionCreated(
+          info: _session(id: "child", parentID: "root"),
+        ),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+      );
+
+      clock.advance(const Duration(minutes: 31));
+      tracker.pruneRootSubtree(rootSessionId: "root");
+
+      tracker.handleEvent(
+        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+      );
+      expect(tracker.isSessionGroupFullyIdle("child"), isFalse);
+      expect(tracker.resolveRootSessionId("child"), equals("child"));
+
+      tracker.handleEvent(
+        const SesoriSseEvent.messageUpdated(
+          info: Message(
+            id: "late-msg",
+            role: "assistant",
+            sessionID: "child",
+            agent: null,
+            modelID: null,
+            providerID: null,
+          ),
+        ),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.messagePartUpdated(
+          part: MessagePart(
+            id: "late-part",
+            sessionID: "child",
+            messageID: "late-msg",
+            type: MessagePartType.text,
+            text: "rebuilt text",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
+          ),
+        ),
+      );
+      expect(tracker.getLatestAssistantText("child"), equals("rebuilt text"));
+
+      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
+      tracker.handleEvent(
+        SesoriSseEvent.sessionUpdated(
+          info: _session(id: "child", parentID: "root"),
+        ),
+      );
+      expect(tracker.resolveRootSessionId("child"), equals("root"));
+    });
+
+    test("prunes stale message roles and enforces the hard cap", () {
+      final clock = _FakeClock(initial: DateTime.utc(2026, 1, 1, 12));
+      final tracker = PushSessionStateTracker(now: clock.now);
+
+      tracker.handleEvent(
+        const SesoriSseEvent.messageUpdated(
+          info: Message(
+            id: "expired-msg",
+            role: "assistant",
+            sessionID: "expired-session",
+            agent: null,
+            modelID: null,
+            providerID: null,
+          ),
+        ),
+      );
+
+      clock.advance(const Duration(minutes: 31));
+      tracker.pruneMessageRoleMetadata();
+      tracker.handleEvent(
+        const SesoriSseEvent.messagePartUpdated(
+          part: MessagePart(
+            id: "expired-part",
+            sessionID: "expired-session",
+            messageID: "expired-msg",
+            type: MessagePartType.text,
+            text: "ignored",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
+          ),
+        ),
+      );
+      expect(tracker.getLatestAssistantText("expired-session"), isNull);
+
+      for (var index = 0; index <= PushSessionMaintenancePolicy.messageRoleHardCap; index++) {
+        tracker.handleEvent(
+          SesoriSseEvent.messageUpdated(
+            info: Message(
+              id: "msg-$index",
+              role: "assistant",
+              sessionID: "session-$index",
+              agent: null,
+              modelID: null,
+              providerID: null,
+            ),
+          ),
+        );
+        clock.advance(const Duration(milliseconds: 1));
+      }
+
+      tracker.pruneMessageRoleMetadata();
+      expect(
+        tracker.createTelemetrySnapshot().messageRoleCount,
+        equals(PushSessionMaintenancePolicy.messageRoleHardCap),
+      );
+
+      tracker.handleEvent(
+        const SesoriSseEvent.messagePartUpdated(
+          part: MessagePart(
+            id: "oldest-part",
+            sessionID: "session-0",
+            messageID: "msg-0",
+            type: MessagePartType.text,
+            text: "should stay pruned",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
+          ),
+        ),
+      );
+      expect(tracker.getLatestAssistantText("session-0"), isNull);
+
+      tracker.handleEvent(
+        const SesoriSseEvent.messagePartUpdated(
+          part: MessagePart(
+            id: "newest-part",
+            sessionID: "session-10000",
+            messageID: "msg-10000",
+            type: MessagePartType.text,
+            text: "latest kept role",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
+          ),
+        ),
+      );
+      expect(tracker.getLatestAssistantText("session-10000"), equals("latest kept role"));
+    });
+
+    test("active assistant message parts refresh role retention timestamps", () {
+      final clock = _FakeClock(initial: DateTime.utc(2026, 1, 1, 12));
+      final tracker = PushSessionStateTracker(now: clock.now);
+
+      tracker.handleEvent(
+        const SesoriSseEvent.messageUpdated(
+          info: Message(
+            id: "stream-msg",
+            role: "assistant",
+            sessionID: "stream-session",
+            agent: null,
+            modelID: null,
+            providerID: null,
+          ),
+        ),
+      );
+
+      clock.advance(const Duration(minutes: 29));
+      tracker.handleEvent(
+        const SesoriSseEvent.messagePartUpdated(
+          part: MessagePart(
+            id: "stream-part-1",
+            sessionID: "stream-session",
+            messageID: "stream-msg",
+            type: MessagePartType.text,
+            text: "still streaming",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
+          ),
+        ),
+      );
+
+      clock.advance(const Duration(minutes: 2));
+      tracker.pruneMessageRoleMetadata();
+      tracker.handleEvent(
+        const SesoriSseEvent.messagePartUpdated(
+          part: MessagePart(
+            id: "stream-part-2",
+            sessionID: "stream-session",
+            messageID: "stream-msg",
+            type: MessagePartType.text,
+            text: "fresh after prune",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
+          ),
+        ),
+      );
+
+      expect(tracker.getLatestAssistantText("stream-session"), equals("fresh after prune"));
+    });
+
+    test("subtree prune helpers are safe no-ops after a prior prune", () {
+      final tracker = PushSessionStateTracker(now: DateTime.now);
+
+      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
+      tracker.handleEvent(
+        SesoriSseEvent.sessionCreated(
+          info: _session(id: "child", parentID: "root"),
+        ),
+      );
+
+      final firstPrune = tracker.pruneRootSubtree(rootSessionId: "root");
+      expect(firstPrune.removedSessionCount, equals(2));
+
+      tracker.clearLatestAssistantTextForRootSubtree(rootSessionId: "root");
+      final secondPrune = tracker.pruneRootSubtree(rootSessionId: "root");
+      expect(secondPrune.removedSessionCount, equals(0));
+      expect(secondPrune.removedMessageRoleCount, equals(0));
+      expect(secondPrune.removedPermissionMappingCount, equals(0));
+      expect(tracker.findPrunableRootSessionIds(), isEmpty);
+    });
+
+    test("stale project summaries do not break reparented prune roots", () {
+      final clock = _FakeClock(initial: DateTime.utc(2026, 1, 1, 12));
+      final tracker = PushSessionStateTracker(now: clock.now);
+
+      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root-a")));
+      tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "root-b")));
+      tracker.handleEvent(
+        SesoriSseEvent.sessionCreated(
+          info: _session(id: "child", parentID: "root-a"),
+        ),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+      );
+      tracker.handleEvent(
+        SesoriSseEvent.sessionUpdated(
+          info: _session(id: "child", parentID: "root-b"),
+        ),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+      );
+
+      tracker.handleEvent(
+        const SesoriSseEvent.projectsSummary(
+          projects: [
+            ProjectActivitySummary(
+              id: "project-a",
+              activeSessions: [
+                ActiveSession(id: "root-a", mainAgentRunning: false, childSessionIds: ["child"]),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      expect(tracker.resolveRootSessionId("child"), equals("root-b"));
+
+      clock.advance(const Duration(minutes: 31));
+      final pruneResult = tracker.pruneRootSubtree(rootSessionId: "root-a");
+      expect(pruneResult.removedSessionCount, equals(1));
+      expect(tracker.resolveRootSessionId("child"), equals("root-b"));
+      expect(tracker.findPrunableRootSessionIds(), contains("root-b"));
+    });
+
+    test("unknown session deletes clear stale parent links so summaries can repair them", () {
+      final tracker = PushSessionStateTracker(now: DateTime.now);
+
+      tracker.handleEvent(
+        SesoriSseEvent.sessionUpdated(
+          info: _session(id: "child", parentID: "missing-root"),
+        ),
+      );
+      expect(tracker.resolveRootSessionId("child"), equals("child"));
+
+      tracker.handleEvent(
+        SesoriSseEvent.sessionDeleted(info: _session(id: "missing-root")),
+      );
+
+      tracker.handleEvent(
+        const SesoriSseEvent.projectsSummary(
+          projects: [
+            ProjectActivitySummary(
+              id: "project-a",
+              activeSessions: [
+                ActiveSession(id: "repaired-root", mainAgentRunning: false, childSessionIds: ["child"]),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      expect(tracker.resolveRootSessionId("child"), equals("repaired-root"));
+    });
+
+    test("projectsSummary-only roots receive timestamps and become prunable", () {
+      final clock = _FakeClock(initial: DateTime.utc(2026, 1, 1, 12));
+      final tracker = PushSessionStateTracker(now: clock.now);
+
+      tracker.handleEvent(
+        const SesoriSseEvent.projectsSummary(
+          projects: [
+            ProjectActivitySummary(
+              id: "project-a",
+              activeSessions: [
+                ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"]),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      clock.advance(const Duration(minutes: 31));
+
+      expect(tracker.findPrunableRootSessionIds(), equals(["root"]));
+    });
+
+    test("replayed projects summary does not refresh prune age for existing roots", () {
+      final clock = _FakeClock(initial: DateTime.utc(2026, 1, 1, 12));
+      final tracker = PushSessionStateTracker(now: clock.now);
+
+      const summaryEvent = SesoriSseEvent.projectsSummary(
+        projects: [
+          ProjectActivitySummary(
+            id: "project-a",
+            activeSessions: [
+              ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"]),
+            ],
+          ),
+        ],
+      );
+
+      tracker.handleEvent(summaryEvent);
+      clock.advance(const Duration(minutes: 20));
+      tracker.handleEvent(summaryEvent);
+      clock.advance(const Duration(minutes: 11));
+
+      expect(tracker.findPrunableRootSessionIds(), equals(["root"]));
+    });
   });
+}
+
+class _FakeClock {
+  DateTime _current;
+
+  _FakeClock({required DateTime initial}) : _current = initial;
+
+  DateTime now() {
+    return _current;
+  }
+
+  void advance(Duration delta) {
+    _current = _current.add(delta);
+  }
 }
 
 Session _session({

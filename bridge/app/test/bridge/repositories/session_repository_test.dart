@@ -262,21 +262,24 @@ void main() {
         PluginProject(id: "/repo-a"),
         PluginProject(id: "/repo-b"),
       ];
-      plugin.sessionsResult = const [
-        PluginSession(
-          id: "s-target",
-          projectID: "/repo-b",
-          directory: "/repo-b",
-          parentID: null,
-          title: "Session",
-          time: null,
-          summary: null,
-        ),
-      ];
+      plugin.sessionsByWorktree = {
+        "/repo-a": const [],
+        "/repo-b": const [
+          PluginSession(
+            id: "s-target",
+            projectID: "/repo-b",
+            directory: "/repo-b",
+            parentID: null,
+            title: "Session",
+            time: null,
+            summary: null,
+          ),
+        ],
+      };
 
       final result = await repository.findProjectIdForSession(sessionId: "s-target");
 
-      expect(result, equals("/repo-a"));
+      expect(result, equals("/repo-b"));
     });
   });
 }
@@ -284,6 +287,7 @@ void main() {
 class _FakeBridgePlugin implements BridgePlugin {
   List<PluginProject> projectsResult = const [];
   List<PluginSession> sessionsResult = const [];
+  Map<String, List<PluginSession>> sessionsByWorktree = const {};
   PluginSession? renameSessionResult;
   String? lastRenameSessionId;
   String? lastRenameSessionTitle;
@@ -298,7 +302,9 @@ class _FakeBridgePlugin implements BridgePlugin {
   Future<List<PluginProject>> getProjects() async => projectsResult;
 
   @override
-  Future<List<PluginSession>> getSessions(String worktree, {int? start, int? limit}) async => sessionsResult;
+  Future<List<PluginSession>> getSessions(String worktree, {int? start, int? limit}) async {
+    return sessionsByWorktree[worktree] ?? sessionsResult;
+  }
 
   @override
   Future<PluginSession> renameSession({required String sessionId, required String title}) async {

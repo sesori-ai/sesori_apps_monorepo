@@ -15,10 +15,17 @@ class CompletionNotifier {
   final StreamController<String> _completionController = StreamController<String>.broadcast();
   final Map<String, Timer> _debounceTimers = {};
   final Set<String> _completionSentForRoots = {};
+  final Set<String> _pendingAbortRoots = {};
   final Set<String> _abortedRoots = {};
   final Map<String, String> _permissionRequestToSession = {};
 
   Stream<String> get completions => _completionController.stream;
+
+  int get permissionRequestCount => _permissionRequestToSession.length;
+
+  int get completionSentRootCount => _completionSentForRoots.length;
+
+  int get abortedRootCount => _abortedRoots.length;
 
   CompletionNotifier({
     required PushSessionStateTracker tracker,
@@ -26,13 +33,29 @@ class CompletionNotifier {
   }) : _tracker = tracker,
        _debounceDuration = debounceDuration;
 
+  void markSessionAbortPending(String sessionId) {
+    final rootSessionId = _tracker.resolveRootSessionId(sessionId);
+    _pendingAbortRoots.add(rootSessionId);
+    _cancelDebounceForRoot(rootSessionId);
+  }
+
   /// Marks a session as user-aborted so the next idle transition does not
   /// trigger a completion notification. The flag is cleared when the session
   /// becomes busy again (new turn) or is deleted.
   void markSessionAborted(String sessionId) {
     final rootSessionId = _tracker.resolveRootSessionId(sessionId);
+    _pendingAbortRoots.remove(rootSessionId);
     _abortedRoots.add(rootSessionId);
     _cancelDebounceForRoot(rootSessionId);
+  }
+
+  void clearPendingAbort(String sessionId) {
+    final rootSessionId = _tracker.resolveRootSessionId(sessionId);
+    final wasPending = _pendingAbortRoots.remove(rootSessionId);
+    if (!wasPending) {
+      return;
+    }
+    _maybeScheduleCompletion(rootSessionId);
   }
 
   /// Process an SSE event for completion tracking.
@@ -53,6 +76,7 @@ class CompletionNotifier {
           case SessionStatusBusy():
           case SessionStatusRetry():
             _completionSentForRoots.remove(rootSessionId);
+            _pendingAbortRoots.remove(rootSessionId);
             _abortedRoots.remove(rootSessionId);
             _cancelDebounceForRoot(rootSessionId);
           case SessionStatusIdle():
@@ -62,6 +86,7 @@ class CompletionNotifier {
       case SesoriSessionDeleted(:final info):
         _cancelDebounceForSessionGroup(info.id);
         _completionSentForRoots.remove(info.id);
+        _pendingAbortRoots.remove(info.id);
         _abortedRoots.remove(info.id);
         _permissionRequestToSession.removeWhere((_, sessionId) => sessionId == info.id);
       // User already handled the question, so cancel any pending completion ping.
@@ -82,6 +107,21 @@ class CompletionNotifier {
     }
   }
 
+  /// Removes notifier-retained state for a pruned root subtree.
+  void cleanupPrunedRootSubtree({
+    required String rootSessionId,
+    required Iterable<String> prunedSessionIds,
+  }) {
+    final prunedRootIds = {rootSessionId, ...prunedSessionIds};
+    for (final sessionId in prunedRootIds) {
+      _cancelDebounceForRoot(sessionId);
+      _completionSentForRoots.remove(sessionId);
+      _pendingAbortRoots.remove(sessionId);
+      _abortedRoots.remove(sessionId);
+    }
+    _permissionRequestToSession.removeWhere((_, sessionId) => prunedRootIds.contains(sessionId));
+  }
+
   /// Cancels all timers and closes the completion stream.
   void dispose() {
     _cancelAllDebounceTimers();
@@ -94,6 +134,7 @@ class CompletionNotifier {
   void reset() {
     _cancelAllDebounceTimers();
     _completionSentForRoots.clear();
+    _pendingAbortRoots.clear();
     _abortedRoots.clear();
     _permissionRequestToSession.clear();
   }
@@ -144,6 +185,7 @@ class CompletionNotifier {
         _tracker.isSessionGroupFullyIdle(rootSessionId) &&
         !_tracker.hasPendingInteraction(rootSessionId) &&
         !_completionSentForRoots.contains(rootSessionId) &&
+        !_pendingAbortRoots.contains(rootSessionId) &&
         !_abortedRoots.contains(rootSessionId);
   }
 
