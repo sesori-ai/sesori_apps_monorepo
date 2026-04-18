@@ -2,7 +2,7 @@
 
 _Last updated: April 18, 2026_
 
-These Sesori Terms and Conditions, together with any additional terms, policies, notices, or product-specific rules that we make available for the official Sesori services, form a legally binding agreement between you and **DigitalBlock Labs LTD** ("**Sesori**," "**Company**," "we," "us," or "our"). These terms apply when you access, install, use, or interact with Sesori's official apps and services, including the Sesori mobile app, the official local bridge software, relay services, authentication and account services, push notification services, voice input and transcription features, `sesori.com`, and related hosted features that we provide (collectively, the "**Service**").
+These Sesori Terms and Conditions, together with any additional terms, policies, notices, or product-specific rules that we make available for the official Sesori services, form a legally binding agreement between you and **Digitalblock Labs LTD** ("**Sesori**," "**Company**," "we," "us," or "our"). These terms apply when you access, install, use, or interact with Sesori's official apps and services, including the Sesori mobile app, the official local bridge software, relay services, authentication and account services, push notification services, voice input and transcription features, `sesori.com`, and related hosted features that we provide (collectively, the "**Service**").
 
 By accessing or using the Service, you agree to these Terms and Conditions. If you do not agree, do not access or use the Service.
 
@@ -195,7 +195,7 @@ To the maximum extent permitted by law, you will defend, indemnify, and hold har
 
 1. Nothing in Sections 17.1 through 17.4 deprives you of the mandatory protections of the law of your country of habitual residence, including any right to bring proceedings in the courts of that country.
 2. You are not required to submit disputes to arbitration and are not bound by the class-action waiver in Section 17.3, to the extent those provisions conflict with mandatory law applicable to you.
-3. Disputes may also be submitted to the European Commission's Online Dispute Resolution platform, available at `https://ec.europa.eu/consumers/odr`, where required by applicable law. Sesori is not required to, and does not agree to, participate in alternative dispute resolution before a consumer arbitration board unless required by law.
+3. Sesori is not required to, and does not agree to, participate in alternative dispute resolution before a consumer arbitration board unless required by law.
 
 ## 18. Apple App Store terms
 
@@ -247,10 +247,9 @@ If you obtained the Sesori mobile app from the Google Play Store, the following 
 
 21.1. If you have questions about these Terms and Conditions, contact us at [contact@sesori.com](mailto:contact@sesori.com).
 
-21.2. **EU Representative.** DigitalBlock Labs LTD is established outside the European Union. For the purposes of Article 27 of Regulation (EU) 2016/679 (GDPR), we have appointed the following entity as our representative in the European Union for matters relating to the processing of personal data of individuals located in the EU or EEA:
+21.2. **EU Representative.** Digitalblock Labs LTD is established outside the European Union. For the purposes of Article 27 of Regulation (EU) 2016/679 (GDPR), we have appointed the following entity as our representative in the European Union for matters relating to the processing of personal data of individuals located in the EU or EEA:
 
 > **Efosoft EOOD**
-> [Registered in Bulgaria]
 > Email: [gdpr@sesori.com](mailto:gdpr@sesori.com)
 
 Individuals located in the EU or EEA may contact our EU Representative directly regarding any matter related to the processing of their personal data or to the exercise of their rights under the GDPR.
