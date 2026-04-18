@@ -98,6 +98,10 @@ class SessionRepository {
     return _plugin.archiveSession(sessionId: sessionId);
   }
 
+  Future<void> abortSession({required String sessionId}) {
+    return _plugin.abortSession(sessionId: sessionId);
+  }
+
   Future<List<Session>> enrichSessions({required List<Session> sessions}) async {
     final sessionIds = sessions.map((session) => session.id).toList(growable: false);
 

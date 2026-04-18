@@ -43,6 +43,8 @@ Each layer has a specific responsibility and a dedicated directory. Dependencies
 - A Consumer (cubit, handler) MUST NOT import from `api/` — it goes through repositories/services
 - Within a layer: NO cross-dependency between same-level classes (unless base classes/abstractions designed for reuse within that layer)
 - Helper, use-case, and supporting classes around a Service MUST NOT depend back on that owning Service. If you split service logic into a collaborator, make it a standalone dependency with its own injected inputs, not a `part` file, extension, or pseudo-helper that calls back into the service.
+- Do NOT extract non-trivial business logic into top-level/global functions just to satisfy file-size limits. If the extracted logic is more than a tiny pure helper, split it into a named collaborator class with explicit dependencies and a clear ownership boundary so it can be tested in isolation.
+- Do NOT extract a class only because the file is long. An extracted collaborator must own lifecycle, state or invariants, a stable domain responsibility, or a multi-caller decision boundary. If it owns none of those, keep the logic as cohesive private methods even when the file is near the line limit. Ask this before splitting: **Would this class still deserve to exist if the original file were under the line limit?** If the answer is no, the extraction is forbidden.
 - Directory structure MUST mirror layers — when you see `import '../api/...'` in a `services/` file, that is a violation
 
 ### Naming Conventions
@@ -88,6 +90,8 @@ These four rules catch the common structural failures that layer rules alone mis
 - **Symmetric handling of equivalent triggers.** When multiple triggers (streams, timers, external calls) feed the same downstream pipeline, handle them symmetrically. One trigger as a method and another as a separate class is a violation. Extract a Dispatcher that owns the pipeline; each trigger becomes a Listener (or method, but consistent across all triggers).
 
 - **Service suffix discipline.** A class ending in `Service` must orchestrate 2+ collaborators, coordinate a non-trivial state machine, OR depend on a Repository. If it only transforms/builds/formats/validates/parses, it needs a role-specific suffix from the list above. `NotificationContentService` that just builds payloads is wrong; `NotificationContentBuilder` is right.
+
+- **Ownership boundary test.** A split done only to reduce file length is a violation. An extracted class must still deserve to exist when line count pressure disappears. It must own lifecycle, state or invariants, a stable domain responsibility, or a multi-caller decision boundary. If it owns none of those, keep private methods in the original class. Reviewers must ask: **Would this class still deserve to exist if the original file were under the line limit?**
 
 ### Bridge workspace (`bridge/`)
 
@@ -150,7 +154,7 @@ app/lib/src/
 - For bridge session lifecycle flows, routing handlers MUST NOT depend on `BridgePlugin` directly. Treat `BridgePlugin` as Layer 1/API. Thin plugin-backed session commands and lookups belong in `SessionRepository`; multi-step session orchestration (create, archive, unarchive) belongs in services.
 - All mappers belong in `repositories/mappers/`, NOT in `routing/`
 - `auth/`, `push/`, `server/` are self-contained subsystems outside the layer hierarchy
-- **New push triggers** (another stream, another timer) MUST be added as a new Listener class delegating to the existing `PushDispatcher`. Do not grow a single class to own multiple triggers.
+- **New push triggers** (another stream, another timer) MUST be added as a new Listener class. `PushDispatcher` remains the outbound push choke point, while each listener owns its own trigger-specific bookkeeping, scheduling, and pre-send state handling before delegating outbound sends to the dispatcher. Do not grow a single class to own multiple triggers.
 
 **`sesori_plugin_opencode` — internal layers:**
 ```

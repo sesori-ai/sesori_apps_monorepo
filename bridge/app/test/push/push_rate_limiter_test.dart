@@ -4,6 +4,53 @@ import "package:test/test.dart";
 
 void main() {
   group("PushRateLimiter", () {
+    test("pruneStaleEntries removes keys older than the default ttl", () {
+      var now = DateTime(2026, 1, 1, 10, 0, 0);
+      final limiter = PushRateLimiter(now: () => now);
+
+      expect(
+        limiter.shouldSend(
+          category: NotificationCategory.aiInteraction,
+          sessionId: "session-a",
+          collapseKey: "ai_interaction-session-a",
+        ),
+        isTrue,
+      );
+      expect(
+        limiter.shouldSend(
+          category: NotificationCategory.sessionMessage,
+          sessionId: "session-b",
+          collapseKey: "session_message-session-b",
+        ),
+        isTrue,
+      );
+      expect(limiter.retainedKeyCount, 2);
+
+      now = now.add(const Duration(minutes: 31));
+
+      expect(limiter.pruneStaleEntries(), 2);
+      expect(limiter.retainedKeyCount, 0);
+    });
+
+    test("pruneStaleEntries preserves recent keys within the ttl", () {
+      var now = DateTime(2026, 1, 1, 10, 0, 0);
+      final limiter = PushRateLimiter(now: () => now);
+
+      expect(
+        limiter.shouldSend(
+          category: NotificationCategory.aiInteraction,
+          sessionId: "session-a",
+          collapseKey: "ai_interaction-session-a",
+        ),
+        isTrue,
+      );
+
+      now = now.add(const Duration(minutes: 29, seconds: 59));
+
+      expect(limiter.pruneStaleEntries(), 0);
+      expect(limiter.retainedKeyCount, 1);
+    });
+
     test("first call sends and second call within cooldown is blocked", () {
       var now = DateTime(2026, 1, 1, 10, 0, 0);
       final limiter = PushRateLimiter(now: () => now);
@@ -68,6 +115,57 @@ void main() {
         ),
         isTrue,
       );
+      expect(limiter.retainedKeyCount, 0);
+    });
+
+    test("key count reflects pruning results while cooldown semantics hold", () {
+      var now = DateTime(2026, 1, 1, 10, 0, 0);
+      final limiter = PushRateLimiter(now: () => now);
+
+      expect(
+        limiter.shouldSend(
+          category: NotificationCategory.aiInteraction,
+          sessionId: "session-a",
+          collapseKey: "ai_interaction-session-a",
+        ),
+        isTrue,
+      );
+      expect(
+        limiter.shouldSend(
+          category: NotificationCategory.sessionMessage,
+          sessionId: "session-b",
+          collapseKey: "session_message-session-b",
+        ),
+        isTrue,
+      );
+      expect(limiter.retainedKeyCount, 2);
+
+      now = now.add(const Duration(minutes: 31));
+
+      expect(limiter.pruneStaleEntries(), 2);
+      expect(limiter.retainedKeyCount, 0);
+
+      expect(
+        limiter.shouldSend(
+          category: NotificationCategory.aiInteraction,
+          sessionId: "session-a",
+          collapseKey: "ai_interaction-session-a",
+        ),
+        isTrue,
+      );
+      expect(limiter.retainedKeyCount, 1);
+
+      now = now.add(const Duration(seconds: 1));
+
+      expect(
+        limiter.shouldSend(
+          category: NotificationCategory.aiInteraction,
+          sessionId: "session-a",
+          collapseKey: "ai_interaction-session-a",
+        ),
+        isFalse,
+      );
+      expect(limiter.retainedKeyCount, 1);
     });
   });
 }

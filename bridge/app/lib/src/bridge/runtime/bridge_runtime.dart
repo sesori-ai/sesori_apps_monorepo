@@ -9,8 +9,12 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../auth/access_token_provider.dart";
 import "../../auth/token_refresher.dart";
 import "../../push/completion_notifier.dart";
+import "../../push/completion_push_listener.dart";
+import "../../push/maintenance_push_listener.dart";
+import "../../push/push_dispatcher.dart";
+import "../../push/push_maintenance_telemetry.dart" show PushMaintenanceTelemetryBuilder, readCurrentRssBytes;
 import "../../push/push_notification_client.dart";
-import "../../push/push_notification_service.dart";
+import "../../push/push_notification_content_builder.dart";
 import "../../push/push_rate_limiter.dart";
 import "../../push/push_session_state_tracker.dart";
 import "../api/gh_cli_api.dart";
@@ -76,6 +80,28 @@ class BridgeRuntime {
       sessionRepository: sessionRepository,
       failureReporter: failureReporter,
     );
+    final pushTracker = PushSessionStateTracker(now: DateTime.now);
+    final pushRateLimiter = PushRateLimiter(now: DateTime.now);
+    final completionNotifier = CompletionNotifier(
+      tracker: pushTracker,
+      debounceDuration: const Duration(milliseconds: 500),
+    );
+    final pushDispatcher = PushDispatcher(
+      client: PushNotificationClient(
+        authBackendURL: config.authBackendURL,
+        tokenRefreshManager: tokenRefresher,
+        client: httpClient,
+      ),
+      rateLimiter: pushRateLimiter,
+      tracker: pushTracker,
+      contentBuilder: const PushNotificationContentBuilder(),
+    );
+    const pushContentBuilder = PushNotificationContentBuilder();
+    final telemetryBuilder = PushMaintenanceTelemetryBuilder(
+      completionNotifier: completionNotifier,
+      rateLimiter: pushRateLimiter,
+      rssBytesReader: readCurrentRssBytes,
+    );
 
     return BridgeRuntime(
       database: database,
@@ -91,9 +117,18 @@ class BridgeRuntime {
           baseUrl: config.authBackendURL,
           tokenRefresher: tokenRefresher,
         ),
-        pushNotificationService: _createPushNotificationService(
-          authBackendURL: config.authBackendURL,
-          tokenRefresher: tokenRefresher,
+        pushDispatcher: pushDispatcher,
+        completionListener: CompletionPushListener(
+          tracker: pushTracker,
+          completionNotifier: completionNotifier,
+          contentBuilder: pushContentBuilder,
+          dispatcher: pushDispatcher,
+        ),
+        maintenanceListener: MaintenancePushListener(
+          tracker: pushTracker,
+          completionNotifier: completionNotifier,
+          rateLimiter: pushRateLimiter,
+          telemetryBuilder: telemetryBuilder,
         ),
         tokenRefresher: tokenRefresher,
         failureReporter: failureReporter,
@@ -173,25 +208,6 @@ void registerSignalHandlers({
   if (!Platform.isWindows) {
     ProcessSignal.sigterm.watch().listen((_) => unawaited(session.cancel())).addTo(subscriptions);
   }
-}
-
-PushNotificationService _createPushNotificationService({
-  required String authBackendURL,
-  required TokenRefresher tokenRefresher,
-}) {
-  final tracker = PushSessionStateTracker();
-  return PushNotificationService(
-    client: PushNotificationClient(
-      authBackendURL: authBackendURL,
-      tokenRefreshManager: tokenRefresher,
-    ),
-    rateLimiter: PushRateLimiter(),
-    tracker: tracker,
-    completionNotifier: CompletionNotifier(
-      tracker: tracker,
-      debounceDuration: const Duration(milliseconds: 500),
-    ),
-  );
 }
 
 bool _gitPathExists({required String gitPath}) {

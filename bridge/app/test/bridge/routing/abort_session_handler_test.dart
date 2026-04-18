@@ -1,4 +1,5 @@
 import "package:sesori_bridge/src/bridge/routing/abort_session_handler.dart";
+import "package:sesori_bridge/src/bridge/services/session_abort_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -8,19 +9,18 @@ void main() {
   group("AbortSessionHandler", () {
     late FakeBridgePlugin plugin;
     late AbortSessionHandler handler;
-
-    late List<String> abortedSessionIds;
+    late SessionAbortService sessionAbortService;
 
     setUp(() {
       plugin = FakeBridgePlugin();
-      abortedSessionIds = [];
-      handler = AbortSessionHandler(
-        plugin,
-        onSessionAborted: abortedSessionIds.add,
-      );
+      sessionAbortService = SessionAbortService(sessionRepository: FakeSessionRepository(plugin: plugin));
+      handler = AbortSessionHandler(sessionAbortService: sessionAbortService);
     });
 
-    tearDown(() => plugin.close());
+    tearDown(() async {
+      await sessionAbortService.dispose();
+      await plugin.close();
+    });
 
     test("canHandle POST /session/abort", () {
       expect(handler.canHandle(makeRequest("POST", "/session/abort")), isTrue);
@@ -59,7 +59,7 @@ void main() {
       expect(plugin.lastAbortSessionId, equals("session-xyz"));
     });
 
-    test("calls onSessionAborted before plugin abort", () async {
+    test("routes abort through the session abort service", () async {
       await handler.handle(
         makeRequest("POST", "/session/abort"),
         body: const SessionIdRequest(sessionId: "s1"),
@@ -67,7 +67,7 @@ void main() {
         queryParams: {},
       );
 
-      expect(abortedSessionIds, equals(["s1"]));
+      expect(plugin.lastAbortSessionId, equals("s1"));
     });
   });
 }

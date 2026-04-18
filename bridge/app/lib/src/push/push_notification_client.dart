@@ -9,12 +9,14 @@ import "push_send_exception.dart";
 class PushNotificationClient {
   final String authBackendURL;
   final TokenRefresher _tokenRefreshManager;
-  final http.Client _client = http.Client();
+  final http.Client _client;
 
   PushNotificationClient({
     required this.authBackendURL,
     required TokenRefresher tokenRefreshManager,
-  }) : _tokenRefreshManager = tokenRefreshManager;
+    required http.Client client,
+  }) : _tokenRefreshManager = tokenRefreshManager,
+       _client = client;
 
   Future<void> sendNotification(SendNotificationPayload payload) async {
     final token = await _tokenRefreshManager.getAccessToken();
@@ -45,5 +47,9 @@ class PushNotificationClient {
       },
       body: jsonEncode(payload.toJson()),
     );
+  }
+
+  Future<void> dispose() async {
+    // Shared http client lifetime is owned by the composition root.
   }
 }

@@ -44,12 +44,14 @@ Root `AGENTS.md` has the full suffix vocabulary. Concrete bridge examples:
 - **Tool wrappers** use `Api`: `GhCliApi` (gh), `GitCliApi` (git), `SesoriServerApi` (HTTP)
 - **Transport wrappers** use `Client`: `RelayClient`, `PushNotificationClient`
 - **Layer 3 orchestration** uses `Service`: `WorktreeService`, `MetadataService`, `TokenService`
-- **Pipeline choke points** use `Dispatcher`: `PushDispatcher` (owns the full push output pipeline)
+- **Pipeline choke points** use `Dispatcher`: `PushDispatcher` (owns only outbound push sends: immediate sends, completion sends, rate limiting, payload building, and client disposal)
 - **Stream-driven triggers** use `Listener`: `CompletionPushListener`, `MaintenancePushListener`
 - **State derived from events** uses `Tracker`: `ActiveSessionTracker`, `PushSessionStateTracker`
 - **Pure transformations** use `Builder`/`Mapper`/`Parser`: `PushNotificationContentBuilder`, `BridgeEventMapper`, `SseEventParser`
 
 If a new class doesn't fit one of these, reconsider its responsibilities before labeling it `Manager`, `Helper`, or `Wrapper`.
+
+Ask this before extracting any new bridge class: **Would this class still deserve to exist if the original file were under the line limit?** If the answer is no, keep the logic as cohesive private methods. File length alone never justifies a new class.
 
 ## Bridge-Specific Patterns
 
@@ -89,6 +91,16 @@ Constructor parameters for injected dependencies (services, runners, checkers) m
 ### Streams Over Callbacks
 
 Use push-based communication (`StreamController`, `PublishSubject`) between services. Never pass `Function` callbacks for event notification. Services that produce events expose a `Stream`; consumers subscribe to it. This also unlocks symmetric trigger handling — two consumers of the same stream are structurally symmetric by construction.
+
+### Prefer CompositeSubscription For Multiple Owned Streams
+
+When a class owns more than one long-lived `StreamSubscription`, prefer a single `CompositeSubscription` and add each owned subscription to it. Cancel the composite in one place during teardown instead of manually tracking several nullable subscription fields.
+
+### Honest Ownership Boundaries
+
+Do not extract a bridge collaborator only to make a file shorter. The extracted class must own lifecycle, state or invariants, a stable domain responsibility, or a multi-caller decision boundary. If it owns none of those, keep the logic as private methods on the cohesive owner.
+
+In the push subsystem, `PushDispatcher` owns only outbound push sends. `CompletionPushListener` owns SSE-driven tracker/notifier bookkeeping plus abort suppression, and `MaintenancePushListener` owns the timer lifecycle, maintenance-step sequencing, and maintenance telemetry/logging.
 
 ### Orchestrator Owns SSE Decisions
 

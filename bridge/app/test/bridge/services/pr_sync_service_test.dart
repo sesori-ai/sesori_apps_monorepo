@@ -467,6 +467,9 @@ class _FakeSessionRepository implements SessionRepository {
   Future<Session?> getSessionForProject({required String projectId, required String sessionId}) async => null;
 
   @override
+  Future<void> abortSession({required String sessionId}) async {}
+
+  @override
   Future<void> notifySessionArchived({required String sessionId}) async {}
 
   @override

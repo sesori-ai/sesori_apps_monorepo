@@ -1,8 +1,10 @@
-import "package:sesori_bridge/src/push/push_notification_service.dart";
+import "package:sesori_bridge/src/push/push_notification_content_builder.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
+  const contentBuilder = PushNotificationContentBuilder();
+
   group("extractNotificationData", () {
     test("maps question.asked and permission.asked to ai_interaction", () {
       const questionEvent = SesoriSseEvent.questionAsked(
@@ -17,18 +19,18 @@ void main() {
         description: "Run command",
       );
 
-      expect(extractNotificationData(questionEvent)?.category, NotificationCategory.aiInteraction);
-      expect(extractNotificationData(permissionEvent)?.category, NotificationCategory.aiInteraction);
+      expect(contentBuilder.extractNotificationData(questionEvent)?.category, NotificationCategory.aiInteraction);
+      expect(contentBuilder.extractNotificationData(permissionEvent)?.category, NotificationCategory.aiInteraction);
     });
 
     test("maps installation.update-available to system_update", () {
       const event = SesoriSseEvent.installationUpdateAvailable(version: "1.2.3");
 
-      expect(extractNotificationData(event)?.category, NotificationCategory.systemUpdate);
+      expect(contentBuilder.extractNotificationData(event)?.category, NotificationCategory.systemUpdate);
     });
 
     test("returns null for unsupported events", () {
-      expect(extractNotificationData(const SesoriSseEvent.serverHeartbeat()), isNull);
+      expect(contentBuilder.extractNotificationData(const SesoriSseEvent.serverHeartbeat()), isNull);
     });
   });
 
@@ -40,9 +42,9 @@ void main() {
         questions: [QuestionInfo(question: "Ship it?", header: "Prompt")],
       );
 
-      final data = extractNotificationData(event)!;
-      final sessionId = extractSessionId(event);
-      final payload = buildNotificationPayload(
+      final data = contentBuilder.extractNotificationData(event)!;
+      final sessionId = contentBuilder.extractSessionId(event);
+      final payload = contentBuilder.buildNotificationPayload(
         category: data.category,
         eventType: data.eventType,
         title: data.title,
@@ -63,9 +65,9 @@ void main() {
     test("omits session data for non-session events", () {
       const event = SesoriSseEvent.installationUpdateAvailable(version: "2.0.0");
 
-      final data = extractNotificationData(event)!;
-      final sessionId = extractSessionId(event);
-      final payload = buildNotificationPayload(
+      final data = contentBuilder.extractNotificationData(event)!;
+      final sessionId = contentBuilder.extractSessionId(event);
+      final payload = contentBuilder.buildNotificationPayload(
         category: data.category,
         eventType: data.eventType,
         title: data.title,

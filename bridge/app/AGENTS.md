@@ -51,12 +51,6 @@ modules/
 | OpenCode plugin  | `modules/opencode_plugin/`         | OpenCode backend implementation + models + tests        |
 | Process mgmt     | `lib/src/server/`                  | Spawns OpenCode, health poll, SIGTERM cleanup         |
 
-## FILE SIZE
-- Maximum file length: 250 lines per production code file
-- If a file exceeds 250 lines, split it into smaller focused files (by use-case, component, or concern)
-- Prefer many small files over few large files
-- Test files are explicitly excluded from this limit
-
 ## CONVENTIONS
 
 - **Plugin architecture** — all backend-specific code lives in plugin modules under `modules/`. The bridge `lib/src/` is plugin-agnostic — it only imports from `sesori_plugin_interface`, never from concrete plugins.
@@ -70,6 +64,7 @@ modules/
 - **API classes return Freezed types** — e.g. `Future<List<Project>>` not `Future<http.Response>`. Parsing lives in the API layer.
 - **Constructor injection for testability** — business logic classes (e.g. `ActiveSessionTracker`) receive their API dependency via constructor, enabling fake/mock injection in tests.
 - **Prefer typed version value objects** — when bridge code needs version parsing/comparison, parse once into a small typed value object that implements `Comparable`. Keep raw version strings in API/transport DTOs and map them into typed versions in repository code rather than exposing loose `String` comparison helpers.
+- **Prefer `CompositeSubscription` for multiple owned stream subscriptions** — when a class owns more than one long-lived `StreamSubscription`, store them in a single `CompositeSubscription` and cancel that composite in one place during teardown instead of manually tracking multiple nullable subscription fields.
 - **Request bodies use shared Freezed models** — every handler that accepts a JSON body must have a corresponding Freezed request class in `sesori_shared` (e.g. `HideProjectRequest`, `CreateProjectRequest`). Parse with `FooRequest.fromJson(map)` inside a try/catch:
   ```dart
   final FooRequest fooRequest;
@@ -91,7 +86,11 @@ modules/
 - **Never construct classes with server URLs/passwords directly** — inject an API client instance instead
 - **Never use inline JSON maps for request bodies** — always create a Freezed class in `sesori_shared` and use `toJson()`/`fromJson()`. Never write `body: {"key": value}` in service or handler code.
 - **Never split a service into fake helpers that still depend on that same service** — if logic is being extracted into a focused collaborator, it must stand on its own injected dependencies. Do not use `part` files, extensions, or pseudo-helper classes that call back into the owning service, because that keeps same-level coupling and hides circular design.
+- **Do not use top-level/global functions for non-trivial bridge logic** — extracting 20-100 lines of decision-making into free functions is not an acceptable file-splitting strategy. If logic is substantial enough to deserve its own file, make it a named collaborator class with explicit constructor-injected dependencies and test it directly.
+- **Never extract a class only for file-length pressure** — the extracted collaborator must own lifecycle, state or invariants, a stable domain responsibility, or a multi-caller decision boundary. If it owns none of those, keep the logic as private methods in the original class.
 - **Keep command primitives in standalone dependencies** — shell-facing git or worktree operations belong in a dedicated API/helper dependency that the service composes. `WorktreeService` should orchestrate those collaborators, not attach command execution as service-owned helper methods in another file.
+
+For push code specifically, `PushDispatcher` owns only outbound push sends (immediate sends, completion sends, rate limiting, payload construction, and client disposal). `CompletionPushListener` owns SSE-driven tracker/notifier bookkeeping plus abort suppression, and `MaintenancePushListener` owns the timer lifecycle, maintenance-step sequencing, and maintenance telemetry/logging.
 
 ## TESTING
 

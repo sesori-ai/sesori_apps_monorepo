@@ -63,6 +63,7 @@ Reject as too vague if the plan:
    - Does any proposed subcomponent share most of its dependencies with its parent?
    - Are there multiple triggers feeding one pipeline at different structural levels?
    - Does every `Service`-suffixed class meet the A10 bar?
+   - Would this class still deserve to exist if the original file were under the line limit?
 
 6. If context is needed (e.g., to verify that a referenced existing class lives where the plan assumes), use `bash` to read relevant files. Do not review blindly.
 
@@ -186,6 +187,21 @@ A class whose name ends in `Service` MUST satisfy at least one of:
 Classes that only transform, build, format, validate, calculate, parse, track, or dispatch are NOT Services. They MUST use role-specific suffixes from the naming convention. `NotificationContentService` for a class that only builds notification payloads is a violation; `NotificationContentBuilder` is correct.
 
 This rule applies to new code. Legacy `Service`-suffixed classes that don't meet the bar are excluded unless the current plan extends or restructures them.
+
+**A11. Ownership Boundary Test**
+
+Extracting a class only to reduce file length is a violation.
+
+Every extracted collaborator must own at least one of:
+
+- lifecycle
+- state or invariants
+- a stable domain responsibility
+- a multi-caller decision boundary
+
+If the proposed class owns none of those, the logic must stay as cohesive private methods on the existing class.
+
+This review question is mandatory and blocking: **Would this class still deserve to exist if the original file were under the line limit?** If the answer is no, reject the plan.
 
 ---
 
@@ -637,11 +653,11 @@ Target architecture: a single dispatcher owns the push pipeline, with one listen
    └─ Exposes: dispatch(PushRequest)
 │
 ├─ CompletionPushListener — reactive trigger
-│  └─ Subscribes to CompletionNotifier stream, delegates to PushDispatcher
+│  └─ Subscribes to CompletionNotifier stream, owns completion-state bookkeeping/abort suppression, delegates outbound sends to PushDispatcher
 │
 ├─ MaintenancePushListener — scheduled trigger
-│  └─ Runs periodic sweep via Timer.periodic, delegates to PushDispatcher
-│  └─ Uses: PushSessionStateTracker, PushMaintenanceTelemetryBuilder
+│  └─ Runs periodic sweep via Timer.periodic, owns maintenance-step sequencing and telemetry/logging
+│  └─ Uses: PushSessionStateTracker, CompletionNotifier, PushRateLimiter, PushMaintenanceTelemetryBuilder
 │
 └─ Support classes (injected, not constructed by the listeners):
    ├─ PushNotificationClient — HTTP transport
@@ -655,7 +671,7 @@ Target architecture: a single dispatcher owns the push pipeline, with one listen
 └─ Location: app/lib/src/push/
 ```
 
-Plans that introduce new push triggers (another stream, another timer) MUST add another listener class and delegate to the existing `PushDispatcher`. Plans that grow a single class to own multiple triggers violate A9 and must be rejected.
+Plans that introduce new push triggers (another stream, another timer) MUST add another listener class. `PushDispatcher` remains the outbound push choke point, while the listener owns the trigger-specific bookkeeping/scheduling pipeline before delegating outbound sends. Plans that grow a single class to own multiple triggers violate A9 and must be rejected.
 
 **Subsystem: `server/` (minimal)**
 
