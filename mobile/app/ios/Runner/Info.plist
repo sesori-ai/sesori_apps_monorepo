@@ -84,8 +84,6 @@
 			<string>UIInterfaceOrientationLandscapeLeft</string>
 			<string>UIInterfaceOrientationLandscapeRight</string>
 		</array>
-		<key>NSCameraUsageDescription</key>
-		<string>Camera access is needed to scan QR codes for connecting to your server</string>
 		<key>NSMicrophoneUsageDescription</key>
 		<string>Microphone access is needed for voice-to-text transcription</string>
 		<key>CFBundleURLTypes</key>
