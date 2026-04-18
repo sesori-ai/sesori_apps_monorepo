@@ -101,6 +101,106 @@ void main() {
         ),
       ).called(1);
     });
+
+    test("sendMessage normalizes blank provider and model ids to null", () async {
+      when(
+        () => mockRepository.sendMessage(
+          sessionId: any(named: "sessionId"),
+          text: any(named: "text"),
+          agent: any(named: "agent"),
+          providerID: any(named: "providerID"),
+          modelID: any(named: "modelID"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((_) async => ApiResponse<void>.success(null));
+
+      await service.sendMessage(
+        sessionId: "session-1",
+        text: "hello",
+        agent: "build",
+        providerID: "   ",
+        modelID: "",
+        command: null,
+      );
+
+      verify(
+        () => mockRepository.sendMessage(
+          sessionId: "session-1",
+          text: "hello",
+          agent: "build",
+          providerID: null,
+          modelID: null,
+          command: null,
+        ),
+      ).called(1);
+    });
+
+    test("sendMessage treats blank command as null and preserves agent and model ids", () async {
+      when(
+        () => mockRepository.sendMessage(
+          sessionId: any(named: "sessionId"),
+          text: any(named: "text"),
+          agent: any(named: "agent"),
+          providerID: any(named: "providerID"),
+          modelID: any(named: "modelID"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((_) async => ApiResponse<void>.success(null));
+
+      await service.sendMessage(
+        sessionId: "session-1",
+        text: "hello",
+        agent: "build",
+        providerID: "openai",
+        modelID: "gpt-5.4",
+        command: "   ",
+      );
+
+      verify(
+        () => mockRepository.sendMessage(
+          sessionId: "session-1",
+          text: "hello",
+          agent: "build",
+          providerID: "openai",
+          modelID: "gpt-5.4",
+          command: null,
+        ),
+      ).called(1);
+    });
+
+    test("createSessionWithMessage treats blank command as null and preserves agent/model", () async {
+      when(
+        () => mockRepository.createSessionWithMessage(
+          projectId: any(named: "projectId"),
+          text: any(named: "text"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          command: any(named: "command"),
+          dedicatedWorktree: any(named: "dedicatedWorktree"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(_session()));
+
+      await service.createSessionWithMessage(
+        projectId: "project-1",
+        text: "hello",
+        agent: "build",
+        providerID: "openai",
+        modelID: "gpt-5.4",
+        command: "   ",
+        dedicatedWorktree: false,
+      );
+
+      verify(
+        () => mockRepository.createSessionWithMessage(
+          projectId: "project-1",
+          text: "hello",
+          agent: "build",
+          model: const PromptModel(providerID: "openai", modelID: "gpt-5.4"),
+          command: null,
+          dedicatedWorktree: false,
+        ),
+      ).called(1);
+    });
   });
 }
 

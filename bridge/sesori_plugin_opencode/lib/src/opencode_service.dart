@@ -71,18 +71,23 @@ class OpenCodeService {
       directory: directory,
       parentSessionId: parentSessionId,
     );
-    tracker.registerSession(sessionId: session.id, directory: session.directory);
 
     if (parts.isNotEmpty) {
-      await repository.sendPrompt(
-        sessionId: session.id,
-        directory: session.directory,
-        parts: parts,
-        agent: agent,
-        model: model,
-      );
+      try {
+        await repository.sendPrompt(
+          sessionId: session.id,
+          directory: session.directory,
+          parts: parts,
+          agent: agent,
+          model: model,
+        );
+      } catch (e, st) {
+        await _deleteFailedCreatedSession(session: session, error: e, stackTrace: st);
+        rethrow;
+      }
     }
 
+    tracker.registerSession(sessionId: session.id, directory: session.directory);
     return session;
   }
 
@@ -192,5 +197,23 @@ class OpenCodeService {
       Log.w("directory missing for session $sessionId. Defaulting to bridge CWD as directory.");
     }
     return directory;
+  }
+
+  Future<void> _deleteFailedCreatedSession({
+    required PluginSession session,
+    required Object error,
+    required StackTrace stackTrace,
+  }) async {
+    Log.w("createSession: prompt send failed for session ${session.id}: $error\n$stackTrace");
+    try {
+      await repository.deleteSession(
+        sessionId: session.id,
+        directory: session.directory,
+      );
+    } catch (cleanupError, cleanupStackTrace) {
+      Log.w(
+        "createSession: failed to clean up session ${session.id} after prompt failure: $cleanupError\n$cleanupStackTrace",
+      );
+    }
   }
 }

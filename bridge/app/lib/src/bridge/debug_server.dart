@@ -140,8 +140,8 @@ class DebugServer {
       _sseClients.add(response);
 
       _pluginEventsSub ??= _plugin.events
-          .asyncMap<BridgeSseEvent>((event) => _sessionEventEnrichmentService.enrich(event))
-          .map<SesoriSseEvent?>((event) => _mapper.map(event))
+          .asyncMap<BridgeSseEvent>(_sessionEventEnrichmentService.enrich)
+          .map<SesoriSseEvent?>(_mapper.map)
           .asyncMap((mapped) => _fanOutMappedEvent(mapped: mapped))
           .listen(
             (_) {},

@@ -184,7 +184,8 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   }) async {
     if (state is NewSessionSending) return;
 
-    final hasCommand = command != null;
+    final normalizedCommand = command?.trim();
+    final hasCommand = normalizedCommand != null && normalizedCommand.isNotEmpty;
     final trimmed = text.trim();
     if (trimmed.isEmpty && !hasCommand) return;
 
@@ -208,7 +209,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       agent: config?.agent,
       providerID: config?.providerID,
       modelID: config?.modelID,
-      command: command,
+      command: normalizedCommand,
       dedicatedWorktree: dedicatedWorktree,
     );
 

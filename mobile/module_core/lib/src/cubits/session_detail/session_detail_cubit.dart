@@ -689,12 +689,16 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   Future<void> sendMessage({required String text, String? command}) async {
     final current = state;
     final trimmed = text.trim();
-    if (trimmed.isEmpty && command == null) return;
+    final normalizedCommand = _normalizeCommand(command);
+    if (trimmed.isEmpty && normalizedCommand == null) return;
 
-    final submission = QueuedSessionSubmission(text: trimmed, command: command);
-    if (current is! SessionDetailLoaded || !_isConnected) {
+    final submission = QueuedSessionSubmission(text: trimmed, command: normalizedCommand);
+    if (current is! SessionDetailLoaded || !_isConnected || _promptQueue.isNotEmpty || _isSending) {
       _promptQueue.enqueue(submission);
       _emitQueueUpdate(current is SessionDetailLoaded ? current : null);
+      if (_isConnected && current is SessionDetailLoaded) {
+        unawaited(_drainQueuedMessages());
+      }
       return;
     }
 
@@ -704,7 +708,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       agent: current.selectedAgent,
       providerID: current.selectedProviderID,
       modelID: current.selectedModelID,
-      command: command,
+      command: normalizedCommand,
     );
 
     if (result case ErrorResponse()) {
@@ -776,6 +780,14 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   SessionDetailLoaded? _latestLoadedState() {
     final current = state;
     return current is SessionDetailLoaded ? current : null;
+  }
+
+  String? _normalizeCommand(String? command) {
+    final normalizedCommand = command?.trim();
+    if (normalizedCommand == null || normalizedCommand.isEmpty) {
+      return null;
+    }
+    return normalizedCommand;
   }
 
   // ---------------------------------------------------------------------------

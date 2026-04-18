@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
@@ -1027,6 +1029,132 @@ void main() {
         ).called(1);
       },
     );
+
+    test("whitespace-only command is queued and drained as a normal prompt", () async {
+      final cubit = SessionDetailCubit(
+        mockSessionService,
+        mockConnectionService,
+        slashCommandService: mockSlashCommandService,
+        permissionRepository: mockPermissionRepository,
+        sessionId: sessionId,
+        projectId: "test-project",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: mockFailureReporter,
+      );
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+
+      when(() => mockConnectionService.currentStatus).thenReturn(
+        const ConnectionStatus.connectionLost(
+          config: ServerConnectionConfig(relayHost: "fake.example.com"),
+        ),
+      );
+
+      await cubit.sendMessage(text: "hello", command: "   ");
+
+      expect(
+        (cubit.state as SessionDetailLoaded).queuedMessages.map((message) => message.displayText).toList(),
+        equals(["hello"]),
+      );
+
+      when(() => mockConnectionService.currentStatus).thenReturn(
+        ConnectionStatus.connected(
+          config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+          health: testHealthResponse(),
+        ),
+      );
+      connectionStatus.add(
+        ConnectionStatus.connected(
+          config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+          health: testHealthResponse(),
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      verify(
+        () => mockSlashCommandService.sendMessage(
+          sessionId: sessionId,
+          text: "hello",
+          agent: "coder",
+          providerID: "anthropic",
+          modelID: "claude-3-5-sonnet",
+          command: null,
+        ),
+      ).called(1);
+    });
+
+    test("connected send while queued drain is in flight stays queued until earlier work finishes", () async {
+      final firstSendStarted = Completer<void>();
+      final allowFirstSendToComplete = Completer<void>();
+      final sentTexts = <String>[];
+
+      when(
+        () => mockSlashCommandService.sendMessage(
+          sessionId: any(named: "sessionId"),
+          text: any(named: "text"),
+          agent: any(named: "agent"),
+          providerID: any(named: "providerID"),
+          modelID: any(named: "modelID"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((invocation) async {
+        final text = invocation.namedArguments[#text] as String;
+        sentTexts.add(text);
+        if (text == "first") {
+          firstSendStarted.complete();
+          await allowFirstSendToComplete.future;
+        }
+        return ApiResponse<void>.success(null);
+      });
+
+      final cubit = SessionDetailCubit(
+        mockSessionService,
+        mockConnectionService,
+        slashCommandService: mockSlashCommandService,
+        permissionRepository: mockPermissionRepository,
+        sessionId: sessionId,
+        projectId: "test-project",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: mockFailureReporter,
+      );
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+
+      when(() => mockConnectionService.currentStatus).thenReturn(
+        const ConnectionStatus.connectionLost(
+          config: ServerConnectionConfig(relayHost: "fake.example.com"),
+        ),
+      );
+      await cubit.sendMessage(text: "first");
+
+      when(() => mockConnectionService.currentStatus).thenReturn(
+        ConnectionStatus.connected(
+          config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+          health: testHealthResponse(),
+        ),
+      );
+      connectionStatus.add(
+        ConnectionStatus.connected(
+          config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+          health: testHealthResponse(),
+        ),
+      );
+
+      await firstSendStarted.future;
+      await cubit.sendMessage(text: "second");
+
+      expect(sentTexts, equals(["first"]));
+      expect(
+        (cubit.state as SessionDetailLoaded).queuedMessages.map((message) => message.displayText).toList(),
+        equals(["second"]),
+      );
+
+      allowFirstSendToComplete.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(sentTexts, equals(["first", "second"]));
+      expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
+    });
 
     blocTest<SessionDetailCubit, SessionDetailState>(
       "multiple queued messages drain sequentially on reconnection",

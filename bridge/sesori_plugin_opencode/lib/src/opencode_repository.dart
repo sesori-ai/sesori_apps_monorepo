@@ -67,11 +67,12 @@ class OpenCodeRepository {
     required String directory,
     required String? parentSessionId,
   }) async {
+    final normalizedDirectory = directory.trim();
     final session = await _api.createSession(
-      directory: directory,
+      directory: normalizedDirectory,
       parentSessionId: parentSessionId,
     );
-    return session.toPlugin(projectID: directory);
+    return session.toPlugin(projectID: normalizedDirectory);
   }
 
   Future<void> sendPrompt({
@@ -98,6 +99,16 @@ class OpenCodeRepository {
       sessionId: sessionId,
       directory: _normalizeDirectory(directory),
       body: SendCommandBody(command: command, arguments: arguments),
+    );
+  }
+
+  Future<void> deleteSession({
+    required String sessionId,
+    required String? directory,
+  }) {
+    return _api.deleteSession(
+      sessionId: sessionId,
+      directory: _normalizeDirectory(directory),
     );
   }
 

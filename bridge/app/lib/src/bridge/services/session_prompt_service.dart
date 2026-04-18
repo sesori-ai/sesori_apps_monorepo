@@ -14,7 +14,8 @@ class SessionPromptService {
     required PromptModel? model,
     required String? command,
   }) async {
-    if (command == null) {
+    final normalizedCommand = command?.trim();
+    if (normalizedCommand == null || normalizedCommand.isEmpty) {
       await _sessionRepository.sendPrompt(
         sessionId: sessionId,
         parts: parts,
@@ -27,7 +28,7 @@ class SessionPromptService {
     final textPart = parts.whereType<PromptPartText>().firstOrNull;
     await _sessionRepository.sendCommand(
       sessionId: sessionId,
-      command: command,
+      command: normalizedCommand,
       arguments: textPart?.text ?? '',
     );
   }

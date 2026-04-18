@@ -222,6 +222,27 @@ void main() {
       expect(plugin.lastSendCommandArguments, equals(""));
     });
 
+    test("treats blank command as no command", () async {
+      await handler.handle(
+        makeRequest("POST", "/session/prompt_async"),
+        body: const SendPromptRequest(
+          sessionId: "s9",
+          parts: [PromptPart.text(text: "Hello")],
+          agent: "coder",
+          model: PromptModel(providerID: "openai", modelID: "gpt-5.4"),
+          command: "   ",
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(plugin.lastSendPromptSessionId, equals("s9"));
+      expect(plugin.lastSendPromptAgent, equals("coder"));
+      expect(plugin.lastSendPromptModel?.providerID, equals("openai"));
+      expect(plugin.lastSendCommandSessionId, isNull);
+    });
+
     test("throws 400 on empty session id", () async {
       expect(
         () => handler.handle(

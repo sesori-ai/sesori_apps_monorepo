@@ -854,6 +854,37 @@ void main() {
       expect(plugin.lastSendCommand, isNull);
     });
 
+    test("blank command is treated like no command", () async {
+      plugin.createSessionResult = const PluginSession(
+        id: "blank-cmd-1",
+        projectID: "p1",
+        directory: "/repo",
+        parentID: null,
+        title: "Blank Command",
+        time: null,
+        summary: null,
+      );
+
+      await handler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "/repo",
+          dedicatedWorktree: false,
+          parts: [PromptPart.text(text: "Hello")],
+          agent: "coder",
+          model: PromptModel(providerID: "openai", modelID: "gpt-5.4"),
+          command: "   ",
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(plugin.lastCreateSessionAgent, equals("coder"));
+      expect(plugin.lastCreateSessionModel?.providerID, equals("openai"));
+      expect(plugin.lastSendCommandSessionId, isNull);
+    });
+
     test("rename fails — session still returned successfully", () async {
       final throwingPlugin = _ThrowingRenameSessionPlugin();
       metadataService.generateResult = const bridge_metadata.SessionMetadata(

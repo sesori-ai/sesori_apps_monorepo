@@ -28,16 +28,17 @@ class SlashCommandService {
     required String? command,
     required bool dedicatedWorktree,
   }) {
+    final normalizedCommand = _normalizeOptionalText(command);
     return _repository.createSessionWithMessage(
       projectId: projectId,
       text: text,
-      agent: command != null ? null : agent,
+      agent: normalizedCommand != null ? null : agent,
       model: _resolveModel(
-        command: command,
+        command: normalizedCommand,
         providerID: providerID,
         modelID: modelID,
       ),
-      command: command?.trim(),
+      command: normalizedCommand,
       dedicatedWorktree: dedicatedWorktree,
     );
   }
@@ -50,14 +51,23 @@ class SlashCommandService {
     required String? modelID,
     required String? command,
   }) {
+    final normalizedCommand = _normalizeOptionalText(command);
     return _repository.sendMessage(
       sessionId: sessionId,
       text: text,
-      agent: command != null ? null : agent,
-      providerID: command != null ? null : providerID,
-      modelID: command != null ? null : modelID,
-      command: command?.trim(),
+      agent: normalizedCommand != null ? null : agent,
+      providerID: normalizedCommand != null ? null : _normalizeOptionalText(providerID),
+      modelID: normalizedCommand != null ? null : _normalizeOptionalText(modelID),
+      command: normalizedCommand,
     );
+  }
+
+  String? _normalizeOptionalText(String? value) {
+    final normalized = value?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+    return normalized;
   }
 
   PromptModel? _resolveModel({

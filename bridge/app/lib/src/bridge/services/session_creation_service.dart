@@ -42,6 +42,7 @@ class SessionCreationService {
        _sessionPersistenceService = sessionPersistenceService;
 
   Future<Session> createSession({required CreateSessionRequest request}) async {
+    final normalizedCommand = _normalizeCommand(request.command);
     final firstText = _extractFirstText(parts: request.parts);
     final metadata = await _generateMetadata(firstText: firstText);
     final worktreeResult = await _prepareWorktree(request: request, metadata: metadata);
@@ -51,10 +52,10 @@ class SessionCreationService {
       parts: _buildPromptParts(
         parts: request.parts,
         worktreeResult: worktreeResult,
-        command: request.command,
+        command: normalizedCommand,
       ),
-      agent: request.command == null ? request.agent : null,
-      model: request.command == null ? request.model : null,
+      agent: normalizedCommand == null || normalizedCommand.isEmpty ? request.agent : null,
+      model: normalizedCommand == null || normalizedCommand.isEmpty ? request.model : null,
     );
     final worktreeState = await _resolveWorktreeState(
       projectId: request.projectId,
@@ -73,7 +74,7 @@ class SessionCreationService {
     );
     await _maybeSendCommand(
       session: created,
-      command: request.command,
+      command: normalizedCommand,
       arguments: _buildCommandArguments(
         userArguments: firstText ?? '',
         worktreeResult: worktreeResult,
@@ -89,6 +90,14 @@ class SessionCreationService {
         .map((part) => part.text)
         .where((text) => text.trim().isNotEmpty)
         .firstOrNull;
+  }
+
+  String? _normalizeCommand(String? command) {
+    final normalizedCommand = command?.trim();
+    if (normalizedCommand == null || normalizedCommand.isEmpty) {
+      return null;
+    }
+    return normalizedCommand;
   }
 
   Future<bridge_metadata.SessionMetadata?> _generateMetadata({required String? firstText}) async {

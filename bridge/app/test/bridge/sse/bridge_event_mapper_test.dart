@@ -88,7 +88,7 @@ void main() {
     });
 
     test("maps session.diff without diff payload", () async {
-      final result = await mapper.map(const BridgeSseSessionDiff(sessionID: "s1"));
+      final result = mapper.map(const BridgeSseSessionDiff(sessionID: "s1"));
 
       expect(result, isA<SesoriSessionDiff>());
       expect((result! as SesoriSessionDiff).sessionID, equals("s1"));
@@ -113,7 +113,7 @@ void main() {
     });
 
     test("filters file message part updates", () async {
-      final result = await mapper.map(
+      final result = mapper.map(
         const BridgeSseMessagePartUpdated(
           part: PluginMessagePart(
             id: "p1",
@@ -137,7 +137,7 @@ void main() {
     });
 
     test("filters snapshot message part updates", () async {
-      final result = await mapper.map(
+      final result = mapper.map(
         const BridgeSseMessagePartUpdated(
           part: PluginMessagePart(
             id: "p1",
@@ -161,7 +161,7 @@ void main() {
     });
 
     test("filters patch message part updates", () async {
-      final result = await mapper.map(
+      final result = mapper.map(
         const BridgeSseMessagePartUpdated(
           part: PluginMessagePart(
             id: "p1",
@@ -185,7 +185,7 @@ void main() {
     });
 
     test("filters compaction message part updates", () async {
-      final result = await mapper.map(
+      final result = mapper.map(
         const BridgeSseMessagePartUpdated(
           part: PluginMessagePart(
             id: "p1",
@@ -209,7 +209,7 @@ void main() {
     });
 
     test("passes agent message part updates", () async {
-      final result = await mapper.map(
+      final result = mapper.map(
         const BridgeSseMessagePartUpdated(
           part: PluginMessagePart(
             id: "p1",
@@ -234,7 +234,7 @@ void main() {
     });
 
     test("passes retry message part updates", () async {
-      final result = await mapper.map(
+      final result = mapper.map(
         const BridgeSseMessagePartUpdated(
           part: PluginMessagePart(
             id: "p1",
@@ -260,7 +260,7 @@ void main() {
 
     test("truncates tool output to 500 characters", () async {
       final longOutput = List.filled(1000, "x").join();
-      final result = await mapper.map(
+      final result = mapper.map(
         BridgeSseMessagePartUpdated(
           part: PluginMessagePart(
             id: "p1",
@@ -292,7 +292,7 @@ void main() {
     });
 
     test("passes through text message parts", () async {
-      final result = await mapper.map(
+      final result = mapper.map(
         const BridgeSseMessagePartUpdated(
           part: PluginMessagePart(
             id: "p1",
@@ -319,7 +319,7 @@ void main() {
     });
 
     test("keeps short tool output unchanged", () async {
-      final result = await mapper.map(
+      final result = mapper.map(
         const BridgeSseMessagePartUpdated(
           part: PluginMessagePart(
             id: "p1",
@@ -356,7 +356,7 @@ void main() {
         failureReporter: capturingReporter,
       );
 
-      final result = await throwingMapper.map(const BridgeSseProjectUpdated());
+      final result = throwingMapper.map(const BridgeSseProjectUpdated());
 
       expect(result, isNull);
       expect(capturingReporter.recordedIdentifiers, contains("sse_projects_summary"));

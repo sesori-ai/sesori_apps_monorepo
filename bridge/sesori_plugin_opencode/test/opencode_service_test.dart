@@ -256,6 +256,37 @@ void main() {
       expect(repository.lastPromptSessionId, isNull);
       expect(session.id, equals("ses-new"));
     });
+
+    test("returns created session when first prompt send fails", () async {
+      final tracker = FakeActiveSessionTracker();
+      final repository = FakeOpenCodeRepository(
+        createdSession: const PluginSession(
+          id: "ses-new",
+          projectID: "/repo",
+          directory: "/repo/subdir",
+          parentID: null,
+          title: null,
+          time: null,
+          summary: null,
+        ),
+      )..sendPromptError = StateError("prompt failed");
+      final service = OpenCodeService(repository, tracker);
+
+      await expectLater(
+        () => service.createSession(
+          directory: "/repo",
+          parentSessionId: null,
+          parts: const [PluginPromptPart.text(text: "Start")],
+          agent: "build",
+          model: null,
+        ),
+        throwsA(isA<StateError>()),
+      );
+
+      expect(tracker.lastRegisteredSessionId, isNull);
+      expect(repository.lastDeletedSessionId, equals("ses-new"));
+      expect(repository.lastDeletedDirectory, equals("/repo/subdir"));
+    });
   });
 
   group("OpenCodeService.sendPrompt", () {
@@ -599,10 +630,13 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   List<PluginPromptPart>? lastPromptParts;
   String? lastPromptAgent;
   ({String providerID, String modelID})? lastPromptModel;
+  Object? sendPromptError;
   String? lastCommandSessionId;
   String? lastCommandDirectory;
   String? lastCommandName;
   String? lastCommandArguments;
+  String? lastDeletedSessionId;
+  String? lastDeletedDirectory;
 
   FakeOpenCodeRepository({
     List<Project> projects = const [],
@@ -661,6 +695,9 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
+    if (sendPromptError case final error?) {
+      throw error;
+    }
     lastPromptSessionId = sessionId;
     lastPromptDirectory = directory;
     lastPromptParts = parts;
@@ -679,6 +716,15 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     lastCommandDirectory = directory;
     lastCommandName = command;
     lastCommandArguments = arguments;
+  }
+
+  @override
+  Future<void> deleteSession({
+    required String sessionId,
+    required String? directory,
+  }) async {
+    lastDeletedSessionId = sessionId;
+    lastDeletedDirectory = directory;
   }
 }
 
