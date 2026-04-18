@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:meta/meta.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "completion_notifier.dart";
@@ -14,8 +15,8 @@ class CompletionPushListener {
   final PushNotificationContentBuilder _contentBuilder;
   final PushDispatcher _dispatcher;
 
-  // ignore: cancel_subscriptions, this listener stores the subscription and cancels it in dispose()
-  StreamSubscription<String>? _completionSubscription;
+  final CompositeSubscription _subscriptions = CompositeSubscription();
+  bool _isStarted = false;
 
   CompletionPushListener({
     required PushSessionStateTracker tracker,
@@ -28,7 +29,7 @@ class CompletionPushListener {
        _dispatcher = dispatcher;
 
   @visibleForTesting
-  bool get isStarted => _completionSubscription != null;
+  bool get isStarted => _isStarted;
 
   void handleSseEvent(SesoriSseEvent event) {
     _tracker.handleEvent(event);
@@ -51,35 +52,39 @@ class CompletionPushListener {
   }
 
   void start() {
-    if (_completionSubscription != null) {
+    if (_isStarted) {
       return;
     }
+    _isStarted = true;
 
-    _completionSubscription = _completionNotifier.completions.listen((rootSessionId) {
-      final sessionTitle = _tracker.getSessionTitle(rootSessionId);
-      final latestAssistantText = _tracker.getLatestAssistantText(rootSessionId);
-      final title = _contentBuilder.truncateTitle(
-        (sessionTitle == null || sessionTitle.trim().isEmpty) ? "Session completed" : sessionTitle,
-      );
-      final body = _contentBuilder.truncateToWords(
-        (latestAssistantText == null || latestAssistantText.trim().isEmpty) ? "Task completed" : latestAssistantText,
-      );
-      final projectId = _tracker.getSessionProjectId(sessionId: rootSessionId);
+    _completionNotifier.completions
+        .listen((rootSessionId) {
+          final sessionTitle = _tracker.getSessionTitle(rootSessionId);
+          final latestAssistantText = _tracker.getLatestAssistantText(rootSessionId);
+          final title = _contentBuilder.truncateTitle(
+            (sessionTitle == null || sessionTitle.trim().isEmpty) ? "Session completed" : sessionTitle,
+          );
+          final body = _contentBuilder.truncateToWords(
+            (latestAssistantText == null || latestAssistantText.trim().isEmpty)
+                ? "Task completed"
+                : latestAssistantText,
+          );
+          final projectId = _tracker.getSessionProjectId(sessionId: rootSessionId);
 
-      _tracker.clearLatestAssistantTextForRootSubtree(rootSessionId: rootSessionId);
-      _dispatcher.dispatchCompletion(
-        rootSessionId: rootSessionId,
-        title: title,
-        body: body,
-        projectId: projectId,
-      );
-    });
+          _tracker.clearLatestAssistantTextForRootSubtree(rootSessionId: rootSessionId);
+          _dispatcher.dispatchCompletion(
+            rootSessionId: rootSessionId,
+            title: title,
+            body: body,
+            projectId: projectId,
+          );
+        })
+        .addTo(_subscriptions);
   }
 
   Future<void> dispose() async {
-    final completionSubscription = _completionSubscription;
-    _completionSubscription = null;
-    await completionSubscription?.cancel();
+    _isStarted = false;
+    await _subscriptions.cancel();
     _completionNotifier.dispose();
   }
 

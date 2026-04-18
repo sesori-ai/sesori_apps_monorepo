@@ -4,6 +4,7 @@ import "dart:math";
 import "dart:typed_data";
 
 import "package:cryptography/cryptography.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -163,10 +164,7 @@ class OrchestratorSession {
   final PrSyncService _prSyncService;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final SessionAbortService _sessionAbortService;
-  StreamSubscription<dynamic>? _eventSubscription;
-  StreamSubscription<String>? _abortStartedSessionsSubscription;
-  StreamSubscription<String>? _abortedSessionsSubscription;
-  StreamSubscription<String>? _abortFailedSessionsSubscription;
+  final CompositeSubscription _subscriptions = CompositeSubscription();
 
   bool _cancelled = false;
 
@@ -237,22 +235,17 @@ class OrchestratorSession {
   Future<void> run() async {
     final kxManager = KeyExchangeManager(_roomKey);
     final activePhones = <int, bool>{};
-    StreamSubscription<String>? prChangesSubscription;
 
     try {
       Log.d("[dbg] connecting to relay...");
       await _client.connect();
       Log.d("[dbg] relay connected");
 
-      _abortStartedSessionsSubscription = _sessionAbortService.abortStartedSessions.listen(
-        _completionListener.markSessionAbortPending,
-      );
-      _abortedSessionsSubscription = _sessionAbortService.abortedSessions.listen(
-        _completionListener.markSessionAborted,
-      );
-      _abortFailedSessionsSubscription = _sessionAbortService.abortFailedSessions.listen(
-        _completionListener.clearPendingAbort,
-      );
+      _sessionAbortService.abortStartedSessions
+          .listen(_completionListener.markSessionAbortPending)
+          .addTo(_subscriptions);
+      _sessionAbortService.abortedSessions.listen(_completionListener.markSessionAborted).addTo(_subscriptions);
+      _sessionAbortService.abortFailedSessions.listen(_completionListener.clearPendingAbort).addTo(_subscriptions);
       _completionListener.start();
       _maintenanceListener.start();
 
@@ -262,7 +255,7 @@ class OrchestratorSession {
       }
 
       Log.d("[dbg] subscribing to plugin event stream...");
-      _eventSubscription = _plugin.events
+      _plugin.events
           .asyncMap<BridgeSseEvent>(_sessionEventEnrichmentService.enrich)
           .listen(
             (event) {
@@ -284,11 +277,14 @@ class OrchestratorSession {
             onDone: () {
               Log.w("[dbg] plugin event stream closed");
             },
-          );
+          )
+          .addTo(_subscriptions);
       Log.d("[dbg] plugin event stream subscribed");
-      prChangesSubscription = _prSyncService.prChanges.listen((String projectId) {
-        _sseManager.enqueueEvent(SesoriSseEvent.sessionsUpdated(projectID: projectId));
-      });
+      _prSyncService.prChanges
+          .listen((String projectId) {
+            _sseManager.enqueueEvent(SesoriSseEvent.sessionsUpdated(projectID: projectId));
+          })
+          .addTo(_subscriptions);
     } catch (e) {
       throw Exception("failed to connect to relay: $e");
     }
@@ -338,13 +334,7 @@ class OrchestratorSession {
       }
     } finally {
       Log.i("Disconnecting...");
-      Log.d("[dbg] cancelling event subscription...");
-      await _eventSubscription?.cancel();
-      Log.d("[dbg] event subscription cancelled");
-      await prChangesSubscription.cancel();
-      await _abortStartedSessionsSubscription?.cancel();
-      await _abortedSessionsSubscription?.cancel();
-      await _abortFailedSessionsSubscription?.cancel();
+      await _subscriptions.cancel();
       await _sessionAbortService.dispose();
       await _completionListener.dispose();
       _maintenanceListener.dispose();
