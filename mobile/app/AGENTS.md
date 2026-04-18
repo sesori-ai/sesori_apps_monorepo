@@ -6,9 +6,8 @@ See [`../AGENTS.md`](../AGENTS.md) for shared conventions (architecture layering
 
 ## File Size
 - Maximum file length: 250 lines per production code file
-- If a file exceeds 250 lines, split it into smaller focused files when there is a clean seam (by use-case, component, or concern)
-- Do not force confusing fragments just to satisfy the line-count guideline; a cohesive file can stay larger when the purpose remains clear
-- Prefer many small files over few large files when the splits improve clarity
+- If a file exceeds 250 lines, split it into smaller focused files (by use-case, component, or concern)
+- Prefer many small files over few large files
 - Test files are explicitly excluded from this limit
 
 ## Flutter-Specific Conventions
