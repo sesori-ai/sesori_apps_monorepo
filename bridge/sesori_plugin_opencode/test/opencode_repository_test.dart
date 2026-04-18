@@ -356,20 +356,62 @@ void main() {
       expect(projects.first.worktree, equals("/repo"));
     });
   });
+
+  group("OpenCodeRepository.getCommands", () {
+    test("maps OpenCode commands to plugin commands in Layer 2", () async {
+      final api = _FakeApi(
+        commands: const [
+          Command(
+            name: "/review-work",
+            template: "review {{input}}",
+            hints: ["recent changes"],
+            description: "Review current branch changes",
+            agent: "review-work",
+            model: "gpt-5.4",
+            provider: "openai",
+            source: CommandSource.skill,
+            subtask: true,
+          ),
+        ],
+      );
+      final repository = OpenCodeRepository(api);
+
+      final commands = await repository.getCommands(projectId: "/repo");
+
+      expect(commands, hasLength(1));
+      expect(
+        commands.single,
+        const PluginCommand(
+          name: "/review-work",
+          template: "review {{input}}",
+          hints: ["recent changes"],
+          description: "Review current branch changes",
+          agent: "review-work",
+          model: "gpt-5.4",
+          provider: "openai",
+          source: PluginCommandSource.skill,
+          subtask: true,
+        ),
+      );
+    });
+  });
 }
 
 class _FakeApi implements OpenCodeApi {
   final List<Session> _sessions;
   final List<GlobalSession> _globalSessions;
   final List<Project> _projects;
+  final List<Command> _commands;
 
   _FakeApi({
     List<Session>? sessions,
     List<GlobalSession>? globalSessions,
     List<Project>? projects,
+    List<Command>? commands,
   }) : _sessions = sessions ?? [],
-       _globalSessions = globalSessions ?? [],
-       _projects = projects ?? [];
+        _globalSessions = globalSessions ?? [],
+       _projects = projects ?? [],
+       _commands = commands ?? [];
 
   @override
   String get serverURL => "http://fake";
@@ -387,7 +429,7 @@ class _FakeApi implements OpenCodeApi {
   Future<List<Session>> listSessions({String? directory}) async => _sessions;
 
   @override
-  Future<List<Command>> listCommands({required String? directory}) async => const [];
+  Future<List<Command>> listCommands({required String? directory}) async => _commands;
 
   @override
   Future<Session> createSession({required String directory, String? parentSessionId}) async =>

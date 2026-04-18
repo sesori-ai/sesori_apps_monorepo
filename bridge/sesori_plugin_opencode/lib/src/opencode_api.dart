@@ -96,8 +96,8 @@ class OpenCodeApi {
     );
     _ensureSuccess(response, "GET /command");
 
-    final decoded = jsonDecode(response.body) as List<dynamic>;
-    return decoded.cast<Map<String, dynamic>>().map(Command.fromJson).toList();
+    final decoded = jsonDecodeListMap(response.body);
+    return decoded.map(Command.fromJson).toList();
   }
 
   Future<Session> createSession({
@@ -272,21 +272,16 @@ class OpenCodeApi {
     required SendCommandBody body,
     required String? directory,
   }) async {
-    final client = http.Client();
-    try {
-      final response = await client.post(
-        Uri.parse("$serverURL/session/$sessionId/command"),
-        headers: {
-          ..._authHeaders,
-          "content-type": "application/json",
-          _directoryOpenCodeHeader: ?directory,
-        },
-        body: jsonEncode(body.toJson()),
-      );
-      _ensureSuccess(response, "POST /session/$sessionId/command");
-    } finally {
-      client.close();
-    }
+    final response = await _client.post(
+      Uri.parse("$serverURL/session/$sessionId/command"),
+      headers: {
+        ..._authHeaders,
+        "content-type": "application/json",
+        _directoryOpenCodeHeader: ?directory,
+      },
+      body: jsonEncode(body.toJson()),
+    );
+    _ensureSuccess(response, "POST /session/$sessionId/command");
   }
 
   Future<void> abortSession({

@@ -1,9 +1,19 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginPermissionReply, PluginProvidersResult;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
+    show
+        PluginCommand,
+        PluginCommandSource,
+        PluginPermissionReply,
+        PluginPromptPart,
+        PluginProvidersResult,
+        PluginSession;
 import "package:sesori_shared/sesori_shared.dart" show wait2;
 
+import "models/command.dart";
 import "models/pending_permission.dart";
 import "models/pending_question.dart";
 import "models/project.dart";
+import "models/send_command_body.dart";
+import "models/send_prompt_body.dart";
 import "models/session.dart";
 import "opencode_api.dart";
 import "provider_mapper.dart";
@@ -47,6 +57,57 @@ class OpenCodeRepository {
   OpenCodeRepository(this._api);
 
   OpenCodeApi get api => _api;
+
+  Future<List<PluginCommand>> getCommands({required String? projectId}) async {
+    final commands = await _api.listCommands(directory: _normalizeDirectory(projectId));
+    return commands.map<PluginCommand>(_mapCommand).toList();
+  }
+
+  Future<PluginSession> createSession({
+    required String directory,
+    required String? parentSessionId,
+  }) async {
+    final session = await _api.createSession(
+      directory: directory,
+      parentSessionId: parentSessionId,
+    );
+    return session.toPlugin(projectID: directory);
+  }
+
+  Future<void> sendPrompt({
+    required String sessionId,
+    required String? directory,
+    required List<PluginPromptPart> parts,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) {
+    return _api.sendPrompt(
+      sessionId: sessionId,
+      directory: _normalizeDirectory(directory),
+      body: SendPromptBody(parts: parts, agent: agent, model: model),
+    );
+  }
+
+  Future<void> sendCommand({
+    required String sessionId,
+    required String? directory,
+    required String command,
+    required String arguments,
+  }) {
+    return _api.sendCommand(
+      sessionId: sessionId,
+      directory: _normalizeDirectory(directory),
+      body: SendCommandBody(command: command, arguments: arguments),
+    );
+  }
+
+  String? _normalizeDirectory(String? directory) {
+    final normalizedDirectory = directory?.trim();
+    if (normalizedDirectory == null || normalizedDirectory.isEmpty) {
+      return null;
+    }
+    return normalizedDirectory;
+  }
 
   Future<List<Project>> getProjects() async {
     final (rawProjects, allSessions) = await wait2(
@@ -304,6 +365,25 @@ class OpenCodeRepository {
     return ProjectTime(
       created: created.reduce((a, b) => a < b ? a : b),
       updated: updated.reduce((a, b) => a > b ? a : b),
+    );
+  }
+
+  PluginCommand _mapCommand(Command command) {
+    return PluginCommand(
+      name: command.name,
+      template: command.template,
+      hints: command.hints,
+      description: command.description,
+      agent: command.agent,
+      model: command.model,
+      provider: command.provider,
+      source: switch (command.source) {
+        CommandSource.command => PluginCommandSource.command,
+        CommandSource.mcp => PluginCommandSource.mcp,
+        CommandSource.skill => PluginCommandSource.skill,
+        CommandSource.unknown || null => PluginCommandSource.unknown,
+      },
+      subtask: command.subtask,
     );
   }
 }

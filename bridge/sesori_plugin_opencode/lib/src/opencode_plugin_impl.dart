@@ -155,10 +155,7 @@ class OpenCodePlugin implements BridgePlugin {
 
   @override
   Future<List<PluginCommand>> getCommands({required String? projectId}) async {
-    final commands = await _call(
-      () => _service.repository.api.listCommands(directory: projectId),
-    );
-    return commands.map((command) => PluginCommand.fromJson(command.toJson())).toList();
+    return _call(() => _service.getCommands(projectId: projectId));
   }
 
   @override
@@ -169,28 +166,15 @@ class OpenCodePlugin implements BridgePlugin {
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
-    final session = await _call(
-      () => _service.repository.api.createSession(
+    return _call(
+      () => _service.createSession(
         directory: directory,
         parentSessionId: parentSessionId,
+        parts: parts,
+        agent: agent,
+        model: model,
       ),
     );
-    _service.tracker.registerSession(
-      sessionId: session.id,
-      directory: session.directory,
-    );
-
-    final body = SendPromptBody(parts: parts, agent: agent, model: model);
-
-    await _call(
-      () => _service.repository.api.sendPrompt(
-        sessionId: session.id,
-        directory: session.directory,
-        body: body,
-      ),
-    );
-
-    return session.toPlugin(projectID: _resolveCanonicalProjectID(session, directory));
   }
 
   @override
@@ -275,19 +259,12 @@ class OpenCodePlugin implements BridgePlugin {
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) {
-    final directory = _service.tracker.getSessionDirectory(sessionId: sessionId);
-
-    if (directory == null) {
-      Log.w("directory missing for session $sessionId. Defaulting to bridge CWD as directory.");
-    }
-
-    final body = SendPromptBody(parts: parts, agent: agent, model: model);
-
     return _call(
-      () => _service.repository.api.sendPrompt(
+      () => _service.sendPrompt(
         sessionId: sessionId,
-        directory: directory,
-        body: body,
+        parts: parts,
+        agent: agent,
+        model: model,
       ),
     );
   }
@@ -298,19 +275,11 @@ class OpenCodePlugin implements BridgePlugin {
     required String command,
     required String arguments,
   }) {
-    final directory = _service.tracker.getSessionDirectory(sessionId: sessionId);
-
-    if (directory == null) {
-      Log.w("directory missing for session $sessionId. Defaulting to bridge CWD as directory.");
-    }
-
-    final body = SendCommandBody(command: command, arguments: arguments);
-
     return _call(
-      () => _service.repository.api.sendCommand(
+      () => _service.sendCommand(
         sessionId: sessionId,
-        directory: directory,
-        body: body,
+        command: command,
+        arguments: arguments,
       ),
     );
   }

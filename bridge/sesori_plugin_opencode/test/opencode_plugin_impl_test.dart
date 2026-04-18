@@ -59,6 +59,76 @@ void main() {
       expect(child.parentID, isNull);
     });
 
+    test("getCommands delegates through service and returns plugin commands", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+
+      final commands = await plugin.getCommands(projectId: "/repo");
+
+      expect(commands, hasLength(1));
+      expect(commands.single.name, equals("/review-work"));
+      expect(commands.single.source, equals(PluginCommandSource.skill));
+    });
+
+    test("createSession creates the session then sends the first prompt", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await server.waitForSseConnection();
+      server.requestLog.clear();
+
+      final session = await plugin.createSession(
+        directory: "/repo",
+        parentSessionId: "s-root",
+        parts: const [PluginPromptPart.text(text: "Start from here")],
+        agent: "build",
+        model: (providerID: "openai", modelID: "gpt-5.4"),
+      );
+
+      expect(session.id, equals("s-created"));
+      expect(session.projectID, equals("/repo"));
+      expect(
+        server.requestLog,
+        equals(["POST /session", "POST /session/s-created/prompt_async"]),
+      );
+      expect(server.lastCreatedSessionParentId, equals("s-root"));
+      expect(server.lastPromptBody?['agent'], equals('build'));
+      expect(server.lastPromptBody?['model'], equals({"providerID": "openai", "modelID": "gpt-5.4"}));
+    });
+
+    test("sendPrompt resolves tracked directory before sending", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await server.waitForSseConnection();
+      server.requestLog.clear();
+
+      await plugin.sendPrompt(
+        sessionId: "s-root",
+        parts: const [PluginPromptPart.text(text: "Continue")],
+        agent: null,
+        model: null,
+      );
+
+      expect(server.requestLog, equals(["POST /session/s-root/prompt_async"]));
+      expect(server.lastPromptDirectoryHeader, equals("/repo"));
+      expect(server.lastPromptBody?['parts'], equals([{"type": "text", "text": "Continue"}]));
+    });
+
+    test("sendCommand resolves tracked directory before sending", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await server.waitForSseConnection();
+      server.requestLog.clear();
+
+      await plugin.sendCommand(
+        sessionId: "s-root",
+        command: "/review-work",
+        arguments: "recent changes",
+      );
+
+      expect(server.requestLog, equals(["POST /session/s-root/command"]));
+      expect(server.lastCommandDirectoryHeader, equals("/repo"));
+      expect(
+        server.lastCommandBody,
+        equals({"command": "/review-work", "arguments": "recent changes"}),
+      );
+    });
+
     test("getSessionMessages maps raw messages to plugin messages", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
 
@@ -513,6 +583,11 @@ class _FakeOpenCodeServer {
   final List<HttpResponse> _sseClients = [];
   final Completer<void> _firstSseClient = Completer<void>();
   final List<String> requestLog = [];
+  Map<String, dynamic>? lastPromptBody;
+  String? lastPromptDirectoryHeader;
+  Map<String, dynamic>? lastCommandBody;
+  String? lastCommandDirectoryHeader;
+  String? lastCreatedSessionParentId;
 
   final Map<String, Map<String, dynamic>> _sessions = {
     "s-root": {
@@ -604,6 +679,41 @@ class _FakeOpenCodeServer {
         return;
       }
 
+      if (request.method == "GET" && path == "/command") {
+        await _sendJson(request.response, [
+          {
+            "name": "/review-work",
+            "template": "review {{input}}",
+            "hints": ["recent changes"],
+            "description": "Review current branch changes",
+            "agent": "review-work",
+            "model": "gpt-5.4",
+            "provider": "openai",
+            "source": "skill",
+            "subtask": true,
+          },
+        ]);
+        return;
+      }
+
+      if (request.method == "POST" && path == "/session") {
+        final rawBody = await utf8.decoder.bind(request).join();
+        final body = rawBody.isEmpty ? <String, dynamic>{} : (jsonDecode(rawBody) as Map).cast<String, dynamic>();
+        lastCreatedSessionParentId = body["parentID"] as String?;
+        final directory = request.headers.value("x-opencode-directory") ?? "/repo";
+        const sessionId = "s-created";
+        _sessions[sessionId] = {
+          "id": sessionId,
+          "projectID": "global",
+          "directory": directory,
+          "parentID": body["parentID"],
+          "title": "Created Session",
+          "time": <String, dynamic>{"created": 300, "updated": 300},
+        };
+        await _sendJson(request.response, _sessions[sessionId]!);
+        return;
+      }
+
       final sessionMatch = RegExp(r"^/session/([^/]+)$").firstMatch(path);
       if (sessionMatch != null && request.method == "GET") {
         final sessionId = sessionMatch.group(1)!;
@@ -614,6 +724,24 @@ class _FakeOpenCodeServer {
           return;
         }
         await _sendJson(request.response, session);
+        return;
+      }
+
+      final promptMatch = RegExp(r"^/session/([^/]+)/prompt_async$").firstMatch(path);
+      if (promptMatch != null && request.method == "POST") {
+        final rawBody = await utf8.decoder.bind(request).join();
+        lastPromptBody = (jsonDecode(rawBody) as Map).cast<String, dynamic>();
+        lastPromptDirectoryHeader = request.headers.value("x-opencode-directory");
+        await _sendJson(request.response, true);
+        return;
+      }
+
+      final commandMatch = RegExp(r"^/session/([^/]+)/command$").firstMatch(path);
+      if (commandMatch != null && request.method == "POST") {
+        final rawBody = await utf8.decoder.bind(request).join();
+        lastCommandBody = (jsonDecode(rawBody) as Map).cast<String, dynamic>();
+        lastCommandDirectoryHeader = request.headers.value("x-opencode-directory");
+        await _sendJson(request.response, true);
         return;
       }
 
