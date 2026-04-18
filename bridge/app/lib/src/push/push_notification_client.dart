@@ -1,6 +1,5 @@
 import "dart:convert";
 
-import "package:freezed_annotation/freezed_annotation.dart";
 import "package:http/http.dart" as http;
 import "package:sesori_shared/sesori_shared.dart" show SendNotificationPayload;
 
@@ -13,13 +12,6 @@ class PushNotificationClient {
   final http.Client _client;
 
   PushNotificationClient({
-    required this.authBackendURL,
-    required TokenRefresher tokenRefreshManager,
-  }) : _tokenRefreshManager = tokenRefreshManager,
-       _client = http.Client();
-
-  @visibleForTesting
-  PushNotificationClient.withClient({
     required this.authBackendURL,
     required TokenRefresher tokenRefreshManager,
     required http.Client client,
@@ -58,6 +50,6 @@ class PushNotificationClient {
   }
 
   Future<void> dispose() async {
-    _client.close();
+    // Shared http client lifetime is owned by the composition root.
   }
 }

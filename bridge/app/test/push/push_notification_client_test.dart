@@ -53,6 +53,7 @@ void main() {
       final client = PushNotificationClient(
         authBackendURL: "http://127.0.0.1:${server.port}",
         tokenRefreshManager: fakeManager,
+        client: http.Client(),
       );
 
       await client.sendNotification(
@@ -91,6 +92,7 @@ void main() {
       final client = PushNotificationClient(
         authBackendURL: "http://127.0.0.1:1",
         tokenRefreshManager: _FakeTokenRefreshManager("token-123"),
+        client: http.Client(),
       );
 
       await expectLater(
@@ -130,6 +132,7 @@ void main() {
       final client = PushNotificationClient(
         authBackendURL: "http://127.0.0.1:${server.port}",
         tokenRefreshManager: fakeManager,
+        client: http.Client(),
       );
 
       await client.sendNotification(
@@ -177,6 +180,7 @@ void main() {
       final client = PushNotificationClient(
         authBackendURL: "http://127.0.0.1:${server.port}",
         tokenRefreshManager: fakeManager,
+        client: http.Client(),
       );
 
       await client.sendNotification(
@@ -221,6 +225,7 @@ void main() {
       final client = PushNotificationClient(
         authBackendURL: "http://127.0.0.1:${server.port}",
         tokenRefreshManager: fakeManager,
+        client: http.Client(),
       );
 
       await expectLater(
@@ -261,6 +266,7 @@ void main() {
       final client = PushNotificationClient(
         authBackendURL: "http://127.0.0.1:${server.port}",
         tokenRefreshManager: fakeManager,
+        client: http.Client(),
       );
 
       await expectLater(
@@ -302,6 +308,7 @@ void main() {
       final client = PushNotificationClient(
         authBackendURL: "http://127.0.0.1:${server.port}",
         tokenRefreshManager: fakeManager,
+        client: http.Client(),
       );
 
       await expectLater(
@@ -326,9 +333,9 @@ void main() {
       expect(fakeManager.forceRefreshCalled, isFalse);
     });
 
-    test("dispose closes the owned http transport", () async {
+    test("dispose does not close the shared http transport", () async {
       final httpClient = _FakeHttpClient();
-      final client = PushNotificationClient.withClient(
+      final client = PushNotificationClient(
         authBackendURL: "https://api.sesori.test",
         tokenRefreshManager: _FakeTokenRefreshManager("token"),
         client: httpClient,
@@ -336,7 +343,7 @@ void main() {
 
       await client.dispose();
 
-      expect(httpClient.closeCallCount, equals(1));
+      expect(httpClient.closeCallCount, equals(0));
     });
   });
 }

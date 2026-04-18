@@ -1,6 +1,7 @@
 import "dart:io";
 
 import "package:fake_async/fake_async.dart";
+import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
 import "package:sesori_bridge/src/push/completion_push_listener.dart";
@@ -515,6 +516,7 @@ class FakePushNotificationClient extends PushNotificationClient {
     : super(
         authBackendURL: "https://example.com",
         tokenRefreshManager: _FakeTokenRefresher(),
+        client: http.Client(),
       );
 
   @override

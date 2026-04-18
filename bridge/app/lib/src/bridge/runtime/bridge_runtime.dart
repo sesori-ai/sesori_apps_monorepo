@@ -90,6 +90,7 @@ class BridgeRuntime {
       client: PushNotificationClient(
         authBackendURL: config.authBackendURL,
         tokenRefreshManager: tokenRefresher,
+        client: httpClient,
       ),
       rateLimiter: pushRateLimiter,
       tracker: pushTracker,

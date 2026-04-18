@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:io";
 
+import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
@@ -498,6 +499,7 @@ class _NoopPushNotificationClient extends PushNotificationClient {
     : super(
         authBackendURL: "http://127.0.0.1:8080",
         tokenRefreshManager: _FakeTokenRefresher(),
+        client: http.Client(),
       );
 
   @override

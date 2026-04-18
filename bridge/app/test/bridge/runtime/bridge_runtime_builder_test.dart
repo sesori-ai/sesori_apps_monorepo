@@ -88,6 +88,7 @@ _createPushSubsystemForTest() {
     client: PushNotificationClient(
       authBackendURL: "https://api.sesori.test",
       tokenRefreshManager: _FakeTokenRefresher(),
+      client: http.Client(),
     ),
     rateLimiter: rateLimiter,
     tracker: tracker,
