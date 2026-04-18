@@ -1,7 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "prompt_part_mapper.dart";
+import "../repositories/mappers/prompt_part_mapper.dart";
 import "request_handler.dart";
 
 /// Handles `POST /session/prompt_async` — sends a prompt to a session.

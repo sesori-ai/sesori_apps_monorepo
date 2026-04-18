@@ -2,56 +2,48 @@ import "dart:async";
 import "dart:convert";
 import "dart:io";
 
-import "package:sesori_bridge/src/bridge/api/gh_cli_api.dart";
-import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
+import "package:http/http.dart" as http;
+import "package:sesori_bridge/src/auth/token_refresher.dart";
+import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/debug_server.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
+import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
-import "package:sesori_bridge/src/bridge/routing/request_router.dart";
-import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
+import "package:sesori_bridge/src/bridge/runtime/bridge_runtime.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
-import "routing/routing_test_helpers.dart";
 
-DebugServer _createDebugServer({
+_DebugServerHarness _createDebugServerHarness({
   required BridgePlugin plugin,
   required AppDatabase db,
   required int port,
 }) {
-  final pullRequestRepository = PullRequestRepository(pullRequestDao: db.pullRequestDao);
-  final processRunner = ProcessRunner();
-  final sessionRepository = SessionRepository(
-    plugin: plugin,
-    sessionDao: db.sessionDao,
-    pullRequestRepository: pullRequestRepository,
-  );
-  final prSyncService = PrSyncService(
-    prSource: PrSourceRepository(
-      ghCli: GhCliApi(processRunner: processRunner),
-      gitCli: GitCliApi(processRunner: processRunner),
+  final httpClient = http.Client();
+  final runtime = BridgeRuntime.create(
+    config: const BridgeConfig(
+      relayURL: "ws://127.0.0.1:9999",
+      serverURL: "http://127.0.0.1:4096",
+      serverPassword: null,
+      authBackendURL: "https://api.sesori.test",
+      sseReplayWindow: Duration(minutes: 5),
     ),
-    pullRequestRepository: pullRequestRepository,
-    sessionRepository: sessionRepository,
-  );
-  final router = RequestRouter(
     plugin: plugin,
-    metadataService: FakeMetadataService(),
-    projectsDao: db.projectsDao,
-    sessionDao: db.sessionDao,
-    sessionRepository: sessionRepository,
-    prSyncService: prSyncService,
-  );
-  return DebugServer(
-    plugin: plugin,
-    router: router,
-    port: port,
+    httpClient: httpClient,
+    accessTokenProvider: FakeAccessTokenProvider(),
+    tokenRefresher: _FakeTokenRefresher(),
+    database: db,
+    processRunner: ProcessRunner(),
     failureReporter: FakeFailureReporter(),
+  );
+  final debugServer = runtime.createDebugServer(port: port);
+  return _DebugServerHarness(
+    runtime: runtime,
+    debugServer: debugServer,
+    httpClient: httpClient,
   );
 }
 
@@ -59,19 +51,20 @@ void main() {
   group("DebugServer SSE multi-client", () {
     late _FakeBridgePlugin plugin;
     late AppDatabase db;
+    late _DebugServerHarness harness;
     late DebugServer debugServer;
 
     setUp(() async {
       plugin = _FakeBridgePlugin();
       db = createTestDatabase();
-      debugServer = _createDebugServer(plugin: plugin, db: db, port: 0);
+      harness = _createDebugServerHarness(plugin: plugin, db: db, port: 0);
+      debugServer = harness.debugServer;
       await debugServer.start();
     });
 
     tearDown(() async {
-      await debugServer.stop();
+      await harness.close();
       await plugin.close();
-      await db.close();
     });
 
     test("second SSE client receives events alongside first", () async {
@@ -106,14 +99,75 @@ void main() {
       },
     );
 
+    test("async-mapped session events preserve order for SSE clients", () async {
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.sessionDao.insertSession(
+        sessionId: "s1",
+        projectId: "p1",
+        isDedicated: true,
+        createdAt: 10,
+        worktreePath: "/tmp/worktree",
+        branchName: "feature/one",
+        baseBranch: null,
+        baseCommit: null,
+      );
+      await db.pullRequestDao.upsertPr(
+        pullRequest: const PullRequestDto(
+          projectId: "p1",
+          branchName: "feature/one",
+          prNumber: 11,
+          url: "https://github.com/org/repo/pull/11",
+          title: "Newest open PR",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.mergeable,
+          reviewDecision: PrReviewDecision.approved,
+          checkStatus: PrCheckStatus.success,
+          lastCheckedAt: 2,
+          createdAt: 2,
+        ),
+      );
+
+      final client = await _SseTestClient.connect(debugServer.boundPort!);
+      addTearDown(client.close);
+
+      plugin.add(
+        const BridgeSseSessionCreated(
+          info: {
+            "id": "s1",
+            "projectID": "p1",
+            "directory": "/tmp/project",
+            "parentID": null,
+            "title": "session",
+            "time": {"created": 1, "updated": 2, "archived": null},
+            "summary": null,
+          },
+        ),
+      );
+      plugin.add(const BridgeSseSessionDiff(sessionID: "s1"));
+
+      final firstEvent = jsonDecode(await client.nextEvent()) as Map<String, dynamic>;
+      final secondEvent = jsonDecode(await client.nextEvent()) as Map<String, dynamic>;
+
+      expect(firstEvent["type"], equals("session.created"));
+      expect(secondEvent["type"], equals("session.diff"));
+      expect(
+        ((firstEvent["info"] as Map<String, dynamic>)["pullRequest"] as Map<String, dynamic>)["number"],
+        equals(11),
+      );
+    });
+
     test("plugin subscription is released when last client disconnects", () async {
       final trackingPlugin = _TrackingBridgePlugin();
       final trackingDb = createTestDatabase();
-      final trackingServer = _createDebugServer(plugin: trackingPlugin, db: trackingDb, port: 0);
+      final trackingHarness = _createDebugServerHarness(
+        plugin: trackingPlugin,
+        db: trackingDb,
+        port: 0,
+      );
+      final trackingServer = trackingHarness.debugServer;
       await trackingServer.start();
-      addTearDown(trackingServer.stop);
+      addTearDown(trackingHarness.close);
       addTearDown(trackingPlugin.close);
-      addTearDown(trackingDb.close);
 
       final first = await _SseTestClient.connect(trackingServer.boundPort!);
       final second = await _SseTestClient.connect(trackingServer.boundPort!);
@@ -134,19 +188,20 @@ void main() {
   group("DebugServer HTTP requests", () {
     late _FakeBridgePlugin plugin;
     late AppDatabase db;
+    late _DebugServerHarness harness;
     late DebugServer debugServer;
 
     setUp(() async {
       plugin = _FakeBridgePlugin();
       db = createTestDatabase();
-      debugServer = _createDebugServer(plugin: plugin, db: db, port: 0);
+      harness = _createDebugServerHarness(plugin: plugin, db: db, port: 0);
+      debugServer = harness.debugServer;
       await debugServer.start();
     });
 
     tearDown(() async {
-      await debugServer.stop();
+      await harness.close();
       await plugin.close();
-      await db.close();
     });
 
     test("GET /projects returns project list as JSON", () async {
@@ -265,6 +320,29 @@ void main() {
       expect(body, contains("Internal Server Error"));
     });
   });
+}
+
+class _DebugServerHarness {
+  final BridgeRuntime runtime;
+  final DebugServer debugServer;
+  final http.Client httpClient;
+
+  const _DebugServerHarness({
+    required this.runtime,
+    required this.debugServer,
+    required this.httpClient,
+  });
+
+  Future<void> close() async {
+    await debugServer.stop();
+    await runtime.close();
+    httpClient.close();
+  }
+}
+
+class _FakeTokenRefresher implements TokenRefresher {
+  @override
+  Future<String> getAccessToken({bool forceRefresh = false}) async => "test-token";
 }
 
 // ---------------------------------------------------------------------------

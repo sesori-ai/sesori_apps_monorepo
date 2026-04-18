@@ -3,6 +3,7 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../api/client/relay_http_client.dart";
+import "../../logging/logging.dart";
 
 class SessionCleanupRejectedException implements Exception {
   final SessionCleanupRejection rejection;
@@ -147,7 +148,8 @@ class SessionService {
         throw SessionCleanupRejectedException(rejection: rejection);
       } on SessionCleanupRejectedException {
         rethrow;
-      } on Object {
+      } on Object catch (e) {
+        logw("Failed to parse 409 cleanup rejection body: $e");
         return;
       }
     }

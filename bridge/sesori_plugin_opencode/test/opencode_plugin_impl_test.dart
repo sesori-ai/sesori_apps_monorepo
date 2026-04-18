@@ -44,14 +44,19 @@ void main() {
 
       final sessions = await plugin.getSessions("/repo");
 
-      expect(sessions, hasLength(1));
-      final session = sessions.single;
-      expect(session.id, equals("s-root"));
-      expect(session.projectID, equals("p1"));
-      expect(session.directory, equals("/repo"));
-      expect(session.parentID, isNull);
-      expect(session.time?.created, equals(100));
-      expect(session.time?.updated, equals(200));
+      expect(sessions, hasLength(2));
+
+      final root = sessions.firstWhere((session) => session.id == "s-root");
+      expect(root.projectID, equals("/repo"));
+      expect(root.directory, equals("/repo"));
+      expect(root.parentID, isNull);
+      expect(root.time?.created, equals(100));
+      expect(root.time?.updated, equals(200));
+
+      final child = sessions.firstWhere((session) => session.id == "s-child");
+      expect(child.projectID, equals("/repo"));
+      expect(child.directory, equals("/repo/packages/foo"));
+      expect(child.parentID, isNull);
     });
 
     test("getSessionMessages maps raw messages to plugin messages", () async {
@@ -206,6 +211,97 @@ void main() {
       );
     });
 
+    test("unknown and malformed SSE frames are ignored without emitting bridge events", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await server.waitForSseConnection();
+
+      final events = <BridgeSseEvent>[];
+      final initialProjectUpdated = Completer<void>();
+      final subscription = plugin.events.listen((event) {
+        events.add(event);
+        if (event is BridgeSseProjectUpdated && !initialProjectUpdated.isCompleted) {
+          initialProjectUpdated.complete();
+        }
+      });
+      addTearDown(subscription.cancel);
+
+      await initialProjectUpdated.future;
+      events.clear();
+
+      await server.emitRawSse(
+        '{"directory":"/repo","payload":{"type":"unknown.event","properties":{}}}',
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(events, isEmpty);
+
+      expect(
+        formatDroppedSseFrameLog(
+          category: "unknown-event-type",
+          message: "Ignoring SSE frame with unknown event type.",
+          directory: "/repo",
+          eventType: "unknown.event",
+        ),
+        equals(
+          "[opencode][sse][unknown-event-type] [directory=/repo, eventType=unknown.event] Ignoring SSE frame with unknown event type.",
+        ),
+      );
+
+      await server.emitRawSse("{not-json");
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(events, isEmpty);
+    });
+
+    test("sync SSE frames are swallowed without emitting bridge events", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await server.waitForSseConnection();
+
+      final events = <BridgeSseEvent>[];
+      final initialProjectUpdated = Completer<void>();
+      final subscription = plugin.events.listen((event) {
+        events.add(event);
+        if (event is BridgeSseProjectUpdated && !initialProjectUpdated.isCompleted) {
+          initialProjectUpdated.complete();
+        }
+      });
+      addTearDown(subscription.cancel);
+
+      await initialProjectUpdated.future;
+      events.clear();
+
+      await server.emitRawSse(
+        jsonEncode({
+          "directory": "/repo",
+          "payload": {
+            "type": "sync",
+            "name": "message.updated.1",
+            "id": "evt-1",
+            "seq": 7,
+            "aggregateID": "sessionID",
+            "data": {
+              "sessionID": "s1",
+            },
+          },
+        }),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(events, isEmpty);
+    });
+
+    test("drop log formatting includes event type when present", () {
+      expect(
+        formatDroppedSseFrameLog(
+          category: "malformed-known-payload",
+          message: "Ignoring malformed payload for known SSE event.",
+          directory: "/repo",
+          eventType: "session.status",
+        ),
+        equals(
+          "[opencode][sse][malformed-known-payload] [directory=/repo, eventType=session.status] Ignoring malformed payload for known SSE event.",
+        ),
+      );
+    });
+
     test("getSessionStatuses merges tracker data with API response", () async {
       // Use a configurable server: cold start sees the full status map
       // (including a busy child), but subsequent API calls return only
@@ -357,6 +453,12 @@ class _DynamicStatusServer {
             "parentID": "s-root",
             "time": {"created": 3, "updated": 4},
           },
+          {
+            "id": "s-child",
+            "projectID": "p1",
+            "directory": "/repo/packages/foo",
+            "time": {"created": 5, "updated": 6},
+          },
         ]);
         return;
       }
@@ -490,6 +592,13 @@ class _FakeOpenCodeServer {
             "directory": "/repo",
             "title": "Root Session",
             "time": {"created": 100, "updated": 200},
+          },
+          {
+            "id": "s-child",
+            "projectID": "p1",
+            "directory": "/repo/packages/foo",
+            "title": "Child Session",
+            "time": {"created": 110, "updated": 210},
           },
         ]);
         return;
@@ -965,6 +1074,10 @@ class _FakeOpenCodeServer {
 
   Future<void> emitSse(Map<String, dynamic> payload) async {
     final data = jsonEncode(payload);
+    await emitRawSse(data);
+  }
+
+  Future<void> emitRawSse(String data) async {
     final futures = <Future<void>>[];
     for (final client in _sseClients) {
       client.write("data: $data\n\n");

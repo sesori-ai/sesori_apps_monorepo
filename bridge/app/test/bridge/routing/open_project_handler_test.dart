@@ -1,7 +1,7 @@
 import "dart:io";
 
-import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/open_project_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -14,7 +14,7 @@ void main() {
   group("OpenProjectHandler", () {
     late FakeBridgePlugin plugin;
     late AppDatabase db;
-    late ProjectsDao hiddenStore;
+    late ProjectRepository projectRepository;
     late OpenProjectHandler handler;
     late Directory tempDir;
     late File tempFile;
@@ -24,8 +24,11 @@ void main() {
       db = createTestDatabase();
       tempDir = Directory.systemTemp.createTempSync("sesori_discover_test_");
       tempFile = File("${tempDir.path}/test_file.txt")..createSync();
-      hiddenStore = db.projectsDao;
-      handler = OpenProjectHandler(plugin, hiddenStore);
+      projectRepository = ProjectRepository(
+        plugin: plugin,
+        projectsDao: db.projectsDao,
+      );
+      handler = OpenProjectHandler(projectRepository: projectRepository);
     });
 
     tearDown(() async {
@@ -245,7 +248,7 @@ void main() {
 
     test("unhides discovered project id", () async {
       plugin.currentProjectResult = PluginProject(id: tempDir.path);
-      await hiddenStore.hideProject(projectId: tempDir.path);
+      await db.projectsDao.hideProject(projectId: tempDir.path);
 
       await handler.handle(
         makeRequest("POST", "/project/open"),
@@ -255,7 +258,7 @@ void main() {
         fragment: null,
       );
 
-      final hiddenIds = await hiddenStore.getHiddenProjectIds();
+      final hiddenIds = await db.projectsDao.getHiddenProjectIds();
       expect(hiddenIds, isNot(contains(tempDir.path)));
     });
   });

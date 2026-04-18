@@ -1,11 +1,17 @@
 import "../api/database/daos/pull_request_dao.dart";
 import "../api/database/tables/pull_requests_table.dart";
 import "../api/gh_pull_request.dart";
+import "../persistence/daos/projects_dao.dart";
 
 class PullRequestRepository {
   final PullRequestDao _pullRequestDao;
+  final ProjectsDao _projectsDao;
 
-  PullRequestRepository({required PullRequestDao pullRequestDao}) : _pullRequestDao = pullRequestDao;
+  PullRequestRepository({
+    required PullRequestDao pullRequestDao,
+    required ProjectsDao projectsDao,
+  }) : _pullRequestDao = pullRequestDao,
+       _projectsDao = projectsDao;
 
   Future<List<PullRequestDto>> getActivePullRequestsByProjectId({required String projectId}) async {
     return _pullRequestDao.getActivePrsByProjectId(projectId: projectId);
@@ -37,6 +43,10 @@ class PullRequestRepository {
     required int createdAt,
     required int lastCheckedAt,
   }) async {
+    // Defensive backstop: ensure the project row exists before inserting the PR.
+    // PrSyncService calls this method from two places; fixing it here covers both.
+    // If insertProjectIfMissing throws, the exception propagates to the caller.
+    await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
     await _pullRequestDao.upsertPr(
       pullRequest: PullRequestDto(
         projectId: projectId,
@@ -55,6 +65,8 @@ class PullRequestRepository {
   }
 
   Future<void> upsertPullRequest({required PullRequestDto record}) async {
+    // Defensive backstop: ensure the project row exists before inserting the PR.
+    await _projectsDao.insertProjectsIfMissing(projectIds: [record.projectId]);
     await _pullRequestDao.upsertPr(pullRequest: record);
   }
 

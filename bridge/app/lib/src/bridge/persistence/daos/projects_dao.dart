@@ -29,10 +29,16 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
     );
   }
 
-  /// Removes the hidden flag from a project. No-op if not hidden.
+  /// Removes the hidden flag from a project. Creates the row if missing.
+  /// Uses DoUpdate to update ONLY the hidden column on conflict, preserving
+  /// baseBranch and worktreeCounter on existing rows.
   Future<void> unhideProject({required String projectId}) async {
-    await (update(projectsTable)..where((t) => t.projectId.equals(projectId))).write(
-      const ProjectsTableCompanion(hidden: Value(false)),
+    await into(projectsTable).insert(
+      ProjectsTableCompanion.insert(projectId: projectId, hidden: const Value(false)),
+      onConflict: DoUpdate(
+        (old) => const ProjectsTableCompanion(hidden: Value(false)),
+        target: [projectsTable.projectId],
+      ),
     );
   }
 
@@ -73,5 +79,19 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
     await into(projectsTable).insertOnConflictUpdate(
       ProjectsTableCompanion.insert(projectId: projectId, baseBranch: Value(baseBranch)),
     );
+  }
+
+  /// Inserts a minimal project row if none exists for [projectId].
+  /// Preserves all fields of existing rows — uses InsertMode.insertOrIgnore.
+  /// Use this to satisfy FK constraints without clobbering user-set state.
+  Future<void> insertProjectsIfMissing({required List<String> projectIds}) async {
+    if (projectIds.isEmpty) return;
+    await batch((b) {
+      b.insertAll(
+        projectsTable,
+        projectIds.map((id) => ProjectsTableCompanion.insert(projectId: id)).toList(),
+        mode: InsertMode.insertOrIgnore,
+      );
+    });
   }
 }

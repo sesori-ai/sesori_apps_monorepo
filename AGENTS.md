@@ -24,26 +24,74 @@ Understand these three hops when working on any module:
 
 All packages in this monorepo follow a strict layered architecture. **Much of the existing code was written before these rules and does NOT follow them.** This is expected — legacy code will be migrated over time. However, **all new code must fully comply with the layering described below. It is not acceptable to follow old patterns just because existing code does.**
 
-The full specification with detailed per-layer cross-dependency rules and diagrams is in `.opencode/agents/Aristotel (Architectural Reviewer).md`.
+The full specification — including all cross-dependency rules, acceptable patterns, and cohesion checks — lives in `.opencode/agents/aristotle-plan-review.md` (plan review) and `.opencode/agents/aristotle-impl-review.md` (code review). Use those as the source of truth when in doubt.
 
 ### Layer Definitions
 
-Each layer has a specific responsibility, a naming convention for its classes, and a dedicated directory. Dependencies flow upward only — a lower layer must NEVER know about a higher layer. NO layer skipping.
+Each layer has a specific responsibility and a dedicated directory. Dependencies flow upward only — a lower layer must NEVER know about a higher layer. NO layer skipping.
 
-| Layer | Responsibility | Class suffix | Directory |
-|-------|---------------|-------------|-----------|
-| **Layer 0 — Foundation** | Transport primitives and base abstractions. HOW we communicate, not WHAT. No business logic, no decisions. | `Client` | `foundation/` |
-| **Layer 1 — API** | Dumb data-access classes that execute operations (HTTP calls, DB queries, shell commands). Parse responses into models. No decision-making logic. | `Api`, `Dao` | `api/` |
-| **Layer 2 — Repository** | Aggregates data from one or more Layer 1 sources. Maps API/DB DTOs to internal models. **MANDATORY** even when only one data source exists — it just delegates. All mapping logic lives here and nowhere else. | `Repository` | `repositories/` |
-| **Layer 3 — Service** | Business logic and coordination. Decision-making lives here. MUST use Repositories, NEVER call APIs directly. | `Service` | `services/` |
-| **Layer 4+ — Consumer** | Consumes services/repositories. Cubits (mobile), request handlers (bridge), orchestrators. | `Cubit`, handler classes | `cubits/`, `routing/`, `sse/` |
+| Layer | Responsibility | Directory |
+|-------|---------------|-----------|
+| **Layer 0 — Foundation** | Transport primitives and base abstractions. HOW we communicate, not WHAT. No business logic, no decisions. | `foundation/` |
+| **Layer 1 — API** | Dumb data-access classes that execute operations (HTTP calls, DB queries, shell commands). Parse responses into models. No decision-making logic. | `api/` |
+| **Layer 2 — Repository** | Aggregates data from one or more Layer 1 sources. Maps API/DB DTOs to internal models. **MANDATORY** even when only one data source exists — it just delegates. All mapping logic lives here and nowhere else. | `repositories/` |
+| **Layer 3 — Service** | Business logic and coordination. Decision-making lives here. MUST use Repositories, NEVER call APIs directly. | `services/` |
+| **Layer 4+ — Consumer** | Consumes services/repositories. Cubits (mobile), request handlers (bridge), orchestrators. | `cubits/`, `routing/`, `sse/` |
 
 **Core rules:**
 - A Service MUST NOT call an API directly — it goes through a Repository
 - A Consumer (cubit, handler) MUST NOT import from `api/` — it goes through repositories/services
 - Within a layer: NO cross-dependency between same-level classes (unless base classes/abstractions designed for reuse within that layer)
+- Helper, use-case, and supporting classes around a Service MUST NOT depend back on that owning Service. If you split service logic into a collaborator, make it a standalone dependency with its own injected inputs, not a `part` file, extension, or pseudo-helper that calls back into the service.
+- Do NOT extract non-trivial business logic into top-level/global functions just to satisfy file-size limits. If the extracted logic is more than a tiny pure helper, split it into a named collaborator class with explicit dependencies and a clear ownership boundary so it can be tested in isolation.
+- Do NOT extract a class only because the file is long. An extracted collaborator must own lifecycle, state or invariants, a stable domain responsibility, or a multi-caller decision boundary. If it owns none of those, keep the logic as cohesive private methods even when the file is near the line limit. Ask this before splitting: **Would this class still deserve to exist if the original file were under the line limit?** If the answer is no, the extraction is forbidden.
 - Directory structure MUST mirror layers — when you see `import '../api/...'` in a `services/` file, that is a violation
-- Do NOT use "Manager" as a class suffix — use `Service` instead
+
+### Naming Conventions
+
+Pick a class suffix that accurately reflects the class's role. Vague names (`Manager`, `Helper`, `Utils`, `Wrapper`) invite kitchen-sink growth and are forbidden. If a class's role doesn't match any suffix below, the class's responsibilities probably need rethinking, not a vague label.
+
+**Orchestration & business logic:**
+- **`Service`** — orchestrates two or more collaborators, coordinates a non-trivial state machine, or uses a Repository. This is the Layer 3 default.
+- **`Dispatcher`** — single choke point through which a class of requests flows; owns the pipeline for those requests.
+- **`Orchestrator`** — top-level composer that wires multiple layers or subsystems.
+
+**Data access:**
+- **`Api`** / **`Dao`** — Layer 1 data access.
+- **`Client`** — transport-level; HTTP/WebSocket to an external system.
+- **`Repository`** — Layer 2 aggregator + mapper.
+
+**Reactive / event wiring:**
+- **`Listener`** — subscribes to a stream/event source and delegates downstream; owns its subscription lifecycle.
+- **`Notifier`** — detects a condition and emits events.
+- **`Tracker`** — maintains state derived from events; exposes stream or snapshot access.
+
+**Pure transformations (no decisions, no orchestration):**
+- **`Builder`** — constructs an output artifact from inputs.
+- **`Formatter`** — converts data to presentation form.
+- **`Mapper`** — translates between data models.
+- **`Parser`** — deserializes raw input into typed data.
+- **`Validator`** — checks input against rules.
+- **`Calculator`** — computes derived values.
+
+**State management:**
+- **`Cubit`** — mobile only, Layer 4.
+
+**Forbidden suffixes:** `Manager`, `Helper`, `Utils`, `Wrapper`, `Handler` (except for routing handlers in the bridge `routing/` layer).
+
+### Class Cohesion Rules
+
+These four rules catch the common structural failures that layer rules alone miss. Apply them at author time, not just at review time.
+
+- **No pass-through parameters.** If a constructor parameter is used only to construct another object inside the class — never stored on `this`, never read by any method, never part of the class's own logic — it's a pass-through. Inject the already-constructed subcomponent instead, or move its configuration inside the class as defaults.
+
+- **No peer-as-child dependency overlap.** If class X constructs class Y internally and Y's constructor takes 2+ dependencies that X also takes, Y is a peer being miscast as a subcomponent. Extract Y to the same composition level as X; wire both from the subsystem entrypoint.
+
+- **Symmetric handling of equivalent triggers.** When multiple triggers (streams, timers, external calls) feed the same downstream pipeline, handle them symmetrically. One trigger as a method and another as a separate class is a violation. Extract a Dispatcher that owns the pipeline; each trigger becomes a Listener (or method, but consistent across all triggers).
+
+- **Service suffix discipline.** A class ending in `Service` must orchestrate 2+ collaborators, coordinate a non-trivial state machine, OR depend on a Repository. If it only transforms/builds/formats/validates/parses, it needs a role-specific suffix from the list above. `NotificationContentService` that just builds payloads is wrong; `NotificationContentBuilder` is right.
+
+- **Ownership boundary test.** A split done only to reduce file length is a violation. An extracted class must still deserve to exist when line count pressure disappears. It must own lifecycle, state or invariants, a stable domain responsibility, or a multi-caller decision boundary. If it owns none of those, keep private methods in the original class. Reviewers must ask: **Would this class still deserve to exist if the original file were under the line limit?**
 
 ### Bridge workspace (`bridge/`)
 
@@ -89,17 +137,24 @@ app/lib/src/
 │   └── login_service.dart        # login flow orchestration
 │
 ├── push/                    # Subsystem (self-contained, no deps on core layers)
-│   ├── push_notification_service.dart
-│   ├── push_notification_client.dart
-│   └── ...
+│   ├── push_dispatcher.dart           # single choke point for outgoing pushes
+│   ├── completion_push_listener.dart  # reactive trigger → dispatcher
+│   ├── maintenance_push_listener.dart # scheduled trigger → dispatcher
+│   ├── push_notification_client.dart  # HTTP to FCM/APNs
+│   ├── push_notification_content_builder.dart  # builds payloads
+│   ├── push_rate_limiter.dart
+│   ├── push_session_state_tracker.dart
+│   └── completion_notifier.dart
 │
 └── server/                  # Subsystem (minimal — process lifecycle)
 ```
 
 - BridgePlugin is semantically a Layer 1 data source (it exposes a public API for projects/sessions/messages)
 - Routing handlers use Repositories/Services — they MUST NOT call APIs (Layer 1) directly
+- For bridge session lifecycle flows, routing handlers MUST NOT depend on `BridgePlugin` directly. Treat `BridgePlugin` as Layer 1/API. Thin plugin-backed session commands and lookups belong in `SessionRepository`; multi-step session orchestration (create, archive, unarchive) belongs in services.
 - All mappers belong in `repositories/mappers/`, NOT in `routing/`
 - `auth/`, `push/`, `server/` are self-contained subsystems outside the layer hierarchy
+- **New push triggers** (another stream, another timer) MUST be added as a new Listener class. `PushDispatcher` remains the outbound push choke point, while each listener owns its own trigger-specific bookkeeping, scheduling, and pre-send state handling before delegating outbound sends to the dispatcher. Do not grow a single class to own multiple triggers.
 
 **`sesori_plugin_opencode` — internal layers:**
 ```
@@ -209,6 +264,15 @@ module_auth/lib/src/
 - **Mobile DI:** 3-phase injection: platform adapters → auth → core services.
 - **Mobile relay client:** `RelayClient` handles WebSocket lifecycle, key exchange, encryption/decryption. `RelayHttpApiClient` wraps it to expose a familiar HTTP interface. `ConnectionService` manages reconnect with exponential backoff + jitter.
 
+## Reactive vs. Polling
+
+Data flows downstream via streams and events — this is push-based. Polling is a violation unless the data source genuinely can't expose a stream.
+
+- **Polling** (flag): `Timer.periodic`, `Stream.periodic`, manual re-fetch loops, or repeatedly-triggered invalidation to re-fetch data you already had from a stream-capable source.
+- **Not polling** (fine): one-shot fetches on user action (pull-to-refresh, initial load); retry-with-backoff on failed network calls (that's reconnection); periodic timers used for genuine scheduling like heartbeats or stuck-session sweeps.
+
+When adding a feature that consumes real-time data, subscribe to the existing stream. Don't add a timer that re-fetches.
+
 ## Monorepo Layout
 
 - `bridge/` — pure Dart CLI workspace (relay server + plugin system)
@@ -288,12 +352,6 @@ Worktrees: Always create new worktrees inside the `.worktrees/` directory at the
 | mobile/app | `flutter test` |
 | mobile pure Dart modules | `dart test` |
 
-## File Size
-- Maximum file length: 250 lines per production code file
-- If a file exceeds 250 lines, split it into smaller focused files (by use-case, component, or concern)
-- Prefer many small files over few large files
-- Test files are explicitly excluded from this limit
-
 ## Dart Coding Conventions
 
 - Always use **named arguments with the `required` keyword**, including for nullable parameters. Never use positional arguments.
@@ -313,6 +371,25 @@ MyClass([FlutterLocalNotificationsPlugin? plugin]) : _plugin = plugin ?? Flutter
 ## Analysis
 
 Strict analysis is enabled across all packages. Don't add `// ignore:` comments without a written justification in the same line.
+
+## Architectural Review Workflow
+
+Two review agents enforce the rules above. Both reject on any violation — no warnings or partial approvals.
+
+- **Before implementation**: send the plan to `aristotle-plan-review` (agent file at `.opencode/agents/aristotle-plan-review.md`). A plan needs a clear goal, specific classes/files/layers, and stated data flow. Vague plans are rejected on the gate without further review.
+- **Before opening a PR**: send the branch/PR to `aristotle-impl-review` (agent file at `.opencode/agents/aristotle-impl-review.md`). It reviews only new and changed code — preexisting legacy patterns are not flagged unless the change extends them.
+
+Do not skip either step. The reviewers exist because violations compound — one bypass in a handler becomes three bypasses in the handlers that copy it.
+
+## Learning From Feedback
+
+- Treat user feedback in **PR comments** and in the **live chat** as guidance for future code, not just the current patch.
+- When the user pushes back on a coding practice, architecture choice, testing shape, utility placement, or workflow decision, proactively update the closest relevant `AGENTS.md` file so the same mistake is less likely to recur.
+- Prefer updating both the **repo-root `AGENTS.md`** for general guidance and the **workspace/module `AGENTS.md`** for domain-specific guidance when the feedback is scoped.
+- Do this proactively after the lesson is clear; do not wait for the user to ask a second time.
+- Assume the user reviews **committed and pushed code**, not your uncommitted local workspace. If you are expecting PR feedback to reflect your latest work, proactively commit and push first.
+- Never rely on users reviewing uncommitted changes. Remote PR state is the review source of truth unless the user explicitly says otherwise.
+- Never use `git commit --amend` anywhere in this repo workflow. There are no exceptions; if follow-up changes are needed, create a new commit instead.
 
 ## Forbidden
 

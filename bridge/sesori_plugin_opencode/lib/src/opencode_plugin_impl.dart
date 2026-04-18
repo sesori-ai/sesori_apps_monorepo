@@ -8,6 +8,24 @@ import "../opencode_plugin.dart";
 import "sse/sse_connection.dart";
 import "sse_event_mapper.dart";
 
+String formatDroppedSseFrameLog({
+  required String category,
+  required String message,
+  String? directory,
+  String? eventType,
+}) {
+  final context = <String>[];
+  if (directory != null) {
+    context.add("directory=$directory");
+  }
+  if (eventType != null) {
+    context.add("eventType=$eventType");
+  }
+
+  final suffix = context.isEmpty ? "" : " [${context.join(", ")}]";
+  return "[opencode][sse][$category]$suffix $message";
+}
+
 class OpenCodePlugin implements BridgePlugin {
   final OpenCodeService _service;
   final SseEventParser _parser;
@@ -101,7 +119,12 @@ class OpenCodePlugin implements BridgePlugin {
 
   @override
   Future<List<PluginProject>> getProjects() async {
-    return (await _call(_service.getProjects)).map((project) => project.toPlugin()).toList();
+    final projects = await _call(_service.getProjects);
+    final changed = _service.tracker.updateProjectWorktrees(
+      worktrees: projects.map((p) => p.worktree).toSet(),
+    );
+    if (changed) _emitProjectsSummary();
+    return projects.map((project) => project.toPlugin()).toList();
   }
 
   @override
@@ -123,7 +146,11 @@ class OpenCodePlugin implements BridgePlugin {
         directory: session.directory,
       );
     }
-    return sessions.map((session) => session.toPlugin()).toList();
+    return sessions
+        .map(
+          (session) => session.toPlugin(projectID: _resolveCanonicalProjectID(session, projectId)),
+        )
+        .toList();
   }
 
   @override
@@ -163,7 +190,7 @@ class OpenCodePlugin implements BridgePlugin {
       ),
     );
 
-    return session.toPlugin();
+    return session.toPlugin(projectID: _resolveCanonicalProjectID(session, directory));
   }
 
   @override
@@ -187,7 +214,7 @@ class OpenCodePlugin implements BridgePlugin {
         body: {"title": title},
       ),
     );
-    return session.toPlugin();
+    return session.toPlugin(projectID: _resolveCanonicalProjectID(session, session.projectID));
   }
 
   @override
@@ -199,12 +226,20 @@ class OpenCodePlugin implements BridgePlugin {
         directory: directory,
       ),
     );
-    return sessions.map((session) => session.toPlugin()).toList();
+    return sessions
+        .map(
+          (session) => session.toPlugin(
+            projectID: _resolveCanonicalProjectID(session, session.projectID),
+          ),
+        )
+        .toList();
   }
 
   @override
   Future<Map<String, PluginSessionStatus>> getSessionStatuses() async {
-    final apiStatuses = await _call(_service.repository.api.getSessionStatuses);
+    final apiStatuses = await _call(
+      () => _service.repository.api.getSessionStatuses(directory: null),
+    );
 
     // Start with the API response as a baseline.
     final merged = apiStatuses.map((key, value) => MapEntry(key, value.toPlugin()));
@@ -411,25 +446,97 @@ class OpenCodePlugin implements BridgePlugin {
   void _handleRawSseEvent(String rawData) {
     try {
       final parseResult = _parser.parse(rawData);
-      final event = parseResult.event;
-      if (event == null) return;
+      switch (parseResult.outcome) {
+        case SseParseOutcome.validKnownEvent:
+          final event = parseResult.event;
+          if (event == null) {
+            Log.e("[opencode] SSE parser reported validKnownEvent without an event instance.");
+            return;
+          }
 
-      final changed = _service.handleSseEvent(event, parseResult.directory);
-      if (changed) {
-        _emitProjectsSummary();
-      }
+          final changed = _service.handleSseEvent(event, parseResult.directory);
+          if (changed) {
+            _emitProjectsSummary();
+          }
 
-      final bridgeEvent = _mapper.map(event);
-      if (bridgeEvent != null) {
-        _eventBuffer.add(bridgeEvent);
+          final bridgeEvent = _mapper.map(_canonicalizeEvent(event));
+          if (bridgeEvent != null) {
+            _eventBuffer.add(bridgeEvent);
+          }
+          return;
+        case SseParseOutcome.ignoredKnownEvent:
+          return;
+        case SseParseOutcome.unknownEventType:
+          _logDroppedSseFrame(
+            category: "unknown-event-type",
+            message: "Ignoring SSE frame with unknown event type.",
+            directory: parseResult.directory,
+            eventType: parseResult.eventType,
+          );
+          return;
+        case SseParseOutcome.malformedEnvelope:
+          _logDroppedSseFrame(
+            category: "malformed-envelope",
+            message: "Ignoring malformed SSE envelope.",
+            directory: parseResult.directory,
+            eventType: parseResult.eventType,
+          );
+          return;
+        case SseParseOutcome.malformedKnownPayload:
+          _logDroppedSseFrame(
+            category: "malformed-known-payload",
+            message: "Ignoring malformed payload for known SSE event.",
+            directory: parseResult.directory,
+            eventType: parseResult.eventType,
+          );
+          return;
       }
     } catch (e, st) {
       Log.e("[opencode] SSE event processing error: $e\n$st");
     }
   }
 
+  void _logDroppedSseFrame({
+    required String category,
+    required String message,
+    String? directory,
+    String? eventType,
+  }) {
+    Log.w(
+      formatDroppedSseFrameLog(
+        category: category,
+        message: message,
+        directory: directory,
+        eventType: eventType,
+      ),
+    );
+  }
+
   void _emitProjectsSummary() {
     _eventBuffer.add(const BridgeSseProjectUpdated());
+  }
+
+  Session _canonicalizeSession(Session session, String fallbackProjectID) {
+    return session.copyWith(projectID: _resolveCanonicalProjectID(session, fallbackProjectID));
+  }
+
+  String _resolveCanonicalProjectID(Session session, String fallbackProjectID) {
+    return _service.tracker.resolveProjectWorktree(directory: session.directory) ?? fallbackProjectID;
+  }
+
+  SseEventData _canonicalizeEvent(SseEventData event) {
+    return switch (event) {
+      SseSessionCreated(:final info) => SseEventData.sessionCreated(
+        info: _canonicalizeSession(info, info.projectID),
+      ),
+      SseSessionUpdated(:final info) => SseEventData.sessionUpdated(
+        info: _canonicalizeSession(info, info.projectID),
+      ),
+      SseSessionDeleted(:final info) => SseEventData.sessionDeleted(
+        info: _canonicalizeSession(info, info.projectID),
+      ),
+      _ => event,
+    };
   }
 
   PluginMessageWithParts _mapMessage(MessageWithParts raw) {

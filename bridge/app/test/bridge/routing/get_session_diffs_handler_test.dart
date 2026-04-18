@@ -1,8 +1,9 @@
 import "dart:convert";
 import "dart:io";
 
-import "package:sesori_bridge/src/bridge/persistence/daos/session_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/get_session_diffs_handler.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -14,16 +15,26 @@ import "routing_test_helpers.dart";
 void main() {
   group("GetSessionDiffsHandler errors", () {
     late AppDatabase db;
-    late SessionDao sessionDao;
+    late SessionRepository sessionRepository;
     late FakeProcessRunner processRunner;
     late GetSessionDiffsHandler handler;
     late Directory tempDir;
 
     setUp(() async {
       db = createTestDatabase();
-      sessionDao = db.sessionDao;
+      sessionRepository = SessionRepository(
+        plugin: FakeBridgePlugin(),
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+      );
       processRunner = FakeProcessRunner();
-      handler = GetSessionDiffsHandler(sessionDao, processRunner: processRunner);
+      handler = GetSessionDiffsHandler(
+        sessionRepository: sessionRepository,
+        processRunner: processRunner,
+      );
       tempDir = await Directory.systemTemp.createTemp("session_diff_handler_test_");
     });
 
@@ -61,7 +72,8 @@ void main() {
     });
 
     test("returns empty diffs when session has null worktreePath", () async {
-      await sessionDao.insertSession(
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
+      await db.sessionDao.insertSession(
         sessionId: "s1",
         projectId: "project-1",
         isDedicated: true,
@@ -89,7 +101,8 @@ void main() {
     });
 
     test("returns empty diffs when session has null baseBranch", () async {
-      await sessionDao.insertSession(
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
+      await db.sessionDao.insertSession(
         sessionId: "s1",
         projectId: "project-1",
         isDedicated: true,
@@ -117,7 +130,8 @@ void main() {
     });
 
     test("returns empty diffs when worktree directory does not exist", () async {
-      await sessionDao.insertSession(
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
+      await db.sessionDao.insertSession(
         sessionId: "s1",
         projectId: "project-1",
         isDedicated: true,
@@ -145,7 +159,8 @@ void main() {
     });
 
     test("returns 422 when base branch is unreachable", () async {
-      await sessionDao.insertSession(
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
+      await db.sessionDao.insertSession(
         sessionId: "s1",
         projectId: "project-1",
         isDedicated: true,
@@ -179,7 +194,8 @@ void main() {
     });
 
     test("returns 422 when merge-base finds no common ancestor", () async {
-      await sessionDao.insertSession(
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
+      await db.sessionDao.insertSession(
         sessionId: "s1",
         projectId: "project-1",
         isDedicated: true,
@@ -216,7 +232,8 @@ void main() {
     });
 
     test("returns 500 when merge-base returns unexpected multi-line output", () async {
-      await sessionDao.insertSession(
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
+      await db.sessionDao.insertSession(
         sessionId: "s1",
         projectId: "project-1",
         isDedicated: true,
@@ -253,7 +270,8 @@ void main() {
     });
 
     test("returns 500 when git diff fails", () async {
-      await sessionDao.insertSession(
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
+      await db.sessionDao.insertSession(
         sessionId: "s1",
         projectId: "project-1",
         isDedicated: true,

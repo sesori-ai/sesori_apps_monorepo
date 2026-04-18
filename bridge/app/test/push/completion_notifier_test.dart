@@ -298,6 +298,107 @@ void main() {
       });
     });
 
+    test("pruned-root cleanup cancels pending debounce timers", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
+        );
+
+        harness.notifier.cleanupPrunedRootSubtree(
+          rootSessionId: "session-a",
+          prunedSessionIds: const ["session-a"],
+        );
+
+        async.elapse(const Duration(seconds: 1));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, isEmpty);
+      });
+    });
+
+    test("pruned-root cleanup clears retained root state for reused IDs", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
+        );
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, equals(["session-a"]));
+
+        harness.notifier.markSessionAborted("session-a");
+        harness.notifier.cleanupPrunedRootSubtree(
+          rootSessionId: "session-a",
+          prunedSessionIds: const ["session-a"],
+        );
+
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
+        );
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+
+        expect(harness.completedRoots, equals(["session-a", "session-a"]));
+      });
+    });
+
+    test("pruned-root cleanup removes pruned permission mappings idempotently", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+
+        harness.dispatch(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
+        harness.dispatch(
+          SesoriSseEvent.sessionCreated(
+            info: _session(id: "child", parentID: "root"),
+          ),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.permissionAsked(
+            requestID: "perm-old",
+            sessionID: "child",
+            tool: "bash",
+            description: "Run command",
+          ),
+        );
+
+        harness.tracker.pruneRootSubtree(rootSessionId: "root");
+        harness.notifier.cleanupPrunedRootSubtree(
+          rootSessionId: "root",
+          prunedSessionIds: const ["root", "child"],
+        );
+        harness.notifier.cleanupPrunedRootSubtree(
+          rootSessionId: "root",
+          prunedSessionIds: const ["root", "child"],
+        );
+
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
+        );
+        harness.notifier.handleEvent(
+          const SesoriSseEvent.permissionReplied(
+            requestID: "perm-old",
+            sessionID: "root",
+            reply: "allow",
+          ),
+        );
+
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, equals(["root"]));
+      });
+    });
+
     test("reset clears timers and internal state", () {
       fakeAsync((async) {
         final harness = _newHarness();
@@ -309,6 +410,59 @@ void main() {
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
         );
         harness.notifier.reset();
+
+        async.elapse(const Duration(seconds: 1));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, isEmpty);
+      });
+    });
+
+    test("abort pending cancels debounce immediately and reschedules on failure", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
+        );
+        async.elapse(const Duration(milliseconds: 200));
+        async.flushMicrotasks();
+
+        harness.notifier.markSessionAbortPending("session-a");
+
+        async.elapse(const Duration(milliseconds: 400));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, isEmpty);
+
+        harness.notifier.clearPendingAbort("session-a");
+
+        async.elapse(const Duration(milliseconds: 499));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, isEmpty);
+
+        async.elapse(const Duration(milliseconds: 1));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, equals(["session-a"]));
+      });
+    });
+
+    test("abort success keeps completion suppressed after pending abort", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
+        );
+        async.elapse(const Duration(milliseconds: 200));
+        async.flushMicrotasks();
+
+        harness.notifier.markSessionAbortPending("session-a");
+        harness.notifier.markSessionAborted("session-a");
 
         async.elapse(const Duration(seconds: 1));
         async.flushMicrotasks();
@@ -575,7 +729,7 @@ class _Harness {
 }
 
 _Harness _newHarness() {
-  final tracker = PushSessionStateTracker();
+  final tracker = PushSessionStateTracker(now: DateTime.now);
   final completedRoots = <String>[];
   final notifier = CompletionNotifier(
     tracker: tracker,

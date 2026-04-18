@@ -37,6 +37,7 @@ class SessionListScreen extends StatelessWidget {
         projectService: getIt<ProjectService>(),
         connectionService: getIt<ConnectionService>(),
         sseEventRepository: getIt<SseEventRepository>(),
+        routeSource: getIt<RouteSource>(),
         projectId: projectId,
         failureReporter: getIt<FailureReporter>(),
       ),
@@ -185,7 +186,7 @@ class _SessionListBody extends StatelessWidget {
                         physics: const AlwaysScrollableScrollPhysics(),
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         itemCount: sessions.length,
-                        itemBuilder: (context, index) {
+                        itemBuilder: (_, index) {
                           final session = sessions[index];
                           final cubit = context.read<SessionListCubit>();
                           final isArchived = session.time?.archived != null;

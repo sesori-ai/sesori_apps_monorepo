@@ -1,10 +1,15 @@
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
+import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
+import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/get_sessions_handler.dart";
+import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
 void main() {
@@ -14,6 +19,8 @@ void main() {
     late FakePullRequestRepository pullRequestRepository;
     late FakePrSyncService prSyncService;
     late FakeSessionRepository sessionRepository;
+    late AppDatabase db;
+    late SessionPersistenceService sessionPersistenceService;
     late GetSessionsHandler handler;
 
     setUp(() {
@@ -21,18 +28,28 @@ void main() {
       sessionDao = FakeSessionDao();
       pullRequestRepository = FakePullRequestRepository();
       prSyncService = FakePrSyncService();
+      db = createTestDatabase();
       sessionRepository = FakeSessionRepository(
         plugin: plugin,
         sessionDao: sessionDao,
         pullRequestRepository: pullRequestRepository,
       );
+      sessionPersistenceService = SessionPersistenceService(
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        db: db,
+      );
       handler = GetSessionsHandler(
         sessionRepository: sessionRepository,
         prSyncService: prSyncService,
+        sessionPersistenceService: sessionPersistenceService,
       );
     });
 
-    tearDown(() => plugin.close());
+    tearDown(() async {
+      await plugin.close();
+      await db.close();
+    });
 
     test("canHandle POST /sessions", () {
       expect(handler.canHandle(makeRequest("POST", "/sessions")), isTrue);
@@ -80,6 +97,96 @@ void main() {
       );
       expect(plugin.lastGetSessionsStart, equals(5));
       expect(plugin.lastGetSessionsLimit, equals(20));
+    });
+
+    test("ensures project exists before calling SessionRepository", () async {
+      plugin.sessionsResult = [
+        const PluginSession(
+          id: "s1",
+          projectID: "project-1",
+          directory: "/tmp/project-1",
+          parentID: null,
+          title: "one",
+          time: PluginSessionTime(created: 1, updated: 1, archived: null),
+          summary: null,
+        ),
+        const PluginSession(
+          id: "s2",
+          projectID: "project-1",
+          directory: "/tmp/project-1",
+          parentID: null,
+          title: "two",
+          time: PluginSessionTime(created: 2, updated: 2, archived: null),
+          summary: null,
+        ),
+        const PluginSession(
+          id: "s3",
+          projectID: "project-1",
+          directory: "/tmp/project-1",
+          parentID: null,
+          title: "three",
+          time: PluginSessionTime(created: 3, updated: 3, archived: null),
+          summary: null,
+        ),
+      ];
+
+      final result = await handler.handle(
+        makeRequest("POST", "/sessions"),
+        body: const SessionListRequest(projectId: "project-1", start: 2, limit: 3),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      final projects = await db.select(db.projectsTable).get();
+      expect(projects, hasLength(1));
+      expect(projects.single.projectId, equals("project-1"));
+      expect(sessionRepository.getSessionsCallCount, equals(1));
+      expect(sessionRepository.lastGetSessionsArgs, equals((projectId: "project-1", start: 2, limit: 3)));
+      expect(result.items.map((session) => session.id), equals(["s1", "s2", "s3"]));
+    });
+
+    test("persists sessions after successful fetch", () async {
+      plugin.sessionsResult = [
+        const PluginSession(
+          id: "s1",
+          projectID: "project-1",
+          directory: "/tmp/project-1",
+          parentID: null,
+          title: null,
+          time: PluginSessionTime(created: 10, updated: 10, archived: null),
+          summary: null,
+        ),
+        const PluginSession(
+          id: "s2",
+          projectID: "project-1",
+          directory: "/tmp/project-1",
+          parentID: null,
+          title: null,
+          time: PluginSessionTime(created: 11, updated: 11, archived: null),
+          summary: null,
+        ),
+        const PluginSession(
+          id: "s3",
+          projectID: "project-1",
+          directory: "/tmp/project-1",
+          parentID: null,
+          title: null,
+          time: PluginSessionTime(created: 12, updated: 12, archived: null),
+          summary: null,
+        ),
+      ];
+
+      await handler.handle(
+        makeRequest("POST", "/sessions"),
+        body: const SessionListRequest(projectId: "project-1", start: null, limit: null),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      final rows = await db.select(db.sessionTable).get();
+      expect(rows.map((row) => row.sessionId).toList()..sort(), equals(["s1", "s2", "s3"]));
     });
 
     test("start and limit are null when absent from body", () async {
@@ -540,6 +647,72 @@ void main() {
       expect(pr?.mergeableStatus, equals(PrMergeableStatus.mergeable));
       expect(pr?.reviewDecision, equals(PrReviewDecision.approved));
       expect(pr?.checkStatus, equals(PrCheckStatus.success));
+    });
+
+    test("preserves stored pull request metadata when plugin list replaces the session payload", () async {
+      final realHandler = GetSessionsHandler(
+        sessionRepository: SessionRepository(
+          plugin: plugin,
+          sessionDao: db.sessionDao,
+          pullRequestRepository: PullRequestRepository(
+            pullRequestDao: db.pullRequestDao,
+            projectsDao: db.projectsDao,
+          ),
+        ),
+        prSyncService: prSyncService,
+        sessionPersistenceService: sessionPersistenceService,
+      );
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.sessionDao.insertSession(
+        sessionId: "s1",
+        projectId: "p1",
+        isDedicated: true,
+        createdAt: 10,
+        worktreePath: "/tmp/worktree",
+        branchName: "feature/preserved-pr",
+        baseBranch: null,
+        baseCommit: null,
+      );
+      await db.pullRequestDao.upsertPr(
+        pullRequest: const PullRequestDto(
+          projectId: "p1",
+          branchName: "feature/preserved-pr",
+          prNumber: 84,
+          url: "https://github.com/org/repo/pull/84",
+          title: "Stored PR survives replacement",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.mergeable,
+          reviewDecision: PrReviewDecision.approved,
+          checkStatus: PrCheckStatus.success,
+          lastCheckedAt: 1,
+          createdAt: 1,
+        ),
+      );
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "p1",
+          directory: "/tmp/project",
+          parentID: null,
+          title: "replacement payload",
+          time: PluginSessionTime(created: 100, updated: 200, archived: null),
+          summary: null,
+        ),
+      ];
+
+      final result = await realHandler.handle(
+        makeRequest("POST", "/sessions"),
+        body: const SessionListRequest(projectId: "p1", start: null, limit: null),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.items, hasLength(1));
+      expect(result.items.single.title, equals("replacement payload"));
+      expect(result.items.single.hasWorktree, isTrue);
+      expect(result.items.single.pullRequest?.number, equals(84));
+      expect(result.items.single.pullRequest?.title, equals("Stored PR survives replacement"));
     });
 
     test("keeps pullRequest null when session has no PR", () async {

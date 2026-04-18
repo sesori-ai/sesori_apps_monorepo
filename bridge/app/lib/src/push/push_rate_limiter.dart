@@ -1,6 +1,8 @@
 import "package:sesori_shared/sesori_shared.dart" show NotificationCategory;
 
 class PushRateLimiter {
+  static const staleEntryTtl = Duration(minutes: 30);
+
   final DateTime Function() _now;
   final Map<String, DateTime> _lastSent = {};
 
@@ -11,6 +13,17 @@ class PushRateLimiter {
     NotificationCategory.sessionMessage: Duration(seconds: 30),
     NotificationCategory.systemUpdate: Duration.zero,
   };
+
+  int get retainedKeyCount => _lastSent.length;
+
+  int pruneStaleEntries({Duration ttl = staleEntryTtl}) {
+    final cutoff = _now().subtract(ttl);
+    final previousCount = _lastSent.length;
+    _lastSent.removeWhere(
+      (_, lastSentAt) => lastSentAt.isBefore(cutoff),
+    );
+    return previousCount - _lastSent.length;
+  }
 
   bool shouldSend({
     required NotificationCategory category,

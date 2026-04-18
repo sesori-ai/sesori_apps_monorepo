@@ -1,5 +1,7 @@
+import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/daos/session_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sqlite3/sqlite3.dart";
 import "package:test/test.dart";
 
 import "../helpers/test_database.dart";
@@ -8,10 +10,17 @@ void main() {
   group("SessionDao", () {
     late AppDatabase db;
     late SessionDao dao;
+    late ProjectsDao projectsDao;
 
-    setUp(() {
+    setUp(() async {
       db = createTestDatabase();
       dao = db.sessionDao;
+      projectsDao = db.projectsDao;
+      // Seed projects required by tests — v5 FK constraint on session_table.projectId
+      // → projects_table.projectId means every session insert needs a matching project row.
+      for (final id in ["proj-1", "proj-2", "proj-3", "proj-4", "proj-x", "proj-y"]) {
+        await projectsDao.insertProjectsIfMissing(projectIds: [id]);
+      }
     });
 
     tearDown(() async {
@@ -396,5 +405,163 @@ void main() {
         expect(result, isEmpty);
       });
     });
+
+    test(
+      "insertSessionsIfMissing inserts placeholder session with isDedicated=false and null nullable fields",
+      () async {
+        // proj-1 is seeded in setUp — FK constraint satisfied.
+        await dao.insertSessionsIfMissing(
+          sessions: [
+            (
+              sessionId: "sess-1",
+              projectId: "proj-1",
+              createdAt: 1000,
+              archivedAt: null,
+            ),
+          ],
+        );
+
+        final result = await dao.getSession(sessionId: "sess-1");
+
+        expect(result, isNotNull);
+        expect(result!.sessionId, equals("sess-1"));
+        expect(result.projectId, equals("proj-1"));
+        expect(result.isDedicated, isFalse);
+        expect(result.createdAt, equals(1000));
+        expect(result.worktreePath, isNull);
+        expect(result.branchName, isNull);
+        expect(result.archivedAt, isNull);
+        expect(result.baseBranch, isNull);
+        expect(result.baseCommit, isNull);
+      },
+    );
+
+    test("insertSessionsIfMissing persists archivedAt when provided", () async {
+      await dao.insertSessionsIfMissing(
+        sessions: [
+          (
+            sessionId: "sess-archived",
+            projectId: "proj-1",
+            createdAt: 1000,
+            archivedAt: 9999,
+          ),
+        ],
+      );
+
+      final result = await dao.getSession(sessionId: "sess-archived");
+      expect(result, isNotNull);
+      expect(result!.archivedAt, equals(9999));
+    });
+
+    test("insertSessionsIfMissing is no-op when session exists, preserving worktreePath and branchName", () async {
+      // Pre-insert a full session with worktree state.
+      await dao.insertSession(
+        sessionId: "sess-existing",
+        projectId: "proj-1",
+        isDedicated: true,
+        createdAt: 500,
+        worktreePath: "/tmp/wt",
+        branchName: "feature-x",
+        baseBranch: "main",
+        baseCommit: "abc123",
+      );
+
+      // insertSessionsIfMissing must be a no-op — must NOT clobber existing fields.
+      await dao.insertSessionsIfMissing(
+        sessions: [
+          (
+            sessionId: "sess-existing",
+            projectId: "proj-1",
+            createdAt: 999,
+            archivedAt: null,
+          ),
+        ],
+      );
+
+      final result = await dao.getSession(sessionId: "sess-existing");
+
+      expect(result, isNotNull);
+      expect(result!.worktreePath, equals("/tmp/wt"));
+      expect(result.branchName, equals("feature-x"));
+      expect(result.isDedicated, isTrue);
+      expect(result.createdAt, equals(500));
+    });
+
+    test(
+      "insertSessionsIfMissing throws SqliteException with FK violation when projectId does not exist",
+      () async {
+        // Fresh in-memory AppDatabase at v5 with FK enforced.
+        // projects_table is empty — no row for "nonexistent".
+        // The v5 FK constraint on session_table.projectId → projects_table.projectId
+        // must reject this insert at the SQLite level.
+        expect(
+          () async => dao.insertSessionsIfMissing(
+            sessions: [
+              (
+                sessionId: "s1",
+                projectId: "nonexistent",
+                createdAt: 0,
+                archivedAt: null,
+              ),
+            ],
+          ),
+          throwsA(isA<SqliteException>()),
+        );
+      },
+    );
+
+    group("insertSessionsIfMissing", () {
+      test("insertSessionsIfMissing inserts all sessions in one batch", () async {
+        await dao.insertSessionsIfMissing(
+          sessions: [
+            (sessionId: "bulk-1", projectId: "proj-1", createdAt: 100, archivedAt: null),
+            (sessionId: "bulk-2", projectId: "proj-1", createdAt: 200, archivedAt: 9999),
+            (sessionId: "bulk-3", projectId: "proj-2", createdAt: 300, archivedAt: null),
+          ],
+        );
+
+        final s1 = await dao.getSession(sessionId: "bulk-1");
+        expect(s1, isNotNull);
+        expect(s1!.isDedicated, isFalse);
+        expect(s1.createdAt, equals(100));
+        expect(s1.archivedAt, isNull);
+
+        final s2 = await dao.getSession(sessionId: "bulk-2");
+        expect(s2, isNotNull);
+        expect(s2!.archivedAt, equals(9999));
+
+        final s3 = await dao.getSession(sessionId: "bulk-3");
+        expect(s3, isNotNull);
+        expect(s3!.projectId, equals("proj-2"));
+      });
+
+      test("insertSessionsIfMissing is no-op for empty list", () async {
+        await dao.insertSessionsIfMissing(sessions: []);
+
+        final rows = await db.select(db.sessionTable).get();
+        expect(rows, isEmpty);
+      });
+    });
+
+    test(
+      "insertSession throws SqliteException with FK violation when projectId does not exist",
+      () async {
+        // Same FK enforcement proof but via the existing insertSession path.
+        // Proves the v5 FK constraint catches BOTH session insert paths.
+        expect(
+          () async => dao.insertSession(
+            sessionId: "s2",
+            projectId: "nonexistent",
+            isDedicated: false,
+            createdAt: 0,
+            worktreePath: null,
+            branchName: null,
+            baseBranch: null,
+            baseCommit: null,
+          ),
+          throwsA(isA<SqliteException>()),
+        );
+      },
+    );
   });
 }

@@ -139,6 +139,7 @@ Stream<T> optionalValueStream<T>(FutureOr<T?> value) async* {
   }
 }
 
+// ignore: no_slop_linter/avoid_dynamic_type
 Y tryCatch<Y>({required Y Function() t, required Y Function(Object error) c}) {
   try {
     return t();
@@ -149,6 +150,7 @@ Y tryCatch<Y>({required Y Function() t, required Y Function(Object error) c}) {
 
 Future<Y> tryCatchAsync<Y>({
   required FutureOr<Y> Function() t,
+  // ignore: no_slop_linter/avoid_dynamic_type
   required FutureOr<Y> Function(Object error) c,
 }) async {
   try {

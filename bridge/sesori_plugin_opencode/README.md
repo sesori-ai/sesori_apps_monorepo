@@ -18,6 +18,8 @@ OpenCodeApi             HTTP client — raw requests to the OpenCode REST API
 
 `SseConnection` runs alongside this stack, maintaining a persistent SSE connection to `GET /global/event` and feeding raw event strings to `OpenCodePlugin`. `SseEventParser` translates those strings into typed `SseEventData` objects. `ActiveSessionTracker` watches session status events to maintain a live count of busy sessions per project.
 
+Compatibility note: the plugin keeps bridge-facing SSE behavior intentionally narrow. Parser failures are reported as categorized outcomes instead of exceptions, dropped SSE frames are logged with stable category tags plus `directory` context when available, and cold-start hydration of pending questions/permissions is best-effort only. Shell routes such as `GET /session/{id}/shell` remain outside the bridge router and are expected to 404.
+
 ## Key Components
 
 ### `OpenCodePlugin`
@@ -52,19 +54,19 @@ Call `start()` to begin streaming and `stop()` to disconnect.
 
 ### `SseEventParser`
 
-Translates raw OpenCode SSE data strings into typed `SseEventData` objects. Never throws; on any parse failure it returns a result with a null event so the raw data can still be forwarded.
+Translates raw OpenCode SSE data strings into typed `SseEventData` objects. Never throws; callers can distinguish malformed envelopes, malformed known payloads, and unknown event types while malformed or unknown frames are logged and dropped.
 
 ```dart
 SseParseResult parse(String rawData)
 ```
 
-The parser follows OpenCode's event envelope format: it JSON-decodes the string, extracts `payload.type` and `payload.properties`, merges them into `{"type": type, ...properties}`, then deserializes via `SseEventData.fromJson`. The top-level `directory` field, when present, is preserved in the result for use by `ActiveSessionTracker`.
+The parser follows OpenCode's event envelope format: it JSON-decodes the string, extracts `payload.type` and `payload.properties`, merges them into `{"type": type, ...properties}`, then deserializes via `SseEventData.fromJson`. The top-level `directory` field, when present, is preserved in the result for use by `ActiveSessionTracker` and drop logging.
 
 ### `ActiveSessionTracker`
 
 Tracks which sessions are currently active (busy or retrying) and maps them back to their project worktrees. Used to power `getActiveSessionsSummary`.
 
-On cold start it fetches all projects and current session statuses from the API. It then updates incrementally as `SseSessionStatus`, `SseSessionCreated`, `SseSessionUpdated`, `SseSessionDeleted`, and `SseSessionIdle` events arrive. `handleEvent` returns `true` when the active session counts change, signaling the plugin to emit a `BridgeSseProjectUpdated` event.
+On cold start it fetches all projects and current session statuses from the API. It then best-effort hydrates pending questions and permissions, and updates incrementally as `SseSessionStatus`, `SseSessionCreated`, `SseSessionUpdated`, `SseSessionDeleted`, and `SseSessionIdle` events arrive. `handleEvent` returns `true` when the active session counts change, signaling the plugin to emit a `BridgeSseProjectUpdated` event.
 
 ### `OpenCodeApi`
 

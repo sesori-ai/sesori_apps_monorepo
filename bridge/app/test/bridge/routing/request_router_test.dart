@@ -1,15 +1,28 @@
 import "dart:convert";
 
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
+import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/provider_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
+import "package:sesori_bridge/src/bridge/routing/abort_session_handler.dart";
+import "package:sesori_bridge/src/bridge/routing/get_session_diffs_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/request_router.dart";
+import "package:sesori_bridge/src/bridge/services/session_abort_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_archive_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
+import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_database.dart";
+import "get_session_diffs_handler_test_helpers.dart";
 import "routing_test_helpers.dart";
 
 void main() {
@@ -26,15 +39,56 @@ void main() {
       final sessionRepository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
-        pullRequestRepository: PullRequestRepository(pullRequestDao: db.pullRequestDao),
+        pullRequestRepository: PullRequestRepository(pullRequestDao: db.pullRequestDao, projectsDao: db.projectsDao),
+      );
+      final projectRepository = ProjectRepository(plugin: plugin, projectsDao: db.projectsDao);
+      final providerRepository = ProviderRepository(plugin: plugin);
+      final permissionRepository = PermissionRepository(plugin: plugin);
+      final sessionPersistenceService = SessionPersistenceService(
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        db: db,
+      );
+      final worktreeService = WorktreeService(
+        worktreeRepository: WorktreeRepository(
+          projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
+          gitApi: GitCliApi(
+            processRunner: FakeProcessRunner(),
+            gitPathExists: ({required String gitPath}) => true,
+          ),
+        ),
+      );
+      final sessionDiffsHandler = GetSessionDiffsHandler(
+        sessionRepository: sessionRepository,
+        processRunner: FakeProcessRunner(),
+      );
+      final sessionCreationService = SessionCreationService(
+        metadataService: metadataService,
+        worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
+        sessionPersistenceService: sessionPersistenceService,
+      );
+      final sessionArchiveService = SessionArchiveService(
+        worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
+        sessionPersistenceService: sessionPersistenceService,
       );
       router = RequestRouter(
         plugin: plugin,
-        metadataService: metadataService,
-        projectsDao: db.projectsDao,
-        sessionDao: db.sessionDao,
         sessionRepository: sessionRepository,
+        abortSessionHandler: AbortSessionHandler(
+          sessionAbortService: SessionAbortService(sessionRepository: sessionRepository),
+        ),
+        sessionCreationService: sessionCreationService,
+        sessionArchiveService: sessionArchiveService,
         prSyncService: FakePrSyncService(),
+        projectRepository: projectRepository,
+        providerRepository: providerRepository,
+        permissionRepository: permissionRepository,
+        sessionPersistenceService: sessionPersistenceService,
+        worktreeService: worktreeService,
+        sessionDiffsHandler: sessionDiffsHandler,
       );
     });
 
@@ -143,6 +197,13 @@ void main() {
       expect(response.body, equals("no handler found for GET /unknown"));
     });
 
+    test("GET /session/{id}/shell remains unsupported in RequestRouter", () async {
+      final response = await router.route(makeRequest("GET", "/session/abc/shell"));
+
+      expect(response.status, equals(404));
+      expect(response.body, equals("no handler found for GET /session/abc/shell"));
+    });
+
     test("routes POST /session/create to CreateSessionHandler", () async {
       plugin.createSessionResult = const PluginSession(
         id: "s1",
@@ -231,12 +292,12 @@ void main() {
       expect(response.body, contains("Internal Server Error"));
     });
 
-    test("returns 500 when handler throws PluginApiException", () async {
+    test("returns plugin status when handler throws PluginApiException", () async {
       plugin.throwOnGetProjectsError = PluginApiException("/projects", 404);
 
       final response = await router.route(makeRequest("GET", "/projects"));
 
-      expect(response.status, equals(500));
+      expect(response.status, equals(404));
       expect(response.body, contains("PluginApiException"));
     });
 
@@ -286,13 +347,60 @@ void main() {
         pullRequestRepository: fakePullRequestRepository,
       );
 
-      router = RequestRouter(
-        plugin: plugin,
+      final projectRepository = ProjectRepository(plugin: plugin, projectsDao: db.projectsDao);
+      final providerRepository = ProviderRepository(plugin: plugin);
+      final permissionRepository = PermissionRepository(plugin: plugin);
+      final sessionPersistenceService = SessionPersistenceService(
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
+        db: db,
+      );
+      final worktreeService = WorktreeService(
+        worktreeRepository: WorktreeRepository(
+          projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
+          gitApi: GitCliApi(
+            processRunner: FakeProcessRunner(),
+            gitPathExists: ({required String gitPath}) => true,
+          ),
+        ),
+      );
+      final sessionDiffsHandler = GetSessionDiffsHandler(
+        sessionRepository: SessionRepository(
+          plugin: plugin,
+          sessionDao: db.sessionDao,
+          pullRequestRepository: PullRequestRepository(
+            pullRequestDao: db.pullRequestDao,
+            projectsDao: db.projectsDao,
+          ),
+        ),
+        processRunner: FakeProcessRunner(),
+      );
+
+      router = RequestRouter(
+        plugin: plugin,
         sessionRepository: sessionRepository,
+        abortSessionHandler: AbortSessionHandler(
+          sessionAbortService: SessionAbortService(sessionRepository: sessionRepository),
+        ),
+        sessionCreationService: SessionCreationService(
+          metadataService: metadataService,
+          worktreeService: worktreeService,
+          sessionRepository: sessionRepository,
+          sessionPersistenceService: sessionPersistenceService,
+        ),
+        sessionArchiveService: SessionArchiveService(
+          worktreeService: worktreeService,
+          sessionRepository: sessionRepository,
+          sessionPersistenceService: sessionPersistenceService,
+        ),
         prSyncService: spyPrSyncService,
-        metadataService: metadataService,
+        projectRepository: projectRepository,
+        providerRepository: providerRepository,
+        permissionRepository: permissionRepository,
+        sessionPersistenceService: sessionPersistenceService,
+        worktreeService: worktreeService,
+        sessionDiffsHandler: sessionDiffsHandler,
       );
 
       final response = await router.route(

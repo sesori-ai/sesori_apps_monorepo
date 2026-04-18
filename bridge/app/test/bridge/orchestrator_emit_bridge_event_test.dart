@@ -3,22 +3,35 @@ import "dart:convert";
 import "dart:typed_data";
 
 import "package:cryptography/cryptography.dart";
+import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
+import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/metadata_service.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/models/session_metadata.dart";
 import "package:sesori_bridge/src/bridge/orchestrator.dart";
+import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
+import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
+import "package:sesori_bridge/src/push/completion_push_listener.dart";
+import "package:sesori_bridge/src/push/maintenance_push_listener.dart";
+import "package:sesori_bridge/src/push/push_dispatcher.dart";
+import "package:sesori_bridge/src/push/push_maintenance_telemetry.dart";
 import "package:sesori_bridge/src/push/push_notification_client.dart";
-import "package:sesori_bridge/src/push/push_notification_service.dart";
+import "package:sesori_bridge/src/push/push_notification_content_builder.dart";
 import "package:sesori_bridge/src/push/push_rate_limiter.dart";
 import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -27,22 +40,51 @@ import "package:test/test.dart";
 
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
+import "routing/get_session_diffs_handler_test_helpers.dart";
 
 void main() {
   test("pr sync stream enqueues sessions.updated SSE event for subscribers", () async {
     final relayServer = await TestRelayServer.start();
     final database = createTestDatabase();
     final plugin = _NoopPlugin();
+    final pushSubsystem = _createPushSubsystem();
     final fakePrSyncService = _FakePrSyncService();
-    final pullRequestRepository = PullRequestRepository(pullRequestDao: database.pullRequestDao);
+    final pullRequestRepository = PullRequestRepository(
+      pullRequestDao: database.pullRequestDao,
+      projectsDao: database.projectsDao,
+    );
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
       pullRequestRepository: pullRequestRepository,
     );
+    final projectRepository = ProjectRepository(
+      plugin: plugin,
+      projectsDao: database.projectsDao,
+    );
+    final permissionRepository = PermissionRepository(plugin: plugin);
+    final sessionPersistenceService = SessionPersistenceService(
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      db: database,
+    );
+    final worktreeService = WorktreeService(
+      worktreeRepository: WorktreeRepository(
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        gitApi: GitCliApi(
+          processRunner: FakeProcessRunner(),
+          gitPathExists: ({required String gitPath}) => true,
+        ),
+      ),
+    );
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
       accessTokenProvider: FakeAccessTokenProvider(""),
+    );
+    final sessionEventEnrichmentService = SessionEventEnrichmentService(
+      sessionRepository: sessionRepository,
+      failureReporter: FakeFailureReporter(),
     );
 
     final orchestrator = Orchestrator(
@@ -56,12 +98,18 @@ void main() {
       client: relayClient,
       plugin: plugin,
       metadataService: _FakeMetadataService(),
-      pushNotificationService: _createPushNotificationService(),
+      pushDispatcher: pushSubsystem.dispatcher,
+      completionListener: pushSubsystem.completionListener,
+      maintenanceListener: pushSubsystem.maintenanceListener,
       tokenRefresher: _FakeTokenRefresher(),
-      projectsDao: database.projectsDao,
       failureReporter: FakeFailureReporter(),
       prSyncService: fakePrSyncService,
       sessionRepository: sessionRepository,
+      projectRepository: projectRepository,
+      permissionRepository: permissionRepository,
+      sessionPersistenceService: sessionPersistenceService,
+      worktreeService: worktreeService,
+      sessionEventEnrichmentService: sessionEventEnrichmentService,
     );
 
     final session = orchestrator.create();
@@ -103,6 +151,620 @@ void main() {
       expectedType: "sessions.updated",
     );
     expect(found, isTrue);
+
+    await session.cancel();
+    await runFuture.timeout(const Duration(seconds: 5));
+    await plugin.close();
+    await database.close();
+    await relayServer.close();
+  });
+
+  test("pre-seeds and forwards projects summary to push dispatcher", () async {
+    final relayServer = await TestRelayServer.start();
+    final database = createTestDatabase();
+    final pushDispatcher = _CapturingPushDispatcher();
+    final pushListeners = _createPushListeners(
+      tracker: pushDispatcher.tracker,
+      completionNotifier: pushDispatcher.completionNotifier,
+      rateLimiter: pushDispatcher.rateLimiter,
+      telemetryBuilder: pushDispatcher.telemetryBuilder,
+      dispatcher: pushDispatcher,
+    );
+    final plugin = _SummaryPlugin(
+      onSubscribe: () {
+        expect(pushDispatcher.events.length, 1);
+      },
+    );
+    final fakePrSyncService = _FakePrSyncService();
+    final pullRequestRepository = PullRequestRepository(
+      pullRequestDao: database.pullRequestDao,
+      projectsDao: database.projectsDao,
+    );
+    final sessionRepository = SessionRepository(
+      plugin: plugin,
+      sessionDao: database.sessionDao,
+      pullRequestRepository: pullRequestRepository,
+    );
+    final relayClient = RelayClient(
+      relayURL: "ws://127.0.0.1:${relayServer.port}",
+      accessTokenProvider: FakeAccessTokenProvider(""),
+    );
+    final sessionEventEnrichmentService = SessionEventEnrichmentService(
+      sessionRepository: sessionRepository,
+      failureReporter: FakeFailureReporter(),
+    );
+    final projectRepository = ProjectRepository(plugin: plugin, projectsDao: database.projectsDao);
+    final permissionRepository = PermissionRepository(plugin: plugin);
+    final sessionPersistenceService = SessionPersistenceService(
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      db: database,
+    );
+    final worktreeService = WorktreeService(
+      worktreeRepository: WorktreeRepository(
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        gitApi: GitCliApi(
+          processRunner: FakeProcessRunner(),
+          gitPathExists: ({required String gitPath}) => true,
+        ),
+      ),
+    );
+
+    final orchestrator = Orchestrator(
+      config: BridgeConfig(
+        relayURL: "ws://127.0.0.1:${relayServer.port}",
+        serverURL: "http://127.0.0.1:4096",
+        serverPassword: null,
+        authBackendURL: "http://127.0.0.1:8080",
+        sseReplayWindow: const Duration(minutes: 1),
+      ),
+      client: relayClient,
+      plugin: plugin,
+      metadataService: _FakeMetadataService(),
+      pushDispatcher: pushDispatcher,
+      completionListener: pushListeners.completionListener,
+      maintenanceListener: pushListeners.maintenanceListener,
+      tokenRefresher: _FakeTokenRefresher(),
+      failureReporter: FakeFailureReporter(),
+      prSyncService: fakePrSyncService,
+      sessionRepository: sessionRepository,
+      projectRepository: projectRepository,
+      permissionRepository: permissionRepository,
+      sessionPersistenceService: sessionPersistenceService,
+      worktreeService: worktreeService,
+      sessionEventEnrichmentService: sessionEventEnrichmentService,
+    );
+
+    final session = orchestrator.create();
+    final runFuture = session.run();
+
+    final bridgeSocket = await relayServer.nextClient();
+    final messages = bridgeSocket.asBroadcastStream();
+
+    const connID = 8;
+    bridgeSocket.add(jsonEncode(<String, Object>{"type": "phone_connected", "connId": connID}));
+
+    final crypto = RelayCryptoService();
+    final phoneKp = await crypto.generateKeyPair();
+    final phonePub = await phoneKp.extractPublicKey();
+    final kxMessage = RelayMessage.keyExchange(
+      publicKey: base64Url.encode(phonePub.bytes).replaceAll("=", ""),
+    );
+    bridgeSocket.add(_withConnID(connID: connID, payload: utf8.encode(jsonEncode(kxMessage.toJson()))));
+
+    final readyFrame = await _nextBinaryMessage(messages: messages);
+    final roomKey = await _extractRoomKeyFromReady(
+      framedWithConnID: readyFrame,
+      phoneKp: phoneKp,
+    );
+
+    final encryptor = crypto.createSessionEncryptor(SecretKey(roomKey));
+    final subscribeFrame = await frame(
+      utf8.encode(jsonEncode(const RelayMessage.sseSubscribe(path: "/events").toJson())),
+      encryptor: encryptor,
+    );
+    bridgeSocket.add(_withConnID(connID: connID, payload: subscribeFrame));
+
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    expect(pushDispatcher.events, hasLength(2));
+
+    await session.cancel();
+    await runFuture.timeout(const Duration(seconds: 5));
+    await plugin.close();
+    await database.close();
+    await relayServer.close();
+  });
+
+  test("session SSE events stay ordered while async enrichment completes", () async {
+    final relayServer = await TestRelayServer.start();
+    final database = createTestDatabase();
+    final plugin = _EventPlugin();
+    final pushDispatcher = _CapturingPushDispatcher();
+    final pushListeners = _createPushListeners(
+      tracker: pushDispatcher.tracker,
+      completionNotifier: pushDispatcher.completionNotifier,
+      rateLimiter: pushDispatcher.rateLimiter,
+      telemetryBuilder: pushDispatcher.telemetryBuilder,
+      dispatcher: pushDispatcher,
+    );
+    final pullRequestRepository = PullRequestRepository(
+      pullRequestDao: database.pullRequestDao,
+      projectsDao: database.projectsDao,
+    );
+    final baseSessionRepository = SessionRepository(
+      plugin: plugin,
+      sessionDao: database.sessionDao,
+      pullRequestRepository: pullRequestRepository,
+    );
+    final enrichGate = Completer<void>();
+    final sessionRepository = _DelayingSessionRepository(
+      base: baseSessionRepository,
+      delaySessionIds: {"s1": enrichGate.future},
+    );
+    final projectRepository = ProjectRepository(
+      plugin: plugin,
+      projectsDao: database.projectsDao,
+    );
+    final permissionRepository = PermissionRepository(plugin: plugin);
+    final sessionPersistenceService = SessionPersistenceService(
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      db: database,
+    );
+    final worktreeService = WorktreeService(
+      worktreeRepository: WorktreeRepository(
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        gitApi: GitCliApi(
+          processRunner: FakeProcessRunner(),
+          gitPathExists: ({required String gitPath}) => true,
+        ),
+      ),
+    );
+    final relayClient = RelayClient(
+      relayURL: "ws://127.0.0.1:${relayServer.port}",
+      accessTokenProvider: FakeAccessTokenProvider(""),
+    );
+
+    await database.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+    await database.sessionDao.insertSession(
+      sessionId: "s1",
+      projectId: "p1",
+      isDedicated: true,
+      createdAt: 10,
+      worktreePath: "/tmp/worktree",
+      branchName: "feature/one",
+      baseBranch: null,
+      baseCommit: null,
+    );
+    await database.pullRequestDao.upsertPr(
+      pullRequest: const PullRequestDto(
+        projectId: "p1",
+        branchName: "feature/one",
+        prNumber: 11,
+        url: "https://github.com/org/repo/pull/11",
+        title: "Newest open PR",
+        state: PrState.open,
+        mergeableStatus: PrMergeableStatus.mergeable,
+        reviewDecision: PrReviewDecision.approved,
+        checkStatus: PrCheckStatus.success,
+        lastCheckedAt: 2,
+        createdAt: 2,
+      ),
+    );
+
+    final sessionEventEnrichmentService = SessionEventEnrichmentService(
+      sessionRepository: sessionRepository,
+      failureReporter: FakeFailureReporter(),
+    );
+
+    final orchestrator = Orchestrator(
+      config: BridgeConfig(
+        relayURL: "ws://127.0.0.1:${relayServer.port}",
+        serverURL: "http://127.0.0.1:4096",
+        serverPassword: null,
+        authBackendURL: "http://127.0.0.1:8080",
+        sseReplayWindow: const Duration(minutes: 1),
+      ),
+      client: relayClient,
+      plugin: plugin,
+      metadataService: _FakeMetadataService(),
+      pushDispatcher: pushDispatcher,
+      completionListener: pushListeners.completionListener,
+      maintenanceListener: pushListeners.maintenanceListener,
+      tokenRefresher: _FakeTokenRefresher(),
+      failureReporter: FakeFailureReporter(),
+      prSyncService: _FakePrSyncService(),
+      sessionRepository: sessionRepository,
+      projectRepository: projectRepository,
+      permissionRepository: permissionRepository,
+      sessionPersistenceService: sessionPersistenceService,
+      worktreeService: worktreeService,
+      sessionEventEnrichmentService: sessionEventEnrichmentService,
+    );
+
+    final session = orchestrator.create();
+    final runFuture = session.run();
+    await plugin.waitForSubscription();
+    await relayServer.nextClient();
+
+    plugin.add(
+      const BridgeSseSessionCreated(
+        info: {
+          "id": "s1",
+          "projectID": "p1",
+          "directory": "/tmp/project",
+          "parentID": null,
+          "title": "session",
+          "time": {"created": 1, "updated": 2, "archived": null},
+          "summary": null,
+        },
+      ),
+    );
+    plugin.add(const BridgeSseSessionDiff(sessionID: "s1"));
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    enrichGate.complete();
+
+    final timeoutAt = DateTime.now().add(const Duration(seconds: 2));
+    while (pushDispatcher.events.length < 3) {
+      if (DateTime.now().isAfter(timeoutAt)) {
+        fail("Timed out waiting for mapped SSE events");
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+
+    final emittedEvents = pushDispatcher.events.skip(1).toList(growable: false);
+
+    expect(
+      emittedEvents.map((event) => event.toJson()["type"]).toList(growable: false),
+      equals(["session.created", "session.diff"]),
+    );
+    expect(
+      ((emittedEvents.first.toJson()["info"] as Map<String, dynamic>)["pullRequest"] as Map<String, dynamic>)["number"],
+      equals(11),
+    );
+
+    await session.cancel();
+    await runFuture.timeout(const Duration(seconds: 5));
+    await plugin.close();
+    await database.close();
+    await relayServer.close();
+  });
+
+  test("abort stream forwards session ids to push dispatcher", () async {
+    final relayServer = await TestRelayServer.start();
+    final database = createTestDatabase();
+    final pushDispatcher = _CapturingPushDispatcher();
+    final pushListeners = _createPushListeners(
+      tracker: pushDispatcher.tracker,
+      completionNotifier: pushDispatcher.completionNotifier,
+      rateLimiter: pushDispatcher.rateLimiter,
+      telemetryBuilder: pushDispatcher.telemetryBuilder,
+      dispatcher: pushDispatcher,
+    );
+    final plugin = _AbortPlugin();
+    final pullRequestRepository = PullRequestRepository(
+      pullRequestDao: database.pullRequestDao,
+      projectsDao: database.projectsDao,
+    );
+    final sessionRepository = SessionRepository(
+      plugin: plugin,
+      sessionDao: database.sessionDao,
+      pullRequestRepository: pullRequestRepository,
+    );
+    final projectRepository = ProjectRepository(
+      plugin: plugin,
+      projectsDao: database.projectsDao,
+    );
+    final permissionRepository = PermissionRepository(plugin: plugin);
+    final sessionPersistenceService = SessionPersistenceService(
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      db: database,
+    );
+    final worktreeService = WorktreeService(
+      worktreeRepository: WorktreeRepository(
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        gitApi: GitCliApi(
+          processRunner: FakeProcessRunner(),
+          gitPathExists: ({required String gitPath}) => true,
+        ),
+      ),
+    );
+    final relayClient = RelayClient(
+      relayURL: "ws://127.0.0.1:${relayServer.port}",
+      accessTokenProvider: FakeAccessTokenProvider(""),
+    );
+    final sessionEventEnrichmentService = SessionEventEnrichmentService(
+      sessionRepository: sessionRepository,
+      failureReporter: FakeFailureReporter(),
+    );
+
+    final orchestrator = Orchestrator(
+      config: BridgeConfig(
+        relayURL: "ws://127.0.0.1:${relayServer.port}",
+        serverURL: "http://127.0.0.1:4096",
+        serverPassword: null,
+        authBackendURL: "http://127.0.0.1:8080",
+        sseReplayWindow: const Duration(minutes: 1),
+      ),
+      client: relayClient,
+      plugin: plugin,
+      metadataService: _FakeMetadataService(),
+      pushDispatcher: pushDispatcher,
+      completionListener: pushListeners.completionListener,
+      maintenanceListener: pushListeners.maintenanceListener,
+      tokenRefresher: _FakeTokenRefresher(),
+      failureReporter: FakeFailureReporter(),
+      prSyncService: _FakePrSyncService(),
+      sessionRepository: sessionRepository,
+      projectRepository: projectRepository,
+      permissionRepository: permissionRepository,
+      sessionPersistenceService: sessionPersistenceService,
+      worktreeService: worktreeService,
+      sessionEventEnrichmentService: sessionEventEnrichmentService,
+    );
+
+    final session = orchestrator.create();
+    final runFuture = session.run();
+    await relayServer.nextClient();
+
+    final request =
+        RelayMessage.request(
+              id: "abort-request",
+              method: "POST",
+              path: "/session/abort",
+              headers: const <String, String>{},
+              body: jsonEncode(const SessionIdRequest(sessionId: "session-42").toJson()),
+            )
+            as RelayRequest;
+    final response = await session.router.route(request);
+
+    expect(response.status, equals(200));
+    expect(plugin.abortedSessionIds, equals(["session-42"]));
+
+    await session.cancel();
+    await runFuture.timeout(const Duration(seconds: 5));
+    await plugin.close();
+    await database.close();
+    await relayServer.close();
+  });
+
+  test("abort stream suppresses completion notifications end to end", () async {
+    final relayServer = await TestRelayServer.start();
+    final database = createTestDatabase();
+    final notificationClient = _CapturingPushNotificationClient();
+    final pushSubsystem = _createPushSubsystem(client: notificationClient);
+    final plugin = _AbortEventPlugin();
+    final pullRequestRepository = PullRequestRepository(
+      pullRequestDao: database.pullRequestDao,
+      projectsDao: database.projectsDao,
+    );
+    final sessionRepository = SessionRepository(
+      plugin: plugin,
+      sessionDao: database.sessionDao,
+      pullRequestRepository: pullRequestRepository,
+    );
+    final projectRepository = ProjectRepository(
+      plugin: plugin,
+      projectsDao: database.projectsDao,
+    );
+    final permissionRepository = PermissionRepository(plugin: plugin);
+    final sessionPersistenceService = SessionPersistenceService(
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      db: database,
+    );
+    final worktreeService = WorktreeService(
+      worktreeRepository: WorktreeRepository(
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        gitApi: GitCliApi(
+          processRunner: FakeProcessRunner(),
+          gitPathExists: ({required String gitPath}) => true,
+        ),
+      ),
+    );
+    final relayClient = RelayClient(
+      relayURL: "ws://127.0.0.1:${relayServer.port}",
+      accessTokenProvider: FakeAccessTokenProvider(""),
+    );
+    final sessionEventEnrichmentService = SessionEventEnrichmentService(
+      sessionRepository: sessionRepository,
+      failureReporter: FakeFailureReporter(),
+    );
+
+    final orchestrator = Orchestrator(
+      config: BridgeConfig(
+        relayURL: "ws://127.0.0.1:${relayServer.port}",
+        serverURL: "http://127.0.0.1:4096",
+        serverPassword: null,
+        authBackendURL: "http://127.0.0.1:8080",
+        sseReplayWindow: const Duration(minutes: 1),
+      ),
+      client: relayClient,
+      plugin: plugin,
+      metadataService: _FakeMetadataService(),
+      pushDispatcher: pushSubsystem.dispatcher,
+      completionListener: pushSubsystem.completionListener,
+      maintenanceListener: pushSubsystem.maintenanceListener,
+      tokenRefresher: _FakeTokenRefresher(),
+      failureReporter: FakeFailureReporter(),
+      prSyncService: _FakePrSyncService(),
+      sessionRepository: sessionRepository,
+      projectRepository: projectRepository,
+      permissionRepository: permissionRepository,
+      sessionPersistenceService: sessionPersistenceService,
+      worktreeService: worktreeService,
+      sessionEventEnrichmentService: sessionEventEnrichmentService,
+    );
+
+    final session = orchestrator.create();
+    final runFuture = session.run();
+    await plugin.waitForSubscription();
+    await relayServer.nextClient();
+
+    plugin.add(
+      BridgeSseSessionStatus(
+        sessionID: "session-42",
+        status: const SessionStatus.busy().toJson(),
+      ),
+    );
+    await _waitForCondition(
+      check: () => pushSubsystem.tracker.wasPreviouslyBusy("session-42"),
+      failureMessage: "Timed out waiting for busy status to reach push tracker",
+    );
+
+    final request =
+        RelayMessage.request(
+              id: "abort-request",
+              method: "POST",
+              path: "/session/abort",
+              headers: const <String, String>{},
+              body: jsonEncode(const SessionIdRequest(sessionId: "session-42").toJson()),
+            )
+            as RelayRequest;
+    final response = await session.router.route(request);
+
+    expect(response.status, equals(200));
+
+    plugin.add(
+      BridgeSseSessionStatus(
+        sessionID: "session-42",
+        status: const SessionStatus.idle().toJson(),
+      ),
+    );
+
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+
+    expect(notificationClient.payloads, isEmpty);
+    expect(plugin.abortedSessionIds, equals(["session-42"]));
+
+    await session.cancel();
+    await runFuture.timeout(const Duration(seconds: 5));
+    await plugin.close();
+    await database.close();
+    await relayServer.close();
+  });
+
+  test("slow abort still suppresses completion before abort succeeds", () async {
+    final relayServer = await TestRelayServer.start();
+    final database = createTestDatabase();
+    final notificationClient = _CapturingPushNotificationClient();
+    final pushSubsystem = _createPushSubsystem(client: notificationClient);
+    final plugin = _AbortEventPlugin()
+      ..abortStartedCompleter = Completer<void>()
+      ..abortCompleter = Completer<void>();
+    final pullRequestRepository = PullRequestRepository(
+      pullRequestDao: database.pullRequestDao,
+      projectsDao: database.projectsDao,
+    );
+    final sessionRepository = SessionRepository(
+      plugin: plugin,
+      sessionDao: database.sessionDao,
+      pullRequestRepository: pullRequestRepository,
+    );
+    final projectRepository = ProjectRepository(
+      plugin: plugin,
+      projectsDao: database.projectsDao,
+    );
+    final permissionRepository = PermissionRepository(plugin: plugin);
+    final sessionPersistenceService = SessionPersistenceService(
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      db: database,
+    );
+    final worktreeService = WorktreeService(
+      worktreeRepository: WorktreeRepository(
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        gitApi: GitCliApi(
+          processRunner: FakeProcessRunner(),
+          gitPathExists: ({required String gitPath}) => true,
+        ),
+      ),
+    );
+    final relayClient = RelayClient(
+      relayURL: "ws://127.0.0.1:${relayServer.port}",
+      accessTokenProvider: FakeAccessTokenProvider(""),
+    );
+    final sessionEventEnrichmentService = SessionEventEnrichmentService(
+      sessionRepository: sessionRepository,
+      failureReporter: FakeFailureReporter(),
+    );
+
+    final orchestrator = Orchestrator(
+      config: BridgeConfig(
+        relayURL: "ws://127.0.0.1:${relayServer.port}",
+        serverURL: "http://127.0.0.1:4096",
+        serverPassword: null,
+        authBackendURL: "http://127.0.0.1:8080",
+        sseReplayWindow: const Duration(minutes: 1),
+      ),
+      client: relayClient,
+      plugin: plugin,
+      metadataService: _FakeMetadataService(),
+      pushDispatcher: pushSubsystem.dispatcher,
+      completionListener: pushSubsystem.completionListener,
+      maintenanceListener: pushSubsystem.maintenanceListener,
+      tokenRefresher: _FakeTokenRefresher(),
+      failureReporter: FakeFailureReporter(),
+      prSyncService: _FakePrSyncService(),
+      sessionRepository: sessionRepository,
+      projectRepository: projectRepository,
+      permissionRepository: permissionRepository,
+      sessionPersistenceService: sessionPersistenceService,
+      worktreeService: worktreeService,
+      sessionEventEnrichmentService: sessionEventEnrichmentService,
+    );
+
+    final session = orchestrator.create();
+    final runFuture = session.run();
+    await plugin.waitForSubscription();
+    await relayServer.nextClient();
+
+    plugin.add(
+      BridgeSseSessionStatus(
+        sessionID: "session-42",
+        status: const SessionStatus.busy().toJson(),
+      ),
+    );
+    await _waitForCondition(
+      check: () => pushSubsystem.tracker.wasPreviouslyBusy("session-42"),
+      failureMessage: "Timed out waiting for busy status to reach push tracker",
+    );
+
+    final request =
+        RelayMessage.request(
+              id: "abort-request",
+              method: "POST",
+              path: "/session/abort",
+              headers: const <String, String>{},
+              body: jsonEncode(const SessionIdRequest(sessionId: "session-42").toJson()),
+            )
+            as RelayRequest;
+    final responseFuture = session.router.route(request);
+    await plugin.abortStartedCompleter!.future;
+
+    plugin.add(
+      BridgeSseSessionStatus(
+        sessionID: "session-42",
+        status: const SessionStatus.idle().toJson(),
+      ),
+    );
+
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    expect(notificationClient.payloads, isEmpty);
+
+    plugin.abortCompleter!.complete();
+    final response = await responseFuture;
+
+    expect(response.status, equals(200));
+    expect(plugin.abortedSessionIds, equals(["session-42"]));
+    expect(notificationClient.payloads, isEmpty);
 
     await session.cancel();
     await runFuture.timeout(const Duration(seconds: 5));
@@ -182,15 +844,284 @@ List<int> _withConnID({required int connID, required List<int> payload}) {
   return <int>[header.getUint8(0), header.getUint8(1), ...payload];
 }
 
-PushNotificationService _createPushNotificationService() {
-  final tracker = PushSessionStateTracker();
+typedef _TestPushSubsystem = ({
+  PushDispatcher dispatcher,
+  CompletionPushListener completionListener,
+  MaintenancePushListener maintenanceListener,
+  PushSessionStateTracker tracker,
+});
+
+typedef _TestPushListeners = ({
+  CompletionPushListener completionListener,
+  MaintenancePushListener maintenanceListener,
+});
+
+_TestPushSubsystem _createPushSubsystem({PushNotificationClient? client}) {
+  final tracker = PushSessionStateTracker(now: DateTime.now);
   final completionNotifier = CompletionNotifier(tracker: tracker);
-  return PushNotificationService(
-    client: _NoopPushNotificationClient(),
-    rateLimiter: PushRateLimiter(),
+  final rateLimiter = PushRateLimiter();
+  final telemetryBuilder = PushMaintenanceTelemetryBuilder(
+    completionNotifier: completionNotifier,
+    rateLimiter: rateLimiter,
+    rssBytesReader: () => null,
+  );
+  final dispatcher = PushDispatcher(
+    client: client ?? _NoopPushNotificationClient(),
+    rateLimiter: rateLimiter,
+    tracker: tracker,
+    contentBuilder: const PushNotificationContentBuilder(),
+  );
+  final listeners = _createPushListeners(
     tracker: tracker,
     completionNotifier: completionNotifier,
+    rateLimiter: rateLimiter,
+    telemetryBuilder: telemetryBuilder,
+    dispatcher: dispatcher,
   );
+  return (
+    dispatcher: dispatcher,
+    completionListener: listeners.completionListener,
+    maintenanceListener: listeners.maintenanceListener,
+    tracker: tracker,
+  );
+}
+
+_TestPushListeners _createPushListeners({
+  required PushSessionStateTracker tracker,
+  required CompletionNotifier completionNotifier,
+  required PushRateLimiter rateLimiter,
+  required PushMaintenanceTelemetryBuilder telemetryBuilder,
+  required PushDispatcher dispatcher,
+}) {
+  return (
+    completionListener: CompletionPushListener(
+      tracker: tracker,
+      completionNotifier: completionNotifier,
+      contentBuilder: const PushNotificationContentBuilder(),
+      dispatcher: dispatcher,
+    ),
+    maintenanceListener: MaintenancePushListener(
+      tracker: tracker,
+      completionNotifier: completionNotifier,
+      rateLimiter: rateLimiter,
+      telemetryBuilder: telemetryBuilder,
+      maintenanceInterval: const Duration(minutes: 10),
+    ),
+  );
+}
+
+class _CapturingPushDispatcher extends PushDispatcher {
+  final List<SesoriSseEvent> events = <SesoriSseEvent>[];
+  final List<String> abortedSessionIds = <String>[];
+  final CompletionNotifier completionNotifier;
+  final PushSessionStateTracker tracker;
+  final PushRateLimiter rateLimiter;
+  final PushMaintenanceTelemetryBuilder telemetryBuilder;
+
+  factory _CapturingPushDispatcher() {
+    final tracker = PushSessionStateTracker(now: DateTime.now);
+    final completionNotifier = CompletionNotifier(tracker: tracker);
+    final rateLimiter = PushRateLimiter();
+    final telemetryBuilder = PushMaintenanceTelemetryBuilder(
+      completionNotifier: completionNotifier,
+      rateLimiter: rateLimiter,
+      rssBytesReader: () => null,
+    );
+    return _CapturingPushDispatcher._(
+      tracker: tracker,
+      completionNotifier: completionNotifier,
+      rateLimiter: rateLimiter,
+      telemetryBuilder: telemetryBuilder,
+    );
+  }
+
+  _CapturingPushDispatcher._({
+    required this.tracker,
+    required this.completionNotifier,
+    required this.rateLimiter,
+    required this.telemetryBuilder,
+  }) : super(
+         tracker: tracker,
+         rateLimiter: rateLimiter,
+         client: _NoopPushNotificationClient(),
+         contentBuilder: const PushNotificationContentBuilder(),
+       );
+
+  @override
+  void dispatchImmediateIfApplicable(SesoriSseEvent event) {
+    events.add(event);
+  }
+
+  @override
+  Future<void> dispose() async {
+    await super.dispose();
+  }
+}
+
+class _AbortPlugin extends _NoopPlugin {
+  final List<String> abortedSessionIds = <String>[];
+
+  @override
+  Future<void> abortSession({required String sessionId}) async {
+    abortedSessionIds.add(sessionId);
+  }
+}
+
+class _AbortEventPlugin extends _EventPlugin {
+  final List<String> abortedSessionIds = <String>[];
+  Completer<void>? abortCompleter;
+  Completer<void>? abortStartedCompleter;
+  Object? abortError;
+
+  @override
+  Future<void> abortSession({required String sessionId}) async {
+    abortedSessionIds.add(sessionId);
+    abortStartedCompleter?.complete();
+    if (abortError case final Object error?) {
+      throw error;
+    }
+    if (abortCompleter case final completer?) {
+      await completer.future;
+    }
+  }
+}
+
+class _SummaryPlugin implements BridgePlugin {
+  final void Function() onSubscribe;
+  final StreamController<BridgeSseEvent> _controller = StreamController<BridgeSseEvent>.broadcast();
+
+  _SummaryPlugin({required this.onSubscribe});
+
+  @override
+  String get id => "summary-plugin";
+
+  @override
+  Stream<BridgeSseEvent> get events {
+    return Stream<BridgeSseEvent>.multi((controller) {
+      onSubscribe();
+      final sub = _controller.stream.listen(
+        controller.add,
+        onError: controller.addError,
+        onDone: controller.close,
+      );
+      controller.onCancel = sub.cancel;
+    });
+  }
+
+  @override
+  Future<List<PluginProject>> getProjects() async => <PluginProject>[];
+
+  @override
+  Future<List<PluginSession>> getSessions(String worktree, {int? start, int? limit}) async {
+    return <PluginSession>[];
+  }
+
+  @override
+  Future<PluginSession> createSession({
+    required String directory,
+    required String? parentSessionId,
+    required List<PluginPromptPart> parts,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<PluginSession> renameSession({required String sessionId, required String title}) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<PluginProject> renameProject({required String projectId, required String name}) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> deleteSession(String sessionId) async {}
+
+  @override
+  Future<List<PluginSession>> getChildSessions(String sessionId) async => <PluginSession>[];
+
+  @override
+  Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => <String, PluginSessionStatus>{};
+
+  @override
+  Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async {
+    return <PluginMessageWithParts>[];
+  }
+
+  @override
+  Future<void> sendPrompt({
+    required String sessionId,
+    required List<PluginPromptPart> parts,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) async {}
+
+  @override
+  Future<void> abortSession({required String sessionId}) async {}
+
+  @override
+  Future<List<PluginAgent>> getAgents() async => <PluginAgent>[];
+
+  @override
+  Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) async {
+    return <PluginPendingQuestion>[];
+  }
+
+  @override
+  Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) async {
+    return <PluginPendingQuestion>[];
+  }
+
+  @override
+  Future<void> replyToQuestion({
+    required String questionId,
+    required String sessionId,
+    required List<List<String>> answers,
+  }) async {}
+
+  @override
+  Future<void> rejectQuestion(String questionId) async {}
+
+  @override
+  Future<void> replyToPermission({
+    required String requestId,
+    required String sessionId,
+    required PluginPermissionReply reply,
+  }) async {}
+
+  @override
+  Future<PluginProject> getProject(String projectId) async => const PluginProject(id: "");
+
+  @override
+  Future<bool> healthCheck() async => true;
+
+  @override
+  List<PluginProjectActivitySummary> getActiveSessionsSummary() {
+    return <PluginProjectActivitySummary>[
+      const PluginProjectActivitySummary(
+        id: "project-1",
+        activeSessions: <PluginActiveSession>[
+          PluginActiveSession(id: "session-1"),
+        ],
+      ),
+    ];
+  }
+
+  @override
+  Future<PluginProvidersResult> getProviders({required bool connectedOnly}) async {
+    return const PluginProvidersResult(providers: <PluginProvider>[]);
+  }
+
+  @override
+  Future<void> archiveSession({required String sessionId}) async {}
+
+  @override
+  Future<void> dispose() async {}
+
+  Future<void> close() => _controller.close();
 }
 
 class _NoopPlugin implements BridgePlugin {
@@ -311,15 +1242,69 @@ class _NoopPlugin implements BridgePlugin {
   Future<void> dispose() async {}
 }
 
+class _EventPlugin extends _NoopPlugin {
+  int subscribeCount = 0;
+
+  @override
+  Stream<BridgeSseEvent> get events {
+    return Stream<BridgeSseEvent>.multi((controller) {
+      subscribeCount++;
+      final sub = _controller.stream.listen(
+        controller.add,
+        onError: controller.addError,
+        onDone: controller.close,
+      );
+      controller.onCancel = sub.cancel;
+    });
+  }
+
+  void add(BridgeSseEvent event) {
+    _controller.add(event);
+  }
+
+  Future<void> waitForSubscription() async {
+    final timeoutAt = DateTime.now().add(const Duration(seconds: 2));
+    while (subscribeCount == 0) {
+      if (DateTime.now().isAfter(timeoutAt)) {
+        fail("Timed out waiting for plugin event subscription");
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+  }
+}
+
 class _NoopPushNotificationClient extends PushNotificationClient {
   _NoopPushNotificationClient()
     : super(
         authBackendURL: "http://127.0.0.1:8080",
         tokenRefreshManager: _FakeTokenRefresher(),
+        client: http.Client(),
       );
 
   @override
   Future<void> sendNotification(SendNotificationPayload payload) async {}
+}
+
+class _CapturingPushNotificationClient extends _NoopPushNotificationClient {
+  final List<SendNotificationPayload> payloads = <SendNotificationPayload>[];
+
+  @override
+  Future<void> sendNotification(SendNotificationPayload payload) async {
+    payloads.add(payload);
+  }
+}
+
+Future<void> _waitForCondition({
+  required bool Function() check,
+  required String failureMessage,
+}) async {
+  final timeoutAt = DateTime.now().add(const Duration(seconds: 2));
+  while (!check()) {
+    if (DateTime.now().isAfter(timeoutAt)) {
+      fail(failureMessage);
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+  }
 }
 
 class _FakeMetadataService implements MetadataService {
@@ -403,11 +1388,37 @@ class _NoopPullRequestRepository implements PullRequestRepository {
 
 class _NoopSessionRepository implements SessionRepository {
   @override
+  Future<Session> createSession({
+    required String directory,
+    required String? parentSessionId,
+    required List<PromptPart> parts,
+    required String? agent,
+    required PromptModel? model,
+  }) async => const Session(
+    id: "",
+    projectID: "",
+    directory: "",
+    parentID: null,
+    title: null,
+    time: null,
+    summary: null,
+    pullRequest: null,
+  );
+  @override
   Future<List<Session>> getSessionsForProject({
     required String projectId,
     required int? start,
     required int? limit,
   }) async => const <Session>[];
+  @override
+  Future<Session> enrichSession({required Session session}) async => session;
+  @override
+  Future<Session> enrichPluginSession({required PluginSession pluginSession}) async =>
+      Session.fromJson(pluginSession.toJson());
+  @override
+  Future<Session> enrichSessionJson({required Map<String, dynamic> sessionJson}) async => Session.fromJson(sessionJson);
+  @override
+  Future<List<Session>> enrichSessions({required List<Session> sessions}) async => sessions;
   @override
   Future<List<Session>> getChildSessions({required String sessionId}) async => const <Session>[];
   @override
@@ -422,4 +1433,148 @@ class _NoopSessionRepository implements SessionRepository {
   }) async => false;
   @override
   Future<String?> getProjectPath({required String projectId}) async => null;
+  @override
+  Future<SessionDto?> getStoredSession({required String sessionId}) async => null;
+  @override
+  Future<String?> findProjectIdForSession({required String sessionId}) async => null;
+  @override
+  Future<Session?> getSessionForProject({required String projectId, required String sessionId}) async => null;
+
+  @override
+  Future<void> abortSession({required String sessionId}) async {}
+
+  @override
+  Future<void> notifySessionArchived({required String sessionId}) async {}
+  @override
+  Future<Session> renameSession({required String sessionId, required String title}) async => const Session(
+    id: "",
+    projectID: "",
+    directory: "",
+    parentID: null,
+    title: null,
+    time: null,
+    summary: null,
+    pullRequest: null,
+  );
+}
+
+class _DelayingSessionRepository implements SessionRepository {
+  final SessionRepository _base;
+  final Map<String, Future<void>> _delaySessionIds;
+
+  _DelayingSessionRepository({
+    required SessionRepository base,
+    required Map<String, Future<void>> delaySessionIds,
+  }) : _base = base,
+       _delaySessionIds = delaySessionIds;
+
+  @override
+  Future<Session> enrichSession({required Session session}) async {
+    final delay = _delaySessionIds[session.id];
+    if (delay != null) {
+      await delay;
+    }
+    return _base.enrichSession(session: session);
+  }
+
+  @override
+  Future<Session> createSession({
+    required String directory,
+    required String? parentSessionId,
+    required List<PromptPart> parts,
+    required String? agent,
+    required PromptModel? model,
+  }) {
+    return _base.createSession(
+      directory: directory,
+      parentSessionId: parentSessionId,
+      parts: parts,
+      agent: agent,
+      model: model,
+    );
+  }
+
+  @override
+  Future<Session> enrichPluginSession({required PluginSession pluginSession}) async {
+    return enrichSession(session: Session.fromJson(pluginSession.toJson()));
+  }
+
+  @override
+  Future<Session> enrichSessionJson({required Map<String, dynamic> sessionJson}) async {
+    return enrichSession(session: Session.fromJson(sessionJson));
+  }
+
+  @override
+  Future<List<Session>> enrichSessions({required List<Session> sessions}) async {
+    return _base.enrichSessions(sessions: sessions);
+  }
+
+  @override
+  Future<List<Session>> getSessionsForProject({
+    required String projectId,
+    required int? start,
+    required int? limit,
+  }) async {
+    return _base.getSessionsForProject(projectId: projectId, start: start, limit: limit);
+  }
+
+  @override
+  Future<List<Session>> getChildSessions({required String sessionId}) async {
+    return _base.getChildSessions(sessionId: sessionId);
+  }
+
+  @override
+  Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {
+    return _base.getStoredSessionsByProjectId(projectId: projectId);
+  }
+
+  @override
+  Future<bool> hasOtherActiveSessionsSharing({
+    required String sessionId,
+    required String projectId,
+    required String? worktreePath,
+    required String? branchName,
+  }) async {
+    return _base.hasOtherActiveSessionsSharing(
+      sessionId: sessionId,
+      projectId: projectId,
+      worktreePath: worktreePath,
+      branchName: branchName,
+    );
+  }
+
+  @override
+  Future<String?> getProjectPath({required String projectId}) async {
+    return _base.getProjectPath(projectId: projectId);
+  }
+
+  @override
+  Future<SessionDto?> getStoredSession({required String sessionId}) async {
+    return _base.getStoredSession(sessionId: sessionId);
+  }
+
+  @override
+  Future<String?> findProjectIdForSession({required String sessionId}) {
+    return _base.findProjectIdForSession(sessionId: sessionId);
+  }
+
+  @override
+  Future<Session?> getSessionForProject({required String projectId, required String sessionId}) {
+    return _base.getSessionForProject(projectId: projectId, sessionId: sessionId);
+  }
+
+  @override
+  Future<void> abortSession({required String sessionId}) {
+    return _base.abortSession(sessionId: sessionId);
+  }
+
+  @override
+  Future<void> notifySessionArchived({required String sessionId}) {
+    return _base.notifySessionArchived(sessionId: sessionId);
+  }
+
+  @override
+  Future<Session> renameSession({required String sessionId, required String title}) {
+    return _base.renameSession(sessionId: sessionId, title: title);
+  }
 }

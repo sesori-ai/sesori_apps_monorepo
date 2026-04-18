@@ -4,6 +4,7 @@ import "package:bloc_test/bloc_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart" show AppRouteDef;
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
@@ -24,6 +25,7 @@ void main() {
     late MockProjectService mockProjectService;
     late MockConnectionService mockConnectionService;
     late MockSseEventRepository mockSseEventRepository;
+    late MockRouteSource mockRouteSource;
     late MockFailureReporter mockFailureReporter;
     late StreamController<SseEvent> eventController;
     late BehaviorSubject<ConnectionStatus> statusController;
@@ -70,23 +72,29 @@ void main() {
       projectService: mockProjectService,
       connectionService: mockConnectionService,
       sseEventRepository: mockSseEventRepository,
+      routeSource: mockRouteSource,
       projectId: projectId,
       failureReporter: mockFailureReporter,
     );
 
     // -------------------------------------------------------------------------
-    // 1. Constructor triggers load → emits SessionListLoaded
+    // 1. Constructor triggers load only — no route refresh on initial emission
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
-      "constructor: emits SessionListLoaded with sessions after successful load",
+      "constructor: with sessions route already visible, only the initial load runs",
       build: () {
+        mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
         when(
           () => mockSessionService.listSessions(projectId: projectId),
         ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession()])));
         return buildCubit();
       },
-      // No act — we only verify what the constructor-triggered load emits.
+      act: (_) async {
+        await Future<void>.delayed(Duration.zero);
+        mockRouteSource.emitRoute(AppRouteDef.sessions);
+        await Future<void>.delayed(Duration.zero);
+      },
       expect: () => [
         isA<SessionListLoaded>().having(
           (s) => s.sessions.length,
@@ -94,10 +102,61 @@ void main() {
           1,
         ),
       ],
+      verify: (_) {
+        verify(() => mockSessionService.listSessions(projectId: projectId)).called(1);
+      },
     );
 
     // -------------------------------------------------------------------------
-    // 2. Load success — multiple sessions returned
+    // 2. Route return refresh — projects → sessions triggers one silent reload
+    // -------------------------------------------------------------------------
+
+    blocTest<SessionListCubit, SessionListState>(
+      "route return: refreshes once when navigation returns to sessions",
+      build: () {
+        mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projects);
+        when(
+          () => mockSessionService.listSessions(projectId: projectId),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            SessionListResponse(
+              items: [testSession(id: "s1", title: "Original")],
+            ),
+          ),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        when(
+          () => mockSessionService.listSessions(projectId: projectId),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            SessionListResponse(
+              items: [testSession(id: "s1", title: "Refreshed")],
+            ),
+          ),
+        );
+        mockRouteSource.emitRoute(AppRouteDef.sessions);
+        await Future<void>.delayed(Duration.zero);
+        mockRouteSource.emitRoute(AppRouteDef.sessions);
+        await Future<void>.delayed(Duration.zero);
+      },
+      skip: 1,
+      expect: () => [
+        isA<SessionListLoaded>().having(
+          (s) => s.sessions.first.title,
+          "refreshed session title",
+          "Refreshed",
+        ),
+      ],
+      verify: (_) {
+        verify(() => mockSessionService.listSessions(projectId: projectId)).called(2);
+      },
+    );
+
+    // -------------------------------------------------------------------------
+    // 3. Load success — multiple sessions returned
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
@@ -122,7 +181,7 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 3. Load empty — loaded with empty list
+    // 4. Load empty — loaded with empty list
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
@@ -143,7 +202,7 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 4. Load error → SessionListFailed
+    // 5. Load error → SessionListFailed
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
@@ -158,7 +217,7 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 5. archiveSession success — optimistic removal, API succeeds, returns true
+    // 6. archiveSession success — optimistic removal, API succeeds, returns true
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
@@ -200,7 +259,7 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 6. archiveSession failure — optimistic removal then rollback, returns false
+    // 7. archiveSession failure — optimistic removal then rollback, returns false
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
@@ -1291,6 +1350,7 @@ void main() {
           projectService: mockProjectService,
           connectionService: mockConnectionService,
           sseEventRepository: mockSseEventRepository,
+          routeSource: mockRouteSource,
           projectId: "global",
           failureReporter: mockFailureReporter,
         );

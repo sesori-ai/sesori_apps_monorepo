@@ -1,17 +1,15 @@
-import "dart:io";
-
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../foundation/process_runner.dart";
-import "../metadata_service.dart";
-import "../persistence/daos/projects_dao.dart";
-import "../persistence/daos/session_dao.dart";
 import "../repositories/permission_repository.dart";
+import "../repositories/project_repository.dart";
 import "../repositories/provider_repository.dart";
 import "../repositories/session_repository.dart";
 import "../services/pr_sync_service.dart";
-import "../worktree_service.dart";
+import "../services/session_archive_service.dart";
+import "../services/session_creation_service.dart";
+import "../services/session_persistence_service.dart";
+import "../services/worktree_service.dart";
 import "abort_session_handler.dart";
 import "create_project_handler.dart";
 import "create_session_handler.dart";
@@ -55,68 +53,71 @@ class RequestRouter {
 
   RequestRouter({
     required BridgePlugin plugin,
-    required MetadataService metadataService,
-    required ProjectsDao projectsDao,
-    required SessionDao sessionDao,
     required SessionRepository sessionRepository,
+    required AbortSessionHandler abortSessionHandler,
+    required SessionCreationService sessionCreationService,
+    required SessionArchiveService sessionArchiveService,
     required PrSyncService prSyncService,
+    required ProjectRepository projectRepository,
+    required ProviderRepository providerRepository,
+    required PermissionRepository permissionRepository,
+    required SessionPersistenceService sessionPersistenceService,
+    required WorktreeService worktreeService,
+    required GetSessionDiffsHandler sessionDiffsHandler,
   }) : _handlers = _buildHandlers(
          plugin: plugin,
-         metadataService: metadataService,
-         projectsDao: projectsDao,
-         sessionDao: sessionDao,
          sessionRepository: sessionRepository,
+         abortSessionHandler: abortSessionHandler,
+         sessionCreationService: sessionCreationService,
+         sessionArchiveService: sessionArchiveService,
          prSyncService: prSyncService,
+         projectRepository: projectRepository,
+         providerRepository: providerRepository,
+         permissionRepository: permissionRepository,
+         sessionPersistenceService: sessionPersistenceService,
+         worktreeService: worktreeService,
+         sessionDiffsHandler: sessionDiffsHandler,
        );
 
   static List<RequestHandlerBase> _buildHandlers({
     required BridgePlugin plugin,
-    required MetadataService metadataService,
-    required ProjectsDao projectsDao,
-    required SessionDao sessionDao,
     required SessionRepository sessionRepository,
+    required AbortSessionHandler abortSessionHandler,
+    required SessionCreationService sessionCreationService,
+    required SessionArchiveService sessionArchiveService,
     required PrSyncService prSyncService,
+    required ProjectRepository projectRepository,
+    required ProviderRepository providerRepository,
+    required PermissionRepository permissionRepository,
+    required SessionPersistenceService sessionPersistenceService,
+    required WorktreeService worktreeService,
+    required GetSessionDiffsHandler sessionDiffsHandler,
   }) {
-    final hiddenStore = projectsDao;
-    final permissionRepository = PermissionRepository(plugin: plugin);
-
-    final worktreeService = WorktreeService(
-      projectsDao: projectsDao,
-      sessionDao: sessionDao,
-      processRunner: ProcessRunner(),
-      gitPathExists: ({required String gitPath}) => FileSystemEntity.typeSync(gitPath) != FileSystemEntityType.notFound,
-    );
     return [
       HealthCheckHandler(plugin),
       GetCurrentProjectHandler(plugin),
-      GetProjectsHandler(plugin, hiddenStore),
+      GetProjectsHandler(projectRepository: projectRepository),
       GetCommandsHandler(plugin),
       GetSessionStatusesHandler(plugin),
       GetChildSessionsHandler(sessionRepository: sessionRepository),
       GetSessionMessagesHandler(plugin),
-      GetSessionsHandler(sessionRepository: sessionRepository, prSyncService: prSyncService),
-      CreateSessionHandler(
-        plugin: plugin,
-        metadataService: metadataService,
-        worktreeService: worktreeService,
-        sessionDao: sessionDao,
-      ),
-      RenameSessionHandler(plugin),
-      UpdateSessionArchiveStatusHandler(
-        plugin: plugin,
-        worktreeService: worktreeService,
-        sessionDao: sessionDao,
+      GetSessionsHandler(
         sessionRepository: sessionRepository,
+        prSyncService: prSyncService,
+        sessionPersistenceService: sessionPersistenceService,
       ),
+      CreateSessionHandler(sessionCreationService: sessionCreationService),
+      RenameSessionHandler(sessionRepository: sessionRepository),
+      UpdateSessionArchiveStatusHandler(sessionArchiveService: sessionArchiveService),
       DeleteSessionHandler(
         plugin: plugin,
         worktreeService: worktreeService,
-        sessionDao: sessionDao,
         sessionRepository: sessionRepository,
+        sessionPersistenceService: sessionPersistenceService,
       ),
       SendPromptHandler(plugin),
-      AbortSessionHandler(plugin),
-      GetProvidersHandler(ProviderRepository(plugin: plugin)),
+      abortSessionHandler,
+      GetProvidersHandler(providerRepository),
       GetAgentsHandler(plugin),
       GetSessionQuestionsHandler(plugin),
       GetProjectQuestionsHandler(plugin),
@@ -125,12 +126,12 @@ class RequestRouter {
       ReplyToPermissionHandler(permissionRepository: permissionRepository),
       RenameProjectHandler(plugin),
       CreateProjectHandler(plugin),
-      OpenProjectHandler(plugin, hiddenStore),
-      HideProjectHandler(hiddenStore),
-      GetBaseBranchHandler(projectsDao),
-      SetBaseBranchHandler(projectsDao),
+      OpenProjectHandler(projectRepository: projectRepository),
+      HideProjectHandler(projectRepository: projectRepository),
+      GetBaseBranchHandler(projectRepository: projectRepository),
+      SetBaseBranchHandler(projectRepository: projectRepository),
       FilesystemSuggestionsHandler(),
-      GetSessionDiffsHandler(sessionDao, processRunner: ProcessRunner()),
+      sessionDiffsHandler,
     ];
   }
 

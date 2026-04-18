@@ -1,10 +1,17 @@
 import "dart:io";
 
+import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
+import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge_metadata;
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/create_session_handler.dart";
-import "package:sesori_bridge/src/bridge/worktree_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
+import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -17,6 +24,7 @@ void main() {
     late FakeBridgePlugin plugin;
     late FakeMetadataService metadataService;
     late _FakeWorktreeService worktreeService;
+    late SessionRepository sessionRepository;
     late CreateSessionHandler handler;
     late AppDatabase db;
 
@@ -25,11 +33,25 @@ void main() {
       plugin = FakeBridgePlugin();
       metadataService = FakeMetadataService();
       worktreeService = _FakeWorktreeService(database: db);
-      handler = CreateSessionHandler(
+      sessionRepository = SessionRepository(
         plugin: plugin,
-        metadataService: metadataService,
-        worktreeService: worktreeService,
         sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+      );
+      handler = CreateSessionHandler(
+        sessionCreationService: SessionCreationService(
+          metadataService: metadataService,
+          worktreeService: worktreeService,
+          sessionRepository: sessionRepository,
+          sessionPersistenceService: SessionPersistenceService(
+            projectsDao: db.projectsDao,
+            sessionDao: db.sessionDao,
+            db: db,
+          ),
+        ),
       );
     });
 
@@ -121,6 +143,7 @@ void main() {
       worktreeService.resolveBaseBranchAndCommitResult = (
         baseBranch: "main",
         baseCommit: "abc123def456",
+        startPoint: "main",
       );
 
       final result = await handler.handle(
@@ -265,11 +288,25 @@ void main() {
 
     test("plugin failure is propagated and no session row is inserted", () async {
       final failingPlugin = _ThrowingCreateSessionPlugin();
-      final localHandler = CreateSessionHandler(
+      final localRepository = SessionRepository(
         plugin: failingPlugin,
-        metadataService: metadataService,
-        worktreeService: worktreeService,
         sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+      );
+      final localHandler = CreateSessionHandler(
+        sessionCreationService: SessionCreationService(
+          metadataService: metadataService,
+          worktreeService: worktreeService,
+          sessionRepository: localRepository,
+          sessionPersistenceService: SessionPersistenceService(
+            projectsDao: db.projectsDao,
+            sessionDao: db.sessionDao,
+            db: db,
+          ),
+        ),
       );
       worktreeService.prepareResult = WorktreeSuccess(
         path: "/repo/.worktrees/session-001",
@@ -334,7 +371,7 @@ void main() {
       expect(result.title, equals("Created"));
       expect(result.time?.created, equals(11));
       expect(result.time?.updated, equals(22));
-      expect(result.time?.archived, equals(33));
+      expect(result.time?.archived, isNull);
       expect(result.summary?.additions, equals(1));
       expect(result.summary?.deletions, equals(2));
       expect(result.summary?.files, equals(3));
@@ -356,6 +393,22 @@ void main() {
         baseBranch: "main",
         baseCommit: "abc123",
       );
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
+      await db.pullRequestDao.upsertPr(
+        pullRequest: const PullRequestDto(
+          projectId: "/repo",
+          branchName: "session-001",
+          prNumber: 17,
+          url: "https://github.com/org/repo/pull/17",
+          title: "Created PR",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.unknown,
+          reviewDecision: PrReviewDecision.unknown,
+          checkStatus: PrCheckStatus.unknown,
+          lastCheckedAt: 1,
+          createdAt: 1,
+        ),
+      );
 
       final result = await handler.handle(
         makeRequest("POST", "/session/create"),
@@ -372,6 +425,8 @@ void main() {
       );
 
       expect(result.hasWorktree, isTrue);
+      expect(result.pullRequest?.number, equals(17));
+      expect(result.pullRequest?.title, equals("Created PR"));
     });
 
     test("hasWorktree is false when dedicated=false", () async {
@@ -640,6 +695,40 @@ void main() {
       expect(plugin.lastSendCommandArguments, equals("Review this code"));
     });
 
+    test("creates session for first-time project (no prior projects_table row)", () async {
+      plugin.createSessionResult = const PluginSession(
+        id: "new-sess-1",
+        projectID: "brand-new-proj",
+        directory: "brand-new-proj",
+        parentID: null,
+        title: "New Session",
+        time: null,
+        summary: null,
+      );
+
+      final result = await handler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "brand-new-proj",
+          dedicatedWorktree: false,
+          parts: [PromptPart.text(text: "Hello")],
+          agent: null,
+          model: null,
+          command: null,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.id, equals("new-sess-1"));
+
+      final dbSession = await db.sessionDao.getSession(sessionId: "new-sess-1");
+      expect(dbSession, isNotNull);
+      expect(dbSession!.projectId, equals("brand-new-proj"));
+      expect(dbSession.sessionId, equals("new-sess-1"));
+    });
+
     test("no command — sendCommand not called", () async {
       plugin.createSessionResult = const PluginSession(
         id: "no-cmd-1",
@@ -687,10 +776,23 @@ void main() {
         summary: null,
       );
       final localHandler = CreateSessionHandler(
-        plugin: throwingPlugin,
-        metadataService: metadataService,
-        worktreeService: worktreeService,
-        sessionDao: db.sessionDao,
+        sessionCreationService: SessionCreationService(
+          metadataService: metadataService,
+          worktreeService: worktreeService,
+          sessionRepository: SessionRepository(
+            plugin: throwingPlugin,
+            sessionDao: db.sessionDao,
+            pullRequestRepository: PullRequestRepository(
+              pullRequestDao: db.pullRequestDao,
+              projectsDao: db.projectsDao,
+            ),
+          ),
+          sessionPersistenceService: SessionPersistenceService(
+            projectsDao: db.projectsDao,
+            sessionDao: db.sessionDao,
+            db: db,
+          ),
+        ),
       );
 
       final result = await localHandler.handle(
@@ -725,14 +827,18 @@ class _FakeWorktreeService extends WorktreeService {
     originalPath: "/repo",
     reason: "default",
   );
-  ({String baseBranch, String baseCommit})? resolveBaseBranchAndCommitResult;
+  ({String baseBranch, String baseCommit, String startPoint})? resolveBaseBranchAndCommitResult;
 
   _FakeWorktreeService({required AppDatabase database})
     : super(
-        projectsDao: database.projectsDao,
-        sessionDao: database.sessionDao,
-        processRunner: _NoopProcessRunner(),
-        gitPathExists: ({required String gitPath}) => true,
+        worktreeRepository: WorktreeRepository(
+          projectsDao: database.projectsDao,
+          sessionDao: database.sessionDao,
+          gitApi: GitCliApi(
+            processRunner: _NoopProcessRunner(),
+            gitPathExists: ({required String gitPath}) => true,
+          ),
+        ),
       );
 
   @override
@@ -749,7 +855,7 @@ class _FakeWorktreeService extends WorktreeService {
   }
 
   @override
-  Future<({String baseBranch, String baseCommit})?> resolveBaseBranchAndCommit({
+  Future<({String baseBranch, String baseCommit, String startPoint})?> resolveBaseBranchAndCommit({
     required String projectPath,
   }) async {
     resolveBaseBranchAndCommitCallCount++;

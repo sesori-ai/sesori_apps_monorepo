@@ -2,7 +2,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/session_repository.dart";
-import "../worktree_service.dart";
+import "../services/worktree_service.dart";
 
 /// Result of a worktree cleanup attempt.
 sealed class CleanupResult {}

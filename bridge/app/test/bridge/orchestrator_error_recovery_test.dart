@@ -1,18 +1,31 @@
 import "dart:async";
+import "dart:io";
 
+import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
+import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
+import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
+import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
+import "package:sesori_bridge/src/push/completion_push_listener.dart";
+import "package:sesori_bridge/src/push/maintenance_push_listener.dart";
+import "package:sesori_bridge/src/push/push_dispatcher.dart";
+import "package:sesori_bridge/src/push/push_maintenance_telemetry.dart";
 import "package:sesori_bridge/src/push/push_notification_client.dart";
-import "package:sesori_bridge/src/push/push_notification_service.dart";
+import "package:sesori_bridge/src/push/push_notification_content_builder.dart";
 import "package:sesori_bridge/src/push/push_rate_limiter.dart";
 import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -21,10 +34,90 @@ import "package:test/test.dart";
 
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
+import "api/git_remote_api_test.dart";
 import "routing/routing_test_helpers.dart";
 
 void main() {
   group("OrchestratorSession SSE error recovery", () {
+    test("initial relay connect failure does not leave push listeners running", () async {
+      final plugin = _ThrowingSummaryPlugin();
+      final pushSubsystem = _createPushSubsystem();
+      final database = createTestDatabase();
+      final sessionRepository = SessionRepository(
+        plugin: plugin,
+        sessionDao: database.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: database.pullRequestDao,
+          projectsDao: database.projectsDao,
+        ),
+      );
+      final orchestrator = Orchestrator(
+        config: const BridgeConfig(
+          relayURL: "ws://127.0.0.1:9999",
+          serverURL: "http://127.0.0.1:4096",
+          serverPassword: null,
+          authBackendURL: "http://127.0.0.1:8080",
+          sseReplayWindow: Duration(minutes: 1),
+        ),
+        client: _ThrowingConnectRelayClient(),
+        plugin: plugin,
+        metadataService: FakeMetadataService(),
+        pushDispatcher: pushSubsystem.dispatcher,
+        completionListener: pushSubsystem.completionListener,
+        maintenanceListener: pushSubsystem.maintenanceListener,
+        tokenRefresher: _FakeTokenRefresher(),
+        failureReporter: FakeFailureReporter(),
+        prSyncService: PrSyncService(
+          prSource: _NoopPrSource(),
+          pullRequestRepository: PullRequestRepository(
+            pullRequestDao: database.pullRequestDao,
+            projectsDao: database.projectsDao,
+          ),
+          sessionRepository: sessionRepository,
+        ),
+        sessionRepository: sessionRepository,
+        projectRepository: ProjectRepository(plugin: plugin, projectsDao: database.projectsDao),
+        permissionRepository: PermissionRepository(plugin: plugin),
+        sessionPersistenceService: SessionPersistenceService(
+          projectsDao: database.projectsDao,
+          sessionDao: database.sessionDao,
+          db: database,
+        ),
+        worktreeService: WorktreeService(
+          worktreeRepository: WorktreeRepository(
+            projectsDao: database.projectsDao,
+            sessionDao: database.sessionDao,
+            gitApi: GitCliApi(
+              processRunner: FakeProcessRunner((
+                String executable,
+                List<String> arguments, {
+                String? workingDirectory,
+                Duration timeout = const Duration(seconds: 15),
+              }) async {
+                return ProcessResult(0, 127, "", "command not found");
+              }),
+              gitPathExists: ({required String gitPath}) => true,
+            ),
+          ),
+        ),
+        sessionEventEnrichmentService: SessionEventEnrichmentService(
+          sessionRepository: sessionRepository,
+          failureReporter: FakeFailureReporter(),
+        ),
+      );
+
+      final session = orchestrator.create();
+
+      await expectLater(session.run(), throwsA(isA<Exception>()));
+
+      expect(pushSubsystem.completionListener.isStarted, isFalse);
+      expect(pushSubsystem.maintenanceListener.isStarted, isFalse);
+      expect(plugin.subscribeCount, equals(0));
+
+      await plugin.close();
+      await database.close();
+    });
+
     test("stream continues after mapper throws", () async {
       final harness = await _TestHarness.start(
         plugin: _ThrowingSummaryPlugin(),
@@ -36,11 +129,12 @@ void main() {
       harness.plugin.add(const BridgeSseProjectUpdated());
       harness.plugin.add(const BridgeSseProjectUpdated());
 
-      await harness.waitForFailureCount(expected: 2);
+      await harness.waitForFailureCount(expected: 3);
 
       expect(
         harness.failureReporter.recordedIdentifiers,
         equals([
+          "sse_projects_summary",
           "sse_projects_summary",
           "sse_projects_summary",
         ]),
@@ -90,7 +184,7 @@ class _TestHarness {
     final relayServer = await TestRelayServer.start();
     final database = createTestDatabase();
     final failureReporter = CapturingFailureReporter();
-    final pushService = _createPushNotificationService();
+    final pushSubsystem = _createPushSubsystem();
     final tokenRefresher = _FakeTokenRefresher();
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
@@ -98,7 +192,10 @@ class _TestHarness {
     );
 
     final metadataService = FakeMetadataService();
-    final pullRequestRepository = PullRequestRepository(pullRequestDao: database.pullRequestDao);
+    final pullRequestRepository = PullRequestRepository(
+      pullRequestDao: database.pullRequestDao,
+      projectsDao: database.projectsDao,
+    );
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
@@ -108,6 +205,35 @@ class _TestHarness {
       prSource: _NoopPrSource(),
       pullRequestRepository: pullRequestRepository,
       sessionRepository: sessionRepository,
+    );
+
+    final projectRepository = ProjectRepository(plugin: plugin, projectsDao: database.projectsDao);
+    final permissionRepository = PermissionRepository(plugin: plugin);
+    final sessionPersistenceService = SessionPersistenceService(
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      db: database,
+    );
+    final worktreeService = WorktreeService(
+      worktreeRepository: WorktreeRepository(
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        gitApi: GitCliApi(
+          processRunner: FakeProcessRunner((
+            String executable,
+            List<String> arguments, {
+            String? workingDirectory,
+            Duration timeout = const Duration(seconds: 15),
+          }) async {
+            return ProcessResult(0, 127, "", "command not found");
+          }),
+          gitPathExists: ({required String gitPath}) => true,
+        ),
+      ),
+    );
+    final sessionEventEnrichmentService = SessionEventEnrichmentService(
+      sessionRepository: sessionRepository,
+      failureReporter: FakeFailureReporter(),
     );
 
     final orchestrator = Orchestrator(
@@ -121,12 +247,18 @@ class _TestHarness {
       client: relayClient,
       plugin: plugin,
       metadataService: metadataService,
-      pushNotificationService: pushService,
+      pushDispatcher: pushSubsystem.dispatcher,
+      completionListener: pushSubsystem.completionListener,
+      maintenanceListener: pushSubsystem.maintenanceListener,
       tokenRefresher: tokenRefresher,
-      projectsDao: database.projectsDao,
       failureReporter: failureReporter,
       prSyncService: prSyncService,
       sessionRepository: sessionRepository,
+      projectRepository: projectRepository,
+      permissionRepository: permissionRepository,
+      sessionPersistenceService: sessionPersistenceService,
+      worktreeService: worktreeService,
+      sessionEventEnrichmentService: sessionEventEnrichmentService,
     );
 
     final session = orchestrator.create();
@@ -173,14 +305,42 @@ class _TestHarness {
   }
 }
 
-PushNotificationService _createPushNotificationService() {
-  final tracker = PushSessionStateTracker();
+typedef _TestPushSubsystem = ({
+  PushDispatcher dispatcher,
+  CompletionPushListener completionListener,
+  MaintenancePushListener maintenanceListener,
+});
+
+_TestPushSubsystem _createPushSubsystem() {
+  final tracker = PushSessionStateTracker(now: DateTime.now);
   final completionNotifier = CompletionNotifier(tracker: tracker);
-  return PushNotificationService(
-    client: _NoopPushNotificationClient(),
-    rateLimiter: PushRateLimiter(),
-    tracker: tracker,
+  final rateLimiter = PushRateLimiter();
+  final telemetryBuilder = PushMaintenanceTelemetryBuilder(
     completionNotifier: completionNotifier,
+    rateLimiter: rateLimiter,
+    rssBytesReader: () => null,
+  );
+  final dispatcher = PushDispatcher(
+    client: _NoopPushNotificationClient(),
+    rateLimiter: rateLimiter,
+    tracker: tracker,
+    contentBuilder: const PushNotificationContentBuilder(),
+  );
+  return (
+    dispatcher: dispatcher,
+    completionListener: CompletionPushListener(
+      tracker: tracker,
+      completionNotifier: completionNotifier,
+      contentBuilder: const PushNotificationContentBuilder(),
+      dispatcher: dispatcher,
+    ),
+    maintenanceListener: MaintenancePushListener(
+      tracker: tracker,
+      completionNotifier: completionNotifier,
+      rateLimiter: rateLimiter,
+      telemetryBuilder: telemetryBuilder,
+      maintenanceInterval: const Duration(minutes: 10),
+    ),
   );
 }
 
@@ -349,10 +509,24 @@ class _NoopPushNotificationClient extends PushNotificationClient {
     : super(
         authBackendURL: "http://127.0.0.1:8080",
         tokenRefreshManager: _FakeTokenRefresher(),
+        client: http.Client(),
       );
 
   @override
   Future<void> sendNotification(SendNotificationPayload payload) async {}
+}
+
+class _ThrowingConnectRelayClient extends RelayClient {
+  _ThrowingConnectRelayClient()
+    : super(
+        relayURL: "ws://127.0.0.1:1",
+        accessTokenProvider: FakeAccessTokenProvider(""),
+      );
+
+  @override
+  Future<void> connect() async {
+    throw StateError("connect failed");
+  }
 }
 
 class _FakeTokenRefresher implements TokenRefresher {

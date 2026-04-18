@@ -3,6 +3,14 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
 
 import "models/provider_info.dart";
 
+enum _ProviderModelStatus {
+  active,
+  alpha,
+  beta,
+  deprecated,
+  unknown,
+}
+
 /// Maps an OpenCode [ProviderListResponse] to the plugin interface
 /// [PluginProvidersResult], optionally filtering to connected providers only.
 PluginProvidersResult mapProviderResponse({
@@ -19,14 +27,9 @@ PluginProvidersResult mapProviderResponse({
             id: m.id,
             name: m.name,
             family: m.family,
-            isAvailable: switch (m.status) {
-              "active" => true,
-              "deprecated" => false,
-              final unknown => () {
-                Log.w("Unknown model status: $unknown for model ${m.id}, treating as available");
-                return true;
-              }(),
-            },
+            isAvailable: _isModelAvailable(
+              status: _parseProviderModelStatus(rawStatus: m.status, modelId: m.id),
+            ),
             releaseDate: switch (m.releaseDate) {
               final dateStr? => DateTime.tryParse(dateStr),
               null => null,
@@ -38,6 +41,32 @@ PluginProvidersResult mapProviderResponse({
   }).toList();
 
   return PluginProvidersResult(providers: providers);
+}
+
+_ProviderModelStatus _parseProviderModelStatus({
+  required String rawStatus,
+  required String modelId,
+}) {
+  return switch (rawStatus) {
+    "active" => _ProviderModelStatus.active,
+    "alpha" => _ProviderModelStatus.alpha,
+    "beta" => _ProviderModelStatus.beta,
+    "deprecated" => _ProviderModelStatus.deprecated,
+    final unknown => () {
+      Log.w("Unknown model status: $unknown for model $modelId, treating as available");
+      return _ProviderModelStatus.unknown;
+    }(),
+  };
+}
+
+bool _isModelAvailable({required _ProviderModelStatus status}) {
+  return switch (status) {
+    _ProviderModelStatus.active ||
+    _ProviderModelStatus.alpha ||
+    _ProviderModelStatus.beta ||
+    _ProviderModelStatus.unknown => true,
+    _ProviderModelStatus.deprecated => false,
+  };
 }
 
 PluginProvider _mapProvider({

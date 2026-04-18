@@ -3,7 +3,7 @@ import "dart:io";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "plugin_project_mapper.dart";
+import "../repositories/mappers/plugin_project_mapper.dart";
 import "request_handler.dart";
 
 /// Handles `POST /project/create` — creates a new project directory with git init.

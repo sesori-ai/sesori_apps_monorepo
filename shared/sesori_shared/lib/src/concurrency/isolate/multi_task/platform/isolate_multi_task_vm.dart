@@ -113,6 +113,7 @@ void _isolateEntry<IN, OUT>(SendPort sendPort) {
 }
 
 final class _IsolateErrorWrapper {
+  // ignore: no_slop_linter/avoid_dynamic_type
   final Object error;
 
   _IsolateErrorWrapper(this.error);

@@ -1,11 +1,17 @@
 import "dart:async";
 import "dart:io";
 
+import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
+import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/update_session_archive_status_handler.dart";
-import "package:sesori_bridge/src/bridge/worktree_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_archive_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
+import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -24,11 +30,24 @@ void main() {
       db = createTestDatabase();
       plugin = FakeBridgePlugin();
       worktreeService = _FakeWorktreeService(database: db);
-      handler = UpdateSessionArchiveStatusHandler(
+      final sessionRepository = SessionRepository(
         plugin: plugin,
-        worktreeService: worktreeService,
         sessionDao: db.sessionDao,
-        sessionRepository: _FakeSessionRepository(),
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+      );
+      handler = UpdateSessionArchiveStatusHandler(
+        sessionArchiveService: SessionArchiveService(
+          worktreeService: worktreeService,
+          sessionRepository: sessionRepository,
+          sessionPersistenceService: SessionPersistenceService(
+            projectsDao: db.projectsDao,
+            sessionDao: db.sessionDao,
+            db: db,
+          ),
+        ),
       );
     });
 
@@ -87,6 +106,21 @@ void main() {
           summary: null,
         ),
       ];
+      await db.pullRequestDao.upsertPr(
+        pullRequest: const PullRequestDto(
+          projectId: "/repo",
+          branchName: "session-001",
+          prNumber: 21,
+          url: "https://github.com/org/repo/pull/21",
+          title: "Archive PR",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.unknown,
+          reviewDecision: PrReviewDecision.unknown,
+          checkStatus: PrCheckStatus.unknown,
+          lastCheckedAt: 1,
+          createdAt: 1,
+        ),
+      );
 
       final result = await handler.handle(
         makeRequest("PATCH", "/session/update/archive"),
@@ -109,6 +143,7 @@ void main() {
       expect(persisted?.archivedAt, isNotNull);
       expect(result.id, equals("s1"));
       expect(result.time?.archived, equals(persisted?.archivedAt));
+      expect(result.pullRequest?.number, equals(21));
     });
 
     test("archive with cleanup on clean worktree removes worktree", () async {
@@ -270,6 +305,21 @@ void main() {
           summary: null,
         ),
       ];
+      await db.pullRequestDao.upsertPr(
+        pullRequest: const PullRequestDto(
+          projectId: "/repo",
+          branchName: "session-001",
+          prNumber: 22,
+          url: "https://github.com/org/repo/pull/22",
+          title: "Unarchive PR",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.unknown,
+          reviewDecision: PrReviewDecision.unknown,
+          checkStatus: PrCheckStatus.unknown,
+          lastCheckedAt: 1,
+          createdAt: 1,
+        ),
+      );
 
       final result = await handler.handle(
         makeRequest("PATCH", "/session/update/archive"),
@@ -289,6 +339,7 @@ void main() {
       final persisted = await db.sessionDao.getSession(sessionId: "s1");
       expect(persisted?.archivedAt, isNull);
       expect(result.time?.archived, isNull);
+      expect(result.pullRequest?.number, equals(22));
     });
 
     test("unarchive with deleted worktree restores worktree", () async {
@@ -320,6 +371,11 @@ void main() {
           summary: null,
         ),
       ];
+      worktreeService.resolveBaseBranchAndCommitResult = (
+        baseBranch: "develop",
+        baseCommit: "abc123",
+        startPoint: "develop",
+      );
 
       await handler.handle(
         makeRequest("PATCH", "/session/update/archive"),
@@ -339,7 +395,7 @@ void main() {
       expect(worktreeService.lastRestoreProjectPath, equals("/repo"));
       expect(worktreeService.lastRestoreWorktreePath, equals(deletedWorktreePath));
       expect(worktreeService.lastRestoreBranchName, equals("session-001"));
-      expect(worktreeService.lastRestoreBaseBranch, equals("main"));
+      expect(worktreeService.lastRestoreBaseBranch, equals("develop"));
       expect(worktreeService.lastRestoreBaseCommit, isNull);
       final persisted = await db.sessionDao.getSession(sessionId: "s1");
       expect(persisted?.archivedAt, isNull);
@@ -358,6 +414,10 @@ void main() {
           summary: null,
         ),
       ];
+
+      // Seed the project row to satisfy the v5 FK constraint before the handler
+      // auto-inserts the session row.
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
 
       await handler.handle(
         makeRequest("PATCH", "/session/update/archive"),
@@ -381,6 +441,42 @@ void main() {
       expect(persisted?.branchName, isNull);
       expect(persisted?.baseBranch, isNull);
       expect(persisted?.baseCommit, isNull);
+      expect(persisted?.archivedAt, isNotNull);
+    });
+
+    test("archives first-time project (no prior projects_table row) without FK violation", () async {
+      // Empty projects_table — no pre-seeding at all.
+      plugin.projectsResult = const [PluginProject(id: "brand-new")];
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s-brand-new",
+          projectID: "brand-new",
+          directory: "brand-new",
+          parentID: null,
+          title: "Brand New Session",
+          time: PluginSessionTime(created: 10, updated: 20, archived: null),
+          summary: null,
+        ),
+      ];
+
+      // Should not throw FK violation even though projects_table is empty.
+      await handler.handle(
+        makeRequest("PATCH", "/session/update/archive"),
+        body: _archiveRequest(
+          sessionId: "s-brand-new",
+          archived: true,
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      final persisted = await db.sessionDao.getSession(sessionId: "s-brand-new");
+      expect(persisted, isNotNull);
+      expect(persisted?.projectId, equals("brand-new"));
       expect(persisted?.archivedAt, isNotNull);
     });
 
@@ -896,6 +992,7 @@ Future<void> _insertSession({
   required int? archivedAt,
   required String? baseCommit,
 }) async {
+  await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]); // satisfy v5 FK constraint
   await db.sessionDao.insertSession(
     sessionId: sessionId,
     projectId: projectId,
@@ -916,6 +1013,7 @@ class _FakeWorktreeService extends WorktreeService {
   bool removeResult = true;
   bool deleteBranchResult = true;
   bool restoreResult = true;
+  ({String baseBranch, String baseCommit, String startPoint})? resolveBaseBranchAndCommitResult;
 
   int checkCallCount = 0;
   int removeCallCount = 0;
@@ -938,10 +1036,14 @@ class _FakeWorktreeService extends WorktreeService {
 
   _FakeWorktreeService({required AppDatabase database})
     : super(
-        projectsDao: database.projectsDao,
-        sessionDao: database.sessionDao,
-        processRunner: _NoopProcessRunner(),
-        gitPathExists: ({required String gitPath}) => true,
+        worktreeRepository: WorktreeRepository(
+          projectsDao: database.projectsDao,
+          sessionDao: database.sessionDao,
+          gitApi: GitCliApi(
+            processRunner: _NoopProcessRunner(),
+            gitPathExists: ({required String gitPath}) => true,
+          ),
+        ),
       );
 
   @override
@@ -997,6 +1099,13 @@ class _FakeWorktreeService extends WorktreeService {
     lastRestoreBaseCommit = baseCommit;
     return restoreResult;
   }
+
+  @override
+  Future<({String baseBranch, String baseCommit, String startPoint})?> resolveBaseBranchAndCommit({
+    required String projectPath,
+  }) async {
+    return resolveBaseBranchAndCommitResult;
+  }
 }
 
 class _NoopProcessRunner implements ProcessRunner {
@@ -1009,17 +1118,4 @@ class _NoopProcessRunner implements ProcessRunner {
   }) {
     throw UnimplementedError("_NoopProcessRunner should never execute git commands");
   }
-}
-
-class _FakeSessionRepository implements SessionRepository {
-  @override
-  Future<bool> hasOtherActiveSessionsSharing({
-    required String sessionId,
-    required String projectId,
-    required String? worktreePath,
-    required String? branchName,
-  }) async => false;
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

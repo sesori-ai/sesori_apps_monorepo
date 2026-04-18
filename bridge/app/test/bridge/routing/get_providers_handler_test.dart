@@ -256,6 +256,34 @@ void main() {
       expect(gpt4Turbo.releaseDate, isNull);
     });
 
+    test("preserves 1.4-style synthetic model IDs", () async {
+      plugin.providersResult = const PluginProvidersResult(
+        providers: [
+          PluginProvider.openAI(
+            id: "openai",
+            name: "OpenAI",
+            authType: PluginProviderAuthType.apiKey,
+            models: [
+              PluginModel(id: "openai/gpt-4.1-mini", name: "GPT-4.1 Mini", isAvailable: true),
+            ],
+            defaultModelID: "openai/gpt-4.1-mini",
+          ),
+        ],
+      );
+
+      final response = await handler.handle(
+        makeRequest("GET", "/provider"),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      final model = response.items.single.models["openai/gpt-4.1-mini"]!;
+      expect(model.id, equals("openai/gpt-4.1-mini"));
+      expect(model.isAvailable, isTrue);
+      expect(response.items.single.defaultModelID, equals("openai/gpt-4.1-mini"));
+    });
+
     test("maps isAvailable values directly", () async {
       plugin.providersResult = const PluginProvidersResult(
         providers: [
@@ -282,6 +310,31 @@ void main() {
       final models = response.items[0].models;
       expect(models["m1"]!.isAvailable, isTrue);
       expect(models["m2"]!.isAvailable, isFalse);
+    });
+
+    test("unknown model statuses remain available through the route contract", () async {
+      plugin.providersResult = const PluginProvidersResult(
+        providers: [
+          PluginProvider.openAI(
+            id: "openai",
+            name: "OpenAI",
+            authType: PluginProviderAuthType.apiKey,
+            models: [
+              PluginModel(id: "gpt-4.1", name: "GPT-4.1", family: "gpt-4.1", isAvailable: true),
+            ],
+            defaultModelID: null,
+          ),
+        ],
+      );
+
+      final response = await handler.handle(
+        makeRequest("GET", "/provider"),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response.items.single.models["gpt-4.1"]!.isAvailable, isTrue);
     });
 
     test("provider with no models has empty models map", () async {

@@ -1,18 +1,20 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../services/session_abort_service.dart";
 import "request_handler.dart";
 
 /// Handles `POST /session/:id/abort` — aborts in-progress session execution.
 class AbortSessionHandler extends BodyRequestHandler<SessionIdRequest, SuccessEmptyResponse> {
-  final BridgePlugin _plugin;
+  final SessionAbortService _sessionAbortService;
 
-  AbortSessionHandler(this._plugin)
-    : super(
-        HttpMethod.post,
-        "/session/abort",
-        fromJson: SessionIdRequest.fromJson,
-      );
+  AbortSessionHandler({
+    required SessionAbortService sessionAbortService,
+  }) : _sessionAbortService = sessionAbortService,
+       super(
+         HttpMethod.post,
+         "/session/abort",
+         fromJson: SessionIdRequest.fromJson,
+       );
 
   @override
   Future<SuccessEmptyResponse> handle(
@@ -22,7 +24,7 @@ class AbortSessionHandler extends BodyRequestHandler<SessionIdRequest, SuccessEm
     required Map<String, String> queryParams,
     String? fragment,
   }) async {
-    await _plugin.abortSession(sessionId: body.sessionId);
+    await _sessionAbortService.abortSession(sessionId: body.sessionId);
     return const SuccessEmptyResponse();
   }
 }
