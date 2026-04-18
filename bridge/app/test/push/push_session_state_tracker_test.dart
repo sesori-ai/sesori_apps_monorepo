@@ -1603,6 +1603,29 @@ void main() {
 
       expect(tracker.findPrunableRootSessionIds(), equals(["root"]));
     });
+
+    test("replayed projects summary does not refresh prune age for existing roots", () {
+      final clock = _FakeClock(initial: DateTime.utc(2026, 1, 1, 12));
+      final tracker = PushSessionStateTracker(now: clock.now);
+
+      const summaryEvent = SesoriSseEvent.projectsSummary(
+        projects: [
+          ProjectActivitySummary(
+            id: "project-a",
+            activeSessions: [
+              ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"]),
+            ],
+          ),
+        ],
+      );
+
+      tracker.handleEvent(summaryEvent);
+      clock.advance(const Duration(minutes: 20));
+      tracker.handleEvent(summaryEvent);
+      clock.advance(const Duration(minutes: 11));
+
+      expect(tracker.findPrunableRootSessionIds(), equals(["root"]));
+    });
   });
 }
 

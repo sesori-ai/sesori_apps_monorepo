@@ -314,13 +314,13 @@ class PushSessionStateTracker {
   }) {
     for (final project in projects) {
       for (final activeSession in project.activeSessions) {
-        _stateForSession(sessionId: activeSession.id, touchedAt: touchedAt).projectId = project.id;
+        _summaryStateForSession(sessionId: activeSession.id, seededAt: touchedAt).projectId = project.id;
         for (final childId in activeSession.childSessionIds) {
-          final childState = _stateForSession(sessionId: childId, touchedAt: touchedAt);
+          final childState = _summaryStateForSession(sessionId: childId, seededAt: touchedAt);
           childState.projectId = project.id;
           if (childState.parentId == null) {
             childState.parentId = activeSession.id;
-            _stateForSession(sessionId: activeSession.id, touchedAt: touchedAt).childIds.add(childId);
+            _summaryStateForSession(sessionId: activeSession.id, seededAt: touchedAt).childIds.add(childId);
           }
         }
       }
@@ -465,6 +465,12 @@ class PushSessionStateTracker {
     if (touchedAt != null) {
       sessionState.lastTouchedAt = touchedAt;
     }
+    return sessionState;
+  }
+
+  _PushTrackedSessionState _summaryStateForSession({required String sessionId, required DateTime seededAt}) {
+    final sessionState = _sessions.putIfAbsent(sessionId, _PushTrackedSessionState.new);
+    sessionState.lastTouchedAt ??= seededAt;
     return sessionState;
   }
 
