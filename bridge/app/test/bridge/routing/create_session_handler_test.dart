@@ -418,6 +418,7 @@ void main() {
           parts: [PromptPart.text(text: "Start")],
           agent: null,
           model: null,
+          command: null,
         ),
         pathParams: {},
         queryParams: {},
@@ -448,6 +449,7 @@ void main() {
           parts: [PromptPart.text(text: "Start")],
           agent: null,
           model: null,
+          command: null,
         ),
         pathParams: {},
         queryParams: {},
@@ -480,6 +482,7 @@ void main() {
           parts: [PromptPart.text(text: "Start")],
           agent: null,
           model: null,
+          command: null,
         ),
         pathParams: {},
         queryParams: {},
@@ -690,9 +693,101 @@ void main() {
       );
 
       expect(result.id, equals("cmd-session-1"));
+      expect(plugin.lastCreateSessionAgent, isNull);
+      expect(plugin.lastCreateSessionModel, isNull);
+      expect(plugin.lastCreateSessionParts, isEmpty);
       expect(plugin.lastSendCommandSessionId, equals("cmd-session-1"));
       expect(plugin.lastSendCommand, equals("review"));
       expect(plugin.lastSendCommandArguments, equals("Review this code"));
+    });
+
+    test("dedicated worktree command carries worktree guardrail in command arguments", () async {
+      plugin.createSessionResult = const PluginSession(
+        id: "cmd-dedicated-1",
+        projectID: "p1",
+        directory: "/repo/.worktrees/session-001",
+        parentID: null,
+        title: "Command Session",
+        time: null,
+        summary: null,
+      );
+      worktreeService.prepareResult = WorktreeSuccess(
+        path: "/repo/.worktrees/session-001",
+        branchName: "session-001",
+        baseBranch: "main",
+        baseCommit: "abc123def456",
+      );
+
+      await handler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "/repo",
+          dedicatedWorktree: true,
+          parts: [PromptPart.text(text: "Review this code")],
+          agent: null,
+          model: null,
+          command: "review",
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(plugin.lastCreateSessionParts, isEmpty);
+      expect(plugin.lastSendCommandSessionId, equals("cmd-dedicated-1"));
+      expect(plugin.lastSendCommandArguments, contains("session-001"));
+      expect(plugin.lastSendCommandArguments, contains("/repo/.worktrees/session-001"));
+      expect(plugin.lastSendCommandArguments, contains("Review this code"));
+    });
+
+    test("persists stored session before sending command", () async {
+      final orderedPlugin = _OrderCheckingCommandPlugin(database: db)
+        ..createSessionResult = const PluginSession(
+          id: "ordered-session-1",
+          projectID: "p1",
+          directory: "/repo",
+          parentID: null,
+          title: "Ordered Session",
+          time: null,
+          summary: null,
+        );
+      final localHandler = CreateSessionHandler(
+        sessionCreationService: SessionCreationService(
+          metadataService: metadataService,
+          worktreeService: worktreeService,
+          sessionRepository: SessionRepository(
+            plugin: orderedPlugin,
+            sessionDao: db.sessionDao,
+            pullRequestRepository: PullRequestRepository(
+              pullRequestDao: db.pullRequestDao,
+              projectsDao: db.projectsDao,
+            ),
+          ),
+          sessionPersistenceService: SessionPersistenceService(
+            projectsDao: db.projectsDao,
+            sessionDao: db.sessionDao,
+            db: db,
+          ),
+        ),
+      );
+
+      await localHandler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "/repo",
+          dedicatedWorktree: false,
+          parts: [PromptPart.text(text: "Review this code")],
+          agent: "coder",
+          model: PromptModel(providerID: "openai", modelID: "gpt-5"),
+          command: "review",
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(orderedPlugin.hadStoredRowWhenCommandSent, isTrue);
+      await orderedPlugin.close();
     });
 
     test("creates session for first-time project (no prior projects_table row)", () async {
@@ -896,5 +991,28 @@ class _ThrowingRenameSessionPlugin extends FakeBridgePlugin {
     required String title,
   }) {
     throw StateError("renameSession failed");
+  }
+}
+
+class _OrderCheckingCommandPlugin extends FakeBridgePlugin {
+  final AppDatabase _database;
+
+  bool hadStoredRowWhenCommandSent = false;
+
+  _OrderCheckingCommandPlugin({required AppDatabase database}) : _database = database;
+
+  @override
+  Future<void> sendCommand({
+    required String sessionId,
+    required String command,
+    required String arguments,
+  }) async {
+    final session = await _database.sessionDao.getSession(sessionId: sessionId);
+    hadStoredRowWhenCommandSent = session != null;
+    await super.sendCommand(
+      sessionId: sessionId,
+      command: command,
+      arguments: arguments,
+    );
   }
 }

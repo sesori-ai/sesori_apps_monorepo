@@ -1,15 +1,15 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../plugin_to_shared_mapping.dart";
+import "../repositories/command_repository.dart";
 import "request_handler.dart";
 
 /// Handles `POST /command` — returns slash commands available to the project.
 class GetCommandsHandler extends BodyRequestHandler<ProjectIdRequest, CommandListResponse> {
-  final BridgePlugin _plugin;
+  final CommandRepository _commandRepository;
 
-  GetCommandsHandler(this._plugin)
-    : super(
+  GetCommandsHandler({required CommandRepository commandRepository})
+    : _commandRepository = commandRepository,
+      super(
         HttpMethod.post,
         "/command",
         fromJson: ProjectIdRequest.fromJson,
@@ -23,8 +23,6 @@ class GetCommandsHandler extends BodyRequestHandler<ProjectIdRequest, CommandLis
     required Map<String, String> queryParams,
     required String? fragment,
   }) async {
-    final projectId = body.projectId;
-    final commands = await _plugin.getCommands(projectId: projectId);
-    return CommandListResponse(items: commands.map((command) => command.toShared()).toList());
+    return _commandRepository.getCommands(projectId: body.projectId);
   }
 }

@@ -3,6 +3,7 @@ import "dart:convert";
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/command_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/provider_repository.dart";
@@ -10,11 +11,14 @@ import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.da
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/abort_session_handler.dart";
+import "package:sesori_bridge/src/bridge/routing/get_commands_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/get_session_diffs_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/request_router.dart";
+import "package:sesori_bridge/src/bridge/routing/send_prompt_handler.dart";
 import "package:sesori_bridge/src/bridge/services/session_abort_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_archive_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_prompt_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -76,12 +80,18 @@ void main() {
       );
       router = RequestRouter(
         plugin: plugin,
+        getCommandsHandler: GetCommandsHandler(
+          commandRepository: CommandRepository(plugin: plugin),
+        ),
         sessionRepository: sessionRepository,
         abortSessionHandler: AbortSessionHandler(
           sessionAbortService: SessionAbortService(sessionRepository: sessionRepository),
         ),
         sessionCreationService: sessionCreationService,
         sessionArchiveService: sessionArchiveService,
+        sendPromptHandler: SendPromptHandler(
+          sessionPromptService: SessionPromptService(sessionRepository: sessionRepository),
+        ),
         prSyncService: FakePrSyncService(),
         projectRepository: projectRepository,
         providerRepository: providerRepository,
@@ -379,6 +389,9 @@ void main() {
 
       router = RequestRouter(
         plugin: plugin,
+        getCommandsHandler: GetCommandsHandler(
+          commandRepository: CommandRepository(plugin: plugin),
+        ),
         sessionRepository: sessionRepository,
         abortSessionHandler: AbortSessionHandler(
           sessionAbortService: SessionAbortService(sessionRepository: sessionRepository),
@@ -393,6 +406,9 @@ void main() {
           worktreeService: worktreeService,
           sessionRepository: sessionRepository,
           sessionPersistenceService: sessionPersistenceService,
+        ),
+        sendPromptHandler: SendPromptHandler(
+          sessionPromptService: SessionPromptService(sessionRepository: sessionRepository),
         ),
         prSyncService: spyPrSyncService,
         projectRepository: projectRepository,

@@ -473,6 +473,21 @@ class _FakeSessionRepository implements SessionRepository {
   Future<void> notifySessionArchived({required String sessionId}) async {}
 
   @override
+  Future<void> sendCommand({
+    required String sessionId,
+    required String command,
+    required String arguments,
+  }) async {}
+
+  @override
+  Future<void> sendPrompt({
+    required String sessionId,
+    required List<PromptPart> parts,
+    required String? agent,
+    required PromptModel? model,
+  }) async {}
+
+  @override
   Future<Session> renameSession({required String sessionId, required String title}) async => const Session(
     id: "",
     projectID: "",

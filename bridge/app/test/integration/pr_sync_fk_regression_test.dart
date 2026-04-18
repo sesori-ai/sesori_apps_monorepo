@@ -286,12 +286,22 @@ class _FakeBridgePlugin implements BridgePlugin {
   Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) => throw UnimplementedError();
 
   @override
+  Future<List<PluginCommand>> getCommands({required String? projectId}) async => <PluginCommand>[];
+
+  @override
   Future<void> sendPrompt({
     required String sessionId,
     required List<PluginPromptPart> parts,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) => throw UnimplementedError();
+
+  @override
+  Future<void> sendCommand({
+    required String sessionId,
+    required String command,
+    required String arguments,
+  }) async {}
 
   @override
   Future<void> abortSession({required String sessionId}) => throw UnimplementedError();

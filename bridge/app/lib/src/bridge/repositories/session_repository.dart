@@ -87,6 +87,23 @@ class SessionRepository {
     );
   }
 
+  Future<void> sendPrompt({
+    required String sessionId,
+    required List<PromptPart> parts,
+    required String? agent,
+    required PromptModel? model,
+  }) {
+    return _plugin.sendPrompt(
+      sessionId: sessionId,
+      parts: parts.map((part) => part.toPlugin()).toList(growable: false),
+      agent: agent,
+      model: switch (model) {
+        PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
+        null => null,
+      },
+    );
+  }
+
   Future<Session?> getSessionForProject({required String projectId, required String sessionId}) async {
     final pluginSession = await _getPluginSession(projectId: projectId, sessionId: sessionId);
     if (pluginSession == null) {

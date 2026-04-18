@@ -9,6 +9,7 @@ import "package:sesori_bridge/src/bridge/persistence/daos/session_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_session_mapper.dart";
+import "package:sesori_bridge/src/bridge/repositories/mappers/prompt_part_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/pull_request_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
@@ -650,6 +651,21 @@ class _NoopSessionRepository implements SessionRepository {
   Future<void> notifySessionArchived({required String sessionId}) async {}
 
   @override
+  Future<void> sendCommand({
+    required String sessionId,
+    required String command,
+    required String arguments,
+  }) async {}
+
+  @override
+  Future<void> sendPrompt({
+    required String sessionId,
+    required List<PromptPart> parts,
+    required String? agent,
+    required PromptModel? model,
+  }) async {}
+
+  @override
   Future<Session> renameSession({required String sessionId, required String title}) async => const Session(
     id: "",
     projectID: "",
@@ -847,6 +863,37 @@ class FakeSessionRepository implements SessionRepository {
 
   @override
   Future<void> notifySessionArchived({required String sessionId}) async {}
+
+  @override
+  Future<void> sendCommand({
+    required String sessionId,
+    required String command,
+    required String arguments,
+  }) async {
+    await _plugin.sendCommand(
+      sessionId: sessionId,
+      command: command,
+      arguments: arguments,
+    );
+  }
+
+  @override
+  Future<void> sendPrompt({
+    required String sessionId,
+    required List<PromptPart> parts,
+    required String? agent,
+    required PromptModel? model,
+  }) async {
+    await _plugin.sendPrompt(
+      sessionId: sessionId,
+      parts: parts.map((part) => part.toPlugin()).toList(growable: false),
+      agent: agent,
+      model: switch (model) {
+        PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
+        null => null,
+      },
+    );
+  }
 
   @override
   Future<Session> renameSession({required String sessionId, required String title}) async => const Session(

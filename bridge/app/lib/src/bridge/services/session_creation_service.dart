@@ -48,16 +48,14 @@ class SessionCreationService {
     final created = await _sessionRepository.createSession(
       directory: _resolveDirectory(request: request, worktreeResult: worktreeResult),
       parentSessionId: null,
-      parts: _buildPromptParts(parts: request.parts, worktreeResult: worktreeResult),
-      agent: request.agent,
-      model: request.model,
+      parts: _buildPromptParts(
+        parts: request.parts,
+        worktreeResult: worktreeResult,
+        command: request.command,
+      ),
+      agent: request.command == null ? request.agent : null,
+      model: request.command == null ? request.model : null,
     );
-    await _maybeSendCommand(
-      session: created,
-      command: request.command,
-      arguments: firstText ?? '',
-    );
-    final finalSession = await _maybeRenameSession(session: created, metadata: metadata);
     final worktreeState = await _resolveWorktreeState(
       projectId: request.projectId,
       dedicatedWorktree: request.dedicatedWorktree,
@@ -73,6 +71,15 @@ class SessionCreationService {
       baseBranch: worktreeState.baseBranch,
       baseCommit: worktreeState.baseCommit,
     );
+    await _maybeSendCommand(
+      session: created,
+      command: request.command,
+      arguments: _buildCommandArguments(
+        userArguments: firstText ?? '',
+        worktreeResult: worktreeResult,
+      ),
+    );
+    final finalSession = await _maybeRenameSession(session: created, metadata: metadata);
     return _sessionRepository.enrichSession(session: finalSession);
   }
 
@@ -107,9 +114,20 @@ class SessionCreationService {
     );
   }
 
-  List<PromptPart> _buildPromptParts({required List<PromptPart> parts, required WorktreeResult? worktreeResult}) {
+  List<PromptPart> _buildPromptParts({
+    required List<PromptPart> parts,
+    required WorktreeResult? worktreeResult,
+    required String? command,
+  }) {
+    if (command != null) {
+      return const [];
+    }
+    final includeUserParts = command == null;
+    if (parts.isEmpty && includeUserParts) {
+      return parts;
+    }
     if (worktreeResult case WorktreeSuccess(:final path, :final branchName, :final baseBranch)) {
-      return [
+      final promptParts = <PromptPart>[
         PromptPart.text(
           text: buildWorktreeSystemPrompt(
             branchName: branchName,
@@ -117,8 +135,14 @@ class SessionCreationService {
             baseBranch: baseBranch,
           ),
         ),
-        ...parts,
       ];
+      if (includeUserParts) {
+        promptParts.addAll(parts);
+      }
+      return promptParts;
+    }
+    if (!includeUserParts) {
+      return const [];
     }
     return parts;
   }
@@ -161,6 +185,25 @@ class SessionCreationService {
       command: command,
       arguments: arguments,
     );
+  }
+
+  String _buildCommandArguments({
+    required String userArguments,
+    required WorktreeResult? worktreeResult,
+  }) {
+    if (worktreeResult case WorktreeSuccess(:final path, :final branchName, :final baseBranch)) {
+      final systemContext = buildWorktreeSystemPrompt(
+        branchName: branchName,
+        worktreePath: path,
+        baseBranch: baseBranch,
+      ).trimRight();
+      final trimmedArguments = userArguments.trim();
+      if (trimmedArguments.isEmpty) {
+        return systemContext;
+      }
+      return "$systemContext\n\n$trimmedArguments";
+    }
+    return userArguments;
   }
 
   Future<({String? worktreePath, String? branchName, String? baseBranch, String? baseCommit})> _resolveWorktreeState({

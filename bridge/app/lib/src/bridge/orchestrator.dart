@@ -17,6 +17,7 @@ import "key_exchange.dart";
 import "metadata_service.dart";
 import "models/bridge_config.dart";
 import "relay_client.dart";
+import "repositories/command_repository.dart";
 import "repositories/permission_repository.dart";
 import "repositories/project_repository.dart";
 import "repositories/provider_repository.dart";
@@ -29,6 +30,7 @@ import "services/session_abort_service.dart";
 import "services/session_archive_service.dart";
 import "services/session_creation_service.dart";
 import "services/session_event_enrichment_service.dart";
+import "services/session_prompt_service.dart";
 import "services/session_persistence_service.dart";
 import "services/worktree_service.dart";
 import "sse/bridge_event_mapper.dart";
@@ -201,23 +203,29 @@ class OrchestratorSession {
        _bytesSentController = bytesSentController,
        _failureReporter = failureReporter,
        _prSyncService = prSyncService,
-       _sessionAbortService = sessionAbortService,
-       _router = RequestRouter(
-         plugin: plugin,
-         sessionRepository: sessionRepository,
-         abortSessionHandler: AbortSessionHandler(sessionAbortService: sessionAbortService),
-         sessionCreationService: sessionCreationService,
-         sessionArchiveService: sessionArchiveService,
-         prSyncService: prSyncService,
-         projectRepository: projectRepository,
-         providerRepository: ProviderRepository(plugin: plugin),
-         permissionRepository: permissionRepository,
-         sessionPersistenceService: sessionPersistenceService,
-         worktreeService: worktreeService,
-         sessionDiffsHandler: GetSessionDiffsHandler(
+        _sessionAbortService = sessionAbortService,
+         _router = RequestRouter(
+           plugin: plugin,
+           getCommandsHandler: GetCommandsHandler(
+             commandRepository: CommandRepository(plugin: plugin),
+           ),
            sessionRepository: sessionRepository,
-           processRunner: ProcessRunner(),
-         ),
+           abortSessionHandler: AbortSessionHandler(sessionAbortService: sessionAbortService),
+           sessionCreationService: sessionCreationService,
+           sessionArchiveService: sessionArchiveService,
+           sendPromptHandler: SendPromptHandler(
+             sessionPromptService: SessionPromptService(sessionRepository: sessionRepository),
+           ),
+           prSyncService: prSyncService,
+           projectRepository: projectRepository,
+           providerRepository: ProviderRepository(plugin: plugin),
+          permissionRepository: permissionRepository,
+          sessionPersistenceService: sessionPersistenceService,
+          worktreeService: worktreeService,
+          sessionDiffsHandler: GetSessionDiffsHandler(
+            sessionRepository: sessionRepository,
+            processRunner: ProcessRunner(),
+          ),
        ),
        _mapper = BridgeEventMapper(
          plugin: plugin,

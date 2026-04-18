@@ -1,21 +1,43 @@
+import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/send_prompt_handler.dart";
+import "package:sesori_bridge/src/bridge/services/session_prompt_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
 void main() {
   group("SendPromptHandler", () {
     late FakeBridgePlugin plugin;
+    late AppDatabase db;
     late SendPromptHandler handler;
 
     setUp(() {
+      db = createTestDatabase();
       plugin = FakeBridgePlugin();
-      handler = SendPromptHandler(plugin);
+      final sessionRepository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+      );
+      handler = SendPromptHandler(
+        sessionPromptService: SessionPromptService(
+          sessionRepository: sessionRepository,
+        ),
+      );
     });
 
-    tearDown(() => plugin.close());
+    tearDown(() async {
+      await plugin.close();
+      await db.close();
+    });
 
     test("canHandle POST /session/prompt_async", () {
       expect(
@@ -157,7 +179,7 @@ void main() {
       expect(plugin.lastSendCommand, isNull);
     });
 
-    test("calls sendCommand after sendPrompt when command is present", () async {
+    test("calls sendCommand without sending prompt when command is present", () async {
       await handler.handle(
         makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
@@ -172,7 +194,7 @@ void main() {
         fragment: null,
       );
 
-      expect(plugin.lastSendPromptSessionId, equals("s7"));
+      expect(plugin.lastSendPromptSessionId, isNull);
       expect(plugin.lastSendCommandSessionId, equals("s7"));
       expect(plugin.lastSendCommand, equals("review"));
       expect(plugin.lastSendCommandArguments, equals("review this"));
