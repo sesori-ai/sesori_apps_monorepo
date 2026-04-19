@@ -7,24 +7,6 @@ import "../repositories/session_repository.dart";
 import "session_persistence_service.dart";
 import "worktree_service.dart";
 
-String buildWorktreeSystemPrompt({
-  required String branchName,
-  required String worktreePath,
-  required String baseBranch,
-}) {
-  return '''
-[SYSTEM CONTEXT — IMPORTANT]
-A dedicated git worktree and branch have been created for this session:
-- Branch: $branchName
-- Worktree path: $worktreePath
-- Based on: $baseBranch
-
-IMPORTANT: Do NOT create new worktrees, branches, or working directories for this task — even if other instructions suggest it. One has already been created and is 100% dedicated to the work you will be doing in this session.
-
----
-''';
-}
-
 class SessionCreationService {
   final MetadataService _metadataService;
   final WorktreeService _worktreeService;
@@ -79,6 +61,8 @@ class SessionCreationService {
         userArguments: firstText ?? '',
         worktreeResult: worktreeResult,
       ),
+      agent: request.agent,
+      model: request.model,
     );
     final finalSession = await _maybeRenameSession(session: created, metadata: metadata);
     return _sessionRepository.enrichSession(session: finalSession);
@@ -138,7 +122,7 @@ class SessionCreationService {
     if (worktreeResult case WorktreeSuccess(:final path, :final branchName, :final baseBranch)) {
       final promptParts = <PromptPart>[
         PromptPart.text(
-          text: buildWorktreeSystemPrompt(
+          text: _buildWorktreeSystemPrompt(
             branchName: branchName,
             worktreePath: path,
             baseBranch: baseBranch,
@@ -185,6 +169,8 @@ class SessionCreationService {
     required Session session,
     required String? command,
     required String arguments,
+    required String? agent,
+    required PromptModel? model,
   }) async {
     if (command == null) {
       return;
@@ -193,6 +179,8 @@ class SessionCreationService {
       sessionId: session.id,
       command: command,
       arguments: arguments,
+      agent: agent,
+      model: model,
     );
   }
 
@@ -201,7 +189,7 @@ class SessionCreationService {
     required WorktreeResult? worktreeResult,
   }) {
     if (worktreeResult case WorktreeSuccess(:final path, :final branchName, :final baseBranch)) {
-      final systemContext = buildWorktreeSystemPrompt(
+      final systemContext = _buildWorktreeSystemPrompt(
         branchName: branchName,
         worktreePath: path,
         baseBranch: baseBranch,
@@ -243,5 +231,23 @@ class SessionCreationService {
       baseBranch: baseBranchAndCommit?.baseBranch,
       baseCommit: baseBranchAndCommit?.baseCommit,
     );
+  }
+
+  String _buildWorktreeSystemPrompt({
+    required String branchName,
+    required String worktreePath,
+    required String baseBranch,
+  }) {
+    return '''
+[SYSTEM CONTEXT — IMPORTANT]
+A dedicated git worktree and branch have been created for this session:
+- Branch: $branchName
+- Worktree path: $worktreePath
+- Based on: $baseBranch
+
+IMPORTANT: Do NOT create new worktrees, branches, or working directories for this task — even if other instructions suggest it. One has already been created and is 100% dedicated to the work you will be doing in this session.
+
+---
+''';
   }
 }

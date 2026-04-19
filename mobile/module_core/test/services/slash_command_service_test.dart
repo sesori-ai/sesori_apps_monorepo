@@ -35,7 +35,7 @@ void main() {
       verify(() => mockRepository.listCommands(projectId: "project-1")).called(1);
     });
 
-    test("createSessionWithMessage clears agent and model when command is present", () async {
+    test("createSessionWithMessage preserves agent and model when command is present", () async {
       when(
         () => mockRepository.createSessionWithMessage(
           projectId: any(named: "projectId"),
@@ -61,15 +61,15 @@ void main() {
         () => mockRepository.createSessionWithMessage(
           projectId: "project-1",
           text: "lib/main.dart",
-          agent: null,
-          model: null,
+          agent: "build",
+          model: const PromptModel(providerID: "openai", modelID: "gpt-4.1"),
           command: "review",
           dedicatedWorktree: true,
         ),
       ).called(1);
     });
 
-    test("sendMessage clears agent and model when command is present", () async {
+    test("sendMessage preserves agent and model when command is present", () async {
       when(
         () => mockRepository.sendMessage(
           sessionId: any(named: "sessionId"),
@@ -94,9 +94,9 @@ void main() {
         () => mockRepository.sendMessage(
           sessionId: "session-1",
           text: "lib/main.dart",
-          agent: null,
-          providerID: null,
-          modelID: null,
+          agent: "build",
+          providerID: "openai",
+          modelID: "gpt-4.1",
           command: "review",
         ),
       ).called(1);

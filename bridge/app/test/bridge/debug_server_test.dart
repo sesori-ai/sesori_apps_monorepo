@@ -483,6 +483,8 @@ class _FakeBridgePlugin implements BridgePlugin {
     required String sessionId,
     required String command,
     required String arguments,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
   }) async {}
 
   @override
@@ -630,6 +632,8 @@ class _TrackingBridgePlugin implements BridgePlugin {
     required String sessionId,
     required String command,
     required String arguments,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
   }) async {}
 
   @override

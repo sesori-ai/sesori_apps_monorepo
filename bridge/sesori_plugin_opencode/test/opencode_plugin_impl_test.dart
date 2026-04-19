@@ -119,13 +119,20 @@ void main() {
         sessionId: "s-root",
         command: "/review-work",
         arguments: "recent changes",
+        agent: "reviewer",
+        model: (providerID: "openai", modelID: "gpt-4.1"),
       );
 
       expect(server.requestLog, equals(["POST /session/s-root/command"]));
       expect(server.lastCommandDirectoryHeader, equals("/repo"));
       expect(
         server.lastCommandBody,
-        equals({"command": "/review-work", "arguments": "recent changes"}),
+        equals({
+          "command": "/review-work",
+          "arguments": "recent changes",
+          "agent": "reviewer",
+          "model": {"providerID": "openai", "modelID": "gpt-4.1"},
+        }),
       );
     });
 

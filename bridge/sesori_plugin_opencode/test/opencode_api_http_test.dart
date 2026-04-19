@@ -27,7 +27,12 @@ void main() {
 
       await api.sendCommand(
         sessionId: "ses-123",
-        body: const SendCommandBody(command: "/review-work", arguments: "recent changes"),
+        body: const SendCommandBody(
+          command: "/review-work",
+          arguments: "recent changes",
+          agent: "reviewer",
+          model: (providerID: "openai", modelID: "gpt-4.1"),
+        ),
         directory: "/repo",
       );
 
@@ -40,7 +45,12 @@ void main() {
       expect(capturedRequest.headers["x-opencode-directory"], equals("/repo"));
       expect(
         jsonDecode(capturedBody),
-        equals({"command": "/review-work", "arguments": "recent changes"}),
+        equals({
+          "command": "/review-work",
+          "arguments": "recent changes",
+          "agent": "reviewer",
+          "model": {"providerID": "openai", "modelID": "gpt-4.1"},
+        }),
       );
     });
   });

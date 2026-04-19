@@ -1067,6 +1067,8 @@ class _SummaryPlugin implements BridgePlugin {
     required String sessionId,
     required String command,
     required String arguments,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
   }) async {}
 
   @override
@@ -1204,6 +1206,8 @@ class _NoopPlugin implements BridgePlugin {
     required String sessionId,
     required String command,
     required String arguments,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
   }) async {}
 
   @override
@@ -1471,7 +1475,12 @@ class _NoopSessionRepository implements SessionRepository {
     required String sessionId,
     required String command,
     required String arguments,
+    required String? agent,
+    required PromptModel? model,
   }) async {}
+
+  @override
+  Future<CommandListResponse> getCommands({required String? projectId}) async => const CommandListResponse(items: []);
 
   @override
   Future<void> sendPrompt({
@@ -1535,8 +1544,21 @@ class _DelayingSessionRepository implements SessionRepository {
     required String sessionId,
     required String command,
     required String arguments,
+    required String? agent,
+    required PromptModel? model,
   }) async {
-    return _base.sendCommand(sessionId: sessionId, command: command, arguments: arguments);
+    return _base.sendCommand(
+      sessionId: sessionId,
+      command: command,
+      arguments: arguments,
+      agent: agent,
+      model: model,
+    );
+  }
+
+  @override
+  Future<CommandListResponse> getCommands({required String? projectId}) {
+    return _base.getCommands(projectId: projectId);
   }
 
   @override

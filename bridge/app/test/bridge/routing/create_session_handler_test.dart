@@ -19,6 +19,24 @@ import "package:test/test.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
+String _expectedWorktreeSystemPrompt({
+  required String branchName,
+  required String worktreePath,
+  required String baseBranch,
+}) {
+  return '''
+[SYSTEM CONTEXT — IMPORTANT]
+A dedicated git worktree and branch have been created for this session:
+- Branch: $branchName
+- Worktree path: $worktreePath
+- Based on: $baseBranch
+
+IMPORTANT: Do NOT create new worktrees, branches, or working directories for this task — even if other instructions suggest it. One has already been created and is 100% dedicated to the work you will be doing in this session.
+
+---
+''';
+}
+
 void main() {
   group("CreateSessionHandler", () {
     late FakeBridgePlugin plugin;
@@ -109,7 +127,7 @@ void main() {
         plugin.lastCreateSessionParts![0],
         equals(
           PluginPromptPart.text(
-            text: buildWorktreeSystemPrompt(
+            text: _expectedWorktreeSystemPrompt(
               branchName: "session-001",
               worktreePath: "/repo/.worktrees/session-001",
               baseBranch: "main",
@@ -273,8 +291,8 @@ void main() {
       expect(dbSession.baseCommit, equals("abc123def456"));
     });
 
-    test("buildWorktreeSystemPrompt includes branch, path, and base branch", () {
-      final prompt = buildWorktreeSystemPrompt(
+    test("worktree system prompt includes branch, path, and base branch", () {
+      final prompt = _expectedWorktreeSystemPrompt(
         branchName: "session-017",
         worktreePath: "/repo/.worktrees/session-017",
         baseBranch: "develop",
@@ -787,6 +805,8 @@ void main() {
       );
 
       expect(orderedPlugin.hadStoredRowWhenCommandSent, isTrue);
+      expect(orderedPlugin.lastSendCommandAgent, equals("coder"));
+      expect(orderedPlugin.lastSendCommandModel, equals((providerID: "openai", modelID: "gpt-5")));
       await orderedPlugin.close();
     });
 
@@ -1037,6 +1057,8 @@ class _OrderCheckingCommandPlugin extends FakeBridgePlugin {
     required String sessionId,
     required String command,
     required String arguments,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
   }) async {
     final session = await _database.sessionDao.getSession(sessionId: sessionId);
     hadStoredRowWhenCommandSent = session != null;
@@ -1044,6 +1066,8 @@ class _OrderCheckingCommandPlugin extends FakeBridgePlugin {
       sessionId: sessionId,
       command: command,
       arguments: arguments,
+      agent: agent,
+      model: model,
     );
   }
 }

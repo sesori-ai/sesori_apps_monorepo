@@ -17,7 +17,6 @@ import "key_exchange.dart";
 import "metadata_service.dart";
 import "models/bridge_config.dart";
 import "relay_client.dart";
-import "repositories/command_repository.dart";
 import "repositories/permission_repository.dart";
 import "repositories/project_repository.dart";
 import "repositories/provider_repository.dart";
@@ -207,10 +206,10 @@ class OrchestratorSession {
        _prSyncService = prSyncService,
         _sessionAbortService = sessionAbortService,
          _router = RequestRouter(
-           plugin: plugin,
-           getCommandsHandler: GetCommandsHandler(
-             commandRepository: CommandRepository(plugin: plugin),
-           ),
+            plugin: plugin,
+            getCommandsHandler: GetCommandsHandler(
+              sessionRepository: sessionRepository,
+            ),
            sessionRepository: sessionRepository,
            abortSessionHandler: AbortSessionHandler(sessionAbortService: sessionAbortService),
            sessionCreationService: sessionCreationService,

@@ -198,6 +198,8 @@ void main() {
       expect(plugin.lastSendCommandSessionId, equals("s7"));
       expect(plugin.lastSendCommand, equals("review"));
       expect(plugin.lastSendCommandArguments, equals("review this"));
+      expect(plugin.lastSendCommandAgent, isNull);
+      expect(plugin.lastSendCommandModel, isNull);
     });
 
     test("passes empty arguments when no text part present", () async {
@@ -220,6 +222,27 @@ void main() {
       expect(plugin.lastSendCommandSessionId, equals("s8"));
       expect(plugin.lastSendCommand, equals("attach"));
       expect(plugin.lastSendCommandArguments, equals(""));
+    });
+
+    test("passes agent and model when command is present", () async {
+      await handler.handle(
+        makeRequest("POST", "/session/prompt_async"),
+        body: const SendPromptRequest(
+          sessionId: "s10",
+          parts: [PromptPart.text(text: "review this")],
+          agent: "coder",
+          model: PromptModel(providerID: "openai", modelID: "gpt-5.4"),
+          command: "review",
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(plugin.lastSendPromptSessionId, isNull);
+      expect(plugin.lastSendCommandSessionId, equals("s10"));
+      expect(plugin.lastSendCommandAgent, equals("coder"));
+      expect(plugin.lastSendCommandModel, equals((providerID: "openai", modelID: "gpt-5.4")));
     });
 
     test("treats blank command as no command", () async {

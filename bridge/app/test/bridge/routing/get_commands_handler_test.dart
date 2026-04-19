@@ -1,24 +1,39 @@
-import "package:sesori_bridge/src/bridge/repositories/command_repository.dart";
+import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/get_commands_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
 void main() {
   group("GetCommandsHandler", () {
     late FakeBridgePlugin plugin;
+    late AppDatabase db;
     late GetCommandsHandler handler;
 
     setUp(() {
+      db = createTestDatabase();
       plugin = FakeBridgePlugin();
       handler = GetCommandsHandler(
-        commandRepository: CommandRepository(plugin: plugin),
+        sessionRepository: SessionRepository(
+          plugin: plugin,
+          sessionDao: db.sessionDao,
+          pullRequestRepository: PullRequestRepository(
+            pullRequestDao: db.pullRequestDao,
+            projectsDao: db.projectsDao,
+          ),
+        ),
       );
     });
 
-    tearDown(() => plugin.close());
+    tearDown(() async {
+      await plugin.close();
+      await db.close();
+    });
 
     test("canHandle POST /command", () {
       expect(handler.canHandle(makeRequest("POST", "/command")), isTrue);

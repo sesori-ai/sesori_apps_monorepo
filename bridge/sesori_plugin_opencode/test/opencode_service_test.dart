@@ -319,12 +319,16 @@ void main() {
         sessionId: "ses-1",
         command: "/review-work",
         arguments: "recent changes",
+        agent: "reviewer",
+        model: (providerID: "openai", modelID: "gpt-4.1"),
       );
 
       expect(repository.lastCommandSessionId, equals("ses-1"));
       expect(repository.lastCommandDirectory, equals("/repo"));
       expect(repository.lastCommandName, equals("/review-work"));
       expect(repository.lastCommandArguments, equals("recent changes"));
+      expect(repository.lastCommandAgent, equals("reviewer"));
+      expect(repository.lastCommandModel, equals((providerID: "openai", modelID: "gpt-4.1")));
     });
   });
 
@@ -635,6 +639,8 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   String? lastCommandDirectory;
   String? lastCommandName;
   String? lastCommandArguments;
+  String? lastCommandAgent;
+  ({String providerID, String modelID})? lastCommandModel;
   String? lastDeletedSessionId;
   String? lastDeletedDirectory;
 
@@ -711,11 +717,15 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     required String? directory,
     required String command,
     required String arguments,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
   }) async {
     lastCommandSessionId = sessionId;
     lastCommandDirectory = directory;
     lastCommandName = command;
     lastCommandArguments = arguments;
+    lastCommandAgent = agent;
+    lastCommandModel = model;
   }
 
   @override

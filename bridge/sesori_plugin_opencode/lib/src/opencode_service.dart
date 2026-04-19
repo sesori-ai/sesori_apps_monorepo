@@ -111,6 +111,8 @@ class OpenCodeService {
     required String sessionId,
     required String command,
     required String arguments,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
   }) {
     final directory = _getTrackedDirectory(sessionId: sessionId);
     return repository.sendCommand(
@@ -118,6 +120,8 @@ class OpenCodeService {
       directory: directory,
       command: command,
       arguments: arguments,
+      agent: agent,
+      model: model,
     );
   }
 

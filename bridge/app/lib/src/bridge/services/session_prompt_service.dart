@@ -30,6 +30,8 @@ class SessionPromptService {
       sessionId: sessionId,
       command: normalizedCommand,
       arguments: textPart?.text ?? '',
+      agent: agent,
+      model: model,
     );
   }
 }

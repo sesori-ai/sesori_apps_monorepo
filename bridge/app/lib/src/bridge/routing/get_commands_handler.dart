@@ -1,14 +1,14 @@
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../repositories/command_repository.dart";
+import "../repositories/session_repository.dart";
 import "request_handler.dart";
 
 /// Handles `POST /command` — returns slash commands available to the project.
 class GetCommandsHandler extends BodyRequestHandler<ProjectIdRequest, CommandListResponse> {
-  final CommandRepository _commandRepository;
+  final SessionRepository _sessionRepository;
 
-  GetCommandsHandler({required CommandRepository commandRepository})
-    : _commandRepository = commandRepository,
+  GetCommandsHandler({required SessionRepository sessionRepository})
+    : _sessionRepository = sessionRepository,
       super(
         HttpMethod.post,
         "/command",
@@ -23,6 +23,6 @@ class GetCommandsHandler extends BodyRequestHandler<ProjectIdRequest, CommandLis
     required Map<String, String> queryParams,
     required String? fragment,
   }) async {
-    return _commandRepository.getCommands(projectId: body.projectId);
+    return _sessionRepository.getCommands(projectId: body.projectId);
   }
 }

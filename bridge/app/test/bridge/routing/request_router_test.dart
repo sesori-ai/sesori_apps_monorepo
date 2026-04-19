@@ -3,7 +3,6 @@ import "dart:convert";
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/command_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/provider_repository.dart";
@@ -81,7 +80,7 @@ void main() {
       router = RequestRouter(
         plugin: plugin,
         getCommandsHandler: GetCommandsHandler(
-          commandRepository: CommandRepository(plugin: plugin),
+          sessionRepository: sessionRepository,
         ),
         sessionRepository: sessionRepository,
         abortSessionHandler: AbortSessionHandler(
@@ -390,7 +389,7 @@ void main() {
       router = RequestRouter(
         plugin: plugin,
         getCommandsHandler: GetCommandsHandler(
-          commandRepository: CommandRepository(plugin: plugin),
+          sessionRepository: sessionRepository,
         ),
         sessionRepository: sessionRepository,
         abortSessionHandler: AbortSessionHandler(

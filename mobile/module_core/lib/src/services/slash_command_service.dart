@@ -32,9 +32,8 @@ class SlashCommandService {
     return _repository.createSessionWithMessage(
       projectId: projectId,
       text: text,
-      agent: normalizedCommand != null ? null : agent,
+      agent: agent,
       model: _resolveModel(
-        command: normalizedCommand,
         providerID: providerID,
         modelID: modelID,
       ),
@@ -55,9 +54,9 @@ class SlashCommandService {
     return _repository.sendMessage(
       sessionId: sessionId,
       text: text,
-      agent: normalizedCommand != null ? null : agent,
-      providerID: normalizedCommand != null ? null : _normalizeOptionalText(providerID),
-      modelID: normalizedCommand != null ? null : _normalizeOptionalText(modelID),
+      agent: agent,
+      providerID: _normalizeOptionalText(providerID),
+      modelID: _normalizeOptionalText(modelID),
       command: normalizedCommand,
     );
   }
@@ -70,12 +69,7 @@ class SlashCommandService {
     return normalized;
   }
 
-  PromptModel? _resolveModel({
-    required String? command,
-    required String? providerID,
-    required String? modelID,
-  }) {
-    if (command != null) return null;
+  PromptModel? _resolveModel({required String? providerID, required String? modelID}) {
     if (providerID == null || providerID.isEmpty) return null;
     if (modelID == null || modelID.isEmpty) return null;
     return PromptModel(providerID: providerID, modelID: modelID);

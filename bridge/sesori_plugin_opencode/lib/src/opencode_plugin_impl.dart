@@ -274,12 +274,16 @@ class OpenCodePlugin implements BridgePlugin {
     required String sessionId,
     required String command,
     required String arguments,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
   }) {
     return _call(
       () => _service.sendCommand(
         sessionId: sessionId,
         command: command,
         arguments: arguments,
+        agent: agent,
+        model: model,
       ),
     );
   }

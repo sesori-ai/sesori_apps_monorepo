@@ -1,9 +1,11 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePlugin, Log, PluginSession;
-import "package:sesori_shared/sesori_shared.dart" show PrState, PromptModel, PromptPart, PullRequestInfo, Session;
+import "package:sesori_shared/sesori_shared.dart"
+    show CommandListResponse, PrState, PromptModel, PromptPart, PullRequestInfo, Session;
 
 import "../api/database/tables/pull_requests_table.dart";
 import "../persistence/daos/session_dao.dart";
 import "../persistence/tables/session_table.dart";
+import "mappers/plugin_command_mapper.dart";
 import "mappers/plugin_session_mapper.dart";
 import "mappers/prompt_part_mapper.dart";
 import "mappers/pull_request_mapper.dart";
@@ -75,15 +77,32 @@ class SessionRepository {
     return enrichPluginSession(pluginSession: updated);
   }
 
+  Future<CommandListResponse> getCommands({required String? projectId}) async {
+    final normalizedProjectId = projectId?.trim();
+    final commands = await _plugin.getCommands(
+      projectId: normalizedProjectId == null || normalizedProjectId.isEmpty ? null : normalizedProjectId,
+    );
+    return CommandListResponse(
+      items: commands.map((command) => command.toSharedCommandInfo()).toList(growable: false),
+    );
+  }
+
   Future<void> sendCommand({
     required String sessionId,
     required String command,
     required String arguments,
+    required String? agent,
+    required PromptModel? model,
   }) {
     return _plugin.sendCommand(
       sessionId: sessionId,
       command: command,
       arguments: arguments,
+      agent: agent,
+      model: switch (model) {
+        PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
+        null => null,
+      },
     );
   }
 

@@ -94,11 +94,18 @@ class OpenCodeRepository {
     required String? directory,
     required String command,
     required String arguments,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
   }) {
     return _api.sendCommand(
       sessionId: sessionId,
       directory: _normalizeDirectory(directory),
-      body: SendCommandBody(command: command, arguments: arguments),
+      body: SendCommandBody(
+        command: command,
+        arguments: arguments,
+        agent: agent,
+        model: model,
+      ),
     );
   }
 

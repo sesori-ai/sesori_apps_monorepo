@@ -477,7 +477,12 @@ class _FakeSessionRepository implements SessionRepository {
     required String sessionId,
     required String command,
     required String arguments,
+    required String? agent,
+    required PromptModel? model,
   }) async {}
+
+  @override
+  Future<CommandListResponse> getCommands({required String? projectId}) async => const CommandListResponse(items: []);
 
   @override
   Future<void> sendPrompt({
