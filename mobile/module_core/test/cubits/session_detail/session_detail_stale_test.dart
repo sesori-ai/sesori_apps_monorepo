@@ -91,7 +91,7 @@ void main() {
         final cubit = SessionDetailCubit(
           mockSessionService,
           mockConnectionService,
-          slashCommandService: mockSlashCommandService,
+          sessionService: mockSlashCommandService,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
@@ -143,7 +143,7 @@ void main() {
       final cubit = SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
-        slashCommandService: mockSlashCommandService,
+          sessionService: mockSlashCommandService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -187,7 +187,7 @@ void main() {
       final cubit = SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
-        slashCommandService: mockSlashCommandService,
+          sessionService: mockSlashCommandService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -247,7 +247,7 @@ void main() {
       final cubit = SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
-        slashCommandService: mockSlashCommandService,
+          sessionService: mockSlashCommandService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -310,7 +310,7 @@ void main() {
       final cubit = SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
-        slashCommandService: mockSlashCommandService,
+          sessionService: mockSlashCommandService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -344,7 +344,7 @@ void main() {
       final cubit = SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
-        slashCommandService: mockSlashCommandService,
+          sessionService: mockSlashCommandService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -375,7 +375,7 @@ void main() {
       final cubit = SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
-        slashCommandService: mockSlashCommandService,
+          sessionService: mockSlashCommandService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -398,7 +398,7 @@ void main() {
       final cubit = SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
-        slashCommandService: mockSlashCommandService,
+          sessionService: mockSlashCommandService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
           projectId: "test-project",
@@ -436,7 +436,7 @@ void main() {
       final cubit = SessionDetailCubit(
         mockSessionService,
         mockConnectionService,
-        slashCommandService: mockSlashCommandService,
+          sessionService: mockSlashCommandService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",

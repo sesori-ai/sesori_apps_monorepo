@@ -5,10 +5,10 @@ import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart" show AppRouteDef;
+import "package:sesori_dart_core/src/api/session_api.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
-import "package:sesori_dart_core/src/capabilities/session/session_service.dart";
 import "package:sesori_dart_core/src/capabilities/sse/session_activity_info.dart";
 import "package:sesori_dart_core/src/cubits/session_list/session_list_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_list/session_list_state.dart";
@@ -68,7 +68,7 @@ void main() {
 
     /// Convenience factory — stubs must be set up before calling this.
     SessionListCubit buildCubit() => SessionListCubit(
-      service: mockSessionService,
+      sessionApi: mockSessionService,
       projectService: mockProjectService,
       connectionService: mockConnectionService,
       sseEventRepository: mockSseEventRepository,
@@ -1346,7 +1346,7 @@ void main() {
           (_) async => ApiResponse.success(const SessionListResponse(items: sessions)),
         );
         return SessionListCubit(
-          service: mockSessionService,
+        sessionApi: mockSessionService,
           projectService: mockProjectService,
           connectionService: mockConnectionService,
           sseEventRepository: mockSseEventRepository,

@@ -2,193 +2,73 @@ import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../../api/client/relay_http_client.dart";
-import "../../logging/logging.dart";
-
-class SessionCleanupRejectedException implements Exception {
-  final SessionCleanupRejection rejection;
-
-  const SessionCleanupRejectedException({required this.rejection});
-}
+import "../../repositories/session_repository.dart";
 
 @lazySingleton
 class SessionService {
-  final RelayHttpApiClient _client;
+  final SessionRepository _repository;
 
-  SessionService(RelayHttpApiClient client) : _client = client;
+  SessionService({required SessionRepository repository}) : _repository = repository;
 
-  Future<ApiResponse<Agents>> listAgents() {
-    return _client.get(
-      "/agent",
-      fromJson: Agents.fromJson,
-    );
-  }
-
-  Future<ApiResponse<ProviderListResponse>> listProviders() {
-    return _client.get(
-      "/provider",
-      fromJson: ProviderListResponse.fromJson,
-    );
-  }
-
-  /// Lists sessions for the current project.
-  Future<ApiResponse<SessionListResponse>> listSessions({required String projectId}) {
-    return _client.post(
-      "/sessions",
-      fromJson: SessionListResponse.fromJson,
-      body: SessionListRequest(projectId: projectId, start: null, limit: null),
-    );
-  }
-
-  Future<ApiResponse<Session>> archiveSession({
-    required String sessionId,
-    required bool deleteWorktree,
-    required bool deleteBranch,
-    required bool force,
-  }) async {
-    final response = await _client.patch(
-      "/session/update/archive",
-      fromJson: Session.fromJson,
-      body: UpdateSessionArchiveRequest(
-        sessionId: sessionId,
-        archived: true,
-        deleteWorktree: deleteWorktree,
-        deleteBranch: deleteBranch,
-        force: force,
-      ),
-    );
-
-    _throwIfCleanupRejected(response);
-    return response;
-  }
-
-  Future<ApiResponse<Session>> unarchiveSession(String sessionId) {
-    return _client.patch(
-      "/session/update/archive",
-      fromJson: Session.fromJson,
-      body: UpdateSessionArchiveRequest(
-        sessionId: sessionId,
-        archived: false,
-        deleteWorktree: false,
-        deleteBranch: false,
-        force: false,
-      ),
-    );
-  }
-
-  Future<ApiResponse<Session>> renameSession({
-    required String sessionId,
-    required String title,
-  }) {
-    return _client.patch(
-      "/session/title",
-      fromJson: Session.fromJson,
-      body: RenameSessionRequest(sessionId: sessionId, title: title),
-    );
-  }
-
-  Future<ApiResponse<void>> deleteSession({
-    required String sessionId,
-    required bool deleteWorktree,
-    required bool deleteBranch,
-    required bool force,
-  }) async {
-    final response = await _client.delete(
-      "/session/delete",
-      fromJson: SuccessEmptyResponse.fromJson,
-      body: DeleteSessionRequest(
-        sessionId: sessionId,
-        deleteWorktree: deleteWorktree,
-        deleteBranch: deleteBranch,
-        force: force,
-      ),
-    );
-
-    _throwIfCleanupRejected(response);
-    return response;
-  }
-
-  void _throwIfCleanupRejected<T>(ApiResponse<T> response) {
-    if (response case ErrorResponse(error: NonSuccessCodeError(errorCode: 409, rawErrorString: final rawBody))) {
-      try {
-        if (rawBody == null) {
-          throw const FormatException("invalid cleanup rejection json");
-        }
-        final rejection = SessionCleanupRejection.fromJson(jsonDecodeMap(rawBody));
-        throw SessionCleanupRejectedException(rejection: rejection);
-      } on SessionCleanupRejectedException {
-        rethrow;
-      } on Object catch (e) {
-        logw("Failed to parse 409 cleanup rejection body: $e");
-        return;
-      }
+  Future<ApiResponse<CommandListResponse>> listCommands({required String? projectId}) {
+    final normalizedProjectId = _normalizeOptionalText(projectId);
+    if (normalizedProjectId == null) {
+      return Future.value(ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])));
     }
+
+    return _repository.listCommands(projectId: normalizedProjectId);
   }
 
-  Future<ApiResponse<SessionListResponse>> getChildren(String sessionId) {
-    return _client.post(
-      "/session/children",
-      fromJson: SessionListResponse.fromJson,
-      body: SessionIdRequest(sessionId: sessionId),
-    );
-  }
-
-  Future<ApiResponse<SessionStatusResponse>> getSessionStatuses() {
-    return _client.get(
-      "/session/status",
-      fromJson: SessionStatusResponse.fromJson,
-    );
-  }
-
-  Future<ApiResponse<SessionDiffsResponse>> getSessionDiffs({required String sessionId}) {
-    return _client.post(
-      "/session/diffs",
-      fromJson: SessionDiffsResponse.fromJson,
-      body: SessionIdRequest(sessionId: sessionId),
-    );
-  }
-
-  Future<ApiResponse<MessageWithPartsResponse>> getMessages(String sessionId) {
-    return _client.post(
-      "/session/messages",
-      fromJson: MessageWithPartsResponse.fromJson,
-      body: SessionIdRequest(sessionId: sessionId),
-    );
-  }
-
-  Future<ApiResponse<SuccessEmptyResponse>> abortSession(String sessionId) {
-    return _client.post(
-      "/session/abort",
-      fromJson: SuccessEmptyResponse.fromJson,
-      body: SessionIdRequest(sessionId: sessionId),
-    );
-  }
-
-  Future<ApiResponse<PendingQuestionResponse>> getPendingQuestions(String sessionId) {
-    return _client.post(
-      "/session/questions",
-      fromJson: PendingQuestionResponse.fromJson,
-      body: SessionIdRequest(sessionId: sessionId),
-    );
-  }
-
-  Future<ApiResponse<void>> replyToQuestion({
-    required String requestId,
-    required String sessionId,
-    required List<ReplyAnswer> answers,
+  Future<ApiResponse<Session>> createSessionWithMessage({
+    required String projectId,
+    required String text,
+    required String? agent,
+    required String? providerID,
+    required String? modelID,
+    required String? command,
+    required bool dedicatedWorktree,
   }) {
-    return _client.post(
-      "/question/reply",
-      fromJson: SuccessEmptyResponse.fromJson,
-      body: ReplyToQuestionRequest(requestId: requestId, sessionId: sessionId, answers: answers),
+    final normalizedCommand = _normalizeOptionalText(command);
+    return _repository.createSessionWithMessage(
+      projectId: projectId,
+      text: text,
+      agent: agent,
+      model: _resolveModel(providerID: providerID, modelID: modelID),
+      command: normalizedCommand,
+      dedicatedWorktree: dedicatedWorktree,
     );
   }
 
-  Future<ApiResponse<void>> rejectQuestion(String requestId) {
-    return _client.post(
-      "/question/reject",
-      fromJson: SuccessEmptyResponse.fromJson,
-      body: RejectQuestionRequest(requestId: requestId),
+  Future<ApiResponse<void>> sendMessage({
+    required String sessionId,
+    required String text,
+    required String? agent,
+    required String? providerID,
+    required String? modelID,
+    required String? command,
+  }) {
+    final normalizedCommand = _normalizeOptionalText(command);
+    return _repository.sendMessage(
+      sessionId: sessionId,
+      text: text,
+      agent: agent,
+      providerID: _normalizeOptionalText(providerID),
+      modelID: _normalizeOptionalText(modelID),
+      command: normalizedCommand,
     );
+  }
+
+  String? _normalizeOptionalText(String? value) {
+    final normalized = value?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+    return normalized;
+  }
+
+  PromptModel? _resolveModel({required String? providerID, required String? modelID}) {
+    if (providerID == null || providerID.isEmpty) return null;
+    if (modelID == null || modelID.isEmpty) return null;
+    return PromptModel(providerID: providerID, modelID: modelID);
   }
 }

@@ -5,11 +5,11 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../api/session_api.dart";
 import "../../capabilities/project/project_service.dart";
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/server_connection/models/sse_event.dart";
-import "../../capabilities/session/session_service.dart";
 import "../../capabilities/sse/session_activity_info.dart";
 import "../../capabilities/sse/sse_event_repository.dart";
 import "../../logging/logging.dart";
@@ -20,7 +20,7 @@ import "session_list_state.dart";
 class SessionListCubit extends Cubit<SessionListState> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
-  final SessionService _service;
+  final SessionApi _sessionApi;
   final ProjectService _projectService;
   final ConnectionService _connectionService;
   final SseEventRepository _sseEventRepository;
@@ -38,14 +38,14 @@ class SessionListCubit extends Cubit<SessionListState> {
   String? _baseBranch;
 
   SessionListCubit({
-    required SessionService service,
+    required SessionApi sessionApi,
     required ProjectService projectService,
     required ConnectionService connectionService,
     required SseEventRepository sseEventRepository,
     required RouteSource routeSource,
     required String projectId,
     required FailureReporter failureReporter,
-  }) : _service = service,
+  }) : _sessionApi = sessionApi,
        _projectService = projectService,
        _connectionService = connectionService,
        _sseEventRepository = sseEventRepository,
@@ -314,7 +314,7 @@ class SessionListCubit extends Cubit<SessionListState> {
 
     final ApiResponse<Session> response;
     try {
-      response = await _service.archiveSession(
+      response = await _sessionApi.archiveSession(
         sessionId: sessionId,
         deleteWorktree: deleteWorktree,
         deleteBranch: deleteBranch,
@@ -356,7 +356,7 @@ class SessionListCubit extends Cubit<SessionListState> {
     );
     _emitFiltered();
 
-    final response = await _service.unarchiveSession(sessionId);
+      final response = await _sessionApi.unarchiveSession(sessionId);
     if (isClosed) return false;
 
     return switch (response) {
@@ -383,13 +383,13 @@ class SessionListCubit extends Cubit<SessionListState> {
     // If the snapshot was not archived, the last action was an archive → unarchive.
     final wasArchived = snapshot.time?.archived != null;
     final response = wasArchived
-        ? await _service.archiveSession(
+          ? await _sessionApi.archiveSession(
             sessionId: snapshot.id,
             deleteWorktree: false,
             deleteBranch: false,
             force: false,
           )
-        : await _service.unarchiveSession(snapshot.id);
+          : await _sessionApi.unarchiveSession(snapshot.id);
     if (isClosed) return false;
 
     switch (response) {
@@ -410,7 +410,7 @@ class SessionListCubit extends Cubit<SessionListState> {
   /// Renames a session. Returns `true` on success so the screen can show
   /// a confirmation message.
   Future<bool> renameSession({required String sessionId, required String title}) async {
-    final response = await _service.renameSession(sessionId: sessionId, title: title);
+    final response = await _sessionApi.renameSession(sessionId: sessionId, title: title);
     if (isClosed) return false;
 
     switch (response) {
@@ -444,7 +444,7 @@ class SessionListCubit extends Cubit<SessionListState> {
 
     final ApiResponse<void> response;
     try {
-      response = await _service.deleteSession(
+      response = await _sessionApi.deleteSession(
         sessionId: sessionId,
         deleteWorktree: deleteWorktree,
         deleteBranch: deleteBranch,
@@ -577,7 +577,7 @@ class SessionListCubit extends Cubit<SessionListState> {
 
   Future<bool> _fetchSessions({bool silent = false}) async {
     final (sessionsResponse, baseBranchResponse) = await (
-      _service.listSessions(projectId: _projectId),
+      _sessionApi.listSessions(projectId: _projectId),
       _projectService.getBaseBranch(projectId: _projectId),
     ).wait;
     if (isClosed) return false;

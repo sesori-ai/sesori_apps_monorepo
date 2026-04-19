@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
+import "package:sesori_dart_core/src/api/session_api.dart";
 import "package:sesori_dart_core/src/capabilities/project/project_service.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
@@ -10,14 +11,13 @@ import "package:sesori_dart_core/src/capabilities/sse/session_activity_info.dart
 import "package:sesori_dart_core/src/capabilities/sse/sse_event_repository.dart";
 import "package:sesori_dart_core/src/platform/route_source.dart";
 import "package:sesori_dart_core/src/routing/app_routes.dart";
-import "package:sesori_dart_core/src/services/slash_command_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 class MockProjectService extends Mock implements ProjectService {}
 
-class MockSessionService extends Mock implements SessionService {}
+class MockSessionService extends Mock implements SessionApi {}
 
-class MockSlashCommandService extends Mock implements SlashCommandService {}
+class MockSlashCommandService extends Mock implements SessionService {}
 
 class MockFailureReporter extends Mock implements FailureReporter {}
 

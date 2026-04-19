@@ -20,7 +20,7 @@ void main() {
     });
 
     DiffCubit buildCubit() => DiffCubit(
-      service: mockSessionService,
+      sessionApi: mockSessionService,
       sessionId: sessionId,
     );
 

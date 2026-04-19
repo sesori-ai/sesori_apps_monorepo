@@ -97,9 +97,9 @@ void main() {
     test("permission event adds to state and fires stream", () async {
       final cubit = _buildCubit(
         sessionId: sessionId,
-        sessionService: mockSessionService,
+        sessionApi: mockSessionService,
         connectionService: mockConnectionService,
-        slashCommandService: mockSlashCommandService,
+        sessionService: mockSlashCommandService,
         notificationCanceller: mockNotificationCanceller,
         permissionRepository: mockPermissionRepository,
         failureReporter: mockFailureReporter,
@@ -129,9 +129,9 @@ void main() {
     test("duplicate permission IDs are ignored", () async {
       final cubit = _buildCubit(
         sessionId: sessionId,
-        sessionService: mockSessionService,
+        sessionApi: mockSessionService,
         connectionService: mockConnectionService,
-        slashCommandService: mockSlashCommandService,
+        sessionService: mockSlashCommandService,
         notificationCanceller: mockNotificationCanceller,
         permissionRepository: mockPermissionRepository,
         failureReporter: mockFailureReporter,
@@ -167,9 +167,9 @@ void main() {
 
       final cubit = _buildCubit(
         sessionId: sessionId,
-        sessionService: mockSessionService,
+        sessionApi: mockSessionService,
         connectionService: mockConnectionService,
-        slashCommandService: mockSlashCommandService,
+        sessionService: mockSlashCommandService,
         notificationCanceller: mockNotificationCanceller,
         permissionRepository: mockPermissionRepository,
         failureReporter: mockFailureReporter,
@@ -224,9 +224,9 @@ void main() {
 
       final cubit = _buildCubit(
         sessionId: sessionId,
-        sessionService: mockSessionService,
+        sessionApi: mockSessionService,
         connectionService: mockConnectionService,
-        slashCommandService: mockSlashCommandService,
+        sessionService: mockSlashCommandService,
         notificationCanceller: mockNotificationCanceller,
         permissionRepository: mockPermissionRepository,
         failureReporter: mockFailureReporter,
@@ -266,9 +266,9 @@ void main() {
 
       final cubit = _buildCubit(
         sessionId: sessionId,
-        sessionService: mockSessionService,
+        sessionApi: mockSessionService,
         connectionService: mockConnectionService,
-        slashCommandService: mockSlashCommandService,
+        sessionService: mockSlashCommandService,
         notificationCanceller: mockNotificationCanceller,
         permissionRepository: mockPermissionRepository,
         failureReporter: mockFailureReporter,
@@ -297,17 +297,17 @@ void main() {
 
 SessionDetailCubit _buildCubit({
   required String sessionId,
-  required MockSessionService sessionService,
+  required MockSessionService sessionApi,
   required MockConnectionService connectionService,
-  required MockSlashCommandService slashCommandService,
+  required MockSlashCommandService sessionService,
   required MockNotificationCanceller notificationCanceller,
   required MockPermissionRepository permissionRepository,
   required MockFailureReporter failureReporter,
 }) {
   return SessionDetailCubit(
-    sessionService,
+    sessionApi,
     connectionService,
-    slashCommandService: slashCommandService,
+    sessionService: sessionService,
     permissionRepository: permissionRepository,
     sessionId: sessionId,
     projectId: "test-project",

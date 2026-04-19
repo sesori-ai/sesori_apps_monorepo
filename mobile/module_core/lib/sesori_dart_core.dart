@@ -68,7 +68,6 @@ export "src/repositories/session_repository.dart";
 // Routing
 export "src/routing/app_routes.dart";
 export "src/routing/auth_redirect_service.dart";
-export "src/services/slash_command_service.dart";
 // Utils
 export "src/utils/diff/diff_engine.dart";
 export "src/utils/diff/language_detector.dart";

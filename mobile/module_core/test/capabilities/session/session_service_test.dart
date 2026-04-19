@@ -8,13 +8,13 @@ import "package:test/test.dart";
 class MockRelayHttpApiClient extends Mock implements RelayHttpApiClient {}
 
 void main() {
-  group("SessionService", () {
+  group("SessionApi", () {
     late MockRelayHttpApiClient mockClient;
-    late SessionService service;
+    late SessionApi service;
 
     setUp(() {
       mockClient = MockRelayHttpApiClient();
-      service = SessionService(mockClient);
+      service = SessionApi(client: mockClient);
     });
 
     test("archiveSession sends cleanup options in request body", () async {

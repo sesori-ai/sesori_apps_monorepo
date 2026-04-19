@@ -39,8 +39,6 @@ import 'package:sesori_dart_core/src/repositories/session_repository.dart'
     as _i7;
 import 'package:sesori_dart_core/src/routing/auth_redirect_service.dart'
     as _i436;
-import 'package:sesori_dart_core/src/services/slash_command_service.dart'
-    as _i124;
 import 'package:sesori_shared/sesori_shared.dart' as _i553;
 
 extension GetItInjectableX on _i174.GetIt {
@@ -98,9 +96,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i680.ProjectService>(
       () => _i680.ProjectService(gh<_i857.RelayHttpApiClient>()),
     );
-    gh.lazySingleton<_i12.SessionService>(
-      () => _i12.SessionService(gh<_i857.RelayHttpApiClient>()),
-    );
     gh.lazySingleton<_i7.SessionRepository>(
       () => _i7.SessionRepository(api: gh<_i603.SessionApi>()),
     );
@@ -110,8 +105,8 @@ extension GetItInjectableX on _i174.GetIt {
         failureReporter: gh<_i553.FailureReporter>(),
       ),
     );
-    gh.lazySingleton<_i124.SlashCommandService>(
-      () => _i124.SlashCommandService(repository: gh<_i7.SessionRepository>()),
+    gh.lazySingleton<_i12.SessionService>(
+      () => _i12.SessionService(repository: gh<_i7.SessionRepository>()),
     );
     gh.lazySingleton<_i679.PermissionRepository>(
       () => _i679.PermissionRepository(api: gh<_i231.PermissionApi>()),

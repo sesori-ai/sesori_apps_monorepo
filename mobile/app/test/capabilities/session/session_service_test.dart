@@ -1,7 +1,7 @@
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
-import "package:sesori_dart_core/src/capabilities/session/session_service.dart";
+import "package:sesori_dart_core/src/api/session_api.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../helpers/test_helpers.dart";
@@ -9,13 +9,13 @@ import "../../helpers/test_helpers.dart";
 void main() {
   setUpAll(registerAllFallbackValues);
 
-  group("SessionService", () {
+  group("SessionApi", () {
     late MockRelayHttpApiClient mockClient;
-    late SessionService sessionService;
+    late SessionApi sessionService;
 
     setUp(() {
       mockClient = MockRelayHttpApiClient();
-      sessionService = SessionService(mockClient);
+      sessionService = SessionApi(client: mockClient);
     });
 
     // -----------------------------------------------------------------------

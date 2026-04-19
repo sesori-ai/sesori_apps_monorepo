@@ -9,6 +9,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart" show AppRouteDef, RouteSource;
 import "package:sesori_dart_core/src/api/client/relay_http_client.dart";
+import "package:sesori_dart_core/src/api/session_api.dart";
 import "package:sesori_dart_core/src/capabilities/project/project_service.dart";
 import "package:sesori_dart_core/src/capabilities/relay/relay_client.dart";
 import "package:sesori_dart_core/src/capabilities/relay/room_key_storage.dart";
@@ -22,7 +23,6 @@ import "package:sesori_dart_core/src/platform/deep_link_source.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/platform/notification_canceller.dart";
 import "package:sesori_dart_core/src/routing/auth_redirect_service.dart";
-import "package:sesori_dart_core/src/services/slash_command_service.dart";
 import "package:sesori_mobile/capabilities/voice/audio_format_config.dart";
 import "package:sesori_mobile/capabilities/voice/recording_file_provider.dart";
 import "package:sesori_mobile/capabilities/voice/wake_lock_service.dart";
@@ -34,9 +34,9 @@ import "package:sesori_shared/sesori_shared.dart";
 
 class MockProjectService extends Mock implements ProjectService {}
 
-class MockSessionService extends Mock implements SessionService {}
+class MockSessionService extends Mock implements SessionApi {}
 
-class MockSlashCommandService extends Mock implements SlashCommandService {}
+class MockSlashCommandService extends Mock implements SessionService {}
 
 class MockConnectionService extends Mock implements ConnectionService {
   final StreamController<void> _dataMayBeStale = StreamController<void>.broadcast();

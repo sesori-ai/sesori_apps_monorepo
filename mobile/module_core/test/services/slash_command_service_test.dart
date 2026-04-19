@@ -1,20 +1,20 @@
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/src/capabilities/session/session_service.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
-import "package:sesori_dart_core/src/services/slash_command_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 class MockSessionRepository extends Mock implements SessionRepository {}
 
 void main() {
-  group("SlashCommandService", () {
+  group("SessionService", () {
     late MockSessionRepository mockRepository;
-    late SlashCommandService service;
+    late SessionService service;
 
     setUp(() {
       mockRepository = MockSessionRepository();
-      service = SlashCommandService(repository: mockRepository);
+      service = SessionService(repository: mockRepository);
     });
 
     test("listCommands returns empty response without transport when projectId is null", () async {

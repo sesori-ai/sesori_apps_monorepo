@@ -31,8 +31,8 @@ void main() {
     });
 
     NewSessionCubit buildCubit() => NewSessionCubit(
-      sessionService: mockSessionService,
-      slashCommandService: mockSlashCommandService,
+      sessionApi: mockSessionService,
+      sessionService: mockSlashCommandService,
       projectId: "project-1",
     );
 
@@ -115,8 +115,8 @@ void main() {
           ),
         ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s-command")));
         return NewSessionCubit(
-          sessionService: mockSessionService,
-          slashCommandService: mockSlashCommandService,
+          sessionApi: mockSessionService,
+          sessionService: mockSlashCommandService,
           projectId: "project-1",
         );
       },

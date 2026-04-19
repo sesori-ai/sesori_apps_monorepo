@@ -2,21 +2,21 @@ import "package:bloc/bloc.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../api/session_api.dart";
 import "../../capabilities/session/session_service.dart";
-import "../../services/slash_command_service.dart";
 import "new_session_state.dart";
 
 class NewSessionCubit extends Cubit<NewSessionState> {
+  final SessionApi _sessionApi;
   final SessionService _sessionService;
-  final SlashCommandService _slashCommandService;
   final String _projectId;
 
   NewSessionCubit({
+    required SessionApi sessionApi,
     required SessionService sessionService,
-    required SlashCommandService slashCommandService,
     required String projectId,
-  }) : _sessionService = sessionService,
-       _slashCommandService = slashCommandService,
+  }) : _sessionApi = sessionApi,
+       _sessionService = sessionService,
        _projectId = projectId,
        super(
          const NewSessionState.idle(
@@ -35,9 +35,9 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   Future<void> _loadComposerData() async {
     try {
         final (agentsResponse, providersResponse, commandsResponse) = await wait3(
-          _sessionService.listAgents(),
-          _sessionService.listProviders(),
-          _slashCommandService.listCommands(projectId: _projectId),
+          _sessionApi.listAgents(),
+          _sessionApi.listProviders(),
+          _sessionService.listCommands(projectId: _projectId),
         );
 
       if (isClosed) return;
@@ -203,7 +203,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       ),
     );
 
-    final response = await _slashCommandService.createSessionWithMessage(
+    final response = await _sessionService.createSessionWithMessage(
       projectId: _projectId,
       text: trimmed,
       agent: config?.agent,

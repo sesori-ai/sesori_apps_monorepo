@@ -5,6 +5,7 @@ import "package:collection/collection.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../api/session_api.dart";
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/server_connection/models/sse_event.dart";
@@ -12,15 +13,14 @@ import "../../capabilities/session/session_service.dart";
 import "../../logging/logging.dart";
 import "../../platform/notification_canceller.dart";
 import "../../repositories/permission_repository.dart";
-import "../../services/slash_command_service.dart";
 import "prompt_send_queue.dart";
 import "queued_session_submission.dart";
 import "session_detail_state.dart";
 import "streaming_text_buffer.dart";
 
 class SessionDetailCubit extends Cubit<SessionDetailState> {
-  final SessionService _service;
-  final SlashCommandService _slashCommandService;
+  final SessionApi _sessionApi;
+  final SessionService _sessionService;
   final ConnectionService _connectionService;
   final PermissionRepository _permissionRepository;
   final String _sessionId;
@@ -50,16 +50,16 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
   SessionDetailCubit(
-    SessionService service,
+    SessionApi sessionApi,
     ConnectionService connectionService, {
-    required SlashCommandService slashCommandService,
+    required SessionService sessionService,
     required PermissionRepository permissionRepository,
     required String sessionId,
     required String? projectId,
     required NotificationCanceller notificationCanceller,
     required FailureReporter failureReporter,
-  }) : _service = service,
-       _slashCommandService = slashCommandService,
+  }) : _sessionApi = sessionApi,
+       _sessionService = sessionService,
        _connectionService = connectionService,
        _permissionRepository = permissionRepository,
        _sessionId = sessionId,
@@ -271,13 +271,13 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       providersResponse,
       commandsResponse,
     ) = await (
-      _service.getMessages(_sessionId),
-      _service.getPendingQuestions(_sessionId),
-      _service.getChildren(_sessionId),
-      _service.getSessionStatuses(),
-      _service.listAgents(),
-      _service.listProviders(),
-      _slashCommandService.listCommands(projectId: _projectId),
+        _sessionApi.getMessages(_sessionId),
+        _sessionApi.getPendingQuestions(_sessionId),
+        _sessionApi.getChildren(_sessionId),
+        _sessionApi.getSessionStatuses(),
+        _sessionApi.listAgents(),
+        _sessionApi.listProviders(),
+        _sessionService.listCommands(projectId: _projectId),
     ).wait;
 
     final messages = switch (messagesResponse) {
@@ -702,7 +702,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       return;
     }
 
-    final result = await _slashCommandService.sendMessage(
+    final result = await _sessionService.sendMessage(
       sessionId: _sessionId,
       text: trimmed,
       agent: current.selectedAgent,
@@ -749,7 +749,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
     var sendSucceeded = false;
     try {
-      final result = await _slashCommandService.sendMessage(
+      final result = await _sessionService.sendMessage(
         sessionId: _sessionId,
         text: submission.text,
         agent: current.selectedAgent,
@@ -876,7 +876,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       category: NotificationCategory.aiInteraction,
     );
     try {
-      await _service.replyToQuestion(requestId: requestId, sessionId: sessionId, answers: answers);
+    await _sessionApi.replyToQuestion(requestId: requestId, sessionId: sessionId, answers: answers);
       return true;
     } on Object catch (e, st) {
       loge("Failed to reply to question $requestId", e, st);
@@ -892,7 +892,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       category: NotificationCategory.aiInteraction,
     );
     try {
-      await _service.rejectQuestion(requestId);
+    await _sessionApi.rejectQuestion(requestId);
       return true;
     } on Object catch (e, st) {
       loge("Failed to reject question $requestId", e, st);
@@ -964,14 +964,14 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   Future<void> abort() async {
     try {
       final current = state;
-      final futures = <Future<void>>[_service.abortSession(_sessionId)];
+    final futures = <Future<void>>[_sessionApi.abortSession(_sessionId)];
 
       // Also abort any active child sessions (busy or retrying).
       if (current is SessionDetailLoaded) {
         for (final entry in current.childStatuses.entries) {
           final status = entry.value;
           if (status is SessionStatusBusy || status is SessionStatusRetry) {
-            futures.add(_service.abortSession(entry.key));
+      futures.add(_sessionApi.abortSession(entry.key));
           }
         }
       }
