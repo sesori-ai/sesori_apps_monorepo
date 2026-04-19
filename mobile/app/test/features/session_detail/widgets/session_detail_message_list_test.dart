@@ -132,6 +132,15 @@ Future<void> _detachViewport(WidgetTester tester) async {
   expect(find.byKey(_jumpToLatestKey), findsOneWidget);
 }
 
+Future<void> _detachViewportWithoutDrag(WidgetTester tester) async {
+  _position(tester).jumpTo(500);
+  await tester.pump();
+  await tester.pump();
+
+  expect(_position(tester).pixels, greaterThan(20));
+  expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+}
+
 void main() {
   testWidgets("detached viewport stays stable when a new newest message arrives", (tester) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
@@ -234,5 +243,37 @@ void main() {
     expect(_position(tester).pixels, 0);
     expect(find.byKey(_jumpToLatestKey), findsNothing);
     expect(_messageKey("user-following"), findsOneWidget);
+  });
+
+  testWidgets("non-drag scroll updates also detach follow mode", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: _userMessages(count: 12),
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _detachViewportWithoutDrag(tester);
+    final anchor = _messageKey("user-7");
+    final before = tester.getTopLeft(anchor).dy;
+
+    harnessKey.currentState!.appendNewestMessage(
+      _message(
+        messageId: "user-wheel",
+        role: "user",
+        text: _multilineText(label: "Wheel newest", lines: 10),
+      ),
+    );
+    await _pumpListUpdate(tester);
+
+    final after = tester.getTopLeft(anchor).dy;
+    expect(after, closeTo(before, 0.1));
+    expect(find.byKey(_jumpToLatestKey), findsOneWidget);
   });
 }

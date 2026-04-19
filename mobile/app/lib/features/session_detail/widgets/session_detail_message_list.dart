@@ -88,7 +88,8 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
       children: [
         NotificationListener<ScrollNotification>(
           onNotification: (notification) {
-            if (notification is ScrollUpdateNotification && notification.dragDetails != null) {
+            if (notification is ScrollUpdateNotification) {
+              // Desktop wheel/trackpad scrolling can update pixels without drag details.
               _updateFollowingFromPixels();
             } else if (notification is ScrollEndNotification) {
               _updateFollowingFromPixels();
