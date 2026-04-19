@@ -16,8 +16,8 @@ class SessionDetailLoadedView extends StatelessWidget {
   final bool readOnly;
   final VoidCallback onShowPendingQuestions;
   final VoidCallback onShowPendingPermissions;
-  final VoidCallback? onOpenAgentPicker;
-  final VoidCallback? onOpenModelPicker;
+  final VoidCallback onOpenAgentPicker;
+  final VoidCallback onOpenModelPicker;
 
   const SessionDetailLoadedView.readOnly({
     super.key,
@@ -26,8 +26,8 @@ class SessionDetailLoadedView extends StatelessWidget {
     required this.onShowPendingQuestions,
     required this.onShowPendingPermissions,
   }) : readOnly = true,
-       onOpenAgentPicker = null,
-       onOpenModelPicker = null;
+       onOpenAgentPicker = _noopCallback,
+       onOpenModelPicker = _noopCallback;
 
   const SessionDetailLoadedView.editable({
     super.key,
@@ -101,8 +101,8 @@ class SessionDetailLoadedView extends StatelessWidget {
               selectedAgent: state.selectedAgent,
               selectedProviderID: state.selectedProviderID,
               selectedModelID: state.selectedModelID,
-              onAgentTap: onOpenAgentPicker!,
-              onModelTap: onOpenModelPicker!,
+              onAgentTap: onOpenAgentPicker,
+              onModelTap: onOpenModelPicker,
             ),
             availableCommands: state.availableCommands,
             stagedCommand: state.stagedCommand,
@@ -113,6 +113,8 @@ class SessionDetailLoadedView extends StatelessWidget {
     );
   }
 }
+
+void _noopCallback() {}
 
 bool hasActiveWork({
   required SessionStatus sessionStatus,
