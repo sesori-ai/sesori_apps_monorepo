@@ -1150,12 +1150,15 @@ void main() {
         // Wait for initial load to complete.
         await Future<void>.delayed(Duration.zero);
         // Reset interaction count after initial load.
-        reset(mockSessionService);
+        reset(mockProjectService);
 
         // Use a Completer so the first refresh stays in-flight while the
         // second ConnectionConnected arrives — this is what exercises the guard.
         final completer = Completer<ApiResponse<SessionListResponse>>();
         when(() => mockProjectService.listSessions(projectId: projectId)).thenAnswer((_) => completer.future);
+        when(() => mockProjectService.getBaseBranch(projectId: projectId)).thenAnswer(
+          (_) async => ApiResponse.success(const BaseBranchResponse(baseBranch: "main")),
+        );
 
         const config = ServerConnectionConfig(
           relayHost: "relay.example.com",
