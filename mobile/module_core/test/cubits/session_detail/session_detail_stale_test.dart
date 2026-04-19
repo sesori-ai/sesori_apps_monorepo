@@ -37,8 +37,7 @@ void main() {
 
   group("SessionDetailCubit stale reconnect", () {
     late MockSessionService mockSessionService;
-    late MockSlashCommandService mockSlashCommandService;
-    late MockConnectionService mockConnectionService;
+        late MockConnectionService mockConnectionService;
     late MockNotificationCanceller mockNotificationCanceller;
     late MockPermissionRepository mockPermissionRepository;
     late StreamController<SesoriSessionEvent> sessionEvents;
@@ -47,7 +46,6 @@ void main() {
 
     setUp(() {
       mockSessionService = MockSessionService();
-      mockSlashCommandService = MockSlashCommandService();
       mockConnectionService = MockConnectionService();
       mockNotificationCanceller = MockNotificationCanceller();
       mockPermissionRepository = MockPermissionRepository();
@@ -72,7 +70,7 @@ void main() {
           reply: any(named: "reply"),
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
-      when(() => mockSlashCommandService.listCommands(projectId: any(named: "projectId"))).thenAnswer(
+      when(() => mockSessionService.listCommands(projectId: any(named: "projectId"))).thenAnswer(
         (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
       );
 
@@ -89,9 +87,8 @@ void main() {
       "deferred refresh: stale while disconnected waits for ConnectionConnected before refreshing",
       () async {
         final cubit = SessionDetailCubit(
-          mockSessionService,
           mockConnectionService,
-          sessionService: mockSlashCommandService,
+          sessionService: mockSessionService,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
@@ -106,7 +103,7 @@ void main() {
         connectionStatus.add(connectionLostStatus);
         await Future<void>.delayed(const Duration(milliseconds: 10));
 
-        when(() => mockSessionService.getMessages(sessionId)).thenAnswer(
+        when(() => mockSessionService.getMessages(sessionId: sessionId)).thenAnswer(
           (_) async =>
               ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-refreshed")])),
         );
@@ -118,9 +115,9 @@ void main() {
         mockConnectionService.emitDataMayBeStale();
         await Future<void>.delayed(const Duration(milliseconds: 20));
 
-        verifyNever(() => mockSessionService.getMessages(sessionId));
-        verifyNever(() => mockSessionService.getPendingQuestions(sessionId));
-        verifyNever(() => mockSessionService.getChildren(sessionId));
+        verifyNever(() => mockSessionService.getMessages(sessionId: sessionId));
+        verifyNever(() => mockSessionService.getPendingQuestions(sessionId: sessionId));
+        verifyNever(() => mockSessionService.getChildren(sessionId: sessionId));
         verifyNever(() => mockSessionService.getSessionStatuses());
         verifyNever(() => mockSessionService.listAgents());
         verifyNever(() => mockSessionService.listProviders());
@@ -141,9 +138,8 @@ void main() {
 
     test("deferred refresh: stale when connected triggers immediate refresh", () async {
       final cubit = SessionDetailCubit(
-        mockSessionService,
         mockConnectionService,
-          sessionService: mockSlashCommandService,
+        sessionService: mockSessionService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -155,7 +151,7 @@ void main() {
       await _awaitLoaded(cubit);
       clearInteractions(mockSessionService);
 
-      when(() => mockSessionService.getMessages(sessionId)).thenAnswer(
+      when(() => mockSessionService.getMessages(sessionId: sessionId)).thenAnswer(
         (_) async =>
             ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-immediate")])),
       );
@@ -167,9 +163,9 @@ void main() {
       mockConnectionService.emitDataMayBeStale();
       await Future<void>.delayed(const Duration(milliseconds: 20));
 
-      verify(() => mockSessionService.getMessages(sessionId)).called(1);
-      verify(() => mockSessionService.getPendingQuestions(sessionId)).called(1);
-      verify(() => mockSessionService.getChildren(sessionId)).called(1);
+      verify(() => mockSessionService.getMessages(sessionId: sessionId)).called(1);
+      verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
+      verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
       verify(() => mockSessionService.listAgents()).called(1);
       verify(() => mockSessionService.listProviders()).called(1);
@@ -185,9 +181,8 @@ void main() {
 
     test("silent refresh preserves selectedAgent, selectedProviderID, selectedModelID from current state", () async {
       final cubit = SessionDetailCubit(
-        mockSessionService,
         mockConnectionService,
-          sessionService: mockSlashCommandService,
+        sessionService: mockSessionService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -245,9 +240,8 @@ void main() {
 
     test("delta race: streaming deltas arriving during refresh are preserved", () async {
       final cubit = SessionDetailCubit(
-        mockSessionService,
         mockConnectionService,
-          sessionService: mockSlashCommandService,
+        sessionService: mockSessionService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -260,12 +254,12 @@ void main() {
       clearInteractions(mockSessionService);
 
       final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
-      when(() => mockSessionService.getMessages(sessionId)).thenAnswer((_) => messagesCompleter.future);
+      when(() => mockSessionService.getMessages(sessionId: sessionId)).thenAnswer((_) => messagesCompleter.future);
       when(
-        () => mockSessionService.getPendingQuestions(sessionId),
+        () => mockSessionService.getPendingQuestions(sessionId: sessionId),
       ).thenAnswer((_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])));
       when(
-        () => mockSessionService.getChildren(sessionId),
+        () => mockSessionService.getChildren(sessionId: sessionId),
       ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: <Session>[])));
       when(
         () => mockSessionService.getSessionStatuses(),
@@ -308,9 +302,8 @@ void main() {
 
     test("partial API failure: providers fail and refresh still succeeds with empty providers", () async {
       final cubit = SessionDetailCubit(
-        mockSessionService,
         mockConnectionService,
-          sessionService: mockSlashCommandService,
+        sessionService: mockSessionService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -321,7 +314,7 @@ void main() {
 
       await _awaitLoaded(cubit);
 
-      when(() => mockSessionService.getMessages(sessionId)).thenAnswer(
+      when(() => mockSessionService.getMessages(sessionId: sessionId)).thenAnswer(
         (_) async => ApiResponse.success(
           MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-provider-fallback")]),
         ),
@@ -339,12 +332,11 @@ void main() {
 
     test("stale signal is ignored when state is SessionDetailLoading", () async {
       final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
-      when(() => mockSessionService.getMessages(sessionId)).thenAnswer((_) => messagesCompleter.future);
+      when(() => mockSessionService.getMessages(sessionId: sessionId)).thenAnswer((_) => messagesCompleter.future);
 
       final cubit = SessionDetailCubit(
-        mockSessionService,
         mockConnectionService,
-          sessionService: mockSlashCommandService,
+        sessionService: mockSessionService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -355,9 +347,9 @@ void main() {
       mockConnectionService.emitDataMayBeStale();
       await Future<void>.delayed(const Duration(milliseconds: 10));
 
-      verify(() => mockSessionService.getMessages(sessionId)).called(1);
-      verify(() => mockSessionService.getPendingQuestions(sessionId)).called(1);
-      verify(() => mockSessionService.getChildren(sessionId)).called(1);
+      verify(() => mockSessionService.getMessages(sessionId: sessionId)).called(1);
+      verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
+      verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
       verify(() => mockSessionService.listAgents()).called(1);
       verify(() => mockSessionService.listProviders()).called(1);
@@ -369,13 +361,12 @@ void main() {
 
     test("stale signal is ignored when state is SessionDetailFailed", () async {
       when(
-        () => mockSessionService.getMessages(sessionId),
+        () => mockSessionService.getMessages(sessionId: sessionId),
       ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
 
       final cubit = SessionDetailCubit(
-        mockSessionService,
         mockConnectionService,
-          sessionService: mockSlashCommandService,
+        sessionService: mockSessionService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -388,19 +379,18 @@ void main() {
       mockConnectionService.emitDataMayBeStale();
       await Future<void>.delayed(const Duration(milliseconds: 10));
 
-      verify(() => mockSessionService.getMessages(sessionId)).called(1);
+      verify(() => mockSessionService.getMessages(sessionId: sessionId)).called(1);
       expect(cubit.state, isA<SessionDetailFailed>());
     });
 
     test(
       "silent refresh failure logs warning and resets isRefreshing to false without changing state",
       () async {
-      final cubit = SessionDetailCubit(
-        mockSessionService,
-        mockConnectionService,
-          sessionService: mockSlashCommandService,
-        permissionRepository: mockPermissionRepository,
-        sessionId: sessionId,
+        final cubit = SessionDetailCubit(
+          mockConnectionService,
+          sessionService: mockSessionService,
+          permissionRepository: mockPermissionRepository,
+          sessionId: sessionId,
           projectId: "test-project",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: MockFailureReporter(),
@@ -411,7 +401,7 @@ void main() {
         final before = cubit.state as SessionDetailLoaded;
 
         when(
-          () => mockSessionService.getMessages(sessionId),
+          () => mockSessionService.getMessages(sessionId: sessionId),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
 
         final emitted = <SessionDetailState>[];
@@ -434,9 +424,8 @@ void main() {
 
     test("concurrent stale signals are coalesced (single API call)", () async {
       final cubit = SessionDetailCubit(
-        mockSessionService,
         mockConnectionService,
-          sessionService: mockSlashCommandService,
+        sessionService: mockSessionService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -449,12 +438,12 @@ void main() {
       reset(mockSessionService);
 
       final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
-      when(() => mockSessionService.getMessages(sessionId)).thenAnswer((_) => messagesCompleter.future);
+      when(() => mockSessionService.getMessages(sessionId: sessionId)).thenAnswer((_) => messagesCompleter.future);
       when(
-        () => mockSessionService.getPendingQuestions(sessionId),
+        () => mockSessionService.getPendingQuestions(sessionId: sessionId),
       ).thenAnswer((_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])));
       when(
-        () => mockSessionService.getChildren(sessionId),
+        () => mockSessionService.getChildren(sessionId: sessionId),
       ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: <Session>[])));
       when(
         () => mockSessionService.getSessionStatuses(),
@@ -465,7 +454,7 @@ void main() {
         () => mockSessionService.listAgents(),
       ).thenAnswer((_) async => ApiResponse.success(Agents(agents: _agents())));
       when(() => mockSessionService.listProviders()).thenAnswer((_) async => ApiResponse.success(_providers()));
-      when(() => mockSlashCommandService.listCommands(projectId: any(named: "projectId"))).thenAnswer(
+      when(() => mockSessionService.listCommands(projectId: any(named: "projectId"))).thenAnswer(
         (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
       );
 
@@ -478,9 +467,9 @@ void main() {
       );
       await Future<void>.delayed(const Duration(milliseconds: 20));
 
-      verify(() => mockSessionService.getMessages(sessionId)).called(1);
-      verify(() => mockSessionService.getPendingQuestions(sessionId)).called(1);
-      verify(() => mockSessionService.getChildren(sessionId)).called(1);
+      verify(() => mockSessionService.getMessages(sessionId: sessionId)).called(1);
+      verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
+      verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
       verify(() => mockSessionService.listAgents()).called(1);
       verify(() => mockSessionService.listProviders()).called(1);
@@ -490,21 +479,21 @@ void main() {
 
 void _stubLoadApis(MockSessionService service, {required String sessionId}) {
   when(
-    () => service.getMessages(any()),
+    () => service.getMessages(sessionId: any(named: "sessionId")),
   ).thenAnswer(
     (_) => Future<ApiResponse<MessageWithPartsResponse>>.value(
       ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()])),
     ),
   );
   when(
-    () => service.getPendingQuestions(any()),
+    () => service.getPendingQuestions(sessionId: any(named: "sessionId")),
   ).thenAnswer(
     (_) => Future<ApiResponse<PendingQuestionResponse>>.value(
       ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])),
     ),
   );
   when(
-    () => service.getChildren(any()),
+    () => service.getChildren(sessionId: any(named: "sessionId")),
   ).thenAnswer(
     (_) => Future<ApiResponse<SessionListResponse>>.value(
       ApiResponse.success(const SessionListResponse(items: <Session>[])),

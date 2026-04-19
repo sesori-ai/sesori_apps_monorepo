@@ -34,8 +34,7 @@ void main() {
 
   group("SessionDetailCubit permission handling", () {
     late MockSessionService mockSessionService;
-    late MockSlashCommandService mockSlashCommandService;
-    late MockConnectionService mockConnectionService;
+        late MockConnectionService mockConnectionService;
     late MockNotificationCanceller mockNotificationCanceller;
     late MockPermissionRepository mockPermissionRepository;
     late MockFailureReporter mockFailureReporter;
@@ -45,7 +44,6 @@ void main() {
 
     setUp(() {
       mockSessionService = MockSessionService();
-      mockSlashCommandService = MockSlashCommandService();
       mockConnectionService = MockConnectionService();
       mockNotificationCanceller = MockNotificationCanceller();
       mockPermissionRepository = MockPermissionRepository();
@@ -81,7 +79,7 @@ void main() {
           reply: any(named: "reply"),
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
-      when(() => mockSlashCommandService.listCommands(projectId: any(named: "projectId"))).thenAnswer(
+      when(() => mockSessionService.listCommands(projectId: any(named: "projectId"))).thenAnswer(
         (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
       );
 
@@ -97,9 +95,8 @@ void main() {
     test("permission event adds to state and fires stream", () async {
       final cubit = _buildCubit(
         sessionId: sessionId,
-        sessionApi: mockSessionService,
         connectionService: mockConnectionService,
-        sessionService: mockSlashCommandService,
+        sessionService: mockSessionService,
         notificationCanceller: mockNotificationCanceller,
         permissionRepository: mockPermissionRepository,
         failureReporter: mockFailureReporter,
@@ -129,9 +126,8 @@ void main() {
     test("duplicate permission IDs are ignored", () async {
       final cubit = _buildCubit(
         sessionId: sessionId,
-        sessionApi: mockSessionService,
         connectionService: mockConnectionService,
-        sessionService: mockSlashCommandService,
+        sessionService: mockSessionService,
         notificationCanceller: mockNotificationCanceller,
         permissionRepository: mockPermissionRepository,
         failureReporter: mockFailureReporter,
@@ -167,9 +163,8 @@ void main() {
 
       final cubit = _buildCubit(
         sessionId: sessionId,
-        sessionApi: mockSessionService,
         connectionService: mockConnectionService,
-        sessionService: mockSlashCommandService,
+        sessionService: mockSessionService,
         notificationCanceller: mockNotificationCanceller,
         permissionRepository: mockPermissionRepository,
         failureReporter: mockFailureReporter,
@@ -224,9 +219,8 @@ void main() {
 
       final cubit = _buildCubit(
         sessionId: sessionId,
-        sessionApi: mockSessionService,
         connectionService: mockConnectionService,
-        sessionService: mockSlashCommandService,
+        sessionService: mockSessionService,
         notificationCanceller: mockNotificationCanceller,
         permissionRepository: mockPermissionRepository,
         failureReporter: mockFailureReporter,
@@ -252,9 +246,9 @@ void main() {
       );
 
       expect(result, isFalse);
-      verify(() => mockSessionService.getMessages(sessionId)).called(1);
-      verify(() => mockSessionService.getPendingQuestions(sessionId)).called(1);
-      verify(() => mockSessionService.getChildren(sessionId)).called(1);
+      verify(() => mockSessionService.getMessages(sessionId: sessionId)).called(1);
+      verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
+      verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
       verify(() => mockSessionService.listAgents()).called(1);
       verify(() => mockSessionService.listProviders()).called(1);
@@ -262,13 +256,12 @@ void main() {
 
     test("non-loaded state ignores permission events", () async {
       final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
-      when(() => mockSessionService.getMessages(sessionId)).thenAnswer((_) => messagesCompleter.future);
+      when(() => mockSessionService.getMessages(sessionId: sessionId)).thenAnswer((_) => messagesCompleter.future);
 
       final cubit = _buildCubit(
         sessionId: sessionId,
-        sessionApi: mockSessionService,
         connectionService: mockConnectionService,
-        sessionService: mockSlashCommandService,
+        sessionService: mockSessionService,
         notificationCanceller: mockNotificationCanceller,
         permissionRepository: mockPermissionRepository,
         failureReporter: mockFailureReporter,
@@ -297,15 +290,13 @@ void main() {
 
 SessionDetailCubit _buildCubit({
   required String sessionId,
-  required MockSessionService sessionApi,
   required MockConnectionService connectionService,
-  required MockSlashCommandService sessionService,
+  required MockSessionService sessionService,
   required MockNotificationCanceller notificationCanceller,
   required MockPermissionRepository permissionRepository,
   required MockFailureReporter failureReporter,
 }) {
   return SessionDetailCubit(
-    sessionApi,
     connectionService,
     sessionService: sessionService,
     permissionRepository: permissionRepository,
@@ -318,21 +309,21 @@ SessionDetailCubit _buildCubit({
 
 void _stubLoadApis(MockSessionService service, {required String sessionId}) {
   when(
-    () => service.getMessages(any()),
+    () => service.getMessages(sessionId: any(named: "sessionId")),
   ).thenAnswer(
     (_) => Future<ApiResponse<MessageWithPartsResponse>>.value(
       ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()])),
     ),
   );
   when(
-    () => service.getPendingQuestions(any()),
+    () => service.getPendingQuestions(sessionId: any(named: "sessionId")),
   ).thenAnswer(
     (_) => Future<ApiResponse<PendingQuestionResponse>>.value(
       ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])),
     ),
   );
   when(
-    () => service.getChildren(any()),
+    () => service.getChildren(sessionId: any(named: "sessionId")),
   ).thenAnswer(
     (_) => Future<ApiResponse<SessionListResponse>>.value(
       ApiResponse.success(const SessionListResponse(items: <Session>[])),

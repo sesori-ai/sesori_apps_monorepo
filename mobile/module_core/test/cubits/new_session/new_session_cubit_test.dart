@@ -11,11 +11,9 @@ import "../../helpers/test_helpers.dart";
 void main() {
   group("NewSessionCubit", () {
     late MockSessionService mockSessionService;
-    late MockSlashCommandService mockSlashCommandService;
-
+    
     setUp(() {
       mockSessionService = MockSessionService();
-      mockSlashCommandService = MockSlashCommandService();
 
       when(
         () => mockSessionService.listAgents(),
@@ -25,25 +23,34 @@ void main() {
           const ProviderListResponse(items: [], connectedOnly: false),
         ),
       );
-      when(() => mockSlashCommandService.listCommands(projectId: any(named: "projectId"))).thenAnswer(
+      when(() => mockSessionService.listCommands(projectId: any(named: "projectId"))).thenAnswer(
         (_) async => ApiResponse<CommandListResponse>.success(const CommandListResponse(items: <CommandInfo>[])),
       );
     });
 
     NewSessionCubit buildCubit() => NewSessionCubit(
-      sessionApi: mockSessionService,
-      sessionService: mockSlashCommandService,
+      sessionService: mockSessionService,
       projectId: "project-1",
     );
 
     blocTest<NewSessionCubit, NewSessionState>(
       "loads available commands into idle state",
       build: () {
-        when(() => mockSlashCommandService.listCommands(projectId: any(named: "projectId"))).thenAnswer(
+        when(() => mockSessionService.listCommands(projectId: any(named: "projectId"))).thenAnswer(
           (_) async => ApiResponse.success(
             const CommandListResponse(
               items: <CommandInfo>[
-                CommandInfo(name: "review", template: "/review", hints: <String>["file.dart"], provider: null),
+                CommandInfo(
+                  name: "review",
+                  template: "/review",
+                  hints: <String>["file.dart"],
+                  description: null,
+                  agent: null,
+                  model: null,
+                  provider: null,
+                  source: CommandSource.command,
+                  subtask: false,
+                ),
               ],
             ),
           ),
@@ -61,7 +68,7 @@ void main() {
       "createSession forwards dedicatedWorktree to service",
       build: () {
         when(
-          () => mockSlashCommandService.createSessionWithMessage(
+          () => mockSessionService.createSessionWithMessage(
             projectId: any(named: "projectId"),
             text: any(named: "text"),
             agent: any(named: "agent"),
@@ -87,7 +94,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSlashCommandService.createSessionWithMessage(
+          () => mockSessionService.createSessionWithMessage(
             projectId: "project-1",
             text: "hello",
             agent: null,
@@ -104,7 +111,7 @@ void main() {
       "createSession with command passes command name to service",
       build: () {
         when(
-          () => mockSlashCommandService.createSessionWithMessage(
+          () => mockSessionService.createSessionWithMessage(
             projectId: any(named: "projectId"),
             text: any(named: "text"),
             agent: any(named: "agent"),
@@ -115,8 +122,7 @@ void main() {
           ),
         ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s-command")));
         return NewSessionCubit(
-          sessionApi: mockSessionService,
-          sessionService: mockSlashCommandService,
+          sessionService: mockSessionService,
           projectId: "project-1",
         );
       },
@@ -134,7 +140,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSlashCommandService.createSessionWithMessage(
+          () => mockSessionService.createSessionWithMessage(
             projectId: "project-1",
             text: "",
             agent: null,

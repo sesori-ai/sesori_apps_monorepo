@@ -15,9 +15,9 @@ import "package:sesori_shared/sesori_shared.dart";
 
 class MockProjectService extends Mock implements ProjectService {}
 
-class MockSessionService extends Mock implements SessionApi {}
+class MockSessionApi extends Mock implements SessionApi {}
 
-class MockSlashCommandService extends Mock implements SessionService {}
+class MockSessionService extends Mock implements SessionService {}
 
 class MockFailureReporter extends Mock implements FailureReporter {}
 
@@ -119,7 +119,10 @@ CommandInfo testCommandInfo({
     template: template,
     hints: const ["Optional arguments"],
     description: "Run $name",
+    agent: null,
+    model: null,
     provider: null,
     source: CommandSource.command,
+    subtask: false,
   );
 }

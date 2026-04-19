@@ -34,9 +34,9 @@ import "package:sesori_shared/sesori_shared.dart";
 
 class MockProjectService extends Mock implements ProjectService {}
 
-class MockSessionService extends Mock implements SessionApi {}
+class MockSessionApi extends Mock implements SessionApi {}
 
-class MockSlashCommandService extends Mock implements SessionService {}
+class MockSessionService extends Mock implements SessionService {}
 
 class MockConnectionService extends Mock implements ConnectionService {
   final StreamController<void> _dataMayBeStale = StreamController<void>.broadcast();
@@ -332,8 +332,11 @@ CommandInfo testCommandInfo({
     template: template,
     hints: const ["Optional arguments"],
     description: "Run $name",
+    agent: null,
+    model: null,
     provider: null,
     source: CommandSource.command,
+    subtask: false,
   );
 }
 

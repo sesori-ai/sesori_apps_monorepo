@@ -75,8 +75,7 @@ void main() {
           sessionId: any(named: "sessionId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
@@ -95,8 +94,7 @@ void main() {
           sessionId: "session-1",
           text: "lib/main.dart",
           agent: "build",
-          providerID: "openai",
-          modelID: "gpt-4.1",
+          model: const PromptModel(providerID: "openai", modelID: "gpt-4.1"),
           command: "review",
         ),
       ).called(1);
@@ -108,8 +106,7 @@ void main() {
           sessionId: any(named: "sessionId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
@@ -128,8 +125,7 @@ void main() {
           sessionId: "session-1",
           text: "hello",
           agent: "build",
-          providerID: null,
-          modelID: null,
+          model: null,
           command: null,
         ),
       ).called(1);
@@ -141,8 +137,7 @@ void main() {
           sessionId: any(named: "sessionId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
@@ -161,8 +156,7 @@ void main() {
           sessionId: "session-1",
           text: "hello",
           agent: "build",
-          providerID: "openai",
-          modelID: "gpt-5.4",
+          model: const PromptModel(providerID: "openai", modelID: "gpt-5.4"),
           command: null,
         ),
       ).called(1);

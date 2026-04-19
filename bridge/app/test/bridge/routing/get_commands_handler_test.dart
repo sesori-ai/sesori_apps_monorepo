@@ -70,6 +70,7 @@ void main() {
             items: [
               CommandInfo(
                 name: "review",
+                template: null,
                 hints: ["file.dart"],
                 description: "Review changes",
                 agent: "reviewer",

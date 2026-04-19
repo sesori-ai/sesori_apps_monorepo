@@ -23,6 +23,7 @@ void main() {
         equals(
           const CommandInfo(
             name: "review",
+            template: null,
             hints: ["file.dart"],
             description: "Review changes",
             agent: "reviewer",

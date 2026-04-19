@@ -505,10 +505,10 @@ void main() {
       final session = _testSessionWithPullRequest();
 
       when(
-        () => mockSessionService.listSessions(projectId: session.projectID),
+        () => mockProjectService.listSessions(projectId: session.projectID),
       ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [session])));
 
-    getIt.registerSingleton<SessionApi>(mockSessionService);
+    getIt.registerSingleton<SessionService>(mockSessionService);
       getIt.registerSingleton<ProjectService>(mockProjectService);
       getIt.registerSingleton<ConnectionService>(mockConnectionService);
       getIt.registerSingleton<SseEventRepository>(mockSseEventRepository);
