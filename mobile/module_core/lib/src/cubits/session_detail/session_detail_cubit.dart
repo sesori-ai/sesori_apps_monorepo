@@ -686,7 +686,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     unawaited(_drainQueuedMessages());
   }
 
-  Future<void> sendMessage({required String text, String? command}) async {
+  Future<void> sendMessage({required String text, required String? command}) async {
     final current = state;
     final trimmed = text.trim();
     final normalizedCommand = _normalizeCommand(command);

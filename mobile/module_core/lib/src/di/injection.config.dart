@@ -15,7 +15,7 @@ import 'package:sesori_auth/sesori_auth.dart' as _i442;
 import 'package:sesori_dart_core/src/api/client/relay_http_client.dart'
     as _i857;
 import 'package:sesori_dart_core/src/api/permission_api.dart' as _i231;
-import 'package:sesori_dart_core/src/api/slash_command_api.dart' as _i771;
+import 'package:sesori_dart_core/src/api/session_api.dart' as _i603;
 import 'package:sesori_dart_core/src/capabilities/notifications/notification_api_client.dart'
     as _i276;
 import 'package:sesori_dart_core/src/capabilities/notifications/notification_preferences_service.dart'
@@ -35,8 +35,8 @@ import 'package:sesori_dart_core/src/capabilities/voice/voice_api.dart'
 import 'package:sesori_dart_core/src/platform/lifecycle_source.dart' as _i903;
 import 'package:sesori_dart_core/src/repositories/permission_repository.dart'
     as _i679;
-import 'package:sesori_dart_core/src/repositories/slash_command_repository.dart'
-    as _i783;
+import 'package:sesori_dart_core/src/repositories/session_repository.dart'
+    as _i7;
 import 'package:sesori_dart_core/src/routing/auth_redirect_service.dart'
     as _i436;
 import 'package:sesori_dart_core/src/services/slash_command_service.dart'
@@ -84,8 +84,8 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i231.PermissionApi>(
       () => _i231.PermissionApi(client: gh<_i857.RelayHttpApiClient>()),
     );
-    gh.lazySingleton<_i771.SlashCommandApi>(
-      () => _i771.SlashCommandApi(client: gh<_i857.RelayHttpApiClient>()),
+    gh.lazySingleton<_i603.SessionApi>(
+      () => _i603.SessionApi(client: gh<_i857.RelayHttpApiClient>()),
     );
     gh.lazySingleton<_i436.AuthRedirectService>(
       () => _i436.AuthRedirectService(
@@ -101,8 +101,8 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i12.SessionService>(
       () => _i12.SessionService(gh<_i857.RelayHttpApiClient>()),
     );
-    gh.lazySingleton<_i783.SlashCommandRepository>(
-      () => _i783.SlashCommandRepository(api: gh<_i771.SlashCommandApi>()),
+    gh.lazySingleton<_i7.SessionRepository>(
+      () => _i7.SessionRepository(api: gh<_i603.SessionApi>()),
     );
     gh.lazySingleton<_i569.SseEventRepository>(
       () => _i569.SseEventRepository(
@@ -111,9 +111,7 @@ extension GetItInjectableX on _i174.GetIt {
       ),
     );
     gh.lazySingleton<_i124.SlashCommandService>(
-      () => _i124.SlashCommandService(
-        repository: gh<_i783.SlashCommandRepository>(),
-      ),
+      () => _i124.SlashCommandService(repository: gh<_i7.SessionRepository>()),
     );
     gh.lazySingleton<_i679.PermissionRepository>(
       () => _i679.PermissionRepository(api: gh<_i231.PermissionApi>()),

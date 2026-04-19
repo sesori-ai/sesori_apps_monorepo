@@ -182,7 +182,7 @@ void main() {
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
-        await cubit.sendMessage(text: "  hi  ");
+        await cubit.sendMessage(text: "  hi  ", command: null);
       },
       expect: () => [
         isA<SessionDetailLoaded>(),
@@ -256,7 +256,7 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 10));
 
         // Send message while busy — should send immediately (not queue).
-        await cubit.sendMessage(text: "hello");
+        await cubit.sendMessage(text: "hello", command: null);
       },
       expect: () => [
         isA<SessionDetailLoaded>(),
@@ -764,7 +764,7 @@ void main() {
       },
       act: (cubit) async {
         await _awaitLoaded(cubit);
-        await cubit.sendMessage(text: "hello");
+        await cubit.sendMessage(text: "hello", command: null);
       },
       expect: () => [
         isA<SessionDetailLoaded>(),
@@ -809,7 +809,7 @@ void main() {
       },
       act: (cubit) async {
         await _awaitLoaded(cubit);
-        await cubit.sendMessage(text: "hello");
+        await cubit.sendMessage(text: "hello", command: null);
       },
       expect: () => [
         isA<SessionDetailLoaded>(),
@@ -860,7 +860,7 @@ void main() {
       },
       act: (cubit) async {
         await _awaitLoaded(cubit);
-        await cubit.sendMessage(text: "hello");
+        await cubit.sendMessage(text: "hello", command: null);
       },
       expect: () => [
         isA<SessionDetailLoaded>(),
@@ -920,7 +920,7 @@ void main() {
         );
 
         // Send message while disconnected — queued.
-        await cubit.sendMessage(text: "queued msg");
+        await cubit.sendMessage(text: "queued msg", command: null);
 
         // Session becomes idle — but connection is lost, so queue stays.
         sessionEvents.add(
@@ -983,7 +983,7 @@ void main() {
         );
 
         // Send message — queued because disconnected.
-        await cubit.sendMessage(text: "retry me");
+        await cubit.sendMessage(text: "retry me", command: null);
 
         // Simulate reconnection.
         when(() => mockConnectionService.currentStatus).thenReturn(
@@ -1125,7 +1125,7 @@ void main() {
           config: ServerConnectionConfig(relayHost: "fake.example.com"),
         ),
       );
-      await cubit.sendMessage(text: "first");
+      await cubit.sendMessage(text: "first", command: null);
 
       when(() => mockConnectionService.currentStatus).thenReturn(
         ConnectionStatus.connected(
@@ -1141,7 +1141,7 @@ void main() {
       );
 
       await firstSendStarted.future;
-      await cubit.sendMessage(text: "second");
+      await cubit.sendMessage(text: "second", command: null);
 
       expect(sentTexts, equals(["first"]));
       expect(
@@ -1179,8 +1179,8 @@ void main() {
         );
 
         // Queue two messages while disconnected.
-        await cubit.sendMessage(text: "first");
-        await cubit.sendMessage(text: "second");
+        await cubit.sendMessage(text: "first", command: null);
+        await cubit.sendMessage(text: "second", command: null);
 
         // Simulate reconnection.
         when(() => mockConnectionService.currentStatus).thenReturn(
@@ -1261,7 +1261,7 @@ void main() {
         );
 
         // Queue a message.
-        await cubit.sendMessage(text: "will fail");
+        await cubit.sendMessage(text: "will fail", command: null);
 
         // Simulate reconnection — triggers drain, but send will fail.
         when(() => mockConnectionService.currentStatus).thenReturn(

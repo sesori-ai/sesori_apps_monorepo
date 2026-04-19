@@ -77,6 +77,7 @@ void main() {
         await cubit.createSession(
           text: "hello",
           dedicatedWorktree: false,
+          command: null,
         );
       },
       expect: () => [

@@ -2,13 +2,13 @@ import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../repositories/slash_command_repository.dart";
+import "../repositories/session_repository.dart";
 
 @lazySingleton
 class SlashCommandService {
-  final SlashCommandRepository _repository;
+  final SessionRepository _repository;
 
-  SlashCommandService({required SlashCommandRepository repository}) : _repository = repository;
+  SlashCommandService({required SessionRepository repository}) : _repository = repository;
 
   Future<ApiResponse<CommandListResponse>> listCommands({required String? projectId}) {
     final normalizedProjectId = projectId?.trim();

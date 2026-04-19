@@ -5,10 +5,10 @@ import "package:sesori_shared/sesori_shared.dart";
 import "client/relay_http_client.dart";
 
 @lazySingleton
-class SlashCommandApi {
+class SessionApi {
   final RelayHttpApiClient _client;
 
-  SlashCommandApi({required RelayHttpApiClient client}) : _client = client;
+  SessionApi({required RelayHttpApiClient client}) : _client = client;
 
   Future<ApiResponse<CommandListResponse>> listCommands({required String projectId}) {
     return _client.post(

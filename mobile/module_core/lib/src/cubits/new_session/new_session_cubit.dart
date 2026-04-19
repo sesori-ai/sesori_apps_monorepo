@@ -180,7 +180,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   Future<void> createSession({
     required String text,
     required bool dedicatedWorktree,
-    String? command,
+    required String? command,
   }) async {
     if (state is NewSessionSending) return;
 

@@ -1,19 +1,19 @@
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
-import "package:sesori_dart_core/src/repositories/slash_command_repository.dart";
+import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_dart_core/src/services/slash_command_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class MockSlashCommandRepository extends Mock implements SlashCommandRepository {}
+class MockSessionRepository extends Mock implements SessionRepository {}
 
 void main() {
   group("SlashCommandService", () {
-    late MockSlashCommandRepository mockRepository;
+    late MockSessionRepository mockRepository;
     late SlashCommandService service;
 
     setUp(() {
-      mockRepository = MockSlashCommandRepository();
+      mockRepository = MockSessionRepository();
       service = SlashCommandService(repository: mockRepository);
     });
 
