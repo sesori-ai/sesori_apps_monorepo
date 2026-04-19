@@ -1177,8 +1177,9 @@ void main() {
         await Future<void>.delayed(Duration.zero);
       },
       skip: 1,
-      // State is deduplicated (same data), so no new emissions — verify call count instead.
-      expect: () => <SessionListState>[],
+      expect: () => [
+        isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions count after refresh", 1),
+      ],
       verify: (_) {
         // Should have been called only once despite two ConnectionConnected events.
         verify(() => mockProjectService.listSessions(projectId: projectId)).called(1);
