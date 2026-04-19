@@ -19,6 +19,7 @@ extension PluginCommandMapping on PluginCommand {
   /// preventing relay timeouts and WebSocket frame issues.
   CommandInfo toSharedCommandInfo() => CommandInfo(
     name: name,
+    template: null, // template,
     hints: hints,
     description: description,
     agent: agent,

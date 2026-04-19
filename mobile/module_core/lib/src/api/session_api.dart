@@ -31,14 +31,6 @@ class SessionApi {
     );
   }
 
-  Future<ApiResponse<SessionListResponse>> listSessions({required String projectId}) {
-    return _client.post(
-      "/sessions",
-      fromJson: SessionListResponse.fromJson,
-      body: SessionListRequest(projectId: projectId, start: null, limit: null),
-    );
-  }
-
   Future<ApiResponse<CommandListResponse>> listCommands({required String projectId}) {
     return _client.post(
       "/command",
@@ -73,8 +65,7 @@ class SessionApi {
     required String sessionId,
     required String text,
     required String? agent,
-    required String? providerID,
-    required String? modelID,
+    required PromptModel? model,
     required String? command,
   }) {
     return _client.post(
@@ -84,7 +75,7 @@ class SessionApi {
         sessionId: sessionId,
         parts: [PromptPart.text(text: text)],
         agent: agent,
-        model: providerID != null && modelID != null ? PromptModel(providerID: providerID, modelID: modelID) : null,
+        model: model,
         command: command,
       ),
     );
@@ -112,7 +103,7 @@ class SessionApi {
     return response;
   }
 
-  Future<ApiResponse<Session>> unarchiveSession(String sessionId) {
+  Future<ApiResponse<Session>> unarchiveSession({required String sessionId}) {
     return _client.patch(
       "/session/update/archive",
       fromJson: Session.fromJson,
@@ -172,7 +163,7 @@ class SessionApi {
     }
   }
 
-  Future<ApiResponse<SessionListResponse>> getChildren(String sessionId) {
+  Future<ApiResponse<SessionListResponse>> getChildren({required String sessionId}) {
     return _client.post(
       "/session/children",
       fromJson: SessionListResponse.fromJson,
@@ -195,7 +186,7 @@ class SessionApi {
     );
   }
 
-  Future<ApiResponse<MessageWithPartsResponse>> getMessages(String sessionId) {
+  Future<ApiResponse<MessageWithPartsResponse>> getMessages({required String sessionId}) {
     return _client.post(
       "/session/messages",
       fromJson: MessageWithPartsResponse.fromJson,
@@ -203,7 +194,7 @@ class SessionApi {
     );
   }
 
-  Future<ApiResponse<SuccessEmptyResponse>> abortSession(String sessionId) {
+  Future<ApiResponse<SuccessEmptyResponse>> abortSession({required String sessionId}) {
     return _client.post(
       "/session/abort",
       fromJson: SuccessEmptyResponse.fromJson,
@@ -211,7 +202,7 @@ class SessionApi {
     );
   }
 
-  Future<ApiResponse<PendingQuestionResponse>> getPendingQuestions(String sessionId) {
+  Future<ApiResponse<PendingQuestionResponse>> getPendingQuestions({required String sessionId}) {
     return _client.post(
       "/session/questions",
       fromJson: PendingQuestionResponse.fromJson,
@@ -231,7 +222,7 @@ class SessionApi {
     );
   }
 
-  Future<ApiResponse<void>> rejectQuestion(String requestId) {
+  Future<ApiResponse<void>> rejectQuestion({required String requestId}) {
     return _client.post(
       "/question/reject",
       fromJson: SuccessEmptyResponse.fromJson,

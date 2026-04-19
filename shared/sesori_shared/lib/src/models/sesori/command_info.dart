@@ -16,14 +16,14 @@ enum CommandSource {
 sealed class CommandInfo with _$CommandInfo {
   const factory CommandInfo({
     required String name,
-    String? template,
-    List<String>? hints,
-    String? description,
-    String? agent,
-    String? model,
+    required String? template,
+    required List<String>? hints,
+    required String? description,
+    required String? agent,
+    required String? model,
     required String? provider,
-    @JsonKey(unknownEnumValue: CommandSource.unknown) CommandSource? source,
-    bool? subtask,
+    @JsonKey(unknownEnumValue: CommandSource.unknown) required CommandSource? source,
+    required bool? subtask,
   }) = _CommandInfo;
 
   factory CommandInfo.fromJson(Map<String, dynamic> json) => _$CommandInfoFromJson(json);

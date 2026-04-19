@@ -77,6 +77,14 @@ class ProjectService {
     );
   }
 
+  Future<ApiResponse<SessionListResponse>> listSessions({required String projectId}) {
+    return _client.post(
+      "/sessions",
+      fromJson: SessionListResponse.fromJson,
+      body: SessionListRequest(projectId: projectId, start: null, limit: null),
+    );
+  }
+
   /// Renames the project with the given [projectId] to [name].
   Future<ApiResponse<Project>> renameProject({
     required String projectId,

@@ -2,21 +2,17 @@ import "package:bloc/bloc.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../../api/session_api.dart";
 import "../../capabilities/session/session_service.dart";
 import "new_session_state.dart";
 
 class NewSessionCubit extends Cubit<NewSessionState> {
-  final SessionApi _sessionApi;
   final SessionService _sessionService;
   final String _projectId;
 
   NewSessionCubit({
-    required SessionApi sessionApi,
     required SessionService sessionService,
     required String projectId,
-  }) : _sessionApi = sessionApi,
-       _sessionService = sessionService,
+  }) : _sessionService = sessionService,
        _projectId = projectId,
        super(
          const NewSessionState.idle(
@@ -34,11 +30,11 @@ class NewSessionCubit extends Cubit<NewSessionState> {
 
   Future<void> _loadComposerData() async {
     try {
-        final (agentsResponse, providersResponse, commandsResponse) = await wait3(
-          _sessionApi.listAgents(),
-          _sessionApi.listProviders(),
-          _sessionService.listCommands(projectId: _projectId),
-        );
+      final (agentsResponse, providersResponse, commandsResponse) = await wait3(
+        _sessionService.listAgents(),
+        _sessionService.listProviders(),
+        _sessionService.listCommands(projectId: _projectId),
+      );
 
       if (isClosed) return;
 

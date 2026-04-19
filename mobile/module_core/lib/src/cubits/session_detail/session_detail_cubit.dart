@@ -5,7 +5,6 @@ import "package:collection/collection.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../../api/session_api.dart";
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/server_connection/models/sse_event.dart";
@@ -19,7 +18,6 @@ import "session_detail_state.dart";
 import "streaming_text_buffer.dart";
 
 class SessionDetailCubit extends Cubit<SessionDetailState> {
-  final SessionApi _sessionApi;
   final SessionService _sessionService;
   final ConnectionService _connectionService;
   final PermissionRepository _permissionRepository;
@@ -50,7 +48,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
   SessionDetailCubit(
-    SessionApi sessionApi,
     ConnectionService connectionService, {
     required SessionService sessionService,
     required PermissionRepository permissionRepository,
@@ -58,15 +55,14 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     required String? projectId,
     required NotificationCanceller notificationCanceller,
     required FailureReporter failureReporter,
-  }) : _sessionApi = sessionApi,
-       _sessionService = sessionService,
+  }) : _sessionService = sessionService,
        _connectionService = connectionService,
        _permissionRepository = permissionRepository,
        _sessionId = sessionId,
-        _projectId = projectId,
-        _notificationCanceller = notificationCanceller,
-        _failureReporter = failureReporter,
-        super(const SessionDetailState.loading()) {
+       _projectId = projectId,
+       _notificationCanceller = notificationCanceller,
+       _failureReporter = failureReporter,
+       super(const SessionDetailState.loading()) {
     _streamingBuffer = StreamingTextBuffer(onFlush: _emitStreamingSnapshot);
     _eventSubscription = _connectionService.sessionEvents(_sessionId).listen(_handleEvent);
     _globalEventSubscription = _connectionService.events.listen(_handleGlobalEvent);
@@ -271,13 +267,13 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       providersResponse,
       commandsResponse,
     ) = await (
-        _sessionApi.getMessages(_sessionId),
-        _sessionApi.getPendingQuestions(_sessionId),
-        _sessionApi.getChildren(_sessionId),
-        _sessionApi.getSessionStatuses(),
-        _sessionApi.listAgents(),
-        _sessionApi.listProviders(),
-        _sessionService.listCommands(projectId: _projectId),
+      _sessionService.getMessages(sessionId: _sessionId),
+      _sessionService.getPendingQuestions(sessionId: _sessionId),
+      _sessionService.getChildren(sessionId: _sessionId),
+      _sessionService.getSessionStatuses(),
+      _sessionService.listAgents(),
+      _sessionService.listProviders(),
+      _sessionService.listCommands(projectId: _projectId),
     ).wait;
 
     final messages = switch (messagesResponse) {
@@ -876,7 +872,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       category: NotificationCategory.aiInteraction,
     );
     try {
-    await _sessionApi.replyToQuestion(requestId: requestId, sessionId: sessionId, answers: answers);
+      await _sessionService.replyToQuestion(requestId: requestId, sessionId: sessionId, answers: answers);
       return true;
     } on Object catch (e, st) {
       loge("Failed to reply to question $requestId", e, st);
@@ -892,7 +888,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       category: NotificationCategory.aiInteraction,
     );
     try {
-    await _sessionApi.rejectQuestion(requestId);
+      await _sessionService.rejectQuestion(requestId: requestId);
       return true;
     } on Object catch (e, st) {
       loge("Failed to reject question $requestId", e, st);
@@ -964,14 +960,14 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   Future<void> abort() async {
     try {
       final current = state;
-    final futures = <Future<void>>[_sessionApi.abortSession(_sessionId)];
+      final futures = <Future<void>>[_sessionService.abortSession(sessionId: _sessionId)];
 
       // Also abort any active child sessions (busy or retrying).
       if (current is SessionDetailLoaded) {
         for (final entry in current.childStatuses.entries) {
           final status = entry.value;
           if (status is SessionStatusBusy || status is SessionStatusRetry) {
-      futures.add(_sessionApi.abortSession(entry.key));
+            futures.add(_sessionService.abortSession(sessionId: entry.key));
           }
         }
       }

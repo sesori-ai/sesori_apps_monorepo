@@ -23,7 +23,6 @@ class NewSessionScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => NewSessionCubit(
-        sessionApi: getIt<SessionApi>(),
         sessionService: getIt<SessionService>(),
         projectId: projectId,
       ),
