@@ -133,7 +133,11 @@ Future<void> _detachViewport(WidgetTester tester) async {
 }
 
 Future<void> _detachViewportWithoutDrag(WidgetTester tester) async {
-  _position(tester).jumpTo(500);
+  final position = _position(tester);
+  final target = position.maxScrollExtent > 40 ? position.maxScrollExtent / 2 : position.maxScrollExtent;
+
+  expect(target, greaterThan(20));
+  position.jumpTo(target);
   await tester.pump();
   await tester.pump();
 
