@@ -18,6 +18,8 @@ export "src/models/sesori/active_session.dart";
 export "src/models/sesori/agent_info.dart";
 export "src/models/sesori/agent_mode.dart";
 export "src/models/sesori/base_branch_response.dart";
+export "src/models/sesori/command_info.dart";
+export "src/models/sesori/command_list_response.dart";
 export "src/models/sesori/create_session_request.dart";
 export "src/models/sesori/delete_session_request.dart";
 export "src/models/sesori/device_platform.dart";

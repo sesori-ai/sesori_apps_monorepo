@@ -12,15 +12,15 @@ void main() {
   setUpAll(registerAllFallbackValues);
 
   group("DiffCubit", () {
-    late MockSessionService mockSessionService;
+    late MockSessionApi mockSessionApi;
     const sessionId = "session-1";
 
     setUp(() {
-      mockSessionService = MockSessionService();
+      mockSessionApi = MockSessionApi();
     });
 
     DiffCubit buildCubit() => DiffCubit(
-      service: mockSessionService,
+      sessionApi: mockSessionApi,
       sessionId: sessionId,
     );
 
@@ -41,7 +41,7 @@ void main() {
       "constructor: emits DiffStateLoaded with files after successful fetch",
       build: () {
         when(
-          () => mockSessionService.getSessionDiffs(sessionId: sessionId),
+          () => mockSessionApi.getSessionDiffs(sessionId: sessionId),
         ).thenAnswer((_) async => ApiResponse.success(SessionDiffsResponse(diffs: [testFileDiff()])));
         return buildCubit();
       },
@@ -58,7 +58,7 @@ void main() {
       "constructor: emits DiffStateFailed when API returns error",
       build: () {
         when(
-          () => mockSessionService.getSessionDiffs(sessionId: sessionId),
+          () => mockSessionApi.getSessionDiffs(sessionId: sessionId),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
         return buildCubit();
       },
@@ -73,7 +73,7 @@ void main() {
       "constructor: emits DiffStateFailed when service throws",
       build: () {
         when(
-          () => mockSessionService.getSessionDiffs(sessionId: sessionId),
+          () => mockSessionApi.getSessionDiffs(sessionId: sessionId),
         ).thenAnswer((_) => Future.error(Exception("network error")));
         return buildCubit();
       },
@@ -88,7 +88,7 @@ void main() {
       "constructor: emits DiffStateLoaded with empty list when no diffs",
       build: () {
         when(
-          () => mockSessionService.getSessionDiffs(sessionId: sessionId),
+          () => mockSessionApi.getSessionDiffs(sessionId: sessionId),
         ).thenAnswer((_) async => ApiResponse.success(const SessionDiffsResponse(diffs: [])));
         return buildCubit();
       },
@@ -105,14 +105,14 @@ void main() {
       "refresh: emits loading then loaded with fresh data",
       build: () {
         when(
-          () => mockSessionService.getSessionDiffs(sessionId: sessionId),
+          () => mockSessionApi.getSessionDiffs(sessionId: sessionId),
         ).thenAnswer((_) async => ApiResponse.success(SessionDiffsResponse(diffs: [testFileDiff()])));
         return buildCubit();
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
         when(
-          () => mockSessionService.getSessionDiffs(sessionId: sessionId),
+          () => mockSessionApi.getSessionDiffs(sessionId: sessionId),
         ).thenAnswer(
           (_) async => ApiResponse.success(
             SessionDiffsResponse(
@@ -140,14 +140,14 @@ void main() {
       "refresh: re-fetches after failure and emits loaded on success",
       build: () {
         when(
-          () => mockSessionService.getSessionDiffs(sessionId: sessionId),
+          () => mockSessionApi.getSessionDiffs(sessionId: sessionId),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
         return buildCubit();
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
         when(
-          () => mockSessionService.getSessionDiffs(sessionId: sessionId),
+          () => mockSessionApi.getSessionDiffs(sessionId: sessionId),
         ).thenAnswer((_) async => ApiResponse.success(SessionDiffsResponse(diffs: [testFileDiff()])));
         await cubit.refresh();
       },

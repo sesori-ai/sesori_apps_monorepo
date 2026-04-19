@@ -22,14 +22,17 @@ import "repositories/project_repository.dart";
 import "repositories/provider_repository.dart";
 import "repositories/session_repository.dart";
 import "routing/abort_session_handler.dart";
+import "routing/get_commands_handler.dart";
 import "routing/get_session_diffs_handler.dart";
 import "routing/request_router.dart";
+import "routing/send_prompt_handler.dart";
 import "services/pr_sync_service.dart";
 import "services/session_abort_service.dart";
 import "services/session_archive_service.dart";
 import "services/session_creation_service.dart";
 import "services/session_event_enrichment_service.dart";
 import "services/session_persistence_service.dart";
+import "services/session_prompt_service.dart";
 import "services/worktree_service.dart";
 import "sse/bridge_event_mapper.dart";
 import "sse/sse_manager.dart";
@@ -201,23 +204,29 @@ class OrchestratorSession {
        _bytesSentController = bytesSentController,
        _failureReporter = failureReporter,
        _prSyncService = prSyncService,
-       _sessionAbortService = sessionAbortService,
-       _router = RequestRouter(
-         plugin: plugin,
-         sessionRepository: sessionRepository,
-         abortSessionHandler: AbortSessionHandler(sessionAbortService: sessionAbortService),
-         sessionCreationService: sessionCreationService,
-         sessionArchiveService: sessionArchiveService,
-         prSyncService: prSyncService,
-         projectRepository: projectRepository,
-         providerRepository: ProviderRepository(plugin: plugin),
-         permissionRepository: permissionRepository,
-         sessionPersistenceService: sessionPersistenceService,
-         worktreeService: worktreeService,
-         sessionDiffsHandler: GetSessionDiffsHandler(
+        _sessionAbortService = sessionAbortService,
+         _router = RequestRouter(
+            plugin: plugin,
+            getCommandsHandler: GetCommandsHandler(
+              sessionRepository: sessionRepository,
+            ),
            sessionRepository: sessionRepository,
-           processRunner: ProcessRunner(),
-         ),
+           abortSessionHandler: AbortSessionHandler(sessionAbortService: sessionAbortService),
+           sessionCreationService: sessionCreationService,
+           sessionArchiveService: sessionArchiveService,
+           sendPromptHandler: SendPromptHandler(
+             sessionPromptService: SessionPromptService(sessionRepository: sessionRepository),
+           ),
+           prSyncService: prSyncService,
+           projectRepository: projectRepository,
+           providerRepository: ProviderRepository(plugin: plugin),
+          permissionRepository: permissionRepository,
+          sessionPersistenceService: sessionPersistenceService,
+          worktreeService: worktreeService,
+          sessionDiffsHandler: GetSessionDiffsHandler(
+            sessionRepository: sessionRepository,
+            processRunner: ProcessRunner(),
+          ),
        ),
        _mapper = BridgeEventMapper(
          plugin: plugin,

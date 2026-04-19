@@ -486,6 +486,18 @@ class _ThrowingSummaryPlugin implements BridgePlugin {
   }
 
   @override
+  Future<List<PluginCommand>> getCommands({required String? projectId}) async => [];
+
+  @override
+  Future<void> sendCommand({
+    required String sessionId,
+    required String command,
+    required String arguments,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) async {}
+
+  @override
   Future<PluginProvidersResult> getProviders({
     required bool connectedOnly,
   }) async => const PluginProvidersResult(providers: []);

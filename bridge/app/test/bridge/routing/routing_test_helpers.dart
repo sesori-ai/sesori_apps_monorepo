@@ -8,7 +8,9 @@ import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/daos/session_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
+import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_command_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_session_mapper.dart";
+import "package:sesori_bridge/src/bridge/repositories/mappers/prompt_part_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/pull_request_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
@@ -43,6 +45,7 @@ class FakeBridgePlugin implements BridgePlugin {
 
   List<PluginProject> projectsResult = [];
   List<PluginSession> sessionsResult = [];
+  List<PluginCommand> commandsResult = [];
   List<PluginMessageWithParts> messagesResult = [];
   PluginProvidersResult providersResult = const PluginProvidersResult(providers: []);
   PluginSession? createSessionResult;
@@ -59,6 +62,7 @@ class FakeBridgePlugin implements BridgePlugin {
   String? lastGetSessionsWorktree;
   int? lastGetSessionsStart;
   int? lastGetSessionsLimit;
+  String? lastGetCommandsProjectId;
 
   String? lastGetMessagesSessionId;
 
@@ -80,6 +84,11 @@ class FakeBridgePlugin implements BridgePlugin {
   List<PluginPromptPart>? lastSendPromptParts;
   String? lastSendPromptAgent;
   ({String providerID, String modelID})? lastSendPromptModel;
+  String? lastSendCommandSessionId;
+  String? lastSendCommand;
+  String? lastSendCommandArguments;
+  String? lastSendCommandAgent;
+  ({String providerID, String modelID})? lastSendCommandModel;
   String? lastAbortSessionId;
   String? lastReplyQuestionId;
   String? lastReplySessionId;
@@ -136,6 +145,12 @@ class FakeBridgePlugin implements BridgePlugin {
     lastGetSessionsStart = start;
     lastGetSessionsLimit = limit;
     return sessionsResult;
+  }
+
+  @override
+  Future<List<PluginCommand>> getCommands({required String? projectId}) async {
+    lastGetCommandsProjectId = projectId;
+    return commandsResult;
   }
 
   @override
@@ -243,6 +258,21 @@ class FakeBridgePlugin implements BridgePlugin {
     lastSendPromptParts = parts;
     lastSendPromptAgent = agent;
     lastSendPromptModel = model;
+  }
+
+  @override
+  Future<void> sendCommand({
+    required String sessionId,
+    required String command,
+    required String arguments,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) async {
+    lastSendCommandSessionId = sessionId;
+    lastSendCommand = command;
+    lastSendCommandArguments = arguments;
+    lastSendCommandAgent = agent;
+    lastSendCommandModel = model;
   }
 
   @override
@@ -628,6 +658,26 @@ class _NoopSessionRepository implements SessionRepository {
   Future<void> notifySessionArchived({required String sessionId}) async {}
 
   @override
+  Future<void> sendCommand({
+    required String sessionId,
+    required String command,
+    required String arguments,
+    required String? agent,
+    required PromptModel? model,
+  }) async {}
+
+  @override
+  Future<CommandListResponse> getCommands({required String? projectId}) async => const CommandListResponse(items: []);
+
+  @override
+  Future<void> sendPrompt({
+    required String sessionId,
+    required List<PromptPart> parts,
+    required String? agent,
+    required PromptModel? model,
+  }) async {}
+
+  @override
   Future<Session> renameSession({required String sessionId, required String title}) async => const Session(
     id: "",
     projectID: "",
@@ -825,6 +875,55 @@ class FakeSessionRepository implements SessionRepository {
 
   @override
   Future<void> notifySessionArchived({required String sessionId}) async {}
+
+  @override
+  Future<void> sendCommand({
+    required String sessionId,
+    required String command,
+    required String arguments,
+    required String? agent,
+    required PromptModel? model,
+  }) async {
+    await _plugin.sendCommand(
+      sessionId: sessionId,
+      command: command,
+      arguments: arguments,
+      agent: agent,
+      model: switch (model) {
+        PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
+        null => null,
+      },
+    );
+  }
+
+  @override
+  Future<CommandListResponse> getCommands({required String? projectId}) async {
+    final normalizedProjectId = projectId?.trim();
+    final commands = await _plugin.getCommands(
+      projectId: normalizedProjectId == null || normalizedProjectId.isEmpty ? null : normalizedProjectId,
+    );
+    return CommandListResponse(
+      items: commands.map((command) => command.toSharedCommandInfo()).toList(growable: false),
+    );
+  }
+
+  @override
+  Future<void> sendPrompt({
+    required String sessionId,
+    required List<PromptPart> parts,
+    required String? agent,
+    required PromptModel? model,
+  }) async {
+    await _plugin.sendPrompt(
+      sessionId: sessionId,
+      parts: parts.map((part) => part.toPlugin()).toList(growable: false),
+      agent: agent,
+      model: switch (model) {
+        PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
+        null => null,
+      },
+    );
+  }
 
   @override
   Future<Session> renameSession({required String sessionId, required String title}) async => const Session(

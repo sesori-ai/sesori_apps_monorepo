@@ -26,13 +26,15 @@ class NewSessionScreen extends StatelessWidget {
         sessionService: getIt<SessionService>(),
         projectId: projectId,
       ),
-      child: const _NewSessionBody(),
+      child: _NewSessionBody(projectId: projectId),
     );
   }
 }
 
 class _NewSessionBody extends StatefulWidget {
-  const _NewSessionBody();
+  final String projectId;
+
+  const _NewSessionBody({required this.projectId});
 
   @override
   State<_NewSessionBody> createState() => _NewSessionBodyState();
@@ -66,21 +68,8 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     );
   }
 
-  Widget? _buildHeader(NewSessionState state) {
-    final data = state.agentModelData;
-    final selectedAgent = data?.agent;
-    final agentButtons = data != null && data.agents.isNotEmpty && selectedAgent != null
-        ? AgentModelButtons(
-            providers: data.providers,
-            selectedAgent: selectedAgent,
-            selectedProviderID: data.providerID ?? "",
-            selectedModelID: data.modelID ?? "",
-            onAgentTap: () => _openAgentPicker(data),
-            onModelTap: () => _openModelPicker(data),
-          )
-        : null;
-
-    final errorBanner = switch (state) {
+  Widget? _buildErrorBanner(NewSessionState state) {
+    return switch (state) {
       NewSessionError(:final message) => Padding(
         padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 12, 4),
         child: Row(
@@ -98,12 +87,20 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
       NewSessionSending() => null,
       NewSessionCreated() => null,
     };
+  }
 
-    if (agentButtons == null && errorBanner == null) return null;
+  Widget? _buildComposerHeader(NewSessionState state) {
+    final data = state.agentModelData;
+    final selectedAgent = data?.agent;
+    if (data == null || data.agents.isEmpty || selectedAgent == null) return null;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [agentButtons, errorBanner].whereType<Widget>().toList(),
+    return AgentModelButtons(
+      providers: data.providers,
+      selectedAgent: selectedAgent,
+      selectedProviderID: data.providerID ?? "",
+      selectedModelID: data.modelID ?? "",
+      onAgentTap: () => _openAgentPicker(data),
+      onModelTap: () => _openModelPicker(data),
     );
   }
 
@@ -119,7 +116,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
           _dismissScreen();
           context.pushRoute(
             AppRoute.sessionDetail(
-              projectId: session.projectID,
+              projectId: widget.projectId,
               sessionId: session.id,
               sessionTitle: session.title ?? "",
               readOnly: false,
@@ -154,14 +151,20 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
             ),
             PromptInput(
               isBusy: state is NewSessionSending,
-              onSend: (text) {
-                context.read<NewSessionCubit>().createSessionWithMessage(
+              onSend: (String text, String? command) {
+                context.read<NewSessionCubit>().createSession(
                   text: text,
+                  command: command,
                   dedicatedWorktree: _dedicatedWorktree,
                 );
               },
               onAbort: _dismissScreen,
-              header: _buildHeader(state),
+              header: _buildErrorBanner(state),
+              composerHeader: _buildComposerHeader(state),
+              availableCommands: state.agentModelData?.commands ?? const [],
+              stagedCommand: state.agentModelData?.stagedCommand,
+              onCommandSelected: context.read<NewSessionCubit>().stageCommand,
+              onCommandCleared: context.read<NewSessionCubit>().clearStagedCommand,
             ),
           ],
         ),

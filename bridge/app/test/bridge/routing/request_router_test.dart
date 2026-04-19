@@ -10,12 +10,15 @@ import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.da
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/abort_session_handler.dart";
+import "package:sesori_bridge/src/bridge/routing/get_commands_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/get_session_diffs_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/request_router.dart";
+import "package:sesori_bridge/src/bridge/routing/send_prompt_handler.dart";
 import "package:sesori_bridge/src/bridge/services/session_abort_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_archive_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_prompt_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -76,12 +79,18 @@ void main() {
       );
       router = RequestRouter(
         plugin: plugin,
+        getCommandsHandler: GetCommandsHandler(
+          sessionRepository: sessionRepository,
+        ),
         sessionRepository: sessionRepository,
         abortSessionHandler: AbortSessionHandler(
           sessionAbortService: SessionAbortService(sessionRepository: sessionRepository),
         ),
         sessionCreationService: sessionCreationService,
         sessionArchiveService: sessionArchiveService,
+        sendPromptHandler: SendPromptHandler(
+          sessionPromptService: SessionPromptService(sessionRepository: sessionRepository),
+        ),
         prSyncService: FakePrSyncService(),
         projectRepository: projectRepository,
         providerRepository: providerRepository,
@@ -122,6 +131,33 @@ void main() {
         ),
       );
       expect(response.status, equals(200));
+    });
+
+    test("routes POST /command and forwards the project body", () async {
+      plugin.commandsResult = [
+        PluginCommand.fromJson({
+          "name": "review",
+          "template": "/review",
+          "hints": ["file.dart"],
+          "provider": null,
+          "source": "command",
+        }),
+      ];
+
+      final response = await router.route(
+        makeRequest(
+          "POST",
+          "/command",
+          body: jsonEncode({"projectId": "/repo"}),
+        ),
+      );
+
+      expect(response.status, equals(200));
+      expect(plugin.lastGetCommandsProjectId, equals("/repo"));
+      final body = jsonDecode(response.body!) as Map<String, dynamic>;
+      final items = body["items"] as List<dynamic>;
+      final item = items.single as Map<String, dynamic>;
+      expect(item["name"], equals("review"));
     });
 
     test("POST /sessions without body returns 400", () async {
@@ -193,13 +229,14 @@ void main() {
           "POST",
           "/session/create",
           body: jsonEncode(
-            const CreateSessionRequest(
-              projectId: "/tmp",
-              dedicatedWorktree: false,
-              parts: [PromptPart.text(text: "Start")],
-              agent: "architect",
-              model: PromptModel(providerID: "openai", modelID: "gpt-5"),
-            ).toJson(),
+            CreateSessionRequest.fromJson({
+              "projectId": "/tmp",
+              "dedicatedWorktree": false,
+              "parts": [const PromptPart.text(text: "Start").toJson()],
+              "agent": "architect",
+              "model": PromptModel.fromJson({"providerID": "openai", "modelID": "gpt-5"}).toJson(),
+              "command": null,
+            }).toJson(),
           ),
         ),
       );
@@ -351,6 +388,9 @@ void main() {
 
       router = RequestRouter(
         plugin: plugin,
+        getCommandsHandler: GetCommandsHandler(
+          sessionRepository: sessionRepository,
+        ),
         sessionRepository: sessionRepository,
         abortSessionHandler: AbortSessionHandler(
           sessionAbortService: SessionAbortService(sessionRepository: sessionRepository),
@@ -365,6 +405,9 @@ void main() {
           worktreeService: worktreeService,
           sessionRepository: sessionRepository,
           sessionPersistenceService: sessionPersistenceService,
+        ),
+        sendPromptHandler: SendPromptHandler(
+          sessionPromptService: SessionPromptService(sessionRepository: sessionRepository),
         ),
         prSyncService: spyPrSyncService,
         projectRepository: projectRepository,

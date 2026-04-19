@@ -101,6 +101,15 @@ sealed class SseEventData with _$SseEventData {
     required String sessionID,
   }) = SseSessionIdle;
 
+  @FreezedUnionValue("command.executed")
+  @Implements<SseSessionEventData>()
+  const factory SseEventData.commandExecuted({
+    required String name,
+    required String sessionID,
+    required String arguments,
+    required String messageID,
+  }) = SseCommandExecuted;
+
   // ---------------------------------------------------------------------------
   // Message — all implement SseSessionEventData
   // ---------------------------------------------------------------------------

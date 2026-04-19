@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
+import "package:sesori_dart_core/src/api/session_api.dart";
 import "package:sesori_dart_core/src/capabilities/project/project_service.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
@@ -13,6 +14,8 @@ import "package:sesori_dart_core/src/routing/app_routes.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 class MockProjectService extends Mock implements ProjectService {}
+
+class MockSessionApi extends Mock implements SessionApi {}
 
 class MockSessionService extends Mock implements SessionService {}
 
@@ -105,4 +108,21 @@ Session testSession({String? id, String? title, DateTime? archivedAt}) {
 
 HealthResponse testHealthResponse() {
   return const HealthResponse(healthy: true, version: "0.1.200");
+}
+
+CommandInfo testCommandInfo({
+  String name = "review",
+  String template = "/review {{file}}",
+}) {
+  return CommandInfo(
+    name: name,
+    template: template,
+    hints: const ["Optional arguments"],
+    description: "Run $name",
+    agent: null,
+    model: null,
+    provider: null,
+    source: CommandSource.command,
+    subtask: false,
+  );
 }

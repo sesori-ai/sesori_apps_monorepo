@@ -228,7 +228,7 @@ Future<({String assetName, String archivePath, String checksumsPath})> _createRe
       [
         '-NoProfile',
         '-Command',
-        'Compress-Archive -LiteralPath \$args[0] -DestinationPath \$args[1] -Force',
+        r'Compress-Archive -LiteralPath $args[0] -DestinationPath $args[1] -Force',
         payloadRoot.path,
         archivePath,
       ],

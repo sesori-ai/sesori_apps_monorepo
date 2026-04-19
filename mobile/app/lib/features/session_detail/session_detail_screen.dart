@@ -39,8 +39,8 @@ class SessionDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => SessionDetailCubit(
-        getIt<SessionService>(),
         getIt<ConnectionService>(),
+        sessionService: getIt<SessionService>(),
         permissionRepository: getIt<PermissionRepository>(),
         sessionId: sessionId,
         projectId: projectId,
@@ -316,9 +316,11 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
           :final childStatuses,
           :final queuedMessages,
           :final availableProviders,
+          :final availableCommands,
           :final selectedAgent,
           :final selectedProviderID,
           :final selectedModelID,
+          :final stagedCommand,
           :final isRefreshing,
         ) =>
           Column(
@@ -340,6 +342,7 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
                 child: messages.isEmpty
                     ? Center(child: Text(loc.sessionDetailEmpty))
                     : _MessageList(
+                        projectId: widget.projectId,
                         messages: messages,
                         streamingText: streamingText,
                         children: children,
@@ -348,6 +351,7 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
               ),
               if (children.isNotEmpty && !widget.readOnly)
                 BackgroundTasksBar(
+                  projectId: widget.projectId,
                   children: children,
                   childStatuses: childStatuses,
                 ),
@@ -359,9 +363,13 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
                   ),
                 PromptInput(
                   isBusy: _hasActiveWork(sessionStatus: sessionStatus, childStatuses: childStatuses),
-                  onSend: (text) => context.read<SessionDetailCubit>().sendMessage(text),
+                  onSend: (text, command) => context.read<SessionDetailCubit>().sendMessage(
+                    text: text,
+                    command: command,
+                  ),
                   onAbort: () => context.read<SessionDetailCubit>().abort(),
-                  header: AgentModelButtons(
+                  header: null,
+                  composerHeader: AgentModelButtons(
                     providers: availableProviders,
                     selectedAgent: selectedAgent,
                     selectedProviderID: selectedProviderID,
@@ -369,6 +377,10 @@ class _SessionDetailBodyState extends State<_SessionDetailBody> {
                     onAgentTap: () => _openAgentPicker(state),
                     onModelTap: () => _openModelPicker(state),
                   ),
+                  availableCommands: availableCommands,
+                  stagedCommand: stagedCommand,
+                  onCommandSelected: context.read<SessionDetailCubit>().stageCommand,
+                  onCommandCleared: context.read<SessionDetailCubit>().clearStagedCommand,
                 ),
               ],
             ],
@@ -485,12 +497,14 @@ class _PendingQuestionsBanner extends StatelessWidget {
 }
 
 class _MessageList extends StatefulWidget {
+  final String? projectId;
   final List<MessageWithParts> messages;
   final Map<String, String> streamingText;
   final List<Session> children;
   final Map<String, SessionStatus> childStatuses;
 
   const _MessageList({
+    required this.projectId,
     required this.messages,
     required this.streamingText,
     required this.children,
@@ -635,6 +649,7 @@ class _MessageListState extends State<_MessageList> {
     }
 
     return AssistantMessageCard(
+      projectId: widget.projectId,
       message: message,
       streamingText: widget.streamingText,
       children: widget.children,
@@ -714,7 +729,7 @@ bool _hasActiveWork({
     );
 
 class _QueuedMessagesSection extends StatelessWidget {
-  final List<String> messages;
+  final List<QueuedSessionSubmission> messages;
   final ValueChanged<int> onCancel;
 
   const _QueuedMessagesSection({
@@ -729,7 +744,7 @@ class _QueuedMessagesSection extends StatelessWidget {
       children: [
         for (var i = 0; i < messages.length; i++)
           QueuedMessageBubble(
-            text: messages[i],
+            submission: messages[i],
             onCancel: () => onCancel(i),
           ),
       ],

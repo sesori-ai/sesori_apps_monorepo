@@ -2,6 +2,8 @@ import "package:freezed_annotation/freezed_annotation.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "queued_session_submission.dart";
+
 part "session_detail_state.freezed.dart";
 
 @Freezed()
@@ -24,15 +26,17 @@ sealed class SessionDetailState with _$SessionDetailState {
     required List<Session> children,
     required Map<String, SessionStatus> childStatuses,
     // Queued messages (waiting to be sent when connection is restored).
-    required List<String> queuedMessages,
+    required List<QueuedSessionSubmission> queuedMessages,
     // Available agents and providers for selection.
     required List<AgentInfo> availableAgents,
     required List<ProviderInfo> availableProviders,
+    required List<CommandInfo> availableCommands,
 
     // Currently selected agent and model (pre-populated from defaults, never null once loaded).
     required String selectedAgent,
     required String selectedProviderID,
     required String selectedModelID,
+    required CommandInfo? stagedCommand,
     required bool isRefreshing,
   }) = SessionDetailLoaded;
 

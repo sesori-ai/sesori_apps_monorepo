@@ -21,9 +21,11 @@ void main() {
       queuedMessages: [],
       availableAgents: [],
       availableProviders: [],
+      availableCommands: [],
       selectedAgent: "build",
       selectedProviderID: "p",
       selectedModelID: "m",
+      stagedCommand: null,
       isRefreshing: false,
     );
     expect((state as SessionDetailLoaded).isRefreshing, isFalse);

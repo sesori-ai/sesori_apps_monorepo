@@ -8,57 +8,13 @@ import "package:test/test.dart";
 class MockRelayHttpApiClient extends Mock implements RelayHttpApiClient {}
 
 void main() {
-  group("SessionService", () {
+  group("SessionApi", () {
     late MockRelayHttpApiClient mockClient;
-    late SessionService service;
+    late SessionApi service;
 
     setUp(() {
       mockClient = MockRelayHttpApiClient();
-      service = SessionService(mockClient);
-    });
-
-    test("createSessionWithMessage sends dedicatedWorktree in request body", () async {
-      const session = Session(
-        id: "s1",
-        projectID: "p1",
-        directory: "/tmp/project",
-        parentID: null,
-        title: "Session",
-        summary: null,
-        time: SessionTime(created: 1, updated: 1, archived: null),
-        pullRequest: null,
-      );
-
-      when(
-        () => mockClient.post<Session>(
-          "/session/create",
-          fromJson: any(named: "fromJson"),
-          body: any(named: "body"),
-        ),
-      ).thenAnswer((_) async => ApiResponse.success(session));
-
-      final result = await service.createSessionWithMessage(
-        projectId: "p1",
-        text: "hello",
-        agent: null,
-        model: null,
-        dedicatedWorktree: true,
-      );
-
-      expect(result, isA<SuccessResponse<Session>>());
-      verify(
-        () => mockClient.post<Session>(
-          "/session/create",
-          fromJson: any(named: "fromJson"),
-          body: const CreateSessionRequest(
-            projectId: "p1",
-            parts: [PromptPart.text(text: "hello")],
-            agent: null,
-            model: null,
-            dedicatedWorktree: true,
-          ),
-        ),
-      ).called(1);
+      service = SessionApi(client: mockClient);
     });
 
     test("archiveSession sends cleanup options in request body", () async {

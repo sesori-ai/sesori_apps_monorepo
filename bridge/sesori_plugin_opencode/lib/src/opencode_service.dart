@@ -1,6 +1,13 @@
 import "package:json_annotation/json_annotation.dart" show CheckedFromJsonException;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show Log, PluginApiException, PluginPermissionReply, PluginProvidersResult;
+    show
+        Log,
+        PluginApiException,
+        PluginCommand,
+        PluginPermissionReply,
+        PluginPromptPart,
+        PluginProvidersResult,
+        PluginSession;
 import "package:sesori_shared/sesori_shared.dart" show ProjectActivitySummary;
 
 import "../opencode_plugin.dart";
@@ -17,6 +24,10 @@ class OpenCodeService {
 
   Future<PluginProvidersResult> getProviders({required bool connectedOnly}) {
     return repository.getProviders(connectedOnly: connectedOnly);
+  }
+
+  Future<List<PluginCommand>> getCommands({required String? projectId}) {
+    return repository.getCommands(projectId: projectId);
   }
 
   Future<List<Session>> getSessions({
@@ -47,6 +58,71 @@ class OpenCodeService {
       Log.w("Failed to decode messages for session $sessionId: $error\n$stackTrace");
       throw PluginApiException("GET /session/$sessionId/message", 502);
     }
+  }
+
+  Future<PluginSession> createSession({
+    required String directory,
+    required String? parentSessionId,
+    required List<PluginPromptPart> parts,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) async {
+    final session = await repository.createSession(
+      directory: directory,
+      parentSessionId: parentSessionId,
+    );
+
+    if (parts.isNotEmpty) {
+      try {
+        await repository.sendPrompt(
+          sessionId: session.id,
+          directory: session.directory,
+          parts: parts,
+          agent: agent,
+          model: model,
+        );
+      } catch (e, st) {
+        await _deleteFailedCreatedSession(session: session, error: e, stackTrace: st);
+        rethrow;
+      }
+    }
+
+    tracker.registerSession(sessionId: session.id, directory: session.directory);
+    return session;
+  }
+
+  Future<void> sendPrompt({
+    required String sessionId,
+    required List<PluginPromptPart> parts,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) {
+    final directory = _getTrackedDirectory(sessionId: sessionId);
+    return repository.sendPrompt(
+      sessionId: sessionId,
+      directory: directory,
+      parts: parts,
+      agent: agent,
+      model: model,
+    );
+  }
+
+  Future<void> sendCommand({
+    required String sessionId,
+    required String command,
+    required String arguments,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) {
+    final directory = _getTrackedDirectory(sessionId: sessionId);
+    return repository.sendCommand(
+      sessionId: sessionId,
+      directory: directory,
+      command: command,
+      arguments: arguments,
+      agent: agent,
+      model: model,
+    );
   }
 
   Future<void> replyToPermission({
@@ -117,5 +193,31 @@ class OpenCodeService {
 
   bool _isLikelyDecodeOrSchemaDriftError(Object error) {
     return error is FormatException || error is TypeError || error is CheckedFromJsonException;
+  }
+
+  String? _getTrackedDirectory({required String sessionId}) {
+    final directory = tracker.getSessionDirectory(sessionId: sessionId);
+    if (directory == null) {
+      Log.w("directory missing for session $sessionId. Defaulting to bridge CWD as directory.");
+    }
+    return directory;
+  }
+
+  Future<void> _deleteFailedCreatedSession({
+    required PluginSession session,
+    required Object error,
+    required StackTrace stackTrace,
+  }) async {
+    Log.w("createSession: prompt send failed for session ${session.id}: $error\n$stackTrace");
+    try {
+      await repository.deleteSession(
+        sessionId: session.id,
+        directory: session.directory,
+      );
+    } catch (cleanupError, cleanupStackTrace) {
+      Log.w(
+        "createSession: failed to clean up session ${session.id} after prompt failure: $cleanupError\n$cleanupStackTrace",
+      );
+    }
   }
 }

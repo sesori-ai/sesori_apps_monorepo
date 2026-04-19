@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:bloc/bloc.dart";
+import "package:collection/collection.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -11,19 +12,21 @@ import "../../capabilities/session/session_service.dart";
 import "../../logging/logging.dart";
 import "../../platform/notification_canceller.dart";
 import "../../repositories/permission_repository.dart";
-import "prompt_send_service.dart";
+import "prompt_send_queue.dart";
+import "queued_session_submission.dart";
 import "session_detail_state.dart";
 import "streaming_text_buffer.dart";
 
 class SessionDetailCubit extends Cubit<SessionDetailState> {
-  final SessionService _service;
+  final SessionService _sessionService;
   final ConnectionService _connectionService;
   final PermissionRepository _permissionRepository;
   final String _sessionId;
   final String? _projectId;
   final NotificationCanceller _notificationCanceller;
   final FailureReporter _failureReporter;
-  late final PromptSendService _sendService;
+  final PromptSendQueue _promptQueue = PromptSendQueue();
+  bool _isSending = false;
 
   late final StreamSubscription<SesoriSessionEvent> _eventSubscription;
   late final StreamSubscription<SseEvent> _globalEventSubscription;
@@ -45,14 +48,14 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
   SessionDetailCubit(
-    SessionService service,
     ConnectionService connectionService, {
+    required SessionService sessionService,
     required PermissionRepository permissionRepository,
     required String sessionId,
     required String? projectId,
     required NotificationCanceller notificationCanceller,
     required FailureReporter failureReporter,
-  }) : _service = service,
+  }) : _sessionService = sessionService,
        _connectionService = connectionService,
        _permissionRepository = permissionRepository,
        _sessionId = sessionId,
@@ -60,21 +63,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
        _notificationCanceller = notificationCanceller,
        _failureReporter = failureReporter,
        super(const SessionDetailState.loading()) {
-    _sendService = PromptSendService(
-      service: _service,
-      sessionId: _sessionId,
-      onQueueChanged: _emitQueueUpdate,
-      stateProvider: () {
-        final current = state;
-        return (
-          agent: current is SessionDetailLoaded ? current.selectedAgent : null,
-          providerID: current is SessionDetailLoaded ? current.selectedProviderID : null,
-          modelID: current is SessionDetailLoaded ? current.selectedModelID : null,
-          isConnected: _isConnected,
-          isLoaded: current is SessionDetailLoaded && !isClosed,
-        );
-      },
-    );
     _streamingBuffer = StreamingTextBuffer(onFlush: _emitStreamingSnapshot);
     _eventSubscription = _connectionService.sessionEvents(_sessionId).listen(_handleEvent);
     _globalEventSubscription = _connectionService.events.listen(_handleGlobalEvent);
@@ -162,9 +150,11 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           queuedMessages: const [],
           availableAgents: agents,
           availableProviders: providers,
+          availableCommands: snapshot.commands,
           selectedAgent: defaultAgent,
           selectedProviderID: defaultProviderID,
           selectedModelID: defaultModelID,
+          stagedCommand: null,
           isRefreshing: false,
         ),
       );
@@ -191,6 +181,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final preservedSelectedAgent = current.selectedAgent;
     final preservedSelectedProviderID = current.selectedProviderID;
     final preservedSelectedModelID = current.selectedModelID;
+    final preservedStagedCommand = current.stagedCommand;
 
     emit(current.copyWith(isRefreshing: true));
 
@@ -235,9 +226,14 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           childStatuses: childStatuses,
           availableAgents: availableAgents,
           availableProviders: availableProviders,
+          availableCommands: snapshot.commands,
           selectedAgent: preservedSelectedAgent,
           selectedProviderID: preservedSelectedProviderID,
           selectedModelID: preservedSelectedModelID,
+          stagedCommand: _resolveStagedCommand(
+            availableCommands: snapshot.commands,
+            stagedCommand: preservedStagedCommand,
+          ),
           isRefreshing: false,
         ),
       );
@@ -258,6 +254,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       Map<String, SessionStatus> statuses,
       List<AgentInfo?> agents,
       ProviderListResponse? providerData,
+      List<CommandInfo> commands,
     })
   >
   _fetchSessionSnapshot() async {
@@ -268,14 +265,16 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       statusesResponse,
       agentsResponse,
       providersResponse,
-    ) = await wait6(
-      _service.getMessages(_sessionId),
-      _service.getPendingQuestions(_sessionId),
-      _service.getChildren(_sessionId),
-      _service.getSessionStatuses(),
-      _service.listAgents(),
-      _service.listProviders(),
-    );
+      commandsResponse,
+    ) = await (
+      _sessionService.getMessages(sessionId: _sessionId),
+      _sessionService.getPendingQuestions(sessionId: _sessionId),
+      _sessionService.getChildren(sessionId: _sessionId),
+      _sessionService.getSessionStatuses(),
+      _sessionService.listAgents(),
+      _sessionService.listProviders(),
+      _sessionService.listCommands(projectId: _projectId),
+    ).wait;
 
     final messages = switch (messagesResponse) {
       SuccessResponse(:final data) => data.messages,
@@ -308,6 +307,13 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         return null;
       }(),
     };
+    final commands = switch (commandsResponse) {
+      SuccessResponse(:final data) => data.items,
+      ErrorResponse(:final error) => () {
+        loge("Failed to load commands: ${error.toString()}");
+        return <CommandInfo>[];
+      }(),
+    };
 
     return (
       messages: messages,
@@ -316,7 +322,16 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       statuses: statuses,
       agents: agents,
       providerData: providerData,
+      commands: commands,
     );
+  }
+
+  CommandInfo? _resolveStagedCommand({
+    required List<CommandInfo> availableCommands,
+    required CommandInfo? stagedCommand,
+  }) {
+    if (stagedCommand == null) return null;
+    return availableCommands.firstWhereOrNull((c) => c.name == stagedCommand.name);
   }
 
   /// Returns the latest assistant [Message] from the list, or null if none.
@@ -356,6 +371,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           _onPermissionAsked(event);
         case SesoriSessionUpdated(:final info):
           _onSessionUpdated(info);
+        case SesoriCommandExecuted():
+          _onDataMayBeStale();
         case SesoriSessionCreated() ||
             SesoriSessionDeleted() ||
             SesoriSessionDiff() ||
@@ -420,6 +437,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             SesoriQuestionAsked() ||
             SesoriQuestionReplied() ||
             SesoriQuestionRejected() ||
+            SesoriCommandExecuted() ||
             SesoriTodoUpdated() ||
             SesoriProjectsSummary() ||
             SesoriProjectUpdated() ||
@@ -661,25 +679,48 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (isClosed) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
-    _sendService.drain();
+    unawaited(_drainQueuedMessages());
   }
 
-  Future<void> sendMessage(String text) async {
+  Future<void> sendMessage({required String text, required String? command}) async {
     final current = state;
-    await _sendService.sendMessage(
-      text: text,
-      agent: current is SessionDetailLoaded ? current.selectedAgent : null,
-      providerID: current is SessionDetailLoaded ? current.selectedProviderID : null,
-      modelID: current is SessionDetailLoaded ? current.selectedModelID : null,
-      isConnected: current is SessionDetailLoaded && _isConnected,
+    final trimmed = text.trim();
+    final normalizedCommand = _normalizeCommand(command);
+    if (trimmed.isEmpty && normalizedCommand == null) return;
+
+    final submission = QueuedSessionSubmission(text: trimmed, command: normalizedCommand);
+    if (current is! SessionDetailLoaded || !_isConnected || _promptQueue.isNotEmpty || _isSending) {
+      _promptQueue.enqueue(submission);
+      _emitQueueUpdate(current is SessionDetailLoaded ? current : null);
+      if (_isConnected && current is SessionDetailLoaded) {
+        unawaited(_drainQueuedMessages());
+      }
+      return;
+    }
+
+    final result = await _sessionService.sendMessage(
+      sessionId: _sessionId,
+      text: trimmed,
+      agent: current.selectedAgent,
+      providerID: current.selectedProviderID,
+      modelID: current.selectedModelID,
+      command: normalizedCommand,
     );
+
+    if (result case ErrorResponse()) {
+      _promptQueue.requeue(submission);
+      _emitQueueUpdate(_latestLoadedState());
+    }
   }
 
   void cancelQueuedMessage(int index) {
     final current = state;
     if (current is! SessionDetailLoaded) return;
 
-    _sendService.cancelQueuedMessage(index);
+    final removed = _promptQueue.cancel(index);
+    if (removed != null) {
+      _emitQueueUpdate(current);
+    }
   }
 
   /// Syncs queued prompt items into the cubit state.
@@ -687,7 +728,62 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (isClosed) return;
     final current = known ?? state;
     if (current is! SessionDetailLoaded) return;
-    emit(current.copyWith(queuedMessages: _sendService.queuedMessages));
+    emit(current.copyWith(queuedMessages: _promptQueue.items));
+  }
+
+  Future<void> _drainQueuedMessages() async {
+    if (_isSending) return;
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
+    if (!_isConnected) return;
+
+    final submission = _promptQueue.dequeue();
+    if (submission == null) return;
+
+    _isSending = true;
+    _emitQueueUpdate(current);
+
+    var sendSucceeded = false;
+    try {
+      final result = await _sessionService.sendMessage(
+        sessionId: _sessionId,
+        text: submission.text,
+        agent: current.selectedAgent,
+        providerID: current.selectedProviderID,
+        modelID: current.selectedModelID,
+        command: submission.command,
+      );
+
+      if (result case ErrorResponse()) {
+        _promptQueue.requeue(submission);
+        _emitQueueUpdate(_latestLoadedState());
+      } else {
+        sendSucceeded = true;
+      }
+    } finally {
+      _isSending = false;
+    }
+
+    if (sendSucceeded) {
+      final latest = state;
+      if (latest is SessionDetailLoaded && _isConnected) {
+        _emitQueueUpdate(latest);
+        unawaited(_drainQueuedMessages());
+      }
+    }
+  }
+
+  SessionDetailLoaded? _latestLoadedState() {
+    final current = state;
+    return current is SessionDetailLoaded ? current : null;
+  }
+
+  String? _normalizeCommand(String? command) {
+    final normalizedCommand = command?.trim();
+    if (normalizedCommand == null || normalizedCommand.isEmpty) {
+      return null;
+    }
+    return normalizedCommand;
   }
 
   // ---------------------------------------------------------------------------
@@ -776,7 +872,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       category: NotificationCategory.aiInteraction,
     );
     try {
-      await _service.replyToQuestion(requestId: requestId, sessionId: sessionId, answers: answers);
+      await _sessionService.replyToQuestion(requestId: requestId, sessionId: sessionId, answers: answers);
       return true;
     } on Object catch (e, st) {
       loge("Failed to reply to question $requestId", e, st);
@@ -792,7 +888,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       category: NotificationCategory.aiInteraction,
     );
     try {
-      await _service.rejectQuestion(requestId);
+      await _sessionService.rejectQuestion(requestId: requestId);
       return true;
     } on Object catch (e, st) {
       loge("Failed to reject question $requestId", e, st);
@@ -845,17 +941,33 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     emit(current.copyWith(selectedProviderID: providerID, selectedModelID: modelID));
   }
 
+  void stageCommand(CommandInfo command) {
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
+
+    if (isClosed) return;
+    emit(current.copyWith(stagedCommand: command));
+  }
+
+  void clearStagedCommand() {
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
+
+    if (isClosed) return;
+    emit(current.copyWith(stagedCommand: null));
+  }
+
   Future<void> abort() async {
     try {
       final current = state;
-      final futures = <Future<void>>[_service.abortSession(_sessionId)];
+      final futures = <Future<void>>[_sessionService.abortSession(sessionId: _sessionId)];
 
       // Also abort any active child sessions (busy or retrying).
       if (current is SessionDetailLoaded) {
         for (final entry in current.childStatuses.entries) {
           final status = entry.value;
           if (status is SessionStatusBusy || status is SessionStatusRetry) {
-            futures.add(_service.abortSession(entry.key));
+            futures.add(_sessionService.abortSession(sessionId: entry.key));
           }
         }
       }

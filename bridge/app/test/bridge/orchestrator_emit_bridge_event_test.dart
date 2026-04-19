@@ -1052,9 +1052,21 @@ class _SummaryPlugin implements BridgePlugin {
   }
 
   @override
+  Future<List<PluginCommand>> getCommands({required String? projectId}) async => <PluginCommand>[];
+
+  @override
   Future<void> sendPrompt({
     required String sessionId,
     required List<PluginPromptPart> parts,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) async {}
+
+  @override
+  Future<void> sendCommand({
+    required String sessionId,
+    required String command,
+    required String arguments,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {}
@@ -1179,9 +1191,21 @@ class _NoopPlugin implements BridgePlugin {
   }
 
   @override
+  Future<List<PluginCommand>> getCommands({required String? projectId}) async => <PluginCommand>[];
+
+  @override
   Future<void> sendPrompt({
     required String sessionId,
     required List<PluginPromptPart> parts,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) async {}
+
+  @override
+  Future<void> sendCommand({
+    required String sessionId,
+    required String command,
+    required String arguments,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {}
@@ -1445,6 +1469,27 @@ class _NoopSessionRepository implements SessionRepository {
 
   @override
   Future<void> notifySessionArchived({required String sessionId}) async {}
+
+  @override
+  Future<void> sendCommand({
+    required String sessionId,
+    required String command,
+    required String arguments,
+    required String? agent,
+    required PromptModel? model,
+  }) async {}
+
+  @override
+  Future<CommandListResponse> getCommands({required String? projectId}) async => const CommandListResponse(items: []);
+
+  @override
+  Future<void> sendPrompt({
+    required String sessionId,
+    required List<PromptPart> parts,
+    required String? agent,
+    required PromptModel? model,
+  }) async {}
+
   @override
   Future<Session> renameSession({required String sessionId, required String title}) async => const Session(
     id: "",
@@ -1492,6 +1537,38 @@ class _DelayingSessionRepository implements SessionRepository {
       agent: agent,
       model: model,
     );
+  }
+
+  @override
+  Future<void> sendCommand({
+    required String sessionId,
+    required String command,
+    required String arguments,
+    required String? agent,
+    required PromptModel? model,
+  }) async {
+    return _base.sendCommand(
+      sessionId: sessionId,
+      command: command,
+      arguments: arguments,
+      agent: agent,
+      model: model,
+    );
+  }
+
+  @override
+  Future<CommandListResponse> getCommands({required String? projectId}) {
+    return _base.getCommands(projectId: projectId);
+  }
+
+  @override
+  Future<void> sendPrompt({
+    required String sessionId,
+    required List<PromptPart> parts,
+    required String? agent,
+    required PromptModel? model,
+  }) async {
+    return _base.sendPrompt(sessionId: sessionId, parts: parts, agent: agent, model: model);
   }
 
   @override

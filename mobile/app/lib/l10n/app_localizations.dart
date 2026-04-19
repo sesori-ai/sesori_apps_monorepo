@@ -379,6 +379,30 @@ abstract class AppLocalizations {
   /// **'Ask anything...'**
   String get sessionDetailPromptHint;
 
+  /// No description provided for @sessionDetailCommandArgumentsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional arguments'**
+  String get sessionDetailCommandArgumentsHint;
+
+  /// No description provided for @sessionDetailCommandPickerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Slash commands'**
+  String get sessionDetailCommandPickerTitle;
+
+  /// No description provided for @sessionDetailCommandSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search commands...'**
+  String get sessionDetailCommandSearch;
+
+  /// No description provided for @sessionDetailNoCommands.
+  ///
+  /// In en, this message translates to:
+  /// **'No slash commands are available for this project.'**
+  String get sessionDetailNoCommands;
+
   /// No description provided for @sessionDetailSend.
   ///
   /// In en, this message translates to:
@@ -504,6 +528,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Queued'**
   String get sessionDetailQueuedMessage;
+
+  /// No description provided for @sessionDetailQueuedCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Queued command'**
+  String get sessionDetailQueuedCommand;
 
   /// No description provided for @sessionDetailCancelQueued.
   ///

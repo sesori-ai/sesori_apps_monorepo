@@ -356,20 +356,93 @@ void main() {
       expect(projects.first.worktree, equals("/repo"));
     });
   });
+
+  group("OpenCodeRepository.getCommands", () {
+    test("maps OpenCode commands to plugin commands in Layer 2", () async {
+      final api = _FakeApi(
+        commands: const [
+          Command(
+            name: "/review-work",
+            template: "review {{input}}",
+            hints: ["recent changes"],
+            description: "Review current branch changes",
+            agent: "review-work",
+            model: "gpt-5.4",
+            provider: "openai",
+            source: CommandSource.skill,
+            subtask: true,
+          ),
+        ],
+      );
+      final repository = OpenCodeRepository(api);
+
+      final commands = await repository.getCommands(projectId: "/repo");
+
+      expect(commands, hasLength(1));
+      expect(
+        commands.single,
+        const PluginCommand(
+          name: "/review-work",
+          template: "review {{input}}",
+          hints: ["recent changes"],
+          description: "Review current branch changes",
+          agent: "review-work",
+          model: "gpt-5.4",
+          provider: "openai",
+          source: PluginCommandSource.skill,
+          subtask: true,
+        ),
+      );
+    });
+  });
+
+  group("OpenCodeRepository.createSession", () {
+    test("trims directory before calling api and mapping projectID", () async {
+      final api = _FakeApi(
+        createdSession: const Session(
+          id: "ses-1",
+          projectID: "global",
+          directory: "/repo",
+          parentID: null,
+          title: null,
+          time: null,
+          summary: null,
+        ),
+      );
+      final repository = OpenCodeRepository(api);
+
+      final session = await repository.createSession(
+        directory: "  /repo  ",
+        parentSessionId: "parent-1",
+      );
+
+      expect(api.lastCreateDirectory, equals("/repo"));
+      expect(api.lastCreateParentSessionId, equals("parent-1"));
+      expect(session.projectID, equals("/repo"));
+    });
+  });
 }
 
 class _FakeApi implements OpenCodeApi {
   final List<Session> _sessions;
   final List<GlobalSession> _globalSessions;
   final List<Project> _projects;
+  final List<Command> _commands;
+  final Session? _createdSession;
+  String? lastCreateDirectory;
+  String? lastCreateParentSessionId;
 
   _FakeApi({
     List<Session>? sessions,
     List<GlobalSession>? globalSessions,
     List<Project>? projects,
+    List<Command>? commands,
+    Session? createdSession,
   }) : _sessions = sessions ?? [],
-       _globalSessions = globalSessions ?? [],
-       _projects = projects ?? [];
+         _globalSessions = globalSessions ?? [],
+        _projects = projects ?? [],
+        _commands = commands ?? [],
+        _createdSession = createdSession;
 
   @override
   String get serverURL => "http://fake";
@@ -387,8 +460,23 @@ class _FakeApi implements OpenCodeApi {
   Future<List<Session>> listSessions({String? directory}) async => _sessions;
 
   @override
-  Future<Session> createSession({required String directory, String? parentSessionId}) async =>
-      throw UnimplementedError();
+  Future<List<Command>> listCommands({required String? directory}) async => _commands;
+
+  @override
+  Future<Session> createSession({required String directory, String? parentSessionId}) async {
+    lastCreateDirectory = directory;
+    lastCreateParentSessionId = parentSessionId;
+    return _createdSession ??
+        const Session(
+          id: "created",
+          projectID: "global",
+          directory: "/repo",
+          parentID: null,
+          title: null,
+          time: null,
+          summary: null,
+        );
+  }
 
   @override
   Future<Session> getSession({required String sessionId, required String? directory}) async =>
@@ -420,6 +508,13 @@ class _FakeApi implements OpenCodeApi {
   Future<void> sendPrompt({
     required String sessionId,
     required SendPromptBody body,
+    required String? directory,
+  }) async {}
+
+  @override
+  Future<void> sendCommand({
+    required String sessionId,
+    required SendCommandBody body,
     required String? directory,
   }) async {}
 

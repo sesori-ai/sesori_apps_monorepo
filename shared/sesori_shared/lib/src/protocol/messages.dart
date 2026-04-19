@@ -26,15 +26,13 @@ sealed class RelayMessage with _$RelayMessage {
   const factory RelayMessage.sseEvent({required String data}) = RelaySseEvent;
 
   @FreezedUnionValue("sse_subscribe")
-  const factory RelayMessage.sseSubscribe({required String path}) =
-      RelaySseSubscribe;
+  const factory RelayMessage.sseSubscribe({required String path}) = RelaySseSubscribe;
 
   @FreezedUnionValue("sse_unsubscribe")
   const factory RelayMessage.sseUnsubscribe() = RelaySseUnsubscribe;
 
   @FreezedUnionValue("key_exchange")
-  const factory RelayMessage.keyExchange({required String publicKey}) =
-      RelayKeyExchange;
+  const factory RelayMessage.keyExchange({required String publicKey}) = RelayKeyExchange;
 
   @FreezedUnionValue("ready")
   const factory RelayMessage.ready({
@@ -57,6 +55,5 @@ sealed class RelayMessage with _$RelayMessage {
     required String role,
   }) = AuthRelayMessage;
 
-  factory RelayMessage.fromJson(Map<String, dynamic> json) =>
-      _$RelayMessageFromJson(json);
+  factory RelayMessage.fromJson(Map<String, dynamic> json) => _$RelayMessageFromJson(json);
 }

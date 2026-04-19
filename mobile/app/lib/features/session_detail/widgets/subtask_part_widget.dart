@@ -5,12 +5,14 @@ import "../../../core/extensions/build_context_x.dart";
 import "../../../core/routing/app_router.dart";
 
 class SubtaskPartWidget extends StatelessWidget {
+  final String? projectId;
   final MessagePart part;
   final List<Session> children;
   final Map<String, SessionStatus> childStatuses;
 
   const SubtaskPartWidget({
     super.key,
+    required this.projectId,
     required this.part,
     required this.children,
     required this.childStatuses,
@@ -40,7 +42,7 @@ class SubtaskPartWidget extends StatelessWidget {
               ? () {
                   context.pushRoute(
                     AppRoute.sessionDetail(
-                      projectId: childSession.projectID,
+                      projectId: projectId ?? childSession.projectID,
                       sessionId: childSession.id,
                       readOnly: true,
                       sessionTitle: childSession.title,

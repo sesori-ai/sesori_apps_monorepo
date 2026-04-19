@@ -33,7 +33,7 @@ class SessionListScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => SessionListCubit(
-        service: getIt<SessionService>(),
+        sessionService: getIt<SessionService>(),
         projectService: getIt<ProjectService>(),
         connectionService: getIt<ConnectionService>(),
         sseEventRepository: getIt<SseEventRepository>(),
@@ -192,6 +192,7 @@ class _SessionListBody extends StatelessWidget {
                           final isArchived = session.time?.archived != null;
                           final activityInfo = state.activeSessionIds[session.id];
                           return _SessionTile(
+                            projectId: cubit.projectId,
                             session: session,
                             isArchived: isArchived,
                             isActive: activityInfo != null,

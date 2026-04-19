@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
@@ -26,7 +28,7 @@ void main() {
 
   group("SessionDetailCubit", () {
     late MockSessionService mockSessionService;
-    late MockConnectionService mockConnectionService;
+        late MockConnectionService mockConnectionService;
     late MockNotificationCanceller mockNotificationCanceller;
     late MockPermissionRepository mockPermissionRepository;
     late MockFailureReporter mockFailureReporter;
@@ -65,6 +67,7 @@ void main() {
 
       _stubAllDefaults(
         mockSessionService,
+        mockSessionService,
         mockConnectionService,
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
@@ -83,8 +86,8 @@ void main() {
     blocTest<SessionDetailCubit, SessionDetailState>(
       "initial load success emits SessionDetailLoaded",
       build: () => SessionDetailCubit(
-        mockSessionService,
         mockConnectionService,
+        sessionService: mockSessionService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -95,12 +98,13 @@ void main() {
         isA<SessionDetailLoaded>(),
       ],
       verify: (_) {
-        verify(() => mockSessionService.getMessages(sessionId)).called(1);
-        verify(() => mockSessionService.getPendingQuestions(sessionId)).called(1);
-        verify(() => mockSessionService.getChildren(sessionId)).called(1);
+        verify(() => mockSessionService.getMessages(sessionId: sessionId)).called(1);
+        verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
+        verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
         verify(() => mockSessionService.getSessionStatuses()).called(1);
         verify(() => mockSessionService.listAgents()).called(1);
         verify(() => mockSessionService.listProviders()).called(1);
+        verify(() => mockSessionService.listCommands(projectId: "test-project")).called(1);
         verify(() => mockConnectionService.sessionEvents(sessionId)).called(1);
         verify(() => mockConnectionService.events).called(1);
       },
@@ -110,12 +114,12 @@ void main() {
       "initial load failure emits SessionDetailFailed",
       build: () {
         when(
-          () => mockSessionService.getMessages(sessionId),
+          () => mockSessionService.getMessages(sessionId: sessionId),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
 
         return SessionDetailCubit(
-          mockSessionService,
           mockConnectionService,
+          sessionService: mockSessionService,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
@@ -131,8 +135,8 @@ void main() {
     blocTest<SessionDetailCubit, SessionDetailState>(
       "reload re-fetches all initial data",
       build: () => SessionDetailCubit(
-        mockSessionService,
         mockConnectionService,
+        sessionService: mockSessionService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -149,20 +153,21 @@ void main() {
         isA<SessionDetailLoaded>(),
       ],
       verify: (_) {
-        verify(() => mockSessionService.getMessages(sessionId)).called(2);
-        verify(() => mockSessionService.getPendingQuestions(sessionId)).called(2);
-        verify(() => mockSessionService.getChildren(sessionId)).called(2);
+        verify(() => mockSessionService.getMessages(sessionId: sessionId)).called(2);
+        verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(2);
+        verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(2);
         verify(() => mockSessionService.getSessionStatuses()).called(2);
         verify(() => mockSessionService.listAgents()).called(2);
         verify(() => mockSessionService.listProviders()).called(2);
+        verify(() => mockSessionService.listCommands(projectId: "test-project")).called(2);
       },
     );
 
     blocTest<SessionDetailCubit, SessionDetailState>(
       "sendMessage when connected delegates to service with trimmed text",
       build: () => SessionDetailCubit(
-        mockSessionService,
         mockConnectionService,
+        sessionService: mockSessionService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -171,7 +176,7 @@ void main() {
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
-        await cubit.sendMessage("  hi  ");
+        await cubit.sendMessage(text: "  hi  ", command: null);
       },
       expect: () => [
         isA<SessionDetailLoaded>(),
@@ -179,11 +184,44 @@ void main() {
       verify: (_) {
         verify(
           () => mockSessionService.sendMessage(
-            sessionId,
-            "hi",
+            sessionId: sessionId,
+            text: "hi",
             agent: "coder",
             providerID: "anthropic",
             modelID: "claude-3-5-sonnet",
+            command: null,
+          ),
+        ).called(1);
+      },
+    );
+
+    blocTest<SessionDetailCubit, SessionDetailState>(
+      "sendMessage with command when connected delegates to service",
+      build: () => SessionDetailCubit(
+        mockConnectionService,
+        sessionService: mockSessionService,
+        permissionRepository: mockPermissionRepository,
+        sessionId: sessionId,
+        projectId: "test-project",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: mockFailureReporter,
+      ),
+      act: (cubit) async {
+        await _awaitLoaded(cubit);
+        await cubit.sendMessage(text: "lib/main.dart", command: "review");
+      },
+      expect: () => [
+        isA<SessionDetailLoaded>(),
+      ],
+      verify: (_) {
+        verify(
+          () => mockSessionService.sendMessage(
+            sessionId: sessionId,
+            text: "lib/main.dart",
+            agent: "coder",
+            providerID: "anthropic",
+            modelID: "claude-3-5-sonnet",
+            command: "review",
           ),
         ).called(1);
       },
@@ -192,8 +230,8 @@ void main() {
     blocTest<SessionDetailCubit, SessionDetailState>(
       "sendMessage sends immediately when session is busy but connected",
       build: () => SessionDetailCubit(
-        mockSessionService,
         mockConnectionService,
+        sessionService: mockSessionService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -210,7 +248,7 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 10));
 
         // Send message while busy — should send immediately (not queue).
-        await cubit.sendMessage("hello");
+        await cubit.sendMessage(text: "hello", command: null);
       },
       expect: () => [
         isA<SessionDetailLoaded>(),
@@ -225,11 +263,12 @@ void main() {
       verify: (_) {
         verify(
           () => mockSessionService.sendMessage(
-            sessionId,
-            "hello",
+            sessionId: sessionId,
+            text: "hello",
             agent: "coder",
             providerID: "anthropic",
             modelID: "claude-3-5-sonnet",
+            command: null,
           ),
         ).called(1);
       },
@@ -238,8 +277,8 @@ void main() {
     blocTest<SessionDetailCubit, SessionDetailState>(
       "selectAgent updates selected agent in loaded state",
       build: () => SessionDetailCubit(
-        mockSessionService,
         mockConnectionService,
+        sessionService: mockSessionService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -263,8 +302,8 @@ void main() {
     blocTest<SessionDetailCubit, SessionDetailState>(
       "selectModel updates selected provider and model",
       build: () => SessionDetailCubit(
-        mockSessionService,
         mockConnectionService,
+        sessionService: mockSessionService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -286,8 +325,8 @@ void main() {
     blocTest<SessionDetailCubit, SessionDetailState>(
       "abort delegates to service.abortSession",
       build: () => SessionDetailCubit(
-        mockSessionService,
         mockConnectionService,
+        sessionService: mockSessionService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -302,20 +341,20 @@ void main() {
         isA<SessionDetailLoaded>(),
       ],
       verify: (_) {
-        verify(() => mockSessionService.abortSession(sessionId)).called(1);
+        verify(() => mockSessionService.abortSession(sessionId: sessionId)).called(1);
       },
     );
 
     blocTest<SessionDetailCubit, SessionDetailState>(
       "replyToQuestion optimistically removes pending question and calls API",
       build: () {
-        when(() => mockSessionService.getPendingQuestions(sessionId)).thenAnswer(
+        when(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).thenAnswer(
           (_) async => ApiResponse.success(PendingQuestionResponse(data: [testPendingQuestion()])),
         );
 
         return SessionDetailCubit(
-          mockSessionService,
           mockConnectionService,
+          sessionService: mockSessionService,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
@@ -359,13 +398,13 @@ void main() {
     blocTest<SessionDetailCubit, SessionDetailState>(
       "rejectQuestion optimistically removes pending question and calls API",
       build: () {
-        when(() => mockSessionService.getPendingQuestions(sessionId)).thenAnswer(
+        when(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).thenAnswer(
           (_) async => ApiResponse.success(PendingQuestionResponse(data: [testPendingQuestion()])),
         );
 
         return SessionDetailCubit(
-          mockSessionService,
           mockConnectionService,
+          sessionService: mockSessionService,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
@@ -382,7 +421,7 @@ void main() {
         isA<SessionDetailLoaded>().having((state) => state.pendingQuestions, "pendingQuestions", isEmpty),
       ],
       verify: (_) {
-        verify(() => mockSessionService.rejectQuestion("question-1")).called(1);
+        verify(() => mockSessionService.rejectQuestion(requestId: "question-1")).called(1);
         verify(
           () => mockNotificationCanceller.cancelForSession(
             sessionId: sessionId,
@@ -395,8 +434,8 @@ void main() {
     blocTest<SessionDetailCubit, SessionDetailState>(
       "clearNotifications cancels all non-unknown notification categories",
       build: () => SessionDetailCubit(
-        mockSessionService,
         mockConnectionService,
+        sessionService: mockSessionService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -433,12 +472,12 @@ void main() {
       "SSE message.updated adds message to state",
       build: () {
         when(
-          () => mockSessionService.getMessages(sessionId),
+          () => mockSessionService.getMessages(sessionId: sessionId),
         ).thenAnswer((_) async => ApiResponse.success(const MessageWithPartsResponse(messages: <MessageWithParts>[])));
 
         return SessionDetailCubit(
-          mockSessionService,
           mockConnectionService,
+          sessionService: mockSessionService,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
@@ -469,8 +508,8 @@ void main() {
     blocTest<SessionDetailCubit, SessionDetailState>(
       "SSE session.status updates session status",
       build: () => SessionDetailCubit(
-        mockSessionService,
         mockConnectionService,
+        sessionService: mockSessionService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -499,8 +538,8 @@ void main() {
     blocTest<SessionDetailCubit, SessionDetailState>(
       "SSE question.asked adds pending question",
       build: () => SessionDetailCubit(
-        mockSessionService,
         mockConnectionService,
+        sessionService: mockSessionService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -522,13 +561,13 @@ void main() {
     blocTest<SessionDetailCubit, SessionDetailState>(
       "SSE question.resolved removes pending question",
       build: () {
-        when(() => mockSessionService.getPendingQuestions(sessionId)).thenAnswer(
+        when(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).thenAnswer(
           (_) async => ApiResponse.success(PendingQuestionResponse(data: [testPendingQuestion()])),
         );
 
         return SessionDetailCubit(
-          mockSessionService,
           mockConnectionService,
+          sessionService: mockSessionService,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
@@ -554,8 +593,8 @@ void main() {
     blocTest<SessionDetailCubit, SessionDetailState>(
       "SSE session.updated updates title",
       build: () => SessionDetailCubit(
-        mockSessionService,
         mockConnectionService,
+        sessionService: mockSessionService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -592,12 +631,12 @@ void main() {
 
         // Service returns children in ASC order (oldest first).
         when(
-          () => mockSessionService.getChildren(sessionId),
+          () => mockSessionService.getChildren(sessionId: sessionId),
         ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [oldChild, midChild, newChild])));
 
         return SessionDetailCubit(
-          mockSessionService,
           mockConnectionService,
+          sessionService: mockSessionService,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
@@ -620,12 +659,12 @@ void main() {
         final existingChild = testSession(id: "child-1", parentID: sessionId, updatedAt: 1000);
 
         when(
-          () => mockSessionService.getChildren(sessionId),
+          () => mockSessionService.getChildren(sessionId: sessionId),
         ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [existingChild])));
 
         return SessionDetailCubit(
-          mockSessionService,
           mockConnectionService,
+          sessionService: mockSessionService,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
@@ -660,8 +699,8 @@ void main() {
     blocTest<SessionDetailCubit, SessionDetailState>(
       "close disposes event subscriptions",
       build: () => SessionDetailCubit(
-        mockSessionService,
         mockConnectionService,
+        sessionService: mockSessionService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -691,8 +730,8 @@ void main() {
           ),
         );
         return SessionDetailCubit(
-          mockSessionService,
           mockConnectionService,
+          sessionService: mockSessionService,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
@@ -702,12 +741,12 @@ void main() {
       },
       act: (cubit) async {
         await _awaitLoaded(cubit);
-        await cubit.sendMessage("hello");
+        await cubit.sendMessage(text: "hello", command: null);
       },
       expect: () => [
         isA<SessionDetailLoaded>(),
         isA<SessionDetailLoaded>().having(
-          (state) => state.queuedMessages,
+          (state) => state.queuedMessages.map((message) => message.displayText).toList(),
           "queuedMessages",
           ["hello"],
         ),
@@ -715,11 +754,12 @@ void main() {
       verify: (_) {
         verifyNever(
           () => mockSessionService.sendMessage(
-            any(),
-            any(),
+            sessionId: any(named: "sessionId"),
+            text: any(named: "text"),
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
+            command: null,
           ),
         );
       },
@@ -734,8 +774,8 @@ void main() {
           ),
         );
         return SessionDetailCubit(
-          mockSessionService,
           mockConnectionService,
+          sessionService: mockSessionService,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
@@ -745,12 +785,12 @@ void main() {
       },
       act: (cubit) async {
         await _awaitLoaded(cubit);
-        await cubit.sendMessage("hello");
+        await cubit.sendMessage(text: "hello", command: null);
       },
       expect: () => [
         isA<SessionDetailLoaded>(),
         isA<SessionDetailLoaded>().having(
-          (state) => state.queuedMessages,
+          (state) => state.queuedMessages.map((message) => message.displayText).toList(),
           "queuedMessages",
           ["hello"],
         ),
@@ -758,11 +798,12 @@ void main() {
       verify: (_) {
         verifyNever(
           () => mockSessionService.sendMessage(
-            any(),
-            any(),
+            sessionId: any(named: "sessionId"),
+            text: any(named: "text"),
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
+            command: null,
           ),
         );
       },
@@ -773,17 +814,18 @@ void main() {
       build: () {
         when(
           () => mockSessionService.sendMessage(
-            any(),
-            any(),
+            sessionId: any(named: "sessionId"),
+            text: any(named: "text"),
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
+            command: null,
           ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
 
         return SessionDetailCubit(
-          mockSessionService,
           mockConnectionService,
+          sessionService: mockSessionService,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
@@ -793,13 +835,13 @@ void main() {
       },
       act: (cubit) async {
         await _awaitLoaded(cubit);
-        await cubit.sendMessage("hello");
+        await cubit.sendMessage(text: "hello", command: null);
       },
       expect: () => [
         isA<SessionDetailLoaded>(),
         // Message re-queued after failed send.
         isA<SessionDetailLoaded>().having(
-          (state) => state.queuedMessages,
+          (state) => state.queuedMessages.map((message) => message.displayText).toList(),
           "queuedMessages",
           ["hello"],
         ),
@@ -807,11 +849,12 @@ void main() {
       verify: (_) {
         verify(
           () => mockSessionService.sendMessage(
-            sessionId,
-            "hello",
+            sessionId: sessionId,
+            text: "hello",
             agent: "coder",
             providerID: "anthropic",
             modelID: "claude-3-5-sonnet",
+            command: null,
           ),
         ).called(1);
       },
@@ -831,8 +874,8 @@ void main() {
           ),
         );
         return SessionDetailCubit(
-          mockSessionService,
           mockConnectionService,
+          sessionService: mockSessionService,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
@@ -851,7 +894,7 @@ void main() {
         );
 
         // Send message while disconnected — queued.
-        await cubit.sendMessage("queued msg");
+        await cubit.sendMessage(text: "queued msg", command: null);
 
         // Session becomes idle — but connection is lost, so queue stays.
         sessionEvents.add(
@@ -864,23 +907,28 @@ void main() {
         isA<SessionDetailLoaded>(),
         // Message queued.
         isA<SessionDetailLoaded>().having(
-          (state) => state.queuedMessages,
+          (state) => state.queuedMessages.map((message) => message.displayText).toList(),
           "queuedMessages",
           ["queued msg"],
         ),
         // Session idle — queue NOT drained because disconnected.
         isA<SessionDetailLoaded>()
             .having((state) => state.sessionStatus, "sessionStatus", const SessionStatus.idle())
-            .having((state) => state.queuedMessages, "queuedMessages", ["queued msg"]),
+            .having(
+              (state) => state.queuedMessages.map((message) => message.displayText).toList(),
+              "queuedMessages",
+              ["queued msg"],
+            ),
       ],
       verify: (_) {
         verifyNever(
           () => mockSessionService.sendMessage(
-            any(),
-            any(),
+            sessionId: any(named: "sessionId"),
+            text: any(named: "text"),
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
+            command: null,
           ),
         );
       },
@@ -889,8 +937,8 @@ void main() {
     blocTest<SessionDetailCubit, SessionDetailState>(
       "connection restored drains queued messages",
       build: () => SessionDetailCubit(
-        mockSessionService,
         mockConnectionService,
+        sessionService: mockSessionService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -908,7 +956,7 @@ void main() {
         );
 
         // Send message — queued because disconnected.
-        await cubit.sendMessage("retry me");
+        await cubit.sendMessage(text: "retry me", command: null);
 
         // Simulate reconnection.
         when(() => mockConnectionService.currentStatus).thenReturn(
@@ -930,13 +978,13 @@ void main() {
         isA<SessionDetailLoaded>(),
         // Message queued.
         isA<SessionDetailLoaded>().having(
-          (state) => state.queuedMessages,
+          (state) => state.queuedMessages.map((message) => message.displayText).toList(),
           "queuedMessages",
           ["retry me"],
         ),
         // Queue drained after reconnection.
         isA<SessionDetailLoaded>().having(
-          (state) => state.queuedMessages,
+          (state) => state.queuedMessages.map((message) => message.displayText).toList(),
           "queuedMessages",
           isEmpty,
         ),
@@ -944,21 +992,146 @@ void main() {
       verify: (_) {
         verify(
           () => mockSessionService.sendMessage(
-            sessionId,
-            "retry me",
+            sessionId: sessionId,
+            text: "retry me",
             agent: "coder",
             providerID: "anthropic",
             modelID: "claude-3-5-sonnet",
+            command: null,
           ),
         ).called(1);
       },
     );
 
+    test("whitespace-only command is queued and drained as a normal prompt", () async {
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        sessionService: mockSessionService,
+        permissionRepository: mockPermissionRepository,
+        sessionId: sessionId,
+        projectId: "test-project",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: mockFailureReporter,
+      );
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+
+      when(() => mockConnectionService.currentStatus).thenReturn(
+        const ConnectionStatus.connectionLost(
+          config: ServerConnectionConfig(relayHost: "fake.example.com"),
+        ),
+      );
+
+      await cubit.sendMessage(text: "hello", command: "   ");
+
+      expect(
+        (cubit.state as SessionDetailLoaded).queuedMessages.map((message) => message.displayText).toList(),
+        equals(["hello"]),
+      );
+
+      when(() => mockConnectionService.currentStatus).thenReturn(
+        ConnectionStatus.connected(
+          config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+          health: testHealthResponse(),
+        ),
+      );
+      connectionStatus.add(
+        ConnectionStatus.connected(
+          config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+          health: testHealthResponse(),
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      verify(
+        () => mockSessionService.sendMessage(
+          sessionId: sessionId,
+          text: "hello",
+          agent: "coder",
+          providerID: "anthropic",
+          modelID: "claude-3-5-sonnet",
+          command: null,
+        ),
+      ).called(1);
+    });
+
+    test("connected send while queued drain is in flight stays queued until earlier work finishes", () async {
+      final firstSendStarted = Completer<void>();
+      final allowFirstSendToComplete = Completer<void>();
+      final sentTexts = <String>[];
+
+      when(
+        () => mockSessionService.sendMessage(
+          sessionId: any(named: "sessionId"),
+          text: any(named: "text"),
+          agent: any(named: "agent"),
+          providerID: any(named: "providerID"),
+          modelID: any(named: "modelID"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((invocation) async {
+        final text = invocation.namedArguments[#text] as String;
+        sentTexts.add(text);
+        if (text == "first") {
+          firstSendStarted.complete();
+          await allowFirstSendToComplete.future;
+        }
+        return ApiResponse<void>.success(null);
+      });
+
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        sessionService: mockSessionService,
+        permissionRepository: mockPermissionRepository,
+        sessionId: sessionId,
+        projectId: "test-project",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: mockFailureReporter,
+      );
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+
+      when(() => mockConnectionService.currentStatus).thenReturn(
+        const ConnectionStatus.connectionLost(
+          config: ServerConnectionConfig(relayHost: "fake.example.com"),
+        ),
+      );
+      await cubit.sendMessage(text: "first", command: null);
+
+      when(() => mockConnectionService.currentStatus).thenReturn(
+        ConnectionStatus.connected(
+          config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+          health: testHealthResponse(),
+        ),
+      );
+      connectionStatus.add(
+        ConnectionStatus.connected(
+          config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+          health: testHealthResponse(),
+        ),
+      );
+
+      await firstSendStarted.future;
+      await cubit.sendMessage(text: "second", command: null);
+
+      expect(sentTexts, equals(["first"]));
+      expect(
+        (cubit.state as SessionDetailLoaded).queuedMessages.map((message) => message.displayText).toList(),
+        equals(["second"]),
+      );
+
+      allowFirstSendToComplete.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(sentTexts, equals(["first", "second"]));
+      expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
+    });
+
     blocTest<SessionDetailCubit, SessionDetailState>(
       "multiple queued messages drain sequentially on reconnection",
       build: () => SessionDetailCubit(
-        mockSessionService,
         mockConnectionService,
+        sessionService: mockSessionService,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         projectId: "test-project",
@@ -976,8 +1149,8 @@ void main() {
         );
 
         // Queue two messages while disconnected.
-        await cubit.sendMessage("first");
-        await cubit.sendMessage("second");
+        await cubit.sendMessage(text: "first", command: null);
+        await cubit.sendMessage(text: "second", command: null);
 
         // Simulate reconnection.
         when(() => mockConnectionService.currentStatus).thenReturn(
@@ -999,20 +1172,22 @@ void main() {
       verify: (_) {
         verify(
           () => mockSessionService.sendMessage(
-            sessionId,
-            "first",
+            sessionId: sessionId,
+            text: "first",
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
+            command: null,
           ),
         ).called(1);
         verify(
           () => mockSessionService.sendMessage(
-            sessionId,
-            "second",
+            sessionId: sessionId,
+            text: "second",
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
+            command: null,
           ),
         ).called(1);
       },
@@ -1025,17 +1200,18 @@ void main() {
         // not during initial load, so this is safe.
         when(
           () => mockSessionService.sendMessage(
-            any(),
-            any(),
+            sessionId: any(named: "sessionId"),
+            text: any(named: "text"),
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
+            command: null,
           ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
 
         return SessionDetailCubit(
-          mockSessionService,
           mockConnectionService,
+          sessionService: mockSessionService,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
           projectId: "test-project",
@@ -1054,7 +1230,7 @@ void main() {
         );
 
         // Queue a message.
-        await cubit.sendMessage("will fail");
+        await cubit.sendMessage(text: "will fail", command: null);
 
         // Simulate reconnection — triggers drain, but send will fail.
         when(() => mockConnectionService.currentStatus).thenReturn(
@@ -1076,19 +1252,19 @@ void main() {
         isA<SessionDetailLoaded>(),
         // Message queued.
         isA<SessionDetailLoaded>().having(
-          (state) => state.queuedMessages,
+          (state) => state.queuedMessages.map((message) => message.displayText).toList(),
           "queuedMessages",
           ["will fail"],
         ),
         // Dequeued (optimistic).
         isA<SessionDetailLoaded>().having(
-          (state) => state.queuedMessages,
+          (state) => state.queuedMessages.map((message) => message.displayText).toList(),
           "queuedMessages",
           isEmpty,
         ),
         // Re-queued after failure.
         isA<SessionDetailLoaded>().having(
-          (state) => state.queuedMessages,
+          (state) => state.queuedMessages.map((message) => message.displayText).toList(),
           "queuedMessages",
           ["will fail"],
         ),
@@ -1096,11 +1272,12 @@ void main() {
       verify: (_) {
         verify(
           () => mockSessionService.sendMessage(
-            sessionId,
-            "will fail",
+            sessionId: sessionId,
+            text: "will fail",
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
+            command: null,
           ),
         ).called(1);
       },
@@ -1117,6 +1294,7 @@ Future<void> _awaitLoaded(SessionDetailCubit cubit) async {
 
 void _stubAllDefaults(
   MockSessionService service,
+  MockSessionService sessionService,
   MockConnectionService connectionService, {
   required String sessionId,
   required MockNotificationCanceller notificationCanceller,
@@ -1125,21 +1303,21 @@ void _stubAllDefaults(
   required BehaviorSubject<ConnectionStatus> connectionStatus,
 }) {
   when(
-    () => service.getMessages(any()),
+    () => service.getMessages(sessionId: any(named: "sessionId")),
   ).thenAnswer(
     (_) => Future<ApiResponse<MessageWithPartsResponse>>.value(
       ApiResponse.success(MessageWithPartsResponse(messages: [testMessageWithParts()])),
     ),
   );
   when(
-    () => service.getPendingQuestions(any()),
+    () => service.getPendingQuestions(sessionId: any(named: "sessionId")),
   ).thenAnswer(
     (_) => Future<ApiResponse<PendingQuestionResponse>>.value(
       ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])),
     ),
   );
   when(
-    () => service.getChildren(any()),
+    () => service.getChildren(sessionId: any(named: "sessionId")),
   ).thenAnswer(
     (_) => Future<ApiResponse<SessionListResponse>>.value(
       ApiResponse.success(const SessionListResponse(items: <Session>[])),
@@ -1164,6 +1342,13 @@ void _stubAllDefaults(
   ).thenAnswer(
     (_) => Future<ApiResponse<ProviderListResponse>>.value(
       ApiResponse.success(testProviderListResponse()),
+    ),
+  );
+  when(
+    () => sessionService.listCommands(projectId: any(named: "projectId")),
+  ).thenAnswer(
+    (_) => Future<ApiResponse<CommandListResponse>>.value(
+      ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
     ),
   );
 
@@ -1193,17 +1378,18 @@ void _stubAllDefaults(
   ).thenReturn(null);
 
   when(
-    () => service.sendMessage(
-      any(),
-      any(),
+    () => sessionService.sendMessage(
+      sessionId: any(named: "sessionId"),
+      text: any(named: "text"),
       agent: any(named: "agent"),
       providerID: any(named: "providerID"),
       modelID: any(named: "modelID"),
+      command: any(named: "command"),
     ),
   ).thenAnswer((_) async => ApiResponse<void>.success(null));
   when(
-    () => service.abortSession(any()),
-  ).thenAnswer((_) async => ApiResponse.success(const SuccessEmptyResponse()));
+    () => service.abortSession(sessionId: any(named: "sessionId")),
+  ).thenAnswer((_) async => ApiResponse.success(null));
   when(
     () => service.replyToQuestion(
       requestId: any(named: "requestId"),
@@ -1212,6 +1398,6 @@ void _stubAllDefaults(
     ),
   ).thenAnswer((_) async => ApiResponse<void>.success(null));
   when(
-    () => service.rejectQuestion(any()),
+    () => service.rejectQuestion(requestId: any(named: "requestId")),
   ).thenAnswer((_) async => ApiResponse<void>.success(null));
 }

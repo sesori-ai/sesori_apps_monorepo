@@ -1,21 +1,43 @@
+import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/send_prompt_handler.dart";
+import "package:sesori_bridge/src/bridge/services/session_prompt_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
 void main() {
   group("SendPromptHandler", () {
     late FakeBridgePlugin plugin;
+    late AppDatabase db;
     late SendPromptHandler handler;
 
     setUp(() {
+      db = createTestDatabase();
       plugin = FakeBridgePlugin();
-      handler = SendPromptHandler(plugin);
+      final sessionRepository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+      );
+      handler = SendPromptHandler(
+        sessionPromptService: SessionPromptService(
+          sessionRepository: sessionRepository,
+        ),
+      );
     });
 
-    tearDown(() => plugin.close());
+    tearDown(() async {
+      await plugin.close();
+      await db.close();
+    });
 
     test("canHandle POST /session/prompt_async", () {
       expect(
@@ -39,6 +61,7 @@ void main() {
           parts: [PromptPart.text(text: "Hello")],
           agent: null,
           model: null,
+          command: null,
         ),
         pathParams: {},
         queryParams: {},
@@ -59,6 +82,7 @@ void main() {
           ],
           agent: null,
           model: null,
+          command: null,
         ),
         pathParams: {},
         queryParams: {},
@@ -79,6 +103,7 @@ void main() {
           parts: [PromptPart.text(text: "Hello")],
           agent: "planner",
           model: PromptModel(providerID: "openai", modelID: "gpt-4o"),
+          command: null,
         ),
         pathParams: {},
         queryParams: {},
@@ -101,6 +126,7 @@ void main() {
             providerID: "anthropic",
             modelID: "claude-3-5-sonnet",
           ),
+          command: null,
         ),
         pathParams: {},
         queryParams: {},
@@ -123,6 +149,7 @@ void main() {
           parts: [PromptPart.text(text: "Hello")],
           agent: null,
           model: null,
+          command: null,
         ),
         pathParams: {},
         queryParams: {},
@@ -130,6 +157,113 @@ void main() {
       );
 
       expect(response, equals(const SuccessEmptyResponse()));
+    });
+
+    test("does not call sendCommand when command is null", () async {
+      await handler.handle(
+        makeRequest("POST", "/session/prompt_async"),
+        body: const SendPromptRequest(
+          sessionId: "s1",
+          parts: [PromptPart.text(text: "Hello")],
+          agent: null,
+          model: null,
+          command: null,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(plugin.lastSendPromptSessionId, equals("s1"));
+      expect(plugin.lastSendCommandSessionId, isNull);
+      expect(plugin.lastSendCommand, isNull);
+    });
+
+    test("calls sendCommand without sending prompt when command is present", () async {
+      await handler.handle(
+        makeRequest("POST", "/session/prompt_async"),
+        body: const SendPromptRequest(
+          sessionId: "s7",
+          parts: [PromptPart.text(text: "review this")],
+          agent: null,
+          model: null,
+          command: "review",
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(plugin.lastSendPromptSessionId, isNull);
+      expect(plugin.lastSendCommandSessionId, equals("s7"));
+      expect(plugin.lastSendCommand, equals("review"));
+      expect(plugin.lastSendCommandArguments, equals("review this"));
+      expect(plugin.lastSendCommandAgent, isNull);
+      expect(plugin.lastSendCommandModel, isNull);
+    });
+
+    test("passes empty arguments when no text part present", () async {
+      await handler.handle(
+        makeRequest("POST", "/session/prompt_async"),
+        body: const SendPromptRequest(
+          sessionId: "s8",
+          parts: [
+            PromptPart.filePath(mime: "text/plain", path: "/tmp/f.txt", filename: null),
+          ],
+          agent: null,
+          model: null,
+          command: "attach",
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(plugin.lastSendCommandSessionId, equals("s8"));
+      expect(plugin.lastSendCommand, equals("attach"));
+      expect(plugin.lastSendCommandArguments, equals(""));
+    });
+
+    test("passes agent and model when command is present", () async {
+      await handler.handle(
+        makeRequest("POST", "/session/prompt_async"),
+        body: const SendPromptRequest(
+          sessionId: "s10",
+          parts: [PromptPart.text(text: "review this")],
+          agent: "coder",
+          model: PromptModel(providerID: "openai", modelID: "gpt-5.4"),
+          command: "review",
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(plugin.lastSendPromptSessionId, isNull);
+      expect(plugin.lastSendCommandSessionId, equals("s10"));
+      expect(plugin.lastSendCommandAgent, equals("coder"));
+      expect(plugin.lastSendCommandModel, equals((providerID: "openai", modelID: "gpt-5.4")));
+    });
+
+    test("treats blank command as no command", () async {
+      await handler.handle(
+        makeRequest("POST", "/session/prompt_async"),
+        body: const SendPromptRequest(
+          sessionId: "s9",
+          parts: [PromptPart.text(text: "Hello")],
+          agent: "coder",
+          model: PromptModel(providerID: "openai", modelID: "gpt-5.4"),
+          command: "   ",
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(plugin.lastSendPromptSessionId, equals("s9"));
+      expect(plugin.lastSendPromptAgent, equals("coder"));
+      expect(plugin.lastSendPromptModel?.providerID, equals("openai"));
+      expect(plugin.lastSendCommandSessionId, isNull);
     });
 
     test("throws 400 on empty session id", () async {
@@ -141,6 +275,7 @@ void main() {
             parts: [PromptPart.text(text: "Hello")],
             agent: null,
             model: null,
+            command: null,
           ),
           pathParams: {},
           queryParams: {},

@@ -5,10 +5,10 @@ import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart" show AppRouteDef;
+import "package:sesori_dart_core/src/api/session_api.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
-import "package:sesori_dart_core/src/capabilities/session/session_service.dart";
 import "package:sesori_dart_core/src/capabilities/sse/session_activity_info.dart";
 import "package:sesori_dart_core/src/cubits/session_list/session_list_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_list/session_list_state.dart";
@@ -68,7 +68,7 @@ void main() {
 
     /// Convenience factory — stubs must be set up before calling this.
     SessionListCubit buildCubit() => SessionListCubit(
-      service: mockSessionService,
+      sessionService: mockSessionService,
       projectService: mockProjectService,
       connectionService: mockConnectionService,
       sseEventRepository: mockSseEventRepository,
@@ -86,7 +86,7 @@ void main() {
       build: () {
         mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
         when(
-          () => mockSessionService.listSessions(projectId: projectId),
+          () => mockProjectService.listSessions(projectId: projectId),
         ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession()])));
         return buildCubit();
       },
@@ -103,7 +103,7 @@ void main() {
         ),
       ],
       verify: (_) {
-        verify(() => mockSessionService.listSessions(projectId: projectId)).called(1);
+        verify(() => mockProjectService.listSessions(projectId: projectId)).called(1);
       },
     );
 
@@ -116,7 +116,7 @@ void main() {
       build: () {
         mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projects);
         when(
-          () => mockSessionService.listSessions(projectId: projectId),
+          () => mockProjectService.listSessions(projectId: projectId),
         ).thenAnswer(
           (_) async => ApiResponse.success(
             SessionListResponse(
@@ -129,7 +129,7 @@ void main() {
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
         when(
-          () => mockSessionService.listSessions(projectId: projectId),
+          () => mockProjectService.listSessions(projectId: projectId),
         ).thenAnswer(
           (_) async => ApiResponse.success(
             SessionListResponse(
@@ -151,7 +151,7 @@ void main() {
         ),
       ],
       verify: (_) {
-        verify(() => mockSessionService.listSessions(projectId: projectId)).called(2);
+        verify(() => mockProjectService.listSessions(projectId: projectId)).called(2);
       },
     );
 
@@ -167,7 +167,7 @@ void main() {
           testSession(id: "s2", title: "Second"),
         ];
         when(
-          () => mockSessionService.listSessions(projectId: projectId),
+          () => mockProjectService.listSessions(projectId: projectId),
         ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: sessions)));
         return buildCubit();
       },
@@ -188,7 +188,7 @@ void main() {
       "loadSessions: emits SessionListLoaded with empty list when server returns none",
       build: () {
         when(
-          () => mockSessionService.listSessions(projectId: projectId),
+          () => mockProjectService.listSessions(projectId: projectId),
         ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: <Session>[])));
         return buildCubit();
       },
@@ -209,7 +209,7 @@ void main() {
       "loadSessions: emits SessionListFailed when API returns an error",
       build: () {
         when(
-          () => mockSessionService.listSessions(projectId: projectId),
+          () => mockProjectService.listSessions(projectId: projectId),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
         return buildCubit();
       },
@@ -224,7 +224,7 @@ void main() {
       "archiveSession: optimistically hides session and returns true on API success",
       build: () {
         when(
-          () => mockSessionService.listSessions(projectId: projectId),
+          () => mockProjectService.listSessions(projectId: projectId),
         ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])));
         when(
           () => mockSessionService.archiveSession(
@@ -266,7 +266,7 @@ void main() {
       "archiveSession: rolls back session and returns false on API failure",
       build: () {
         when(
-          () => mockSessionService.listSessions(projectId: projectId),
+          () => mockProjectService.listSessions(projectId: projectId),
         ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])));
         when(
           () => mockSessionService.archiveSession(
@@ -309,7 +309,7 @@ void main() {
       "archiveSession: stores cleanup rejection and rolls back on 409",
       build: () {
         when(
-          () => mockSessionService.listSessions(projectId: projectId),
+          () => mockProjectService.listSessions(projectId: projectId),
         ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])));
         when(
           () => mockSessionService.archiveSession(
@@ -353,7 +353,7 @@ void main() {
       "deleteSession: optimistically removes session and returns true on API success",
       build: () {
         when(
-          () => mockSessionService.listSessions(projectId: projectId),
+          () => mockProjectService.listSessions(projectId: projectId),
         ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])));
         when(
           () => mockSessionService.deleteSession(
@@ -389,7 +389,7 @@ void main() {
       "deleteSession: stores cleanup rejection and restores session on 409",
       build: () {
         when(
-          () => mockSessionService.listSessions(projectId: projectId),
+          () => mockProjectService.listSessions(projectId: projectId),
         ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])));
         when(
           () => mockSessionService.deleteSession(
@@ -440,7 +440,7 @@ void main() {
           archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000001000),
         );
         when(
-          () => mockSessionService.listSessions(projectId: projectId),
+          () => mockProjectService.listSessions(projectId: projectId),
         ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [archivedSession])));
         return buildCubit();
       },
@@ -465,7 +465,7 @@ void main() {
     blocTest<SessionListCubit, SessionListState>(
       "refreshSessions: emits loaded without loading state and returns true",
       build: () {
-        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+        when(() => mockProjectService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success(
             SessionListResponse(
               items: [testSession(id: "s1", title: "Original")],
@@ -477,7 +477,7 @@ void main() {
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
         // Return different data on refresh to prove new data is used.
-        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+        when(() => mockProjectService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success(
             SessionListResponse(
               items: [testSession(id: "s1", title: "Refreshed")],
@@ -505,7 +505,7 @@ void main() {
     blocTest<SessionListCubit, SessionListState>(
       "refreshSessions: keeps current state and returns false on API failure",
       build: () {
-        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+        when(() => mockProjectService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success(SessionListResponse(items: [testSession()])),
         );
         return buildCubit();
@@ -514,7 +514,7 @@ void main() {
         await Future<void>.delayed(Duration.zero);
         // Switch mock to error for the refresh call.
         when(
-          () => mockSessionService.listSessions(projectId: projectId),
+          () => mockProjectService.listSessions(projectId: projectId),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
         final result = await cubit.refreshSessions();
         expect(result, isFalse);
@@ -535,7 +535,7 @@ void main() {
           id: "s1",
           archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000001000),
         );
-        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+        when(() => mockProjectService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success(SessionListResponse(items: [archivedSession])),
         );
         return buildCubit();
@@ -547,7 +547,7 @@ void main() {
         cubit.toggleArchived();
         // Return session with a different title so the refresh emits a
         // distinct state (bloc deduplicates identical states).
-        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+        when(() => mockProjectService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success(
             SessionListResponse(
               items: [
@@ -587,10 +587,10 @@ void main() {
           id: "s1",
           archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000001000),
         );
-        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+        when(() => mockProjectService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success(SessionListResponse(items: [archivedSession])),
         );
-        when(() => mockSessionService.unarchiveSession("s1")).thenAnswer(
+        when(() => mockSessionService.unarchiveSession(sessionId: "s1")).thenAnswer(
           (_) async => ApiResponse.success(testSession(id: "s1", title: "Restored")),
         );
         return buildCubit();
@@ -629,10 +629,10 @@ void main() {
           id: "s1",
           archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000001000),
         );
-        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+        when(() => mockProjectService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success(SessionListResponse(items: [archivedSession])),
         );
-        when(() => mockSessionService.unarchiveSession("s1")).thenAnswer(
+        when(() => mockSessionService.unarchiveSession(sessionId: "s1")).thenAnswer(
           (_) async => ApiResponse.error(ApiError.generic()),
         );
         return buildCubit();
@@ -664,7 +664,7 @@ void main() {
     blocTest<SessionListCubit, SessionListState>(
       "undoLastArchiveAction: unarchives after archive, restoring the session",
       build: () {
-        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+        when(() => mockProjectService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])),
         );
         when(
@@ -679,7 +679,7 @@ void main() {
             testSession(id: "s1", archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000001000)),
           ),
         );
-        when(() => mockSessionService.unarchiveSession("s1")).thenAnswer(
+        when(() => mockSessionService.unarchiveSession(sessionId: "s1")).thenAnswer(
           (_) async => ApiResponse.success(testSession(id: "s1")),
         );
         return buildCubit();
@@ -715,10 +715,10 @@ void main() {
           id: "s1",
           archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000001000),
         );
-        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+        when(() => mockProjectService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success(SessionListResponse(items: [archivedSession])),
         );
-        when(() => mockSessionService.unarchiveSession("s1")).thenAnswer(
+        when(() => mockSessionService.unarchiveSession(sessionId: "s1")).thenAnswer(
           (_) async => ApiResponse.success(testSession(id: "s1")),
         );
         when(
@@ -761,7 +761,7 @@ void main() {
     blocTest<SessionListCubit, SessionListState>(
       "undoLastArchiveAction after rapid successive archives: undo reverts the latest action",
       build: () {
-        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+        when(() => mockProjectService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success(
             SessionListResponse(
               items: [
@@ -796,7 +796,7 @@ void main() {
           ),
         );
         // Undo should unarchive s2 (the latest), not s1.
-        when(() => mockSessionService.unarchiveSession("s2")).thenAnswer(
+        when(() => mockSessionService.unarchiveSession(sessionId: "s2")).thenAnswer(
           (_) async => ApiResponse.success(testSession(id: "s2", title: "Second")),
         );
         return buildCubit();
@@ -839,7 +839,7 @@ void main() {
     blocTest<SessionListCubit, SessionListState>(
       "clearLastActionUndo between rapid archives prevents undo of the latest",
       build: () {
-        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+        when(() => mockProjectService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success(
             SessionListResponse(
               items: [
@@ -922,7 +922,7 @@ void main() {
           time: SessionTime(created: 1, updated: 2, archived: null),
           pullRequest: null,
         );
-        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+        when(() => mockProjectService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success(const SessionListResponse(items: [existing])),
         );
         return buildCubit();
@@ -958,7 +958,7 @@ void main() {
     blocTest<SessionListCubit, SessionListState>(
       "SSE session.updated for same project updates existing session",
       build: () {
-        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+        when(() => mockProjectService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success(
             SessionListResponse(
               items: [
@@ -991,7 +991,7 @@ void main() {
     blocTest<SessionListCubit, SessionListState>(
       "SSE session.deleted for same project removes from list",
       build: () {
-        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+        when(() => mockProjectService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success(
             SessionListResponse(
               items: [
@@ -1025,7 +1025,7 @@ void main() {
     blocTest<SessionListCubit, SessionListState>(
       "SSE session.created for child session is ignored",
       build: () {
-        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+        when(() => mockProjectService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success(
             SessionListResponse(
               items: [
@@ -1063,7 +1063,7 @@ void main() {
     blocTest<SessionListCubit, SessionListState>(
       "connection reconnect triggers silent refresh",
       build: () {
-        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+        when(() => mockProjectService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success(
             SessionListResponse(
               items: [
@@ -1076,7 +1076,7 @@ void main() {
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+        when(() => mockProjectService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success(
             SessionListResponse(
               items: [
@@ -1106,7 +1106,7 @@ void main() {
     blocTest<SessionListCubit, SessionListState>(
       "connection reconnect triggers loadSessions when state is SessionListFailed",
       build: () {
-        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+        when(() => mockProjectService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.error(ApiError.generic()),
         );
         return buildCubit();
@@ -1114,7 +1114,7 @@ void main() {
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
         // Switch mock to succeed so the reconnect-triggered load works.
-        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+        when(() => mockProjectService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])),
         );
         const config = ServerConnectionConfig(
@@ -1141,7 +1141,7 @@ void main() {
     blocTest<SessionListCubit, SessionListState>(
       "rapid ConnectionConnected events coalesce into single refresh",
       build: () {
-        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+        when(() => mockProjectService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])),
         );
         return buildCubit();
@@ -1150,12 +1150,15 @@ void main() {
         // Wait for initial load to complete.
         await Future<void>.delayed(Duration.zero);
         // Reset interaction count after initial load.
-        reset(mockSessionService);
+        reset(mockProjectService);
 
         // Use a Completer so the first refresh stays in-flight while the
         // second ConnectionConnected arrives — this is what exercises the guard.
         final completer = Completer<ApiResponse<SessionListResponse>>();
-        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer((_) => completer.future);
+        when(() => mockProjectService.listSessions(projectId: projectId)).thenAnswer((_) => completer.future);
+        when(() => mockProjectService.getBaseBranch(projectId: projectId)).thenAnswer(
+          (_) async => ApiResponse.success(const BaseBranchResponse(baseBranch: "main")),
+        );
 
         const config = ServerConnectionConfig(
           relayHost: "relay.example.com",
@@ -1174,18 +1177,19 @@ void main() {
         await Future<void>.delayed(Duration.zero);
       },
       skip: 1,
-      // State is deduplicated (same data), so no new emissions — verify call count instead.
-      expect: () => <SessionListState>[],
+      expect: () => [
+        isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions count after refresh", 1),
+      ],
       verify: (_) {
         // Should have been called only once despite two ConnectionConnected events.
-        verify(() => mockSessionService.listSessions(projectId: projectId)).called(1);
+        verify(() => mockProjectService.listSessions(projectId: projectId)).called(1);
       },
     );
 
     blocTest<SessionListCubit, SessionListState>(
       "ConnectionConnected while state is loading does not trigger refresh",
       build: () {
-        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+        when(() => mockProjectService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])),
         );
 
@@ -1208,7 +1212,7 @@ void main() {
       verify: (_) {
         // Only 1 call from the constructor's loadSessions().
         // The ConnectionConnected should NOT trigger a second fetch.
-        verify(() => mockSessionService.listSessions(projectId: projectId)).called(1);
+        verify(() => mockProjectService.listSessions(projectId: projectId)).called(1);
       },
     );
 
@@ -1216,7 +1220,7 @@ void main() {
       "SSE session.created for a different project is ignored",
       build: () {
         when(
-          () => mockSessionService.listSessions(projectId: projectId),
+          () => mockProjectService.listSessions(projectId: projectId),
         ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])));
         return buildCubit();
       },
@@ -1251,7 +1255,7 @@ void main() {
       "SSE session.updated for a different project is ignored",
       build: () {
         when(
-          () => mockSessionService.listSessions(projectId: projectId),
+          () => mockProjectService.listSessions(projectId: projectId),
         ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])));
         return buildCubit();
       },
@@ -1284,7 +1288,7 @@ void main() {
       "SSE session.deleted for a different project is ignored",
       build: () {
         when(
-          () => mockSessionService.listSessions(projectId: projectId),
+          () => mockProjectService.listSessions(projectId: projectId),
         ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])));
         return buildCubit();
       },
@@ -1342,11 +1346,11 @@ void main() {
             pullRequest: null,
           ),
         ];
-        when(() => mockSessionService.listSessions(projectId: "global")).thenAnswer(
+        when(() => mockProjectService.listSessions(projectId: "global")).thenAnswer(
           (_) async => ApiResponse.success(const SessionListResponse(items: sessions)),
         );
         return SessionListCubit(
-          service: mockSessionService,
+          sessionService: mockSessionService,
           projectService: mockProjectService,
           connectionService: mockConnectionService,
           sseEventRepository: mockSseEventRepository,
@@ -1371,7 +1375,7 @@ void main() {
     blocTest<SessionListCubit, SessionListState>(
       "state includes activeSessionIds from SseEventRepository",
       build: () {
-        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+        when(() => mockProjectService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success(
             SessionListResponse(
               items: [
@@ -1409,7 +1413,7 @@ void main() {
     blocTest<SessionListCubit, SessionListState>(
       "activeSessionIds updates when activity changes",
       build: () {
-        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+        when(() => mockProjectService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success(
             SessionListResponse(
               items: [
@@ -1469,7 +1473,7 @@ void main() {
     blocTest<SessionListCubit, SessionListState>(
       "activeSessionIds excludes sessions from other projects",
       build: () {
-        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+        when(() => mockProjectService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success(
             SessionListResponse(
               items: [
@@ -1509,7 +1513,7 @@ void main() {
       "renameSession: calls service with correct args, refreshes sessions, and returns true on success",
       build: () {
         when(
-          () => mockSessionService.listSessions(projectId: projectId),
+          () => mockProjectService.listSessions(projectId: projectId),
         ).thenAnswer(
           (_) async => ApiResponse.success(
             SessionListResponse(
@@ -1526,7 +1530,7 @@ void main() {
         await Future<void>.delayed(Duration.zero);
         // Switch mock to return renamed session on refresh.
         when(
-          () => mockSessionService.listSessions(projectId: projectId),
+          () => mockProjectService.listSessions(projectId: projectId),
         ).thenAnswer(
           (_) async => ApiResponse.success(
             SessionListResponse(
@@ -1558,7 +1562,7 @@ void main() {
       "renameSession: returns false and leaves state unchanged when service returns error",
       build: () {
         when(
-          () => mockSessionService.listSessions(projectId: projectId),
+          () => mockProjectService.listSessions(projectId: projectId),
         ).thenAnswer(
           (_) async => ApiResponse.success(
             SessionListResponse(
@@ -1588,7 +1592,7 @@ void main() {
     blocTest<SessionListCubit, SessionListState>(
       "activeSessionIds is empty when no activity for this project",
       build: () {
-        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+        when(() => mockProjectService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success(
             SessionListResponse(
               items: [
@@ -1619,7 +1623,7 @@ void main() {
     blocTest<SessionListCubit, SessionListState>(
       "activeSessionIds propagates awaitingInput true from SessionActivityInfo",
       build: () {
-        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+        when(() => mockProjectService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success(
             SessionListResponse(
               items: [
@@ -1654,7 +1658,7 @@ void main() {
       "stale signal triggers refresh with isRefreshing indicator",
       build: () {
         when(
-          () => mockSessionService.listSessions(projectId: projectId),
+          () => mockProjectService.listSessions(projectId: projectId),
         ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession()])));
         return buildCubit();
       },
@@ -1673,7 +1677,7 @@ void main() {
     blocTest<SessionListCubit, SessionListState>(
       "stale signal is ignored when state is not SessionListLoaded",
       build: () {
-        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+        when(() => mockProjectService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => Future.delayed(
             const Duration(milliseconds: 100),
             () => ApiResponse.success(SessionListResponse(items: [testSession()])),
@@ -1695,7 +1699,7 @@ void main() {
     blocTest<SessionListCubit, SessionListState>(
       "stale + ConnectionConnected refresh coalesced into single API call",
       build: () {
-        when(() => mockSessionService.listSessions(projectId: projectId)).thenAnswer(
+        when(() => mockProjectService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => Future.delayed(
             const Duration(milliseconds: 50),
             () => ApiResponse.success(SessionListResponse(items: [testSession()])),
@@ -1717,7 +1721,7 @@ void main() {
       },
       verify: (cubit) {
         // Verify listSessions was called at least once (initial load + refresh)
-        verify(() => mockSessionService.listSessions(projectId: projectId)).called(greaterThanOrEqualTo(1));
+        verify(() => mockProjectService.listSessions(projectId: projectId)).called(greaterThanOrEqualTo(1));
       },
     );
   });

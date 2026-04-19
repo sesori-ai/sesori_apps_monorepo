@@ -19,6 +19,24 @@ import "package:test/test.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
+String _expectedWorktreeSystemPrompt({
+  required String branchName,
+  required String worktreePath,
+  required String baseBranch,
+}) {
+  return '''
+[SYSTEM CONTEXT — IMPORTANT]
+A dedicated git worktree and branch have been created for this session:
+- Branch: $branchName
+- Worktree path: $worktreePath
+- Based on: $baseBranch
+
+IMPORTANT: Do NOT create new worktrees, branches, or working directories for this task — even if other instructions suggest it. One has already been created and is 100% dedicated to the work you will be doing in this session.
+
+---
+''';
+}
+
 void main() {
   group("CreateSessionHandler", () {
     late FakeBridgePlugin plugin;
@@ -93,6 +111,7 @@ void main() {
           parts: [PromptPart.text(text: "Start")],
           agent: null,
           model: null,
+          command: null,
         ),
         pathParams: {},
         queryParams: {},
@@ -108,7 +127,7 @@ void main() {
         plugin.lastCreateSessionParts![0],
         equals(
           PluginPromptPart.text(
-            text: buildWorktreeSystemPrompt(
+            text: _expectedWorktreeSystemPrompt(
               branchName: "session-001",
               worktreePath: "/repo/.worktrees/session-001",
               baseBranch: "main",
@@ -153,6 +172,7 @@ void main() {
           parts: [PromptPart.text(text: "Start")],
           agent: null,
           model: null,
+          command: null,
         ),
         pathParams: {},
         queryParams: {},
@@ -202,6 +222,7 @@ void main() {
             parts: [PromptPart.text(text: "Start")],
             agent: null,
             model: null,
+            command: null,
           ),
           pathParams: {},
           queryParams: {},
@@ -225,8 +246,53 @@ void main() {
       },
     );
 
-    test("buildWorktreeSystemPrompt includes branch, path, and base branch", () {
-      final prompt = buildWorktreeSystemPrompt(
+    test("empty parts keep dedicated worktree metadata but skip system prompt injection", () async {
+      plugin.createSessionResult = const PluginSession(
+        id: "empty-1",
+        projectID: "p1",
+        directory: "/repo/.worktrees/session-empty",
+        parentID: null,
+        title: "Empty",
+        time: null,
+        summary: null,
+      );
+      worktreeService.prepareResult = WorktreeSuccess(
+        path: "/repo/.worktrees/session-empty",
+        branchName: "session-empty",
+        baseBranch: "main",
+        baseCommit: "abc123def456",
+      );
+
+      final result = await handler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "/repo",
+          dedicatedWorktree: true,
+          parts: <PromptPart>[],
+          agent: null,
+          model: null,
+          command: null,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.id, equals("empty-1"));
+      expect(plugin.lastCreateSessionDirectory, equals("/repo/.worktrees/session-empty"));
+      expect(plugin.lastCreateSessionParts, isEmpty);
+
+      final dbSession = await db.sessionDao.getSession(sessionId: "empty-1");
+      expect(dbSession, isNotNull);
+      expect(dbSession!.isDedicated, isTrue);
+      expect(dbSession.worktreePath, equals("/repo/.worktrees/session-empty"));
+      expect(dbSession.branchName, equals("session-empty"));
+      expect(dbSession.baseBranch, equals("main"));
+      expect(dbSession.baseCommit, equals("abc123def456"));
+    });
+
+    test("worktree system prompt includes branch, path, and base branch", () {
+      final prompt = _expectedWorktreeSystemPrompt(
         branchName: "session-017",
         worktreePath: "/repo/.worktrees/session-017",
         baseBranch: "develop",
@@ -276,6 +342,7 @@ void main() {
             parts: [PromptPart.text(text: "Start")],
             agent: null,
             model: null,
+            command: null,
           ),
           pathParams: {},
           queryParams: {},
@@ -308,6 +375,7 @@ void main() {
           parts: [PromptPart.text(text: "Start")],
           agent: null,
           model: null,
+          command: null,
         ),
         pathParams: {},
         queryParams: {},
@@ -368,6 +436,7 @@ void main() {
           parts: [PromptPart.text(text: "Start")],
           agent: null,
           model: null,
+          command: null,
         ),
         pathParams: {},
         queryParams: {},
@@ -398,6 +467,7 @@ void main() {
           parts: [PromptPart.text(text: "Start")],
           agent: null,
           model: null,
+          command: null,
         ),
         pathParams: {},
         queryParams: {},
@@ -430,6 +500,7 @@ void main() {
           parts: [PromptPart.text(text: "Start")],
           agent: null,
           model: null,
+          command: null,
         ),
         pathParams: {},
         queryParams: {},
@@ -448,6 +519,7 @@ void main() {
           parts: [PromptPart.text(text: "Hello")],
           agent: "architect",
           model: PromptModel(providerID: "openai", modelID: "gpt-5"),
+          command: null,
         ),
         pathParams: {},
         queryParams: {},
@@ -499,6 +571,7 @@ void main() {
           parts: [PromptPart.text(text: "Fix the login bug")],
           agent: null,
           model: null,
+          command: null,
         ),
         pathParams: {},
         queryParams: {},
@@ -537,6 +610,7 @@ void main() {
           parts: [PromptPart.text(text: "Start")],
           agent: null,
           model: null,
+          command: null,
         ),
         pathParams: {},
         queryParams: {},
@@ -568,6 +642,7 @@ void main() {
           parts: [PromptPart.fileData(mime: "image/png", base64: "abc", filename: "img.png")],
           agent: null,
           model: null,
+          command: null,
         ),
         pathParams: {},
         queryParams: {},
@@ -598,6 +673,7 @@ void main() {
           parts: [PromptPart.text(text: "   ")],
           agent: null,
           model: null,
+          command: null,
         ),
         pathParams: {},
         queryParams: {},
@@ -606,6 +682,132 @@ void main() {
 
       expect(result.id, equals("s1"));
       expect(metadataService.lastGenerateMessage, isNull);
+    });
+
+    test("command dispatched after session creation with new session ID", () async {
+      plugin.createSessionResult = const PluginSession(
+        id: "cmd-session-1",
+        projectID: "p1",
+        directory: "/repo",
+        parentID: null,
+        title: "Command Session",
+        time: null,
+        summary: null,
+      );
+
+      final result = await handler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "/repo",
+          dedicatedWorktree: false,
+          parts: [PromptPart.text(text: "Review this code")],
+          agent: null,
+          model: null,
+          command: "review",
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.id, equals("cmd-session-1"));
+      expect(plugin.lastCreateSessionAgent, isNull);
+      expect(plugin.lastCreateSessionModel, isNull);
+      expect(plugin.lastCreateSessionParts, isEmpty);
+      expect(plugin.lastSendCommandSessionId, equals("cmd-session-1"));
+      expect(plugin.lastSendCommand, equals("review"));
+      expect(plugin.lastSendCommandArguments, equals("Review this code"));
+    });
+
+    test("dedicated worktree command carries worktree guardrail in command arguments", () async {
+      plugin.createSessionResult = const PluginSession(
+        id: "cmd-dedicated-1",
+        projectID: "p1",
+        directory: "/repo/.worktrees/session-001",
+        parentID: null,
+        title: "Command Session",
+        time: null,
+        summary: null,
+      );
+      worktreeService.prepareResult = WorktreeSuccess(
+        path: "/repo/.worktrees/session-001",
+        branchName: "session-001",
+        baseBranch: "main",
+        baseCommit: "abc123def456",
+      );
+
+      await handler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "/repo",
+          dedicatedWorktree: true,
+          parts: [PromptPart.text(text: "Review this code")],
+          agent: null,
+          model: null,
+          command: "review",
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(plugin.lastCreateSessionParts, isEmpty);
+      expect(plugin.lastSendCommandSessionId, equals("cmd-dedicated-1"));
+      expect(plugin.lastSendCommandArguments, contains("session-001"));
+      expect(plugin.lastSendCommandArguments, contains("/repo/.worktrees/session-001"));
+      expect(plugin.lastSendCommandArguments, contains("Review this code"));
+    });
+
+    test("persists stored session before sending command", () async {
+      final orderedPlugin = _OrderCheckingCommandPlugin(database: db)
+        ..createSessionResult = const PluginSession(
+          id: "ordered-session-1",
+          projectID: "p1",
+          directory: "/repo",
+          parentID: null,
+          title: "Ordered Session",
+          time: null,
+          summary: null,
+        );
+      final localHandler = CreateSessionHandler(
+        sessionCreationService: SessionCreationService(
+          metadataService: metadataService,
+          worktreeService: worktreeService,
+          sessionRepository: SessionRepository(
+            plugin: orderedPlugin,
+            sessionDao: db.sessionDao,
+            pullRequestRepository: PullRequestRepository(
+              pullRequestDao: db.pullRequestDao,
+              projectsDao: db.projectsDao,
+            ),
+          ),
+          sessionPersistenceService: SessionPersistenceService(
+            projectsDao: db.projectsDao,
+            sessionDao: db.sessionDao,
+            db: db,
+          ),
+        ),
+      );
+
+      await localHandler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "/repo",
+          dedicatedWorktree: false,
+          parts: [PromptPart.text(text: "Review this code")],
+          agent: "coder",
+          model: PromptModel(providerID: "openai", modelID: "gpt-5"),
+          command: "review",
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(orderedPlugin.hadStoredRowWhenCommandSent, isTrue);
+      expect(orderedPlugin.lastSendCommandAgent, equals("coder"));
+      expect(orderedPlugin.lastSendCommandModel, equals((providerID: "openai", modelID: "gpt-5")));
+      await orderedPlugin.close();
     });
 
     test("creates session for first-time project (no prior projects_table row)", () async {
@@ -627,24 +829,80 @@ void main() {
           parts: [PromptPart.text(text: "Hello")],
           agent: null,
           model: null,
+          command: null,
         ),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
-      // (a) handler returns success
       expect(result.id, equals("new-sess-1"));
 
-      // (b) projects_table has 1 row "brand-new-proj"
-      // getHiddenProjectIds returns hidden ones, so verify existence indirectly
-      // by checking the persisted session's projectId.
       final dbSession = await db.sessionDao.getSession(sessionId: "new-sess-1");
       expect(dbSession, isNotNull);
       expect(dbSession!.projectId, equals("brand-new-proj"));
-
-      // (c) sessions_table has 1 session row
       expect(dbSession.sessionId, equals("new-sess-1"));
+    });
+
+    test("no command — sendCommand not called", () async {
+      plugin.createSessionResult = const PluginSession(
+        id: "no-cmd-1",
+        projectID: "p1",
+        directory: "/repo",
+        parentID: null,
+        title: "No Command",
+        time: null,
+        summary: null,
+      );
+
+      await handler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "/repo",
+          dedicatedWorktree: false,
+          parts: [PromptPart.text(text: "Hello")],
+          agent: null,
+          model: null,
+          command: null,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(plugin.lastSendCommandSessionId, isNull);
+      expect(plugin.lastSendCommand, isNull);
+    });
+
+    test("blank command is treated like no command", () async {
+      plugin.createSessionResult = const PluginSession(
+        id: "blank-cmd-1",
+        projectID: "p1",
+        directory: "/repo",
+        parentID: null,
+        title: "Blank Command",
+        time: null,
+        summary: null,
+      );
+
+      await handler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "/repo",
+          dedicatedWorktree: false,
+          parts: [PromptPart.text(text: "Hello")],
+          agent: "coder",
+          model: PromptModel(providerID: "openai", modelID: "gpt-5.4"),
+          command: "   ",
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(plugin.lastCreateSessionAgent, equals("coder"));
+      expect(plugin.lastCreateSessionModel?.providerID, equals("openai"));
+      expect(plugin.lastSendCommandSessionId, isNull);
     });
 
     test("rename fails — session still returned successfully", () async {
@@ -691,6 +949,7 @@ void main() {
           parts: [PromptPart.text(text: "Fix the login bug")],
           agent: null,
           model: null,
+          command: null,
         ),
         pathParams: {},
         queryParams: {},
@@ -783,5 +1042,32 @@ class _ThrowingRenameSessionPlugin extends FakeBridgePlugin {
     required String title,
   }) {
     throw StateError("renameSession failed");
+  }
+}
+
+class _OrderCheckingCommandPlugin extends FakeBridgePlugin {
+  final AppDatabase _database;
+
+  bool hadStoredRowWhenCommandSent = false;
+
+  _OrderCheckingCommandPlugin({required AppDatabase database}) : _database = database;
+
+  @override
+  Future<void> sendCommand({
+    required String sessionId,
+    required String command,
+    required String arguments,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) async {
+    final session = await _database.sessionDao.getSession(sessionId: sessionId);
+    hadStoredRowWhenCommandSent = session != null;
+    await super.sendCommand(
+      sessionId: sessionId,
+      command: command,
+      arguments: arguments,
+      agent: agent,
+      model: model,
+    );
   }
 }

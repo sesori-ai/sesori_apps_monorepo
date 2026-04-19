@@ -8,26 +8,32 @@ sealed class NewSessionState with _$NewSessionState {
   const factory NewSessionState.idle({
     required List<AgentInfo> availableAgents,
     required List<ProviderInfo> availableProviders,
+    required List<CommandInfo> availableCommands,
     required String? selectedAgent,
     required String? selectedProviderID,
     required String? selectedModelID,
+    required CommandInfo? stagedCommand,
   }) = NewSessionIdle;
 
   const factory NewSessionState.sending({
     required List<AgentInfo> availableAgents,
     required List<ProviderInfo> availableProviders,
+    required List<CommandInfo> availableCommands,
     required String? selectedAgent,
     required String? selectedProviderID,
     required String? selectedModelID,
+    required CommandInfo? stagedCommand,
   }) = NewSessionSending;
 
   const factory NewSessionState.error({
     required String message,
     required List<AgentInfo> availableAgents,
     required List<ProviderInfo> availableProviders,
+    required List<CommandInfo> availableCommands,
     required String? selectedAgent,
     required String? selectedProviderID,
     required String? selectedModelID,
+    required CommandInfo? stagedCommand,
   }) = NewSessionError;
 
   const factory NewSessionState.created({required Session session}) = NewSessionCreated;
@@ -39,9 +45,11 @@ sealed class NewSessionState with _$NewSessionState {
 typedef AgentModelData = ({
   List<AgentInfo> agents,
   List<ProviderInfo> providers,
+  List<CommandInfo> commands,
   String? agent,
   String? providerID,
   String? modelID,
+  CommandInfo? stagedCommand,
 });
 
 extension NewSessionStateAgentModel on NewSessionState {
@@ -49,44 +57,56 @@ extension NewSessionStateAgentModel on NewSessionState {
     NewSessionIdle(
       :final availableAgents,
       :final availableProviders,
+      :final availableCommands,
       :final selectedAgent,
       :final selectedProviderID,
       :final selectedModelID,
+      :final stagedCommand,
     ) =>
       (
         agents: availableAgents,
         providers: availableProviders,
+        commands: availableCommands,
         agent: selectedAgent,
         providerID: selectedProviderID,
         modelID: selectedModelID,
+        stagedCommand: stagedCommand,
       ),
     NewSessionSending(
       :final availableAgents,
       :final availableProviders,
+      :final availableCommands,
       :final selectedAgent,
       :final selectedProviderID,
       :final selectedModelID,
+      :final stagedCommand,
     ) =>
       (
         agents: availableAgents,
         providers: availableProviders,
+        commands: availableCommands,
         agent: selectedAgent,
         providerID: selectedProviderID,
         modelID: selectedModelID,
+        stagedCommand: stagedCommand,
       ),
     NewSessionError(
       :final availableAgents,
       :final availableProviders,
+      :final availableCommands,
       :final selectedAgent,
       :final selectedProviderID,
       :final selectedModelID,
+      :final stagedCommand,
     ) =>
       (
         agents: availableAgents,
         providers: availableProviders,
+        commands: availableCommands,
         agent: selectedAgent,
         providerID: selectedProviderID,
         modelID: selectedModelID,
+        stagedCommand: stagedCommand,
       ),
     NewSessionCreated() => null,
   };

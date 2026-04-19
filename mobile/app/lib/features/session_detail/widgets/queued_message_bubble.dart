@@ -1,14 +1,15 @@
 import "package:flutter/material.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 
 class QueuedMessageBubble extends StatelessWidget {
-  final String text;
+  final QueuedSessionSubmission submission;
   final VoidCallback onCancel;
 
   const QueuedMessageBubble({
     super.key,
-    required this.text,
+    required this.submission,
     required this.onCancel,
   });
 
@@ -46,13 +47,13 @@ class QueuedMessageBubble extends StatelessWidget {
                           mainAxisSize: .min,
                           children: [
                             Icon(
-                              Icons.schedule,
+                              submission.isCommand ? Icons.terminal : Icons.schedule,
                               size: 14,
                               color: theme.colorScheme.onTertiaryContainer.withValues(alpha: 0.7),
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              loc.sessionDetailQueuedMessage,
+                              submission.isCommand ? loc.sessionDetailQueuedCommand : loc.sessionDetailQueuedMessage,
                               style: theme.textTheme.labelSmall?.copyWith(
                                 color: theme.colorScheme.onTertiaryContainer.withValues(alpha: 0.7),
                                 fontWeight: FontWeight.w600,
@@ -62,7 +63,7 @@ class QueuedMessageBubble extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          text,
+                          submission.displayText,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.onTertiaryContainer,
                           ),

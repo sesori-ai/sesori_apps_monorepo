@@ -18,6 +18,7 @@ import "filesystem_suggestions_handler.dart";
 import "get_agents_handler.dart";
 import "get_base_branch_handler.dart";
 import "get_child_sessions_handler.dart";
+import "get_commands_handler.dart";
 import "get_current_project_handler.dart";
 import "get_project_questions_handler.dart";
 import "get_projects_handler.dart";
@@ -52,10 +53,12 @@ class RequestRouter {
 
   RequestRouter({
     required BridgePlugin plugin,
+    required GetCommandsHandler getCommandsHandler,
     required SessionRepository sessionRepository,
     required AbortSessionHandler abortSessionHandler,
     required SessionCreationService sessionCreationService,
     required SessionArchiveService sessionArchiveService,
+    required SendPromptHandler sendPromptHandler,
     required PrSyncService prSyncService,
     required ProjectRepository projectRepository,
     required ProviderRepository providerRepository,
@@ -64,26 +67,30 @@ class RequestRouter {
     required WorktreeService worktreeService,
     required GetSessionDiffsHandler sessionDiffsHandler,
   }) : _handlers = _buildHandlers(
-         plugin: plugin,
-         sessionRepository: sessionRepository,
-         abortSessionHandler: abortSessionHandler,
-         sessionCreationService: sessionCreationService,
-         sessionArchiveService: sessionArchiveService,
-         prSyncService: prSyncService,
-         projectRepository: projectRepository,
-         providerRepository: providerRepository,
-         permissionRepository: permissionRepository,
-         sessionPersistenceService: sessionPersistenceService,
-         worktreeService: worktreeService,
-         sessionDiffsHandler: sessionDiffsHandler,
-       );
+          plugin: plugin,
+          getCommandsHandler: getCommandsHandler,
+          sessionRepository: sessionRepository,
+          abortSessionHandler: abortSessionHandler,
+          sessionCreationService: sessionCreationService,
+          sessionArchiveService: sessionArchiveService,
+          sendPromptHandler: sendPromptHandler,
+          prSyncService: prSyncService,
+          projectRepository: projectRepository,
+          providerRepository: providerRepository,
+          permissionRepository: permissionRepository,
+          sessionPersistenceService: sessionPersistenceService,
+          worktreeService: worktreeService,
+          sessionDiffsHandler: sessionDiffsHandler,
+        );
 
   static List<RequestHandlerBase> _buildHandlers({
     required BridgePlugin plugin,
+    required GetCommandsHandler getCommandsHandler,
     required SessionRepository sessionRepository,
     required AbortSessionHandler abortSessionHandler,
     required SessionCreationService sessionCreationService,
     required SessionArchiveService sessionArchiveService,
+    required SendPromptHandler sendPromptHandler,
     required PrSyncService prSyncService,
     required ProjectRepository projectRepository,
     required ProviderRepository providerRepository,
@@ -96,6 +103,7 @@ class RequestRouter {
       HealthCheckHandler(plugin),
       GetCurrentProjectHandler(plugin),
       GetProjectsHandler(projectRepository: projectRepository),
+      getCommandsHandler,
       GetSessionStatusesHandler(plugin),
       GetChildSessionsHandler(sessionRepository: sessionRepository),
       GetSessionMessagesHandler(plugin),
@@ -113,7 +121,7 @@ class RequestRouter {
         sessionRepository: sessionRepository,
         sessionPersistenceService: sessionPersistenceService,
       ),
-      SendPromptHandler(plugin),
+      sendPromptHandler,
       abortSessionHandler,
       GetProvidersHandler(providerRepository),
       GetAgentsHandler(plugin),

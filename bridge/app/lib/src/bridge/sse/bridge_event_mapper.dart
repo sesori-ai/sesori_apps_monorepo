@@ -43,6 +43,13 @@ class BridgeEventMapper {
           sessionID: sessionID,
           status: const SessionStatus.idle(),
         ),
+        BridgeSseCommandExecuted(:final name, :final sessionID, :final arguments, :final messageID) =>
+          SesoriSseEvent.commandExecuted(
+            name: name,
+            sessionID: sessionID,
+            arguments: arguments,
+            messageID: messageID,
+          ),
         BridgeSseMessageUpdated(:final info) => _tryParseSseEvent({"type": "message.updated", "info": info}),
         BridgeSseMessageRemoved(:final sessionID, :final messageID) => SesoriSseEvent.messageRemoved(
           sessionID: sessionID,

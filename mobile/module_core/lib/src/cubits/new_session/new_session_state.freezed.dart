@@ -46,7 +46,7 @@ $NewSessionStateCopyWith(NewSessionState _, $Res Function(NewSessionState) __);
 
 
 class NewSessionIdle implements NewSessionState {
-  const NewSessionIdle({required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required this.selectedAgent, required this.selectedProviderID, required this.selectedModelID}): _availableAgents = availableAgents,_availableProviders = availableProviders;
+  const NewSessionIdle({required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required final  List<CommandInfo> availableCommands, required this.selectedAgent, required this.selectedProviderID, required this.selectedModelID, required this.stagedCommand}): _availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands;
   
 
  final  List<AgentInfo> _availableAgents;
@@ -63,9 +63,17 @@ class NewSessionIdle implements NewSessionState {
   return EqualUnmodifiableListView(_availableProviders);
 }
 
+ final  List<CommandInfo> _availableCommands;
+ List<CommandInfo> get availableCommands {
+  if (_availableCommands is EqualUnmodifiableListView) return _availableCommands;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_availableCommands);
+}
+
  final  String? selectedAgent;
  final  String? selectedProviderID;
  final  String? selectedModelID;
+ final  CommandInfo? stagedCommand;
 
 /// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
@@ -77,16 +85,16 @@ $NewSessionIdleCopyWith<NewSessionIdle> get copyWith => _$NewSessionIdleCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionIdle&&const DeepCollectionEquality().equals(other._availableAgents, _availableAgents)&&const DeepCollectionEquality().equals(other._availableProviders, _availableProviders)&&(identical(other.selectedAgent, selectedAgent) || other.selectedAgent == selectedAgent)&&(identical(other.selectedProviderID, selectedProviderID) || other.selectedProviderID == selectedProviderID)&&(identical(other.selectedModelID, selectedModelID) || other.selectedModelID == selectedModelID));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionIdle&&const DeepCollectionEquality().equals(other._availableAgents, _availableAgents)&&const DeepCollectionEquality().equals(other._availableProviders, _availableProviders)&&const DeepCollectionEquality().equals(other._availableCommands, _availableCommands)&&(identical(other.selectedAgent, selectedAgent) || other.selectedAgent == selectedAgent)&&(identical(other.selectedProviderID, selectedProviderID) || other.selectedProviderID == selectedProviderID)&&(identical(other.selectedModelID, selectedModelID) || other.selectedModelID == selectedModelID)&&(identical(other.stagedCommand, stagedCommand) || other.stagedCommand == stagedCommand));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_availableAgents),const DeepCollectionEquality().hash(_availableProviders),selectedAgent,selectedProviderID,selectedModelID);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_availableAgents),const DeepCollectionEquality().hash(_availableProviders),const DeepCollectionEquality().hash(_availableCommands),selectedAgent,selectedProviderID,selectedModelID,stagedCommand);
 
 @override
 String toString() {
-  return 'NewSessionState.idle(availableAgents: $availableAgents, availableProviders: $availableProviders, selectedAgent: $selectedAgent, selectedProviderID: $selectedProviderID, selectedModelID: $selectedModelID)';
+  return 'NewSessionState.idle(availableAgents: $availableAgents, availableProviders: $availableProviders, availableCommands: $availableCommands, selectedAgent: $selectedAgent, selectedProviderID: $selectedProviderID, selectedModelID: $selectedModelID, stagedCommand: $stagedCommand)';
 }
 
 
@@ -97,11 +105,11 @@ abstract mixin class $NewSessionIdleCopyWith<$Res> implements $NewSessionStateCo
   factory $NewSessionIdleCopyWith(NewSessionIdle value, $Res Function(NewSessionIdle) _then) = _$NewSessionIdleCopyWithImpl;
 @useResult
 $Res call({
- List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, String? selectedAgent, String? selectedProviderID, String? selectedModelID
+ List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, List<CommandInfo> availableCommands, String? selectedAgent, String? selectedProviderID, String? selectedModelID, CommandInfo? stagedCommand
 });
 
 
-
+$CommandInfoCopyWith<$Res>? get stagedCommand;
 
 }
 /// @nodoc
@@ -114,25 +122,39 @@ class _$NewSessionIdleCopyWithImpl<$Res>
 
 /// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? availableAgents = null,Object? availableProviders = null,Object? selectedAgent = freezed,Object? selectedProviderID = freezed,Object? selectedModelID = freezed,}) {
+@pragma('vm:prefer-inline') $Res call({Object? availableAgents = null,Object? availableProviders = null,Object? availableCommands = null,Object? selectedAgent = freezed,Object? selectedProviderID = freezed,Object? selectedModelID = freezed,Object? stagedCommand = freezed,}) {
   return _then(NewSessionIdle(
 availableAgents: null == availableAgents ? _self._availableAgents : availableAgents // ignore: cast_nullable_to_non_nullable
 as List<AgentInfo>,availableProviders: null == availableProviders ? _self._availableProviders : availableProviders // ignore: cast_nullable_to_non_nullable
-as List<ProviderInfo>,selectedAgent: freezed == selectedAgent ? _self.selectedAgent : selectedAgent // ignore: cast_nullable_to_non_nullable
+as List<ProviderInfo>,availableCommands: null == availableCommands ? _self._availableCommands : availableCommands // ignore: cast_nullable_to_non_nullable
+as List<CommandInfo>,selectedAgent: freezed == selectedAgent ? _self.selectedAgent : selectedAgent // ignore: cast_nullable_to_non_nullable
 as String?,selectedProviderID: freezed == selectedProviderID ? _self.selectedProviderID : selectedProviderID // ignore: cast_nullable_to_non_nullable
 as String?,selectedModelID: freezed == selectedModelID ? _self.selectedModelID : selectedModelID // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,stagedCommand: freezed == stagedCommand ? _self.stagedCommand : stagedCommand // ignore: cast_nullable_to_non_nullable
+as CommandInfo?,
   ));
 }
 
+/// Create a copy of NewSessionState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$CommandInfoCopyWith<$Res>? get stagedCommand {
+    if (_self.stagedCommand == null) {
+    return null;
+  }
 
+  return $CommandInfoCopyWith<$Res>(_self.stagedCommand!, (value) {
+    return _then(_self.copyWith(stagedCommand: value));
+  });
+}
 }
 
 /// @nodoc
 
 
 class NewSessionSending implements NewSessionState {
-  const NewSessionSending({required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required this.selectedAgent, required this.selectedProviderID, required this.selectedModelID}): _availableAgents = availableAgents,_availableProviders = availableProviders;
+  const NewSessionSending({required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required final  List<CommandInfo> availableCommands, required this.selectedAgent, required this.selectedProviderID, required this.selectedModelID, required this.stagedCommand}): _availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands;
   
 
  final  List<AgentInfo> _availableAgents;
@@ -149,9 +171,17 @@ class NewSessionSending implements NewSessionState {
   return EqualUnmodifiableListView(_availableProviders);
 }
 
+ final  List<CommandInfo> _availableCommands;
+ List<CommandInfo> get availableCommands {
+  if (_availableCommands is EqualUnmodifiableListView) return _availableCommands;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_availableCommands);
+}
+
  final  String? selectedAgent;
  final  String? selectedProviderID;
  final  String? selectedModelID;
+ final  CommandInfo? stagedCommand;
 
 /// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
@@ -163,16 +193,16 @@ $NewSessionSendingCopyWith<NewSessionSending> get copyWith => _$NewSessionSendin
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionSending&&const DeepCollectionEquality().equals(other._availableAgents, _availableAgents)&&const DeepCollectionEquality().equals(other._availableProviders, _availableProviders)&&(identical(other.selectedAgent, selectedAgent) || other.selectedAgent == selectedAgent)&&(identical(other.selectedProviderID, selectedProviderID) || other.selectedProviderID == selectedProviderID)&&(identical(other.selectedModelID, selectedModelID) || other.selectedModelID == selectedModelID));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionSending&&const DeepCollectionEquality().equals(other._availableAgents, _availableAgents)&&const DeepCollectionEquality().equals(other._availableProviders, _availableProviders)&&const DeepCollectionEquality().equals(other._availableCommands, _availableCommands)&&(identical(other.selectedAgent, selectedAgent) || other.selectedAgent == selectedAgent)&&(identical(other.selectedProviderID, selectedProviderID) || other.selectedProviderID == selectedProviderID)&&(identical(other.selectedModelID, selectedModelID) || other.selectedModelID == selectedModelID)&&(identical(other.stagedCommand, stagedCommand) || other.stagedCommand == stagedCommand));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_availableAgents),const DeepCollectionEquality().hash(_availableProviders),selectedAgent,selectedProviderID,selectedModelID);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_availableAgents),const DeepCollectionEquality().hash(_availableProviders),const DeepCollectionEquality().hash(_availableCommands),selectedAgent,selectedProviderID,selectedModelID,stagedCommand);
 
 @override
 String toString() {
-  return 'NewSessionState.sending(availableAgents: $availableAgents, availableProviders: $availableProviders, selectedAgent: $selectedAgent, selectedProviderID: $selectedProviderID, selectedModelID: $selectedModelID)';
+  return 'NewSessionState.sending(availableAgents: $availableAgents, availableProviders: $availableProviders, availableCommands: $availableCommands, selectedAgent: $selectedAgent, selectedProviderID: $selectedProviderID, selectedModelID: $selectedModelID, stagedCommand: $stagedCommand)';
 }
 
 
@@ -183,11 +213,11 @@ abstract mixin class $NewSessionSendingCopyWith<$Res> implements $NewSessionStat
   factory $NewSessionSendingCopyWith(NewSessionSending value, $Res Function(NewSessionSending) _then) = _$NewSessionSendingCopyWithImpl;
 @useResult
 $Res call({
- List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, String? selectedAgent, String? selectedProviderID, String? selectedModelID
+ List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, List<CommandInfo> availableCommands, String? selectedAgent, String? selectedProviderID, String? selectedModelID, CommandInfo? stagedCommand
 });
 
 
-
+$CommandInfoCopyWith<$Res>? get stagedCommand;
 
 }
 /// @nodoc
@@ -200,25 +230,39 @@ class _$NewSessionSendingCopyWithImpl<$Res>
 
 /// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? availableAgents = null,Object? availableProviders = null,Object? selectedAgent = freezed,Object? selectedProviderID = freezed,Object? selectedModelID = freezed,}) {
+@pragma('vm:prefer-inline') $Res call({Object? availableAgents = null,Object? availableProviders = null,Object? availableCommands = null,Object? selectedAgent = freezed,Object? selectedProviderID = freezed,Object? selectedModelID = freezed,Object? stagedCommand = freezed,}) {
   return _then(NewSessionSending(
 availableAgents: null == availableAgents ? _self._availableAgents : availableAgents // ignore: cast_nullable_to_non_nullable
 as List<AgentInfo>,availableProviders: null == availableProviders ? _self._availableProviders : availableProviders // ignore: cast_nullable_to_non_nullable
-as List<ProviderInfo>,selectedAgent: freezed == selectedAgent ? _self.selectedAgent : selectedAgent // ignore: cast_nullable_to_non_nullable
+as List<ProviderInfo>,availableCommands: null == availableCommands ? _self._availableCommands : availableCommands // ignore: cast_nullable_to_non_nullable
+as List<CommandInfo>,selectedAgent: freezed == selectedAgent ? _self.selectedAgent : selectedAgent // ignore: cast_nullable_to_non_nullable
 as String?,selectedProviderID: freezed == selectedProviderID ? _self.selectedProviderID : selectedProviderID // ignore: cast_nullable_to_non_nullable
 as String?,selectedModelID: freezed == selectedModelID ? _self.selectedModelID : selectedModelID // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,stagedCommand: freezed == stagedCommand ? _self.stagedCommand : stagedCommand // ignore: cast_nullable_to_non_nullable
+as CommandInfo?,
   ));
 }
 
+/// Create a copy of NewSessionState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$CommandInfoCopyWith<$Res>? get stagedCommand {
+    if (_self.stagedCommand == null) {
+    return null;
+  }
 
+  return $CommandInfoCopyWith<$Res>(_self.stagedCommand!, (value) {
+    return _then(_self.copyWith(stagedCommand: value));
+  });
+}
 }
 
 /// @nodoc
 
 
 class NewSessionError implements NewSessionState {
-  const NewSessionError({required this.message, required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required this.selectedAgent, required this.selectedProviderID, required this.selectedModelID}): _availableAgents = availableAgents,_availableProviders = availableProviders;
+  const NewSessionError({required this.message, required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required final  List<CommandInfo> availableCommands, required this.selectedAgent, required this.selectedProviderID, required this.selectedModelID, required this.stagedCommand}): _availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands;
   
 
  final  String message;
@@ -236,9 +280,17 @@ class NewSessionError implements NewSessionState {
   return EqualUnmodifiableListView(_availableProviders);
 }
 
+ final  List<CommandInfo> _availableCommands;
+ List<CommandInfo> get availableCommands {
+  if (_availableCommands is EqualUnmodifiableListView) return _availableCommands;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_availableCommands);
+}
+
  final  String? selectedAgent;
  final  String? selectedProviderID;
  final  String? selectedModelID;
+ final  CommandInfo? stagedCommand;
 
 /// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
@@ -250,16 +302,16 @@ $NewSessionErrorCopyWith<NewSessionError> get copyWith => _$NewSessionErrorCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionError&&(identical(other.message, message) || other.message == message)&&const DeepCollectionEquality().equals(other._availableAgents, _availableAgents)&&const DeepCollectionEquality().equals(other._availableProviders, _availableProviders)&&(identical(other.selectedAgent, selectedAgent) || other.selectedAgent == selectedAgent)&&(identical(other.selectedProviderID, selectedProviderID) || other.selectedProviderID == selectedProviderID)&&(identical(other.selectedModelID, selectedModelID) || other.selectedModelID == selectedModelID));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionError&&(identical(other.message, message) || other.message == message)&&const DeepCollectionEquality().equals(other._availableAgents, _availableAgents)&&const DeepCollectionEquality().equals(other._availableProviders, _availableProviders)&&const DeepCollectionEquality().equals(other._availableCommands, _availableCommands)&&(identical(other.selectedAgent, selectedAgent) || other.selectedAgent == selectedAgent)&&(identical(other.selectedProviderID, selectedProviderID) || other.selectedProviderID == selectedProviderID)&&(identical(other.selectedModelID, selectedModelID) || other.selectedModelID == selectedModelID)&&(identical(other.stagedCommand, stagedCommand) || other.stagedCommand == stagedCommand));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,message,const DeepCollectionEquality().hash(_availableAgents),const DeepCollectionEquality().hash(_availableProviders),selectedAgent,selectedProviderID,selectedModelID);
+int get hashCode => Object.hash(runtimeType,message,const DeepCollectionEquality().hash(_availableAgents),const DeepCollectionEquality().hash(_availableProviders),const DeepCollectionEquality().hash(_availableCommands),selectedAgent,selectedProviderID,selectedModelID,stagedCommand);
 
 @override
 String toString() {
-  return 'NewSessionState.error(message: $message, availableAgents: $availableAgents, availableProviders: $availableProviders, selectedAgent: $selectedAgent, selectedProviderID: $selectedProviderID, selectedModelID: $selectedModelID)';
+  return 'NewSessionState.error(message: $message, availableAgents: $availableAgents, availableProviders: $availableProviders, availableCommands: $availableCommands, selectedAgent: $selectedAgent, selectedProviderID: $selectedProviderID, selectedModelID: $selectedModelID, stagedCommand: $stagedCommand)';
 }
 
 
@@ -270,11 +322,11 @@ abstract mixin class $NewSessionErrorCopyWith<$Res> implements $NewSessionStateC
   factory $NewSessionErrorCopyWith(NewSessionError value, $Res Function(NewSessionError) _then) = _$NewSessionErrorCopyWithImpl;
 @useResult
 $Res call({
- String message, List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, String? selectedAgent, String? selectedProviderID, String? selectedModelID
+ String message, List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, List<CommandInfo> availableCommands, String? selectedAgent, String? selectedProviderID, String? selectedModelID, CommandInfo? stagedCommand
 });
 
 
-
+$CommandInfoCopyWith<$Res>? get stagedCommand;
 
 }
 /// @nodoc
@@ -287,19 +339,33 @@ class _$NewSessionErrorCopyWithImpl<$Res>
 
 /// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? message = null,Object? availableAgents = null,Object? availableProviders = null,Object? selectedAgent = freezed,Object? selectedProviderID = freezed,Object? selectedModelID = freezed,}) {
+@pragma('vm:prefer-inline') $Res call({Object? message = null,Object? availableAgents = null,Object? availableProviders = null,Object? availableCommands = null,Object? selectedAgent = freezed,Object? selectedProviderID = freezed,Object? selectedModelID = freezed,Object? stagedCommand = freezed,}) {
   return _then(NewSessionError(
 message: null == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
 as String,availableAgents: null == availableAgents ? _self._availableAgents : availableAgents // ignore: cast_nullable_to_non_nullable
 as List<AgentInfo>,availableProviders: null == availableProviders ? _self._availableProviders : availableProviders // ignore: cast_nullable_to_non_nullable
-as List<ProviderInfo>,selectedAgent: freezed == selectedAgent ? _self.selectedAgent : selectedAgent // ignore: cast_nullable_to_non_nullable
+as List<ProviderInfo>,availableCommands: null == availableCommands ? _self._availableCommands : availableCommands // ignore: cast_nullable_to_non_nullable
+as List<CommandInfo>,selectedAgent: freezed == selectedAgent ? _self.selectedAgent : selectedAgent // ignore: cast_nullable_to_non_nullable
 as String?,selectedProviderID: freezed == selectedProviderID ? _self.selectedProviderID : selectedProviderID // ignore: cast_nullable_to_non_nullable
 as String?,selectedModelID: freezed == selectedModelID ? _self.selectedModelID : selectedModelID // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,stagedCommand: freezed == stagedCommand ? _self.stagedCommand : stagedCommand // ignore: cast_nullable_to_non_nullable
+as CommandInfo?,
   ));
 }
 
+/// Create a copy of NewSessionState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$CommandInfoCopyWith<$Res>? get stagedCommand {
+    if (_self.stagedCommand == null) {
+    return null;
+  }
 
+  return $CommandInfoCopyWith<$Res>(_self.stagedCommand!, (value) {
+    return _then(_self.copyWith(stagedCommand: value));
+  });
+}
 }
 
 /// @nodoc

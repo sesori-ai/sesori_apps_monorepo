@@ -154,6 +154,11 @@ class OpenCodePlugin implements BridgePlugin {
   }
 
   @override
+  Future<List<PluginCommand>> getCommands({required String? projectId}) async {
+    return _call(() => _service.getCommands(projectId: projectId));
+  }
+
+  @override
   Future<PluginSession> createSession({
     required String directory,
     required String? parentSessionId,
@@ -161,28 +166,15 @@ class OpenCodePlugin implements BridgePlugin {
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
-    final session = await _call(
-      () => _service.repository.api.createSession(
+    return _call(
+      () => _service.createSession(
         directory: directory,
         parentSessionId: parentSessionId,
+        parts: parts,
+        agent: agent,
+        model: model,
       ),
     );
-    _service.tracker.registerSession(
-      sessionId: session.id,
-      directory: session.directory,
-    );
-
-    final body = SendPromptBody(parts: parts, agent: agent, model: model);
-
-    await _call(
-      () => _service.repository.api.sendPrompt(
-        sessionId: session.id,
-        directory: session.directory,
-        body: body,
-      ),
-    );
-
-    return session.toPlugin(projectID: _resolveCanonicalProjectID(session, directory));
   }
 
   @override
@@ -267,19 +259,31 @@ class OpenCodePlugin implements BridgePlugin {
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) {
-    final directory = _service.tracker.getSessionDirectory(sessionId: sessionId);
-
-    if (directory == null) {
-      Log.w("directory missing for session $sessionId. Defaulting to bridge CWD as directory.");
-    }
-
-    final body = SendPromptBody(parts: parts, agent: agent, model: model);
-
     return _call(
-      () => _service.repository.api.sendPrompt(
+      () => _service.sendPrompt(
         sessionId: sessionId,
-        directory: directory,
-        body: body,
+        parts: parts,
+        agent: agent,
+        model: model,
+      ),
+    );
+  }
+
+  @override
+  Future<void> sendCommand({
+    required String sessionId,
+    required String command,
+    required String arguments,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) {
+    return _call(
+      () => _service.sendCommand(
+        sessionId: sessionId,
+        command: command,
+        arguments: arguments,
+        agent: agent,
+        model: model,
       ),
     );
   }

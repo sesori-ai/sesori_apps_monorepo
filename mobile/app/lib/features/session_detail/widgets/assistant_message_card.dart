@@ -8,6 +8,7 @@ import "text_part_widget.dart";
 import "tool_part_widget.dart";
 
 class AssistantMessageCard extends StatelessWidget {
+  final String? projectId;
   final MessageWithParts message;
   final Map<String, String> streamingText;
   final List<Session> children;
@@ -15,6 +16,7 @@ class AssistantMessageCard extends StatelessWidget {
 
   const AssistantMessageCard({
     super.key,
+    required this.projectId,
     required this.message,
     required this.streamingText,
     required this.children,
@@ -68,6 +70,7 @@ class AssistantMessageCard extends StatelessWidget {
       MessagePartType.tool => ToolPartWidget(key: ValueKey(part.id), part: part),
       MessagePartType.subtask => SubtaskPartWidget(
         key: ValueKey(part.id),
+        projectId: projectId,
         part: part,
         children: children,
         childStatuses: childStatuses,

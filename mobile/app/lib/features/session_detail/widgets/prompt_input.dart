@@ -3,18 +3,25 @@ import "dart:math" as math;
 
 import "package:flutter/material.dart";
 import "package:sesori_dart_core/logging.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "../../../capabilities/voice/voice_transcription_service.dart";
 import "../../../core/constants.dart";
 import "../../../core/di/injection.dart";
 import "../../../core/extensions/build_context_x.dart";
+import "../../../core/widgets/command_picker_sheet.dart";
 
 enum _VoiceState { idle, recording, transcribing }
 
 class PromptInput extends StatefulWidget {
   final bool isBusy;
-  final ValueChanged<String> onSend;
+  final void Function(String text, String? command) onSend;
   final VoidCallback onAbort;
+  final Widget? composerHeader;
+  final List<CommandInfo> availableCommands;
+  final CommandInfo? stagedCommand;
+  final ValueChanged<CommandInfo> onCommandSelected;
+  final VoidCallback onCommandCleared;
 
   /// Optional widget rendered inside the prompt container, above the text field
   /// but below the separator line.
@@ -25,6 +32,11 @@ class PromptInput extends StatefulWidget {
     required this.isBusy,
     required this.onSend,
     required this.onAbort,
+    required this.composerHeader,
+    required this.availableCommands,
+    required this.stagedCommand,
+    required this.onCommandSelected,
+    required this.onCommandCleared,
     this.header,
   });
 
@@ -64,12 +76,26 @@ class _PromptInputState extends State<PromptInput> {
   }
 
   void _handleSend() {
-    final text = _controller.text.trim();
-    if (text.isEmpty) return;
+    final stagedCommand = widget.stagedCommand;
+    if (stagedCommand != null) {
+      widget.onSend(_controller.text, stagedCommand.name);
+      widget.onCommandCleared();
+    } else {
+      final text = _controller.text.trim();
+      if (text.isEmpty) return;
+      widget.onSend(text, null);
+    }
 
-    widget.onSend(text);
     _controller.clear();
     _focusNode.requestFocus();
+  }
+
+  @override
+  void didUpdateWidget(covariant PromptInput oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.stagedCommand?.name != widget.stagedCommand?.name && widget.stagedCommand != null) {
+      _focusNode.requestFocus();
+    }
   }
 
   Future<void> _handleMicTap() async {
@@ -166,6 +192,26 @@ class _PromptInputState extends State<PromptInput> {
       );
   }
 
+  Future<void> _openCommandPicker() async {
+    final selected = await CommandPickerSheet.show(
+      context,
+      commands: widget.availableCommands,
+    );
+    if (!mounted || selected == null) return;
+    widget.onCommandSelected(selected);
+    _focusNode.requestFocus();
+  }
+
+  String _commandHintText(BuildContext context) {
+    final command = widget.stagedCommand;
+    if (command == null) return context.loc.sessionDetailPromptHint;
+    for (final hint in command.hints ?? <String>[]) {
+      final trimmed = hint.trim();
+      if (trimmed.isNotEmpty) return trimmed;
+    }
+    return context.loc.sessionDetailCommandArgumentsHint;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -182,6 +228,29 @@ class _PromptInputState extends State<PromptInput> {
         mainAxisSize: .min,
         children: [
           ?widget.header,
+          if (widget.stagedCommand == null) ?widget.composerHeader,
+          if (widget.stagedCommand != null)
+            Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(12, 6, 12, 2),
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: InputChip(
+                  label: Text("/${widget.stagedCommand!.name}"),
+                  avatar: CircleAvatar(
+                    backgroundColor: theme.colorScheme.primaryContainer,
+                    child: Text(
+                      "/",
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: theme.colorScheme.onPrimaryContainer,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  onDeleted: widget.onCommandCleared,
+                  deleteIcon: const Icon(Icons.close, size: 18),
+                ),
+              ),
+            ),
           Padding(
             padding: EdgeInsetsDirectional.only(
               start: 12,
@@ -192,6 +261,11 @@ class _PromptInputState extends State<PromptInput> {
             child: Row(
               crossAxisAlignment: .end,
               children: [
+                _SlashButton(
+                  enabled: _voiceState == _VoiceState.idle,
+                  onTap: _openCommandPicker,
+                ),
+                const SizedBox(width: 8),
                 Expanded(
                   child: switch (_voiceState) {
                     _VoiceState.recording => _RecordingIndicator(amplitudeStream: _voiceService.amplitudeStream),
@@ -203,7 +277,7 @@ class _PromptInputState extends State<PromptInput> {
                       maxLines: 5,
                       textInputAction: TextInputAction.newline,
                       decoration: InputDecoration(
-                        hintText: loc.sessionDetailPromptHint,
+                        hintText: _commandHintText(context),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
                           borderSide: BorderSide.none,
@@ -243,6 +317,49 @@ class _PromptInputState extends State<PromptInput> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Slash button
+// -----------------------------------------------------------------------------
+
+class _SlashButton extends StatelessWidget {
+  final bool enabled;
+  final Future<void> Function() onTap;
+
+  const _SlashButton({
+    required this.enabled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Material(
+      color: enabled
+          ? theme.colorScheme.surfaceContainerHighest
+          : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: enabled ? onTap : null,
+        child: SizedBox(
+          width: 44,
+          height: 44,
+          child: Center(
+            child: Text(
+              "/",
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: enabled ? theme.colorScheme.onSurfaceVariant : theme.colorScheme.outline,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

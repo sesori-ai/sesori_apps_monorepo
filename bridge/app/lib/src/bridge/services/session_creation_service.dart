@@ -7,24 +7,6 @@ import "../repositories/session_repository.dart";
 import "session_persistence_service.dart";
 import "worktree_service.dart";
 
-String buildWorktreeSystemPrompt({
-  required String branchName,
-  required String worktreePath,
-  required String baseBranch,
-}) {
-  return '''
-[SYSTEM CONTEXT — IMPORTANT]
-A dedicated git worktree and branch have been created for this session:
-- Branch: $branchName
-- Worktree path: $worktreePath
-- Based on: $baseBranch
-
-IMPORTANT: Do NOT create new worktrees, branches, or working directories for this task — even if other instructions suggest it. One has already been created and is 100% dedicated to the work you will be doing in this session.
-
----
-''';
-}
-
 class SessionCreationService {
   final MetadataService _metadataService;
   final WorktreeService _worktreeService;
@@ -42,16 +24,21 @@ class SessionCreationService {
        _sessionPersistenceService = sessionPersistenceService;
 
   Future<Session> createSession({required CreateSessionRequest request}) async {
-    final metadata = await _generateMetadata(parts: request.parts);
+    final normalizedCommand = _normalizeCommand(request.command);
+    final firstText = _extractFirstText(parts: request.parts);
+    final metadata = await _generateMetadata(firstText: firstText);
     final worktreeResult = await _prepareWorktree(request: request, metadata: metadata);
     final created = await _sessionRepository.createSession(
       directory: _resolveDirectory(request: request, worktreeResult: worktreeResult),
       parentSessionId: null,
-      parts: _buildPromptParts(parts: request.parts, worktreeResult: worktreeResult),
-      agent: request.agent,
-      model: request.model,
+      parts: _buildPromptParts(
+        parts: request.parts,
+        worktreeResult: worktreeResult,
+        command: normalizedCommand,
+      ),
+      agent: normalizedCommand == null || normalizedCommand.isEmpty ? request.agent : null,
+      model: normalizedCommand == null || normalizedCommand.isEmpty ? request.model : null,
     );
-    final finalSession = await _maybeRenameSession(session: created, metadata: metadata);
     final worktreeState = await _resolveWorktreeState(
       projectId: request.projectId,
       dedicatedWorktree: request.dedicatedWorktree,
@@ -67,15 +54,37 @@ class SessionCreationService {
       baseBranch: worktreeState.baseBranch,
       baseCommit: worktreeState.baseCommit,
     );
+    await _maybeSendCommand(
+      session: created,
+      command: normalizedCommand,
+      arguments: _buildCommandArguments(
+        userArguments: firstText ?? '',
+        worktreeResult: worktreeResult,
+      ),
+      agent: request.agent,
+      model: request.model,
+    );
+    final finalSession = await _maybeRenameSession(session: created, metadata: metadata);
     return _sessionRepository.enrichSession(session: finalSession);
   }
 
-  Future<bridge_metadata.SessionMetadata?> _generateMetadata({required List<PromptPart> parts}) async {
-    final firstText = parts
+  String? _extractFirstText({required List<PromptPart> parts}) {
+    return parts
         .whereType<PromptPartText>()
         .map((part) => part.text)
         .where((text) => text.trim().isNotEmpty)
         .firstOrNull;
+  }
+
+  String? _normalizeCommand(String? command) {
+    final normalizedCommand = command?.trim();
+    if (normalizedCommand == null || normalizedCommand.isEmpty) {
+      return null;
+    }
+    return normalizedCommand;
+  }
+
+  Future<bridge_metadata.SessionMetadata?> _generateMetadata({required String? firstText}) async {
     if (firstText == null) {
       return null;
     }
@@ -98,18 +107,35 @@ class SessionCreationService {
     );
   }
 
-  List<PromptPart> _buildPromptParts({required List<PromptPart> parts, required WorktreeResult? worktreeResult}) {
+  List<PromptPart> _buildPromptParts({
+    required List<PromptPart> parts,
+    required WorktreeResult? worktreeResult,
+    required String? command,
+  }) {
+    if (command != null) {
+      return const [];
+    }
+    final includeUserParts = command == null;
+    if (parts.isEmpty && includeUserParts) {
+      return parts;
+    }
     if (worktreeResult case WorktreeSuccess(:final path, :final branchName, :final baseBranch)) {
-      return [
+      final promptParts = <PromptPart>[
         PromptPart.text(
-          text: buildWorktreeSystemPrompt(
+          text: _buildWorktreeSystemPrompt(
             branchName: branchName,
             worktreePath: path,
             baseBranch: baseBranch,
           ),
         ),
-        ...parts,
       ];
+      if (includeUserParts) {
+        promptParts.addAll(parts);
+      }
+      return promptParts;
+    }
+    if (!includeUserParts) {
+      return const [];
     }
     return parts;
   }
@@ -137,6 +163,44 @@ class SessionCreationService {
       }
     }
     return session;
+  }
+
+  Future<void> _maybeSendCommand({
+    required Session session,
+    required String? command,
+    required String arguments,
+    required String? agent,
+    required PromptModel? model,
+  }) async {
+    if (command == null) {
+      return;
+    }
+    await _sessionRepository.sendCommand(
+      sessionId: session.id,
+      command: command,
+      arguments: arguments,
+      agent: agent,
+      model: model,
+    );
+  }
+
+  String _buildCommandArguments({
+    required String userArguments,
+    required WorktreeResult? worktreeResult,
+  }) {
+    if (worktreeResult case WorktreeSuccess(:final path, :final branchName, :final baseBranch)) {
+      final systemContext = _buildWorktreeSystemPrompt(
+        branchName: branchName,
+        worktreePath: path,
+        baseBranch: baseBranch,
+      ).trimRight();
+      final trimmedArguments = userArguments.trim();
+      if (trimmedArguments.isEmpty) {
+        return systemContext;
+      }
+      return "$systemContext\n\n$trimmedArguments";
+    }
+    return userArguments;
   }
 
   Future<({String? worktreePath, String? branchName, String? baseBranch, String? baseCommit})> _resolveWorktreeState({
@@ -167,5 +231,23 @@ class SessionCreationService {
       baseBranch: baseBranchAndCommit?.baseBranch,
       baseCommit: baseBranchAndCommit?.baseCommit,
     );
+  }
+
+  String _buildWorktreeSystemPrompt({
+    required String branchName,
+    required String worktreePath,
+    required String baseBranch,
+  }) {
+    return '''
+[SYSTEM CONTEXT — IMPORTANT]
+A dedicated git worktree and branch have been created for this session:
+- Branch: $branchName
+- Worktree path: $worktreePath
+- Based on: $baseBranch
+
+IMPORTANT: Do NOT create new worktrees, branches, or working directories for this task — even if other instructions suggest it. One has already been created and is 100% dedicated to the work you will be doing in this session.
+
+---
+''';
   }
 }

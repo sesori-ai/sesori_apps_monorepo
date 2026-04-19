@@ -322,8 +322,8 @@ void main() {
     await statusController.close();
 
     final getIt = GetIt.instance;
-    if (getIt.isRegistered<SessionService>()) {
-      getIt.unregister<SessionService>();
+    if (getIt.isRegistered<SessionApi>()) {
+      getIt.unregister<SessionApi>();
     }
     if (getIt.isRegistered<ProjectService>()) {
       getIt.unregister<ProjectService>();
@@ -505,10 +505,10 @@ void main() {
       final session = _testSessionWithPullRequest();
 
       when(
-        () => mockSessionService.listSessions(projectId: session.projectID),
+        () => mockProjectService.listSessions(projectId: session.projectID),
       ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [session])));
 
-      getIt.registerSingleton<SessionService>(mockSessionService);
+    getIt.registerSingleton<SessionService>(mockSessionService);
       getIt.registerSingleton<ProjectService>(mockProjectService);
       getIt.registerSingleton<ConnectionService>(mockConnectionService);
       getIt.registerSingleton<SseEventRepository>(mockSseEventRepository);

@@ -63,6 +63,10 @@ SesoriSseEvent _$SesoriSseEventFromJson(
           return SesoriSessionIdle.fromJson(
             json
           );
+                case 'command.executed':
+          return SesoriCommandExecuted.fromJson(
+            json
+          );
                 case 'message.updated':
           return SesoriMessageUpdated.fromJson(
             json
@@ -1045,6 +1049,85 @@ class _$SesoriSessionIdleCopyWithImpl<$Res>
 @pragma('vm:prefer-inline') $Res call({Object? sessionID = null,}) {
   return _then(SesoriSessionIdle(
 sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class SesoriCommandExecuted implements SesoriSseEvent, SesoriSessionEvent {
+  const SesoriCommandExecuted({required this.name, required this.sessionID, required this.arguments, required this.messageID, final  String? $type}): $type = $type ?? 'command.executed';
+  factory SesoriCommandExecuted.fromJson(Map<String, dynamic> json) => _$SesoriCommandExecutedFromJson(json);
+
+ final  String name;
+ final  String sessionID;
+ final  String arguments;
+ final  String messageID;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SesoriCommandExecutedCopyWith<SesoriCommandExecuted> get copyWith => _$SesoriCommandExecutedCopyWithImpl<SesoriCommandExecuted>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SesoriCommandExecutedToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriCommandExecuted&&(identical(other.name, name) || other.name == name)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.arguments, arguments) || other.arguments == arguments)&&(identical(other.messageID, messageID) || other.messageID == messageID));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,name,sessionID,arguments,messageID);
+
+@override
+String toString() {
+  return 'SesoriSseEvent.commandExecuted(name: $name, sessionID: $sessionID, arguments: $arguments, messageID: $messageID)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SesoriCommandExecutedCopyWith<$Res> implements $SesoriSseEventCopyWith<$Res> {
+  factory $SesoriCommandExecutedCopyWith(SesoriCommandExecuted value, $Res Function(SesoriCommandExecuted) _then) = _$SesoriCommandExecutedCopyWithImpl;
+@useResult
+$Res call({
+ String name, String sessionID, String arguments, String messageID
+});
+
+
+
+
+}
+/// @nodoc
+class _$SesoriCommandExecutedCopyWithImpl<$Res>
+    implements $SesoriCommandExecutedCopyWith<$Res> {
+  _$SesoriCommandExecutedCopyWithImpl(this._self, this._then);
+
+  final SesoriCommandExecuted _self;
+  final $Res Function(SesoriCommandExecuted) _then;
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? name = null,Object? sessionID = null,Object? arguments = null,Object? messageID = null,}) {
+  return _then(SesoriCommandExecuted(
+name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,arguments: null == arguments ? _self.arguments : arguments // ignore: cast_nullable_to_non_nullable
+as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }

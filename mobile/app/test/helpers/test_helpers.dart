@@ -9,6 +9,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart" show AppRouteDef, RouteSource;
 import "package:sesori_dart_core/src/api/client/relay_http_client.dart";
+import "package:sesori_dart_core/src/api/session_api.dart";
 import "package:sesori_dart_core/src/capabilities/project/project_service.dart";
 import "package:sesori_dart_core/src/capabilities/relay/relay_client.dart";
 import "package:sesori_dart_core/src/capabilities/relay/room_key_storage.dart";
@@ -32,6 +33,8 @@ import "package:sesori_shared/sesori_shared.dart";
 // ---------------------------------------------------------------------------
 
 class MockProjectService extends Mock implements ProjectService {}
+
+class MockSessionApi extends Mock implements SessionApi {}
 
 class MockSessionService extends Mock implements SessionService {}
 
@@ -317,6 +320,23 @@ AgentInfo testAgentInfo() {
     model: null,
     variant: null,
     mode: AgentMode.primary,
+  );
+}
+
+CommandInfo testCommandInfo({
+  String name = "review",
+  String template = "/review {{file}}",
+}) {
+  return CommandInfo(
+    name: name,
+    template: template,
+    hints: const ["Optional arguments"],
+    description: "Run $name",
+    agent: null,
+    model: null,
+    provider: null,
+    source: CommandSource.command,
+    subtask: false,
   );
 }
 

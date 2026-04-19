@@ -18,6 +18,7 @@ export "package:sesori_auth/sesori_auth.dart" show HttpMethod, SafeApiClient;
 
 // API
 export "src/api/client/relay_http_client.dart";
+export "src/api/session_api.dart";
 export "src/capabilities/notifications/notification_api_client.dart";
 export "src/capabilities/notifications/notification_preferences_service.dart";
 export "src/capabilities/notifications/register_token_request.dart";
@@ -44,6 +45,7 @@ export "src/cubits/notification_preferences/notification_preferences_cubit.dart"
 export "src/cubits/notification_preferences/notification_preferences_state.dart";
 export "src/cubits/project_list/project_list_cubit.dart";
 export "src/cubits/project_list/project_list_state.dart";
+export "src/cubits/session_detail/queued_session_submission.dart";
 export "src/cubits/session_detail/session_detail_cubit.dart";
 export "src/cubits/session_detail/session_detail_resolvers.dart";
 export "src/cubits/session_detail/session_detail_state.dart";
@@ -62,6 +64,7 @@ export "src/platform/notification_canceller.dart";
 export "src/platform/route_source.dart";
 export "src/platform/url_launcher.dart";
 export "src/repositories/permission_repository.dart";
+export "src/repositories/session_repository.dart";
 // Routing
 export "src/routing/app_routes.dart";
 export "src/routing/auth_redirect_service.dart";

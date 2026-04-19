@@ -1119,6 +1119,9 @@ class _FakeApi implements OpenCodeApi {
   Future<List<Session>> listSessions({String? directory}) async => _sessions;
 
   @override
+  Future<List<Command>> listCommands({required String? directory}) async => const [];
+
+  @override
   Future<Session> createSession({required String directory, String? parentSessionId}) async =>
       throw UnimplementedError();
 
@@ -1152,6 +1155,13 @@ class _FakeApi implements OpenCodeApi {
   Future<void> sendPrompt({
     required String sessionId,
     required SendPromptBody body,
+    required String? directory,
+  }) async {}
+
+  @override
+  Future<void> sendCommand({
+    required String sessionId,
+    required SendCommandBody body,
     required String? directory,
   }) async {}
 
