@@ -18,10 +18,7 @@ class SendCommandBody {
       "arguments": arguments,
       "agent": ?agent,
       if (selectedModel != null)
-        "model": {
-          "providerID": selectedModel.providerID,
-          "modelID": selectedModel.modelID,
-        },
+        "model": "${selectedModel.providerID}/${selectedModel.modelID}",
     };
   }
 }

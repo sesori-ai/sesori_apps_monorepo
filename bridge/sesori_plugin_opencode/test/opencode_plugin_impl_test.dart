@@ -131,7 +131,7 @@ void main() {
           "command": "/review-work",
           "arguments": "recent changes",
           "agent": "reviewer",
-          "model": {"providerID": "openai", "modelID": "gpt-4.1"},
+          "model": "openai/gpt-4.1",
         }),
       );
     });
