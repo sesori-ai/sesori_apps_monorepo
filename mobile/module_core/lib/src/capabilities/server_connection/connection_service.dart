@@ -12,6 +12,7 @@ import "../../capabilities/relay/room_key_storage.dart";
 import "../../logging/logging.dart";
 import "../../platform/lifecycle_source.dart";
 import "../relay/relay_client.dart";
+import "../relay/relay_config.dart";
 import "api_paths.dart";
 import "models/connection_status.dart";
 import "models/sse_event.dart";
@@ -113,15 +114,41 @@ class ConnectionService {
     );
     _compositeSubscription.add(
       _authSession.authStateStream.listen((state) {
-        if (state is! AuthUnauthenticated) return;
-        disconnect();
-        unawaited(
-          _roomKeyStorage.clearRoomKey().catchError((Object error, StackTrace stackTrace) {
-            loge("Failed to clear room key after logout", error, stackTrace);
-          }),
-        );
+        switch (state) {
+          case AuthAuthenticated():
+            unawaited(_autoConnectAfterAuth());
+          case AuthUnauthenticated():
+            disconnect();
+            unawaited(
+              _roomKeyStorage.clearRoomKey().catchError((Object error, StackTrace stackTrace) {
+                loge("Failed to clear room key after logout", error, stackTrace);
+              }),
+            );
+          case AuthInitial():
+          case AuthAuthenticating():
+          case AuthFailed():
+            break;
+        }
       }),
     );
+  }
+
+  /// Connects to the relay when auth transitions to [AuthAuthenticated].
+  ///
+  /// Symmetric counterpart to the [AuthUnauthenticated] branch that calls
+  /// [disconnect]. Fire-and-forget: errors are logged, never rethrown.
+  Future<void> _autoConnectAfterAuth() async {
+    try {
+      final token = await _authTokenProvider.getFreshAccessToken(minTtl: const Duration(minutes: 2));
+      if (token == null) {
+        logw("Auto-connect after auth skipped: no valid token");
+        return;
+      }
+      final config = ServerConnectionConfig(relayHost: relayHost, authToken: token);
+      await connect(config);
+    } catch (error, stackTrace) {
+      loge("Auto-connect after auth failed", error, stackTrace);
+    }
   }
 
   /// Called by the platform layer when the app moves to the background.
