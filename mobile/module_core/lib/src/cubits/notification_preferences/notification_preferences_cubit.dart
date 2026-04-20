@@ -1,20 +1,20 @@
 import "package:bloc/bloc.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../../capabilities/notifications/notification_preferences_service.dart";
+import "../../repositories/notification_preferences_repository.dart";
 import "notification_preferences_state.dart";
 
 class NotificationPreferencesCubit extends Cubit<NotificationPreferencesState> {
-  final NotificationPreferencesService _service;
+  final NotificationPreferencesRepository _repository;
 
-  NotificationPreferencesCubit(NotificationPreferencesService service)
-    : _service = service,
+  NotificationPreferencesCubit(NotificationPreferencesRepository repository)
+    : _repository = repository,
       super(const NotificationPreferencesState.loading()) {
     _load();
   }
 
   Future<void> _load() async {
-    final preferences = await _service.getAll();
+    final preferences = await _repository.getAll();
     if (isClosed) return;
     emit(NotificationPreferencesState.loaded(preferences: preferences));
   }
@@ -23,7 +23,7 @@ class NotificationPreferencesCubit extends Cubit<NotificationPreferencesState> {
     NotificationCategory category, {
     required bool enabled,
   }) async {
-    await _service.setEnabled(category, enabled: enabled);
+    await _repository.setEnabled(category: category, enabled: enabled);
 
     final currentState = state;
     if (currentState is! NotificationPreferencesLoaded || isClosed) return;

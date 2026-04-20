@@ -8,7 +8,7 @@ class MockAuthenticatedHttpApiClient extends Mock implements AuthenticatedHttpAp
 
 void main() {
   late MockAuthenticatedHttpApiClient mockClient;
-  late NotificationApiClient apiClient;
+  late NotificationApi api;
 
   setUpAll(() {
     registerFallbackValue(Uri());
@@ -17,10 +17,10 @@ void main() {
 
   setUp(() {
     mockClient = MockAuthenticatedHttpApiClient();
-    apiClient = NotificationApiClient(mockClient);
+    api = NotificationApi(client: mockClient);
   });
 
-  group("NotificationApiClient", () {
+  group("NotificationApi", () {
     test("registerToken posts token payload to auth API", () async {
       when(
         () => mockClient.post<bool>(
@@ -33,8 +33,8 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse.success(true));
 
-      await apiClient.registerToken(
-        const RegisterTokenRequest(token: "device-token", platform: DevicePlatform.ios),
+      await api.registerToken(
+        request: const RegisterTokenRequest(token: "device-token", platform: DevicePlatform.ios),
       );
 
       verify(
@@ -60,7 +60,7 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse.success(true));
 
-      await apiClient.unregisterToken("abc/123+token");
+      await api.unregisterToken(token: "abc/123+token");
 
       final captured = verify(
         () => mockClient.delete<bool>(
@@ -91,11 +91,8 @@ void main() {
       ).thenAnswer((_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 500, rawErrorString: "error")));
 
       await expectLater(
-        apiClient.registerToken(
-          const RegisterTokenRequest(
-            token: "device-token",
-            platform: DevicePlatform.android,
-          ),
+        api.registerToken(
+          request: const RegisterTokenRequest(token: "device-token", platform: DevicePlatform.android),
         ),
         throwsA(isA<NonSuccessCodeError>()),
       );

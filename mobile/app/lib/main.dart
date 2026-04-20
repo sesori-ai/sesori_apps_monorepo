@@ -10,7 +10,6 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "core/di/injection.dart";
 import "core/extensions/build_context_x.dart";
-import "core/platform/notification_service.dart";
 import "core/routing/app_router.dart";
 import "core/routing/deep_link_service.dart";
 import "core/widgets/connection_overlay.dart";
@@ -55,17 +54,67 @@ void main() async {
       };
     }
   }
-  configureDependencies();
-  getIt<DeepLinkService>().init();
   if (_shouldInitializeFirebase) {
-    unawaited(
-      // ignore: inference_failure_on_untyped_parameter
-      getIt<NotificationService>().initialize().catchError((error) {
-        loge("Error initializing notification service: $error", error);
-      }),
+    await bootstrapSesoriApp(
+      shouldInitializeFirebase: true,
+      configureDependenciesFn: configureDependencies,
+      initializeDeepLinks: () => getIt<DeepLinkService>().init(),
+      startNotificationStartupFn: () => startNotificationStartup(
+        localNotificationClient: getIt<LocalNotificationClient>(),
+        pushMessagingSource: getIt<PushMessagingSource>(),
+        notificationRegistrationService: getIt<NotificationRegistrationService>(),
+        foregroundNotificationDispatcher: getIt<ForegroundNotificationDispatcher>(),
+        notificationOpenDispatcher: getIt<NotificationOpenDispatcher>(),
+      ),
+      runAppFn: runApp,
     );
+    return;
   }
-  runApp(const SesoriApp());
+
+  await bootstrapSesoriApp(
+    shouldInitializeFirebase: false,
+    configureDependenciesFn: configureDependencies,
+    initializeDeepLinks: () => getIt<DeepLinkService>().init(),
+    startNotificationStartupFn: () async {},
+    runAppFn: runApp,
+  );
+}
+
+Future<void> bootstrapSesoriApp({
+  required bool shouldInitializeFirebase,
+  required void Function() configureDependenciesFn,
+  required void Function() initializeDeepLinks,
+  required Future<void> Function() startNotificationStartupFn,
+  required void Function(Widget app) runAppFn,
+}) async {
+  configureDependenciesFn();
+  initializeDeepLinks();
+  if (shouldInitializeFirebase) {
+    await startNotificationStartupFn();
+  }
+  runAppFn(const SesoriApp());
+}
+
+Future<void> startNotificationStartup({
+  required LocalNotificationClient localNotificationClient,
+  required PushMessagingSource pushMessagingSource,
+  required NotificationRegistrationService notificationRegistrationService,
+  required ForegroundNotificationDispatcher foregroundNotificationDispatcher,
+  required NotificationOpenDispatcher notificationOpenDispatcher,
+}) async {
+  await _runNotificationStartupStep(() => localNotificationClient.initialize());
+  await _runNotificationStartupStep(() => pushMessagingSource.initialize());
+  await _runNotificationStartupStep(() => notificationRegistrationService.start());
+  await _runNotificationStartupStep(() => foregroundNotificationDispatcher.start());
+  await _runNotificationStartupStep(() => notificationOpenDispatcher.start());
+}
+
+Future<void> _runNotificationStartupStep(Future<void> Function() step) async {
+  try {
+    await step();
+  } catch (error, stackTrace) {
+    loge("Error initializing notification startup", error, stackTrace);
+  }
 }
 
 bool get _shouldInitializeFirebase {

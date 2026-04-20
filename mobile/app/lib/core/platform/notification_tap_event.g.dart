@@ -10,6 +10,7 @@ _NotificationTapEvent _$NotificationTapEventFromJson(Map json) =>
     _NotificationTapEvent(
       sessionId: json['sessionId'] as String?,
       projectId: json['projectId'] as String?,
+      sessionTitle: json['sessionTitle'] as String?,
     );
 
 Map<String, dynamic> _$NotificationTapEventToJson(
@@ -17,4 +18,5 @@ Map<String, dynamic> _$NotificationTapEventToJson(
 ) => <String, dynamic>{
   'sessionId': instance.sessionId,
   'projectId': instance.projectId,
+  'sessionTitle': instance.sessionTitle,
 };

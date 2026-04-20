@@ -12,7 +12,7 @@ class NotificationSettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => NotificationPreferencesCubit(getIt<NotificationPreferencesService>()),
+      create: (_) => NotificationPreferencesCubit(getIt<NotificationPreferencesRepository>()),
       child: const _NotificationSettingsBody(),
     );
   }

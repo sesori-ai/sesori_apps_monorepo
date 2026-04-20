@@ -9,6 +9,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart" show AppRouteDef, RouteSource;
 import "package:sesori_dart_core/src/api/client/relay_http_client.dart";
+import "package:sesori_dart_core/src/api/project_api.dart";
 import "package:sesori_dart_core/src/api/session_api.dart";
 import "package:sesori_dart_core/src/capabilities/project/project_service.dart";
 import "package:sesori_dart_core/src/capabilities/relay/relay_client.dart";
@@ -22,6 +23,8 @@ import "package:sesori_dart_core/src/capabilities/voice/voice_api.dart";
 import "package:sesori_dart_core/src/platform/deep_link_source.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/platform/notification_canceller.dart";
+import "package:sesori_dart_core/src/repositories/project_repository.dart";
+import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_dart_core/src/routing/auth_redirect_service.dart";
 import "package:sesori_mobile/capabilities/voice/audio_format_config.dart";
 import "package:sesori_mobile/capabilities/voice/recording_file_provider.dart";
@@ -34,9 +37,15 @@ import "package:sesori_shared/sesori_shared.dart";
 
 class MockProjectService extends Mock implements ProjectService {}
 
+class MockProjectApi extends Mock implements ProjectApi {}
+
+class MockProjectRepository extends Mock implements ProjectRepository {}
+
 class MockSessionApi extends Mock implements SessionApi {}
 
 class MockSessionService extends Mock implements SessionService {}
+
+class MockSessionRepository extends Mock implements SessionRepository {}
 
 class MockConnectionService extends Mock implements ConnectionService {
   final StreamController<void> _dataMayBeStale = StreamController<void>.broadcast();
@@ -139,6 +148,70 @@ class MockFirebaseCrashlytics extends Mock implements FirebaseCrashlytics {}
 // ---------------------------------------------------------------------------
 
 class FakeUri extends Fake implements Uri {}
+
+void delegateSessionRepositoryToService({
+  required MockSessionRepository repository,
+  required MockSessionService service,
+}) {
+  when(() => repository.abortSession(sessionId: any(named: "sessionId"))).thenAnswer(
+    (invocation) => service.abortSession(sessionId: invocation.namedArguments[#sessionId]! as String),
+  );
+  when(
+    () => repository.replyToQuestion(
+      requestId: any(named: "requestId"),
+      sessionId: any(named: "sessionId"),
+      answers: any(named: "answers"),
+    ),
+  ).thenAnswer(
+    (invocation) => service.replyToQuestion(
+      requestId: invocation.namedArguments[#requestId]! as String,
+      sessionId: invocation.namedArguments[#sessionId]! as String,
+      answers: invocation.namedArguments[#answers]! as List<ReplyAnswer>,
+    ),
+  );
+  when(() => repository.rejectQuestion(requestId: any(named: "requestId"))).thenAnswer(
+    (invocation) => service.rejectQuestion(requestId: invocation.namedArguments[#requestId]! as String),
+  );
+  when(
+    () => repository.getMessages(sessionId: any(named: "sessionId")),
+  ).thenAnswer(
+    (invocation) => service.getMessages(sessionId: invocation.namedArguments[#sessionId]! as String),
+  );
+  when(
+    () => repository.getPendingQuestions(sessionId: any(named: "sessionId")),
+  ).thenAnswer(
+    (invocation) => service.getPendingQuestions(sessionId: invocation.namedArguments[#sessionId]! as String),
+  );
+  when(
+    () => repository.getChildren(sessionId: any(named: "sessionId")),
+  ).thenAnswer(
+    (invocation) => service.getChildren(sessionId: invocation.namedArguments[#sessionId]! as String),
+  );
+  when(() => repository.getSessionStatuses()).thenAnswer((_) => service.getSessionStatuses());
+  when(() => repository.listAgents()).thenAnswer((_) => service.listAgents());
+  when(() => repository.listProviders()).thenAnswer((_) => service.listProviders());
+  when(() => repository.listCommands(projectId: any(named: "projectId"))).thenAnswer(
+    (invocation) => service.listCommands(projectId: invocation.namedArguments[#projectId] as String?),
+  );
+  when(
+    () => repository.sendMessage(
+      sessionId: any(named: "sessionId"),
+      text: any(named: "text"),
+      agent: any(named: "agent"),
+      model: any(named: "model"),
+      command: any(named: "command"),
+    ),
+  ).thenAnswer(
+    (invocation) => service.sendMessage(
+      sessionId: invocation.namedArguments[#sessionId]! as String,
+      text: invocation.namedArguments[#text]! as String,
+      agent: invocation.namedArguments[#agent] as String?,
+      providerID: (invocation.namedArguments[#model] as PromptModel?)?.providerID,
+      modelID: (invocation.namedArguments[#model] as PromptModel?)?.modelID,
+      command: invocation.namedArguments[#command] as String?,
+    ),
+  );
+}
 
 // ---------------------------------------------------------------------------
 // registerAllFallbackValues

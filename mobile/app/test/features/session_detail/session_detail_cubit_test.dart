@@ -11,6 +11,9 @@ import "package:sesori_dart_core/src/capabilities/server_connection/server_conne
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
+import "package:sesori_dart_core/src/repositories/project_repository.dart";
+import "package:sesori_dart_core/src/repositories/session_repository.dart";
+import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../helpers/test_helpers.dart";
@@ -28,20 +31,32 @@ void main() {
 
   group("SessionDetailCubit", () {
     late MockSessionService mockSessionService;
-        late MockConnectionService mockConnectionService;
+    late MockSessionRepository mockSessionRepository;
+    late MockProjectRepository mockProjectRepository;
+    late MockConnectionService mockConnectionService;
     late MockNotificationCanceller mockNotificationCanceller;
     late MockPermissionRepository mockPermissionRepository;
     late MockFailureReporter mockFailureReporter;
+    late SessionDetailLoadService loadService;
+    late SessionRepository promptDispatcher;
     late BehaviorSubject<SesoriSessionEvent> sessionEvents;
     late BehaviorSubject<SseEvent> globalEvents;
     late BehaviorSubject<ConnectionStatus> connectionStatus;
 
     setUp(() {
       mockSessionService = MockSessionService();
+      mockSessionRepository = MockSessionRepository();
+      mockProjectRepository = MockProjectRepository();
       mockConnectionService = MockConnectionService();
       mockNotificationCanceller = MockNotificationCanceller();
       mockPermissionRepository = MockPermissionRepository();
       mockFailureReporter = MockFailureReporter();
+      loadService = SessionDetailLoadService(
+        repository: mockSessionRepository,
+        projectRepository: mockProjectRepository,
+        connectionService: mockConnectionService,
+      );
+      promptDispatcher = mockSessionRepository;
       sessionEvents = BehaviorSubject<SesoriSessionEvent>();
       globalEvents = BehaviorSubject<SseEvent>();
       connectionStatus = BehaviorSubject<ConnectionStatus>();
@@ -65,6 +80,11 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
 
+      delegateSessionRepositoryToService(repository: mockSessionRepository, service: mockSessionService);
+      when(() => mockProjectRepository.findSessionContext(sessionId: any(named: "sessionId"))).thenAnswer(
+        (_) async => const ProjectSessionContext(projectId: "test-project", sessionTitle: null),
+      );
+
       _stubAllDefaults(
         mockSessionService,
         mockSessionService,
@@ -87,10 +107,10 @@ void main() {
       "initial load success emits SessionDetailLoaded",
       build: () => SessionDetailCubit(
         mockConnectionService,
-        sessionService: mockSessionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -119,10 +139,10 @@ void main() {
 
         return SessionDetailCubit(
           mockConnectionService,
-          sessionService: mockSessionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
-          projectId: "test-project",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -136,10 +156,10 @@ void main() {
       "reload re-fetches all initial data",
       build: () => SessionDetailCubit(
         mockConnectionService,
-        sessionService: mockSessionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -167,10 +187,10 @@ void main() {
       "sendMessage when connected delegates to service with trimmed text",
       build: () => SessionDetailCubit(
         mockConnectionService,
-        sessionService: mockSessionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -199,10 +219,10 @@ void main() {
       "sendMessage with command when connected delegates to service",
       build: () => SessionDetailCubit(
         mockConnectionService,
-        sessionService: mockSessionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -231,10 +251,10 @@ void main() {
       "sendMessage sends immediately when session is busy but connected",
       build: () => SessionDetailCubit(
         mockConnectionService,
-        sessionService: mockSessionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -278,10 +298,10 @@ void main() {
       "selectAgent updates selected agent in loaded state",
       build: () => SessionDetailCubit(
         mockConnectionService,
-        sessionService: mockSessionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -303,10 +323,10 @@ void main() {
       "selectModel updates selected provider and model",
       build: () => SessionDetailCubit(
         mockConnectionService,
-        sessionService: mockSessionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -326,10 +346,10 @@ void main() {
       "abort delegates to service.abortSession",
       build: () => SessionDetailCubit(
         mockConnectionService,
-        sessionService: mockSessionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -354,10 +374,10 @@ void main() {
 
         return SessionDetailCubit(
           mockConnectionService,
-          sessionService: mockSessionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
-          projectId: "test-project",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -404,10 +424,10 @@ void main() {
 
         return SessionDetailCubit(
           mockConnectionService,
-          sessionService: mockSessionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
-          projectId: "test-project",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -435,10 +455,10 @@ void main() {
       "clearNotifications cancels all non-unknown notification categories",
       build: () => SessionDetailCubit(
         mockConnectionService,
-        sessionService: mockSessionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -477,10 +497,10 @@ void main() {
 
         return SessionDetailCubit(
           mockConnectionService,
-          sessionService: mockSessionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
-          projectId: "test-project",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -509,10 +529,10 @@ void main() {
       "SSE session.status updates session status",
       build: () => SessionDetailCubit(
         mockConnectionService,
-        sessionService: mockSessionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -539,10 +559,10 @@ void main() {
       "SSE question.asked adds pending question",
       build: () => SessionDetailCubit(
         mockConnectionService,
-        sessionService: mockSessionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -567,10 +587,10 @@ void main() {
 
         return SessionDetailCubit(
           mockConnectionService,
-          sessionService: mockSessionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
-          projectId: "test-project",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -594,10 +614,10 @@ void main() {
       "SSE session.updated updates title",
       build: () => SessionDetailCubit(
         mockConnectionService,
-        sessionService: mockSessionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -636,10 +656,10 @@ void main() {
 
         return SessionDetailCubit(
           mockConnectionService,
-          sessionService: mockSessionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
-          projectId: "test-project",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -664,10 +684,10 @@ void main() {
 
         return SessionDetailCubit(
           mockConnectionService,
-          sessionService: mockSessionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
-          projectId: "test-project",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -700,10 +720,10 @@ void main() {
       "close disposes event subscriptions",
       build: () => SessionDetailCubit(
         mockConnectionService,
-        sessionService: mockSessionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -723,28 +743,26 @@ void main() {
 
     blocTest<SessionDetailCubit, SessionDetailState>(
       "sendMessage queues when connection is lost",
-      build: () {
+      build: () => SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionId: sessionId,
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: mockFailureReporter,
+      ),
+      act: (cubit) async {
+        await _awaitLoaded(cubit);
         when(() => mockConnectionService.currentStatus).thenReturn(
           const ConnectionStatus.connectionLost(
             config: ServerConnectionConfig(relayHost: "fake.example.com"),
           ),
         );
-        return SessionDetailCubit(
-          mockConnectionService,
-          sessionService: mockSessionService,
-          permissionRepository: mockPermissionRepository,
-          sessionId: sessionId,
-          projectId: "test-project",
-          notificationCanceller: mockNotificationCanceller,
-          failureReporter: mockFailureReporter,
-        );
-      },
-      act: (cubit) async {
-        await _awaitLoaded(cubit);
         await cubit.sendMessage(text: "hello", command: null);
       },
+      skip: 1,
       expect: () => [
-        isA<SessionDetailLoaded>(),
         isA<SessionDetailLoaded>().having(
           (state) => state.queuedMessages.map((message) => message.displayText).toList(),
           "queuedMessages",
@@ -767,28 +785,26 @@ void main() {
 
     blocTest<SessionDetailCubit, SessionDetailState>(
       "sendMessage queues when reconnecting",
-      build: () {
+      build: () => SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionId: sessionId,
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: mockFailureReporter,
+      ),
+      act: (cubit) async {
+        await _awaitLoaded(cubit);
         when(() => mockConnectionService.currentStatus).thenReturn(
           const ConnectionStatus.reconnecting(
             config: ServerConnectionConfig(relayHost: "fake.example.com"),
           ),
         );
-        return SessionDetailCubit(
-          mockConnectionService,
-          sessionService: mockSessionService,
-          permissionRepository: mockPermissionRepository,
-          sessionId: sessionId,
-          projectId: "test-project",
-          notificationCanceller: mockNotificationCanceller,
-          failureReporter: mockFailureReporter,
-        );
-      },
-      act: (cubit) async {
-        await _awaitLoaded(cubit);
         await cubit.sendMessage(text: "hello", command: null);
       },
+      skip: 1,
       expect: () => [
-        isA<SessionDetailLoaded>(),
         isA<SessionDetailLoaded>().having(
           (state) => state.queuedMessages.map((message) => message.displayText).toList(),
           "queuedMessages",
@@ -825,10 +841,10 @@ void main() {
 
         return SessionDetailCubit(
           mockConnectionService,
-          sessionService: mockSessionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
-          projectId: "test-project",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -875,10 +891,10 @@ void main() {
         );
         return SessionDetailCubit(
           mockConnectionService,
-          sessionService: mockSessionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
-          projectId: "test-project",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -938,10 +954,10 @@ void main() {
       "connection restored drains queued messages",
       build: () => SessionDetailCubit(
         mockConnectionService,
-        sessionService: mockSessionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -1006,10 +1022,10 @@ void main() {
     test("whitespace-only command is queued and drained as a normal prompt", () async {
       final cubit = SessionDetailCubit(
         mockConnectionService,
-        sessionService: mockSessionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       );
@@ -1081,10 +1097,10 @@ void main() {
 
       final cubit = SessionDetailCubit(
         mockConnectionService,
-        sessionService: mockSessionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       );
@@ -1131,10 +1147,10 @@ void main() {
       "multiple queued messages drain sequentially on reconnection",
       build: () => SessionDetailCubit(
         mockConnectionService,
-        sessionService: mockSessionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -1211,10 +1227,10 @@ void main() {
 
         return SessionDetailCubit(
           mockConnectionService,
-          sessionService: mockSessionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
-          projectId: "test-project",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );

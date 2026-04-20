@@ -3,6 +3,7 @@ import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
+import "package:sesori_mobile/core/platform/go_router_route_dispatcher.dart";
 import "package:sesori_mobile/core/routing/app_router.dart";
 import "package:sesori_mobile/features/login/login_screen.dart";
 import "package:sesori_mobile/features/project_list/project_list_screen.dart";
@@ -181,6 +182,66 @@ void main() {
       expect(screen.sessionId, "ses-1");
       expect(screen.sessionTitle, isNull);
       expect(screen.readOnly, isFalse);
+    });
+  });
+
+  group("GoRouterRouteDispatcher", () {
+    test("replaceStack rebuilds the stack from root then pushes remaining routes", () async {
+      final goCalls = <String>[];
+      final pushCalls = <String>[];
+      final dispatcher = GoRouterRouteDispatcher.test(
+        goRoute: goCalls.add,
+        pushRoute: (route) async {
+          pushCalls.add(route);
+        },
+      );
+
+      dispatcher.replaceStack(
+        stack: RouteStack(
+          paths: [
+            const AppRoute.projects().buildPath(),
+            const AppRoute.sessions(projectId: "proj_1", projectName: null).buildPath(),
+            const AppRoute.sessionDetail(
+              projectId: "proj_1",
+              sessionId: "ses_1",
+              sessionTitle: "Session Title",
+              readOnly: false,
+            ).buildPath(),
+          ],
+        ),
+      );
+      await dispatcher.flushPendingForTesting();
+
+      expect(goCalls, equals([const AppRoute.projects().buildPath()]));
+      expect(
+        pushCalls,
+        equals([
+          const AppRoute.sessions(projectId: "proj_1", projectName: null).buildPath(),
+          const AppRoute.sessionDetail(
+            projectId: "proj_1",
+            sessionId: "ses_1",
+            sessionTitle: "Session Title",
+            readOnly: false,
+          ).buildPath(),
+        ]),
+      );
+    });
+
+    test("replaceStack ignores empty route stacks", () async {
+      final goCalls = <String>[];
+      final pushCalls = <String>[];
+      final dispatcher = GoRouterRouteDispatcher.test(
+        goRoute: goCalls.add,
+        pushRoute: (route) async {
+          pushCalls.add(route);
+        },
+      );
+
+      dispatcher.replaceStack(stack: RouteStack(paths: const []));
+      await dispatcher.flushPendingForTesting();
+
+      expect(goCalls, isEmpty);
+      expect(pushCalls, isEmpty);
     });
   });
 }

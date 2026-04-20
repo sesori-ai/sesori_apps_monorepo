@@ -1,15 +1,15 @@
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 
-import "register_token_request.dart";
+import "../capabilities/notifications/register_token_request.dart";
 
 @lazySingleton
-class NotificationApiClient {
+class NotificationApi {
   final AuthenticatedHttpApiClient _client;
 
-  NotificationApiClient(AuthenticatedHttpApiClient client) : _client = client;
+  NotificationApi({required AuthenticatedHttpApiClient client}) : _client = client;
 
-  Future<void> registerToken(RegisterTokenRequest request) async {
+  Future<void> registerToken({required RegisterTokenRequest request}) async {
     final response = await _client.post(
       Uri.parse("$authBaseUrl/notifications/register-token"),
       fromJson: (_) => true,
@@ -19,7 +19,7 @@ class NotificationApiClient {
     _throwIfError(response);
   }
 
-  Future<void> unregisterToken(String token) async {
+  Future<void> unregisterToken({required String token}) async {
     final encodedToken = Uri.encodeComponent(token);
     final response = await _client.delete(
       Uri.parse("$authBaseUrl/notifications/tokens/$encodedToken"),
