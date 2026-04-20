@@ -120,4 +120,13 @@ void main() {
     ).called(1);
     verify(() => messaging.getInitialMessage()).called(1);
   });
+
+  test("getToken returns null when APNS token never becomes available", () async {
+    when(() => messaging.getAPNSToken()).thenAnswer((_) async => null);
+
+    final token = await source.getToken();
+
+    expect(token, isNull);
+    verifyNever(() => messaging.getToken());
+  });
 }
