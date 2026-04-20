@@ -7,8 +7,6 @@ import "package:record/record.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../platform/local_notification_manager.dart";
-
 @module
 abstract class RegisterModule {
   @lazySingleton
@@ -24,7 +22,7 @@ abstract class RegisterModule {
   FlutterLocalNotificationsPlugin get flutterLocalNotificationsPlugin => FlutterLocalNotificationsPlugin();
 
   @lazySingleton
-  NotificationCanceller notificationCanceller(LocalNotificationManager manager) => manager;
+  NotificationCanceller notificationCanceller(LocalNotificationClient client) => client;
 
   @lazySingleton
   FlutterSecureStorage get secureStorage => const FlutterSecureStorage(

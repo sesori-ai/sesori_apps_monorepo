@@ -8,21 +8,23 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/server_connection/models/sse_event.dart";
-import "../../capabilities/session/session_service.dart";
 import "../../logging/logging.dart";
 import "../../platform/notification_canceller.dart";
 import "../../repositories/permission_repository.dart";
+import "../../repositories/session_repository.dart";
+import "../../services/session_detail_load_service.dart";
 import "prompt_send_queue.dart";
 import "queued_session_submission.dart";
 import "session_detail_state.dart";
 import "streaming_text_buffer.dart";
 
 class SessionDetailCubit extends Cubit<SessionDetailState> {
-  final SessionService _sessionService;
+  final SessionDetailLoadService _loadService;
+  final SessionRepository _sessionRepository;
   final ConnectionService _connectionService;
   final PermissionRepository _permissionRepository;
   final String _sessionId;
-  final String? _projectId;
+  final String? _routeProjectId;
   final NotificationCanceller _notificationCanceller;
   final FailureReporter _failureReporter;
   final PromptSendQueue _promptQueue = PromptSendQueue();
@@ -35,6 +37,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   late final StreamingTextBuffer _streamingBuffer;
   Future<void>? _activeRefresh;
   bool _needsStaleRefresh = false;
+  bool _waitingForConnection = false;
+  String? _projectId;
 
   /// Fires the [SesoriQuestionAsked] whenever a new question arrives, so the
   /// screen can auto-open the question modal.
@@ -49,125 +53,61 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
   SessionDetailCubit(
     ConnectionService connectionService, {
-    required SessionService sessionService,
+    required SessionDetailLoadService loadService,
+    required SessionRepository promptDispatcher,
     required PermissionRepository permissionRepository,
     required String sessionId,
-    required String? projectId,
+    String? projectId,
     required NotificationCanceller notificationCanceller,
     required FailureReporter failureReporter,
-  }) : _sessionService = sessionService,
-       _connectionService = connectionService,
-       _permissionRepository = permissionRepository,
-       _sessionId = sessionId,
-       _projectId = projectId,
-       _notificationCanceller = notificationCanceller,
-       _failureReporter = failureReporter,
-       super(const SessionDetailState.loading()) {
+  }) : _loadService = loadService,
+        _sessionRepository = promptDispatcher,
+        _connectionService = connectionService,
+        _permissionRepository = permissionRepository,
+        _sessionId = sessionId,
+        _routeProjectId = projectId,
+        _notificationCanceller = notificationCanceller,
+        _failureReporter = failureReporter,
+        _projectId = projectId,
+        super(const SessionDetailState.loading()) {
     _streamingBuffer = StreamingTextBuffer(onFlush: _emitStreamingSnapshot);
     _eventSubscription = _connectionService.sessionEvents(_sessionId).listen(_handleEvent);
     _globalEventSubscription = _connectionService.events.listen(_handleGlobalEvent);
     _connectionStatusSubscription = _connectionService.status.listen(_onConnectionStatusChanged);
     _staleSubscription = _connectionService.dataMayBeStale.listen((_) => _onDataMayBeStale());
-    _loadMessages();
+    _loadMessages(isReload: false);
   }
 
   // ---------------------------------------------------------------------------
   // Loading
   // ---------------------------------------------------------------------------
 
-  Future<void> _loadMessages() async {
+  Future<void> _loadMessages({required bool isReload}) async {
     emit(const SessionDetailState.loading());
-    try {
-      final snapshot = await _fetchSessionSnapshot();
-      if (isClosed) return;
+    final result = isReload
+        ? await _loadService.reload(sessionId: _sessionId, projectId: _projectId ?? _routeProjectId)
+        : await _loadService.load(sessionId: _sessionId, projectId: _projectId ?? _routeProjectId);
+    if (isClosed) return;
 
-      final latestAssistant = _latestAssistantMessage(snapshot.messages);
-      final childSessions = [...snapshot.childSessions]
-        ..sort((a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0));
-
-      // Filter statuses to only include child session IDs.
-      final childIds = childSessions.map((c) => c.id).toSet();
-      final childStatuses = Map<String, SessionStatus>.fromEntries(
-        snapshot.statuses.entries.where((e) => childIds.contains(e.key)),
-      );
-
-      // Filter agents: only show visible, non-subagent agents for user selection.
-      final agents = snapshot.agents
-          .whereType<AgentInfo>()
-          .where((a) => !a.hidden && a.mode != AgentMode.subagent)
-          .toList();
-
-      // Only connected providers with active models.
-      final providers = snapshot.providerData?.items ?? <ProviderInfo>[];
-
-      // Resolve default agent: first in list (server sorts default first).
-      final defaultAgent = agents.isNotEmpty ? agents.first.name : "build";
-
-      // Resolve default model:
-      // 1. If the default agent has an explicit model preference, use it.
-      // 2. Otherwise, pick the first connected provider's default model.
-      final agentModel = agents.isNotEmpty ? agents.first.model : null;
-      final String defaultProviderID;
-      final String defaultModelID;
-      if (agentModel != null) {
-        defaultProviderID = agentModel.providerID;
-        defaultModelID = agentModel.modelID;
-      } else if (providers.isNotEmpty) {
-        defaultProviderID = providers.first.id;
-        final firstProviderDefaultModelId = providers.first.defaultModelID;
-
-        defaultModelID =
-            firstProviderDefaultModelId != null && providers.first.models.containsKey(firstProviderDefaultModelId)
-            ? firstProviderDefaultModelId
-            : providers.first.models.values.first.id;
-      } else {
-        defaultProviderID = "";
-        defaultModelID = "";
-      }
-
-      emit(
-        SessionDetailState.loaded(
-          messages: snapshot.messages,
-          streamingText: const {},
-          sessionStatus: snapshot.statuses[_sessionId] ?? const SessionStatus.idle(),
-          pendingQuestions: snapshot.pendingQuestions
-              .where((q) => q.sessionID == _sessionId)
-              .map(
-                (q) => SesoriQuestionAsked(
-                  id: q.id,
-                  sessionID: q.sessionID,
-                  questions: q.questions,
-                ),
-              )
-              .toList(),
-          pendingPermissions: const [],
-          sessionTitle: null,
-          agent: latestAssistant?.agent,
-          modelID: latestAssistant?.modelID,
-          providerID: latestAssistant?.providerID,
-          children: childSessions,
-          childStatuses: childStatuses,
-          queuedMessages: const [],
-          availableAgents: agents,
-          availableProviders: providers,
-          availableCommands: snapshot.commands,
-          selectedAgent: defaultAgent,
-          selectedProviderID: defaultProviderID,
-          selectedModelID: defaultModelID,
-          stagedCommand: null,
-          isRefreshing: false,
-        ),
-      );
-
-      // Drain any messages that were queued before load completed.
-      _tryDrainQueue();
-    } catch (error) {
-      if (isClosed) return;
-      emit(SessionDetailState.failed(error: error is ApiError ? error : ApiError.generic()));
+    switch (result) {
+      case SessionDetailLoadResultLoaded(:final snapshot):
+        _waitingForConnection = false;
+        _projectId = snapshot.projectId;
+        emit(_buildLoadedState(snapshot: snapshot));
+        _tryDrainQueue();
+      case SessionDetailLoadResultWaitingForConnection():
+        _waitingForConnection = true;
+        if (_connectionService.currentStatus is ConnectionConnected) {
+          _waitingForConnection = false;
+          unawaited(_loadMessages(isReload: true));
+        }
+      case SessionDetailLoadResultFailed(:final error):
+        _waitingForConnection = false;
+        emit(SessionDetailState.failed(error: error is ApiError ? error : ApiError.generic()));
     }
   }
 
-  Future<void> reload() => _loadMessages();
+  Future<void> reload() => _loadMessages(isReload: true);
 
   void _silentRefresh() {
     if (state is! SessionDetailLoaded) return;
@@ -186,144 +126,65 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     emit(current.copyWith(isRefreshing: true));
 
     try {
-      final snapshot = await _fetchSessionSnapshot();
+      final result = await _loadService.reload(sessionId: _sessionId, projectId: _projectId ?? _routeProjectId);
       if (isClosed) return;
 
-      final latestAssistant = _latestAssistantMessage(snapshot.messages);
-      final childIds = snapshot.childSessions.map((c) => c.id).toSet();
-      final childStatuses = Map<String, SessionStatus>.fromEntries(
-        snapshot.statuses.entries.where((e) => childIds.contains(e.key)),
-      );
-      final availableAgents = snapshot.agents
-          .whereType<AgentInfo>()
-          .where((a) => !a.hidden && a.mode != AgentMode.subagent)
-          .toList();
-      final availableProviders = snapshot.providerData?.items ?? <ProviderInfo>[];
+      switch (result) {
+        case SessionDetailLoadResultLoaded(:final snapshot):
+          _waitingForConnection = false;
+          _projectId = snapshot.projectId ?? _projectId;
+          final latestAssistant = _latestAssistantMessage(snapshot.messages);
+          final childIds = snapshot.childSessions.map((c) => c.id).toSet();
+          final childStatuses = Map<String, SessionStatus>.fromEntries(
+            snapshot.statuses.entries.where((e) => childIds.contains(e.key)),
+          );
+          final availableAgents = snapshot.agents
+              .whereType<AgentInfo>()
+              .where((a) => !a.hidden && a.mode != AgentMode.subagent)
+              .toList();
+          final availableProviders = snapshot.providerData?.items ?? <ProviderInfo>[];
 
-      final streamingText = _streamingBuffer.snapshot();
-      _streamingBuffer.clear();
+          final streamingText = _streamingBuffer.snapshot();
+          _streamingBuffer.clear();
 
-      emit(
-        current.copyWith(
-          messages: snapshot.messages,
-          streamingText: streamingText,
-          sessionStatus: snapshot.statuses[_sessionId] ?? const SessionStatus.idle(),
-          pendingQuestions: snapshot.pendingQuestions
-              .where((q) => q.sessionID == _sessionId)
-              .map(
-                (q) => SesoriQuestionAsked(
-                  id: q.id,
-                  sessionID: q.sessionID,
-                  questions: q.questions,
-                ),
-              )
-              .toList(),
-          pendingPermissions: current.pendingPermissions,
-          agent: latestAssistant?.agent,
-          modelID: latestAssistant?.modelID,
-          providerID: latestAssistant?.providerID,
-          children: snapshot.childSessions,
-          childStatuses: childStatuses,
-          availableAgents: availableAgents,
-          availableProviders: availableProviders,
-          availableCommands: snapshot.commands,
-          selectedAgent: preservedSelectedAgent,
-          selectedProviderID: preservedSelectedProviderID,
-          selectedModelID: preservedSelectedModelID,
-          stagedCommand: _resolveStagedCommand(
-            availableCommands: snapshot.commands,
-            stagedCommand: preservedStagedCommand,
-          ),
-          isRefreshing: false,
-        ),
-      );
+          emit(
+            current.copyWith(
+              messages: snapshot.messages,
+              streamingText: streamingText,
+              sessionStatus: snapshot.statuses[_sessionId] ?? const SessionStatus.idle(),
+              pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
+              pendingPermissions: current.pendingPermissions,
+              agent: latestAssistant?.agent,
+              modelID: latestAssistant?.modelID,
+              providerID: latestAssistant?.providerID,
+              children: snapshot.childSessions,
+              childStatuses: childStatuses,
+              availableAgents: availableAgents,
+              availableProviders: availableProviders,
+              availableCommands: snapshot.commands,
+              sessionTitle: snapshot.canonicalSessionTitle ?? current.sessionTitle,
+              selectedAgent: preservedSelectedAgent,
+              selectedProviderID: preservedSelectedProviderID,
+              selectedModelID: preservedSelectedModelID,
+              stagedCommand: _resolveStagedCommand(
+                availableCommands: snapshot.commands,
+                stagedCommand: preservedStagedCommand,
+              ),
+              isRefreshing: false,
+            ),
+          );
+        case SessionDetailLoadResultWaitingForConnection():
+          _waitingForConnection = true;
+          emit(current.copyWith(isRefreshing: false));
+        case SessionDetailLoadResultFailed(:final error):
+          logw("Silent refresh failed: ${error.toString()}");
+          emit(current.copyWith(isRefreshing: false));
+      }
     } catch (error) {
       logw("Silent refresh failed: ${error.toString()}");
       if (isClosed) return;
       emit(current.copyWith(isRefreshing: false));
     }
-  }
-
-  /// Fetches a complete snapshot of session data from the API.
-  /// Messages are required (throws on error). All other fields fall back to defaults.
-  Future<
-    ({
-      List<MessageWithParts> messages,
-      List<PendingQuestion> pendingQuestions,
-      List<Session> childSessions,
-      Map<String, SessionStatus> statuses,
-      List<AgentInfo?> agents,
-      ProviderListResponse? providerData,
-      List<CommandInfo> commands,
-    })
-  >
-  _fetchSessionSnapshot() async {
-    final (
-      messagesResponse,
-      questionsResponse,
-      childrenResponse,
-      statusesResponse,
-      agentsResponse,
-      providersResponse,
-      commandsResponse,
-    ) = await (
-      _sessionService.getMessages(sessionId: _sessionId),
-      _sessionService.getPendingQuestions(sessionId: _sessionId),
-      _sessionService.getChildren(sessionId: _sessionId),
-      _sessionService.getSessionStatuses(),
-      _sessionService.listAgents(),
-      _sessionService.listProviders(),
-      _sessionService.listCommands(projectId: _projectId),
-    ).wait;
-
-    final messages = switch (messagesResponse) {
-      SuccessResponse(:final data) => data.messages,
-      ErrorResponse(:final error) => throw error,
-    };
-
-    final pendingQuestions = switch (questionsResponse) {
-      SuccessResponse(:final data) => data.data,
-      ErrorResponse() => <PendingQuestion>[],
-    };
-    final childSessions = switch (childrenResponse) {
-      SuccessResponse(:final data) => data.items,
-      ErrorResponse() => <Session>[],
-    };
-    final statuses = switch (statusesResponse) {
-      SuccessResponse(:final data) => data.statuses,
-      ErrorResponse() => <String, SessionStatus>{},
-    };
-    final agents = switch (agentsResponse) {
-      SuccessResponse(:final data) => data.agents,
-      ErrorResponse(:final error) => () {
-        loge("Failed to load agents: ${error.toString()}");
-        return <AgentInfo>[];
-      }(),
-    };
-    final providerData = switch (providersResponse) {
-      SuccessResponse(:final data) => data,
-      ErrorResponse(:final error) => () {
-        loge("Failed to load providers: ${error.toString()}");
-        return null;
-      }(),
-    };
-    final commands = switch (commandsResponse) {
-      SuccessResponse(:final data) => data.items,
-      ErrorResponse(:final error) => () {
-        loge("Failed to load commands: ${error.toString()}");
-        return <CommandInfo>[];
-      }(),
-    };
-
-    return (
-      messages: messages,
-      pendingQuestions: pendingQuestions,
-      childSessions: childSessions,
-      statuses: statuses,
-      agents: agents,
-      providerData: providerData,
-      commands: commands,
-    );
   }
 
   CommandInfo? _resolveStagedCommand({
@@ -457,7 +318,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             SesoriWorktreeFailed():
           break;
         case SesoriSessionsUpdated(:final projectID):
-          if (_projectId == null || projectID == _projectId) {
+          if (projectID.isNotEmpty && projectID == _projectId) {
             _silentRefresh();
           }
       }
@@ -665,6 +526,11 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   void _onConnectionStatusChanged(ConnectionStatus status) {
     if (isClosed) return;
     if (status is ConnectionConnected) {
+      if (_waitingForConnection) {
+        _waitingForConnection = false;
+        unawaited(_loadMessages(isReload: true));
+        return;
+      }
       _tryDrainQueue();
       if (_needsStaleRefresh) {
         _needsStaleRefresh = false;
@@ -685,7 +551,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   Future<void> sendMessage({required String text, required String? command}) async {
     final current = state;
     final trimmed = text.trim();
-    final normalizedCommand = _normalizeCommand(command);
+    final normalizedCommand = _normalizeOptionalText(command);
     if (trimmed.isEmpty && normalizedCommand == null) return;
 
     final submission = QueuedSessionSubmission(text: trimmed, command: normalizedCommand);
@@ -698,12 +564,14 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       return;
     }
 
-    final result = await _sessionService.sendMessage(
+    final result = await _sessionRepository.sendMessage(
       sessionId: _sessionId,
       text: trimmed,
       agent: current.selectedAgent,
-      providerID: current.selectedProviderID,
-      modelID: current.selectedModelID,
+      model: _resolvePromptModel(
+        providerID: current.selectedProviderID,
+        modelID: current.selectedModelID,
+      ),
       command: normalizedCommand,
     );
 
@@ -745,12 +613,14 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
     var sendSucceeded = false;
     try {
-      final result = await _sessionService.sendMessage(
+      final result = await _sessionRepository.sendMessage(
         sessionId: _sessionId,
         text: submission.text,
         agent: current.selectedAgent,
-        providerID: current.selectedProviderID,
-        modelID: current.selectedModelID,
+        model: _resolvePromptModel(
+          providerID: current.selectedProviderID,
+          modelID: current.selectedModelID,
+        ),
         command: submission.command,
       );
 
@@ -778,12 +648,19 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     return current is SessionDetailLoaded ? current : null;
   }
 
-  String? _normalizeCommand(String? command) {
-    final normalizedCommand = command?.trim();
-    if (normalizedCommand == null || normalizedCommand.isEmpty) {
+  String? _normalizeOptionalText(String? value) {
+    final normalized = value?.trim();
+    if (normalized == null || normalized.isEmpty) {
       return null;
     }
-    return normalizedCommand;
+    return normalized;
+  }
+
+  PromptModel? _resolvePromptModel({required String? providerID, required String? modelID}) {
+    final normalizedProviderID = _normalizeOptionalText(providerID);
+    final normalizedModelID = _normalizeOptionalText(modelID);
+    if (normalizedProviderID == null || normalizedModelID == null) return null;
+    return PromptModel(providerID: normalizedProviderID, modelID: normalizedModelID);
   }
 
   // ---------------------------------------------------------------------------
@@ -872,11 +749,18 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       category: NotificationCategory.aiInteraction,
     );
     try {
-      await _sessionService.replyToQuestion(requestId: requestId, sessionId: sessionId, answers: answers);
+      final result = await _sessionRepository.replyToQuestion(
+        requestId: requestId,
+        sessionId: sessionId,
+        answers: answers,
+      );
+      if (result case ErrorResponse(:final error)) {
+        throw error;
+      }
       return true;
     } on Object catch (e, st) {
       loge("Failed to reply to question $requestId", e, st);
-      await _loadMessages();
+      await _loadMessages(isReload: true);
       return false;
     }
   }
@@ -888,11 +772,14 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       category: NotificationCategory.aiInteraction,
     );
     try {
-      await _sessionService.rejectQuestion(requestId: requestId);
+      final result = await _sessionRepository.rejectQuestion(requestId: requestId);
+      if (result case ErrorResponse(:final error)) {
+        throw error;
+      }
       return true;
     } on Object catch (e, st) {
       loge("Failed to reject question $requestId", e, st);
-      await _loadMessages();
+      await _loadMessages(isReload: true);
       return false;
     }
   }
@@ -916,7 +803,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       return true;
     } on Object catch (e, st) {
       loge("Failed to reply to permission $requestId", e, st);
-      await _loadMessages();
+      await _loadMessages(isReload: true);
       return false;
     }
   }
@@ -960,22 +847,97 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   Future<void> abort() async {
     try {
       final current = state;
-      final futures = <Future<void>>[_sessionService.abortSession(sessionId: _sessionId)];
+      final futures = <Future<ApiResponse<void>>>[_sessionRepository.abortSession(sessionId: _sessionId)];
 
       // Also abort any active child sessions (busy or retrying).
       if (current is SessionDetailLoaded) {
         for (final entry in current.childStatuses.entries) {
           final status = entry.value;
           if (status is SessionStatusBusy || status is SessionStatusRetry) {
-            futures.add(_sessionService.abortSession(sessionId: entry.key));
+            futures.add(_sessionRepository.abortSession(sessionId: entry.key));
           }
         }
       }
 
-      await Future.wait(futures);
+      final results = await Future.wait(futures);
+      for (final result in results) {
+        if (result case ErrorResponse(:final error)) {
+          throw error;
+        }
+      }
     } on Object catch (e, st) {
       loge("Failed to abort session(s)", e, st);
     }
+  }
+
+  SessionDetailLoaded _buildLoadedState({required SessionDetailSnapshot snapshot}) {
+    final latestAssistant = _latestAssistantMessage(snapshot.messages);
+    final childSessions = [...snapshot.childSessions]
+      ..sort((a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0));
+    final childIds = childSessions.map((c) => c.id).toSet();
+    final childStatuses = Map<String, SessionStatus>.fromEntries(
+      snapshot.statuses.entries.where((e) => childIds.contains(e.key)),
+    );
+    final agents = snapshot.agents
+        .whereType<AgentInfo>()
+        .where((a) => !a.hidden && a.mode != AgentMode.subagent)
+        .toList();
+    final providers = snapshot.providerData?.items ?? <ProviderInfo>[];
+    final defaultAgent = agents.isNotEmpty ? agents.first.name : "build";
+    final agentModel = agents.isNotEmpty ? agents.first.model : null;
+    final String defaultProviderID;
+    final String defaultModelID;
+    if (agentModel != null) {
+      defaultProviderID = agentModel.providerID;
+      defaultModelID = agentModel.modelID;
+    } else if (providers.isNotEmpty) {
+      defaultProviderID = providers.first.id;
+      final firstProviderDefaultModelId = providers.first.defaultModelID;
+      defaultModelID =
+          firstProviderDefaultModelId != null && providers.first.models.containsKey(firstProviderDefaultModelId)
+          ? firstProviderDefaultModelId
+          : providers.first.models.values.first.id;
+    } else {
+      defaultProviderID = "";
+      defaultModelID = "";
+    }
+
+    return SessionDetailState.loaded(
+          messages: snapshot.messages,
+          streamingText: const {},
+          sessionStatus: snapshot.statuses[_sessionId] ?? const SessionStatus.idle(),
+          pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
+          pendingPermissions: const [],
+          sessionTitle: snapshot.canonicalSessionTitle,
+          agent: latestAssistant?.agent,
+          modelID: latestAssistant?.modelID,
+          providerID: latestAssistant?.providerID,
+          children: childSessions,
+          childStatuses: childStatuses,
+          queuedMessages: const [],
+          availableAgents: agents,
+          availableProviders: providers,
+          availableCommands: snapshot.commands,
+          selectedAgent: defaultAgent,
+          selectedProviderID: defaultProviderID,
+          selectedModelID: defaultModelID,
+          stagedCommand: null,
+          isRefreshing: false,
+        )
+        as SessionDetailLoaded;
+  }
+
+  List<SesoriQuestionAsked> _mapPendingQuestions(List<PendingQuestion> pendingQuestions) {
+    return pendingQuestions
+        .where((q) => q.sessionID == _sessionId)
+        .map(
+          (q) => SesoriQuestionAsked(
+            id: q.id,
+            sessionID: q.sessionID,
+            questions: q.questions,
+          ),
+        )
+        .toList();
   }
 
   // ---------------------------------------------------------------------------

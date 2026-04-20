@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$NotificationTapEvent {
 
- String? get sessionId; String? get projectId;
+ String? get sessionId; String? get projectId; String? get sessionTitle;
 /// Create a copy of NotificationTapEvent
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $NotificationTapEventCopyWith<NotificationTapEvent> get copyWith => _$Notificati
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationTapEvent&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.projectId, projectId) || other.projectId == projectId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationTapEvent&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.sessionTitle, sessionTitle) || other.sessionTitle == sessionTitle));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,projectId);
+int get hashCode => Object.hash(runtimeType,sessionId,projectId,sessionTitle);
 
 @override
 String toString() {
-  return 'NotificationTapEvent(sessionId: $sessionId, projectId: $projectId)';
+  return 'NotificationTapEvent(sessionId: $sessionId, projectId: $projectId, sessionTitle: $sessionTitle)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $NotificationTapEventCopyWith<$Res>  {
   factory $NotificationTapEventCopyWith(NotificationTapEvent value, $Res Function(NotificationTapEvent) _then) = _$NotificationTapEventCopyWithImpl;
 @useResult
 $Res call({
- String? sessionId, String? projectId
+ String? sessionId, String? projectId, String? sessionTitle
 });
 
 
@@ -65,10 +65,11 @@ class _$NotificationTapEventCopyWithImpl<$Res>
 
 /// Create a copy of NotificationTapEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = freezed,Object? projectId = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = freezed,Object? projectId = freezed,Object? sessionTitle = freezed,}) {
   return _then(_self.copyWith(
 sessionId: freezed == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String?,projectId: freezed == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
+as String?,sessionTitle: freezed == sessionTitle ? _self.sessionTitle : sessionTitle // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -81,11 +82,12 @@ as String?,
 @JsonSerializable()
 
 class _NotificationTapEvent implements NotificationTapEvent {
-  const _NotificationTapEvent({required this.sessionId, required this.projectId});
+  const _NotificationTapEvent({required this.sessionId, required this.projectId, required this.sessionTitle});
   factory _NotificationTapEvent.fromJson(Map<String, dynamic> json) => _$NotificationTapEventFromJson(json);
 
 @override final  String? sessionId;
 @override final  String? projectId;
+@override final  String? sessionTitle;
 
 /// Create a copy of NotificationTapEvent
 /// with the given fields replaced by the non-null parameter values.
@@ -100,16 +102,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _NotificationTapEvent&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.projectId, projectId) || other.projectId == projectId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _NotificationTapEvent&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.sessionTitle, sessionTitle) || other.sessionTitle == sessionTitle));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,projectId);
+int get hashCode => Object.hash(runtimeType,sessionId,projectId,sessionTitle);
 
 @override
 String toString() {
-  return 'NotificationTapEvent(sessionId: $sessionId, projectId: $projectId)';
+  return 'NotificationTapEvent(sessionId: $sessionId, projectId: $projectId, sessionTitle: $sessionTitle)';
 }
 
 
@@ -120,7 +122,7 @@ abstract mixin class _$NotificationTapEventCopyWith<$Res> implements $Notificati
   factory _$NotificationTapEventCopyWith(_NotificationTapEvent value, $Res Function(_NotificationTapEvent) _then) = __$NotificationTapEventCopyWithImpl;
 @override @useResult
 $Res call({
- String? sessionId, String? projectId
+ String? sessionId, String? projectId, String? sessionTitle
 });
 
 
@@ -137,10 +139,11 @@ class __$NotificationTapEventCopyWithImpl<$Res>
 
 /// Create a copy of NotificationTapEvent
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = freezed,Object? projectId = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = freezed,Object? projectId = freezed,Object? sessionTitle = freezed,}) {
   return _then(_NotificationTapEvent(
 sessionId: freezed == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String?,projectId: freezed == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
+as String?,sessionTitle: freezed == sessionTitle ? _self.sessionTitle : sessionTitle // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

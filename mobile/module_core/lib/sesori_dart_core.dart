@@ -18,9 +18,9 @@ export "package:sesori_auth/sesori_auth.dart" show HttpMethod, SafeApiClient;
 
 // API
 export "src/api/client/relay_http_client.dart";
-export "src/api/session_api.dart";
-export "src/capabilities/notifications/notification_api_client.dart";
-export "src/capabilities/notifications/notification_preferences_service.dart";
+export "src/api/notification_api.dart";
+export "src/api/notification_preferences_api.dart";
+export "src/api/project_api.dart";
 export "src/capabilities/notifications/register_token_request.dart";
 export "src/capabilities/project/project_service.dart";
 export "src/capabilities/relay/relay_client.dart";
@@ -60,14 +60,27 @@ export "src/logging/logging.dart";
 // Platform interfaces
 export "src/platform/deep_link_source.dart";
 export "src/platform/lifecycle_source.dart";
+export "src/platform/local_notification_client.dart";
 export "src/platform/notification_canceller.dart";
+export "src/platform/notification_open_request.dart";
+export "src/platform/push_messaging_source.dart";
+export "src/platform/push_notification_message.dart";
+export "src/platform/route_dispatcher.dart";
 export "src/platform/route_source.dart";
 export "src/platform/url_launcher.dart";
+export "src/repositories/notification_preferences_repository.dart";
+export "src/repositories/notification_repository.dart";
 export "src/repositories/permission_repository.dart";
+export "src/repositories/project_repository.dart";
 export "src/repositories/session_repository.dart";
 // Routing
 export "src/routing/app_routes.dart";
 export "src/routing/auth_redirect_service.dart";
+export "src/routing/notification_open_dispatcher.dart";
+// Services
+export "src/services/foreground_notification_dispatcher.dart";
+export "src/services/notification_registration_service.dart";
+export "src/services/session_detail_load_service.dart";
 // Utils
 export "src/utils/diff/diff_engine.dart";
 export "src/utils/diff/language_detector.dart";

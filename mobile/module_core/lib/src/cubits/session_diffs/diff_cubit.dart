@@ -1,15 +1,15 @@
 import "package:bloc/bloc.dart";
 import "package:sesori_auth/sesori_auth.dart";
 
-import "../../api/session_api.dart";
+import "../../repositories/session_repository.dart";
 import "diff_state.dart";
 
 class DiffCubit extends Cubit<DiffState> {
-  final SessionApi _sessionApi;
+  final SessionRepository _sessionRepository;
   final String sessionId;
 
-  DiffCubit({required SessionApi sessionApi, required this.sessionId})
-    : _sessionApi = sessionApi,
+  DiffCubit({required SessionRepository sessionRepository, required this.sessionId})
+    : _sessionRepository = sessionRepository,
       super(const DiffState.loading()) {
     _init();
   }
@@ -20,7 +20,7 @@ class DiffCubit extends Cubit<DiffState> {
 
   Future<void> _init() async {
     try {
-      final response = await _sessionApi.getSessionDiffs(sessionId: sessionId);
+      final response = await _sessionRepository.getSessionDiffs(sessionId: sessionId);
       if (isClosed) return;
 
       switch (response) {

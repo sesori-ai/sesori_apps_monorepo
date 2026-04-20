@@ -25,7 +25,8 @@ class SessionDetailScreen extends StatelessWidget {
     return BlocProvider(
       create: (_) => SessionDetailCubit(
         getIt<ConnectionService>(),
-        sessionService: getIt<SessionService>(),
+        loadService: getIt<SessionDetailLoadService>(),
+        promptDispatcher: getIt<SessionRepository>(),
         permissionRepository: getIt<PermissionRepository>(),
         sessionId: sessionId,
         projectId: projectId,

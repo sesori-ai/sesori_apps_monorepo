@@ -10,6 +10,9 @@ import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/platform/notification_canceller.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
+import "package:sesori_dart_core/src/repositories/project_repository.dart";
+import "package:sesori_dart_core/src/repositories/session_repository.dart";
+import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -37,18 +40,30 @@ void main() {
 
   group("SessionDetailCubit stale reconnect", () {
     late MockSessionService mockSessionService;
-        late MockConnectionService mockConnectionService;
+    late MockSessionRepository mockSessionRepository;
+    late MockConnectionService mockConnectionService;
     late MockNotificationCanceller mockNotificationCanceller;
     late MockPermissionRepository mockPermissionRepository;
+    late MockProjectRepository mockProjectRepository;
+    late SessionDetailLoadService loadService;
+    late SessionRepository promptDispatcher;
     late StreamController<SesoriSessionEvent> sessionEvents;
     late StreamController<SseEvent> globalEvents;
     late BehaviorSubject<ConnectionStatus> connectionStatus;
 
     setUp(() {
       mockSessionService = MockSessionService();
+      mockSessionRepository = MockSessionRepository();
       mockConnectionService = MockConnectionService();
       mockNotificationCanceller = MockNotificationCanceller();
       mockPermissionRepository = MockPermissionRepository();
+      mockProjectRepository = MockProjectRepository();
+      loadService = SessionDetailLoadService(
+        repository: mockSessionRepository,
+        projectRepository: mockProjectRepository,
+        connectionService: mockConnectionService,
+      );
+      promptDispatcher = mockSessionRepository;
       sessionEvents = StreamController<SesoriSessionEvent>.broadcast();
       globalEvents = StreamController<SseEvent>.broadcast();
       connectionStatus = BehaviorSubject<ConnectionStatus>.seeded(connectedStatus);
@@ -57,6 +72,7 @@ void main() {
       when(() => mockConnectionService.events).thenAnswer((_) => globalEvents.stream);
       when(() => mockConnectionService.status).thenAnswer((_) => connectionStatus);
       when(() => mockConnectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
+      delegateSessionRepositoryToService(repository: mockSessionRepository, service: mockSessionService);
       when(
         () => mockNotificationCanceller.cancelForSession(
           sessionId: any(named: "sessionId"),
@@ -70,6 +86,9 @@ void main() {
           reply: any(named: "reply"),
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
+      when(() => mockProjectRepository.findSessionContext(sessionId: sessionId)).thenAnswer(
+        (_) async => const ProjectSessionContext(projectId: "test-project", sessionTitle: null),
+      );
       when(() => mockSessionService.listCommands(projectId: any(named: "projectId"))).thenAnswer(
         (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
       );
@@ -88,10 +107,10 @@ void main() {
       () async {
         final cubit = SessionDetailCubit(
           mockConnectionService,
-          sessionService: mockSessionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
-          projectId: "test-project",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: MockFailureReporter(),
         );
@@ -139,10 +158,10 @@ void main() {
     test("deferred refresh: stale when connected triggers immediate refresh", () async {
       final cubit = SessionDetailCubit(
         mockConnectionService,
-        sessionService: mockSessionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -182,10 +201,10 @@ void main() {
     test("silent refresh preserves selectedAgent, selectedProviderID, selectedModelID from current state", () async {
       final cubit = SessionDetailCubit(
         mockConnectionService,
-        sessionService: mockSessionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -241,10 +260,10 @@ void main() {
     test("delta race: streaming deltas arriving during refresh are preserved", () async {
       final cubit = SessionDetailCubit(
         mockConnectionService,
-        sessionService: mockSessionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -303,10 +322,10 @@ void main() {
     test("partial API failure: providers fail and refresh still succeeds with empty providers", () async {
       final cubit = SessionDetailCubit(
         mockConnectionService,
-        sessionService: mockSessionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -336,10 +355,10 @@ void main() {
 
       final cubit = SessionDetailCubit(
         mockConnectionService,
-        sessionService: mockSessionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -366,10 +385,10 @@ void main() {
 
       final cubit = SessionDetailCubit(
         mockConnectionService,
-        sessionService: mockSessionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -388,10 +407,10 @@ void main() {
       () async {
         final cubit = SessionDetailCubit(
           mockConnectionService,
-          sessionService: mockSessionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
-          projectId: "test-project",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: MockFailureReporter(),
         );
@@ -425,10 +444,10 @@ void main() {
     test("concurrent stale signals are coalesced (single API call)", () async {
       final cubit = SessionDetailCubit(
         mockConnectionService,
-        sessionService: mockSessionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "test-project",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );

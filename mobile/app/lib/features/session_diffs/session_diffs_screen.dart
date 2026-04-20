@@ -24,7 +24,7 @@ class SessionDiffsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => DiffCubit(
-        sessionApi: getIt<SessionApi>(),
+        sessionRepository: getIt<SessionRepository>(),
         sessionId: sessionId,
       ),
       child: const _SessionDiffsBody(),
