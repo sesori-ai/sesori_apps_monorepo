@@ -1,4 +1,6 @@
+import "package:flutter/gestures.dart";
 import "package:flutter/material.dart";
+import "package:flutter/rendering.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../../core/extensions/build_context_x.dart";
@@ -32,6 +34,7 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
 
   late final ScrollController _scrollController;
   bool _following = true;
+  bool _userScrollActive = false;
 
   @override
   void initState() {
@@ -61,6 +64,10 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
         return;
       }
 
+      if (_userScrollActive) {
+        return;
+      }
+
       final position = _scrollController.position;
       final delta = position.maxScrollExtent - oldMaxScrollExtent;
       final target = (oldPixels + delta).clamp(position.minScrollExtent, position.maxScrollExtent);
@@ -69,7 +76,10 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
   }
 
   void _jumpToLatest() {
-    setState(() => _following = true);
+    setState(() {
+      _following = true;
+      _userScrollActive = false;
+    });
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
         0,
@@ -86,35 +96,40 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
 
     return Stack(
       children: [
-        NotificationListener<ScrollNotification>(
-          onNotification: (notification) {
-            if (notification is ScrollUpdateNotification) {
-              // Desktop wheel/trackpad scrolling can update pixels without drag details.
-              _updateFollowingFromPixels();
-            } else if (notification is ScrollEndNotification) {
-              _updateFollowingFromPixels();
-            }
-            return false;
-          },
-          child: ListView.builder(
-            key: _kListViewKey,
-            controller: _scrollController,
-            reverse: true,
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: widget.messages.length,
-            itemBuilder: (context, index) {
-              final message = widget.messages[widget.messages.length - 1 - index];
-              final child = message.info.role == "user"
-                  ? UserMessageCard(message: message)
-                  : AssistantMessageCard(
-                      projectId: widget.projectId,
-                      message: message,
-                      streamingText: widget.streamingText,
-                      children: widget.children,
-                      childStatuses: widget.childStatuses,
-                    );
-              return KeyedSubtree(key: ValueKey(message.info.id), child: child);
+        Listener(
+          onPointerSignal: _handlePointerSignal,
+          onPointerPanZoomStart: (_) => _detachForUserScroll(),
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (notification) {
+              if (notification.depth != 0) return false;
+
+              if (_isUserScrollStart(notification)) {
+                _detachForUserScroll();
+              } else if (notification is ScrollEndNotification && _userScrollActive) {
+                _settleUserScroll(shouldFollow: notification.metrics.pixels <= _kNearBottomThreshold);
+              }
+              return false;
             },
+            child: ListView.builder(
+              key: _kListViewKey,
+              controller: _scrollController,
+              reverse: true,
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              itemCount: widget.messages.length,
+              itemBuilder: (context, index) {
+                final message = widget.messages[widget.messages.length - 1 - index];
+                final child = message.info.role == "user"
+                    ? UserMessageCard(message: message)
+                    : AssistantMessageCard(
+                        projectId: widget.projectId,
+                        message: message,
+                        streamingText: widget.streamingText,
+                        children: widget.children,
+                        childStatuses: widget.childStatuses,
+                      );
+                return KeyedSubtree(key: ValueKey(message.info.id), child: child);
+              },
+            ),
           ),
         ),
         if (!_following)
@@ -155,13 +170,32 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
     );
   }
 
-  void _updateFollowingFromPixels() {
-    if (!_scrollController.hasClients) return;
+  bool _isUserScrollStart(ScrollNotification notification) {
+    return (notification is ScrollStartNotification && notification.dragDetails != null) ||
+        (notification is UserScrollNotification && notification.direction != ScrollDirection.idle);
+  }
 
-    final pixels = _scrollController.position.pixels;
-    final shouldFollow = pixels <= _kNearBottomThreshold;
-    if (_following != shouldFollow) {
-      setState(() => _following = shouldFollow);
+  void _handlePointerSignal(PointerSignalEvent event) {
+    if (event is PointerScrollEvent) {
+      _detachForUserScroll();
     }
+  }
+
+  void _detachForUserScroll() {
+    if (_userScrollActive && !_following) return;
+
+    setState(() {
+      _userScrollActive = true;
+      _following = false;
+    });
+  }
+
+  void _settleUserScroll({required bool shouldFollow}) {
+    if (!_userScrollActive && _following == shouldFollow) return;
+
+    setState(() {
+      _userScrollActive = false;
+      _following = shouldFollow;
+    });
   }
 }

@@ -1,3 +1,4 @@
+import "package:flutter/gestures.dart";
 import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:sesori_mobile/features/session_detail/widgets/session_detail_message_list.dart";
@@ -121,6 +122,13 @@ Future<void> _pumpListUpdate(WidgetTester tester) async {
   await tester.pump();
 }
 
+Future<void> _sendPointerScroll({required WidgetTester tester, required Finder target, required Offset delta}) async {
+  final pointer = TestPointer(1, PointerDeviceKind.mouse);
+  await tester.sendEventToBinding(pointer.hover(tester.getCenter(target)));
+  await tester.pump();
+  await tester.sendEventToBinding(pointer.scroll(delta));
+}
+
 Future<void> _detachViewport(WidgetTester tester) async {
   await tester.drag(find.byKey(_listViewKey), const Offset(0, -500));
   await tester.pumpAndSettle();
@@ -128,19 +136,6 @@ Future<void> _detachViewport(WidgetTester tester) async {
     await tester.drag(find.byKey(_listViewKey), const Offset(0, 500));
   }
   await tester.pumpAndSettle();
-  expect(_position(tester).pixels, greaterThan(20));
-  expect(find.byKey(_jumpToLatestKey), findsOneWidget);
-}
-
-Future<void> _detachViewportWithoutDrag(WidgetTester tester) async {
-  final position = _position(tester);
-  final target = position.maxScrollExtent > 40 ? position.maxScrollExtent / 2 : position.maxScrollExtent;
-
-  expect(target, greaterThan(20));
-  position.jumpTo(target);
-  await tester.pump();
-  await tester.pump();
-
   expect(_position(tester).pixels, greaterThan(20));
   expect(find.byKey(_jumpToLatestKey), findsOneWidget);
 }
@@ -249,35 +244,80 @@ void main() {
     expect(_messageKey("user-following"), findsOneWidget);
   });
 
-  testWidgets("non-drag scroll updates also detach follow mode", (tester) async {
+  testWidgets("small user drag detaches immediately and only reattaches after settling near latest", (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
     await tester.pumpWidget(
       _SessionDetailMessageListHarness(
-        key: harnessKey,
         initialMessages: _userMessages(count: 12),
         initialStreamingText: const {},
       ),
     );
     await tester.pumpAndSettle();
 
-    await _detachViewportWithoutDrag(tester);
-    final anchor = _messageKey("user-7");
-    final before = tester.getTopLeft(anchor).dy;
+    expect(find.byKey(_jumpToLatestKey), findsNothing);
 
-    harnessKey.currentState!.appendNewestMessage(
-      _message(
-        messageId: "user-wheel",
-        role: "user",
-        text: _multilineText(label: "Wheel newest", lines: 10),
+    final gesture = await tester.startGesture(tester.getCenter(find.byKey(_listViewKey)));
+    await gesture.moveBy(const Offset(0, -12));
+    await tester.pump();
+
+    expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(_position(tester).pixels, lessThanOrEqualTo(20));
+    expect(find.byKey(_jumpToLatestKey), findsNothing);
+  });
+
+  testWidgets("desktop pointer scroll detaches immediately", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        initialMessages: _userMessages(count: 12),
+        initialStreamingText: const {},
       ),
     );
-    await _pumpListUpdate(tester);
+    await tester.pumpAndSettle();
 
-    final after = tester.getTopLeft(anchor).dy;
-    expect(after, closeTo(before, 0.1));
+    expect(find.byKey(_jumpToLatestKey), findsNothing);
+
+    await _sendPointerScroll(
+      tester: tester,
+      target: find.byKey(_listViewKey),
+      delta: const Offset(0, 500),
+    );
+    await tester.pumpAndSettle();
+
     expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+  });
+
+  testWidgets("programmatic scroll changes do not detach follow mode", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        initialMessages: _userMessages(count: 12),
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _detachViewport(tester);
+
+    await tester.tap(find.byKey(_jumpToLatestKey));
+    await tester.pump();
+
+    expect(find.byKey(_jumpToLatestKey), findsNothing);
+
+    await tester.pumpAndSettle();
+
+    expect(_position(tester).pixels, 0);
   });
 }
