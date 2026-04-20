@@ -91,13 +91,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i62.RecordingFileProvider>(
       () => _i62.RecordingFileProvider(gh<_i430.AudioFormatConfig>()),
     );
-    gh.lazySingleton<_i901.DeepLinkService>(
-      () => _i901.DeepLinkService(
-        gh<_i948.AuthRedirectService>(),
-        gh<_i948.DeepLinkSource>(),
-      ),
-      dispose: (i) => i.dispose(),
-    );
     gh.lazySingleton<_i948.PushMessagingSource>(
       () => _i1042.FirebasePushMessagingSource(),
     );
@@ -115,6 +108,13 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i62.RecordingFileProvider>(),
         gh<_i511.WakeLockService>(),
         gh<_i430.AudioFormatConfig>(),
+      ),
+      dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i901.DeepLinkService>(
+      () => _i901.DeepLinkService(
+        gh<_i948.OAuthCallbackDispatcher>(),
+        gh<_i948.DeepLinkSource>(),
       ),
       dispose: (i) => i.dispose(),
     );

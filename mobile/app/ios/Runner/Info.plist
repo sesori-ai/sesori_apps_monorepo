@@ -3,7 +3,7 @@
 <plist version="1.0">
 	<dict>
 		<key>CADisableMinimumFrameDurationOnPhone</key>
-		<true />
+		<true/>
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
 		<key>CFBundleDisplayName</key>
@@ -25,25 +25,25 @@
 		<key>CFBundleVersion</key>
 		<string>$(FLUTTER_BUILD_NUMBER)</string>
 		<key>ITSAppUsesNonExemptEncryption</key>
-		<false />
+		<false/>
 		<key>LSRequiresIPhoneOS</key>
-		<true />
+		<true/>
 		<key>GOOGLE_ANALYTICS_DEFAULT_ALLOW_ANALYTICS_STORAGE</key>
-		<true />
+		<true/>
 		<key>GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_STORAGE</key>
-		<false />
+		<false/>
 		<key>GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_USER_DATA</key>
-		<false />
+		<false/>
 		<key>GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_PERSONALIZATION_SIGNALS</key>
-		<false />
+		<false/>
 		<key>GOOGLE_ANALYTICS_REGISTRATION_WITH_AD_NETWORK_ENABLED</key>
-		<false />
+		<false/>
 		<key>GOOGLE_ANALYTICS_IDFV_COLLECTION_ENABLED</key>
-		<false />
+		<false/>
 		<key>UIApplicationSceneManifest</key>
 		<dict>
 			<key>UIApplicationSupportsMultipleScenes</key>
-			<false />
+			<false/>
 			<key>UISceneConfigurations</key>
 			<dict>
 				<key>UIWindowSceneSessionRoleApplication</key>
@@ -62,7 +62,7 @@
 			</dict>
 		</dict>
 		<key>UIApplicationSupportsIndirectInputEvents</key>
-		<true />
+		<true/>
 		<key>UIBackgroundModes</key>
 		<array>
 			<string>remote-notification</string>
@@ -97,5 +97,7 @@
 				</array>
 			</dict>
 		</array>
+		<key>UIStatusBarHidden</key>
+		<false/>
 	</dict>
 </plist>
