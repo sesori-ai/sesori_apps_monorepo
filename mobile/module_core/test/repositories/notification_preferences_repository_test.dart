@@ -17,62 +17,62 @@ void main() {
   group("NotificationPreferencesRepository", () {
     test("missing preference defaults to enabled", () async {
       when(
-        () => api.readValue(key: "notification_pref_aiInteraction"),
+        () => api.readValue(category: NotificationCategory.aiInteraction),
       ).thenAnswer((_) async => null);
 
       final enabled = await repository.isEnabled(category: NotificationCategory.aiInteraction);
 
       expect(enabled, isTrue);
-      verify(() => api.readValue(key: "notification_pref_aiInteraction")).called(1);
+      verify(() => api.readValue(category: NotificationCategory.aiInteraction)).called(1);
     });
 
     test("stored false disables category", () async {
       when(
-        () => api.readValue(key: "notification_pref_sessionMessage"),
-      ).thenAnswer((_) async => "false");
+        () => api.readValue(category: NotificationCategory.sessionMessage),
+      ).thenAnswer((_) async => false);
 
       final enabled = await repository.isEnabled(category: NotificationCategory.sessionMessage);
 
       expect(enabled, isFalse);
     });
 
-    test("setEnabled persists boolean string through api", () async {
+    test("setEnabled persists disabled value through api", () async {
       when(
-        () => api.writeValue(key: "notification_pref_connectionStatus", value: "false"),
+        () => api.writeValue(category: NotificationCategory.connectionStatus, enabled: false),
       ).thenAnswer((_) async {});
 
       await repository.setEnabled(category: NotificationCategory.connectionStatus, enabled: false);
 
       verify(
-        () => api.writeValue(key: "notification_pref_connectionStatus", value: "false"),
+        () => api.writeValue(category: NotificationCategory.connectionStatus, enabled: false),
       ).called(1);
     });
 
     test("setEnabled removes stored value when enabling defaulted category", () async {
       when(
-        () => api.deleteValue(key: "notification_pref_connectionStatus"),
+        () => api.deleteValue(category: NotificationCategory.connectionStatus),
       ).thenAnswer((_) async {});
 
       await repository.setEnabled(category: NotificationCategory.connectionStatus, enabled: true);
 
-      verify(() => api.deleteValue(key: "notification_pref_connectionStatus")).called(1);
+      verify(() => api.deleteValue(category: NotificationCategory.connectionStatus)).called(1);
     });
 
     test("getAll returns all category values with repository defaults", () async {
       when(
-        () => api.readValue(key: "notification_pref_aiInteraction"),
-      ).thenAnswer((_) async => "false");
+        () => api.readValue(category: NotificationCategory.aiInteraction),
+      ).thenAnswer((_) async => false);
       when(
-        () => api.readValue(key: "notification_pref_sessionMessage"),
-      ).thenAnswer((_) async => "true");
+        () => api.readValue(category: NotificationCategory.sessionMessage),
+      ).thenAnswer((_) async => true);
       when(
-        () => api.readValue(key: "notification_pref_connectionStatus"),
+        () => api.readValue(category: NotificationCategory.connectionStatus),
       ).thenAnswer((_) async => null);
       when(
-        () => api.readValue(key: "notification_pref_systemUpdate"),
-      ).thenAnswer((_) async => "false");
+        () => api.readValue(category: NotificationCategory.systemUpdate),
+      ).thenAnswer((_) async => false);
       when(
-        () => api.readValue(key: "notification_pref_unknown"),
+        () => api.readValue(category: NotificationCategory.unknown),
       ).thenAnswer((_) async => null);
 
       final all = await repository.getAll();
