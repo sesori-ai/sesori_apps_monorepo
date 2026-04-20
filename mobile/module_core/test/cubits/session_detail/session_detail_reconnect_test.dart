@@ -21,6 +21,8 @@ class MockNotificationCanceller extends Mock implements NotificationCanceller {}
 
 class MockPermissionRepository extends Mock implements PermissionRepository {}
 
+class MockSessionDetailLoadService extends Mock implements SessionDetailLoadService {}
+
 const _sessionId = "session-1";
 
 void main() {
@@ -97,6 +99,74 @@ void main() {
 
     expect(cubit.state, isA<SessionDetailLoaded>());
     verify(() => mockSessionService.getMessages(sessionId: _sessionId)).called(1);
+  });
+
+  test("reloads immediately when waiting result arrives after connection already recovered", () async {
+    final mockLoadService = MockSessionDetailLoadService();
+    final mockSessionRepository = MockSessionRepository();
+    final mockConnectionService = MockConnectionService();
+    final mockNotificationCanceller = MockNotificationCanceller();
+    final mockPermissionRepository = MockPermissionRepository();
+    final sessionEvents = StreamController<SesoriSessionEvent>.broadcast();
+    final globalEvents = StreamController<SseEvent>.broadcast();
+    final connectionStatus = BehaviorSubject<ConnectionStatus>.seeded(connectedStatus);
+
+    addTearDown(sessionEvents.close);
+    addTearDown(globalEvents.close);
+    addTearDown(connectionStatus.close);
+
+    when(() => mockConnectionService.sessionEvents(_sessionId)).thenAnswer((_) => sessionEvents.stream);
+    when(() => mockConnectionService.events).thenAnswer((_) => globalEvents.stream);
+    when(() => mockConnectionService.status).thenAnswer((_) => connectionStatus);
+    when(() => mockConnectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
+    when(
+      () => mockNotificationCanceller.cancelForSession(
+        sessionId: any(named: "sessionId"),
+        category: any(named: "category"),
+      ),
+    ).thenReturn(null);
+    when(
+      () => mockPermissionRepository.replyToPermission(
+        requestId: any(named: "requestId"),
+        sessionId: any(named: "sessionId"),
+        reply: any(named: "reply"),
+      ),
+    ).thenAnswer((_) async => ApiResponse.success(null));
+    when(() => mockLoadService.load(sessionId: _sessionId)).thenAnswer(
+      (_) async => const SessionDetailLoadResult.waitingForConnection(),
+    );
+    when(() => mockLoadService.reload(sessionId: _sessionId)).thenAnswer(
+      (_) async => const SessionDetailLoadResult.loaded(
+        snapshot: SessionDetailSnapshot(
+          messages: const <MessageWithParts>[],
+          pendingQuestions: const <PendingQuestion>[],
+          childSessions: const <Session>[],
+          statuses: const <String, SessionStatus>{},
+          agents: const <AgentInfo?>[],
+          providerData: null,
+          commands: const <CommandInfo>[],
+          canonicalSessionTitle: null,
+        ),
+        isBridgeConnected: true,
+      ),
+    );
+
+    final cubit = SessionDetailCubit(
+      mockConnectionService,
+      loadService: mockLoadService,
+      promptDispatcher: mockSessionRepository,
+      permissionRepository: mockPermissionRepository,
+      sessionId: _sessionId,
+      notificationCanceller: mockNotificationCanceller,
+      failureReporter: MockFailureReporter(),
+    );
+    addTearDown(cubit.close);
+
+    await _awaitLoaded(cubit);
+
+    verify(() => mockLoadService.load(sessionId: _sessionId)).called(1);
+    verify(() => mockLoadService.reload(sessionId: _sessionId)).called(1);
+    expect(cubit.state, isA<SessionDetailLoaded>());
   });
 }
 

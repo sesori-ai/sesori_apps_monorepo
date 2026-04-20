@@ -91,6 +91,10 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         _tryDrainQueue();
       case SessionDetailLoadResultWaitingForConnection():
         _waitingForConnection = true;
+        if (_connectionService.currentStatus is ConnectionConnected) {
+          _waitingForConnection = false;
+          unawaited(_loadMessages(isReload: true));
+        }
       case SessionDetailLoadResultFailed(:final error):
         _waitingForConnection = false;
         emit(SessionDetailState.failed(error: error is ApiError ? error : ApiError.generic()));

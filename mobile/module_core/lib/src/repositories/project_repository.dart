@@ -27,7 +27,7 @@ class ProjectRepository {
 
     final projects = (projectsResponse as SuccessResponse<Projects>).data.data;
 
-    for (final project in projects) {
+    final sessionContexts = await Future.wait(projects.map((project) async {
       final sessionsResponse = await _api.listSessions(projectId: project.id);
       final session = switch (sessionsResponse) {
         SuccessResponse(:final data) => data.items.firstWhereOrNull((item) => item.id == sessionId),
@@ -37,9 +37,11 @@ class ProjectRepository {
       if (session != null) {
         return ProjectSessionContext(projectId: project.id, sessionTitle: session.title);
       }
-    }
 
-    return null;
+      return null;
+    }));
+
+    return sessionContexts.nonNulls.firstOrNull;
   }
 }
 

@@ -36,7 +36,7 @@ class SessionDetailLoadService {
     }
 
     try {
-      final projectContext = await _loadProjectSessionContext(sessionId: sessionId);
+      final projectContextFuture = _loadProjectSessionContext(sessionId: sessionId);
       final (
         messagesResponse,
         questionsResponse,
@@ -44,7 +44,6 @@ class SessionDetailLoadService {
         statusesResponse,
         agentsResponse,
         providersResponse,
-        commandsResponse,
       ) = await (
         _repository.getMessages(sessionId: sessionId),
         _repository.getPendingQuestions(sessionId: sessionId),
@@ -52,8 +51,9 @@ class SessionDetailLoadService {
         _repository.getSessionStatuses(),
         _repository.listAgents(),
         _repository.listProviders(),
-        _listCommands(projectId: projectContext?.projectId),
       ).wait;
+      final projectContext = await projectContextFuture;
+      final commandsResponse = await _listCommands(projectId: projectContext?.projectId);
 
       final messages = switch (messagesResponse) {
         SuccessResponse(:final data) => data.messages,
