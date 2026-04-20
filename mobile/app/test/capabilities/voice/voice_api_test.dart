@@ -97,6 +97,10 @@ void main() {
 
     test("timeout: maps TimeoutException to dartHttpClient error", () async {
       final audioPath = await createAudioPath();
+      // Use thenAnswer with Future.error to simulate an async failure from the
+      // underlying HTTP client — matches how `.timeout()` surfaces
+      // TimeoutException in production and protects against the try/catch
+      // regression where the returned Future isn't awaited.
       when(
         () => mockAuthenticatedHttpApiClient.postMultipart<String>(
           any(),
@@ -104,7 +108,9 @@ void main() {
           createFiles: any(named: "createFiles"),
           timeout: any(named: "timeout"),
         ),
-      ).thenThrow(TimeoutException("Request timed out"));
+      ).thenAnswer(
+        (_) => Future<ApiResponse<String>>.error(TimeoutException("Request timed out")),
+      );
 
       final result = await voiceApi.transcribe(audioPath, mimeType: "audio/mp4");
 
@@ -121,7 +127,9 @@ void main() {
           createFiles: any(named: "createFiles"),
           timeout: any(named: "timeout"),
         ),
-      ).thenThrow(const SocketException("Network unreachable"));
+      ).thenAnswer(
+        (_) => Future<ApiResponse<String>>.error(const SocketException("Network unreachable")),
+      );
 
       final result = await voiceApi.transcribe(audioPath, mimeType: "audio/mp4");
 
@@ -154,7 +162,9 @@ void main() {
           createFiles: any(named: "createFiles"),
           timeout: any(named: "timeout"),
         ),
-      ).thenThrow(const HandshakeException("TLS failed"));
+      ).thenAnswer(
+        (_) => Future<ApiResponse<String>>.error(const HandshakeException("TLS failed")),
+      );
 
       final result = await voiceApi.transcribe(audioPath, mimeType: "audio/mp4");
 

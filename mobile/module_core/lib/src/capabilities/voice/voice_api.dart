@@ -28,7 +28,11 @@ class VoiceApi {
     final uri = Uri.parse("$authBaseUrl/voice/transcribe");
 
     try {
-      return _client.postMultipart(
+      // `await` is required here so async errors thrown inside the returned
+      // Future (TimeoutException, SocketException, HandshakeException) are
+      // caught by the handlers below. Without the await, the Future's failure
+      // escapes this try/catch and propagates to the caller unwrapped.
+      return await _client.postMultipart(
         uri,
         fromJson: _parseTranscript,
         createFiles: () async => [
