@@ -44,6 +44,7 @@ class SessionDetailScreen extends StatelessWidget {
         promptDispatcher: getIt<SessionRepository>(),
         permissionRepository: getIt<PermissionRepository>(),
         sessionId: sessionId,
+        projectId: projectId,
         notificationCanceller: getIt<NotificationCanceller>(),
         failureReporter: getIt<FailureReporter>(),
       ),
