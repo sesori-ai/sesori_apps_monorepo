@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -14,14 +16,21 @@ class MockForegroundNotificationDispatcher extends Mock implements ForegroundNot
 class MockNotificationOpenDispatcher extends Mock implements NotificationOpenDispatcher {}
 
 void main() {
-  testWidgets("notification core collaborators start after configureDependencies", (tester) async {
+  test("notification core collaborators start after configureDependencies", () async {
     final events = <String>[];
+    final startupStarted = Completer<void>();
+    final allowStartupFinish = Completer<void>();
 
     void configureDependencies() => events.add("configureDependencies");
 
     void initializeDeepLinks() => events.add("deepLinks");
 
-    Future<void> startNotificationStartup() async => events.add("notificationStartup");
+    Future<void> startNotificationStartup() async {
+      events.add("notificationStartup.start");
+      startupStarted.complete();
+      await allowStartupFinish.future;
+      events.add("notificationStartup.done");
+    }
 
     void runAppFn(_) => events.add("runApp");
 
@@ -33,10 +42,26 @@ void main() {
       runAppFn: runAppFn,
     );
 
-    expect(events, ["configureDependencies", "deepLinks", "notificationStartup", "runApp"]);
+    await startupStarted.future.timeout(const Duration(seconds: 2));
+
+    expect(events, ["configureDependencies", "deepLinks", "notificationStartup.start", "runApp"]);
+
+    allowStartupFinish.complete();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(
+      events,
+      [
+        "configureDependencies",
+        "deepLinks",
+        "notificationStartup.start",
+        "runApp",
+        "notificationStartup.done",
+      ],
+    );
   });
 
-  testWidgets("notification startup initializes adapters before starting dispatchers", (tester) async {
+  test("notification startup initializes adapters before starting dispatchers", () async {
     final events = <String>[];
     final localNotificationClient = MockLocalNotificationClient();
     final pushMessagingSource = MockPushMessagingSource();
@@ -77,7 +102,7 @@ void main() {
     ]);
   });
 
-  testWidgets("later notification startup steps still run if registration fails", (tester) async {
+  test("later notification startup steps still run if registration fails", () async {
     final events = <String>[];
     final localNotificationClient = MockLocalNotificationClient();
     final pushMessagingSource = MockPushMessagingSource();

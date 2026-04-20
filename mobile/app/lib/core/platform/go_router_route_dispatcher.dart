@@ -29,12 +29,14 @@ class GoRouterRouteDispatcher implements RouteDispatcher {
 
   @override
   void replaceStack({required RouteStack stack}) {
-    _pendingReplace = _pendingReplace.then(
-      (_) => _replaceStack(stack: stack),
-      onError: (_, __) => _replaceStack(stack: stack),
-    ).catchError((Object error, StackTrace stackTrace) {
-      logw("Failed to replace notification route stack", error, stackTrace);
-    });
+    _pendingReplace = _pendingReplace
+        .then(
+          (_) => _replaceStack(stack: stack),
+          onError: (_, __) => _replaceStack(stack: stack),
+        )
+        .catchError((Object error, StackTrace stackTrace) {
+          logw("Failed to replace notification route stack", error, stackTrace);
+        });
   }
 
   Future<void> _replaceStack({required RouteStack stack}) async {
@@ -46,7 +48,8 @@ class GoRouterRouteDispatcher implements RouteDispatcher {
     _goRoute(stack.paths.first);
 
     for (final routePath in stack.paths.skip(1)) {
-      await _pushRoute(routePath);
+      // do not await, cause this would await until route is popped
+      unawaited(_pushRoute(routePath));
     }
   }
 

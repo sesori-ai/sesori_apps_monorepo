@@ -90,7 +90,11 @@ Future<void> bootstrapSesoriApp({
   configureDependenciesFn();
   initializeDeepLinks();
   if (shouldInitializeFirebase) {
-    await startNotificationStartupFn();
+    unawaited(
+      startNotificationStartupFn().catchError((Object error, StackTrace stackTrace) {
+        loge("Error bootstrapping notification startup", error, stackTrace);
+      }),
+    );
   }
   runAppFn(const SesoriApp());
 }
