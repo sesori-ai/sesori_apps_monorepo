@@ -10,6 +10,8 @@ import "package:sesori_shared/sesori_shared.dart";
 @LazySingleton(as: PushMessagingSource)
 class FirebasePushMessagingSource implements PushMessagingSource {
   final FirebaseMessaging _messaging;
+  final bool Function() _isApplePlatform;
+  final Future<void> Function(Duration) _delay;
   final StreamController<PushNotificationMessage> _foregroundMessageController =
       StreamController<PushNotificationMessage>.broadcast();
   final StreamController<NotificationOpenRequest> _notificationOpenedController =
@@ -22,11 +24,21 @@ class FirebasePushMessagingSource implements PushMessagingSource {
   bool _initialNotificationOpenConsumed = false;
   bool _disposed = false;
 
-  FirebasePushMessagingSource() : _messaging = FirebaseMessaging.instance;
+  FirebasePushMessagingSource()
+    : _messaging = FirebaseMessaging.instance,
+      _isApplePlatform = _defaultIsApplePlatform,
+      _delay = Future<void>.delayed;
 
   @visibleForTesting
-  FirebasePushMessagingSource.test({required FirebaseMessaging messaging})
-    : _messaging = messaging;
+  FirebasePushMessagingSource.test({
+    required FirebaseMessaging messaging,
+    bool Function()? isApplePlatform,
+    Future<void> Function(Duration)? delay,
+  }) : _messaging = messaging,
+       _isApplePlatform = isApplePlatform ?? _defaultIsApplePlatform,
+       _delay = delay ?? Future<void>.delayed;
+
+  static bool _defaultIsApplePlatform() => Platform.isIOS || Platform.isMacOS;
 
   @override
   DevicePlatform get devicePlatform {
@@ -82,13 +94,13 @@ class FirebasePushMessagingSource implements PushMessagingSource {
 
   @override
   Future<String?> getToken() async {
-    if (Platform.isIOS || Platform.isMacOS) {
+    if (_isApplePlatform()) {
       var apnsToken = await _messaging.getAPNSToken();
       for (var i = 0; i < 5; i++) {
         if (apnsToken != null) {
           break;
         }
-        await Future<void>.delayed(const Duration(seconds: 1));
+        await _delay(const Duration(seconds: 1));
         apnsToken = await _messaging.getAPNSToken();
       }
       if (apnsToken == null) {

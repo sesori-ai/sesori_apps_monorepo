@@ -124,7 +124,13 @@ void main() {
   test("getToken returns null when APNS token never becomes available", () async {
     when(() => messaging.getAPNSToken()).thenAnswer((_) async => null);
 
-    final token = await source.getToken();
+    final appleSource = FirebasePushMessagingSource.test(
+      messaging: messaging,
+      isApplePlatform: () => true,
+      delay: (_) async {},
+    );
+
+    final token = await appleSource.getToken();
 
     expect(token, isNull);
     verifyNever(() => messaging.getToken());
