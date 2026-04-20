@@ -134,6 +134,24 @@ void main() {
         ),
       );
     });
+
+    test("late initial opens are ignored after dispose", () async {
+      final initialOpenCompleter = Completer<NotificationOpenRequest?>();
+      pushMessagingSource.initialOpenRequestFuture = initialOpenCompleter.future;
+
+      final startFuture = dispatcher.start();
+      await dispatcher.dispose();
+      initialOpenCompleter.complete(
+        const NotificationOpenRequest(
+          projectId: "project-1",
+          sessionId: "session-1",
+          sessionTitle: "Late title",
+        ),
+      );
+      await startFuture;
+
+      expect(routeDispatcher.replacedStacks, isEmpty);
+    });
   });
 }
 

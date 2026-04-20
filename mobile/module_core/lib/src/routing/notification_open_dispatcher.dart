@@ -83,6 +83,9 @@ class NotificationOpenDispatcher {
   }
 
   void _handleNotificationOpen(NotificationOpenRequest request) {
+    if (_disposed) {
+      return;
+    }
     if (_authSession.currentState is! AuthAuthenticated) {
       _pendingOpenRequest = request;
       return;

@@ -94,14 +94,17 @@ void main() {
       );
     });
 
-    test("retries startup after an initial sync failure", () async {
+    test("keeps listening after an initial sync failure", () async {
       repository.failNextRegisterToken = true;
 
       await service.start();
 
       expect(repository.registeredTokens, isEmpty);
 
-      await service.start();
+      authSession.emit(const AuthState.unauthenticated());
+      await Future<void>.delayed(Duration.zero);
+      authSession.emit(_authenticatedState());
+      await Future<void>.delayed(Duration.zero);
 
       expect(
         repository.registeredTokens,
@@ -121,6 +124,48 @@ void main() {
           const RegisteredToken(token: "token-2", platform: DevicePlatform.android),
         ]),
       );
+    });
+
+    test("processes auth changes that happen during the initial sync window", () async {
+      final tokenCompleter = Completer<String?>();
+      pushMessagingSource.tokenFuture = tokenCompleter.future;
+
+      final startFuture = service.start();
+      authSession.emit(const AuthState.unauthenticated());
+
+      tokenCompleter.complete("token-1");
+      await startFuture;
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        repository.registeredTokens,
+        equals([
+          const RegisteredToken(token: "token-1", platform: DevicePlatform.android),
+        ]),
+      );
+      expect(repository.unregisteredTokens, equals(["token-1"]));
+    });
+
+    test("processes the first changed auth snapshot after startup sync", () async {
+      final tokenCompleter = Completer<String?>();
+      pushMessagingSource.tokenFuture = tokenCompleter.future;
+
+      final startFuture = service.start();
+      authSession.emit(const AuthState.unauthenticated());
+      authSession.emit(_authenticatedState());
+
+      tokenCompleter.complete("token-1");
+      await startFuture;
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        repository.registeredTokens,
+        equals([
+          const RegisteredToken(token: "token-1", platform: DevicePlatform.android),
+          const RegisteredToken(token: "token-1", platform: DevicePlatform.android),
+        ]),
+      );
+      expect(repository.unregisteredTokens, equals(["token-1"]));
     });
   });
 }
@@ -200,6 +245,7 @@ class FakePushMessagingSource implements PushMessagingSource {
   final DevicePlatform devicePlatform;
 
   String? currentToken;
+  Future<String?>? tokenFuture;
 
   FakePushMessagingSource({required String? initialToken, required this.devicePlatform}) : currentToken = initialToken;
 
@@ -210,7 +256,7 @@ class FakePushMessagingSource implements PushMessagingSource {
   Future<NotificationOpenRequest?> getInitialNotificationOpen() async => null;
 
   @override
-  Future<String?> getToken() async => currentToken;
+  Future<String?> getToken() async => tokenFuture ?? currentToken;
 
   @override
   Future<void> initialize() async {}

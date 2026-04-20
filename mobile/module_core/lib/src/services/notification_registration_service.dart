@@ -16,7 +16,8 @@ class NotificationRegistrationService {
   StreamSubscription<AuthState>? _authSubscription;
   StreamSubscription<String>? _tokenRefreshSubscription;
   String? _currentRegisteredToken;
-  bool _ignoreNextAuthStateEmission = false;
+  AuthState? _initialAuthStateToIgnore;
+  Future<void> _syncQueue = Future<void>.value();
   bool _started = false;
   bool _disposed = false;
 
@@ -38,24 +39,26 @@ class NotificationRegistrationService {
       return;
     }
 
+    final initialState = _authSession.currentState;
+    _started = true;
+    _initialAuthStateToIgnore = initialState;
+    _authSubscription = _authSession.authStateStream.listen(_onAuthStateChanged, onError: _onAuthStreamError);
+    _tokenRefreshSubscription = _pushMessagingSource.tokenRefreshStream.listen(
+      _onTokenRefresh,
+      onError: _onTokenRefreshStreamError,
+    );
+
     try {
-      await _syncForState(state: _authSession.currentState);
-      _ignoreNextAuthStateEmission = true;
-      _authSubscription = _authSession.authStateStream.listen(_onAuthStateChanged, onError: _onAuthStreamError);
-      _tokenRefreshSubscription = _pushMessagingSource.tokenRefreshStream.listen(
-        _onTokenRefresh,
-        onError: _onTokenRefreshStreamError,
-      );
-      _started = true;
+      await _enqueueSync(() => _syncForState(state: initialState));
     } catch (error, stackTrace) {
-      _ignoreNextAuthStateEmission = false;
-      _started = false;
-      await _authSubscription?.cancel();
-      await _tokenRefreshSubscription?.cancel();
-      _authSubscription = null;
-      _tokenRefreshSubscription = null;
       logw("Failed to start notification registration", error, stackTrace);
     }
+  }
+
+  Future<void> _enqueueSync(Future<void> Function() operation) {
+    final next = _syncQueue.catchError((Object _, StackTrace __) {}).then((_) => operation());
+    _syncQueue = next.catchError((Object _, StackTrace __) {});
+    return next;
   }
 
   Future<void> _syncForState({required AuthState state}) async {
@@ -90,21 +93,25 @@ class NotificationRegistrationService {
   }
 
   void _onAuthStateChanged(AuthState state) {
-    if (_ignoreNextAuthStateEmission && state == _authSession.currentState) {
-      _ignoreNextAuthStateEmission = false;
+    if (_initialAuthStateToIgnore != null && state == _initialAuthStateToIgnore) {
+      _initialAuthStateToIgnore = null;
       return;
     }
-    _ignoreNextAuthStateEmission = false;
+    _initialAuthStateToIgnore = null;
 
-    unawaited(_syncForState(state: state).catchError((Object error, StackTrace stackTrace) {
-      logw("Failed to sync push token for auth state change", error, stackTrace);
-    }));
+    unawaited(
+      _enqueueSync(() => _syncForState(state: state)).catchError((Object error, StackTrace stackTrace) {
+        logw("Failed to sync push token for auth state change", error, stackTrace);
+      }),
+    );
   }
 
   void _onTokenRefresh(String newToken) {
-    unawaited(_handleTokenRefresh(newToken: newToken).catchError((Object error, StackTrace stackTrace) {
-      logw("Failed to sync refreshed push token", error, stackTrace);
-    }));
+    unawaited(
+      _enqueueSync(() => _handleTokenRefresh(newToken: newToken)).catchError((Object error, StackTrace stackTrace) {
+        logw("Failed to sync refreshed push token", error, stackTrace);
+      }),
+    );
   }
 
   Future<void> _handleTokenRefresh({required String newToken}) async {
