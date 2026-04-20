@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:firebase_messaging/firebase_messaging.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
@@ -5,11 +7,19 @@ import "package:sesori_mobile/core/platform/firebase_push_messaging_source.dart"
 
 class MockFirebaseMessaging extends Mock implements FirebaseMessaging {}
 
+class FakeNotificationSettings extends Fake implements NotificationSettings {}
+
 void main() {
   late FirebasePushMessagingSource source;
+  late MockFirebaseMessaging messaging;
 
   setUp(() {
-    source = FirebasePushMessagingSource.test(messaging: MockFirebaseMessaging());
+    messaging = MockFirebaseMessaging();
+    source = FirebasePushMessagingSource.test(messaging: messaging);
+  });
+
+  setUpAll(() {
+    registerFallbackValue(FakeNotificationSettings());
   });
 
   group("notificationOpenFromMessageForTesting", () {
@@ -78,5 +88,36 @@ void main() {
     expect(pushMessage.title, equals("Foreground title"));
     expect(pushMessage.body, equals("Foreground body"));
     expect(pushMessage.data, containsPair("projectId", "proj_2"));
+  });
+
+  test("initialize shares the same in-flight work across concurrent callers", () async {
+    final permissionCompleter = Completer<NotificationSettings>();
+    when(
+      () => messaging.requestPermission(alert: true, badge: true, sound: true),
+    ).thenAnswer((_) => permissionCompleter.future);
+    when(
+      () => messaging.setForegroundNotificationPresentationOptions(
+        alert: false,
+        badge: false,
+        sound: false,
+      ),
+    ).thenAnswer((_) async {});
+    when(() => messaging.getInitialMessage()).thenAnswer((_) async => null);
+
+    final first = source.initialize();
+    final second = source.initialize();
+    permissionCompleter.complete(FakeNotificationSettings());
+
+    await Future.wait([first, second]);
+
+    verify(() => messaging.requestPermission(alert: true, badge: true, sound: true)).called(1);
+    verify(
+      () => messaging.setForegroundNotificationPresentationOptions(
+        alert: false,
+        badge: false,
+        sound: false,
+      ),
+    ).called(1);
+    verify(() => messaging.getInitialMessage()).called(1);
   });
 }

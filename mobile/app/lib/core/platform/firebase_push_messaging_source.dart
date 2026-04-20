@@ -17,9 +17,9 @@ class FirebasePushMessagingSource implements PushMessagingSource {
 
   StreamSubscription<RemoteMessage>? _foregroundMessageSubscription;
   StreamSubscription<RemoteMessage>? _notificationOpenedSubscription;
+  Future<void>? _initializeFuture;
   NotificationOpenRequest? _initialNotificationOpen;
   bool _initialNotificationOpenConsumed = false;
-  bool _initialized = false;
   bool _disposed = false;
 
   FirebasePushMessagingSource() : _messaging = FirebaseMessaging.instance;
@@ -56,11 +56,11 @@ class FirebasePushMessagingSource implements PushMessagingSource {
       logw("FirebasePushMessagingSource.initialize() called after dispose");
       return;
     }
-    if (_initialized) {
-      return;
-    }
+    _initializeFuture ??= _doInitialize();
+    await _initializeFuture;
+  }
 
-    _initialized = true;
+  Future<void> _doInitialize() async {
     await _messaging.requestPermission(alert: true, badge: true, sound: true);
     await _messaging.setForegroundNotificationPresentationOptions(
       alert: false,

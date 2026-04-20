@@ -184,7 +184,11 @@ class FlutterLocalNotificationClient implements LocalNotificationClient {
 
   @override
   void cancelForSession({required String sessionId, required NotificationCategory category}) {
-    unawaited(cancel(computeNotificationId(sessionId: sessionId, category: category)));
+    unawaited(
+      cancel(computeNotificationId(sessionId: sessionId, category: category)).catchError((Object error, StackTrace stackTrace) {
+        logw("Failed to cancel notification for session", error, stackTrace);
+      }),
+    );
   }
 
   Future<void> dispose() => _notificationOpenedController.close();
