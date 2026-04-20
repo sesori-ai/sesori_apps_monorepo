@@ -3,10 +3,6 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/notification_preferences_api.dart";
 
-extension on NotificationCategory {
-  String get storageKey => "notification_pref_$name";
-}
-
 @lazySingleton
 class NotificationPreferencesRepository {
   final NotificationPreferencesApi _api;
@@ -14,16 +10,16 @@ class NotificationPreferencesRepository {
   NotificationPreferencesRepository({required NotificationPreferencesApi api}) : _api = api;
 
   Future<bool> isEnabled({required NotificationCategory category}) async {
-    final value = await _api.readValue(key: category.storageKey);
-    return value != "false";
+    final enabled = await _api.readValue(category: category);
+    return enabled ?? true;
   }
 
   Future<void> setEnabled({required NotificationCategory category, required bool enabled}) {
     if (enabled) {
-      return _api.deleteValue(key: category.storageKey);
+      return _api.deleteValue(category: category);
     }
 
-    return _api.writeValue(key: category.storageKey, value: enabled.toString());
+    return _api.writeValue(category: category, enabled: enabled);
   }
 
   Future<Map<NotificationCategory, bool>> getAll() async {

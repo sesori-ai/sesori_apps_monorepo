@@ -22,28 +22,28 @@ enum NotificationCategory {
     id: "ai_interaction",
     displayName: "AI Interactions",
     description: "Questions and permissions from AI",
-    importance: .high,
+    importance: .max,
   ),
   @JsonValue("session_message")
   sessionMessage(
     id: "session_message",
     displayName: "Session Messages",
     description: "New messages from AI sessions",
-    importance: .defaultImportance,
+    importance: .max,
   ),
   @JsonValue("connection_status")
   connectionStatus(
     id: "connection_status",
     displayName: "Connection Status",
     description: "Bridge connection status changes",
-    importance: .high,
+    importance: .max,
   ),
   @JsonValue("system_update")
   systemUpdate(
     id: "system_update",
     displayName: "System Updates",
     description: "App and bridge updates",
-    importance: .low,
+    importance: .defaultImportance,
   ),
   // fallback for unknown categories (for backwards compatibility)
   @JsonValue("unknown")
@@ -51,7 +51,7 @@ enum NotificationCategory {
     id: "unknown",
     displayName: "Sesori Notifications",
     description: "Notifications from the Sesori app",
-    importance: .unspecified,
+    importance: .defaultImportance,
   ),
   ;
 
