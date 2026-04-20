@@ -83,7 +83,7 @@ class NotificationRegistrationService {
   }
 
   Future<void> _unregisterCurrentToken() async {
-    final token = _currentRegisteredToken;
+    final token = _currentRegisteredToken ?? await _pushMessagingSource.getToken();
     if (token == null) {
       return;
     }

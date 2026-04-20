@@ -94,6 +94,24 @@ void main() {
       );
     });
 
+    test("unauthenticated startup unregisters the current device token after restart", () async {
+      authSession = FakeAuthSession(initialState: const AuthState.unauthenticated());
+      pushMessagingSource = FakePushMessagingSource(
+        initialToken: "token-1",
+        devicePlatform: DevicePlatform.android,
+      );
+      service = NotificationRegistrationService(
+        repository: repository,
+        authSession: authSession,
+        pushMessagingSource: pushMessagingSource,
+      );
+
+      await service.start();
+
+      expect(repository.registeredTokens, isEmpty);
+      expect(repository.unregisteredTokens, equals(["token-1"]));
+    });
+
     test("keeps listening after an initial sync failure", () async {
       repository.failNextRegisterToken = true;
 
@@ -116,7 +134,7 @@ void main() {
       pushMessagingSource.emitTokenRefresh("token-2");
       await Future<void>.delayed(Duration.zero);
 
-      expect(repository.unregisteredTokens, equals(["token-1"]));
+      expect(repository.unregisteredTokens, equals(["token-1", "token-1"]));
       expect(
         repository.registeredTokens,
         equals([
