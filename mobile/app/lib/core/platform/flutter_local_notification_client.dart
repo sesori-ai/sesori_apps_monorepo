@@ -150,7 +150,7 @@ class FlutterLocalNotificationClient implements LocalNotificationClient {
     required String? sessionTitle,
   }) async {
     final id = sessionId == null
-        ? DateTime.now().millisecondsSinceEpoch ~/ 1000
+        ? DateTime.now().millisecondsSinceEpoch.remainder(2147483647)
         : computeNotificationId(sessionId: sessionId, category: category);
 
     final payload = jsonEncode(

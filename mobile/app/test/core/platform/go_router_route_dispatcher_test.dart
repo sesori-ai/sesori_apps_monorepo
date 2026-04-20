@@ -32,7 +32,7 @@ void main() {
       ),
     );
     firstPushCompleter.completeError(Exception("boom"));
-    await expectLater(dispatcher.flushPendingForTesting(), throwsException);
+    await dispatcher.flushPendingForTesting();
 
     dispatcher.replaceStack(
       stack: RouteStack(

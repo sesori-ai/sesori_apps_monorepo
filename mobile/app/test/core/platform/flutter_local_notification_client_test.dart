@@ -81,6 +81,41 @@ void main() {
       ).called(1);
     });
 
+    test("without sessionId uses millisecond fallback IDs", () async {
+      stubPluginShow();
+
+      await client.show(
+        title: "T1",
+        body: "B1",
+        category: NotificationCategory.systemUpdate,
+        sessionId: null,
+        projectId: null,
+        sessionTitle: null,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 2));
+      await client.show(
+        title: "T2",
+        body: "B2",
+        category: NotificationCategory.systemUpdate,
+        sessionId: null,
+        projectId: null,
+        sessionTitle: null,
+      );
+
+      final capturedIds = verify(
+        () => mockPlugin.show(
+          id: captureAny(named: "id"),
+          title: any(named: "title"),
+          body: any(named: "body"),
+          notificationDetails: any(named: "notificationDetails"),
+          payload: any(named: "payload"),
+        ),
+      ).captured.cast<int>();
+
+      expect(capturedIds, hasLength(2));
+      expect(capturedIds.first, isNot(equals(capturedIds.last)));
+    });
+
     test("payload preserves sessionTitle for newer notifications", () async {
       stubPluginShow();
 

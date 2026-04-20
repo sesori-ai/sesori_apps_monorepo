@@ -32,7 +32,9 @@ class GoRouterRouteDispatcher implements RouteDispatcher {
     _pendingReplace = _pendingReplace.then(
       (_) => _replaceStack(stack: stack),
       onError: (_, __) => _replaceStack(stack: stack),
-    );
+    ).catchError((Object error, StackTrace stackTrace) {
+      logw("Failed to replace notification route stack", error, stackTrace);
+    });
   }
 
   Future<void> _replaceStack({required RouteStack stack}) async {
