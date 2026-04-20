@@ -217,8 +217,12 @@ void main() {
       isBridgeConnected: true,
     );
 
-    when(() => mockLoadService.load(sessionId: _sessionId)).thenAnswer((_) async => loadedResult);
-    when(() => mockLoadService.reload(sessionId: _sessionId)).thenAnswer((_) async => loadedResult);
+    when(() => mockLoadService.load(sessionId: _sessionId, projectId: any(named: "projectId"))).thenAnswer(
+      (_) async => loadedResult,
+    );
+    when(() => mockLoadService.reload(sessionId: _sessionId, projectId: any(named: "projectId"))).thenAnswer(
+      (_) async => loadedResult,
+    );
 
     final cubit = SessionDetailCubit(
       mockConnectionService,
@@ -232,17 +236,17 @@ void main() {
     addTearDown(cubit.close);
 
     await _awaitLoaded(cubit);
-    verify(() => mockLoadService.load(sessionId: _sessionId)).called(1);
+    verify(() => mockLoadService.load(sessionId: _sessionId, projectId: null)).called(1);
 
     globalEvents.add(SseEvent(data: const SesoriSseEvent.sessionsUpdated(projectID: "project-2")));
     await Future<void>.delayed(Duration.zero);
 
-    verifyNever(() => mockLoadService.reload(sessionId: _sessionId));
+    verifyNever(() => mockLoadService.reload(sessionId: _sessionId, projectId: any(named: "projectId")));
 
     globalEvents.add(SseEvent(data: const SesoriSseEvent.sessionsUpdated(projectID: "project-1")));
     await Future<void>.delayed(Duration.zero);
 
-    verify(() => mockLoadService.reload(sessionId: _sessionId)).called(1);
+    verify(() => mockLoadService.reload(sessionId: _sessionId, projectId: "project-1")).called(1);
   });
 }
 
