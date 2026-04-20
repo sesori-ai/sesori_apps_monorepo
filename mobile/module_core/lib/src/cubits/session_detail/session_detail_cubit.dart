@@ -24,6 +24,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   final ConnectionService _connectionService;
   final PermissionRepository _permissionRepository;
   final String _sessionId;
+  final String? _routeProjectId;
   final NotificationCanceller _notificationCanceller;
   final FailureReporter _failureReporter;
   final PromptSendQueue _promptQueue = PromptSendQueue();
@@ -56,16 +57,19 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     required SessionRepository promptDispatcher,
     required PermissionRepository permissionRepository,
     required String sessionId,
+    String? projectId,
     required NotificationCanceller notificationCanceller,
     required FailureReporter failureReporter,
   }) : _loadService = loadService,
-       _sessionRepository = promptDispatcher,
-       _connectionService = connectionService,
-       _permissionRepository = permissionRepository,
-       _sessionId = sessionId,
-       _notificationCanceller = notificationCanceller,
-       _failureReporter = failureReporter,
-       super(const SessionDetailState.loading()) {
+        _sessionRepository = promptDispatcher,
+        _connectionService = connectionService,
+        _permissionRepository = permissionRepository,
+        _sessionId = sessionId,
+        _routeProjectId = projectId,
+        _notificationCanceller = notificationCanceller,
+        _failureReporter = failureReporter,
+        _projectId = projectId,
+        super(const SessionDetailState.loading()) {
     _streamingBuffer = StreamingTextBuffer(onFlush: _emitStreamingSnapshot);
     _eventSubscription = _connectionService.sessionEvents(_sessionId).listen(_handleEvent);
     _globalEventSubscription = _connectionService.events.listen(_handleGlobalEvent);
@@ -81,8 +85,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   Future<void> _loadMessages({required bool isReload}) async {
     emit(const SessionDetailState.loading());
     final result = isReload
-        ? await _loadService.reload(sessionId: _sessionId)
-        : await _loadService.load(sessionId: _sessionId);
+        ? await _loadService.reload(sessionId: _sessionId, projectId: _projectId ?? _routeProjectId)
+        : await _loadService.load(sessionId: _sessionId, projectId: _projectId ?? _routeProjectId);
     if (isClosed) return;
 
     switch (result) {
@@ -122,13 +126,13 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     emit(current.copyWith(isRefreshing: true));
 
     try {
-      final result = await _loadService.reload(sessionId: _sessionId);
+      final result = await _loadService.reload(sessionId: _sessionId, projectId: _projectId ?? _routeProjectId);
       if (isClosed) return;
 
       switch (result) {
         case SessionDetailLoadResultLoaded(:final snapshot):
           _waitingForConnection = false;
-          _projectId = snapshot.projectId;
+          _projectId = snapshot.projectId ?? _projectId;
           final latestAssistant = _latestAssistantMessage(snapshot.messages);
           final childIds = snapshot.childSessions.map((c) => c.id).toSet();
           final childStatuses = Map<String, SessionStatus>.fromEntries(

@@ -22,21 +22,25 @@ class SessionDetailLoadService {
        _projectRepository = projectRepository,
        _connectionService = connectionService;
 
-  Future<SessionDetailLoadResult> load({required String sessionId}) {
-    return _loadSnapshot(sessionId: sessionId);
+  Future<SessionDetailLoadResult> load({required String sessionId, String? projectId}) {
+    return _loadSnapshot(sessionId: sessionId, projectId: projectId);
   }
 
-  Future<SessionDetailLoadResult> reload({required String sessionId}) {
-    return _loadSnapshot(sessionId: sessionId);
+  Future<SessionDetailLoadResult> reload({required String sessionId, String? projectId}) {
+    return _loadSnapshot(sessionId: sessionId, projectId: projectId);
   }
 
-  Future<SessionDetailLoadResult> _loadSnapshot({required String sessionId}) async {
+  Future<SessionDetailLoadResult> _loadSnapshot({required String sessionId, String? projectId}) async {
     if (_connectionService.currentStatus is! ConnectionConnected) {
       return const SessionDetailLoadResult.waitingForConnection();
     }
 
     try {
+      final routeProjectId = _normalizeOptionalText(projectId);
       final projectContextFuture = _loadProjectSessionContext(sessionId: sessionId);
+      final commandsFuture = routeProjectId == null
+          ? null
+          : _listCommands(projectId: routeProjectId);
       final (
         messagesResponse,
         questionsResponse,
@@ -53,7 +57,8 @@ class SessionDetailLoadService {
         _repository.listProviders(),
       ).wait;
       final projectContext = await projectContextFuture;
-      final commandsResponse = await _listCommands(projectId: projectContext?.projectId);
+      final effectiveProjectId = routeProjectId ?? projectContext?.projectId;
+      final commandsResponse = await (commandsFuture ?? _listCommands(projectId: effectiveProjectId));
 
       final messages = switch (messagesResponse) {
         SuccessResponse(:final data) => data.messages,
@@ -96,7 +101,7 @@ class SessionDetailLoadService {
 
       return SessionDetailLoadResult.loaded(
         snapshot: SessionDetailSnapshot(
-          projectId: projectContext?.projectId,
+          projectId: effectiveProjectId,
           messages: messages,
           pendingQuestions: pendingQuestions,
           childSessions: childSessions,

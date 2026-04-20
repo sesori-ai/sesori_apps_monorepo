@@ -58,6 +58,19 @@ void main() {
       expect(loaded.snapshot.canonicalSessionTitle, "Canonical title");
     });
 
+    test("load uses route projectId to fetch commands when context lookup fails", () async {
+      connectionStatus.add(connectedStatus);
+      _stubRepositorySnapshot(repository: repository, projectRepository: projectRepository);
+      when(() => projectRepository.findSessionContext(sessionId: "session-1")).thenThrow(Exception("lookup failed"));
+
+      final result = await service.load(sessionId: "session-1", projectId: "project-1");
+
+      expect(result, isA<SessionDetailLoadResultLoaded>());
+      final loaded = result as SessionDetailLoadResultLoaded;
+      expect(loaded.snapshot.commands, hasLength(1));
+      verify(() => repository.listCommands(projectId: "project-1")).called(1);
+    });
+
     test("initial load waits for connection readiness and then loads", () async {
       final waiting = await service.load(sessionId: "session-1");
       expect(waiting, isA<SessionDetailLoadResultWaitingForConnection>());
