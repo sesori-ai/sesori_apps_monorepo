@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:bloc_test/bloc_test.dart";
+import "package:flutter/gestures.dart";
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
@@ -93,6 +94,27 @@ Widget _buildApp({required SessionDetailCubit cubit}) {
       ),
     ),
   );
+}
+
+String _reasoningText({required int paragraphs}) {
+  return List.generate(
+    paragraphs,
+    (index) => "Thought $index\n\n${List.generate(4, (line) => "detail $index.$line").join(" ")}",
+  ).join("\n\n");
+}
+
+const _reasoningListViewKey = Key("reasoning-modal-list-view");
+const _followOutputKey = Key("reasoning-modal-follow-output");
+
+ScrollPosition _position(WidgetTester tester) {
+  return tester.widget<ListView>(find.byKey(_reasoningListViewKey)).controller!.position;
+}
+
+Future<void> _sendPointerScroll({required WidgetTester tester, required Finder target, required Offset delta}) async {
+  final pointer = TestPointer(1, PointerDeviceKind.mouse);
+  await tester.sendEventToBinding(pointer.hover(tester.getCenter(target)));
+  await tester.pump();
+  await tester.sendEventToBinding(pointer.scroll(delta));
 }
 
 void main() {
@@ -203,5 +225,66 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("Thought"), findsOneWidget);
+  });
+
+  testWidgets("small user drag detaches immediately and reattaches on settle while streaming", (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    whenListen(
+      mockCubit,
+      const Stream<SessionDetailState>.empty(),
+      initialState: _loadedState(
+        streamingText: {"part-1": _reasoningText(paragraphs: 40)},
+        messages: [_messageWithPart()],
+      ),
+    );
+
+    await tester.pumpWidget(_buildApp(cubit: mockCubit));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(_followOutputKey), findsNothing);
+
+    final gesture = await tester.startGesture(tester.getCenter(find.byKey(_reasoningListViewKey)));
+    await gesture.moveBy(const Offset(0, -12));
+    await tester.pump();
+
+    expect(find.byKey(_followOutputKey), findsOneWidget);
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(_followOutputKey), findsNothing);
+    expect(_position(tester).pixels, greaterThanOrEqualTo(_position(tester).maxScrollExtent - 20));
+  });
+
+  testWidgets("desktop pointer scroll detaches immediately while streaming", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    whenListen(
+      mockCubit,
+      const Stream<SessionDetailState>.empty(),
+      initialState: _loadedState(
+        streamingText: {"part-1": _reasoningText(paragraphs: 40)},
+        messages: [_messageWithPart()],
+      ),
+    );
+
+    await tester.pumpWidget(_buildApp(cubit: mockCubit));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(_followOutputKey), findsNothing);
+
+    await _sendPointerScroll(
+      tester: tester,
+      target: find.byKey(_reasoningListViewKey),
+      delta: const Offset(0, -500),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(_followOutputKey), findsOneWidget);
   });
 }
