@@ -96,6 +96,7 @@ class SessionDetailLoadService {
 
       return SessionDetailLoadResult.loaded(
         snapshot: SessionDetailSnapshot(
+          projectId: projectContext?.projectId,
           messages: messages,
           pendingQuestions: pendingQuestions,
           childSessions: childSessions,
@@ -142,6 +143,7 @@ class SessionDetailLoadService {
 }
 
 class SessionDetailSnapshot {
+  final String? projectId;
   final List<MessageWithParts> messages;
   final List<PendingQuestion> pendingQuestions;
   final List<Session> childSessions;
@@ -152,6 +154,7 @@ class SessionDetailSnapshot {
   final String? canonicalSessionTitle;
 
   const SessionDetailSnapshot({
+    required this.projectId,
     required this.messages,
     required this.pendingQuestions,
     required this.childSessions,

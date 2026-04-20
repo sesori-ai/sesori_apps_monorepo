@@ -37,6 +37,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   Future<void>? _activeRefresh;
   bool _needsStaleRefresh = false;
   bool _waitingForConnection = false;
+  String? _projectId;
 
   /// Fires the [SesoriQuestionAsked] whenever a new question arrives, so the
   /// screen can auto-open the question modal.
@@ -87,6 +88,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     switch (result) {
       case SessionDetailLoadResultLoaded(:final snapshot):
         _waitingForConnection = false;
+        _projectId = snapshot.projectId;
         emit(_buildLoadedState(snapshot: snapshot));
         _tryDrainQueue();
       case SessionDetailLoadResultWaitingForConnection():
@@ -126,6 +128,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       switch (result) {
         case SessionDetailLoadResultLoaded(:final snapshot):
           _waitingForConnection = false;
+          _projectId = snapshot.projectId;
           final latestAssistant = _latestAssistantMessage(snapshot.messages);
           final childIds = snapshot.childSessions.map((c) => c.id).toSet();
           final childStatuses = Map<String, SessionStatus>.fromEntries(
@@ -311,7 +314,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             SesoriWorktreeFailed():
           break;
         case SesoriSessionsUpdated(:final projectID):
-          if (projectID.isNotEmpty) {
+          if (projectID.isNotEmpty && projectID == _projectId) {
             _silentRefresh();
           }
       }

@@ -138,6 +138,7 @@ void main() {
     when(() => mockLoadService.reload(sessionId: _sessionId)).thenAnswer(
       (_) async => const SessionDetailLoadResult.loaded(
         snapshot: SessionDetailSnapshot(
+          projectId: "project-1",
           messages: const <MessageWithParts>[],
           pendingQuestions: const <PendingQuestion>[],
           childSessions: const <Session>[],
@@ -167,6 +168,81 @@ void main() {
     verify(() => mockLoadService.load(sessionId: _sessionId)).called(1);
     verify(() => mockLoadService.reload(sessionId: _sessionId)).called(1);
     expect(cubit.state, isA<SessionDetailLoaded>());
+  });
+
+  test("ignores sessions.updated events from unrelated projects", () async {
+    final mockLoadService = MockSessionDetailLoadService();
+    final mockSessionRepository = MockSessionRepository();
+    final mockConnectionService = MockConnectionService();
+    final mockNotificationCanceller = MockNotificationCanceller();
+    final mockPermissionRepository = MockPermissionRepository();
+    final sessionEvents = StreamController<SesoriSessionEvent>.broadcast();
+    final globalEvents = StreamController<SseEvent>.broadcast();
+    final connectionStatus = BehaviorSubject<ConnectionStatus>.seeded(connectedStatus);
+
+    addTearDown(sessionEvents.close);
+    addTearDown(globalEvents.close);
+    addTearDown(connectionStatus.close);
+
+    when(() => mockConnectionService.sessionEvents(_sessionId)).thenAnswer((_) => sessionEvents.stream);
+    when(() => mockConnectionService.events).thenAnswer((_) => globalEvents.stream);
+    when(() => mockConnectionService.status).thenAnswer((_) => connectionStatus);
+    when(() => mockConnectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
+    when(
+      () => mockNotificationCanceller.cancelForSession(
+        sessionId: any(named: "sessionId"),
+        category: any(named: "category"),
+      ),
+    ).thenReturn(null);
+    when(
+      () => mockPermissionRepository.replyToPermission(
+        requestId: any(named: "requestId"),
+        sessionId: any(named: "sessionId"),
+        reply: any(named: "reply"),
+      ),
+    ).thenAnswer((_) async => ApiResponse.success(null));
+
+    final loadedResult = SessionDetailLoadResult.loaded(
+      snapshot: const SessionDetailSnapshot(
+        projectId: "project-1",
+        messages: <MessageWithParts>[],
+        pendingQuestions: <PendingQuestion>[],
+        childSessions: <Session>[],
+        statuses: <String, SessionStatus>{},
+        agents: <AgentInfo?>[],
+        providerData: null,
+        commands: <CommandInfo>[],
+        canonicalSessionTitle: null,
+      ),
+      isBridgeConnected: true,
+    );
+
+    when(() => mockLoadService.load(sessionId: _sessionId)).thenAnswer((_) async => loadedResult);
+    when(() => mockLoadService.reload(sessionId: _sessionId)).thenAnswer((_) async => loadedResult);
+
+    final cubit = SessionDetailCubit(
+      mockConnectionService,
+      loadService: mockLoadService,
+      promptDispatcher: mockSessionRepository,
+      permissionRepository: mockPermissionRepository,
+      sessionId: _sessionId,
+      notificationCanceller: mockNotificationCanceller,
+      failureReporter: MockFailureReporter(),
+    );
+    addTearDown(cubit.close);
+
+    await _awaitLoaded(cubit);
+    verify(() => mockLoadService.load(sessionId: _sessionId)).called(1);
+
+    globalEvents.add(SseEvent(data: const SesoriSseEvent.sessionsUpdated(projectID: "project-2")));
+    await Future<void>.delayed(Duration.zero);
+
+    verifyNever(() => mockLoadService.reload(sessionId: _sessionId));
+
+    globalEvents.add(SseEvent(data: const SesoriSseEvent.sessionsUpdated(projectID: "project-1")));
+    await Future<void>.delayed(Duration.zero);
+
+    verify(() => mockLoadService.reload(sessionId: _sessionId)).called(1);
   });
 }
 

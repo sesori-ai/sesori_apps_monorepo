@@ -36,6 +36,7 @@ Widget _buildApp({required String? sessionTitle}) {
 SessionDetailLoadResult _loadedResult() {
   return const SessionDetailLoadResult.loaded(
     snapshot: SessionDetailSnapshot(
+      projectId: "project-1",
       messages: [],
       pendingQuestions: [],
       childSessions: [],
@@ -52,6 +53,7 @@ SessionDetailLoadResult _loadedResult() {
 SessionDetailLoadResult _loadedResultWithCanonicalTitle(String title) {
   return SessionDetailLoadResult.loaded(
     snapshot: SessionDetailSnapshot(
+      projectId: "project-1",
       messages: const [],
       pendingQuestions: const [],
       childSessions: const [],
