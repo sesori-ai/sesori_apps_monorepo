@@ -1,4 +1,6 @@
+import "package:flutter/gestures.dart";
 import "package:flutter/material.dart";
+import "package:flutter/rendering.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -25,9 +27,14 @@ class ReasoningModal extends StatefulWidget {
 }
 
 class _ReasoningModalState extends State<ReasoningModal> {
+  static const _kNearLatestThreshold = 20.0;
+  static const _kListViewKey = Key("reasoning-modal-list-view");
+  static const _kFollowOutputKey = Key("reasoning-modal-follow-output");
+
   final ScrollController _scrollController = ScrollController();
   bool _following = true;
   bool _sheetOpen = true;
+  bool _userScrollActive = false;
 
   @override
   void dispose() {
@@ -105,32 +112,41 @@ class _ReasoningModalState extends State<ReasoningModal> {
           Expanded(
             child: Stack(
               children: [
-                NotificationListener<ScrollNotification>(
-                  onNotification: (notification) {
-                    if (notification is ScrollUpdateNotification && notification.dragDetails != null && _following) {
-                      final metrics = notification.metrics;
-                      if (metrics.pixels < metrics.maxScrollExtent - 20) {
-                        setState(() => _following = false);
+                Listener(
+                  onPointerSignal: _handlePointerSignal,
+                  onPointerPanZoomStart: (_) => _detachForUserScroll(),
+                  child: NotificationListener<ScrollNotification>(
+                    onNotification: (notification) {
+                      if (notification.depth != 0) return false;
+
+                      if (_isUserScrollStart(notification)) {
+                        _detachForUserScroll();
+                      } else if (notification is ScrollEndNotification && _userScrollActive) {
+                        _settleUserScroll(
+                          shouldFollow: notification.metrics.pixels >=
+                              notification.metrics.maxScrollExtent - _kNearLatestThreshold,
+                        );
                       }
-                    }
-                    return false;
-                  },
-                  child: ListView(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(16),
-                    children: [
-                      MarkdownBody(
-                        data: data.text,
-                        selectable: true,
-                        onTapLink: handleMarkdownLinkTap,
-                        styleSheet: buildSessionMarkdownStyleSheet(
-                          theme,
-                          paragraphStyle: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
+                      return false;
+                    },
+                    child: ListView(
+                      key: _kListViewKey,
+                      controller: _scrollController,
+                      padding: const EdgeInsets.all(16),
+                      children: [
+                        MarkdownBody(
+                          data: data.text,
+                          selectable: true,
+                          onTapLink: handleMarkdownLinkTap,
+                          styleSheet: buildSessionMarkdownStyleSheet(
+                            theme,
+                            paragraphStyle: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 if (!_following && data.isStreaming) _buildFollowFab(theme: theme),
@@ -153,9 +169,13 @@ class _ReasoningModalState extends State<ReasoningModal> {
           borderRadius: BorderRadius.circular(20),
           color: theme.colorScheme.primaryContainer,
           child: InkWell(
+            key: _kFollowOutputKey,
             borderRadius: BorderRadius.circular(20),
             onTap: () {
-              setState(() => _following = true);
+              setState(() {
+                _following = true;
+                _userScrollActive = false;
+              });
               if (_scrollController.hasClients) {
                 _scrollController.animateTo(
                   _scrollController.position.maxScrollExtent,
@@ -191,5 +211,34 @@ class _ReasoningModalState extends State<ReasoningModal> {
         ),
       ),
     );
+  }
+
+  bool _isUserScrollStart(ScrollNotification notification) {
+    return (notification is ScrollStartNotification && notification.dragDetails != null) ||
+        (notification is UserScrollNotification && notification.direction != ScrollDirection.idle);
+  }
+
+  void _handlePointerSignal(PointerSignalEvent event) {
+    if (event is PointerScrollEvent) {
+      _detachForUserScroll();
+    }
+  }
+
+  void _detachForUserScroll() {
+    if (_userScrollActive && !_following) return;
+
+    setState(() {
+      _userScrollActive = true;
+      _following = false;
+    });
+  }
+
+  void _settleUserScroll({required bool shouldFollow}) {
+    if (!_userScrollActive && _following == shouldFollow) return;
+
+    setState(() {
+      _userScrollActive = false;
+      _following = shouldFollow;
+    });
   }
 }
