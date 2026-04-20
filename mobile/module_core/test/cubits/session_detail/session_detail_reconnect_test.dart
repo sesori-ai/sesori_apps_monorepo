@@ -139,13 +139,13 @@ void main() {
       (_) async => const SessionDetailLoadResult.loaded(
         snapshot: SessionDetailSnapshot(
           projectId: "project-1",
-          messages: const <MessageWithParts>[],
-          pendingQuestions: const <PendingQuestion>[],
-          childSessions: const <Session>[],
-          statuses: const <String, SessionStatus>{},
-          agents: const <AgentInfo?>[],
+          messages: <MessageWithParts>[],
+          pendingQuestions: <PendingQuestion>[],
+          childSessions: <Session>[],
+          statuses: <String, SessionStatus>{},
+          agents: <AgentInfo?>[],
           providerData: null,
-          commands: const <CommandInfo>[],
+          commands: <CommandInfo>[],
           canonicalSessionTitle: null,
         ),
         isBridgeConnected: true,
@@ -202,8 +202,8 @@ void main() {
       ),
     ).thenAnswer((_) async => ApiResponse.success(null));
 
-    final loadedResult = SessionDetailLoadResult.loaded(
-      snapshot: const SessionDetailSnapshot(
+    const loadedResult = SessionDetailLoadResult.loaded(
+      snapshot: SessionDetailSnapshot(
         projectId: "project-1",
         messages: <MessageWithParts>[],
         pendingQuestions: <PendingQuestion>[],
