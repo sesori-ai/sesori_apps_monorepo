@@ -38,9 +38,7 @@ class SessionDetailLoadService {
     try {
       final routeProjectId = _normalizeOptionalText(projectId);
       final projectContextFuture = _loadProjectSessionContext(sessionId: sessionId);
-      final commandsFuture = routeProjectId == null
-          ? null
-          : _listCommands(projectId: routeProjectId);
+      final commandsFuture = routeProjectId == null ? null : _listCommands(projectId: routeProjectId);
       final (
         messagesResponse,
         questionsResponse,
