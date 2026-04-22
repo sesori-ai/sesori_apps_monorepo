@@ -192,13 +192,13 @@ function verifyCodeSignature(binPath) {
   try {
     child_process.execFileSync("command", ["-v", "codesign"], { stdio: "pipe" });
   } catch (_) {
-    console.error("WARNING: codesign tool not found. Skipping binary signature verification.");
+    console.error("WARNING: codesign tool not found. Skipping Developer ID verification.");
     return;
   }
-  try {
-    child_process.execFileSync("codesign", ["-v", binPath], { stdio: "pipe" });
-  } catch (error) {
-    console.error("WARNING: Binary code signature is invalid or missing. The downloaded binary could not be verified.");
+  var result = child_process.spawnSync("codesign", ["-dv", binPath], { encoding: "utf8" });
+  var output = (result.stdout || "") + (result.stderr || "");
+  if (!output.includes("Developer ID Application")) {
+    console.error("WARNING: Binary is not signed with a valid Apple Developer ID certificate.");
   }
 }
 
