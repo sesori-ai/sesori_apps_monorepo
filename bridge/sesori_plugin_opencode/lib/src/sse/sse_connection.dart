@@ -4,6 +4,22 @@ import "dart:convert";
 import "package:http/http.dart" as http;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+/// Returns true if [error] is a ClientException whose message embeds a
+/// SocketException with "Connection refused" and errno 61 — the typical
+/// symptom of the target server not being running.
+///
+/// ClientException.message has the form:
+/// "SocketException: Connection refused (OS Error: Connection refused, errno = 61), ..."
+/// so we detect it by pattern rather than a typed field.
+bool _isConnectionRefused(Object error) {
+  if (error is http.ClientException) {
+    final msg = error.message;
+    // errno 61 = ECONNREFUSED on macOS and Linux
+    return msg.contains("Connection refused") && msg.contains("errno = 61");
+  }
+  return false;
+}
+
 class SseConnection {
   final String _targetUrl;
   final String? _password;
@@ -13,6 +29,10 @@ class SseConnection {
   bool _active = false;
   int _generation = 0;
   http.Client? _currentClient;
+  /// Set to true after the first "connection refused" warning is emitted.
+  /// Reset to false when a connection succeeds so the next failure gets a
+  /// fresh user-facing message.
+  bool _hasWarnedServerUnavailable = false;
 
   SseConnection({
     required String targetUrl,
@@ -70,10 +90,25 @@ class SseConnection {
         }
         isFirstConnect = false;
         reconnectDelay = const Duration(seconds: 1);
+        _hasWarnedServerUnavailable = false;
         await _readStream(response, generation);
       } catch (e, st) {
         if (!_active || _generation != generation) return;
-        Log.e("[sse-conn] stream loop error: $e\n$st");
+
+        if (_isConnectionRefused(e)) {
+          // "Connection refused" means the server is not running on that host/port.
+          // Show a clear one-time user message; subsequent retries log only at
+          // debug level to avoid filling the terminal with spam.
+          if (!_hasWarnedServerUnavailable) {
+            _hasWarnedServerUnavailable = true;
+            Log.w("[sse-conn] OpenCode server is not running at $_targetUrl. "
+                "Start it with: opencode serve");
+          } else {
+            Log.d("[sse-conn] connection refused (server still unavailable), retrying...");
+          }
+        } else {
+          Log.e("[sse-conn] stream loop error: $e\n$st");
+        }
       } finally {
         client.close();
         if (_currentClient == client) _currentClient = null;
