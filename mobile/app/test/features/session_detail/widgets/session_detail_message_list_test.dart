@@ -320,4 +320,107 @@ void main() {
 
     expect(_position(tester).pixels, 0);
   });
+
+  // --- Regression tests for the old "jump to top" / "view shifts" bugs ---
+
+  testWidgets("detached chat stays away from edge during rapid appends", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: _userMessages(count: 12),
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _detachViewport(tester);
+    final detachedOffset = _position(tester).pixels;
+    expect(detachedOffset, greaterThan(20));
+
+    // Simulates a burst of SSE-driven appends while the user reads
+    // history. Before the rewrite, stale-capture post-frame jumps
+    // would clamp the viewport back toward `0` — reproducing the
+    // "jumps all the way to the oldest message" symptom. The two-pump
+    // helper lets any delayed post-frame scroll adjustment run before
+    // we assert.
+    for (var i = 0; i < 10; i++) {
+      harnessKey.currentState!.appendNewestMessage(
+        _message(
+          messageId: "burst-$i",
+          role: "user",
+          text: _multilineText(label: "Burst $i", lines: 6),
+        ),
+      );
+      await _pumpListUpdate(tester);
+      expect(_position(tester).pixels, greaterThan(20));
+      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+    }
+
+    // Scroll offset must not have collapsed anywhere near the edge
+    // during the burst — assert we're still comfortably detached.
+    expect(_position(tester).pixels, greaterThan(20));
+  });
+
+  testWidgets("rapid streaming updates during an active drag never jump to edge", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    const streamingPartId = "assistant-stream-part";
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: [
+          ..._userMessages(count: 12),
+          _message(
+            messageId: "assistant-newest",
+            role: "assistant",
+            text: "",
+            partId: streamingPartId,
+          ),
+        ],
+        initialStreamingText: {streamingPartId: _multilineText(label: "Streaming", lines: 2)},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Start a live drag INTO history. `reverse: true` maps positive-y
+    // gesture to increasing scroll offset (i.e. scrolling toward older
+    // content, away from the newest-at-bottom edge).
+    final gesture = await tester.startGesture(tester.getCenter(find.byKey(_listViewKey)));
+    await gesture.moveBy(const Offset(0, 300));
+    await tester.pump();
+    expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+    expect(_position(tester).pixels, greaterThan(20));
+
+    // Interleave rapid streaming text updates with further drag
+    // movement. Before the rewrite, each update queued a stale
+    // post-frame jump that could yank the viewport to offset 0 mid-
+    // drag — this test locks that door shut.
+    for (var i = 0; i < 8; i++) {
+      harnessKey.currentState!.updateStreamingText(
+        partId: streamingPartId,
+        text: _multilineText(label: "Streaming", lines: 2 + i * 2),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+
+      await gesture.moveBy(const Offset(0, 24));
+      await tester.pump(const Duration(milliseconds: 16));
+
+      expect(_position(tester).pixels, greaterThan(20));
+    }
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    // After release we're still detached — drag moved well away from
+    // the reattach zone — so the pill remains and the viewport has
+    // not snapped to the newest message.
+    expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+    expect(_position(tester).pixels, greaterThan(20));
+  });
 }

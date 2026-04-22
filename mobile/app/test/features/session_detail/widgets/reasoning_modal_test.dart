@@ -287,4 +287,47 @@ void main() {
 
     expect(find.byKey(_followOutputKey), findsOneWidget);
   });
+
+  testWidgets("following mode tails rapid streaming updates without stacking animations", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final controller = StreamController<SessionDetailState>.broadcast();
+    addTearDown(controller.close);
+
+    whenListen(
+      mockCubit,
+      controller.stream,
+      initialState: _loadedState(
+        streamingText: {"part-1": _reasoningText(paragraphs: 2)},
+        messages: [_messageWithPart()],
+      ),
+    );
+
+    await tester.pumpWidget(_buildApp(cubit: mockCubit));
+    await tester.pumpAndSettle();
+
+    // Fire a burst of state updates at ~streaming cadence. Before the
+    // rewrite, every build queued a 150ms `animateTo(maxScrollExtent)`
+    // that stacked on the in-flight animation, producing jitter and
+    // occasional follow-mode detachment. With coalesced `jumpTo` via
+    // `ScrollFollowTracker.scheduleJumpToEdge`, each frame performs
+    // at most one tail-pin.
+    for (var i = 2; i < 18; i++) {
+      controller.add(
+        _loadedState(
+          streamingText: {"part-1": _reasoningText(paragraphs: i)},
+          messages: [_messageWithPart()],
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await tester.pumpAndSettle();
+
+    // Viewport should be pinned at the tail, and follow mode never
+    // detached despite the high-frequency update burst.
+    expect(find.byKey(_followOutputKey), findsNothing);
+    final position = _position(tester);
+    expect(position.pixels, closeTo(position.maxScrollExtent, 0.5));
+  });
 }
