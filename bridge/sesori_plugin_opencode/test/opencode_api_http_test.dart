@@ -3,6 +3,7 @@ import "dart:convert";
 import "package:http/http.dart" as http;
 import "package:http/testing.dart";
 import "package:opencode_plugin/opencode_plugin.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -31,6 +32,7 @@ void main() {
           command: "/review-work",
           arguments: "recent changes",
           agent: "reviewer",
+          variant: "xhigh",
           model: (providerID: "openai", modelID: "gpt-4.1"),
         ),
         directory: "/repo",
@@ -49,9 +51,35 @@ void main() {
           "command": "/review-work",
           "arguments": "recent changes",
           "agent": "reviewer",
+          "variant": "xhigh",
           "model": "openai/gpt-4.1",
         }),
       );
+    });
+  });
+
+  group("Send body serialization", () {
+    test("SendPromptBody omits variant when null", () {
+      const body = SendPromptBody(
+        parts: [PluginPromptPart.text(text: "Hello")],
+        agent: null,
+        variant: null,
+        model: null,
+      );
+
+      expect(body.toJson().containsKey("variant"), isFalse);
+    });
+
+    test("SendCommandBody includes variant when provided", () {
+      const body = SendCommandBody(
+        command: "/review-work",
+        arguments: "recent changes",
+        agent: null,
+        variant: "low",
+        model: null,
+      );
+
+      expect(body.toJson()["variant"], equals("low"));
     });
   });
 

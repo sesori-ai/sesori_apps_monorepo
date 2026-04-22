@@ -421,6 +421,111 @@ void main() {
       expect(session.projectID, equals("/repo"));
     });
   });
+
+  group("OpenCodeRepository effort mapping", () {
+    test("sendPrompt maps low effort to low variant", () async {
+      final api = _FakeApi();
+      final repository = OpenCodeRepository(api);
+
+      await repository.sendPrompt(
+        sessionId: "ses-1",
+        directory: " /repo ",
+        parts: const [PluginPromptPart.text(text: "Continue")],
+        agent: "build",
+        effort: PluginEffort.low,
+        model: (providerID: "openai", modelID: "gpt-5.4"),
+      );
+
+      expect(api.lastPromptSessionId, equals("ses-1"));
+      expect(api.lastPromptDirectory, equals("/repo"));
+      expect(api.lastPromptBody?.toJson()["variant"], equals("low"));
+    });
+
+    test("sendPrompt maps medium and null effort to omitted variant", () async {
+      final api = _FakeApi();
+      final repository = OpenCodeRepository(api);
+
+      await repository.sendPrompt(
+        sessionId: "ses-medium",
+        directory: "/repo",
+        parts: const [PluginPromptPart.text(text: "Medium")],
+        agent: null,
+        effort: PluginEffort.medium,
+        model: null,
+      );
+      await repository.sendPrompt(
+        sessionId: "ses-null",
+        directory: "/repo",
+        parts: const [PluginPromptPart.text(text: "Null")],
+        agent: null,
+        effort: null,
+        model: null,
+      );
+
+      expect(api.promptBodies, hasLength(2));
+      expect(api.promptBodies[0].toJson().containsKey("variant"), isFalse);
+      expect(api.promptBodies[1].toJson().containsKey("variant"), isFalse);
+    });
+
+    test("sendCommand maps max effort to xhigh variant", () async {
+      final api = _FakeApi();
+      final repository = OpenCodeRepository(api);
+
+      await repository.sendCommand(
+        sessionId: "ses-1",
+        directory: "/repo",
+        command: "/review-work",
+        arguments: "recent changes",
+        agent: "reviewer",
+        effort: PluginEffort.max,
+        model: (providerID: "openai", modelID: "gpt-4.1"),
+      );
+
+      expect(api.lastCommandSessionId, equals("ses-1"));
+      expect(api.lastCommandDirectory, equals("/repo"));
+      expect(api.lastCommandBody?.toJson()["variant"], equals("xhigh"));
+    });
+  });
+
+  group("Send*Body toJson", () {
+    test("SendPromptBody emits variant only when provided", () {
+      final withVariant = const SendPromptBody(
+        parts: [PluginPromptPart.text(text: "Hello")],
+        agent: "build",
+        variant: "low",
+        model: null,
+      ).toJson();
+      final withoutVariant = const SendPromptBody(
+        parts: [PluginPromptPart.text(text: "Hello")],
+        agent: "build",
+        variant: null,
+        model: null,
+      ).toJson();
+
+      expect(withVariant["variant"], equals("low"));
+      expect(withoutVariant.containsKey("variant"), isFalse);
+    });
+
+    test("SendCommandBody emits variant only when provided", () {
+      final withVariant = const SendCommandBody(
+        command: "/review-work",
+        arguments: "recent changes",
+        agent: "reviewer",
+        variant: "xhigh",
+        model: null,
+      ).toJson();
+      final withoutVariant = const SendCommandBody(
+        command: "/review-work",
+        arguments: "recent changes",
+        agent: "reviewer",
+        variant: null,
+        model: null,
+      ).toJson();
+
+      expect(withVariant["variant"], equals("xhigh"));
+      expect(withoutVariant.containsKey("variant"), isFalse);
+    });
+  });
 }
 
 class _FakeApi implements OpenCodeApi {
@@ -431,6 +536,13 @@ class _FakeApi implements OpenCodeApi {
   final Session? _createdSession;
   String? lastCreateDirectory;
   String? lastCreateParentSessionId;
+  String? lastPromptSessionId;
+  String? lastPromptDirectory;
+  SendPromptBody? lastPromptBody;
+  final List<SendPromptBody> promptBodies = [];
+  String? lastCommandSessionId;
+  String? lastCommandDirectory;
+  SendCommandBody? lastCommandBody;
 
   _FakeApi({
     List<Session>? sessions,
@@ -509,14 +621,23 @@ class _FakeApi implements OpenCodeApi {
     required String sessionId,
     required SendPromptBody body,
     required String? directory,
-  }) async {}
+  }) async {
+    lastPromptSessionId = sessionId;
+    lastPromptDirectory = directory;
+    lastPromptBody = body;
+    promptBodies.add(body);
+  }
 
   @override
   Future<void> sendCommand({
     required String sessionId,
     required SendCommandBody body,
     required String? directory,
-  }) async {}
+  }) async {
+    lastCommandSessionId = sessionId;
+    lastCommandDirectory = directory;
+    lastCommandBody = body;
+  }
 
   @override
   Future<void> abortSession({required String sessionId, required String? directory}) async {}

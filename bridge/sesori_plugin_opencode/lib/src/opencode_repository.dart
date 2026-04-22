@@ -2,6 +2,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         PluginCommand,
         PluginCommandSource,
+        PluginEffort,
         PluginPermissionReply,
         PluginPromptPart,
         PluginProvidersResult,
@@ -80,12 +81,18 @@ class OpenCodeRepository {
     required String? directory,
     required List<PluginPromptPart> parts,
     required String? agent,
+    required PluginEffort? effort,
     required ({String providerID, String modelID})? model,
   }) {
     return _api.sendPrompt(
       sessionId: sessionId,
       directory: _normalizeDirectory(directory),
-      body: SendPromptBody(parts: parts, agent: agent, model: model),
+      body: SendPromptBody(
+        parts: parts,
+        agent: agent,
+        variant: _resolveVariant(effort: effort),
+        model: model,
+      ),
     );
   }
 
@@ -95,6 +102,7 @@ class OpenCodeRepository {
     required String command,
     required String arguments,
     required String? agent,
+    required PluginEffort? effort,
     required ({String providerID, String modelID})? model,
   }) {
     return _api.sendCommand(
@@ -104,6 +112,7 @@ class OpenCodeRepository {
         command: command,
         arguments: arguments,
         agent: agent,
+        variant: _resolveVariant(effort: effort),
         model: model,
       ),
     );
@@ -125,6 +134,14 @@ class OpenCodeRepository {
       return null;
     }
     return normalizedDirectory;
+  }
+
+  String? _resolveVariant({required PluginEffort? effort}) {
+    return switch (effort) {
+      PluginEffort.low => "low",
+      PluginEffort.max => "xhigh",
+      PluginEffort.medium || null => null,
+    };
   }
 
   Future<List<Project>> getProjects() async {
