@@ -12,6 +12,7 @@ sealed class SessionDetailState with _$SessionDetailState {
 
   const factory SessionDetailState.loaded({
     required List<MessageWithParts> messages,
+    required List<SessionError> sessionErrors,
     required Map<String, String> streamingText,
     required SessionStatus sessionStatus,
     required List<SesoriQuestionAsked> pendingQuestions,

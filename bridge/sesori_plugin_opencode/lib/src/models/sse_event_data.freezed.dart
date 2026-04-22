@@ -757,10 +757,11 @@ as List<FileDiff>,
 @JsonSerializable()
 
 class SseSessionError implements SseEventData, SseSessionEventData {
-  const SseSessionError({required this.sessionID, final  String? $type}): $type = $type ?? 'session.error';
+  const SseSessionError({required this.sessionID, required this.error, final  String? $type}): $type = $type ?? 'session.error';
   factory SseSessionError.fromJson(Map<String, dynamic> json) => _$SseSessionErrorFromJson(json);
 
  final  String? sessionID;
+ final  SessionError? error;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -779,16 +780,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SseSessionError&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SseSessionError&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.error, error) || other.error == error));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionID);
+int get hashCode => Object.hash(runtimeType,sessionID,error);
 
 @override
 String toString() {
-  return 'SseEventData.sessionError(sessionID: $sessionID)';
+  return 'SseEventData.sessionError(sessionID: $sessionID, error: $error)';
 }
 
 
@@ -799,11 +800,11 @@ abstract mixin class $SseSessionErrorCopyWith<$Res> implements $SseEventDataCopy
   factory $SseSessionErrorCopyWith(SseSessionError value, $Res Function(SseSessionError) _then) = _$SseSessionErrorCopyWithImpl;
 @useResult
 $Res call({
- String? sessionID
+ String? sessionID, SessionError? error
 });
 
 
-
+$SessionErrorCopyWith<$Res>? get error;
 
 }
 /// @nodoc
@@ -816,14 +817,27 @@ class _$SseSessionErrorCopyWithImpl<$Res>
 
 /// Create a copy of SseEventData
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? sessionID = freezed,}) {
+@pragma('vm:prefer-inline') $Res call({Object? sessionID = freezed,Object? error = freezed,}) {
   return _then(SseSessionError(
 sessionID: freezed == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
+as SessionError?,
   ));
 }
 
+/// Create a copy of SseEventData
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$SessionErrorCopyWith<$Res>? get error {
+    if (_self.error == null) {
+    return null;
+  }
 
+  return $SessionErrorCopyWith<$Res>(_self.error!, (value) {
+    return _then(_self.copyWith(error: value));
+  });
+}
 }
 
 /// @nodoc
@@ -3123,5 +3137,314 @@ String toString() {
 
 
 
+
+
+/// @nodoc
+mixin _$SessionError {
+
+ String get name; SessionErrorData get data;
+/// Create a copy of SessionError
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SessionErrorCopyWith<SessionError> get copyWith => _$SessionErrorCopyWithImpl<SessionError>(this as SessionError, _$identity);
+
+  /// Serializes this SessionError to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionError&&(identical(other.name, name) || other.name == name)&&(identical(other.data, data) || other.data == data));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,name,data);
+
+@override
+String toString() {
+  return 'SessionError(name: $name, data: $data)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SessionErrorCopyWith<$Res>  {
+  factory $SessionErrorCopyWith(SessionError value, $Res Function(SessionError) _then) = _$SessionErrorCopyWithImpl;
+@useResult
+$Res call({
+ String name, SessionErrorData data
+});
+
+
+$SessionErrorDataCopyWith<$Res> get data;
+
+}
+/// @nodoc
+class _$SessionErrorCopyWithImpl<$Res>
+    implements $SessionErrorCopyWith<$Res> {
+  _$SessionErrorCopyWithImpl(this._self, this._then);
+
+  final SessionError _self;
+  final $Res Function(SessionError) _then;
+
+/// Create a copy of SessionError
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? data = null,}) {
+  return _then(_self.copyWith(
+name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,data: null == data ? _self.data : data // ignore: cast_nullable_to_non_nullable
+as SessionErrorData,
+  ));
+}
+/// Create a copy of SessionError
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$SessionErrorDataCopyWith<$Res> get data {
+  
+  return $SessionErrorDataCopyWith<$Res>(_self.data, (value) {
+    return _then(_self.copyWith(data: value));
+  });
+}
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _SessionError implements SessionError {
+  const _SessionError({required this.name, required this.data});
+  factory _SessionError.fromJson(Map<String, dynamic> json) => _$SessionErrorFromJson(json);
+
+@override final  String name;
+@override final  SessionErrorData data;
+
+/// Create a copy of SessionError
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$SessionErrorCopyWith<_SessionError> get copyWith => __$SessionErrorCopyWithImpl<_SessionError>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SessionErrorToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionError&&(identical(other.name, name) || other.name == name)&&(identical(other.data, data) || other.data == data));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,name,data);
+
+@override
+String toString() {
+  return 'SessionError(name: $name, data: $data)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$SessionErrorCopyWith<$Res> implements $SessionErrorCopyWith<$Res> {
+  factory _$SessionErrorCopyWith(_SessionError value, $Res Function(_SessionError) _then) = __$SessionErrorCopyWithImpl;
+@override @useResult
+$Res call({
+ String name, SessionErrorData data
+});
+
+
+@override $SessionErrorDataCopyWith<$Res> get data;
+
+}
+/// @nodoc
+class __$SessionErrorCopyWithImpl<$Res>
+    implements _$SessionErrorCopyWith<$Res> {
+  __$SessionErrorCopyWithImpl(this._self, this._then);
+
+  final _SessionError _self;
+  final $Res Function(_SessionError) _then;
+
+/// Create a copy of SessionError
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? data = null,}) {
+  return _then(_SessionError(
+name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,data: null == data ? _self.data : data // ignore: cast_nullable_to_non_nullable
+as SessionErrorData,
+  ));
+}
+
+/// Create a copy of SessionError
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$SessionErrorDataCopyWith<$Res> get data {
+  
+  return $SessionErrorDataCopyWith<$Res>(_self.data, (value) {
+    return _then(_self.copyWith(data: value));
+  });
+}
+}
+
+
+/// @nodoc
+mixin _$SessionErrorData {
+
+ String get message; String? get responseBody; int? get statusCode; bool? get isRetryable; Map<String, String>? get metadata;
+/// Create a copy of SessionErrorData
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SessionErrorDataCopyWith<SessionErrorData> get copyWith => _$SessionErrorDataCopyWithImpl<SessionErrorData>(this as SessionErrorData, _$identity);
+
+  /// Serializes this SessionErrorData to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionErrorData&&(identical(other.message, message) || other.message == message)&&(identical(other.responseBody, responseBody) || other.responseBody == responseBody)&&(identical(other.statusCode, statusCode) || other.statusCode == statusCode)&&(identical(other.isRetryable, isRetryable) || other.isRetryable == isRetryable)&&const DeepCollectionEquality().equals(other.metadata, metadata));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,message,responseBody,statusCode,isRetryable,const DeepCollectionEquality().hash(metadata));
+
+@override
+String toString() {
+  return 'SessionErrorData(message: $message, responseBody: $responseBody, statusCode: $statusCode, isRetryable: $isRetryable, metadata: $metadata)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SessionErrorDataCopyWith<$Res>  {
+  factory $SessionErrorDataCopyWith(SessionErrorData value, $Res Function(SessionErrorData) _then) = _$SessionErrorDataCopyWithImpl;
+@useResult
+$Res call({
+ String message, String? responseBody, int? statusCode, bool? isRetryable, Map<String, String>? metadata
+});
+
+
+
+
+}
+/// @nodoc
+class _$SessionErrorDataCopyWithImpl<$Res>
+    implements $SessionErrorDataCopyWith<$Res> {
+  _$SessionErrorDataCopyWithImpl(this._self, this._then);
+
+  final SessionErrorData _self;
+  final $Res Function(SessionErrorData) _then;
+
+/// Create a copy of SessionErrorData
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? message = null,Object? responseBody = freezed,Object? statusCode = freezed,Object? isRetryable = freezed,Object? metadata = freezed,}) {
+  return _then(_self.copyWith(
+message: null == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
+as String,responseBody: freezed == responseBody ? _self.responseBody : responseBody // ignore: cast_nullable_to_non_nullable
+as String?,statusCode: freezed == statusCode ? _self.statusCode : statusCode // ignore: cast_nullable_to_non_nullable
+as int?,isRetryable: freezed == isRetryable ? _self.isRetryable : isRetryable // ignore: cast_nullable_to_non_nullable
+as bool?,metadata: freezed == metadata ? _self.metadata : metadata // ignore: cast_nullable_to_non_nullable
+as Map<String, String>?,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _SessionErrorData implements SessionErrorData {
+  const _SessionErrorData({required this.message, this.responseBody, this.statusCode, this.isRetryable, final  Map<String, String>? metadata}): _metadata = metadata;
+  factory _SessionErrorData.fromJson(Map<String, dynamic> json) => _$SessionErrorDataFromJson(json);
+
+@override final  String message;
+@override final  String? responseBody;
+@override final  int? statusCode;
+@override final  bool? isRetryable;
+ final  Map<String, String>? _metadata;
+@override Map<String, String>? get metadata {
+  final value = _metadata;
+  if (value == null) return null;
+  if (_metadata is EqualUnmodifiableMapView) return _metadata;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableMapView(value);
+}
+
+
+/// Create a copy of SessionErrorData
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$SessionErrorDataCopyWith<_SessionErrorData> get copyWith => __$SessionErrorDataCopyWithImpl<_SessionErrorData>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SessionErrorDataToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionErrorData&&(identical(other.message, message) || other.message == message)&&(identical(other.responseBody, responseBody) || other.responseBody == responseBody)&&(identical(other.statusCode, statusCode) || other.statusCode == statusCode)&&(identical(other.isRetryable, isRetryable) || other.isRetryable == isRetryable)&&const DeepCollectionEquality().equals(other._metadata, _metadata));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,message,responseBody,statusCode,isRetryable,const DeepCollectionEquality().hash(_metadata));
+
+@override
+String toString() {
+  return 'SessionErrorData(message: $message, responseBody: $responseBody, statusCode: $statusCode, isRetryable: $isRetryable, metadata: $metadata)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$SessionErrorDataCopyWith<$Res> implements $SessionErrorDataCopyWith<$Res> {
+  factory _$SessionErrorDataCopyWith(_SessionErrorData value, $Res Function(_SessionErrorData) _then) = __$SessionErrorDataCopyWithImpl;
+@override @useResult
+$Res call({
+ String message, String? responseBody, int? statusCode, bool? isRetryable, Map<String, String>? metadata
+});
+
+
+
+
+}
+/// @nodoc
+class __$SessionErrorDataCopyWithImpl<$Res>
+    implements _$SessionErrorDataCopyWith<$Res> {
+  __$SessionErrorDataCopyWithImpl(this._self, this._then);
+
+  final _SessionErrorData _self;
+  final $Res Function(_SessionErrorData) _then;
+
+/// Create a copy of SessionErrorData
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? message = null,Object? responseBody = freezed,Object? statusCode = freezed,Object? isRetryable = freezed,Object? metadata = freezed,}) {
+  return _then(_SessionErrorData(
+message: null == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
+as String,responseBody: freezed == responseBody ? _self.responseBody : responseBody // ignore: cast_nullable_to_non_nullable
+as String?,statusCode: freezed == statusCode ? _self.statusCode : statusCode // ignore: cast_nullable_to_non_nullable
+as int?,isRetryable: freezed == isRetryable ? _self.isRetryable : isRetryable // ignore: cast_nullable_to_non_nullable
+as bool?,metadata: freezed == metadata ? _self._metadata : metadata // ignore: cast_nullable_to_non_nullable
+as Map<String, String>?,
+  ));
+}
+
+
+}
 
 // dart format on

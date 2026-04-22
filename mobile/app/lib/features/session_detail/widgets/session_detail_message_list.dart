@@ -6,6 +6,7 @@ import "assistant_message_card.dart";
 import "follow_detach_scrollable.dart";
 import "jump_to_edge_pill.dart";
 import "scroll_follow_tracker.dart";
+import "session_error_row.dart";
 import "user_message_card.dart";
 
 /// Chat-style message list for the session detail screen.
@@ -36,6 +37,7 @@ import "user_message_card.dart";
 class SessionDetailMessageList extends StatefulWidget {
   final String? projectId;
   final List<MessageWithParts> messages;
+  final List<SessionError> sessionErrors;
   final Map<String, String> streamingText;
   final List<Session> children;
   final Map<String, SessionStatus> childStatuses;
@@ -44,6 +46,7 @@ class SessionDetailMessageList extends StatefulWidget {
     super.key,
     required this.projectId,
     required this.messages,
+    required this.sessionErrors,
     required this.streamingText,
     required this.children,
     required this.childStatuses,
@@ -58,6 +61,7 @@ class SessionDetailMessageList extends StatefulWidget {
 /// the viewport stays pinned to what the user was reading.
 typedef _DetachedSnapshot = ({
   List<MessageWithParts> messages,
+  List<SessionError> sessionErrors,
   Map<String, String> streamingText,
   List<Session> children,
   Map<String, SessionStatus> childStatuses,
@@ -108,6 +112,7 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
       } else {
         _snapshot ??= (
           messages: List<MessageWithParts>.unmodifiable(widget.messages),
+          sessionErrors: List<SessionError>.unmodifiable(widget.sessionErrors),
           streamingText: Map<String, String>.unmodifiable(widget.streamingText),
           children: List<Session>.unmodifiable(widget.children),
           childStatuses: Map<String, SessionStatus>.unmodifiable(widget.childStatuses),
@@ -121,6 +126,7 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
     final loc = context.loc;
     final snap = _snapshot;
     final messages = snap?.messages ?? widget.messages;
+    final sessionErrors = snap?.sessionErrors ?? widget.sessionErrors;
     final streamingText = snap?.streamingText ?? widget.streamingText;
     final children = snap?.children ?? widget.children;
     final childStatuses = snap?.childStatuses ?? widget.childStatuses;
@@ -139,6 +145,8 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
     // stale captures and the target is always `0`.
     _follow.scheduleJumpToEdge();
 
+    final itemCount = messages.length + sessionErrors.length;
+
     return FollowDetachScrollable(
       tracker: _follow,
       detachedOverlayBuilder: (ctx) => JumpToEdgePill(
@@ -151,14 +159,20 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
         controller: _follow.scrollController,
         reverse: true,
         padding: const EdgeInsets.symmetric(vertical: 8),
-        itemCount: messages.length,
+        itemCount: itemCount,
         findChildIndexCallback: (key) => _findChildIndex(
           key: key,
           indexById: indexById,
           totalCount: messages.length,
         ),
         itemBuilder: (context, index) {
-          final message = messages[messages.length - 1 - index];
+          if (index < sessionErrors.length) {
+            // Error rows render at the top (since reverse: true).
+            final error = sessionErrors[sessionErrors.length - 1 - index];
+            return SessionErrorRow(error: error);
+          }
+          final messageIndex = index - sessionErrors.length;
+          final message = messages[messages.length - 1 - messageIndex];
           return KeyedSubtree(
             key: ValueKey(message.info.id),
             child: _buildCard(

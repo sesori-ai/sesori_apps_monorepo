@@ -66,11 +66,12 @@ class SessionDetailLoadedView extends StatelessWidget {
             onTap: onShowPendingPermissions,
           ),
         Expanded(
-          child: state.messages.isEmpty
+          child: state.messages.isEmpty && state.sessionErrors.isEmpty
               ? Center(child: Text(loc.sessionDetailEmpty))
               : SessionDetailMessageList(
                   projectId: projectId,
                   messages: state.messages,
+                  sessionErrors: state.sessionErrors,
                   streamingText: state.streamingText,
                   children: state.children,
                   childStatuses: state.childStatuses,
