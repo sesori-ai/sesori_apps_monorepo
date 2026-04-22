@@ -441,12 +441,12 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
       final bootstrapRecordPath = p.join(homeDir.path, 'bootstrap-record.json');
       final recordPath = p.join(homeDir.path, 'record.json');
       final releaseAsset = await _createReleaseAsset(
-        version: '0.3.1',
+        version: '0.4.0',
         binaryMarker: 'release-runtime',
         libMarker: 'release-lib',
       );
       final releasesBaseUrl = await _serveReleaseAssets(
-        version: '0.3.1',
+        version: '0.4.0',
         archivePath: releaseAsset.archivePath,
         checksumsPath: releaseAsset.checksumsPath,
       );
@@ -481,13 +481,13 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
       final homeDir = await Directory.systemTemp.createTemp('npm-wrapper-home-');
       addTearDown(() => homeDir.delete(recursive: true));
       final releaseAsset = await _createReleaseAsset(
-        version: '0.3.1',
+        version: '0.4.0',
         binaryMarker: 'release-runtime',
         libMarker: 'release-lib',
       );
       await File(releaseAsset.checksumsPath).writeAsString('deadbeef  ${releaseAsset.assetName}\n');
       final releasesBaseUrl = await _serveReleaseAssets(
-        version: '0.3.1',
+        version: '0.4.0',
         archivePath: releaseAsset.archivePath,
         checksumsPath: releaseAsset.checksumsPath,
       );
@@ -502,7 +502,7 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
       expect(result.exitCode, equals(1));
       expect(
         result.stderr,
-        contains('Failed to download managed runtime from GitHub release assets for bridge-v0.3.1'),
+        contains('Failed to download managed runtime from GitHub release assets for bridge-v0.4.0'),
       );
       expect(result.stderr, contains('Checksum mismatch for ${releaseAsset.assetName}'));
     });
@@ -511,7 +511,7 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
       final wrapperRoot = await _createWrapperFixture();
       final homeDir = await Directory.systemTemp.createTemp('npm-wrapper-home-');
       addTearDown(() => homeDir.delete(recursive: true));
-      final releasesBaseUrl = await _serveInvalidRedirectReleaseAssets(version: '0.3.1');
+      final releasesBaseUrl = await _serveInvalidRedirectReleaseAssets(version: '0.4.0');
 
       final result = await _runWrapperProcess(
         packageRoot: wrapperRoot,
@@ -523,7 +523,7 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
       expect(result.exitCode, equals(1));
       expect(
         result.stderr,
-        contains('Failed to download managed runtime from GitHub release assets for bridge-v0.3.1'),
+        contains('Failed to download managed runtime from GitHub release assets for bridge-v0.4.0'),
       );
       expect(result.stderr, contains('Invalid redirect URL'));
     });
@@ -675,7 +675,7 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
 
       await _seedManagedRuntime(
         homePath: homeDir.path,
-        version: '0.3.1',
+        version: '0.4.0',
         binaryMarker: 'existing-managed',
         libMarker: 'existing-lib',
         includeBinary: true,

@@ -99,6 +99,38 @@ jobs:
         shell: pwsh
         run: Rename-Item -Path "bridge/app/build/cli/bundle/bin/bridge.exe" -NewName "sesori-bridge.exe"
 
+      - name: Import signing certificate
+        if: runner.os == 'macOS'
+        env:
+          MACOS_CERT_P12_BASE64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          MACOS_KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
+        run: |
+          echo -n "$MACOS_CERT_P12_BASE64" | base64 --decode -o certificate.p12
+          security create-keychain -p "$MACOS_KEYCHAIN_PASSWORD" build.keychain
+          security unlock-keychain -p "$MACOS_KEYCHAIN_PASSWORD" build.keychain
+          security set-keychain-settings -lut 1200 build.keychain
+          security import certificate.p12 -k build.keychain -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$MACOS_KEYCHAIN_PASSWORD" build.keychain
+          security list-keychains -s build.keychain login.keychain
+          security default-keychain -s build.keychain
+          rm -f certificate.p12
+        working-directory: bridge/app
+
+      - name: Sign binary
+        if: runner.os == 'macOS'
+        env:
+          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+        run: |
+          codesign -s "Developer ID Application: DigitalBlock Labs LTD ($APPLE_TEAM_ID)" \
+            --options runtime \
+            --timestamp \
+            --force \
+            --verbose \
+            build/cli/bundle/bin/sesori-bridge
+          codesign -dv --verbose=4 build/cli/bundle/bin/sesori-bridge
+        working-directory: bridge/app
+
       - name: Create archive (Unix)
         if: runner.os != 'Windows'
         shell: bash
