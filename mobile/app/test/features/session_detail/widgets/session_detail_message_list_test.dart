@@ -344,7 +344,9 @@ void main() {
     // Simulates a burst of SSE-driven appends while the user reads
     // history. Before the rewrite, stale-capture post-frame jumps
     // would clamp the viewport back toward `0` — reproducing the
-    // "jumps all the way to the oldest message" symptom.
+    // "jumps all the way to the oldest message" symptom. The two-pump
+    // helper lets any delayed post-frame scroll adjustment run before
+    // we assert.
     for (var i = 0; i < 10; i++) {
       harnessKey.currentState!.appendNewestMessage(
         _message(
@@ -353,7 +355,7 @@ void main() {
           text: _multilineText(label: "Burst $i", lines: 6),
         ),
       );
-      await tester.pump();
+      await _pumpListUpdate(tester);
       expect(_position(tester).pixels, greaterThan(20));
       expect(find.byKey(_jumpToLatestKey), findsOneWidget);
     }

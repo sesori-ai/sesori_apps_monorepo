@@ -73,6 +73,15 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
   /// — use live `widget.*` props".
   _DetachedSnapshot? _snapshot;
 
+  /// Cache for the id → builder-index map consumed by
+  /// `findChildIndexCallback`. Rebuilt only when the source
+  /// `messages` list identity changes — during streaming, the cubit
+  /// keeps the `messages` reference stable across
+  /// `streamingText`-only emits, so most rebuilds hit this cache
+  /// instead of paying O(N) to reconstruct the map.
+  List<MessageWithParts>? _indexByIdSource;
+  Map<String, int> _indexById = const <String, int>{};
+
   @override
   void initState() {
     super.initState();
@@ -115,9 +124,9 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
     // Map message id → data-source index. Consulted by
     // `findChildIndexCallback` so the reversed builder keeps stable
     // element identity across appends that shift every existing index.
-    final indexById = <String, int>{
-      for (var i = 0; i < messages.length; i++) messages[i].info.id: i,
-    };
+    // Recomputed only when the `messages` list identity changes — skips
+    // O(N) work on every streaming-text rebuild.
+    final indexById = _indexByIdFor(messages: messages);
 
     // Coalesced post-frame pin-to-edge while following. The scheduler
     // collapses repeated calls within a frame and the jump is skipped
@@ -158,6 +167,14 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
         },
       ),
     );
+  }
+
+  Map<String, int> _indexByIdFor({required List<MessageWithParts> messages}) {
+    if (identical(messages, _indexByIdSource)) return _indexById;
+    _indexByIdSource = messages;
+    return _indexById = <String, int>{
+      for (var i = 0; i < messages.length; i++) messages[i].info.id: i,
+    };
   }
 
   int? _findChildIndex({
