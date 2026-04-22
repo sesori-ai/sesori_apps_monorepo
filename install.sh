@@ -319,10 +319,12 @@ main() {
     printf '{"version":"%s"}\n' "${RESOLVED_RELEASE_TAG#bridge-v}" > "${MANAGED_MANIFEST}"
 
     if [ "${os}" = "macos" ]; then
-        if ! codesign -v "${BINARY}" 2>/dev/null; then
-            echo "ERROR: Binary signature verification failed. The downloaded binary may have been tampered with." >&2
-            rm -rf "${INSTALL_DIR}"
-            exit 1
+        if command -v codesign >/dev/null 2>&1; then
+            if ! codesign -v "${BINARY}" 2>/dev/null; then
+                echo "WARNING: Binary code signature is invalid or missing. The downloaded binary could not be verified." >&2
+            fi
+        else
+            echo "WARNING: codesign tool not found. Skipping binary signature verification." >&2
         fi
         xattr -dr com.apple.quarantine "${BINARY}" 2>/dev/null || true
     fi

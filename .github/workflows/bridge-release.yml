@@ -114,6 +114,7 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -s -k "$MACOS_KEYCHAIN_PASSWORD" build.keychain
           security list-keychains -s build.keychain login.keychain
           security default-keychain -s build.keychain
+          rm -f certificate.p12
         working-directory: bridge/app
 
       - name: Sign binary

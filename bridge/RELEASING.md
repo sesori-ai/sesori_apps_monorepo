@@ -56,7 +56,7 @@ And the following repository variable:
 1. Generate a Certificate Signing Request (CSR) on a Mac:
    - Open Keychain Access → Certificate Assistant → Request a Certificate From a Certificate Authority
    - Email: your Apple ID email
-   - Name: your name or org name
+   - Name: must match the CI signing identity (e.g., `DigitalBlock Labs LTD`)
    - Request is: Saved to disk
    - Key pair: RSA, 2048 bits
 
@@ -72,9 +72,9 @@ And the following repository variable:
    - Right-click → Export 2 items → choose `.p12` format
    - Set a strong password
 
-4. Base64-encode for GitHub:
+4. Base64-encode for GitHub (use `-b 0` to produce a single-line string):
    ```bash
-   base64 -i DeveloperIDApplication.p12 | pbcopy
+   base64 -b 0 -i DeveloperIDApplication.p12 | pbcopy
    ```
    Paste the result as the `MACOS_CERT_P12_BASE64` secret.
 

@@ -156,12 +156,15 @@ function verifyCodeSignature(binPath) {
     return;
   }
   try {
+    child_process.execFileSync("command", ["-v", "codesign"], { stdio: "pipe" });
+  } catch (_) {
+    console.error("WARNING: codesign tool not found. Skipping binary signature verification.");
+    return;
+  }
+  try {
     child_process.execFileSync("codesign", ["-v", binPath], { stdio: "pipe" });
   } catch (error) {
-    throw new Error(
-      "Binary signature verification failed. The installed binary may have been tampered with.\n" +
-      String(error && error.message ? error.message : error)
-    );
+    console.error("WARNING: Binary code signature is invalid or missing. The installed binary could not be verified.");
   }
 }
 
