@@ -278,7 +278,12 @@ Session testSession({
 
 /// Returns a realistic [HealthResponse] with [healthy] = true.
 HealthResponse testHealthResponse() {
-  return const HealthResponse(healthy: true, version: "0.1.200");
+  return const HealthResponse(
+    healthy: true,
+    version: "0.1.200",
+    serverManaged: false,
+    serverState: null,
+  );
 }
 
 /// Returns a realistic [MessageWithParts] instance.
