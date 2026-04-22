@@ -1,6 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
 import "send_prompt_request.dart";
+import "session_effort.dart";
 
 part "create_session_request.freezed.dart";
 
@@ -14,6 +15,7 @@ sealed class CreateSessionRequest with _$CreateSessionRequest {
     required String? agent,
     required PromptModel? model,
     required String? command,
+    required SessionEffort? effort,
     required bool dedicatedWorktree,
   }) = _CreateSessionRequest;
 

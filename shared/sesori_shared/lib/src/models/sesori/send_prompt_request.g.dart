@@ -16,6 +16,7 @@ _SendPromptRequest _$SendPromptRequestFromJson(Map json) => _SendPromptRequest(
       ? null
       : PromptModel.fromJson(Map<String, dynamic>.from(json['model'] as Map)),
   command: json['command'] as String?,
+  effort: $enumDecodeNullable(_$SessionEffortEnumMap, json['effort']),
 );
 
 Map<String, dynamic> _$SendPromptRequestToJson(_SendPromptRequest instance) =>
@@ -25,7 +26,14 @@ Map<String, dynamic> _$SendPromptRequestToJson(_SendPromptRequest instance) =>
       'agent': instance.agent,
       'model': instance.model?.toJson(),
       'command': instance.command,
+      'effort': _$SessionEffortEnumMap[instance.effort],
     };
+
+const _$SessionEffortEnumMap = {
+  SessionEffort.low: 'low',
+  SessionEffort.medium: 'medium',
+  SessionEffort.max: 'max',
+};
 
 PromptPartText _$PromptPartTextFromJson(Map json) => PromptPartText(
   text: json['text'] as String,

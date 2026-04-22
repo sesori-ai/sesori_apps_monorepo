@@ -19,6 +19,7 @@ _CreateSessionRequest _$CreateSessionRequestFromJson(Map json) =>
               Map<String, dynamic>.from(json['model'] as Map),
             ),
       command: json['command'] as String?,
+      effort: $enumDecodeNullable(_$SessionEffortEnumMap, json['effort']),
       dedicatedWorktree: json['dedicatedWorktree'] as bool,
     );
 
@@ -30,5 +31,12 @@ Map<String, dynamic> _$CreateSessionRequestToJson(
   'agent': instance.agent,
   'model': instance.model?.toJson(),
   'command': instance.command,
+  'effort': _$SessionEffortEnumMap[instance.effort],
   'dedicatedWorktree': instance.dedicatedWorktree,
+};
+
+const _$SessionEffortEnumMap = {
+  SessionEffort.low: 'low',
+  SessionEffort.medium: 'medium',
+  SessionEffort.max: 'max',
 };
