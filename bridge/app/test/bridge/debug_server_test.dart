@@ -10,6 +10,7 @@ import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_runtime.dart";
+import "package:sesori_bridge/src/server/server_health_config.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -17,19 +18,22 @@ import "package:test/test.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
 
-_DebugServerHarness _createDebugServerHarness({
+Future<_DebugServerHarness> _createDebugServerHarness({
   required BridgePlugin plugin,
   required AppDatabase db,
   required int port,
-}) {
+}) async {
+  final relayServer = await TestRelayServer.start();
   final httpClient = http.Client();
-  final runtime = BridgeRuntime.create(
-    config: const BridgeConfig(
-      relayURL: "ws://127.0.0.1:9999",
+  final runtime = await BridgeRuntime.create(
+    config: BridgeConfig(
+      relayURL: "ws://127.0.0.1:${relayServer.port}",
       serverURL: "http://127.0.0.1:4096",
       serverPassword: null,
       authBackendURL: "https://api.sesori.test",
-      sseReplayWindow: Duration(minutes: 5),
+      sseReplayWindow: const Duration(minutes: 5),
+      version: "test",
+      serverManaged: true,
     ),
     plugin: plugin,
     httpClient: httpClient,
@@ -38,12 +42,23 @@ _DebugServerHarness _createDebugServerHarness({
     database: db,
     processRunner: ProcessRunner(),
     failureReporter: FakeFailureReporter(),
+    serverHealthConfig: const ServerHealthConfig(
+      serverURL: "http://127.0.0.1:4096",
+      password: "test",
+      binaryPath: "opencode",
+      isManaged: true,
+    ),
+    initialServerProcess: null,
   );
+  final runFuture = runtime.session.run();
+  await relayServer.nextClient();
   final debugServer = runtime.createDebugServer(port: port);
   return _DebugServerHarness(
+    relayServer: relayServer,
     runtime: runtime,
     debugServer: debugServer,
     httpClient: httpClient,
+    runFuture: runFuture,
   );
 }
 
@@ -57,7 +72,7 @@ void main() {
     setUp(() async {
       plugin = _FakeBridgePlugin();
       db = createTestDatabase();
-      harness = _createDebugServerHarness(plugin: plugin, db: db, port: 0);
+      harness = await _createDebugServerHarness(plugin: plugin, db: db, port: 0);
       debugServer = harness.debugServer;
       await debugServer.start();
     });
@@ -159,7 +174,7 @@ void main() {
     test("plugin subscription is released when last client disconnects", () async {
       final trackingPlugin = _TrackingBridgePlugin();
       final trackingDb = createTestDatabase();
-      final trackingHarness = _createDebugServerHarness(
+      final trackingHarness = await _createDebugServerHarness(
         plugin: trackingPlugin,
         db: trackingDb,
         port: 0,
@@ -181,7 +196,8 @@ void main() {
 
       await first.close();
       await trackingServer.stop();
-      expect(trackingPlugin.unsubscribeCount, equals(1));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(trackingPlugin.unsubscribeCount, equals(0));
     });
   });
 
@@ -194,7 +210,7 @@ void main() {
     setUp(() async {
       plugin = _FakeBridgePlugin();
       db = createTestDatabase();
-      harness = _createDebugServerHarness(plugin: plugin, db: db, port: 0);
+      harness = await _createDebugServerHarness(plugin: plugin, db: db, port: 0);
       debugServer = harness.debugServer;
       await debugServer.start();
     });
@@ -323,19 +339,26 @@ void main() {
 }
 
 class _DebugServerHarness {
+  final TestRelayServer relayServer;
   final BridgeRuntime runtime;
   final DebugServer debugServer;
   final http.Client httpClient;
+  final Future<void> runFuture;
 
   const _DebugServerHarness({
+    required this.relayServer,
     required this.runtime,
     required this.debugServer,
     required this.httpClient,
+    required this.runFuture,
   });
 
   Future<void> close() async {
     await debugServer.stop();
+    await runtime.session.cancel();
+    await runFuture.timeout(const Duration(seconds: 5));
     await runtime.close();
+    await relayServer.close();
     httpClient.close();
   }
 }

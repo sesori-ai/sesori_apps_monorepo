@@ -28,6 +28,7 @@ import "package:sesori_bridge/src/push/push_notification_client.dart";
 import "package:sesori_bridge/src/push/push_notification_content_builder.dart";
 import "package:sesori_bridge/src/push/push_rate_limiter.dart";
 import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
+import "package:sesori_bridge/src/server/server_health_config.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
 import "package:test/test.dart";
@@ -56,9 +57,11 @@ void main() {
           relayURL: "ws://127.0.0.1:9999",
           serverURL: "http://127.0.0.1:4096",
           serverPassword: null,
-          authBackendURL: "http://127.0.0.1:8080",
-          sseReplayWindow: Duration(minutes: 1),
-        ),
+        authBackendURL: "http://127.0.0.1:8080",
+        sseReplayWindow: Duration(minutes: 1),
+        version: "test",
+        serverManaged: true,
+      ),
         client: _ThrowingConnectRelayClient(),
         plugin: plugin,
         metadataService: FakeMetadataService(),
@@ -104,9 +107,16 @@ void main() {
           sessionRepository: sessionRepository,
           failureReporter: FakeFailureReporter(),
         ),
+        serverHealthConfig: const ServerHealthConfig(
+          serverURL: "http://127.0.0.1:4096",
+          password: "test",
+          binaryPath: "opencode",
+          isManaged: true,
+        ),
+        initialServerProcess: null,
       );
 
-      final session = orchestrator.create();
+      final session = await orchestrator.create();
 
       await expectLater(session.run(), throwsA(isA<Exception>()));
 
@@ -243,6 +253,8 @@ class _TestHarness {
         serverPassword: null,
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
+        version: "test",
+        serverManaged: true,
       ),
       client: relayClient,
       plugin: plugin,
@@ -259,9 +271,16 @@ class _TestHarness {
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
+      serverHealthConfig: const ServerHealthConfig(
+        serverURL: "http://127.0.0.1:4096",
+        password: "test",
+        binaryPath: "opencode",
+        isManaged: true,
+      ),
+      initialServerProcess: null,
     );
 
-    final session = orchestrator.create();
+    final session = await orchestrator.create();
     final runFuture = session.run();
 
     await relayServer.nextClient();

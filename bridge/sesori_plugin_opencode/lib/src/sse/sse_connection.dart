@@ -4,6 +4,8 @@ import "dart:convert";
 import "package:http/http.dart" as http;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "../models/server_health_signal.dart";
+
 /// Returns true if [error] is a ClientException whose message embeds a
 /// SocketException with "Connection refused" and errno 61 — the typical
 /// symptom of the target server not being running.
@@ -29,6 +31,8 @@ class SseConnection {
   bool _active = false;
   int _generation = 0;
   http.Client? _currentClient;
+  final StreamController<ServerHealthSignal> _healthSignalController =
+      StreamController<ServerHealthSignal>.broadcast();
   /// True once a connection has succeeded at least once. While false (e.g.
   /// during waitReady polling or before the first connection), connection-
   /// refused errors are logged at debug level only. After the first
@@ -49,6 +53,8 @@ class SseConnection {
        _onEvent = onEvent,
        _onReconnect = onReconnect;
 
+  Stream<ServerHealthSignal> get healthSignals => _healthSignalController.stream;
+
   void start() {
     if (_active) return;
     _active = true;
@@ -61,6 +67,9 @@ class SseConnection {
     _generation++;
     _currentClient?.close();
     _currentClient = null;
+    if (!_healthSignalController.isClosed) {
+      unawaited(_healthSignalController.close());
+    }
   }
 
   Future<void> _streamLoop(int generation) async {
@@ -89,14 +98,21 @@ class SseConnection {
         if (!contentType.contains("text/event-stream")) {
           throw StateError("Unexpected SSE content type: $contentType");
         }
+        if (!_active || _generation != generation) return;
 
-        if (!isFirstConnect) {
+        final wasReconnect = !isFirstConnect;
+        if (wasReconnect) {
           await _onReconnect?.call();
         }
         isFirstConnect = false;
         reconnectDelay = const Duration(seconds: 1);
         _hasWarnedServerUnavailable = false;
         _serverWasEverReachable = true;
+        if (wasReconnect) {
+          _healthSignalController.add(
+            const ServerHealthSignal(type: ServerHealthSignalType.serverReachable),
+          );
+        }
         await _readStream(response, generation);
       } catch (e, st) {
         if (!_active || _generation != generation) return;
@@ -111,6 +127,9 @@ class SseConnection {
           if (_serverWasEverReachable) {
             if (!_hasWarnedServerUnavailable) {
               _hasWarnedServerUnavailable = true;
+              _healthSignalController.add(
+                const ServerHealthSignal(type: ServerHealthSignalType.serverUnreachable),
+              );
               Log.w("[sse-conn] OpenCode server is not running at $_targetUrl. "
                   "Start it with: opencode serve");
             } else {

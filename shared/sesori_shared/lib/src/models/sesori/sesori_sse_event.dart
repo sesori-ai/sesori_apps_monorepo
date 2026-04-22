@@ -341,5 +341,14 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   @FreezedUnionValue("worktree.failed")
   const factory SesoriSseEvent.worktreeFailed() = SesoriWorktreeFailed;
 
+  @FreezedUnionValue("server.status")
+  const factory SesoriSseEvent.serverStatus({
+    required ServerStatusKind status,
+    required String? message,
+    required String? reason,
+  }) = SesoriServerStatus;
+
   factory SesoriSseEvent.fromJson(Map<String, dynamic> json) => _$SesoriSseEventFromJson(json);
 }
+
+enum ServerStatusKind { unavailable, restored, fatal }

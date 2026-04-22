@@ -13,6 +13,7 @@ import "package:sesori_bridge/src/push/push_notification_client.dart";
 import "package:sesori_bridge/src/push/push_notification_content_builder.dart";
 import "package:sesori_bridge/src/push/push_rate_limiter.dart";
 import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
+import "package:sesori_bridge/src/server/server_health_config.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_database.dart";
@@ -40,13 +41,15 @@ void main() {
     final plugin = FakeBridgePlugin();
     final database = createTestDatabase();
     final httpClient = http.Client();
-    final runtime = BridgeRuntime.create(
+    final runtime = await BridgeRuntime.create(
       config: const BridgeConfig(
         relayURL: "ws://127.0.0.1:9999",
         serverURL: "http://127.0.0.1:4096",
         serverPassword: null,
         authBackendURL: "https://api.sesori.test",
         sseReplayWindow: Duration(minutes: 5),
+        version: "test",
+        serverManaged: true,
       ),
       plugin: plugin,
       httpClient: httpClient,
@@ -55,6 +58,13 @@ void main() {
       database: database,
       processRunner: ProcessRunner(),
       failureReporter: FakeFailureReporter(),
+      serverHealthConfig: const ServerHealthConfig(
+        serverURL: "http://127.0.0.1:4096",
+        password: "test",
+        binaryPath: "opencode",
+        isManaged: true,
+      ),
+      initialServerProcess: null,
     );
     final debugServer = runtime.createDebugServer(port: 0);
 

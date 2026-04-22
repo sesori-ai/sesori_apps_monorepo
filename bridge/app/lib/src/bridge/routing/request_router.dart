@@ -53,6 +53,7 @@ class RequestRouter {
 
   RequestRouter({
     required BridgePlugin plugin,
+    required HealthCheckHandler healthCheckHandler,
     required GetCommandsHandler getCommandsHandler,
     required SessionRepository sessionRepository,
     required AbortSessionHandler abortSessionHandler,
@@ -68,6 +69,7 @@ class RequestRouter {
     required GetSessionDiffsHandler sessionDiffsHandler,
   }) : _handlers = _buildHandlers(
           plugin: plugin,
+          healthCheckHandler: healthCheckHandler,
           getCommandsHandler: getCommandsHandler,
           sessionRepository: sessionRepository,
           abortSessionHandler: abortSessionHandler,
@@ -85,6 +87,7 @@ class RequestRouter {
 
   static List<RequestHandlerBase> _buildHandlers({
     required BridgePlugin plugin,
+    required HealthCheckHandler healthCheckHandler,
     required GetCommandsHandler getCommandsHandler,
     required SessionRepository sessionRepository,
     required AbortSessionHandler abortSessionHandler,
@@ -100,7 +103,7 @@ class RequestRouter {
     required GetSessionDiffsHandler sessionDiffsHandler,
   }) {
     return [
-      HealthCheckHandler(plugin),
+      healthCheckHandler,
       GetCurrentProjectHandler(plugin),
       GetProjectsHandler(projectRepository: projectRepository),
       getCommandsHandler,

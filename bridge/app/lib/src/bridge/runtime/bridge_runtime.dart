@@ -17,6 +17,8 @@ import "../../push/push_notification_client.dart";
 import "../../push/push_notification_content_builder.dart";
 import "../../push/push_rate_limiter.dart";
 import "../../push/push_session_state_tracker.dart";
+import "../../server/process.dart";
+import "../../server/server_health_config.dart";
 import "../api/gh_cli_api.dart";
 import "../api/git_cli_api.dart";
 import "../bandwidth_tracker.dart";
@@ -57,7 +59,9 @@ class BridgeRuntime {
        _failureReporter = failureReporter,
        _sessionEventEnrichmentService = sessionEventEnrichmentService;
 
-  static BridgeRuntime create({
+  BridgePlugin get plugin => _plugin;
+
+  static Future<BridgeRuntime> create({
     required BridgeConfig config,
     required BridgePlugin plugin,
     required http.Client httpClient,
@@ -66,7 +70,9 @@ class BridgeRuntime {
     required AppDatabase database,
     required ProcessRunner processRunner,
     required FailureReporter failureReporter,
-  }) {
+    required ServerHealthConfig serverHealthConfig,
+    required Process? initialServerProcess,
+  }) async {
     final pullRequestRepository = PullRequestRepository(
       pullRequestDao: database.pullRequestDao,
       projectsDao: database.projectsDao,
@@ -103,61 +109,93 @@ class BridgeRuntime {
       rssBytesReader: readCurrentRssBytes,
     );
 
-    return BridgeRuntime(
-      database: database,
-      plugin: plugin,
-      failureReporter: failureReporter,
-      sessionEventEnrichmentService: sessionEventEnrichmentService,
-      session: Orchestrator(
-        config: config,
-        client: RelayClient(relayURL: config.relayURL, accessTokenProvider: accessTokenProvider),
-        plugin: plugin,
-        metadataService: MetadataService(
-          client: httpClient,
-          baseUrl: config.authBackendURL,
-          tokenRefresher: tokenRefresher,
-        ),
-        pushDispatcher: pushDispatcher,
-        completionListener: CompletionPushListener(
-          tracker: pushTracker,
-          completionNotifier: completionNotifier,
-          contentBuilder: pushContentBuilder,
-          dispatcher: pushDispatcher,
-        ),
-        maintenanceListener: MaintenancePushListener(
-          tracker: pushTracker,
-          completionNotifier: completionNotifier,
-          rateLimiter: pushRateLimiter,
-          telemetryBuilder: telemetryBuilder,
-        ),
-        tokenRefresher: tokenRefresher,
-        failureReporter: failureReporter,
-        prSyncService: PrSyncService(
-          prSource: PrSourceRepository(
-            ghCli: GhCliApi(processRunner: processRunner),
-            gitCli: GitCliApi(processRunner: processRunner, gitPathExists: _gitPathExists),
-          ),
-          pullRequestRepository: pullRequestRepository,
-          sessionRepository: sessionRepository,
-        ),
-        sessionRepository: sessionRepository,
-        projectRepository: ProjectRepository(plugin: plugin, projectsDao: database.projectsDao),
-        permissionRepository: PermissionRepository(plugin: plugin),
-        sessionPersistenceService: SessionPersistenceService(
-          projectsDao: database.projectsDao,
-          sessionDao: database.sessionDao,
-          db: database,
-        ),
-        worktreeService: WorktreeService(
-          worktreeRepository: WorktreeRepository(
-            projectsDao: database.projectsDao,
-            sessionDao: database.sessionDao,
-            gitApi: GitCliApi(processRunner: processRunner, gitPathExists: _gitPathExists),
-          ),
-        ),
-        sessionEventEnrichmentService: sessionEventEnrichmentService,
-      ).create(),
+    final completionListener = CompletionPushListener(
+      tracker: pushTracker,
+      completionNotifier: completionNotifier,
+      contentBuilder: pushContentBuilder,
+      dispatcher: pushDispatcher,
     );
+    final maintenanceListener = MaintenancePushListener(
+      tracker: pushTracker,
+      completionNotifier: completionNotifier,
+      rateLimiter: pushRateLimiter,
+      telemetryBuilder: telemetryBuilder,
+    );
+    final prSyncService = PrSyncService(
+      prSource: PrSourceRepository(
+        ghCli: GhCliApi(processRunner: processRunner),
+        gitCli: GitCliApi(processRunner: processRunner, gitPathExists: _gitPathExists),
+      ),
+      pullRequestRepository: pullRequestRepository,
+      sessionRepository: sessionRepository,
+    );
+    final relayClient = RelayClient(
+      relayURL: config.relayURL,
+      accessTokenProvider: accessTokenProvider,
+    );
+    final metadataService = MetadataService(
+      client: httpClient,
+      baseUrl: config.authBackendURL,
+      tokenRefresher: tokenRefresher,
+    );
+    final projectRepository = ProjectRepository(
+      plugin: plugin,
+      projectsDao: database.projectsDao,
+    );
+    final permissionRepository = PermissionRepository(plugin: plugin);
+    final sessionPersistenceService = SessionPersistenceService(
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      db: database,
+    );
+    final worktreeService = WorktreeService(
+      worktreeRepository: WorktreeRepository(
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        gitApi: GitCliApi(processRunner: processRunner, gitPathExists: _gitPathExists),
+      ),
+    );
+
+    final orchestrator = Orchestrator(
+      config: config,
+      client: relayClient,
+      plugin: plugin,
+      metadataService: metadataService,
+      pushDispatcher: pushDispatcher,
+      completionListener: completionListener,
+      maintenanceListener: maintenanceListener,
+      tokenRefresher: tokenRefresher,
+      failureReporter: failureReporter,
+      prSyncService: prSyncService,
+      sessionRepository: sessionRepository,
+      projectRepository: projectRepository,
+      permissionRepository: permissionRepository,
+      sessionPersistenceService: sessionPersistenceService,
+      worktreeService: worktreeService,
+      sessionEventEnrichmentService: sessionEventEnrichmentService,
+      serverHealthConfig: serverHealthConfig,
+      initialServerProcess: initialServerProcess,
+    );
+
+    try {
+      final session = await orchestrator.create();
+      return BridgeRuntime(
+        database: database,
+        plugin: plugin,
+        failureReporter: failureReporter,
+        sessionEventEnrichmentService: sessionEventEnrichmentService,
+        session: session,
+      );
+    } catch (_) {
+      if (!orchestrator.lifecycleConstructed) {
+        await stopServer(initialServerProcess);
+      }
+      prSyncService.dispose();
+      await completionListener.dispose();
+      maintenanceListener.dispose();
+      await pushDispatcher.dispose();
+      rethrow;
+    }
   }
 
   BandwidthTracker createBandwidthTracker() {
@@ -166,7 +204,8 @@ class BridgeRuntime {
 
   DebugServer createDebugServer({required int port}) {
     return DebugServer(
-      plugin: _plugin,
+      enrichedPluginEvents: session.enrichedPluginEvents,
+      mapper: session.mapper,
       router: session.router,
       port: port,
       failureReporter: _failureReporter,

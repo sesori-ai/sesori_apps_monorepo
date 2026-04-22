@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$HealthResponse {
 
- bool get healthy; String get version;
+ bool get healthy; String get version; bool? get serverManaged; ServerStateKind? get serverState;
 /// Create a copy of HealthResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $HealthResponseCopyWith<HealthResponse> get copyWith => _$HealthResponseCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is HealthResponse&&(identical(other.healthy, healthy) || other.healthy == healthy)&&(identical(other.version, version) || other.version == version));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is HealthResponse&&(identical(other.healthy, healthy) || other.healthy == healthy)&&(identical(other.version, version) || other.version == version)&&(identical(other.serverManaged, serverManaged) || other.serverManaged == serverManaged)&&(identical(other.serverState, serverState) || other.serverState == serverState));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,healthy,version);
+int get hashCode => Object.hash(runtimeType,healthy,version,serverManaged,serverState);
 
 @override
 String toString() {
-  return 'HealthResponse(healthy: $healthy, version: $version)';
+  return 'HealthResponse(healthy: $healthy, version: $version, serverManaged: $serverManaged, serverState: $serverState)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $HealthResponseCopyWith<$Res>  {
   factory $HealthResponseCopyWith(HealthResponse value, $Res Function(HealthResponse) _then) = _$HealthResponseCopyWithImpl;
 @useResult
 $Res call({
- bool healthy, String version
+ bool healthy, String version, bool? serverManaged, ServerStateKind? serverState
 });
 
 
@@ -65,11 +65,13 @@ class _$HealthResponseCopyWithImpl<$Res>
 
 /// Create a copy of HealthResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? healthy = null,Object? version = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? healthy = null,Object? version = null,Object? serverManaged = freezed,Object? serverState = freezed,}) {
   return _then(_self.copyWith(
 healthy: null == healthy ? _self.healthy : healthy // ignore: cast_nullable_to_non_nullable
 as bool,version: null == version ? _self.version : version // ignore: cast_nullable_to_non_nullable
-as String,
+as String,serverManaged: freezed == serverManaged ? _self.serverManaged : serverManaged // ignore: cast_nullable_to_non_nullable
+as bool?,serverState: freezed == serverState ? _self.serverState : serverState // ignore: cast_nullable_to_non_nullable
+as ServerStateKind?,
   ));
 }
 
@@ -81,11 +83,13 @@ as String,
 @JsonSerializable()
 
 class _HealthResponse implements HealthResponse {
-  const _HealthResponse({required this.healthy, required this.version});
+  const _HealthResponse({required this.healthy, required this.version, required this.serverManaged, required this.serverState});
   factory _HealthResponse.fromJson(Map<String, dynamic> json) => _$HealthResponseFromJson(json);
 
 @override final  bool healthy;
 @override final  String version;
+@override final  bool? serverManaged;
+@override final  ServerStateKind? serverState;
 
 /// Create a copy of HealthResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -100,16 +104,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _HealthResponse&&(identical(other.healthy, healthy) || other.healthy == healthy)&&(identical(other.version, version) || other.version == version));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _HealthResponse&&(identical(other.healthy, healthy) || other.healthy == healthy)&&(identical(other.version, version) || other.version == version)&&(identical(other.serverManaged, serverManaged) || other.serverManaged == serverManaged)&&(identical(other.serverState, serverState) || other.serverState == serverState));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,healthy,version);
+int get hashCode => Object.hash(runtimeType,healthy,version,serverManaged,serverState);
 
 @override
 String toString() {
-  return 'HealthResponse(healthy: $healthy, version: $version)';
+  return 'HealthResponse(healthy: $healthy, version: $version, serverManaged: $serverManaged, serverState: $serverState)';
 }
 
 
@@ -120,7 +124,7 @@ abstract mixin class _$HealthResponseCopyWith<$Res> implements $HealthResponseCo
   factory _$HealthResponseCopyWith(_HealthResponse value, $Res Function(_HealthResponse) _then) = __$HealthResponseCopyWithImpl;
 @override @useResult
 $Res call({
- bool healthy, String version
+ bool healthy, String version, bool? serverManaged, ServerStateKind? serverState
 });
 
 
@@ -137,11 +141,13 @@ class __$HealthResponseCopyWithImpl<$Res>
 
 /// Create a copy of HealthResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? healthy = null,Object? version = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? healthy = null,Object? version = null,Object? serverManaged = freezed,Object? serverState = freezed,}) {
   return _then(_HealthResponse(
 healthy: null == healthy ? _self.healthy : healthy // ignore: cast_nullable_to_non_nullable
 as bool,version: null == version ? _self.version : version // ignore: cast_nullable_to_non_nullable
-as String,
+as String,serverManaged: freezed == serverManaged ? _self.serverManaged : serverManaged // ignore: cast_nullable_to_non_nullable
+as bool?,serverState: freezed == serverState ? _self.serverState : serverState // ignore: cast_nullable_to_non_nullable
+as ServerStateKind?,
   ));
 }
 
