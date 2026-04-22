@@ -29,9 +29,14 @@ class SseConnection {
   bool _active = false;
   int _generation = 0;
   http.Client? _currentClient;
-  /// Set to true after the first "connection refused" warning is emitted.
-  /// Reset to false when a connection succeeds so the next failure gets a
-  /// fresh user-facing message.
+  /// True once a connection has succeeded at least once. While false (e.g.
+  /// during waitReady polling or before the first connection), connection-
+  /// refused errors are logged at debug level only. After the first
+  /// successful connection, the next failure emits a user-facing warning.
+  bool _serverWasEverReachable = false;
+  /// Set to true after the first user-facing "server unavailable" warning is
+  /// emitted. Reset to false when a connection succeeds so the next failure
+  /// gets a fresh warning.
   bool _hasWarnedServerUnavailable = false;
 
   SseConnection({
@@ -91,20 +96,28 @@ class SseConnection {
         isFirstConnect = false;
         reconnectDelay = const Duration(seconds: 1);
         _hasWarnedServerUnavailable = false;
+        _serverWasEverReachable = true;
         await _readStream(response, generation);
       } catch (e, st) {
         if (!_active || _generation != generation) return;
 
         if (_isConnectionRefused(e)) {
           // "Connection refused" means the server is not running on that host/port.
-          // Show a clear one-time user message; subsequent retries log only at
-          // debug level to avoid filling the terminal with spam.
-          if (!_hasWarnedServerUnavailable) {
-            _hasWarnedServerUnavailable = true;
-            Log.w("[sse-conn] OpenCode server is not running at $_targetUrl. "
-                "Start it with: opencode serve");
+          // If the server was never reachable (e.g. --no-auto-start with no server,
+          // or during waitReady polling), stay silent at info level so the
+          // terminal isn't flooded during startup. After the first successful
+          // connection, emit a one-time user-facing warning; subsequent retries
+          // log only at debug level.
+          if (_serverWasEverReachable) {
+            if (!_hasWarnedServerUnavailable) {
+              _hasWarnedServerUnavailable = true;
+              Log.w("[sse-conn] OpenCode server is not running at $_targetUrl. "
+                  "Start it with: opencode serve");
+            } else {
+              Log.d("[sse-conn] connection refused (server still unavailable), retrying...");
+            }
           } else {
-            Log.d("[sse-conn] connection refused (server still unavailable), retrying...");
+            Log.d("[sse-conn] connection refused (server not yet reachable), retrying...");
           }
         } else {
           Log.e("[sse-conn] stream loop error: $e\n$st");
