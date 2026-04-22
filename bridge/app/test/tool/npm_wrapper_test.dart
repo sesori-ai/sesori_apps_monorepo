@@ -357,6 +357,13 @@ Future<Map<String, dynamic>> _readRecordedInvocation({required String recordPath
   return jsonDecode(await File(recordPath).readAsString()) as Map<String, dynamic>;
 }
 
+Future<String> _readWrapperVersion() async {
+  final packageJson = jsonDecode(
+    await File(p.join(_wrapperPackageRoot(), 'package.json')).readAsString(),
+  ) as Map<String, dynamic>;
+  return packageJson['version'] as String;
+}
+
 void _expectInstallSummary({
   required ProcessResult result,
   required String homePath,
@@ -377,7 +384,8 @@ Future<({int exitCode, String stdout, String stderr})> _waitForProcess(Process p
   return (exitCode: exitCode, stdout: await stdoutFuture, stderr: await stderrFuture);
 }
 
-void main() {
+Future<void> main() async {
+  final wrapperVersion = await _readWrapperVersion();
   group('bridge.js', () {
     test('fails with a clear message for unsupported platforms', () async {
       final scriptPath = p.join(_wrapperPackageRoot(), 'bin', 'bridge.js');
@@ -441,12 +449,12 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
       final bootstrapRecordPath = p.join(homeDir.path, 'bootstrap-record.json');
       final recordPath = p.join(homeDir.path, 'record.json');
       final releaseAsset = await _createReleaseAsset(
-        version: '0.4.0',
+        version: wrapperVersion,
         binaryMarker: 'release-runtime',
         libMarker: 'release-lib',
       );
       final releasesBaseUrl = await _serveReleaseAssets(
-        version: '0.4.0',
+        version: wrapperVersion,
         archivePath: releaseAsset.archivePath,
         checksumsPath: releaseAsset.checksumsPath,
       );
@@ -481,13 +489,13 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
       final homeDir = await Directory.systemTemp.createTemp('npm-wrapper-home-');
       addTearDown(() => homeDir.delete(recursive: true));
       final releaseAsset = await _createReleaseAsset(
-        version: '0.4.0',
+        version: wrapperVersion,
         binaryMarker: 'release-runtime',
         libMarker: 'release-lib',
       );
       await File(releaseAsset.checksumsPath).writeAsString('deadbeef  ${releaseAsset.assetName}\n');
       final releasesBaseUrl = await _serveReleaseAssets(
-        version: '0.4.0',
+        version: wrapperVersion,
         archivePath: releaseAsset.archivePath,
         checksumsPath: releaseAsset.checksumsPath,
       );
@@ -502,7 +510,7 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
       expect(result.exitCode, equals(1));
       expect(
         result.stderr,
-        contains('Failed to download managed runtime from GitHub release assets for bridge-v0.4.0'),
+        contains('Failed to download managed runtime from GitHub release assets for bridge-v$wrapperVersion'),
       );
       expect(result.stderr, contains('Checksum mismatch for ${releaseAsset.assetName}'));
     });
@@ -511,7 +519,7 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
       final wrapperRoot = await _createWrapperFixture();
       final homeDir = await Directory.systemTemp.createTemp('npm-wrapper-home-');
       addTearDown(() => homeDir.delete(recursive: true));
-      final releasesBaseUrl = await _serveInvalidRedirectReleaseAssets(version: '0.4.0');
+      final releasesBaseUrl = await _serveInvalidRedirectReleaseAssets(version: wrapperVersion);
 
       final result = await _runWrapperProcess(
         packageRoot: wrapperRoot,
@@ -523,7 +531,7 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
       expect(result.exitCode, equals(1));
       expect(
         result.stderr,
-        contains('Failed to download managed runtime from GitHub release assets for bridge-v0.4.0'),
+        contains('Failed to download managed runtime from GitHub release assets for bridge-v$wrapperVersion'),
       );
       expect(result.stderr, contains('Invalid redirect URL'));
     });
@@ -675,7 +683,7 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
 
       await _seedManagedRuntime(
         homePath: homeDir.path,
-        version: '0.4.0',
+        version: wrapperVersion,
         binaryMarker: 'existing-managed',
         libMarker: 'existing-lib',
         includeBinary: true,
