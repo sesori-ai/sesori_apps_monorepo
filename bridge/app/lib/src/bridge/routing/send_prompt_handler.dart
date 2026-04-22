@@ -31,6 +31,7 @@ class SendPromptHandler extends BodyRequestHandler<SendPromptRequest, SuccessEmp
     await _sessionPromptService.sendPrompt(
       sessionId: sessionId,
       parts: body.parts,
+      effort: body.effort,
       agent: body.agent,
       model: body.model,
       command: body.command,

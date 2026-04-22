@@ -281,6 +281,82 @@ void main() {
 
       expect(result, equals("/repo-b"));
     });
+
+    test("createSession maps shared effort to plugin effort", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+      );
+
+      final cases = <({SessionEffort? sessionEffort, PluginEffort? pluginEffort})>[
+        (sessionEffort: SessionEffort.low, pluginEffort: PluginEffort.low),
+        (sessionEffort: SessionEffort.medium, pluginEffort: null),
+        (sessionEffort: SessionEffort.max, pluginEffort: PluginEffort.max),
+        (sessionEffort: null, pluginEffort: null),
+      ];
+
+      for (final testCase in cases) {
+        await repository.createSession(
+          directory: "/repo",
+          parentSessionId: null,
+          parts: const [PromptPart.text(text: "Ship it")],
+          effort: testCase.sessionEffort,
+          agent: null,
+          model: null,
+        );
+
+        expect(plugin.lastCreateSessionEffort, equals(testCase.pluginEffort));
+      }
+    });
+
+    test("sendPrompt and sendCommand map shared effort to plugin effort", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+      );
+
+      final cases = <({SessionEffort? sessionEffort, PluginEffort? pluginEffort})>[
+        (sessionEffort: SessionEffort.low, pluginEffort: PluginEffort.low),
+        (sessionEffort: SessionEffort.medium, pluginEffort: null),
+        (sessionEffort: SessionEffort.max, pluginEffort: PluginEffort.max),
+        (sessionEffort: null, pluginEffort: null),
+      ];
+
+      for (final testCase in cases) {
+        await repository.sendPrompt(
+          sessionId: "s1",
+          parts: const [PromptPart.text(text: "Prompt")],
+          effort: testCase.sessionEffort,
+          agent: null,
+          model: null,
+        );
+        expect(plugin.lastSendPromptEffort, equals(testCase.pluginEffort));
+
+        await repository.sendCommand(
+          sessionId: "s1",
+          command: "review",
+          arguments: "Prompt",
+          effort: testCase.sessionEffort,
+          agent: null,
+          model: null,
+        );
+        expect(plugin.lastSendCommandEffort, equals(testCase.pluginEffort));
+      }
+    });
   });
 }
 
@@ -288,9 +364,21 @@ class _FakeBridgePlugin implements BridgePlugin {
   List<PluginProject> projectsResult = const [];
   List<PluginSession> sessionsResult = const [];
   Map<String, List<PluginSession>> sessionsByWorktree = const {};
+  PluginSession createSessionResult = const PluginSession(
+    id: "created-session",
+    projectID: "/repo",
+    directory: "/repo",
+    parentID: null,
+    title: null,
+    time: null,
+    summary: null,
+  );
   PluginSession? renameSessionResult;
   String? lastRenameSessionId;
   String? lastRenameSessionTitle;
+  PluginEffort? lastCreateSessionEffort;
+  PluginEffort? lastSendPromptEffort;
+  PluginEffort? lastSendCommandEffort;
 
   @override
   String get id => "fake";
@@ -311,6 +399,42 @@ class _FakeBridgePlugin implements BridgePlugin {
     lastRenameSessionId = sessionId;
     lastRenameSessionTitle = title;
     return renameSessionResult!;
+  }
+
+  @override
+  Future<PluginSession> createSession({
+    required String directory,
+    required String? parentSessionId,
+    required List<PluginPromptPart> parts,
+    required PluginEffort? effort,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) async {
+    lastCreateSessionEffort = effort;
+    return createSessionResult;
+  }
+
+  @override
+  Future<void> sendPrompt({
+    required String sessionId,
+    required List<PluginPromptPart> parts,
+    required PluginEffort? effort,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) async {
+    lastSendPromptEffort = effort;
+  }
+
+  @override
+  Future<void> sendCommand({
+    required String sessionId,
+    required String command,
+    required String arguments,
+    required PluginEffort? effort,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) async {
+    lastSendCommandEffort = effort;
   }
 
   @override
