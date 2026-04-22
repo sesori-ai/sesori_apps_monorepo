@@ -15,7 +15,7 @@ dependencies:
   freezed_annotation: ^3.1.0
   get_it: ^9.2.1
   http: ^1.6.0
-  injectable: ^2.7.1
+  injectable: ^3.0.0
   intl: any
   json_annotation: ^4.11.0
   meta: ^1.16.0
@@ -27,10 +27,12 @@ dependencies:
   web_socket_channel: ^3.0.1
 
 dev_dependencies:
+  no_slop_linter:
+    path: "../../shared/no_slop_linter"
   bloc_test: ^10.0.0
   build_runner: any
   freezed: ^3.2.5
-  injectable_generator: ^2.12.1
+  injectable_generator: ^3.0.2
   json_serializable: ^6.13.0
   mocktail: ^1.0.4
   test: ^1.25.0

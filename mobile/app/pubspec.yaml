@@ -46,7 +46,7 @@ dependencies:
   flutter_bloc: ^9.1.1
   go_router: ^17.1.0
   get_it: ^9.2.1
-  injectable: ^2.7.1
+  injectable: ^3.0.0
   flutter_markdown_plus: ^1.0.7
   sesori_shared:
     path: ../../shared/sesori_shared
@@ -75,9 +75,11 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  no_slop_linter:
+    path: "../../shared/no_slop_linter"
   freezed: ^3.2.5
   json_serializable: ^6.13.1
-  injectable_generator: ^2.12.1
+  injectable_generator: ^3.0.2
   bloc_test: ^10.0.0
   build_runner: any
   mocktail: ^1.0.4
