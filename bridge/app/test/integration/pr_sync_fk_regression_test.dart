@@ -260,6 +260,7 @@ class _FakeBridgePlugin implements BridgePlugin {
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
+    required PluginEffort? effort,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) => throw UnimplementedError();
@@ -292,6 +293,7 @@ class _FakeBridgePlugin implements BridgePlugin {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PluginPromptPart> parts,
+    required PluginEffort? effort,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) => throw UnimplementedError();
@@ -301,6 +303,7 @@ class _FakeBridgePlugin implements BridgePlugin {
     required String sessionId,
     required String command,
     required String arguments,
+    required PluginEffort? effort,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {}
