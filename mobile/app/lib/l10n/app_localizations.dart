@@ -553,6 +553,30 @@ abstract class AppLocalizations {
   /// **'Model'**
   String get sessionDetailPickerModel;
 
+  /// No description provided for @sessionDetailPickerEffort.
+  ///
+  /// In en, this message translates to:
+  /// **'Effort'**
+  String get sessionDetailPickerEffort;
+
+  /// No description provided for @sessionDetailEffortLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Low'**
+  String get sessionDetailEffortLow;
+
+  /// No description provided for @sessionDetailEffortMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get sessionDetailEffortMedium;
+
+  /// No description provided for @sessionDetailEffortMax.
+  ///
+  /// In en, this message translates to:
+  /// **'Max'**
+  String get sessionDetailEffortMax;
+
   /// No description provided for @sessionDetailSelectModel.
   ///
   /// In en, this message translates to:

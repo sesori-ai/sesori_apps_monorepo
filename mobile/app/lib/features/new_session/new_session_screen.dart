@@ -2,12 +2,14 @@ import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/widgets/agent_model_buttons.dart";
 import "../../core/widgets/agent_picker_sheet.dart";
+import "../../core/widgets/effort_picker_sheet.dart";
 import "../../core/widgets/model_picker_sheet.dart";
 import "../session_detail/widgets/prompt_input.dart";
 
@@ -68,6 +70,14 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     );
   }
 
+  void _openEffortPicker(SessionEffort selectedEffort) {
+    EffortPickerSheet.show(
+      context,
+      selectedEffort: selectedEffort,
+      onEffortChanged: context.read<NewSessionCubit>().selectEffort,
+    );
+  }
+
   Widget? _buildErrorBanner(NewSessionState state) {
     return switch (state) {
       NewSessionError(:final message) => Padding(
@@ -99,8 +109,10 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
       selectedAgent: selectedAgent,
       selectedProviderID: data.providerID ?? "",
       selectedModelID: data.modelID ?? "",
+      selectedEffort: data.effort,
       onAgentTap: () => _openAgentPicker(data),
       onModelTap: () => _openModelPicker(data),
+      onEffortTap: () => _openEffortPicker(data.effort),
     );
   }
 

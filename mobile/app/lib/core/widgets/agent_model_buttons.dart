@@ -9,8 +9,10 @@ class AgentModelButtons extends StatelessWidget {
   final String selectedAgent;
   final String selectedProviderID;
   final String selectedModelID;
+  final SessionEffort selectedEffort;
   final VoidCallback onAgentTap;
   final VoidCallback onModelTap;
+  final VoidCallback onEffortTap;
 
   const AgentModelButtons({
     super.key,
@@ -18,8 +20,10 @@ class AgentModelButtons extends StatelessWidget {
     required this.selectedAgent,
     required this.selectedProviderID,
     required this.selectedModelID,
+    required this.selectedEffort,
     required this.onAgentTap,
     required this.onModelTap,
+    required this.onEffortTap,
   });
 
   String _resolveModelName(AppLocalizations loc) {
@@ -31,6 +35,14 @@ class AgentModelButtons extends StatelessWidget {
     }
     if (selectedModelID.isNotEmpty) return selectedModelID;
     return loc.sessionDetailPickerModel;
+  }
+
+  String _resolveEffortLabel(AppLocalizations loc) {
+    return switch (selectedEffort) {
+      SessionEffort.low => loc.sessionDetailEffortLow,
+      SessionEffort.medium => loc.sessionDetailEffortMedium,
+      SessionEffort.max => loc.sessionDetailEffortMax,
+    };
   }
 
   @override
@@ -70,6 +82,20 @@ class AgentModelButtons extends StatelessWidget {
               icon: Icon(Icons.memory_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
               label: Text(
                 _resolveModelName(loc),
+                style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                overflow: .ellipsis,
+                maxLines: 1,
+              ),
+              style: buttonStyle,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: OutlinedButton.icon(
+              onPressed: onEffortTap,
+              icon: Icon(Icons.speed_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
+              label: Text(
+                _resolveEffortLabel(loc),
                 style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
                 overflow: .ellipsis,
                 maxLines: 1,

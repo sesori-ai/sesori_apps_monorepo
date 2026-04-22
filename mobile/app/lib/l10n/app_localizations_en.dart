@@ -267,6 +267,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailPickerModel => 'Model';
 
   @override
+  String get sessionDetailPickerEffort => 'Effort';
+
+  @override
+  String get sessionDetailEffortLow => 'Low';
+
+  @override
+  String get sessionDetailEffortMedium => 'Medium';
+
+  @override
+  String get sessionDetailEffortMax => 'Max';
+
+  @override
   String get sessionDetailSelectModel => 'Select Model';
 
   @override

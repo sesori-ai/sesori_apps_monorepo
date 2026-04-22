@@ -44,6 +44,7 @@ SessionDetailState _loadedState({
     selectedAgent: "coder",
     selectedProviderID: "anthropic",
     selectedModelID: "claude-3-5-sonnet",
+    selectedEffort: SessionEffort.medium,
     stagedCommand: null,
     isRefreshing: false,
   );

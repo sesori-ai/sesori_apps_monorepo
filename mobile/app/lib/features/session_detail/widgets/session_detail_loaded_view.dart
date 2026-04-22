@@ -18,6 +18,7 @@ class SessionDetailLoadedView extends StatelessWidget {
   final VoidCallback onShowPendingPermissions;
   final VoidCallback onOpenAgentPicker;
   final VoidCallback onOpenModelPicker;
+  final VoidCallback onOpenEffortPicker;
 
   const SessionDetailLoadedView.readOnly({
     super.key,
@@ -27,7 +28,8 @@ class SessionDetailLoadedView extends StatelessWidget {
     required this.onShowPendingPermissions,
   }) : readOnly = true,
        onOpenAgentPicker = _noopCallback,
-       onOpenModelPicker = _noopCallback;
+       onOpenModelPicker = _noopCallback,
+       onOpenEffortPicker = _noopCallback;
 
   const SessionDetailLoadedView.editable({
     super.key,
@@ -37,6 +39,7 @@ class SessionDetailLoadedView extends StatelessWidget {
     required this.onShowPendingPermissions,
     required this.onOpenAgentPicker,
     required this.onOpenModelPicker,
+    required this.onOpenEffortPicker,
   }) : readOnly = false;
 
   @override
@@ -101,8 +104,10 @@ class SessionDetailLoadedView extends StatelessWidget {
               selectedAgent: state.selectedAgent,
               selectedProviderID: state.selectedProviderID,
               selectedModelID: state.selectedModelID,
+              selectedEffort: state.selectedEffort,
               onAgentTap: onOpenAgentPicker,
               onModelTap: onOpenModelPicker,
+              onEffortTap: onOpenEffortPicker,
             ),
             availableCommands: state.availableCommands,
             stagedCommand: state.stagedCommand,

@@ -209,6 +209,7 @@ void main() {
             agent: "coder",
             providerID: "anthropic",
             modelID: "claude-3-5-sonnet",
+            effort: SessionEffort.medium,
             command: null,
           ),
         ).called(1);
@@ -241,6 +242,7 @@ void main() {
             agent: "coder",
             providerID: "anthropic",
             modelID: "claude-3-5-sonnet",
+            effort: SessionEffort.medium,
             command: "review",
           ),
         ).called(1);
@@ -288,6 +290,7 @@ void main() {
             agent: "coder",
             providerID: "anthropic",
             modelID: "claude-3-5-sonnet",
+            effort: SessionEffort.medium,
             command: null,
           ),
         ).called(1);
@@ -777,6 +780,7 @@ void main() {
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
+            effort: any(named: "effort"),
             command: null,
           ),
         );
@@ -819,6 +823,7 @@ void main() {
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
+            effort: any(named: "effort"),
             command: null,
           ),
         );
@@ -835,6 +840,7 @@ void main() {
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
+            effort: any(named: "effort"),
             command: null,
           ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
@@ -870,6 +876,7 @@ void main() {
             agent: "coder",
             providerID: "anthropic",
             modelID: "claude-3-5-sonnet",
+            effort: SessionEffort.medium,
             command: null,
           ),
         ).called(1);
@@ -944,6 +951,7 @@ void main() {
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
+            effort: any(named: "effort"),
             command: null,
           ),
         );
@@ -1013,6 +1021,7 @@ void main() {
             agent: "coder",
             providerID: "anthropic",
             modelID: "claude-3-5-sonnet",
+            effort: SessionEffort.medium,
             command: null,
           ),
         ).called(1);
@@ -1066,6 +1075,7 @@ void main() {
           agent: "coder",
           providerID: "anthropic",
           modelID: "claude-3-5-sonnet",
+          effort: SessionEffort.medium,
           command: null,
         ),
       ).called(1);
@@ -1083,6 +1093,7 @@ void main() {
           agent: any(named: "agent"),
           providerID: any(named: "providerID"),
           modelID: any(named: "modelID"),
+          effort: any(named: "effort"),
           command: any(named: "command"),
         ),
       ).thenAnswer((invocation) async {
@@ -1147,8 +1158,8 @@ void main() {
       "multiple queued messages drain sequentially on reconnection",
       build: () => SessionDetailCubit(
         mockConnectionService,
-          loadService: loadService,
-          promptDispatcher: promptDispatcher,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
@@ -1193,6 +1204,7 @@ void main() {
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
+            effort: any(named: "effort"),
             command: null,
           ),
         ).called(1);
@@ -1203,6 +1215,7 @@ void main() {
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
+            effort: any(named: "effort"),
             command: null,
           ),
         ).called(1);
@@ -1221,6 +1234,7 @@ void main() {
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
+            effort: any(named: "effort"),
             command: null,
           ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
@@ -1293,6 +1307,7 @@ void main() {
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
+            effort: any(named: "effort"),
             command: null,
           ),
         ).called(1);
@@ -1400,6 +1415,7 @@ void _stubAllDefaults(
       agent: any(named: "agent"),
       providerID: any(named: "providerID"),
       modelID: any(named: "modelID"),
+      effort: any(named: "effort"),
       command: any(named: "command"),
     ),
   ).thenAnswer((_) async => ApiResponse<void>.success(null));
