@@ -35,6 +35,49 @@ shellcheck --severity=error install.sh
 bash -n install.sh
 ```
 
+## macOS code signing setup
+
+macOS binaries are signed in CI with a Developer ID Application certificate. The following secrets must be configured in the GitHub repository:
+
+| Secret | Description |
+|--------|-------------|
+| `MACOS_CERT_P12_BASE64` | Base64-encoded `.p12` containing the Developer ID Application certificate and private key |
+| `MACOS_CERT_PASSWORD` | Password for the `.p12` file |
+| `MACOS_KEYCHAIN_PASSWORD` | Password for the temporary keychain created during CI |
+
+And the following repository variable:
+
+| Variable | Description |
+|----------|-------------|
+| `APPLE_TEAM_ID` | 10-character Apple Team ID |
+
+### Creating the certificate
+
+1. Generate a Certificate Signing Request (CSR) on a Mac:
+   - Open Keychain Access → Certificate Assistant → Request a Certificate From a Certificate Authority
+   - Email: your Apple ID email
+   - Name: your name or org name
+   - Request is: Saved to disk
+   - Key pair: RSA, 2048 bits
+
+2. Download the certificate from [Apple Developer Portal](https://developer.apple.com):
+   - Certificates, Identifiers & Profiles → + → Developer ID Application
+   - Upload the CSR
+   - Download the `.cer` file
+
+3. Export as `.p12`:
+   - Double-click the `.cer` to install it into your login keychain
+   - In Keychain Access, find it under "My Certificates"
+   - Select both the certificate **and** its private key
+   - Right-click → Export 2 items → choose `.p12` format
+   - Set a strong password
+
+4. Base64-encode for GitHub:
+   ```bash
+   base64 -i DeveloperIDApplication.p12 | pbcopy
+   ```
+   Paste the result as the `MACOS_CERT_P12_BASE64` secret.
+
 ## Release steps
 
 ### 1. Bump version
