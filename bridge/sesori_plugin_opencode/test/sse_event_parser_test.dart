@@ -55,6 +55,35 @@ void main() {
       expect(result.directory, equals("/repo"));
     });
 
+    test("parses command.executed event", () {
+      final parser = SseEventParser();
+      final rawData = jsonEncode({
+        "directory": "/repo",
+        "payload": {
+          "type": "command.executed",
+          "properties": {
+            "name": "review",
+            "sessionID": "s1",
+            "arguments": "lib/main.dart",
+            "messageID": "m1",
+          },
+        },
+      });
+
+      final result = parser.parse(rawData);
+
+      expect(result.outcome, equals(SseParseOutcome.validKnownEvent));
+      expect(result.eventType, equals("command.executed"));
+      expect(result.directory, equals("/repo"));
+      expect(result.event, isA<SseCommandExecuted>());
+
+      final event = result.event! as SseCommandExecuted;
+      expect(event.name, equals("review"));
+      expect(event.sessionID, equals("s1"));
+      expect(event.arguments, equals("lib/main.dart"));
+      expect(event.messageID, equals("m1"));
+    });
+
     test("parses server.heartbeat event", () {
       final parser = SseEventParser();
       final rawData = jsonEncode({
