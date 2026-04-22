@@ -1,5 +1,14 @@
 # Changelog
 
+## [v0.4.1] - 2026-04-22
+
+### Added
+- macOS release binaries are now signed with a Developer ID Application certificate
+- Bridge release documentation (`RELEASING.md`) for verification and manual test flow
+
+### Changed
+- Updated npm wrapper tests to align with release workflow changes
+
 ## [v0.4.0] - 2026-04-22
 
 ### Added
