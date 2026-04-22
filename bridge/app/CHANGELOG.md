@@ -1,5 +1,22 @@
 # Changelog
 
+## [v0.4.0] - 2026-04-22
+
+### Added
+- Native bootstrap support for `npx @sesori/bridge` to fetch and run binaries directly from GitHub release assets
+- Detailed telemetry and logging for bridge push notification maintenance cycles
+- Session event enrichment layer to provide additional context in bridge-to-phone event streams
+
+### Fixed
+- OpenCode plugin now correctly recognizes and displays `alpha` and `beta` model statuses
+- Stabilization of push notification state tracking with automatic pruning of stale session data
+- Reliable session list refreshing on mobile devices after creating or archiving sessions through the bridge
+- Improved error recovery and state synchronization in the bridge orchestrator
+
+### Changed
+- Major internal refactoring of the bridge core to follow the "Aristotle" layered architecture (Foundation, API, Repository, Service)
+- Improved session lifecycle management by extracting focused services for creation, archiving, and aborting operations
+
 ## [v0.3.x] - 2026-04-15
 
 - Any patch version change is done only as an attempt of fixing the release workflow and does not contain actual changes for the bridge code.
