@@ -157,6 +157,7 @@ const Set<String> _knownEventTypes = {
   "session.compacted",
   "session.status",
   "session.idle",
+  "command.executed",
   "message.updated",
   "message.removed",
   "message.part.updated",
