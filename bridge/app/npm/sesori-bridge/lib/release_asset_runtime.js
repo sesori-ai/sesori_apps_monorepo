@@ -185,23 +185,6 @@ function validateExtractedRuntime(runtimeRoot) {
   }
 }
 
-function verifyCodeSignature(binPath) {
-  if (process.platform !== "darwin") {
-    return;
-  }
-  try {
-    child_process.execFileSync("command", ["-v", "codesign"], { stdio: "pipe" });
-  } catch (_) {
-    console.error("WARNING: codesign tool not found. Skipping Developer ID verification.");
-    return;
-  }
-  var result = child_process.spawnSync("codesign", ["-dv", binPath], { encoding: "utf8" });
-  var output = (result.stdout || "") + (result.stderr || "");
-  if (!output.includes("Developer ID Application")) {
-    console.error("WARNING: Binary is not signed with a valid Apple Developer ID certificate.");
-  }
-}
-
 async function resolvePayload() {
   var manifest = wrapperManifest();
   var version = manifest.version;
@@ -223,8 +206,6 @@ async function resolvePayload() {
     }
     extractArchive(archivePath, extractRoot);
     validateExtractedRuntime(extractRoot);
-    var binPath = path.join(extractRoot, "bin", process.platform === "win32" ? "sesori-bridge.exe" : "sesori-bridge");
-    verifyCodeSignature(binPath);
     return {
       runtimeBundlePath: extractRoot,
       version: version,

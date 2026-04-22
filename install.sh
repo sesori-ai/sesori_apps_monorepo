@@ -319,15 +319,6 @@ main() {
     printf '{"version":"%s"}\n' "${RESOLVED_RELEASE_TAG#bridge-v}" > "${MANAGED_MANIFEST}"
 
     if [ "${os}" = "macos" ]; then
-        if command -v codesign >/dev/null 2>&1; then
-            local sign_info
-            sign_info="$(codesign -dv "${BINARY}" 2>&1)" || true
-            if ! printf '%s' "${sign_info}" | grep -q "Developer ID Application"; then
-                echo "WARNING: Binary is not signed with a valid Apple Developer ID certificate." >&2
-            fi
-        else
-            echo "WARNING: codesign tool not found. Skipping Developer ID verification." >&2
-        fi
         xattr -dr com.apple.quarantine "${BINARY}" 2>/dev/null || true
     fi
 
