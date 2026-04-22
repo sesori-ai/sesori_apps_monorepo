@@ -74,12 +74,16 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
   _DetachedSnapshot? _snapshot;
 
   /// Cache for the id → builder-index map consumed by
-  /// `findChildIndexCallback`. Rebuilt only when the source
-  /// `messages` list identity changes — during streaming, the cubit
-  /// keeps the `messages` reference stable across
-  /// `streamingText`-only emits, so most rebuilds hit this cache
-  /// instead of paying O(N) to reconstruct the map.
-  List<MessageWithParts>? _indexByIdSource;
+  /// `findChildIndexCallback`. Keyed on a content signature of
+  /// `(length, firstId, lastId)` — NOT list identity. The cubit's
+  /// `state.messages` getter is the Freezed-generated
+  /// `EqualUnmodifiableListView` wrapper which is recreated on every
+  /// access, so an `identical(...)` cache would miss on every emit.
+  /// The content signature is cheap (three reads) and correct for
+  /// every mutation the cubit performs today: append, remove, and
+  /// same-order part updates all either change the signature or
+  /// preserve the full id ordering. `null` means "cache empty".
+  int? _indexSignature;
   Map<String, int> _indexById = const <String, int>{};
 
   @override
@@ -124,8 +128,8 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
     // Map message id → data-source index. Consulted by
     // `findChildIndexCallback` so the reversed builder keeps stable
     // element identity across appends that shift every existing index.
-    // Recomputed only when the `messages` list identity changes — skips
-    // O(N) work on every streaming-text rebuild.
+    // Recomputed only when the content signature changes — skips the
+    // O(N) rebuild on every streaming-text emit.
     final indexById = _indexByIdFor(messages: messages);
 
     // Coalesced post-frame pin-to-edge while following. The scheduler
@@ -170,11 +174,17 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
   }
 
   Map<String, int> _indexByIdFor({required List<MessageWithParts> messages}) {
-    if (identical(messages, _indexByIdSource)) return _indexById;
-    _indexByIdSource = messages;
+    final signature = _signatureOf(messages: messages);
+    if (signature == _indexSignature) return _indexById;
+    _indexSignature = signature;
     return _indexById = <String, int>{
       for (var i = 0; i < messages.length; i++) messages[i].info.id: i,
     };
+  }
+
+  int _signatureOf({required List<MessageWithParts> messages}) {
+    if (messages.isEmpty) return 0;
+    return Object.hash(messages.length, messages.first.info.id, messages.last.info.id);
   }
 
   int? _findChildIndex({
