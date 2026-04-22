@@ -25,6 +25,7 @@ void main() {
       selectedAgent: "build",
       selectedProviderID: "p",
       selectedModelID: "m",
+      selectedEffort: SessionEffort.medium,
       stagedCommand: null,
       isRefreshing: false,
     );

@@ -11,7 +11,7 @@ import "../../helpers/test_helpers.dart";
 void main() {
   group("NewSessionCubit", () {
     late MockSessionService mockSessionService;
-    
+
     setUp(() {
       mockSessionService = MockSessionService();
 
@@ -32,6 +32,16 @@ void main() {
       sessionService: mockSessionService,
       projectId: "project-1",
     );
+
+    test("defaults selectedEffort to medium", () {
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+
+      expect(
+        cubit.state,
+        isA<NewSessionIdle>().having((state) => state.selectedEffort, "selectedEffort", SessionEffort.medium),
+      );
+    });
 
     blocTest<NewSessionCubit, NewSessionState>(
       "loads available commands into idle state",
@@ -74,6 +84,7 @@ void main() {
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
+            effort: any(named: "effort"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
           ),
@@ -100,6 +111,7 @@ void main() {
             agent: null,
             providerID: null,
             modelID: null,
+            effort: SessionEffort.medium,
             command: null,
             dedicatedWorktree: false,
           ),
@@ -117,6 +129,7 @@ void main() {
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
+            effort: any(named: "effort"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
           ),
@@ -146,7 +159,55 @@ void main() {
             agent: null,
             providerID: null,
             modelID: null,
+            effort: SessionEffort.medium,
             command: "review",
+            dedicatedWorktree: true,
+          ),
+        ).called(1);
+      },
+    );
+
+    blocTest<NewSessionCubit, NewSessionState>(
+      "selectEffort updates state and createSession forwards effort",
+      build: () {
+        when(
+          () => mockSessionService.createSessionWithMessage(
+            projectId: any(named: "projectId"),
+            text: any(named: "text"),
+            agent: any(named: "agent"),
+            providerID: any(named: "providerID"),
+            modelID: any(named: "modelID"),
+            effort: any(named: "effort"),
+            command: any(named: "command"),
+            dedicatedWorktree: any(named: "dedicatedWorktree"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s-effort")));
+        return buildCubit();
+      },
+      act: (cubit) async {
+        cubit.selectEffort(SessionEffort.max);
+        await cubit.createSession(
+          text: "hello",
+          dedicatedWorktree: true,
+          command: null,
+        );
+      },
+      expect: () => [
+        isA<NewSessionIdle>().having((state) => state.selectedEffort, "selectedEffort", SessionEffort.max),
+        isA<NewSessionSending>().having((state) => state.selectedEffort, "selectedEffort", SessionEffort.max),
+        isA<NewSessionSending>().having((state) => state.selectedEffort, "selectedEffort", SessionEffort.max),
+        isA<NewSessionCreated>(),
+      ],
+      verify: (_) {
+        verify(
+          () => mockSessionService.createSessionWithMessage(
+            projectId: "project-1",
+            text: "hello",
+            agent: null,
+            providerID: null,
+            modelID: null,
+            effort: SessionEffort.max,
+            command: null,
             dedicatedWorktree: true,
           ),
         ).called(1);

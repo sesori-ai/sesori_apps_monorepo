@@ -36,6 +36,7 @@ sealed class SessionDetailState with _$SessionDetailState {
     required String selectedAgent,
     required String selectedProviderID,
     required String selectedModelID,
+    required SessionEffort selectedEffort,
     required CommandInfo? stagedCommand,
     required bool isRefreshing,
   }) = SessionDetailLoaded;

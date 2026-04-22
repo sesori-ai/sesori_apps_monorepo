@@ -12,6 +12,7 @@ sealed class NewSessionState with _$NewSessionState {
     required String? selectedAgent,
     required String? selectedProviderID,
     required String? selectedModelID,
+    required SessionEffort selectedEffort,
     required CommandInfo? stagedCommand,
   }) = NewSessionIdle;
 
@@ -22,6 +23,7 @@ sealed class NewSessionState with _$NewSessionState {
     required String? selectedAgent,
     required String? selectedProviderID,
     required String? selectedModelID,
+    required SessionEffort selectedEffort,
     required CommandInfo? stagedCommand,
   }) = NewSessionSending;
 
@@ -33,6 +35,7 @@ sealed class NewSessionState with _$NewSessionState {
     required String? selectedAgent,
     required String? selectedProviderID,
     required String? selectedModelID,
+    required SessionEffort selectedEffort,
     required CommandInfo? stagedCommand,
   }) = NewSessionError;
 
@@ -49,6 +52,7 @@ typedef AgentModelData = ({
   String? agent,
   String? providerID,
   String? modelID,
+  SessionEffort effort,
   CommandInfo? stagedCommand,
 });
 
@@ -61,6 +65,7 @@ extension NewSessionStateAgentModel on NewSessionState {
       :final selectedAgent,
       :final selectedProviderID,
       :final selectedModelID,
+      :final selectedEffort,
       :final stagedCommand,
     ) =>
       (
@@ -70,6 +75,7 @@ extension NewSessionStateAgentModel on NewSessionState {
         agent: selectedAgent,
         providerID: selectedProviderID,
         modelID: selectedModelID,
+        effort: selectedEffort,
         stagedCommand: stagedCommand,
       ),
     NewSessionSending(
@@ -79,6 +85,7 @@ extension NewSessionStateAgentModel on NewSessionState {
       :final selectedAgent,
       :final selectedProviderID,
       :final selectedModelID,
+      :final selectedEffort,
       :final stagedCommand,
     ) =>
       (
@@ -88,6 +95,7 @@ extension NewSessionStateAgentModel on NewSessionState {
         agent: selectedAgent,
         providerID: selectedProviderID,
         modelID: selectedModelID,
+        effort: selectedEffort,
         stagedCommand: stagedCommand,
       ),
     NewSessionError(
@@ -97,6 +105,7 @@ extension NewSessionStateAgentModel on NewSessionState {
       :final selectedAgent,
       :final selectedProviderID,
       :final selectedModelID,
+      :final selectedEffort,
       :final stagedCommand,
     ) =>
       (
@@ -106,6 +115,7 @@ extension NewSessionStateAgentModel on NewSessionState {
         agent: selectedAgent,
         providerID: selectedProviderID,
         modelID: selectedModelID,
+        effort: selectedEffort,
         stagedCommand: stagedCommand,
       ),
     NewSessionCreated() => null,

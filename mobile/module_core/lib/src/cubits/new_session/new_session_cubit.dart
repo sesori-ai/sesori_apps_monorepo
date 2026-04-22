@@ -22,6 +22,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
            selectedAgent: null,
            selectedProviderID: null,
            selectedModelID: null,
+           selectedEffort: SessionEffort.medium,
            stagedCommand: null,
          ),
        ) {
@@ -94,6 +95,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     String? selectedAgent,
     String? selectedProviderID,
     String? selectedModelID,
+    SessionEffort? selectedEffort,
   }) {
     if (isClosed) return;
     final current = state;
@@ -107,6 +109,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             selectedAgent: selectedAgent ?? current.selectedAgent,
             selectedProviderID: selectedProviderID ?? current.selectedProviderID,
             selectedModelID: selectedModelID ?? current.selectedModelID,
+            selectedEffort: selectedEffort ?? current.selectedEffort,
           ),
         );
       case NewSessionSending():
@@ -118,6 +121,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             selectedAgent: selectedAgent ?? current.selectedAgent,
             selectedProviderID: selectedProviderID ?? current.selectedProviderID,
             selectedModelID: selectedModelID ?? current.selectedModelID,
+            selectedEffort: selectedEffort ?? current.selectedEffort,
           ),
         );
       case NewSessionError():
@@ -129,6 +133,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             selectedAgent: selectedAgent ?? current.selectedAgent,
             selectedProviderID: selectedProviderID ?? current.selectedProviderID,
             selectedModelID: selectedModelID ?? current.selectedModelID,
+            selectedEffort: selectedEffort ?? current.selectedEffort,
           ),
         );
       case NewSessionCreated():
@@ -138,6 +143,10 @@ class NewSessionCubit extends Cubit<NewSessionState> {
 
   void selectAgent(String agent) {
     _emitAgentModelUpdate(selectedAgent: agent);
+  }
+
+  void selectEffort(SessionEffort effort) {
+    _emitAgentModelUpdate(selectedEffort: effort);
   }
 
   void stageCommand(CommandInfo command) {
@@ -195,6 +204,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         selectedAgent: config?.agent,
         selectedProviderID: config?.providerID,
         selectedModelID: config?.modelID,
+        selectedEffort: config?.effort ?? SessionEffort.medium,
         stagedCommand: config?.stagedCommand,
       ),
     );
@@ -205,6 +215,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       agent: config?.agent,
       providerID: config?.providerID,
       modelID: config?.modelID,
+      effort: config?.effort,
       command: normalizedCommand,
       dedicatedWorktree: dedicatedWorktree,
     );
@@ -228,6 +239,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             selectedAgent: current?.agent,
             selectedProviderID: current?.providerID,
             selectedModelID: current?.modelID,
+            selectedEffort: current?.effort ?? SessionEffort.medium,
             stagedCommand: current?.stagedCommand,
           ),
         );

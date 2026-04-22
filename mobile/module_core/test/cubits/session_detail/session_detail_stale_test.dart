@@ -198,7 +198,7 @@ void main() {
       );
     });
 
-    test("silent refresh preserves selectedAgent, selectedProviderID, selectedModelID from current state", () async {
+    test("silent refresh preserves selectedAgent, selectedProviderID, selectedModelID, and selectedEffort", () async {
       final cubit = SessionDetailCubit(
         mockConnectionService,
         loadService: loadService,
@@ -213,6 +213,7 @@ void main() {
       await _awaitLoaded(cubit);
       cubit.selectAgent("oracle");
       cubit.selectModel(providerID: "openai", modelID: "gpt-4.1");
+      cubit.selectEffort(SessionEffort.max);
 
       when(() => mockSessionService.listAgents()).thenAnswer(
         (_) async => ApiResponse.success(
@@ -254,7 +255,48 @@ void main() {
       expect(loaded.selectedAgent, "oracle");
       expect(loaded.selectedProviderID, "openai");
       expect(loaded.selectedModelID, "gpt-4.1");
+      expect(loaded.selectedEffort, SessionEffort.max);
       expect(loaded.isRefreshing, isFalse);
+    });
+
+    test("sendMessage forwards selectedEffort to repository", () async {
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: sessionId,
+          text: "hello",
+          agent: "coder",
+          model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
+          effort: SessionEffort.low,
+          command: null,
+        ),
+      ).thenAnswer((_) async => ApiResponse<void>.success(null));
+
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionId: sessionId,
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+      );
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+      cubit.selectEffort(SessionEffort.low);
+
+      await cubit.sendMessage(text: "hello", command: null);
+
+      verify(
+        () => mockSessionRepository.sendMessage(
+          sessionId: sessionId,
+          text: "hello",
+          agent: "coder",
+          model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
+          effort: SessionEffort.low,
+          command: null,
+        ),
+      ).called(1);
     });
 
     test("delta race: streaming deltas arriving during refresh are preserved", () async {
@@ -438,6 +480,7 @@ void main() {
         expect(afterFailure.selectedAgent, before.selectedAgent);
         expect(afterFailure.selectedProviderID, before.selectedProviderID);
         expect(afterFailure.selectedModelID, before.selectedModelID);
+        expect(afterFailure.selectedEffort, before.selectedEffort);
       },
     );
 

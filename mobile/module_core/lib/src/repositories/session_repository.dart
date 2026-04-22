@@ -99,6 +99,7 @@ class SessionRepository {
     required String text,
     required String? agent,
     required PromptModel? model,
+    required SessionEffort? effort,
     required String? command,
     required bool dedicatedWorktree,
   }) {
@@ -107,6 +108,7 @@ class SessionRepository {
       text: text,
       agent: agent,
       model: model,
+      effort: effort,
       command: command,
       dedicatedWorktree: dedicatedWorktree,
     );
@@ -117,6 +119,7 @@ class SessionRepository {
     required String text,
     required String? agent,
     required PromptModel? model,
+    required SessionEffort? effort,
     required String? command,
   }) {
     return _api.sendMessage(
@@ -124,8 +127,8 @@ class SessionRepository {
       text: text,
       agent: agent,
       model: model,
+      effort: effort,
       command: command,
     );
   }
-
 }

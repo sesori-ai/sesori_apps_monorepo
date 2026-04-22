@@ -61,15 +61,15 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     required NotificationCanceller notificationCanceller,
     required FailureReporter failureReporter,
   }) : _loadService = loadService,
-        _sessionRepository = promptDispatcher,
-        _connectionService = connectionService,
-        _permissionRepository = permissionRepository,
-        _sessionId = sessionId,
-        _routeProjectId = projectId,
-        _notificationCanceller = notificationCanceller,
-        _failureReporter = failureReporter,
-        _projectId = projectId,
-        super(const SessionDetailState.loading()) {
+       _sessionRepository = promptDispatcher,
+       _connectionService = connectionService,
+       _permissionRepository = permissionRepository,
+       _sessionId = sessionId,
+       _routeProjectId = projectId,
+       _notificationCanceller = notificationCanceller,
+       _failureReporter = failureReporter,
+       _projectId = projectId,
+       super(const SessionDetailState.loading()) {
     _streamingBuffer = StreamingTextBuffer(onFlush: _emitStreamingSnapshot);
     _eventSubscription = _connectionService.sessionEvents(_sessionId).listen(_handleEvent);
     _globalEventSubscription = _connectionService.events.listen(_handleGlobalEvent);
@@ -121,6 +121,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final preservedSelectedAgent = current.selectedAgent;
     final preservedSelectedProviderID = current.selectedProviderID;
     final preservedSelectedModelID = current.selectedModelID;
+    final preservedSelectedEffort = current.selectedEffort;
     final preservedStagedCommand = current.stagedCommand;
 
     emit(current.copyWith(isRefreshing: true));
@@ -166,6 +167,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
               selectedAgent: preservedSelectedAgent,
               selectedProviderID: preservedSelectedProviderID,
               selectedModelID: preservedSelectedModelID,
+              selectedEffort: preservedSelectedEffort,
               stagedCommand: _resolveStagedCommand(
                 availableCommands: snapshot.commands,
                 stagedCommand: preservedStagedCommand,
@@ -572,6 +574,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         providerID: current.selectedProviderID,
         modelID: current.selectedModelID,
       ),
+      effort: current.selectedEffort,
       command: normalizedCommand,
     );
 
@@ -621,6 +624,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           providerID: current.selectedProviderID,
           modelID: current.selectedModelID,
         ),
+        effort: current.selectedEffort,
         command: submission.command,
       );
 
@@ -828,6 +832,14 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     emit(current.copyWith(selectedProviderID: providerID, selectedModelID: modelID));
   }
 
+  void selectEffort(SessionEffort effort) {
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
+
+    if (isClosed) return;
+    emit(current.copyWith(selectedEffort: effort));
+  }
+
   void stageCommand(CommandInfo command) {
     final current = state;
     if (current is! SessionDetailLoaded) return;
@@ -921,6 +933,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           selectedAgent: defaultAgent,
           selectedProviderID: defaultProviderID,
           selectedModelID: defaultModelID,
+          selectedEffort: SessionEffort.medium,
           stagedCommand: null,
           isRefreshing: false,
         )

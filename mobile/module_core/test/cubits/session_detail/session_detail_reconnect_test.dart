@@ -217,10 +217,20 @@ void main() {
       isBridgeConnected: true,
     );
 
-    when(() => mockLoadService.load(sessionId: _sessionId, projectId: any(named: "projectId"))).thenAnswer(
+    when(
+      () => mockLoadService.load(
+        sessionId: _sessionId,
+        projectId: any(named: "projectId"),
+      ),
+    ).thenAnswer(
       (_) async => loadedResult,
     );
-    when(() => mockLoadService.reload(sessionId: _sessionId, projectId: any(named: "projectId"))).thenAnswer(
+    when(
+      () => mockLoadService.reload(
+        sessionId: _sessionId,
+        projectId: any(named: "projectId"),
+      ),
+    ).thenAnswer(
       (_) async => loadedResult,
     );
 
@@ -241,7 +251,12 @@ void main() {
     globalEvents.add(SseEvent(data: const SesoriSseEvent.sessionsUpdated(projectID: "project-2")));
     await Future<void>.delayed(Duration.zero);
 
-    verifyNever(() => mockLoadService.reload(sessionId: _sessionId, projectId: any(named: "projectId")));
+    verifyNever(
+      () => mockLoadService.reload(
+        sessionId: _sessionId,
+        projectId: any(named: "projectId"),
+      ),
+    );
 
     globalEvents.add(SseEvent(data: const SesoriSseEvent.sessionsUpdated(projectID: "project-1")));
     await Future<void>.delayed(Duration.zero);
