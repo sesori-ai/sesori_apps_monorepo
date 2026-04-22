@@ -180,7 +180,7 @@ Session testSession({String? id, String? title, DateTime? archivedAt}) {
 }
 
 HealthResponse testHealthResponse() {
-  return const HealthResponse(healthy: true, version: "0.1.200");
+  return const HealthResponse(healthy: true, version: "0.1.200", serverManaged: false, serverState: null);
 }
 
 CommandInfo testCommandInfo({

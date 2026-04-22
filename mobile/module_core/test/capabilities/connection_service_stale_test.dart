@@ -48,7 +48,7 @@ void main() {
       authToken: "token",
     );
 
-    const health = HealthResponse(healthy: true, version: "0.1.200");
+    const health = HealthResponse(healthy: true, version: "0.1.200", serverManaged: false, serverState: null);
 
     Future<void> flush() => Future<void>.delayed(Duration.zero);
 
