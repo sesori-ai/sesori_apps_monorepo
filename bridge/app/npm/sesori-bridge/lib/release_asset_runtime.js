@@ -185,6 +185,20 @@ function validateExtractedRuntime(runtimeRoot) {
   }
 }
 
+function verifyCodeSignature(binPath) {
+  if (process.platform !== "darwin") {
+    return;
+  }
+  try {
+    child_process.execFileSync("codesign", ["-v", binPath], { stdio: "pipe" });
+  } catch (error) {
+    throw new Error(
+      "Binary signature verification failed. The downloaded binary may have been tampered with.\n" +
+      String(error && error.message ? error.message : error)
+    );
+  }
+}
+
 async function resolvePayload() {
   var manifest = wrapperManifest();
   var version = manifest.version;
@@ -206,6 +220,8 @@ async function resolvePayload() {
     }
     extractArchive(archivePath, extractRoot);
     validateExtractedRuntime(extractRoot);
+    var binPath = path.join(extractRoot, "bin", process.platform === "win32" ? "sesori-bridge.exe" : "sesori-bridge");
+    verifyCodeSignature(binPath);
     return {
       runtimeBundlePath: extractRoot,
       version: version,

@@ -1,5 +1,6 @@
 "use strict";
 
+var child_process = require("child_process");
 var fs = require("fs");
 var os = require("os");
 var path = require("path");
@@ -150,6 +151,20 @@ function writeManagedManifest(installRoot, version) {
   fs.writeFileSync(managedManifestPath(installRoot), JSON.stringify({ version: version }) + os.EOL, "utf8");
 }
 
+function verifyCodeSignature(binPath) {
+  if (process.platform !== "darwin") {
+    return;
+  }
+  try {
+    child_process.execFileSync("codesign", ["-v", binPath], { stdio: "pipe" });
+  } catch (error) {
+    throw new Error(
+      "Binary signature verification failed. The installed binary may have been tampered with.\n" +
+      String(error && error.message ? error.message : error)
+    );
+  }
+}
+
 function installManagedRuntime(payload, installRoot, options) {
   var parentRoot = path.dirname(installRoot);
   var stageRoot = path.join(parentRoot, ".sesori-stage-" + process.pid);
@@ -162,6 +177,8 @@ function installManagedRuntime(payload, installRoot, options) {
   if (!isManagedRuntimeReady(stageRoot)) {
     throw new Error("Bootstrap payload is incomplete. Expected lib/runtime/{bin,lib}.");
   }
+  var binPath = path.join(stageRoot, "bin", process.platform === "win32" ? "sesori-bridge.exe" : "sesori-bridge");
+  verifyCodeSignature(binPath);
   if (options && typeof options.beforeInstallSwap === "function") {
     options.beforeInstallSwap();
   }
