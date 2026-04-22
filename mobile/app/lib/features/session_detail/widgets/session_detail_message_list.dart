@@ -1,12 +1,38 @@
-import "package:flutter/gestures.dart";
 import "package:flutter/material.dart";
-import "package:flutter/rendering.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 import "assistant_message_card.dart";
+import "follow_detach_scrollable.dart";
+import "jump_to_edge_pill.dart";
+import "scroll_follow_tracker.dart";
 import "user_message_card.dart";
 
+/// Chat-style message list for the session detail screen.
+///
+/// Scroll behaviour — "follow / detach":
+///
+/// - Uses a `reverse: true` `ListView.builder` so the newest message
+///   renders at the visual bottom (scroll offset `0`).
+/// - While **following**, a coalesced post-frame `jumpTo(0)` runs via
+///   the [ScrollFollowTracker] — race-free pin-to-edge, never a
+///   delta-based compensation.
+/// - While **detached** (user dragged / trackpad-scrolled / pan-zoomed
+///   away from the bottom), the full set of rendered inputs
+///   (`messages`, `streamingText`, `children`, `childStatuses`) is
+///   snapshotted and rendered in place of the live values. New data
+///   still arrives in the background but nothing below (or above) the
+///   user's viewport can grow, shrink, or reorder under them. The
+///   snapshot is cleared the moment the user reattaches.
+/// - `findChildIndexCallback` is mandatory: every append shifts every
+///   existing item's builder index by 1 (we append to the data list
+///   then flip with `messages.length - 1 - index`), so without it
+///   `SliverChildBuilderDelegate` loses child identity and preserved
+///   element state.
+///
+/// Gesture plumbing and the detached overlay toggle live in
+/// [FollowDetachScrollable]; this widget only owns message rendering,
+/// the detached snapshot, and the follow controller lifecycle.
 class SessionDetailMessageList extends StatefulWidget {
   final String? projectId;
   final List<MessageWithParts> messages;
@@ -27,175 +53,138 @@ class SessionDetailMessageList extends StatefulWidget {
   State<SessionDetailMessageList> createState() => _SessionDetailMessageListState();
 }
 
+/// Immutable snapshot of the rendered inputs taken the moment the user
+/// detaches. Rendered in place of live widget props while detached so
+/// the viewport stays pinned to what the user was reading.
+typedef _DetachedSnapshot = ({
+  List<MessageWithParts> messages,
+  Map<String, String> streamingText,
+  List<Session> children,
+  Map<String, SessionStatus> childStatuses,
+});
+
 class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
-  static const _kNearBottomThreshold = 20.0;
   static const _kListViewKey = Key("session-detail-message-list-view");
   static const _kJumpToLatestKey = Key("session-detail-jump-to-latest");
 
-  late final ScrollController _scrollController;
-  bool _following = true;
-  bool _userScrollActive = false;
+  late final ScrollFollowTracker _follow;
+
+  /// Snapshot taken at the moment of detach. `null` means "not frozen
+  /// — use live `widget.*` props".
+  _DetachedSnapshot? _snapshot;
 
   @override
   void initState() {
     super.initState();
-    _scrollController = ScrollController();
+    _follow = ScrollFollowTracker(edge: ScrollFollowEdge.min);
+    _follow.addListener(_syncSnapshot);
   }
 
   @override
   void dispose() {
-    _scrollController.dispose();
+    _follow.removeListener(_syncSnapshot);
+    _follow.dispose();
     super.dispose();
   }
 
-  @override
-  void didUpdateWidget(covariant SessionDetailMessageList oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!_scrollController.hasClients) return;
-
-    final oldPixels = _scrollController.position.pixels;
-    final oldMaxScrollExtent = _scrollController.position.maxScrollExtent;
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_scrollController.hasClients) return;
-
-      if (_following) {
-        _scrollController.jumpTo(0);
-        return;
-      }
-
-      if (_userScrollActive) {
-        return;
-      }
-
-      final position = _scrollController.position;
-      final delta = position.maxScrollExtent - oldMaxScrollExtent;
-      final target = (oldPixels + delta).clamp(position.minScrollExtent, position.maxScrollExtent);
-      _scrollController.jumpTo(target.toDouble());
-    });
-  }
-
-  void _jumpToLatest() {
+  void _syncSnapshot() {
+    if (!mounted) return;
     setState(() {
-      _following = true;
-      _userScrollActive = false;
+      if (_follow.following) {
+        _snapshot = null;
+      } else {
+        _snapshot ??= (
+          messages: List<MessageWithParts>.unmodifiable(widget.messages),
+          streamingText: Map<String, String>.unmodifiable(widget.streamingText),
+          children: List<Session>.unmodifiable(widget.children),
+          childStatuses: Map<String, SessionStatus>.unmodifiable(widget.childStatuses),
+        );
+      }
     });
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        0,
-        duration: const Duration(milliseconds: 150),
-        curve: Curves.easeOut,
-      );
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final loc = context.loc;
+    final snap = _snapshot;
+    final messages = snap?.messages ?? widget.messages;
+    final streamingText = snap?.streamingText ?? widget.streamingText;
+    final children = snap?.children ?? widget.children;
+    final childStatuses = snap?.childStatuses ?? widget.childStatuses;
 
-    return Stack(
-      children: [
-        Listener(
-          onPointerSignal: _handlePointerSignal,
-          onPointerPanZoomStart: (_) => _detachForUserScroll(),
-          child: NotificationListener<ScrollNotification>(
-            onNotification: (notification) {
-              if (notification.depth != 0) return false;
+    // Map message id → data-source index. Consulted by
+    // `findChildIndexCallback` so the reversed builder keeps stable
+    // element identity across appends that shift every existing index.
+    final indexById = <String, int>{
+      for (var i = 0; i < messages.length; i++) messages[i].info.id: i,
+    };
 
-              if (_isUserScrollStart(notification)) {
-                _detachForUserScroll();
-              } else if (notification is ScrollEndNotification && _userScrollActive) {
-                _settleUserScroll(shouldFollow: notification.metrics.pixels <= _kNearBottomThreshold);
-              }
-              return false;
-            },
-            child: ListView.builder(
-              key: _kListViewKey,
-              controller: _scrollController,
-              reverse: true,
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: widget.messages.length,
-              itemBuilder: (context, index) {
-                final message = widget.messages[widget.messages.length - 1 - index];
-                final child = message.info.role == "user"
-                    ? UserMessageCard(message: message)
-                    : AssistantMessageCard(
-                        projectId: widget.projectId,
-                        message: message,
-                        streamingText: widget.streamingText,
-                        children: widget.children,
-                        childStatuses: widget.childStatuses,
-                      );
-                return KeyedSubtree(key: ValueKey(message.info.id), child: child);
-              },
-            ),
-          ),
+    // Coalesced post-frame pin-to-edge while following. The scheduler
+    // collapses repeated calls within a frame and the jump is skipped
+    // when `position.pixels` is already at the edge. Completely
+    // different from the old delta-compensation logic — there are no
+    // stale captures and the target is always `0`.
+    _follow.scheduleJumpToEdge();
+
+    return FollowDetachScrollable(
+      tracker: _follow,
+      detachedOverlayBuilder: (ctx) => JumpToEdgePill(
+        tapTargetKey: _kJumpToLatestKey,
+        label: loc.sessionDetailJumpToLatest,
+        onTap: () => _follow.animateToEdge(),
+      ),
+      child: ListView.builder(
+        key: _kListViewKey,
+        controller: _follow.scrollController,
+        reverse: true,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        itemCount: messages.length,
+        findChildIndexCallback: (key) => _findChildIndex(
+          key: key,
+          indexById: indexById,
+          totalCount: messages.length,
         ),
-        if (!_following)
-          Positioned(
-            bottom: 12,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Material(
-                elevation: 4,
-                borderRadius: BorderRadius.circular(20),
-                color: theme.colorScheme.primaryContainer,
-                child: InkWell(
-                  key: _kJumpToLatestKey,
-                  borderRadius: BorderRadius.circular(20),
-                  onTap: _jumpToLatest,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.arrow_downward, size: 16, color: theme.colorScheme.onPrimaryContainer),
-                        const SizedBox(width: 6),
-                        Text(
-                          loc.sessionDetailJumpToLatest,
-                          style: theme.textTheme.labelMedium?.copyWith(
-                            color: theme.colorScheme.onPrimaryContainer,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+        itemBuilder: (context, index) {
+          final message = messages[messages.length - 1 - index];
+          return KeyedSubtree(
+            key: ValueKey(message.info.id),
+            child: _buildCard(
+              message: message,
+              streamingText: streamingText,
+              children: children,
+              childStatuses: childStatuses,
             ),
-          ),
-      ],
+          );
+        },
+      ),
     );
   }
 
-  bool _isUserScrollStart(ScrollNotification notification) {
-    return (notification is ScrollStartNotification && notification.dragDetails != null) ||
-        (notification is UserScrollNotification && notification.direction != ScrollDirection.idle);
+  int? _findChildIndex({
+    required Key key,
+    required Map<String, int> indexById,
+    required int totalCount,
+  }) {
+    if (key is! ValueKey<String>) return null;
+    final sourceIndex = indexById[key.value];
+    if (sourceIndex == null) return null;
+    return totalCount - 1 - sourceIndex;
   }
 
-  void _handlePointerSignal(PointerSignalEvent event) {
-    if (event is PointerScrollEvent) {
-      _detachForUserScroll();
-    }
-  }
-
-  void _detachForUserScroll() {
-    if (_userScrollActive && !_following) return;
-
-    setState(() {
-      _userScrollActive = true;
-      _following = false;
-    });
-  }
-
-  void _settleUserScroll({required bool shouldFollow}) {
-    if (!_userScrollActive && _following == shouldFollow) return;
-
-    setState(() {
-      _userScrollActive = false;
-      _following = shouldFollow;
-    });
+  Widget _buildCard({
+    required MessageWithParts message,
+    required Map<String, String> streamingText,
+    required List<Session> children,
+    required Map<String, SessionStatus> childStatuses,
+  }) {
+    return message.info.role == "user"
+        ? UserMessageCard(message: message)
+        : AssistantMessageCard(
+            projectId: widget.projectId,
+            message: message,
+            streamingText: streamingText,
+            children: children,
+            childStatuses: childStatuses,
+          );
   }
 }

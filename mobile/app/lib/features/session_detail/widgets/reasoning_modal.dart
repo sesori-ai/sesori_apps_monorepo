@@ -1,17 +1,33 @@
-import "package:flutter/gestures.dart";
 import "package:flutter/material.dart";
-import "package:flutter/rendering.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/widgets/markdown_styles.dart";
+import "../../../l10n/app_localizations.dart";
+import "follow_detach_scrollable.dart";
+import "jump_to_edge_pill.dart";
+import "scroll_follow_tracker.dart";
 
 /// Modal body for displaying AI reasoning/thinking content.
 ///
 /// Self-subscribes to [SessionDetailCubit] via [context.select] for
-/// real-time streaming updates — replaces the stale ValueNotifier pattern.
+/// real-time streaming updates — replaces the stale ValueNotifier
+/// pattern.
+///
+/// Scroll behaviour — "follow / detach":
+///
+/// - Uses a non-reversed `ListView`, so the latest streamed tokens
+///   live at `maxScrollExtent`. While **following**, a single
+///   coalesced post-frame `jumpTo(maxScrollExtent)` is scheduled per
+///   rebuild (via [ScrollFollowTracker.scheduleJumpToEdge]) so
+///   fast streaming updates never stack overlapping animations.
+/// - Detach triggers (drag start, trackpad scroll, trackpad pan) are
+///   wired through [FollowDetachScrollable]. While detached, live
+///   updates keep arriving but the scroll position is left alone.
+/// - The "Follow" button tap performs one explicit animated scroll to
+///   the tail via [ScrollFollowTracker.animateToEdge].
 class ReasoningModal extends StatefulWidget {
   final String partId;
   final String messageId;
@@ -27,19 +43,20 @@ class ReasoningModal extends StatefulWidget {
 }
 
 class _ReasoningModalState extends State<ReasoningModal> {
-  static const _kNearLatestThreshold = 20.0;
   static const _kListViewKey = Key("reasoning-modal-list-view");
   static const _kFollowOutputKey = Key("reasoning-modal-follow-output");
 
-  final ScrollController _scrollController = ScrollController();
-  bool _following = true;
-  bool _sheetOpen = true;
-  bool _userScrollActive = false;
+  late final ScrollFollowTracker _follow;
+
+  @override
+  void initState() {
+    super.initState();
+    _follow = ScrollFollowTracker(edge: ScrollFollowEdge.max);
+  }
 
   @override
   void dispose() {
-    _sheetOpen = false;
-    _scrollController.dispose();
+    _follow.dispose();
     super.dispose();
   }
 
@@ -56,15 +73,12 @@ class _ReasoningModalState extends State<ReasoningModal> {
     final loc = context.loc;
     final height = MediaQuery.of(context).size.height * 0.7;
 
-    if (_following && data.isStreaming) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!_sheetOpen || !_scrollController.hasClients) return;
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 150),
-          curve: Curves.easeOut,
-        );
-      });
+    // Coalesced post-frame tail-jump. Safe to call every rebuild;
+    // repeated calls within a frame collapse into one jump. Gated on
+    // isStreaming so a settled modal does not re-pin when the user
+    // has scrolled into historical reasoning.
+    if (data.isStreaming) {
+      _follow.scheduleJumpToEdge();
     }
 
     return Container(
@@ -75,82 +89,37 @@ class _ReasoningModalState extends State<ReasoningModal> {
       ),
       child: Column(
         children: [
-          // Drag handle
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Container(
-              width: 32,
-              height: 4,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.outlineVariant,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          // Header
-          Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(16, 4, 16, 12),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.psychology,
-                  size: 20,
-                  color: theme.colorScheme.outline,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  data.isStreaming ? loc.sessionDetailThinking : loc.sessionDetailThought,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontStyle: .italic,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          _buildDragHandle(theme: theme),
+          _buildHeader(theme: theme, isStreaming: data.isStreaming, loc: loc),
           const Divider(height: 1),
-          // Content
           Expanded(
-            child: Stack(
-              children: [
-                Listener(
-                  onPointerSignal: _handlePointerSignal,
-                  onPointerPanZoomStart: (_) => _detachForUserScroll(),
-                  child: NotificationListener<ScrollNotification>(
-                    onNotification: (notification) {
-                      if (notification.depth != 0) return false;
-
-                      if (_isUserScrollStart(notification)) {
-                        _detachForUserScroll();
-                      } else if (notification is ScrollEndNotification && _userScrollActive) {
-                        _settleUserScroll(
-                          shouldFollow: notification.metrics.pixels >=
-                              notification.metrics.maxScrollExtent - _kNearLatestThreshold,
-                        );
-                      }
-                      return false;
-                    },
-                    child: ListView(
-                      key: _kListViewKey,
-                      controller: _scrollController,
-                      padding: const EdgeInsets.all(16),
-                      children: [
-                        MarkdownBody(
-                          data: data.text,
-                          selectable: true,
-                          onTapLink: handleMarkdownLinkTap,
-                          styleSheet: buildSessionMarkdownStyleSheet(
-                            theme,
-                            paragraphStyle: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                      ],
+            child: FollowDetachScrollable(
+              tracker: _follow,
+              detachedOverlayBuilder: data.isStreaming
+                  ? (ctx) => JumpToEdgePill(
+                        tapTargetKey: _kFollowOutputKey,
+                        label: loc.sessionDetailFollowOutput,
+                        onTap: () => _follow.animateToEdge(),
+                      )
+                  : null,
+              child: ListView(
+                key: _kListViewKey,
+                controller: _follow.scrollController,
+                padding: const EdgeInsets.all(16),
+                children: [
+                  MarkdownBody(
+                    data: data.text,
+                    selectable: true,
+                    onTapLink: handleMarkdownLinkTap,
+                    styleSheet: buildSessionMarkdownStyleSheet(
+                      theme,
+                      paragraphStyle: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ),
-                ),
-                if (!_following && data.isStreaming) _buildFollowFab(theme: theme),
-              ],
+                ],
+              ),
             ),
           ),
         ],
@@ -158,87 +127,37 @@ class _ReasoningModalState extends State<ReasoningModal> {
     );
   }
 
-  Widget _buildFollowFab({required ThemeData theme}) {
-    return Positioned(
-      bottom: 12,
-      left: 0,
-      right: 0,
-      child: Center(
-        child: Material(
-          elevation: 4,
-          borderRadius: BorderRadius.circular(20),
-          color: theme.colorScheme.primaryContainer,
-          child: InkWell(
-            key: _kFollowOutputKey,
-            borderRadius: BorderRadius.circular(20),
-            onTap: () {
-              setState(() {
-                _following = true;
-                _userScrollActive = false;
-              });
-              if (_scrollController.hasClients) {
-                _scrollController.animateTo(
-                  _scrollController.position.maxScrollExtent,
-                  duration: const Duration(milliseconds: 150),
-                  curve: Curves.easeOut,
-                );
-              }
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 8,
-              ),
-              child: Row(
-                mainAxisSize: .min,
-                children: [
-                  Icon(
-                    Icons.arrow_downward,
-                    size: 16,
-                    color: theme.colorScheme.onPrimaryContainer,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    context.loc.sessionDetailFollowOutput,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: theme.colorScheme.onPrimaryContainer,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+  Widget _buildDragHandle({required ThemeData theme}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Container(
+        width: 32,
+        height: 4,
+        decoration: BoxDecoration(
+          color: theme.colorScheme.outlineVariant,
+          borderRadius: BorderRadius.circular(2),
         ),
       ),
     );
   }
 
-  bool _isUserScrollStart(ScrollNotification notification) {
-    return (notification is ScrollStartNotification && notification.dragDetails != null) ||
-        (notification is UserScrollNotification && notification.direction != ScrollDirection.idle);
-  }
-
-  void _handlePointerSignal(PointerSignalEvent event) {
-    if (event is PointerScrollEvent) {
-      _detachForUserScroll();
-    }
-  }
-
-  void _detachForUserScroll() {
-    if (_userScrollActive && !_following) return;
-
-    setState(() {
-      _userScrollActive = true;
-      _following = false;
-    });
-  }
-
-  void _settleUserScroll({required bool shouldFollow}) {
-    if (!_userScrollActive && _following == shouldFollow) return;
-
-    setState(() {
-      _userScrollActive = false;
-      _following = shouldFollow;
-    });
+  Widget _buildHeader({
+    required ThemeData theme,
+    required bool isStreaming,
+    required AppLocalizations loc,
+  }) {
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 4, 16, 12),
+      child: Row(
+        children: [
+          Icon(Icons.psychology, size: 20, color: theme.colorScheme.outline),
+          const SizedBox(width: 8),
+          Text(
+            isStreaming ? loc.sessionDetailThinking : loc.sessionDetailThought,
+            style: theme.textTheme.titleMedium?.copyWith(fontStyle: FontStyle.italic),
+          ),
+        ],
+      ),
+    );
   }
 }
