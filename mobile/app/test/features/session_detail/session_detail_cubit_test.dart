@@ -1333,7 +1333,7 @@ void _stubAllDefaults(
     ),
   );
   when(
-    () => service.getPendingPermissions(),
+    () => service.getPendingPermissions(sessionId: any(named: "sessionId")),
   ).thenAnswer(
     (_) => Future<ApiResponse<PendingPermissionResponse>>.value(
       ApiResponse.success(const PendingPermissionResponse(data: <PendingPermission>[])),
