@@ -52,7 +52,7 @@ class SessionDetailLoadService {
       ) = await (
         _repository.getMessages(sessionId: sessionId),
         _repository.getPendingQuestions(sessionId: sessionId),
-        _repository.getPendingPermissions(sessionId: sessionId),
+        _repository.getPendingPermissions(),
         _repository.getChildren(sessionId: sessionId),
         _repository.getSessionStatuses(),
         _repository.listAgents(),

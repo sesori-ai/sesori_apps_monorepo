@@ -260,7 +260,7 @@ void _stubLoadApis(MockSessionService service) {
       () => service.getPendingQuestions(sessionId: _sessionId),
     ).thenAnswer((_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])));
     when(
-      () => service.getPendingPermissions(sessionId: _sessionId),
+      () => service.getPendingPermissions(),
     ).thenAnswer((_) async => ApiResponse.success(const PendingPermissionResponse(data: <PendingPermission>[])));
     when(
       () => service.getChildren(sessionId: _sessionId),
