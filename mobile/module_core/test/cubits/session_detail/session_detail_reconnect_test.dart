@@ -141,6 +141,7 @@ void main() {
           projectId: "project-1",
           messages: <MessageWithParts>[],
           pendingQuestions: <PendingQuestion>[],
+          pendingPermissions: <PendingPermission>[],
           childSessions: <Session>[],
           statuses: <String, SessionStatus>{},
           agents: <AgentInfo?>[],
@@ -207,6 +208,7 @@ void main() {
         projectId: "project-1",
         messages: <MessageWithParts>[],
         pendingQuestions: <PendingQuestion>[],
+        pendingPermissions: <PendingPermission>[],
         childSessions: <Session>[],
         statuses: <String, SessionStatus>{},
         agents: <AgentInfo?>[],
@@ -254,12 +256,15 @@ void _stubLoadApis(MockSessionService service) {
   when(
     () => service.getMessages(sessionId: _sessionId),
   ).thenAnswer((_) async => ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()])));
-  when(
-    () => service.getPendingQuestions(sessionId: _sessionId),
-  ).thenAnswer((_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])));
-  when(
-    () => service.getChildren(sessionId: _sessionId),
-  ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: <Session>[])));
+    when(
+      () => service.getPendingQuestions(sessionId: _sessionId),
+    ).thenAnswer((_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])));
+    when(
+      () => service.getPendingPermissions(),
+    ).thenAnswer((_) async => ApiResponse.success(const PendingPermissionResponse(data: <PendingPermission>[])));
+    when(
+      () => service.getChildren(sessionId: _sessionId),
+    ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: <Session>[])));
   when(() => service.getSessionStatuses()).thenAnswer(
     (_) async => ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),
   );

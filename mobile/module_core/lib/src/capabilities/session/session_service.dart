@@ -70,6 +70,10 @@ class SessionService {
     return _repository.getPendingQuestions(sessionId: sessionId);
   }
 
+  Future<ApiResponse<PendingPermissionResponse>> getPendingPermissions() {
+    return _repository.getPendingPermissions();
+  }
+
   Future<ApiResponse<SessionListResponse>> getChildren({required String sessionId}) {
     return _repository.getChildren(sessionId: sessionId);
   }

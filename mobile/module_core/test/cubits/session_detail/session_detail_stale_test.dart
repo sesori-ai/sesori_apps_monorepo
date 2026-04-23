@@ -184,6 +184,7 @@ void main() {
 
       verify(() => mockSessionService.getMessages(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
+      verify(() => mockSessionService.getPendingPermissions()).called(1);
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
       verify(() => mockSessionService.listAgents()).called(1);
@@ -368,6 +369,7 @@ void main() {
 
       verify(() => mockSessionService.getMessages(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
+      verify(() => mockSessionService.getPendingPermissions()).called(1);
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
       verify(() => mockSessionService.listAgents()).called(1);
@@ -462,6 +464,9 @@ void main() {
         () => mockSessionService.getPendingQuestions(sessionId: sessionId),
       ).thenAnswer((_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])));
       when(
+        () => mockSessionService.getPendingPermissions(),
+      ).thenAnswer((_) async => ApiResponse.success(const PendingPermissionResponse(data: <PendingPermission>[])));
+      when(
         () => mockSessionService.getChildren(sessionId: sessionId),
       ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: <Session>[])));
       when(
@@ -488,6 +493,7 @@ void main() {
 
       verify(() => mockSessionService.getMessages(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
+      verify(() => mockSessionService.getPendingPermissions()).called(1);
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
       verify(() => mockSessionService.listAgents()).called(1);
@@ -509,6 +515,13 @@ void _stubLoadApis(MockSessionService service, {required String sessionId}) {
   ).thenAnswer(
     (_) => Future<ApiResponse<PendingQuestionResponse>>.value(
       ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])),
+    ),
+  );
+  when(
+    () => service.getPendingPermissions(),
+  ).thenAnswer(
+    (_) => Future<ApiResponse<PendingPermissionResponse>>.value(
+      ApiResponse.success(const PendingPermissionResponse(data: <PendingPermission>[])),
     ),
   );
   when(
