@@ -153,7 +153,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
               streamingText: streamingText,
               sessionStatus: snapshot.statuses[_sessionId] ?? const SessionStatus.idle(),
               pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
-              pendingPermissions: current.pendingPermissions,
+              pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
               agent: latestAssistant?.agent,
               modelID: latestAssistant?.modelID,
               providerID: latestAssistant?.providerID,
@@ -230,6 +230,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           _onQuestionResolved(requestID);
         case SesoriPermissionAsked():
           _onPermissionAsked(event);
+        case SesoriPermissionReplied(:final requestID):
+          _onPermissionResolved(requestID);
         case SesoriSessionUpdated(:final info):
           _onSessionUpdated(info);
         case SesoriCommandExecuted():
@@ -241,7 +243,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             SesoriSessionCompacted() ||
             // ignore: deprecated_member_use, legacy idle event is still emitted for backward compatibility
             SesoriSessionIdle() ||
-            SesoriPermissionReplied() ||
             SesoriTodoUpdated():
           break;
       }
@@ -907,7 +908,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           streamingText: const {},
           sessionStatus: snapshot.statuses[_sessionId] ?? const SessionStatus.idle(),
           pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
-          pendingPermissions: const [],
+          pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
           sessionTitle: snapshot.canonicalSessionTitle,
           agent: latestAssistant?.agent,
           modelID: latestAssistant?.modelID,
@@ -935,6 +936,20 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             id: q.id,
             sessionID: q.sessionID,
             questions: q.questions,
+          ),
+        )
+        .toList();
+  }
+
+  List<SesoriPermissionAsked> _mapPendingPermissions(List<PendingPermission> pendingPermissions) {
+    return pendingPermissions
+        .where((p) => p.sessionID == _sessionId)
+        .map(
+          (p) => SesoriPermissionAsked(
+            requestID: p.id,
+            sessionID: p.sessionID,
+            tool: p.tool,
+            description: p.description,
           ),
         )
         .toList();

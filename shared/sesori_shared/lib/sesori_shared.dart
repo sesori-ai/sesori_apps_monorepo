@@ -31,6 +31,7 @@ export "src/models/sesori/message.dart";
 export "src/models/sesori/message_part.dart";
 export "src/models/sesori/message_with_parts.dart";
 export "src/models/sesori/notification_data.dart";
+export "src/models/sesori/pending_permission.dart";
 export "src/models/sesori/pending_question.dart";
 export "src/models/sesori/permission_reply.dart";
 export "src/models/sesori/pr_enums.dart";

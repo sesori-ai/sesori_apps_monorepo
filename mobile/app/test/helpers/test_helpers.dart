@@ -183,6 +183,11 @@ void delegateSessionRepositoryToService({
     (invocation) => service.getPendingQuestions(sessionId: invocation.namedArguments[#sessionId]! as String),
   );
   when(
+    () => repository.getPendingPermissions(),
+  ).thenAnswer(
+    (invocation) => service.getPendingPermissions(),
+  );
+  when(
     () => repository.getChildren(sessionId: any(named: "sessionId")),
   ).thenAnswer(
     (invocation) => service.getChildren(sessionId: invocation.namedArguments[#sessionId]! as String),

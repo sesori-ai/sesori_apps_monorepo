@@ -348,6 +348,13 @@ void _stubLoadApis(MockSessionService service, {required String sessionId}) {
     ),
   );
   when(
+    () => service.getPendingPermissions(),
+  ).thenAnswer(
+    (_) => Future<ApiResponse<PendingPermissionResponse>>.value(
+      ApiResponse.success(const PendingPermissionResponse(data: <PendingPermission>[])),
+    ),
+  );
+  when(
     () => service.getChildren(sessionId: any(named: "sessionId")),
   ).thenAnswer(
     (_) => Future<ApiResponse<SessionListResponse>>.value(

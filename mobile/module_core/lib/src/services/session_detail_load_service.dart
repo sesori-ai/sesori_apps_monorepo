@@ -44,6 +44,7 @@ class SessionDetailLoadService {
       final (
         messagesResponse,
         questionsResponse,
+        permissionsResponse,
         childrenResponse,
         statusesResponse,
         agentsResponse,
@@ -51,6 +52,7 @@ class SessionDetailLoadService {
       ) = await (
         _repository.getMessages(sessionId: sessionId),
         _repository.getPendingQuestions(sessionId: sessionId),
+        _repository.getPendingPermissions(),
         _repository.getChildren(sessionId: sessionId),
         _repository.getSessionStatuses(),
         _repository.listAgents(),
@@ -68,6 +70,10 @@ class SessionDetailLoadService {
       final pendingQuestions = switch (questionsResponse) {
         SuccessResponse(:final data) => data.data,
         ErrorResponse() => <PendingQuestion>[],
+      };
+      final pendingPermissions = switch (permissionsResponse) {
+        SuccessResponse(:final data) => data.data,
+        ErrorResponse() => <PendingPermission>[],
       };
       final childSessions = switch (childrenResponse) {
         SuccessResponse(:final data) => data.items,
@@ -104,6 +110,7 @@ class SessionDetailLoadService {
           projectId: effectiveProjectId,
           messages: messages,
           pendingQuestions: pendingQuestions,
+          pendingPermissions: pendingPermissions,
           childSessions: childSessions,
           statuses: statuses,
           agents: agents,
@@ -151,6 +158,7 @@ class SessionDetailSnapshot {
   final String? projectId;
   final List<MessageWithParts> messages;
   final List<PendingQuestion> pendingQuestions;
+  final List<PendingPermission> pendingPermissions;
   final List<Session> childSessions;
   final Map<String, SessionStatus> statuses;
   final List<AgentInfo?> agents;
@@ -162,6 +170,7 @@ class SessionDetailSnapshot {
     required this.projectId,
     required this.messages,
     required this.pendingQuestions,
+    required this.pendingPermissions,
     required this.childSessions,
     required this.statuses,
     required this.agents,
