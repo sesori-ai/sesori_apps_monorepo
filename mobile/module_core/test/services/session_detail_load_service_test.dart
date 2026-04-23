@@ -91,7 +91,7 @@ void main() {
         () => repository.getPendingQuestions(sessionId: "session-1"),
       ).thenAnswer((_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])));
       when(
-        () => repository.getPendingPermissions(),
+        () => repository.getPendingPermissions(sessionId: "session-1"),
       ).thenAnswer((_) async => ApiResponse.success(const PendingPermissionResponse(data: <PendingPermission>[])));
       when(
         () => repository.getChildren(sessionId: "session-1"),
@@ -160,7 +160,7 @@ void _stubRepositorySnapshot({
     () => repository.getPendingQuestions(sessionId: "session-1"),
   ).thenAnswer((_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])));
   when(
-    () => repository.getPendingPermissions(),
+    () => repository.getPendingPermissions(sessionId: "session-1"),
   ).thenAnswer((_) async => ApiResponse.success(const PendingPermissionResponse(data: <PendingPermission>[])));
   when(
     () => repository.getChildren(sessionId: "session-1"),
