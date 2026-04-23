@@ -234,13 +234,10 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           _onSessionUpdated(info);
         case SesoriCommandExecuted():
           _onDataMayBeStale();
-        case SesoriSessionError(:final error):
-          if (error != null) {
-            _onSessionError(error);
-          }
         case SesoriSessionCreated() ||
             SesoriSessionDeleted() ||
             SesoriSessionDiff() ||
+            SesoriSessionError() ||
             SesoriSessionCompacted() ||
             // ignore: deprecated_member_use, legacy idle event is still emitted for backward compatibility
             SesoriSessionIdle() ||
@@ -348,14 +345,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
     if (isClosed) return;
     emit(current.copyWith(sessionTitle: session.title));
-  }
-
-  void _onSessionError(SessionError error) {
-    final current = state;
-    if (current is! SessionDetailLoaded) return;
-
-    if (isClosed) return;
-    emit(current.copyWith(sessionErrors: [...current.sessionErrors, error]));
   }
 
   void _onChildSessionCreated(Session child) {
@@ -915,7 +904,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
     return SessionDetailState.loaded(
           messages: snapshot.messages,
-          sessionErrors: const [],
           streamingText: const {},
           sessionStatus: snapshot.statuses[_sessionId] ?? const SessionStatus.idle(),
           pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),

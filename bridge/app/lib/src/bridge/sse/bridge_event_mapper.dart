@@ -32,12 +32,7 @@ class BridgeEventMapper {
         BridgeSseSessionUpdated(:final info) => _tryParseSseEvent({"type": "session.updated", "info": info}),
         BridgeSseSessionDeleted(:final info) => _tryParseSseEvent({"type": "session.deleted", "info": info}),
         BridgeSseSessionDiff(:final sessionID) => SesoriSseEvent.sessionDiff(sessionID: sessionID),
-        BridgeSseSessionError(:final sessionID, :final error) => SesoriSseEvent.sessionError(
-          sessionID: sessionID,
-          error: error != null
-            ? SessionError(name: error.name, message: error.message)
-            : null,
-        ),
+        BridgeSseSessionError(:final sessionID) => SesoriSseEvent.sessionError(sessionID: sessionID),
         BridgeSseSessionCompacted(:final sessionID) => SesoriSseEvent.sessionCompacted(sessionID: sessionID),
         BridgeSseSessionStatus(:final sessionID, :final status) => _tryParseSseEvent({
           "type": "session.status",

@@ -1,5 +1,4 @@
 import "models/plugin_message.dart";
-import "models/plugin_session_error.dart";
 
 sealed class BridgeSseEvent {
   const BridgeSseEvent();
@@ -44,8 +43,7 @@ class BridgeSseSessionDiff extends BridgeSseEvent {
 
 class BridgeSseSessionError extends BridgeSseEvent {
   final String? sessionID;
-  final PluginSessionError? error;
-  const BridgeSseSessionError({required this.sessionID, this.error});
+  const BridgeSseSessionError({required this.sessionID});
 }
 
 class BridgeSseSessionCompacted extends BridgeSseEvent {

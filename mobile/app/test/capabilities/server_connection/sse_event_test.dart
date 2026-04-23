@@ -18,7 +18,6 @@ void main() {
       final event = SseEvent(
         data: const SesoriSessionError(
           sessionID: "session-error-1",
-          error: null,
         ),
       );
 

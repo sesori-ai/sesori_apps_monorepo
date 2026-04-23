@@ -77,7 +77,6 @@ sealed class SseEventData with _$SseEventData {
   @Implements<SseSessionEventData>()
   const factory SseEventData.sessionError({
     required String? sessionID,
-    required SessionError? error,
   }) = SseSessionError;
 
   @FreezedUnionValue("session.compacted")
@@ -331,39 +330,4 @@ sealed class SseEventData with _$SseEventData {
   const factory SseEventData.worktreeFailed() = SseWorktreeFailed;
 
   factory SseEventData.fromJson(Map<String, dynamic> json) => _$SseEventDataFromJson(json);
-}
-
-/// Error payload carried by [SseEventData.sessionError].
-///
-/// Mirrors the OpenCode `session.error` event structure:
-/// `error.name` is the error type (e.g. "APIError", "ProviderAuthError"),
-/// `error.data.message` is the human-readable message.
-@Freezed(fromJson: true, toJson: true)
-sealed class SessionError with _$SessionError {
-  const factory SessionError({
-    required String name,
-    required SessionErrorData data,
-  }) = _SessionError;
-
-  factory SessionError.fromJson(Map<String, dynamic> json) =>
-      _$SessionErrorFromJson(json);
-}
-
-/// Data payload for [SessionError].
-///
-/// All error types carry a `message`. Optional fields exist for specific
-/// error variants (e.g. `statusCode` on APIError, `responseBody` on
-/// ContextOverflowError / APIError).
-@Freezed(fromJson: true, toJson: true)
-sealed class SessionErrorData with _$SessionErrorData {
-  const factory SessionErrorData({
-    required String message,
-    String? responseBody,
-    int? statusCode,
-    bool? isRetryable,
-    Map<String, String>? metadata,
-  }) = _SessionErrorData;
-
-  factory SessionErrorData.fromJson(Map<String, dynamic> json) =>
-      _$SessionErrorDataFromJson(json);
 }

@@ -88,7 +88,7 @@ as bool?,
 @JsonSerializable()
 
 class _CommandInfo implements CommandInfo {
-  const _CommandInfo({required this.name, required this.template, required final  List<String>? hints, required this.description, required this.agent, required this.model, required this.provider, @JsonKey(unknownEnumValue: CommandSource.unknown) required this.source, required this.subtask}): _hints = hints;
+  const _CommandInfo({required this.name, this.template, final  List<String>? hints, this.description, this.agent, this.model, required this.provider, @JsonKey(unknownEnumValue: CommandSource.unknown) this.source, this.subtask}): _hints = hints;
   factory _CommandInfo.fromJson(Map<String, dynamic> json) => _$CommandInfoFromJson(json);
 
 @override final  String name;

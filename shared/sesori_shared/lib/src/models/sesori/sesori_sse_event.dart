@@ -5,7 +5,6 @@ import "message_part.dart";
 import "project_activity_summary.dart";
 import "question.dart";
 import "session.dart";
-import "session_error.dart";
 import "session_status.dart";
 
 part "sesori_sse_event.freezed.dart";
@@ -77,7 +76,6 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   @Implements<SesoriSessionEvent>()
   const factory SesoriSseEvent.sessionError({
     required String? sessionID,
-    required SessionError? error,
   }) = SesoriSessionError;
 
   @FreezedUnionValue("session.compacted")

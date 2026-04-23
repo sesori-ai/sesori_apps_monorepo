@@ -77,18 +77,11 @@ Map<String, dynamic> _$SesoriSessionDiffToJson(SesoriSessionDiff instance) =>
 
 SesoriSessionError _$SesoriSessionErrorFromJson(Map json) => SesoriSessionError(
   sessionID: json['sessionID'] as String?,
-  error: json['error'] == null
-      ? null
-      : SessionError.fromJson(Map<String, dynamic>.from(json['error'] as Map)),
   $type: json['type'] as String?,
 );
 
 Map<String, dynamic> _$SesoriSessionErrorToJson(SesoriSessionError instance) =>
-    <String, dynamic>{
-      'sessionID': instance.sessionID,
-      'error': instance.error?.toJson(),
-      'type': instance.$type,
-    };
+    <String, dynamic>{'sessionID': instance.sessionID, 'type': instance.$type};
 
 SesoriSessionCompacted _$SesoriSessionCompactedFromJson(Map json) =>
     SesoriSessionCompacted(

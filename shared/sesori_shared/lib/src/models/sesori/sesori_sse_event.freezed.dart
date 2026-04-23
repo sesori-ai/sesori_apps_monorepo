@@ -757,11 +757,10 @@ as String,
 @JsonSerializable()
 
 class SesoriSessionError implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriSessionError({required this.sessionID, required this.error, final  String? $type}): $type = $type ?? 'session.error';
+  const SesoriSessionError({required this.sessionID, final  String? $type}): $type = $type ?? 'session.error';
   factory SesoriSessionError.fromJson(Map<String, dynamic> json) => _$SesoriSessionErrorFromJson(json);
 
  final  String? sessionID;
- final  SessionError? error;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -780,16 +779,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionError&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.error, error) || other.error == error));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionError&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionID,error);
+int get hashCode => Object.hash(runtimeType,sessionID);
 
 @override
 String toString() {
-  return 'SesoriSseEvent.sessionError(sessionID: $sessionID, error: $error)';
+  return 'SesoriSseEvent.sessionError(sessionID: $sessionID)';
 }
 
 
@@ -800,11 +799,11 @@ abstract mixin class $SesoriSessionErrorCopyWith<$Res> implements $SesoriSseEven
   factory $SesoriSessionErrorCopyWith(SesoriSessionError value, $Res Function(SesoriSessionError) _then) = _$SesoriSessionErrorCopyWithImpl;
 @useResult
 $Res call({
- String? sessionID, SessionError? error
+ String? sessionID
 });
 
 
-$SessionErrorCopyWith<$Res>? get error;
+
 
 }
 /// @nodoc
@@ -817,27 +816,14 @@ class _$SesoriSessionErrorCopyWithImpl<$Res>
 
 /// Create a copy of SesoriSseEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? sessionID = freezed,Object? error = freezed,}) {
+@pragma('vm:prefer-inline') $Res call({Object? sessionID = freezed,}) {
   return _then(SesoriSessionError(
 sessionID: freezed == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
-as String?,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
-as SessionError?,
+as String?,
   ));
 }
 
-/// Create a copy of SesoriSseEvent
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$SessionErrorCopyWith<$Res>? get error {
-    if (_self.error == null) {
-    return null;
-  }
 
-  return $SessionErrorCopyWith<$Res>(_self.error!, (value) {
-    return _then(_self.copyWith(error: value));
-  });
-}
 }
 
 /// @nodoc

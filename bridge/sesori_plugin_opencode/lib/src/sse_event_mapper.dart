@@ -22,15 +22,7 @@ class SseEventMapper {
       SseSessionDiff(:final sessionID) => BridgeSseSessionDiff(
         sessionID: sessionID,
       ),
-      SseSessionError(:final sessionID, :final error) => BridgeSseSessionError(
-        sessionID: sessionID,
-        error: error != null
-          ? PluginSessionError(
-              name: error.name,
-              message: error.data.message,
-            )
-          : null,
-      ),
+      SseSessionError(:final sessionID) => BridgeSseSessionError(sessionID: sessionID),
       SseSessionCompacted(:final sessionID) => BridgeSseSessionCompacted(sessionID: sessionID),
       SseSessionStatus(:final sessionID, :final status) => BridgeSseSessionStatus(
         sessionID: sessionID,

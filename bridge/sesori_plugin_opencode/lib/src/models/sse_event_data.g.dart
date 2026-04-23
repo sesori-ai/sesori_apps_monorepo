@@ -75,18 +75,11 @@ Map<String, dynamic> _$SseSessionDiffToJson(SseSessionDiff instance) =>
 
 SseSessionError _$SseSessionErrorFromJson(Map json) => SseSessionError(
   sessionID: json['sessionID'] as String?,
-  error: json['error'] == null
-      ? null
-      : SessionError.fromJson(Map<String, dynamic>.from(json['error'] as Map)),
   $type: json['type'] as String?,
 );
 
 Map<String, dynamic> _$SseSessionErrorToJson(SseSessionError instance) =>
-    <String, dynamic>{
-      'sessionID': instance.sessionID,
-      'error': instance.error?.toJson(),
-      'type': instance.$type,
-    };
+    <String, dynamic>{'sessionID': instance.sessionID, 'type': instance.$type};
 
 SseSessionCompacted _$SseSessionCompactedFromJson(Map json) =>
     SseSessionCompacted(
@@ -467,32 +460,3 @@ SseWorktreeFailed _$SseWorktreeFailedFromJson(Map json) =>
 
 Map<String, dynamic> _$SseWorktreeFailedToJson(SseWorktreeFailed instance) =>
     <String, dynamic>{'type': instance.$type};
-
-_SessionError _$SessionErrorFromJson(Map json) => _SessionError(
-  name: json['name'] as String,
-  data: SessionErrorData.fromJson(
-    Map<String, dynamic>.from(json['data'] as Map),
-  ),
-);
-
-Map<String, dynamic> _$SessionErrorToJson(_SessionError instance) =>
-    <String, dynamic>{'name': instance.name, 'data': instance.data.toJson()};
-
-_SessionErrorData _$SessionErrorDataFromJson(Map json) => _SessionErrorData(
-  message: json['message'] as String,
-  responseBody: json['responseBody'] as String?,
-  statusCode: (json['statusCode'] as num?)?.toInt(),
-  isRetryable: json['isRetryable'] as bool?,
-  metadata: (json['metadata'] as Map?)?.map(
-    (k, e) => MapEntry(k as String, e as String),
-  ),
-);
-
-Map<String, dynamic> _$SessionErrorDataToJson(_SessionErrorData instance) =>
-    <String, dynamic>{
-      'message': instance.message,
-      'responseBody': instance.responseBody,
-      'statusCode': instance.statusCode,
-      'isRetryable': instance.isRetryable,
-      'metadata': instance.metadata,
-    };

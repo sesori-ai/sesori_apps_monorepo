@@ -47,7 +47,6 @@ class _SessionDetailMessageListHarnessState extends State<_SessionDetailMessageL
         body: SessionDetailMessageList(
           projectId: null,
           messages: _messages,
-          sessionErrors: const [],
           streamingText: _streamingText,
           children: const <Session>[],
           childStatuses: const <String, SessionStatus>{},
