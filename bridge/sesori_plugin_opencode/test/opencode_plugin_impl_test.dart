@@ -143,15 +143,15 @@ void main() {
 
       expect(messages, hasLength(2));
       final user = messages.first;
-      expect(user.info.role, equals("user"));
+      expect(user.info, isA<PluginMessageUser>());
       expect(user.info.id, equals("m-user"));
       expect(user.info.sessionID, equals("ses-1"));
 
       final assistant = messages.last;
-      expect(assistant.info.role, equals("assistant"));
+      expect(assistant.info, isA<PluginMessageAssistant>());
       expect(assistant.info.id, equals("m-assistant"));
-      expect(assistant.info.modelID, equals("gpt"));
-      expect(assistant.info.providerID, equals("openai"));
+      expect((assistant.info as PluginMessageAssistant).modelID, equals("gpt"));
+      expect((assistant.info as PluginMessageAssistant).providerID, equals("openai"));
     });
 
     test("getSessionMessages filters file and snapshot parts", () async {

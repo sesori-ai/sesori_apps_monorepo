@@ -51,11 +51,4 @@ sealed class Message with _$Message {
 
   factory Message.fromJson(Map<String, dynamic> json) =>
       _$MessageFromJson(json);
-
-  /// The role of this message ("user", "assistant", or "error").
-  String get role => switch (this) {
-    MessageUser() => "user",
-    MessageAssistant() => "assistant",
-    MessageError() => "error",
-  };
 }

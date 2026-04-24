@@ -127,7 +127,7 @@ $MessageErrorCopyWith<$Res>? get error {
 @JsonSerializable()
 
 class _Message implements Message {
-  const _Message({required this.role, required this.id, required this.sessionID, this.parentID, this.agent, this.modelID, this.providerID, this.cost, this.tokens, this.time, this.finish, this.error});
+  const _Message({required this.role, required this.id, required this.sessionID, required this.parentID, required this.agent, required this.modelID, required this.providerID, required this.cost, required this.tokens, required this.time, required this.finish, required this.error});
   factory _Message.fromJson(Map<String, dynamic> json) => _$MessageFromJson(json);
 
 @override final  String role;
@@ -478,7 +478,7 @@ as Map<String, String>?,
 @JsonSerializable()
 
 class _MessageErrorData implements MessageErrorData {
-  const _MessageErrorData({required this.message, this.responseBody, this.statusCode, this.isRetryable, final  Map<String, String>? metadata}): _metadata = metadata;
+  const _MessageErrorData({required this.message, required this.responseBody, required this.statusCode, required this.isRetryable, required final  Map<String, String>? metadata}): _metadata = metadata;
   factory _MessageErrorData.fromJson(Map<String, dynamic> json) => _$MessageErrorDataFromJson(json);
 
 @override final  String message;
@@ -629,7 +629,7 @@ as int?,
 @JsonSerializable()
 
 class _MessageTime implements MessageTime {
-  const _MessageTime({required this.created, this.completed});
+  const _MessageTime({required this.created, required this.completed});
   factory _MessageTime.fromJson(Map<String, dynamic> json) => _$MessageTimeFromJson(json);
 
 @override final  int created;
@@ -780,7 +780,7 @@ $TokenCacheCopyWith<$Res>? get cache {
 @JsonSerializable()
 
 class _MessageTokens implements MessageTokens {
-  const _MessageTokens({this.input = 0, this.output = 0, this.reasoning = 0, this.cache});
+  const _MessageTokens({this.input = 0, this.output = 0, this.reasoning = 0, required this.cache});
   factory _MessageTokens.fromJson(Map<String, dynamic> json) => _$MessageTokensFromJson(json);
 
 @override@JsonKey() final  int input;

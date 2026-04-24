@@ -54,16 +54,33 @@ Map<String, dynamic> _$PluginToolStateToJson(_PluginToolState instance) =>
       'error': instance.error,
     };
 
-Map<String, dynamic> _$PluginMessageToJson(_PluginMessage instance) =>
+Map<String, dynamic> _$PluginMessageUserToJson(PluginMessageUser instance) =>
     <String, dynamic>{
-      'role': instance.role,
+      'id': instance.id,
+      'sessionID': instance.sessionID,
+      'agent': instance.agent,
+      'role': instance.$type,
+    };
+
+Map<String, dynamic> _$PluginMessageAssistantToJson(
+  PluginMessageAssistant instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'sessionID': instance.sessionID,
+  'agent': instance.agent,
+  'modelID': instance.modelID,
+  'providerID': instance.providerID,
+  'role': instance.$type,
+};
+
+Map<String, dynamic> _$PluginMessageErrorToJson(PluginMessageError instance) =>
+    <String, dynamic>{
       'id': instance.id,
       'sessionID': instance.sessionID,
       'agent': instance.agent,
       'modelID': instance.modelID,
       'providerID': instance.providerID,
-      'error': instance.error?.toJson(),
+      'errorName': instance.errorName,
+      'errorMessage': instance.errorMessage,
+      'role': instance.$type,
     };
-
-Map<String, dynamic> _$PluginMessageErrorToJson(_PluginMessageError instance) =>
-    <String, dynamic>{'name': instance.name, 'message': instance.message};

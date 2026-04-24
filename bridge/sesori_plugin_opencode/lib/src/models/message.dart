@@ -10,15 +10,15 @@ sealed class Message with _$Message {
     required String role,
     required String id,
     required String sessionID,
-    String? parentID,
-    String? agent,
-    String? modelID,
-    String? providerID,
-    double? cost,
-    MessageTokens? tokens,
-    MessageTime? time,
-    String? finish,
-    MessageError? error,
+    required String? parentID,
+    required String? agent,
+    required String? modelID,
+    required String? providerID,
+    required double? cost,
+    required MessageTokens? tokens,
+    required MessageTime? time,
+    required String? finish,
+    required MessageError? error,
   }) = _Message;
 
   factory Message.fromJson(Map<String, dynamic> json) => _$MessageFromJson(json);
@@ -38,10 +38,10 @@ sealed class MessageError with _$MessageError {
 sealed class MessageErrorData with _$MessageErrorData {
   const factory MessageErrorData({
     required String message,
-    String? responseBody,
-    int? statusCode,
-    bool? isRetryable,
-    Map<String, String>? metadata,
+    required String? responseBody,
+    required int? statusCode,
+    required bool? isRetryable,
+    required Map<String, String>? metadata,
   }) = _MessageErrorData;
 
   factory MessageErrorData.fromJson(Map<String, dynamic> json) => _$MessageErrorDataFromJson(json);
@@ -51,7 +51,7 @@ sealed class MessageErrorData with _$MessageErrorData {
 sealed class MessageTime with _$MessageTime {
   const factory MessageTime({
     required int created,
-    int? completed,
+    required int? completed,
   }) = _MessageTime;
 
   factory MessageTime.fromJson(Map<String, dynamic> json) => _$MessageTimeFromJson(json);
@@ -63,7 +63,7 @@ sealed class MessageTokens with _$MessageTokens {
     @Default(0) int input,
     @Default(0) int output,
     @Default(0) int reasoning,
-    TokenCache? cache,
+    required TokenCache? cache,
   }) = _MessageTokens;
 
   factory MessageTokens.fromJson(Map<String, dynamic> json) => _$MessageTokensFromJson(json);

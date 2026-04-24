@@ -515,15 +515,34 @@ class OpenCodePlugin implements BridgePlugin {
   PluginMessageWithParts _mapMessage(MessageWithParts raw) {
     final info = raw.info;
     final parts = raw.parts;
-    return PluginMessageWithParts(
-      info: PluginMessage(
-        role: info.role,
+    final pluginInfo = switch (info.error) {
+      final error? => PluginMessage.error(
         id: info.id,
         sessionID: info.sessionID,
         agent: info.agent,
         modelID: info.modelID,
         providerID: info.providerID,
+        errorName: error.name,
+        errorMessage: error.data.message,
       ),
+      null => switch (info.role) {
+        "user" => PluginMessage.user(
+          id: info.id,
+          sessionID: info.sessionID,
+          agent: info.agent,
+        ),
+        "assistant" => PluginMessage.assistant(
+          id: info.id,
+          sessionID: info.sessionID,
+          agent: info.agent,
+          modelID: info.modelID,
+          providerID: info.providerID,
+        ),
+        _ => throw ArgumentError('Unknown message role: ${info.role}'),
+      },
+    };
+    return PluginMessageWithParts(
+      info: pluginInfo,
       parts: parts.map(_mapper.mapPart).where((p) => p.type.isVisible).toList(),
     );
   }

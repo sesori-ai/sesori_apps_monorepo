@@ -5,34 +5,31 @@ import "../../plugin_to_shared_mapping.dart";
 
 /// Maps plugin-level message types to shared [Message] types.
 extension PluginMessageMapper on PluginMessage {
-  Message toSharedMessage() {
-    if (error != null) {
-      return Message.error(
-        id: id,
-        sessionID: sessionID,
-        agent: agent,
-        modelID: modelID,
-        providerID: providerID,
-        errorName: error!.name,
-        errorMessage: error!.message,
-      );
-    }
-    return switch (role) {
-      "user" => Message.user(
-        id: id,
-        sessionID: sessionID,
-        agent: agent,
-      ),
-      "assistant" => Message.assistant(
+  Message toSharedMessage() => switch (this) {
+    PluginMessageUser(:final id, :final sessionID, :final agent) => Message.user(
+      id: id,
+      sessionID: sessionID,
+      agent: agent,
+    ),
+    PluginMessageAssistant(:final id, :final sessionID, :final agent, :final modelID, :final providerID) =>
+      Message.assistant(
         id: id,
         sessionID: sessionID,
         agent: agent,
         modelID: modelID,
         providerID: providerID,
       ),
-      _ => throw ArgumentError('Unknown message role: $role'),
-    };
-  }
+    PluginMessageError(:final id, :final sessionID, :final agent, :final modelID, :final providerID, :final errorName, :final errorMessage) =>
+      Message.error(
+        id: id,
+        sessionID: sessionID,
+        agent: agent,
+        modelID: modelID,
+        providerID: providerID,
+        errorName: errorName,
+        errorMessage: errorMessage,
+      ),
+  };
 }
 
 extension PluginMessageWithPartsMapper on PluginMessageWithParts {
