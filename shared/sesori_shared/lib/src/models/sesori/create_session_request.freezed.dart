@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$CreateSessionRequest {
 
- String get projectId; List<PromptPart> get parts; String? get agent; PromptModel? get model; String? get command; String? get variant; bool get dedicatedWorktree;
+ String get projectId; List<PromptPart> get parts; String? get agent; PromptModel? get model; String? get command; SessionVariant? get variant; bool get dedicatedWorktree;
 /// Create a copy of CreateSessionRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -48,11 +48,11 @@ abstract mixin class $CreateSessionRequestCopyWith<$Res>  {
   factory $CreateSessionRequestCopyWith(CreateSessionRequest value, $Res Function(CreateSessionRequest) _then) = _$CreateSessionRequestCopyWithImpl;
 @useResult
 $Res call({
- String projectId, List<PromptPart> parts, String? agent, PromptModel? model, String? command, String? variant, bool dedicatedWorktree
+ String projectId, List<PromptPart> parts, String? agent, PromptModel? model, String? command, SessionVariant? variant, bool dedicatedWorktree
 });
 
 
-$PromptModelCopyWith<$Res>? get model;
+$PromptModelCopyWith<$Res>? get model;$SessionVariantCopyWith<$Res>? get variant;
 
 }
 /// @nodoc
@@ -73,7 +73,7 @@ as List<PromptPart>,agent: freezed == agent ? _self.agent : agent // ignore: cas
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
 as PromptModel?,command: freezed == command ? _self.command : command // ignore: cast_nullable_to_non_nullable
 as String?,variant: freezed == variant ? _self.variant : variant // ignore: cast_nullable_to_non_nullable
-as String?,dedicatedWorktree: null == dedicatedWorktree ? _self.dedicatedWorktree : dedicatedWorktree // ignore: cast_nullable_to_non_nullable
+as SessionVariant?,dedicatedWorktree: null == dedicatedWorktree ? _self.dedicatedWorktree : dedicatedWorktree // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -88,6 +88,18 @@ $PromptModelCopyWith<$Res>? get model {
 
   return $PromptModelCopyWith<$Res>(_self.model!, (value) {
     return _then(_self.copyWith(model: value));
+  });
+}/// Create a copy of CreateSessionRequest
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$SessionVariantCopyWith<$Res>? get variant {
+    if (_self.variant == null) {
+    return null;
+  }
+
+  return $SessionVariantCopyWith<$Res>(_self.variant!, (value) {
+    return _then(_self.copyWith(variant: value));
   });
 }
 }
@@ -112,7 +124,7 @@ class _CreateSessionRequest implements CreateSessionRequest {
 @override final  String? agent;
 @override final  PromptModel? model;
 @override final  String? command;
-@override final  String? variant;
+@override final  SessionVariant? variant;
 @override final  bool dedicatedWorktree;
 
 /// Create a copy of CreateSessionRequest
@@ -148,11 +160,11 @@ abstract mixin class _$CreateSessionRequestCopyWith<$Res> implements $CreateSess
   factory _$CreateSessionRequestCopyWith(_CreateSessionRequest value, $Res Function(_CreateSessionRequest) _then) = __$CreateSessionRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String projectId, List<PromptPart> parts, String? agent, PromptModel? model, String? command, String? variant, bool dedicatedWorktree
+ String projectId, List<PromptPart> parts, String? agent, PromptModel? model, String? command, SessionVariant? variant, bool dedicatedWorktree
 });
 
 
-@override $PromptModelCopyWith<$Res>? get model;
+@override $PromptModelCopyWith<$Res>? get model;@override $SessionVariantCopyWith<$Res>? get variant;
 
 }
 /// @nodoc
@@ -173,7 +185,7 @@ as List<PromptPart>,agent: freezed == agent ? _self.agent : agent // ignore: cas
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
 as PromptModel?,command: freezed == command ? _self.command : command // ignore: cast_nullable_to_non_nullable
 as String?,variant: freezed == variant ? _self.variant : variant // ignore: cast_nullable_to_non_nullable
-as String?,dedicatedWorktree: null == dedicatedWorktree ? _self.dedicatedWorktree : dedicatedWorktree // ignore: cast_nullable_to_non_nullable
+as SessionVariant?,dedicatedWorktree: null == dedicatedWorktree ? _self.dedicatedWorktree : dedicatedWorktree // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -189,6 +201,18 @@ $PromptModelCopyWith<$Res>? get model {
 
   return $PromptModelCopyWith<$Res>(_self.model!, (value) {
     return _then(_self.copyWith(model: value));
+  });
+}/// Create a copy of CreateSessionRequest
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$SessionVariantCopyWith<$Res>? get variant {
+    if (_self.variant == null) {
+    return null;
+  }
+
+  return $SessionVariantCopyWith<$Res>(_self.variant!, (value) {
+    return _then(_self.copyWith(variant: value));
   });
 }
 }

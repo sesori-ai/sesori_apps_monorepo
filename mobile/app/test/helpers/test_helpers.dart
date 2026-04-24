@@ -209,7 +209,7 @@ void delegateSessionRepositoryToService({
       agent: invocation.namedArguments[#agent] as String?,
       providerID: (invocation.namedArguments[#model] as PromptModel?)?.providerID,
       modelID: (invocation.namedArguments[#model] as PromptModel?)?.modelID,
-      variant: invocation.namedArguments[#variant] as String?,
+      variant: invocation.namedArguments[#variant] as SessionVariant?,
       command: invocation.namedArguments[#command] as String?,
     ),
   );

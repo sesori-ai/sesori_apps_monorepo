@@ -432,7 +432,7 @@ void main() {
         directory: " /repo ",
         parts: const [PluginPromptPart.text(text: "Continue")],
         agent: "build",
-        variant: "custom-low",
+        variant: const PluginSessionVariant(id: "custom-low"),
         model: (providerID: "openai", modelID: "gpt-5.4"),
       );
 
@@ -468,7 +468,7 @@ void main() {
         command: "/review-work",
         arguments: "recent changes",
         agent: "reviewer",
-        variant: "xhigh",
+        variant: const PluginSessionVariant(id: "xhigh"),
         model: (providerID: "openai", modelID: "gpt-4.1"),
       );
 
@@ -542,10 +542,10 @@ class _FakeApi implements OpenCodeApi {
     List<Command>? commands,
     Session? createdSession,
   }) : _sessions = sessions ?? [],
-         _globalSessions = globalSessions ?? [],
-        _projects = projects ?? [],
-        _commands = commands ?? [],
-        _createdSession = createdSession;
+       _globalSessions = globalSessions ?? [],
+       _projects = projects ?? [],
+       _commands = commands ?? [],
+       _createdSession = createdSession;
 
   @override
   String get serverURL => "http://fake";

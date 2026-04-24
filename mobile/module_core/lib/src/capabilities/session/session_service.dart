@@ -101,7 +101,7 @@ class SessionService {
     required String? agent,
     required String? providerID,
     required String? modelID,
-    required String? variant,
+    required SessionVariant? variant,
     required String? command,
     required bool dedicatedWorktree,
   }) {
@@ -123,7 +123,7 @@ class SessionService {
     required String? agent,
     required String? providerID,
     required String? modelID,
-    required String? variant,
+    required SessionVariant? variant,
     required String? command,
   }) {
     final normalizedCommand = _normalizeOptionalText(command);

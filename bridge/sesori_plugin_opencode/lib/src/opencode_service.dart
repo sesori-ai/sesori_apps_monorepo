@@ -7,7 +7,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginPermissionReply,
         PluginPromptPart,
         PluginProvidersResult,
-        PluginSession;
+        PluginSession,
+        PluginSessionVariant;
 import "package:sesori_shared/sesori_shared.dart" show ProjectActivitySummary;
 
 import "../opencode_plugin.dart";
@@ -65,7 +66,7 @@ class OpenCodeService {
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
     required String? agent,
-    required String? variant,
+    required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) async {
     final session = await repository.createSession(
@@ -76,13 +77,13 @@ class OpenCodeService {
     if (parts.isNotEmpty) {
       try {
         await repository.sendPrompt(
-        sessionId: session.id,
-        directory: session.directory,
-        parts: parts,
-        agent: agent,
-        variant: variant,
-        model: model,
-      );
+          sessionId: session.id,
+          directory: session.directory,
+          parts: parts,
+          agent: agent,
+          variant: variant,
+          model: model,
+        );
       } catch (e, st) {
         await _deleteFailedCreatedSession(session: session, error: e, stackTrace: st);
         rethrow;
@@ -97,7 +98,7 @@ class OpenCodeService {
     required String sessionId,
     required List<PluginPromptPart> parts,
     required String? agent,
-    required String? variant,
+    required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) {
     final directory = _getTrackedDirectory(sessionId: sessionId);
@@ -116,7 +117,7 @@ class OpenCodeService {
     required String command,
     required String arguments,
     required String? agent,
-    required String? variant,
+    required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) {
     final directory = _getTrackedDirectory(sessionId: sessionId);

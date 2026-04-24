@@ -78,7 +78,7 @@ String toString() {
 
 
 class SessionDetailLoaded implements SessionDetailState {
-  const SessionDetailLoaded({required final  List<MessageWithParts> messages, required final  Map<String, String> streamingText, required this.sessionStatus, required final  List<SesoriQuestionAsked> pendingQuestions, required final  List<SesoriPermissionAsked> pendingPermissions, required this.sessionTitle, required this.agent, required this.modelID, required this.providerID, required final  List<Session> children, required final  Map<String, SessionStatus> childStatuses, required final  List<QueuedSessionSubmission> queuedMessages, required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required final  List<CommandInfo> availableCommands, required final  List<String> availableVariants, required this.selectedAgent, required this.selectedProviderID, required this.selectedModelID, required this.selectedVariant, required this.stagedCommand, required this.isRefreshing}): _messages = messages,_streamingText = streamingText,_pendingQuestions = pendingQuestions,_pendingPermissions = pendingPermissions,_children = children,_childStatuses = childStatuses,_queuedMessages = queuedMessages,_availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands,_availableVariants = availableVariants;
+  const SessionDetailLoaded({required final  List<MessageWithParts> messages, required final  Map<String, String> streamingText, required this.sessionStatus, required final  List<SesoriQuestionAsked> pendingQuestions, required final  List<SesoriPermissionAsked> pendingPermissions, required this.sessionTitle, required this.agent, required this.modelID, required this.providerID, required final  List<Session> children, required final  Map<String, SessionStatus> childStatuses, required final  List<QueuedSessionSubmission> queuedMessages, required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required final  List<CommandInfo> availableCommands, required final  List<SessionVariant> availableVariants, required this.selectedAgent, required this.selectedProviderID, required this.selectedModelID, required this.selectedVariant, required this.stagedCommand, required this.isRefreshing}): _messages = messages,_streamingText = streamingText,_pendingQuestions = pendingQuestions,_pendingPermissions = pendingPermissions,_children = children,_childStatuses = childStatuses,_queuedMessages = queuedMessages,_availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands,_availableVariants = availableVariants;
   
 
  final  List<MessageWithParts> _messages;
@@ -164,8 +164,8 @@ class SessionDetailLoaded implements SessionDetailState {
   return EqualUnmodifiableListView(_availableCommands);
 }
 
- final  List<String> _availableVariants;
- List<String> get availableVariants {
+ final  List<SessionVariant> _availableVariants;
+ List<SessionVariant> get availableVariants {
   if (_availableVariants is EqualUnmodifiableListView) return _availableVariants;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_availableVariants);
@@ -175,7 +175,7 @@ class SessionDetailLoaded implements SessionDetailState {
  final  String selectedAgent;
  final  String selectedProviderID;
  final  String selectedModelID;
- final  String? selectedVariant;
+ final  SessionVariant? selectedVariant;
  final  CommandInfo? stagedCommand;
  final  bool isRefreshing;
 
@@ -209,11 +209,11 @@ abstract mixin class $SessionDetailLoadedCopyWith<$Res> implements $SessionDetai
   factory $SessionDetailLoadedCopyWith(SessionDetailLoaded value, $Res Function(SessionDetailLoaded) _then) = _$SessionDetailLoadedCopyWithImpl;
 @useResult
 $Res call({
- List<MessageWithParts> messages, Map<String, String> streamingText, SessionStatus sessionStatus, List<SesoriQuestionAsked> pendingQuestions, List<SesoriPermissionAsked> pendingPermissions, String? sessionTitle, String? agent, String? modelID, String? providerID, List<Session> children, Map<String, SessionStatus> childStatuses, List<QueuedSessionSubmission> queuedMessages, List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, List<CommandInfo> availableCommands, List<String> availableVariants, String selectedAgent, String selectedProviderID, String selectedModelID, String? selectedVariant, CommandInfo? stagedCommand, bool isRefreshing
+ List<MessageWithParts> messages, Map<String, String> streamingText, SessionStatus sessionStatus, List<SesoriQuestionAsked> pendingQuestions, List<SesoriPermissionAsked> pendingPermissions, String? sessionTitle, String? agent, String? modelID, String? providerID, List<Session> children, Map<String, SessionStatus> childStatuses, List<QueuedSessionSubmission> queuedMessages, List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, List<CommandInfo> availableCommands, List<SessionVariant> availableVariants, String selectedAgent, String selectedProviderID, String selectedModelID, SessionVariant? selectedVariant, CommandInfo? stagedCommand, bool isRefreshing
 });
 
 
-$SessionStatusCopyWith<$Res> get sessionStatus;$CommandInfoCopyWith<$Res>? get stagedCommand;
+$SessionStatusCopyWith<$Res> get sessionStatus;$SessionVariantCopyWith<$Res>? get selectedVariant;$CommandInfoCopyWith<$Res>? get stagedCommand;
 
 }
 /// @nodoc
@@ -244,11 +244,11 @@ as List<QueuedSessionSubmission>,availableAgents: null == availableAgents ? _sel
 as List<AgentInfo>,availableProviders: null == availableProviders ? _self._availableProviders : availableProviders // ignore: cast_nullable_to_non_nullable
 as List<ProviderInfo>,availableCommands: null == availableCommands ? _self._availableCommands : availableCommands // ignore: cast_nullable_to_non_nullable
 as List<CommandInfo>,availableVariants: null == availableVariants ? _self._availableVariants : availableVariants // ignore: cast_nullable_to_non_nullable
-as List<String>,selectedAgent: null == selectedAgent ? _self.selectedAgent : selectedAgent // ignore: cast_nullable_to_non_nullable
+as List<SessionVariant>,selectedAgent: null == selectedAgent ? _self.selectedAgent : selectedAgent // ignore: cast_nullable_to_non_nullable
 as String,selectedProviderID: null == selectedProviderID ? _self.selectedProviderID : selectedProviderID // ignore: cast_nullable_to_non_nullable
 as String,selectedModelID: null == selectedModelID ? _self.selectedModelID : selectedModelID // ignore: cast_nullable_to_non_nullable
 as String,selectedVariant: freezed == selectedVariant ? _self.selectedVariant : selectedVariant // ignore: cast_nullable_to_non_nullable
-as String?,stagedCommand: freezed == stagedCommand ? _self.stagedCommand : stagedCommand // ignore: cast_nullable_to_non_nullable
+as SessionVariant?,stagedCommand: freezed == stagedCommand ? _self.stagedCommand : stagedCommand // ignore: cast_nullable_to_non_nullable
 as CommandInfo?,isRefreshing: null == isRefreshing ? _self.isRefreshing : isRefreshing // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
@@ -262,6 +262,18 @@ $SessionStatusCopyWith<$Res> get sessionStatus {
   
   return $SessionStatusCopyWith<$Res>(_self.sessionStatus, (value) {
     return _then(_self.copyWith(sessionStatus: value));
+  });
+}/// Create a copy of SessionDetailState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$SessionVariantCopyWith<$Res>? get selectedVariant {
+    if (_self.selectedVariant == null) {
+    return null;
+  }
+
+  return $SessionVariantCopyWith<$Res>(_self.selectedVariant!, (value) {
+    return _then(_self.copyWith(selectedVariant: value));
   });
 }/// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.

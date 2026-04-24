@@ -12,6 +12,7 @@ import "../../logging/logging.dart";
 import "../../platform/notification_canceller.dart";
 import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
+import "../../services/agent_variant_options_builder.dart";
 import "../../services/session_detail_load_service.dart";
 import "prompt_send_queue.dart";
 import "queued_session_submission.dart";
@@ -23,6 +24,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   final SessionRepository _sessionRepository;
   final ConnectionService _connectionService;
   final PermissionRepository _permissionRepository;
+  final AgentVariantOptionsBuilder _variantOptionsBuilder;
   final String _sessionId;
   final String? _routeProjectId;
   final NotificationCanceller _notificationCanceller;
@@ -56,6 +58,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     required SessionDetailLoadService loadService,
     required SessionRepository promptDispatcher,
     required PermissionRepository permissionRepository,
+    required AgentVariantOptionsBuilder variantOptionsBuilder,
     required String sessionId,
     String? projectId,
     required NotificationCanceller notificationCanceller,
@@ -64,6 +67,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
        _sessionRepository = promptDispatcher,
        _connectionService = connectionService,
        _permissionRepository = permissionRepository,
+       _variantOptionsBuilder = variantOptionsBuilder,
        _sessionId = sessionId,
        _routeProjectId = projectId,
        _notificationCanceller = notificationCanceller,
@@ -144,7 +148,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
               .where((a) => !a.hidden && a.mode != AgentMode.subagent)
               .toList();
           final availableProviders = snapshot.providerData?.items ?? <ProviderInfo>[];
-          final availableVariants = _computeVariants(
+          final availableVariants = _variantOptionsBuilder.build(
             agents: availableAgents,
             selectedAgentName: preservedSelectedAgent,
           );
@@ -829,7 +833,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     emit(
       current.copyWith(
         selectedAgent: agent,
-        availableVariants: _computeVariants(agents: current.availableAgents, selectedAgentName: agent),
+        availableVariants: _variantOptionsBuilder.build(agents: current.availableAgents, selectedAgentName: agent),
         selectedVariant: null,
       ),
     );
@@ -843,7 +847,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     emit(current.copyWith(selectedProviderID: providerID, selectedModelID: modelID));
   }
 
-  void selectVariant(String? variant) {
+  void selectVariant(SessionVariant? variant) {
     final current = state;
     if (current is! SessionDetailLoaded) return;
 
@@ -924,7 +928,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       defaultProviderID = "";
       defaultModelID = "";
     }
-    final availableVariants = _computeVariants(agents: agents, selectedAgentName: defaultAgent);
+    final availableVariants = _variantOptionsBuilder.build(agents: agents, selectedAgentName: defaultAgent);
 
     return SessionDetailState.loaded(
           messages: snapshot.messages,
@@ -951,27 +955,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           isRefreshing: false,
         )
         as SessionDetailLoaded;
-  }
-
-  List<String> _computeVariants({
-    required List<AgentInfo> agents,
-    required String? selectedAgentName,
-  }) {
-    if (selectedAgentName == null) {
-      return const [];
-    }
-
-    final variants = <String>[];
-    for (final agent in agents) {
-      final variant = agent.variant;
-      if (agent.name != selectedAgentName || variant == null || variant == "none") {
-        continue;
-      }
-      if (!variants.contains(variant)) {
-        variants.add(variant);
-      }
-    }
-    return variants;
   }
 
   List<SesoriQuestionAsked> _mapPendingQuestions(List<PendingQuestion> pendingQuestions) {

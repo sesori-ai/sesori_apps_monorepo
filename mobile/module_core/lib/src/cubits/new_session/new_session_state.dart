@@ -9,11 +9,11 @@ sealed class NewSessionState with _$NewSessionState {
     required List<AgentInfo> availableAgents,
     required List<ProviderInfo> availableProviders,
     required List<CommandInfo> availableCommands,
-    required List<String> availableVariants,
+    required List<SessionVariant> availableVariants,
     required String? selectedAgent,
     required String? selectedProviderID,
     required String? selectedModelID,
-    required String? selectedVariant,
+    required SessionVariant? selectedVariant,
     required CommandInfo? stagedCommand,
   }) = NewSessionIdle;
 
@@ -21,11 +21,11 @@ sealed class NewSessionState with _$NewSessionState {
     required List<AgentInfo> availableAgents,
     required List<ProviderInfo> availableProviders,
     required List<CommandInfo> availableCommands,
-    required List<String> availableVariants,
+    required List<SessionVariant> availableVariants,
     required String? selectedAgent,
     required String? selectedProviderID,
     required String? selectedModelID,
-    required String? selectedVariant,
+    required SessionVariant? selectedVariant,
     required CommandInfo? stagedCommand,
   }) = NewSessionSending;
 
@@ -34,11 +34,11 @@ sealed class NewSessionState with _$NewSessionState {
     required List<AgentInfo> availableAgents,
     required List<ProviderInfo> availableProviders,
     required List<CommandInfo> availableCommands,
-    required List<String> availableVariants,
+    required List<SessionVariant> availableVariants,
     required String? selectedAgent,
     required String? selectedProviderID,
     required String? selectedModelID,
-    required String? selectedVariant,
+    required SessionVariant? selectedVariant,
     required CommandInfo? stagedCommand,
   }) = NewSessionError;
 
@@ -52,11 +52,11 @@ typedef AgentModelData = ({
   List<AgentInfo> agents,
   List<ProviderInfo> providers,
   List<CommandInfo> commands,
-  List<String> availableVariants,
+  List<SessionVariant> availableVariants,
   String? agent,
   String? providerID,
   String? modelID,
-  String? variant,
+  SessionVariant? variant,
   CommandInfo? stagedCommand,
 });
 

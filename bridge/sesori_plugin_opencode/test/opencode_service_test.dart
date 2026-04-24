@@ -208,14 +208,14 @@ void main() {
       final service = OpenCodeService(repository, tracker);
       const parts = [PluginPromptPart.text(text: "Start")];
 
-        final session = await service.createSession(
-          directory: "/repo",
-          parentSessionId: "parent-1",
-          parts: parts,
-          agent: "build",
-          variant: "low",
-          model: (providerID: "openai", modelID: "gpt-5.4"),
-        );
+      final session = await service.createSession(
+        directory: "/repo",
+        parentSessionId: "parent-1",
+        parts: parts,
+        agent: "build",
+        variant: const PluginSessionVariant(id: "low"),
+        model: (providerID: "openai", modelID: "gpt-5.4"),
+      );
 
       expect(repository.lastCreateDirectory, equals("/repo"));
       expect(repository.lastCreateParentSessionId, equals("parent-1"));
@@ -247,14 +247,14 @@ void main() {
       );
       final service = OpenCodeService(repository, tracker);
 
-        final session = await service.createSession(
-          directory: "/repo",
-          parentSessionId: null,
-          parts: const [],
-          agent: null,
-          variant: null,
-          model: null,
-        );
+      final session = await service.createSession(
+        directory: "/repo",
+        parentSessionId: null,
+        parts: const [],
+        agent: null,
+        variant: null,
+        model: null,
+      );
 
       expect(repository.lastPromptSessionId, isNull);
       expect(session.id, equals("ses-new"));
@@ -277,13 +277,13 @@ void main() {
 
       await expectLater(
         () => service.createSession(
-            directory: "/repo",
-            parentSessionId: null,
-            parts: const [PluginPromptPart.text(text: "Start")],
-            agent: "build",
-            variant: "xhigh",
-            model: null,
-          ),
+          directory: "/repo",
+          parentSessionId: null,
+          parts: const [PluginPromptPart.text(text: "Start")],
+          agent: "build",
+          variant: const PluginSessionVariant(id: "xhigh"),
+          model: null,
+        ),
         throwsA(isA<StateError>()),
       );
 
@@ -326,7 +326,7 @@ void main() {
         command: "/review-work",
         arguments: "recent changes",
         agent: "reviewer",
-        variant: "xhigh",
+        variant: const PluginSessionVariant(id: "xhigh"),
         model: (providerID: "openai", modelID: "gpt-4.1"),
       );
 
@@ -662,11 +662,11 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     List<MessageWithParts> messages = const [],
     Object? messagesError,
   }) : _projects = projects,
-        _sessions = sessions,
-        _commands = commands,
-        _createdSession = createdSession,
-        api = FakeOpenCodeApi(messages: messages, messagesError: messagesError),
-        super(FakeOpenCodeApi(messages: messages, messagesError: messagesError));
+       _sessions = sessions,
+       _commands = commands,
+       _createdSession = createdSession,
+       api = FakeOpenCodeApi(messages: messages, messagesError: messagesError),
+       super(FakeOpenCodeApi(messages: messages, messagesError: messagesError));
 
   @override
   Future<List<Project>> getProjects() async {
@@ -709,7 +709,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     required String? directory,
     required List<PluginPromptPart> parts,
     required String? agent,
-    required String? variant,
+    required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) async {
     if (sendPromptError case final error?) {
@@ -719,7 +719,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     lastPromptDirectory = directory;
     lastPromptParts = parts;
     lastPromptAgent = agent;
-    lastPromptVariant = variant;
+    lastPromptVariant = variant?.id;
     lastPromptModel = model;
   }
 
@@ -730,7 +730,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     required String command,
     required String arguments,
     required String? agent,
-    required String? variant,
+    required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) async {
     lastCommandSessionId = sessionId;
@@ -738,7 +738,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     lastCommandName = command;
     lastCommandArguments = arguments;
     lastCommandAgent = agent;
-    lastCommandVariant = variant;
+    lastCommandVariant = variant?.id;
     lastCommandModel = model;
   }
 

@@ -62,7 +62,10 @@ SessionDetailState _loadedState() {
     availableAgents: [testAgentInfo()],
     availableProviders: [provider],
     availableCommands: const [],
-    availableVariants: const ["xhigh", "low"],
+    availableVariants: const [
+      SessionVariant(id: "xhigh"),
+      SessionVariant(id: "low"),
+    ],
     selectedAgent: "coder",
     selectedProviderID: provider.id,
     selectedModelID: provider.defaultModelID!,
@@ -110,6 +113,6 @@ void main() {
     await tester.tap(find.text("xhigh"));
     await tester.pumpAndSettle();
 
-    verify(() => cubit.selectVariant("xhigh")).called(1);
+    verify(() => cubit.selectVariant(const SessionVariant(id: "xhigh"))).called(1);
   });
 }

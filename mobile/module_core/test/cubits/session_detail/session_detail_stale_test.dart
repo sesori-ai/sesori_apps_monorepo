@@ -12,6 +12,7 @@ import "package:sesori_dart_core/src/platform/notification_canceller.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
+import "package:sesori_dart_core/src/services/agent_variant_options_builder.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -110,6 +111,7 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
+          variantOptionsBuilder: const AgentVariantOptionsBuilder(),
           sessionId: sessionId,
           notificationCanceller: mockNotificationCanceller,
           failureReporter: MockFailureReporter(),
@@ -161,6 +163,7 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
@@ -204,6 +207,7 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
@@ -213,7 +217,7 @@ void main() {
       await _awaitLoaded(cubit);
       cubit.selectAgent("oracle");
       cubit.selectModel(providerID: "openai", modelID: "gpt-4.1");
-      cubit.selectVariant("xhigh");
+      cubit.selectVariant(const SessionVariant(id: "xhigh"));
 
       when(() => mockSessionService.listAgents()).thenAnswer(
         (_) async => ApiResponse.success(
@@ -255,7 +259,7 @@ void main() {
       expect(loaded.selectedAgent, "oracle");
       expect(loaded.selectedProviderID, "openai");
       expect(loaded.selectedModelID, "gpt-4.1");
-      expect(loaded.selectedVariant, "xhigh");
+      expect(loaded.selectedVariant, const SessionVariant(id: "xhigh"));
       expect(loaded.isRefreshing, isFalse);
     });
 
@@ -266,7 +270,7 @@ void main() {
           text: "hello",
           agent: "coder",
           model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
-          variant: "low",
+          variant: const SessionVariant(id: "low"),
           command: null,
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
@@ -276,6 +280,7 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
@@ -283,7 +288,7 @@ void main() {
       addTearDown(cubit.close);
 
       await _awaitLoaded(cubit);
-      cubit.selectVariant("low");
+      cubit.selectVariant(const SessionVariant(id: "low"));
 
       await cubit.sendMessage(text: "hello", command: null);
 
@@ -293,7 +298,7 @@ void main() {
           text: "hello",
           agent: "coder",
           model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
-          variant: "low",
+          variant: const SessionVariant(id: "low"),
           command: null,
         ),
       ).called(1);
@@ -305,6 +310,7 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
@@ -367,6 +373,7 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
@@ -400,6 +407,7 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
@@ -430,6 +438,7 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
@@ -452,6 +461,7 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
+          variantOptionsBuilder: const AgentVariantOptionsBuilder(),
           sessionId: sessionId,
           notificationCanceller: mockNotificationCanceller,
           failureReporter: MockFailureReporter(),
@@ -490,6 +500,7 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),

@@ -54,7 +54,7 @@ void main() {
         agent: "build",
         providerID: "openai",
         modelID: "gpt-4.1",
-        variant: "custom-build",
+        variant: const SessionVariant(id: "custom-build"),
         command: "review",
         dedicatedWorktree: true,
       );
@@ -65,7 +65,7 @@ void main() {
           text: "lib/main.dart",
           agent: "build",
           model: const PromptModel(providerID: "openai", modelID: "gpt-4.1"),
-          variant: "custom-build",
+          variant: const SessionVariant(id: "custom-build"),
           command: "review",
           dedicatedWorktree: true,
         ),
@@ -90,7 +90,7 @@ void main() {
         agent: "build",
         providerID: "openai",
         modelID: "gpt-4.1",
-        variant: "custom-build",
+        variant: const SessionVariant(id: "custom-build"),
         command: "review",
       );
 
@@ -100,7 +100,7 @@ void main() {
           text: "lib/main.dart",
           agent: "build",
           model: const PromptModel(providerID: "openai", modelID: "gpt-4.1"),
-          variant: "custom-build",
+          variant: const SessionVariant(id: "custom-build"),
           command: "review",
         ),
       ).called(1);
@@ -124,7 +124,7 @@ void main() {
         agent: "build",
         providerID: "openai",
         modelID: "gpt-4.1",
-        variant: "xhigh",
+        variant: const SessionVariant(id: "xhigh"),
         command: "review",
       );
 
@@ -134,7 +134,7 @@ void main() {
           text: "lib/main.dart",
           agent: "build",
           model: const PromptModel(providerID: "openai", modelID: "gpt-4.1"),
-          variant: "xhigh",
+          variant: const SessionVariant(id: "xhigh"),
           command: "review",
         ),
       ).called(1);
@@ -192,7 +192,7 @@ void main() {
         agent: "build",
         providerID: "openai",
         modelID: "gpt-5.4",
-        variant: "low",
+        variant: const SessionVariant(id: "low"),
         command: "   ",
       );
 
@@ -202,7 +202,7 @@ void main() {
           text: "hello",
           agent: "build",
           model: const PromptModel(providerID: "openai", modelID: "gpt-5.4"),
-          variant: "low",
+          variant: const SessionVariant(id: "low"),
           command: null,
         ),
       ).called(1);
@@ -227,7 +227,7 @@ void main() {
         agent: "build",
         providerID: "openai",
         modelID: "gpt-5.4",
-        variant: "xhigh",
+        variant: const SessionVariant(id: "xhigh"),
         command: "   ",
         dedicatedWorktree: false,
       );
@@ -238,7 +238,7 @@ void main() {
           text: "hello",
           agent: "build",
           model: const PromptModel(providerID: "openai", modelID: "gpt-5.4"),
-          variant: "xhigh",
+          variant: const SessionVariant(id: "xhigh"),
           command: null,
           dedicatedWorktree: false,
         ),

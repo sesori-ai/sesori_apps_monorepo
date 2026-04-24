@@ -295,7 +295,7 @@ void main() {
         ),
       );
 
-      final cases = <String?>["low", "xhigh", null];
+      final cases = <SessionVariant?>[const SessionVariant(id: "low"), const SessionVariant(id: "xhigh"), null];
 
       for (final variant in cases) {
         await repository.createSession(
@@ -307,7 +307,7 @@ void main() {
           model: null,
         );
 
-        expect(plugin.lastCreateSessionVariant, equals(variant));
+        expect(plugin.lastCreateSessionVariant, equals(variant?.id));
       }
     });
 
@@ -324,7 +324,7 @@ void main() {
         ),
       );
 
-      final cases = <String?>["low", "xhigh", null];
+      final cases = <SessionVariant?>[const SessionVariant(id: "low"), const SessionVariant(id: "xhigh"), null];
 
       for (final variant in cases) {
         await repository.sendPrompt(
@@ -334,7 +334,7 @@ void main() {
           agent: null,
           model: null,
         );
-        expect(plugin.lastSendPromptVariant, equals(variant));
+        expect(plugin.lastSendPromptVariant, equals(variant?.id));
 
         await repository.sendCommand(
           sessionId: "s1",
@@ -344,7 +344,7 @@ void main() {
           agent: null,
           model: null,
         );
-        expect(plugin.lastSendCommandVariant, equals(variant));
+        expect(plugin.lastSendCommandVariant, equals(variant?.id));
       }
     });
   });
@@ -396,11 +396,11 @@ class _FakeBridgePlugin implements BridgePlugin {
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
-    required String? variant,
+    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
-    lastCreateSessionVariant = variant;
+    lastCreateSessionVariant = variant?.id;
     return createSessionResult;
   }
 
@@ -408,11 +408,11 @@ class _FakeBridgePlugin implements BridgePlugin {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PluginPromptPart> parts,
-    required String? variant,
+    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
-    lastSendPromptVariant = variant;
+    lastSendPromptVariant = variant?.id;
   }
 
   @override
@@ -420,11 +420,11 @@ class _FakeBridgePlugin implements BridgePlugin {
     required String sessionId,
     required String command,
     required String arguments,
-    required String? variant,
+    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
-    lastSendCommandVariant = variant;
+    lastSendCommandVariant = variant?.id;
   }
 
   @override

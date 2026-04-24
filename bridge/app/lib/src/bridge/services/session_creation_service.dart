@@ -171,7 +171,7 @@ class SessionCreationService {
     required Session session,
     required String? command,
     required String arguments,
-    required String? variant,
+    required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
   }) async {

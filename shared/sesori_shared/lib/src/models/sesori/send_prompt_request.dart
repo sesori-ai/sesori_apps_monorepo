@@ -1,5 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "session_variant.dart";
+
 part "send_prompt_request.freezed.dart";
 
 part "send_prompt_request.g.dart";
@@ -13,7 +15,7 @@ sealed class SendPromptRequest with _$SendPromptRequest {
     required String? agent,
     required PromptModel? model,
     required String? command,
-    required String? variant,
+    required SessionVariant? variant,
   }) = _SendPromptRequest;
 
   factory SendPromptRequest.fromJson(Map<String, dynamic> json) => _$SendPromptRequestFromJson(json);

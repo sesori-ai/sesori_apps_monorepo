@@ -79,7 +79,7 @@ void main() {
         parentSessionId: "s-root",
         parts: const [PluginPromptPart.text(text: "Start from here")],
         agent: "build",
-        variant: "low",
+        variant: const PluginSessionVariant(id: "low"),
         model: (providerID: "openai", modelID: "gpt-5.4"),
       );
 
@@ -110,7 +110,12 @@ void main() {
 
       expect(server.requestLog, equals(["POST /session/s-root/prompt_async"]));
       expect(server.lastPromptDirectoryHeader, equals("/repo"));
-      expect(server.lastPromptBody?['parts'], equals([{"type": "text", "text": "Continue"}]));
+      expect(
+        server.lastPromptBody?['parts'],
+        equals([
+          {"type": "text", "text": "Continue"},
+        ]),
+      );
       expect(server.lastPromptBody?.containsKey('variant'), isFalse);
     });
 
@@ -124,7 +129,7 @@ void main() {
         command: "/review-work",
         arguments: "recent changes",
         agent: "reviewer",
-        variant: "xhigh",
+        variant: const PluginSessionVariant(id: "xhigh"),
         model: (providerID: "openai", modelID: "gpt-4.1"),
       );
 

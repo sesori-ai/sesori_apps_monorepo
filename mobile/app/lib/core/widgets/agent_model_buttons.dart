@@ -6,11 +6,11 @@ import "../extensions/build_context_x.dart";
 
 class AgentModelButtons extends StatelessWidget {
   final List<ProviderInfo> providers;
-  final List<String> availableVariants;
+  final List<SessionVariant> availableVariants;
   final String selectedAgent;
   final String selectedProviderID;
   final String selectedModelID;
-  final String? selectedVariant;
+  final SessionVariant? selectedVariant;
   final VoidCallback onAgentTap;
   final VoidCallback onModelTap;
   final VoidCallback onVariantTap;
@@ -90,7 +90,7 @@ class AgentModelButtons extends StatelessWidget {
                 onPressed: onVariantTap,
                 icon: Icon(Icons.speed_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
                 label: Text(
-                  selectedVariant ?? loc.sessionDetailVariantDefault,
+                  selectedVariant?.id ?? loc.sessionDetailVariantDefault,
                   style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
                   overflow: .ellipsis,
                   maxLines: 1,

@@ -46,7 +46,7 @@ $NewSessionStateCopyWith(NewSessionState _, $Res Function(NewSessionState) __);
 
 
 class NewSessionIdle implements NewSessionState {
-  const NewSessionIdle({required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required final  List<CommandInfo> availableCommands, required final  List<String> availableVariants, required this.selectedAgent, required this.selectedProviderID, required this.selectedModelID, required this.selectedVariant, required this.stagedCommand}): _availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands,_availableVariants = availableVariants;
+  const NewSessionIdle({required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required final  List<CommandInfo> availableCommands, required final  List<SessionVariant> availableVariants, required this.selectedAgent, required this.selectedProviderID, required this.selectedModelID, required this.selectedVariant, required this.stagedCommand}): _availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands,_availableVariants = availableVariants;
   
 
  final  List<AgentInfo> _availableAgents;
@@ -70,8 +70,8 @@ class NewSessionIdle implements NewSessionState {
   return EqualUnmodifiableListView(_availableCommands);
 }
 
- final  List<String> _availableVariants;
- List<String> get availableVariants {
+ final  List<SessionVariant> _availableVariants;
+ List<SessionVariant> get availableVariants {
   if (_availableVariants is EqualUnmodifiableListView) return _availableVariants;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_availableVariants);
@@ -80,7 +80,7 @@ class NewSessionIdle implements NewSessionState {
  final  String? selectedAgent;
  final  String? selectedProviderID;
  final  String? selectedModelID;
- final  String? selectedVariant;
+ final  SessionVariant? selectedVariant;
  final  CommandInfo? stagedCommand;
 
 /// Create a copy of NewSessionState
@@ -113,11 +113,11 @@ abstract mixin class $NewSessionIdleCopyWith<$Res> implements $NewSessionStateCo
   factory $NewSessionIdleCopyWith(NewSessionIdle value, $Res Function(NewSessionIdle) _then) = _$NewSessionIdleCopyWithImpl;
 @useResult
 $Res call({
- List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, List<CommandInfo> availableCommands, List<String> availableVariants, String? selectedAgent, String? selectedProviderID, String? selectedModelID, String? selectedVariant, CommandInfo? stagedCommand
+ List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, List<CommandInfo> availableCommands, List<SessionVariant> availableVariants, String? selectedAgent, String? selectedProviderID, String? selectedModelID, SessionVariant? selectedVariant, CommandInfo? stagedCommand
 });
 
 
-$CommandInfoCopyWith<$Res>? get stagedCommand;
+$SessionVariantCopyWith<$Res>? get selectedVariant;$CommandInfoCopyWith<$Res>? get stagedCommand;
 
 }
 /// @nodoc
@@ -136,16 +136,28 @@ availableAgents: null == availableAgents ? _self._availableAgents : availableAge
 as List<AgentInfo>,availableProviders: null == availableProviders ? _self._availableProviders : availableProviders // ignore: cast_nullable_to_non_nullable
 as List<ProviderInfo>,availableCommands: null == availableCommands ? _self._availableCommands : availableCommands // ignore: cast_nullable_to_non_nullable
 as List<CommandInfo>,availableVariants: null == availableVariants ? _self._availableVariants : availableVariants // ignore: cast_nullable_to_non_nullable
-as List<String>,selectedAgent: freezed == selectedAgent ? _self.selectedAgent : selectedAgent // ignore: cast_nullable_to_non_nullable
+as List<SessionVariant>,selectedAgent: freezed == selectedAgent ? _self.selectedAgent : selectedAgent // ignore: cast_nullable_to_non_nullable
 as String?,selectedProviderID: freezed == selectedProviderID ? _self.selectedProviderID : selectedProviderID // ignore: cast_nullable_to_non_nullable
 as String?,selectedModelID: freezed == selectedModelID ? _self.selectedModelID : selectedModelID // ignore: cast_nullable_to_non_nullable
 as String?,selectedVariant: freezed == selectedVariant ? _self.selectedVariant : selectedVariant // ignore: cast_nullable_to_non_nullable
-as String?,stagedCommand: freezed == stagedCommand ? _self.stagedCommand : stagedCommand // ignore: cast_nullable_to_non_nullable
+as SessionVariant?,stagedCommand: freezed == stagedCommand ? _self.stagedCommand : stagedCommand // ignore: cast_nullable_to_non_nullable
 as CommandInfo?,
   ));
 }
 
 /// Create a copy of NewSessionState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$SessionVariantCopyWith<$Res>? get selectedVariant {
+    if (_self.selectedVariant == null) {
+    return null;
+  }
+
+  return $SessionVariantCopyWith<$Res>(_self.selectedVariant!, (value) {
+    return _then(_self.copyWith(selectedVariant: value));
+  });
+}/// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
@@ -164,7 +176,7 @@ $CommandInfoCopyWith<$Res>? get stagedCommand {
 
 
 class NewSessionSending implements NewSessionState {
-  const NewSessionSending({required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required final  List<CommandInfo> availableCommands, required final  List<String> availableVariants, required this.selectedAgent, required this.selectedProviderID, required this.selectedModelID, required this.selectedVariant, required this.stagedCommand}): _availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands,_availableVariants = availableVariants;
+  const NewSessionSending({required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required final  List<CommandInfo> availableCommands, required final  List<SessionVariant> availableVariants, required this.selectedAgent, required this.selectedProviderID, required this.selectedModelID, required this.selectedVariant, required this.stagedCommand}): _availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands,_availableVariants = availableVariants;
   
 
  final  List<AgentInfo> _availableAgents;
@@ -188,8 +200,8 @@ class NewSessionSending implements NewSessionState {
   return EqualUnmodifiableListView(_availableCommands);
 }
 
- final  List<String> _availableVariants;
- List<String> get availableVariants {
+ final  List<SessionVariant> _availableVariants;
+ List<SessionVariant> get availableVariants {
   if (_availableVariants is EqualUnmodifiableListView) return _availableVariants;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_availableVariants);
@@ -198,7 +210,7 @@ class NewSessionSending implements NewSessionState {
  final  String? selectedAgent;
  final  String? selectedProviderID;
  final  String? selectedModelID;
- final  String? selectedVariant;
+ final  SessionVariant? selectedVariant;
  final  CommandInfo? stagedCommand;
 
 /// Create a copy of NewSessionState
@@ -231,11 +243,11 @@ abstract mixin class $NewSessionSendingCopyWith<$Res> implements $NewSessionStat
   factory $NewSessionSendingCopyWith(NewSessionSending value, $Res Function(NewSessionSending) _then) = _$NewSessionSendingCopyWithImpl;
 @useResult
 $Res call({
- List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, List<CommandInfo> availableCommands, List<String> availableVariants, String? selectedAgent, String? selectedProviderID, String? selectedModelID, String? selectedVariant, CommandInfo? stagedCommand
+ List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, List<CommandInfo> availableCommands, List<SessionVariant> availableVariants, String? selectedAgent, String? selectedProviderID, String? selectedModelID, SessionVariant? selectedVariant, CommandInfo? stagedCommand
 });
 
 
-$CommandInfoCopyWith<$Res>? get stagedCommand;
+$SessionVariantCopyWith<$Res>? get selectedVariant;$CommandInfoCopyWith<$Res>? get stagedCommand;
 
 }
 /// @nodoc
@@ -254,16 +266,28 @@ availableAgents: null == availableAgents ? _self._availableAgents : availableAge
 as List<AgentInfo>,availableProviders: null == availableProviders ? _self._availableProviders : availableProviders // ignore: cast_nullable_to_non_nullable
 as List<ProviderInfo>,availableCommands: null == availableCommands ? _self._availableCommands : availableCommands // ignore: cast_nullable_to_non_nullable
 as List<CommandInfo>,availableVariants: null == availableVariants ? _self._availableVariants : availableVariants // ignore: cast_nullable_to_non_nullable
-as List<String>,selectedAgent: freezed == selectedAgent ? _self.selectedAgent : selectedAgent // ignore: cast_nullable_to_non_nullable
+as List<SessionVariant>,selectedAgent: freezed == selectedAgent ? _self.selectedAgent : selectedAgent // ignore: cast_nullable_to_non_nullable
 as String?,selectedProviderID: freezed == selectedProviderID ? _self.selectedProviderID : selectedProviderID // ignore: cast_nullable_to_non_nullable
 as String?,selectedModelID: freezed == selectedModelID ? _self.selectedModelID : selectedModelID // ignore: cast_nullable_to_non_nullable
 as String?,selectedVariant: freezed == selectedVariant ? _self.selectedVariant : selectedVariant // ignore: cast_nullable_to_non_nullable
-as String?,stagedCommand: freezed == stagedCommand ? _self.stagedCommand : stagedCommand // ignore: cast_nullable_to_non_nullable
+as SessionVariant?,stagedCommand: freezed == stagedCommand ? _self.stagedCommand : stagedCommand // ignore: cast_nullable_to_non_nullable
 as CommandInfo?,
   ));
 }
 
 /// Create a copy of NewSessionState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$SessionVariantCopyWith<$Res>? get selectedVariant {
+    if (_self.selectedVariant == null) {
+    return null;
+  }
+
+  return $SessionVariantCopyWith<$Res>(_self.selectedVariant!, (value) {
+    return _then(_self.copyWith(selectedVariant: value));
+  });
+}/// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
@@ -282,7 +306,7 @@ $CommandInfoCopyWith<$Res>? get stagedCommand {
 
 
 class NewSessionError implements NewSessionState {
-  const NewSessionError({required this.message, required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required final  List<CommandInfo> availableCommands, required final  List<String> availableVariants, required this.selectedAgent, required this.selectedProviderID, required this.selectedModelID, required this.selectedVariant, required this.stagedCommand}): _availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands,_availableVariants = availableVariants;
+  const NewSessionError({required this.message, required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required final  List<CommandInfo> availableCommands, required final  List<SessionVariant> availableVariants, required this.selectedAgent, required this.selectedProviderID, required this.selectedModelID, required this.selectedVariant, required this.stagedCommand}): _availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands,_availableVariants = availableVariants;
   
 
  final  String message;
@@ -307,8 +331,8 @@ class NewSessionError implements NewSessionState {
   return EqualUnmodifiableListView(_availableCommands);
 }
 
- final  List<String> _availableVariants;
- List<String> get availableVariants {
+ final  List<SessionVariant> _availableVariants;
+ List<SessionVariant> get availableVariants {
   if (_availableVariants is EqualUnmodifiableListView) return _availableVariants;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_availableVariants);
@@ -317,7 +341,7 @@ class NewSessionError implements NewSessionState {
  final  String? selectedAgent;
  final  String? selectedProviderID;
  final  String? selectedModelID;
- final  String? selectedVariant;
+ final  SessionVariant? selectedVariant;
  final  CommandInfo? stagedCommand;
 
 /// Create a copy of NewSessionState
@@ -350,11 +374,11 @@ abstract mixin class $NewSessionErrorCopyWith<$Res> implements $NewSessionStateC
   factory $NewSessionErrorCopyWith(NewSessionError value, $Res Function(NewSessionError) _then) = _$NewSessionErrorCopyWithImpl;
 @useResult
 $Res call({
- String message, List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, List<CommandInfo> availableCommands, List<String> availableVariants, String? selectedAgent, String? selectedProviderID, String? selectedModelID, String? selectedVariant, CommandInfo? stagedCommand
+ String message, List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, List<CommandInfo> availableCommands, List<SessionVariant> availableVariants, String? selectedAgent, String? selectedProviderID, String? selectedModelID, SessionVariant? selectedVariant, CommandInfo? stagedCommand
 });
 
 
-$CommandInfoCopyWith<$Res>? get stagedCommand;
+$SessionVariantCopyWith<$Res>? get selectedVariant;$CommandInfoCopyWith<$Res>? get stagedCommand;
 
 }
 /// @nodoc
@@ -374,16 +398,28 @@ as String,availableAgents: null == availableAgents ? _self._availableAgents : av
 as List<AgentInfo>,availableProviders: null == availableProviders ? _self._availableProviders : availableProviders // ignore: cast_nullable_to_non_nullable
 as List<ProviderInfo>,availableCommands: null == availableCommands ? _self._availableCommands : availableCommands // ignore: cast_nullable_to_non_nullable
 as List<CommandInfo>,availableVariants: null == availableVariants ? _self._availableVariants : availableVariants // ignore: cast_nullable_to_non_nullable
-as List<String>,selectedAgent: freezed == selectedAgent ? _self.selectedAgent : selectedAgent // ignore: cast_nullable_to_non_nullable
+as List<SessionVariant>,selectedAgent: freezed == selectedAgent ? _self.selectedAgent : selectedAgent // ignore: cast_nullable_to_non_nullable
 as String?,selectedProviderID: freezed == selectedProviderID ? _self.selectedProviderID : selectedProviderID // ignore: cast_nullable_to_non_nullable
 as String?,selectedModelID: freezed == selectedModelID ? _self.selectedModelID : selectedModelID // ignore: cast_nullable_to_non_nullable
 as String?,selectedVariant: freezed == selectedVariant ? _self.selectedVariant : selectedVariant // ignore: cast_nullable_to_non_nullable
-as String?,stagedCommand: freezed == stagedCommand ? _self.stagedCommand : stagedCommand // ignore: cast_nullable_to_non_nullable
+as SessionVariant?,stagedCommand: freezed == stagedCommand ? _self.stagedCommand : stagedCommand // ignore: cast_nullable_to_non_nullable
 as CommandInfo?,
   ));
 }
 
 /// Create a copy of NewSessionState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$SessionVariantCopyWith<$Res>? get selectedVariant {
+    if (_self.selectedVariant == null) {
+    return null;
+  }
+
+  return $SessionVariantCopyWith<$Res>(_self.selectedVariant!, (value) {
+    return _then(_self.copyWith(selectedVariant: value));
+  });
+}/// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')

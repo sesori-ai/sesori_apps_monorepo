@@ -1,13 +1,14 @@
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "../extensions/build_context_x.dart";
 import "app_modal_bottom_sheet.dart";
 
 class VariantPickerSheet extends StatelessWidget {
-  final String? selectedVariant;
-  final List<String> availableVariants;
-  final ValueChanged<String?> onVariantChanged;
+  final SessionVariant? selectedVariant;
+  final List<SessionVariant> availableVariants;
+  final ValueChanged<SessionVariant?> onVariantChanged;
 
   const VariantPickerSheet({
     super.key,
@@ -18,9 +19,9 @@ class VariantPickerSheet extends StatelessWidget {
 
   static Future<void> show(
     BuildContext context, {
-    required String? selectedVariant,
-    required List<String> availableVariants,
-    required ValueChanged<String?> onVariantChanged,
+    required SessionVariant? selectedVariant,
+    required List<SessionVariant> availableVariants,
+    required ValueChanged<SessionVariant?> onVariantChanged,
   }) {
     return showAppModalBottomSheet(
       context: context,
@@ -70,7 +71,7 @@ class VariantPickerSheet extends StatelessWidget {
         ),
         for (final variant in availableVariants)
           _VariantTile(
-            label: variant,
+            label: variant.id,
             isSelected: variant == selectedVariant,
             onTap: () => onVariantChanged(variant),
           ),

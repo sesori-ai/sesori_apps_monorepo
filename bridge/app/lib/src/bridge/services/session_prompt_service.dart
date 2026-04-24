@@ -10,7 +10,7 @@ class SessionPromptService {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PromptPart> parts,
-    required String? variant,
+    required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
     required String? command,

@@ -75,6 +75,7 @@ void main() {
     when(() => voiceTranscriptionService.onMaxDurationReached).thenAnswer((_) => maxDurationReached.stream);
 
     GetIt.instance.registerSingleton<SessionService>(sessionService);
+    GetIt.instance.registerSingleton<AgentVariantOptionsBuilder>(const AgentVariantOptionsBuilder());
     GetIt.instance.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
   });
 

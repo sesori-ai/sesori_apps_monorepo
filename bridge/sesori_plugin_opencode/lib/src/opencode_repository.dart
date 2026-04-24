@@ -5,7 +5,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginPermissionReply,
         PluginPromptPart,
         PluginProvidersResult,
-        PluginSession;
+        PluginSession,
+        PluginSessionVariant;
 import "package:sesori_shared/sesori_shared.dart" show wait2;
 
 import "models/command.dart";
@@ -80,7 +81,7 @@ class OpenCodeRepository {
     required String? directory,
     required List<PluginPromptPart> parts,
     required String? agent,
-    required String? variant,
+    required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) {
     return _api.sendPrompt(
@@ -89,7 +90,7 @@ class OpenCodeRepository {
       body: SendPromptBody(
         parts: parts,
         agent: agent,
-        variant: variant,
+        variant: variant?.id,
         model: model,
       ),
     );
@@ -101,7 +102,7 @@ class OpenCodeRepository {
     required String command,
     required String arguments,
     required String? agent,
-    required String? variant,
+    required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) {
     return _api.sendCommand(
@@ -111,7 +112,7 @@ class OpenCodeRepository {
         command: command,
         arguments: arguments,
         agent: agent,
-        variant: variant,
+        variant: variant?.id,
         model: model,
       ),
     );

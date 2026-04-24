@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$SendPromptRequest {
 
- String get sessionId; List<PromptPart> get parts; String? get agent; PromptModel? get model; String? get command; String? get variant;
+ String get sessionId; List<PromptPart> get parts; String? get agent; PromptModel? get model; String? get command; SessionVariant? get variant;
 /// Create a copy of SendPromptRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -48,11 +48,11 @@ abstract mixin class $SendPromptRequestCopyWith<$Res>  {
   factory $SendPromptRequestCopyWith(SendPromptRequest value, $Res Function(SendPromptRequest) _then) = _$SendPromptRequestCopyWithImpl;
 @useResult
 $Res call({
- String sessionId, List<PromptPart> parts, String? agent, PromptModel? model, String? command, String? variant
+ String sessionId, List<PromptPart> parts, String? agent, PromptModel? model, String? command, SessionVariant? variant
 });
 
 
-$PromptModelCopyWith<$Res>? get model;
+$PromptModelCopyWith<$Res>? get model;$SessionVariantCopyWith<$Res>? get variant;
 
 }
 /// @nodoc
@@ -73,7 +73,7 @@ as List<PromptPart>,agent: freezed == agent ? _self.agent : agent // ignore: cas
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
 as PromptModel?,command: freezed == command ? _self.command : command // ignore: cast_nullable_to_non_nullable
 as String?,variant: freezed == variant ? _self.variant : variant // ignore: cast_nullable_to_non_nullable
-as String?,
+as SessionVariant?,
   ));
 }
 /// Create a copy of SendPromptRequest
@@ -87,6 +87,18 @@ $PromptModelCopyWith<$Res>? get model {
 
   return $PromptModelCopyWith<$Res>(_self.model!, (value) {
     return _then(_self.copyWith(model: value));
+  });
+}/// Create a copy of SendPromptRequest
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$SessionVariantCopyWith<$Res>? get variant {
+    if (_self.variant == null) {
+    return null;
+  }
+
+  return $SessionVariantCopyWith<$Res>(_self.variant!, (value) {
+    return _then(_self.copyWith(variant: value));
   });
 }
 }
@@ -111,7 +123,7 @@ class _SendPromptRequest implements SendPromptRequest {
 @override final  String? agent;
 @override final  PromptModel? model;
 @override final  String? command;
-@override final  String? variant;
+@override final  SessionVariant? variant;
 
 /// Create a copy of SendPromptRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -146,11 +158,11 @@ abstract mixin class _$SendPromptRequestCopyWith<$Res> implements $SendPromptReq
   factory _$SendPromptRequestCopyWith(_SendPromptRequest value, $Res Function(_SendPromptRequest) _then) = __$SendPromptRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String sessionId, List<PromptPart> parts, String? agent, PromptModel? model, String? command, String? variant
+ String sessionId, List<PromptPart> parts, String? agent, PromptModel? model, String? command, SessionVariant? variant
 });
 
 
-@override $PromptModelCopyWith<$Res>? get model;
+@override $PromptModelCopyWith<$Res>? get model;@override $SessionVariantCopyWith<$Res>? get variant;
 
 }
 /// @nodoc
@@ -171,7 +183,7 @@ as List<PromptPart>,agent: freezed == agent ? _self.agent : agent // ignore: cas
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
 as PromptModel?,command: freezed == command ? _self.command : command // ignore: cast_nullable_to_non_nullable
 as String?,variant: freezed == variant ? _self.variant : variant // ignore: cast_nullable_to_non_nullable
-as String?,
+as SessionVariant?,
   ));
 }
 
@@ -186,6 +198,18 @@ $PromptModelCopyWith<$Res>? get model {
 
   return $PromptModelCopyWith<$Res>(_self.model!, (value) {
     return _then(_self.copyWith(model: value));
+  });
+}/// Create a copy of SendPromptRequest
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$SessionVariantCopyWith<$Res>? get variant {
+    if (_self.variant == null) {
+    return null;
+  }
+
+  return $SessionVariantCopyWith<$Res>(_self.variant!, (value) {
+    return _then(_self.copyWith(variant: value));
   });
 }
 }

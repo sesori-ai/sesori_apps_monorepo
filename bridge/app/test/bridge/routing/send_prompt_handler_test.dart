@@ -81,7 +81,7 @@ void main() {
             PromptPart.text(text: "Hello"),
             PromptPart.text(text: "World"),
           ],
-          variant: "low",
+          variant: SessionVariant(id: "low"),
           agent: null,
           model: null,
           command: null,
@@ -192,7 +192,7 @@ void main() {
         body: const SendPromptRequest(
           sessionId: "s7",
           parts: [PromptPart.text(text: "review this")],
-          variant: "xhigh",
+          variant: SessionVariant(id: "xhigh"),
           agent: null,
           model: null,
           command: "review",

@@ -3,6 +3,7 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_cubit.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_state.dart";
+import "package:sesori_dart_core/src/services/agent_variant_options_builder.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -30,6 +31,7 @@ void main() {
 
     NewSessionCubit buildCubit() => NewSessionCubit(
       sessionService: mockSessionService,
+      variantOptionsBuilder: const AgentVariantOptionsBuilder(),
       projectId: "project-1",
     );
 
@@ -136,6 +138,7 @@ void main() {
         ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s-command")));
         return NewSessionCubit(
           sessionService: mockSessionService,
+          variantOptionsBuilder: const AgentVariantOptionsBuilder(),
           projectId: "project-1",
         );
       },
@@ -197,7 +200,7 @@ void main() {
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        cubit.selectVariant("xhigh");
+        cubit.selectVariant(const SessionVariant(id: "xhigh"));
         await cubit.createSession(
           text: "hello",
           dedicatedWorktree: true,
@@ -206,10 +209,21 @@ void main() {
       },
       expect: () => [
         isA<NewSessionIdle>()
-            .having((state) => state.availableVariants, "availableVariants", ["xhigh", "low"])
+            .having((state) => state.availableVariants, "availableVariants", const [
+              SessionVariant(id: "xhigh"),
+              SessionVariant(id: "low"),
+            ])
             .having((state) => state.selectedVariant, "selectedVariant", isNull),
-        isA<NewSessionIdle>().having((state) => state.selectedVariant, "selectedVariant", "xhigh"),
-        isA<NewSessionSending>().having((state) => state.selectedVariant, "selectedVariant", "xhigh"),
+        isA<NewSessionIdle>().having(
+          (state) => state.selectedVariant,
+          "selectedVariant",
+          const SessionVariant(id: "xhigh"),
+        ),
+        isA<NewSessionSending>().having(
+          (state) => state.selectedVariant,
+          "selectedVariant",
+          const SessionVariant(id: "xhigh"),
+        ),
         isA<NewSessionCreated>(),
       ],
       verify: (_) {
@@ -220,7 +234,7 @@ void main() {
             agent: "build",
             providerID: "",
             modelID: "",
-            variant: "xhigh",
+            variant: const SessionVariant(id: "xhigh"),
             command: null,
             dedicatedWorktree: true,
           ),
@@ -247,15 +261,23 @@ void main() {
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        cubit.selectVariant("xhigh");
+        cubit.selectVariant(const SessionVariant(id: "xhigh"));
         cubit.selectAgent("oracle");
       },
       expect: () => [
-        isA<NewSessionIdle>().having((state) => state.availableVariants, "initial variants", ["xhigh"]),
-        isA<NewSessionIdle>().having((state) => state.selectedVariant, "selectedVariant", "xhigh"),
+        isA<NewSessionIdle>().having(
+          (state) => state.availableVariants,
+          "initial variants",
+          const [SessionVariant(id: "xhigh")],
+        ),
+        isA<NewSessionIdle>().having(
+          (state) => state.selectedVariant,
+          "selectedVariant",
+          const SessionVariant(id: "xhigh"),
+        ),
         isA<NewSessionIdle>()
             .having((state) => state.selectedAgent, "selectedAgent", "oracle")
-            .having((state) => state.availableVariants, "oracle variants", ["deep"])
+            .having((state) => state.availableVariants, "oracle variants", const [SessionVariant(id: "deep")])
             .having((state) => state.selectedVariant, "reset selectedVariant", isNull),
       ],
     );

@@ -3,8 +3,9 @@ import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_mobile/core/widgets/variant_picker_sheet.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
-Widget _buildApp({required ValueChanged<String?> onVariantChanged}) {
+Widget _buildApp({required ValueChanged<SessionVariant?> onVariantChanged}) {
   final router = GoRouter(
     routes: [
       GoRoute(
@@ -14,7 +15,10 @@ Widget _buildApp({required ValueChanged<String?> onVariantChanged}) {
             onPressed: () => VariantPickerSheet.show(
               context,
               selectedVariant: null,
-              availableVariants: const ["low", "xhigh"],
+              availableVariants: const [
+                SessionVariant(id: "low"),
+                SessionVariant(id: "xhigh"),
+              ],
               onVariantChanged: onVariantChanged,
             ),
             child: const Text("Open picker"),
@@ -33,7 +37,7 @@ Widget _buildApp({required ValueChanged<String?> onVariantChanged}) {
 
 void main() {
   testWidgets("shows default plus variants and returns the tapped selection", (tester) async {
-    String? selectedVariant = "sentinel";
+    SessionVariant? selectedVariant = const SessionVariant(id: "sentinel");
 
     await tester.pumpWidget(
       _buildApp(onVariantChanged: (variant) => selectedVariant = variant),
@@ -50,12 +54,12 @@ void main() {
     await tester.tap(find.text("low"));
     await tester.pumpAndSettle();
 
-    expect(selectedVariant, "low");
+    expect(selectedVariant, const SessionVariant(id: "low"));
     expect(find.text("Variant"), findsNothing);
   });
 
   testWidgets("selecting Default returns null", (tester) async {
-    String? selectedVariant = "xhigh";
+    SessionVariant? selectedVariant = const SessionVariant(id: "xhigh");
 
     await tester.pumpWidget(
       _buildApp(onVariantChanged: (variant) => selectedVariant = variant),
