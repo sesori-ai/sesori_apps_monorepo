@@ -9,6 +9,7 @@ import "models/plugin_prompt_part.dart";
 import "models/plugin_provider.dart";
 import "models/plugin_session.dart";
 import "models/plugin_session_status.dart";
+import "models/plugin_session_variant.dart";
 import "plugin_permission_reply.dart";
 
 abstract class BridgePlugin {
@@ -38,6 +39,7 @@ abstract class BridgePlugin {
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
+    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   });
@@ -66,6 +68,7 @@ abstract class BridgePlugin {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PluginPromptPart> parts,
+    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   });
@@ -74,6 +77,7 @@ abstract class BridgePlugin {
     required String sessionId,
     required String command,
     required String arguments,
+    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   });

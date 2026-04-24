@@ -164,6 +164,7 @@ class OpenCodePlugin implements BridgePlugin {
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
     required String? agent,
+    required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) async {
     return _call(
@@ -172,6 +173,7 @@ class OpenCodePlugin implements BridgePlugin {
         parentSessionId: parentSessionId,
         parts: parts,
         agent: agent,
+        variant: variant,
         model: model,
       ),
     );
@@ -257,6 +259,7 @@ class OpenCodePlugin implements BridgePlugin {
     required String sessionId,
     required List<PluginPromptPart> parts,
     required String? agent,
+    required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) {
     return _call(
@@ -264,6 +267,7 @@ class OpenCodePlugin implements BridgePlugin {
         sessionId: sessionId,
         parts: parts,
         agent: agent,
+        variant: variant,
         model: model,
       ),
     );
@@ -275,6 +279,7 @@ class OpenCodePlugin implements BridgePlugin {
     required String command,
     required String arguments,
     required String? agent,
+    required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) {
     return _call(
@@ -283,6 +288,7 @@ class OpenCodePlugin implements BridgePlugin {
         command: command,
         arguments: arguments,
         agent: agent,
+        variant: variant,
         model: model,
       ),
     );

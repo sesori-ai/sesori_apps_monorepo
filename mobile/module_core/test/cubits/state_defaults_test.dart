@@ -22,9 +22,11 @@ void main() {
       availableAgents: [],
       availableProviders: [],
       availableCommands: [],
+      availableVariants: [],
       selectedAgent: "build",
       selectedProviderID: "p",
       selectedModelID: "m",
+      selectedVariant: null,
       stagedCommand: null,
       isRefreshing: false,
     );

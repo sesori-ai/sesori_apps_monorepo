@@ -12,6 +12,7 @@ import "../../logging/logging.dart";
 import "../../platform/notification_canceller.dart";
 import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
+import "../../services/agent_variant_options_builder.dart";
 import "../../services/session_detail_load_service.dart";
 import "prompt_send_queue.dart";
 import "queued_session_submission.dart";
@@ -23,6 +24,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   final SessionRepository _sessionRepository;
   final ConnectionService _connectionService;
   final PermissionRepository _permissionRepository;
+  final AgentVariantOptionsBuilder _variantOptionsBuilder;
   final String _sessionId;
   final String? _routeProjectId;
   final NotificationCanceller _notificationCanceller;
@@ -56,20 +58,22 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     required SessionDetailLoadService loadService,
     required SessionRepository promptDispatcher,
     required PermissionRepository permissionRepository,
+    required AgentVariantOptionsBuilder variantOptionsBuilder,
     required String sessionId,
     String? projectId,
     required NotificationCanceller notificationCanceller,
     required FailureReporter failureReporter,
   }) : _loadService = loadService,
-        _sessionRepository = promptDispatcher,
-        _connectionService = connectionService,
-        _permissionRepository = permissionRepository,
-        _sessionId = sessionId,
-        _routeProjectId = projectId,
-        _notificationCanceller = notificationCanceller,
-        _failureReporter = failureReporter,
-        _projectId = projectId,
-        super(const SessionDetailState.loading()) {
+       _sessionRepository = promptDispatcher,
+       _connectionService = connectionService,
+       _permissionRepository = permissionRepository,
+       _variantOptionsBuilder = variantOptionsBuilder,
+       _sessionId = sessionId,
+       _routeProjectId = projectId,
+       _notificationCanceller = notificationCanceller,
+       _failureReporter = failureReporter,
+       _projectId = projectId,
+       super(const SessionDetailState.loading()) {
     _streamingBuffer = StreamingTextBuffer(onFlush: _emitStreamingSnapshot);
     _eventSubscription = _connectionService.sessionEvents(_sessionId).listen(_handleEvent);
     _globalEventSubscription = _connectionService.events.listen(_handleGlobalEvent);
@@ -121,6 +125,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final preservedSelectedAgent = current.selectedAgent;
     final preservedSelectedProviderID = current.selectedProviderID;
     final preservedSelectedModelID = current.selectedModelID;
+    final preservedSelectedVariant = current.selectedVariant;
     final preservedStagedCommand = current.stagedCommand;
 
     emit(current.copyWith(isRefreshing: true));
@@ -143,6 +148,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
               .where((a) => !a.hidden && a.mode != AgentMode.subagent)
               .toList();
           final availableProviders = snapshot.providerData?.items ?? <ProviderInfo>[];
+          final selectedAgentInfo = availableAgents.firstWhereOrNull((a) => a.name == preservedSelectedAgent);
+          final availableVariants = _variantOptionsBuilder.build(agent: selectedAgentInfo);
 
           final streamingText = _streamingBuffer.snapshot();
           _streamingBuffer.clear();
@@ -173,10 +180,14 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
               availableAgents: availableAgents,
               availableProviders: availableProviders,
               availableCommands: snapshot.commands,
+              availableVariants: availableVariants,
               sessionTitle: snapshot.canonicalSessionTitle ?? current.sessionTitle,
               selectedAgent: preservedSelectedAgent,
               selectedProviderID: preservedSelectedProviderID,
               selectedModelID: preservedSelectedModelID,
+              selectedVariant: availableVariants.any((v) => v.id == preservedSelectedVariant?.id)
+                  ? preservedSelectedVariant
+                  : null,
               stagedCommand: _resolveStagedCommand(
                 availableCommands: snapshot.commands,
                 stagedCommand: preservedStagedCommand,
@@ -585,6 +596,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         providerID: current.selectedProviderID,
         modelID: current.selectedModelID,
       ),
+      variant: current.selectedVariant,
       command: normalizedCommand,
     );
 
@@ -634,6 +646,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           providerID: current.selectedProviderID,
           modelID: current.selectedModelID,
         ),
+        variant: current.selectedVariant,
         command: submission.command,
       );
 
@@ -829,8 +842,15 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final current = state;
     if (current is! SessionDetailLoaded) return;
 
+    final selectedAgentInfo = current.availableAgents.firstWhereOrNull((a) => a.name == agent);
     if (isClosed) return;
-    emit(current.copyWith(selectedAgent: agent));
+    emit(
+      current.copyWith(
+        selectedAgent: agent,
+        availableVariants: _variantOptionsBuilder.build(agent: selectedAgentInfo),
+        selectedVariant: null,
+      ),
+    );
   }
 
   void selectModel({required String providerID, required String modelID}) {
@@ -839,6 +859,14 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
     if (isClosed) return;
     emit(current.copyWith(selectedProviderID: providerID, selectedModelID: modelID));
+  }
+
+  void selectVariant(SessionVariant? variant) {
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
+
+    if (isClosed) return;
+    emit(current.copyWith(selectedVariant: variant));
   }
 
   void stageCommand(CommandInfo command) {
@@ -914,6 +942,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       defaultProviderID = "";
       defaultModelID = "";
     }
+    final defaultAgentInfo = agents.firstWhereOrNull((a) => a.name == defaultAgent);
+    final availableVariants = _variantOptionsBuilder.build(agent: defaultAgentInfo);
 
     final assistantModelID = switch (latestAssistant) {
       MessageAssistant(:final modelID) => modelID,
@@ -942,9 +972,11 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           availableAgents: agents,
           availableProviders: providers,
           availableCommands: snapshot.commands,
+          availableVariants: availableVariants,
           selectedAgent: defaultAgent,
           selectedProviderID: defaultProviderID,
           selectedModelID: defaultModelID,
+          selectedVariant: null,
           stagedCommand: null,
           isRefreshing: false,
         )

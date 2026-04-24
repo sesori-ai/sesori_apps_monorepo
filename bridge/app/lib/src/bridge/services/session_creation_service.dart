@@ -36,6 +36,7 @@ class SessionCreationService {
         worktreeResult: worktreeResult,
         command: normalizedCommand,
       ),
+      variant: request.variant,
       agent: normalizedCommand == null || normalizedCommand.isEmpty ? request.agent : null,
       model: normalizedCommand == null || normalizedCommand.isEmpty ? request.model : null,
     );
@@ -61,6 +62,7 @@ class SessionCreationService {
         userArguments: firstText ?? '',
         worktreeResult: worktreeResult,
       ),
+      variant: request.variant,
       agent: request.agent,
       model: request.model,
     );
@@ -169,6 +171,7 @@ class SessionCreationService {
     required Session session,
     required String? command,
     required String arguments,
+    required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
   }) async {
@@ -179,6 +182,7 @@ class SessionCreationService {
       sessionId: session.id,
       command: command,
       arguments: arguments,
+      variant: variant,
       agent: agent,
       model: model,
     );

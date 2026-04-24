@@ -71,6 +71,7 @@ class FakeBridgePlugin implements BridgePlugin {
   String? lastCreateSessionParentId;
   String? lastCreateSessionProjectId;
   List<PluginPromptPart>? lastCreateSessionParts;
+  String? lastCreateSessionVariant;
   String? lastCreateSessionAgent;
   ({String providerID, String modelID})? lastCreateSessionModel;
   String? lastRenameSessionId;
@@ -82,11 +83,13 @@ class FakeBridgePlugin implements BridgePlugin {
   String? lastGetChildSessionsSessionId;
   String? lastSendPromptSessionId;
   List<PluginPromptPart>? lastSendPromptParts;
+  String? lastSendPromptVariant;
   String? lastSendPromptAgent;
   ({String providerID, String modelID})? lastSendPromptModel;
   String? lastSendCommandSessionId;
   String? lastSendCommand;
   String? lastSendCommandArguments;
+  String? lastSendCommandVariant;
   String? lastSendCommandAgent;
   ({String providerID, String modelID})? lastSendCommandModel;
   String? lastAbortSessionId;
@@ -158,6 +161,7 @@ class FakeBridgePlugin implements BridgePlugin {
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
+    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
@@ -165,6 +169,7 @@ class FakeBridgePlugin implements BridgePlugin {
     lastCreateSessionParentId = parentSessionId;
     lastCreateSessionProjectId = directory;
     lastCreateSessionParts = parts;
+    lastCreateSessionVariant = variant?.id;
     lastCreateSessionAgent = agent;
     lastCreateSessionModel = model;
     return createSessionResult ??
@@ -251,11 +256,13 @@ class FakeBridgePlugin implements BridgePlugin {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PluginPromptPart> parts,
+    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
     lastSendPromptSessionId = sessionId;
     lastSendPromptParts = parts;
+    lastSendPromptVariant = variant?.id;
     lastSendPromptAgent = agent;
     lastSendPromptModel = model;
   }
@@ -265,12 +272,14 @@ class FakeBridgePlugin implements BridgePlugin {
     required String sessionId,
     required String command,
     required String arguments,
+    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
     lastSendCommandSessionId = sessionId;
     lastSendCommand = command;
     lastSendCommandArguments = arguments;
+    lastSendCommandVariant = variant?.id;
     lastSendCommandAgent = agent;
     lastSendCommandModel = model;
   }
@@ -602,6 +611,7 @@ class _NoopSessionRepository implements SessionRepository {
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
+    required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
   }) async => const Session(
@@ -662,6 +672,7 @@ class _NoopSessionRepository implements SessionRepository {
     required String sessionId,
     required String command,
     required String arguments,
+    required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
   }) async {}
@@ -673,6 +684,7 @@ class _NoopSessionRepository implements SessionRepository {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PromptPart> parts,
+    required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
   }) async {}
@@ -713,6 +725,7 @@ class FakeSessionRepository implements SessionRepository {
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
+    required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
   }) async => const Session(
@@ -881,6 +894,7 @@ class FakeSessionRepository implements SessionRepository {
     required String sessionId,
     required String command,
     required String arguments,
+    required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
   }) async {
@@ -888,6 +902,7 @@ class FakeSessionRepository implements SessionRepository {
       sessionId: sessionId,
       command: command,
       arguments: arguments,
+      variant: _toPluginVariant(variant),
       agent: agent,
       model: switch (model) {
         PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
@@ -911,18 +926,27 @@ class FakeSessionRepository implements SessionRepository {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PromptPart> parts,
+    required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
   }) async {
     await _plugin.sendPrompt(
       sessionId: sessionId,
       parts: parts.map((part) => part.toPlugin()).toList(growable: false),
+      variant: _toPluginVariant(variant),
       agent: agent,
       model: switch (model) {
         PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
         null => null,
       },
     );
+  }
+
+  PluginSessionVariant? _toPluginVariant(SessionVariant? variant) {
+    return switch (variant) {
+      SessionVariant(:final id) => PluginSessionVariant(id: id),
+      null => null,
+    };
   }
 
   @override

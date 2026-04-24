@@ -79,6 +79,7 @@ void main() {
         parentSessionId: "s-root",
         parts: const [PluginPromptPart.text(text: "Start from here")],
         agent: "build",
+        variant: const PluginSessionVariant(id: "low"),
         model: (providerID: "openai", modelID: "gpt-5.4"),
       );
 
@@ -90,6 +91,7 @@ void main() {
       );
       expect(server.lastCreatedSessionParentId, equals("s-root"));
       expect(server.lastPromptBody?['agent'], equals('build'));
+      expect(server.lastPromptBody?['variant'], equals('low'));
       expect(server.lastPromptBody?['model'], equals({"providerID": "openai", "modelID": "gpt-5.4"}));
     });
 
@@ -102,12 +104,19 @@ void main() {
         sessionId: "s-root",
         parts: const [PluginPromptPart.text(text: "Continue")],
         agent: null,
+        variant: null,
         model: null,
       );
 
       expect(server.requestLog, equals(["POST /session/s-root/prompt_async"]));
       expect(server.lastPromptDirectoryHeader, equals("/repo"));
-      expect(server.lastPromptBody?['parts'], equals([{"type": "text", "text": "Continue"}]));
+      expect(
+        server.lastPromptBody?['parts'],
+        equals([
+          {"type": "text", "text": "Continue"},
+        ]),
+      );
+      expect(server.lastPromptBody?.containsKey('variant'), isFalse);
     });
 
     test("sendCommand resolves tracked directory before sending", () async {
@@ -120,6 +129,7 @@ void main() {
         command: "/review-work",
         arguments: "recent changes",
         agent: "reviewer",
+        variant: const PluginSessionVariant(id: "xhigh"),
         model: (providerID: "openai", modelID: "gpt-4.1"),
       );
 
@@ -131,6 +141,7 @@ void main() {
           "command": "/review-work",
           "arguments": "recent changes",
           "agent": "reviewer",
+          "variant": "xhigh",
           "model": "openai/gpt-4.1",
         }),
       );

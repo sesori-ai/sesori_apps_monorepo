@@ -3,11 +3,13 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 class SendPromptBody {
   final List<PluginPromptPart> parts;
   final String? agent;
+  final String? variant;
   final ({String providerID, String modelID})? model;
 
   const SendPromptBody({
     required this.parts,
     required this.agent,
+    required this.variant,
     required this.model,
   });
 
@@ -47,6 +49,7 @@ class SendPromptBody {
         };
       }).toList(),
       "agent": ?agent,
+      "variant": ?variant,
       if (selectedModel != null)
         "model": {
           "providerID": selectedModel.providerID,

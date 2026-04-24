@@ -105,6 +105,7 @@ class SessionService {
     required String? agent,
     required String? providerID,
     required String? modelID,
+    required SessionVariant? variant,
     required String? command,
     required bool dedicatedWorktree,
   }) {
@@ -114,6 +115,7 @@ class SessionService {
       text: text,
       agent: agent,
       model: _resolveModel(providerID: providerID, modelID: modelID),
+      variant: variant,
       command: normalizedCommand,
       dedicatedWorktree: dedicatedWorktree,
     );
@@ -125,6 +127,7 @@ class SessionService {
     required String? agent,
     required String? providerID,
     required String? modelID,
+    required SessionVariant? variant,
     required String? command,
   }) {
     final normalizedCommand = _normalizeOptionalText(command);
@@ -133,6 +136,7 @@ class SessionService {
       text: text,
       agent: agent,
       model: _resolveModel(providerID: providerID, modelID: modelID),
+      variant: variant,
       command: normalizedCommand,
     );
   }

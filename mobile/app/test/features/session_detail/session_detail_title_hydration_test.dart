@@ -84,6 +84,7 @@ void _registerDependencies({
   getIt.registerSingleton<SessionDetailLoadService>(loadService);
   getIt.registerSingleton<SessionRepository>(promptDispatcher);
   getIt.registerSingleton<PermissionRepository>(permissionRepository);
+  getIt.registerSingleton<AgentVariantOptionsBuilder>(const AgentVariantOptionsBuilder());
   getIt.registerSingleton<NotificationCanceller>(notificationCanceller);
   getIt.registerSingleton<FailureReporter>(failureReporter);
   getIt.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);

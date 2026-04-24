@@ -6,20 +6,26 @@ import "../extensions/build_context_x.dart";
 
 class AgentModelButtons extends StatelessWidget {
   final List<ProviderInfo> providers;
+  final List<SessionVariant> availableVariants;
   final String selectedAgent;
   final String selectedProviderID;
   final String selectedModelID;
+  final SessionVariant? selectedVariant;
   final VoidCallback onAgentTap;
   final VoidCallback onModelTap;
+  final VoidCallback onVariantTap;
 
   const AgentModelButtons({
     super.key,
     required this.providers,
+    required this.availableVariants,
     required this.selectedAgent,
     required this.selectedProviderID,
     required this.selectedModelID,
+    required this.selectedVariant,
     required this.onAgentTap,
     required this.onModelTap,
+    required this.onVariantTap,
   });
 
   String _resolveModelName(AppLocalizations loc) {
@@ -77,6 +83,22 @@ class AgentModelButtons extends StatelessWidget {
               style: buttonStyle,
             ),
           ),
+          if (availableVariants.isNotEmpty) ...[
+            const SizedBox(width: 8),
+            Flexible(
+              child: OutlinedButton.icon(
+                onPressed: onVariantTap,
+                icon: Icon(Icons.speed_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
+                label: Text(
+                  selectedVariant?.id ?? loc.sessionDetailVariantDefault,
+                  style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                  overflow: .ellipsis,
+                  maxLines: 1,
+                ),
+                style: buttonStyle,
+              ),
+            ),
+          ],
         ],
       ),
     );

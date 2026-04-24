@@ -405,6 +405,7 @@ class _FakeSessionRepository implements SessionRepository {
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
+    required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
   }) async => const Session(
@@ -477,6 +478,7 @@ class _FakeSessionRepository implements SessionRepository {
     required String sessionId,
     required String command,
     required String arguments,
+    required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
   }) async {}
@@ -488,6 +490,7 @@ class _FakeSessionRepository implements SessionRepository {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PromptPart> parts,
+    required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
   }) async {}

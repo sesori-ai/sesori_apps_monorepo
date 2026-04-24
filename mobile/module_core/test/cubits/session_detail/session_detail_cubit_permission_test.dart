@@ -12,6 +12,7 @@ import "package:sesori_dart_core/src/platform/notification_canceller.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
+import "package:sesori_dart_core/src/services/agent_variant_options_builder.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -326,6 +327,7 @@ SessionDetailCubit _buildCubit({
     loadService: loadService,
     promptDispatcher: promptDispatcher,
     permissionRepository: permissionRepository,
+    variantOptionsBuilder: const AgentVariantOptionsBuilder(),
     sessionId: sessionId,
     notificationCanceller: notificationCanceller,
     failureReporter: failureReporter,

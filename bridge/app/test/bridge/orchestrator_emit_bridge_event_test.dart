@@ -1021,6 +1021,7 @@ class _SummaryPlugin implements BridgePlugin {
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
+    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
@@ -1058,6 +1059,7 @@ class _SummaryPlugin implements BridgePlugin {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PluginPromptPart> parts,
+    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {}
@@ -1067,6 +1069,7 @@ class _SummaryPlugin implements BridgePlugin {
     required String sessionId,
     required String command,
     required String arguments,
+    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {}
@@ -1160,6 +1163,7 @@ class _NoopPlugin implements BridgePlugin {
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
+    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
@@ -1197,6 +1201,7 @@ class _NoopPlugin implements BridgePlugin {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PluginPromptPart> parts,
+    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {}
@@ -1206,6 +1211,7 @@ class _NoopPlugin implements BridgePlugin {
     required String sessionId,
     required String command,
     required String arguments,
+    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {}
@@ -1416,6 +1422,7 @@ class _NoopSessionRepository implements SessionRepository {
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
+    required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
   }) async => const Session(
@@ -1475,6 +1482,7 @@ class _NoopSessionRepository implements SessionRepository {
     required String sessionId,
     required String command,
     required String arguments,
+    required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
   }) async {}
@@ -1486,6 +1494,7 @@ class _NoopSessionRepository implements SessionRepository {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PromptPart> parts,
+    required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
   }) async {}
@@ -1527,6 +1536,7 @@ class _DelayingSessionRepository implements SessionRepository {
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
+    required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
   }) {
@@ -1534,6 +1544,7 @@ class _DelayingSessionRepository implements SessionRepository {
       directory: directory,
       parentSessionId: parentSessionId,
       parts: parts,
+      variant: variant,
       agent: agent,
       model: model,
     );
@@ -1544,6 +1555,7 @@ class _DelayingSessionRepository implements SessionRepository {
     required String sessionId,
     required String command,
     required String arguments,
+    required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
   }) async {
@@ -1551,6 +1563,7 @@ class _DelayingSessionRepository implements SessionRepository {
       sessionId: sessionId,
       command: command,
       arguments: arguments,
+      variant: variant,
       agent: agent,
       model: model,
     );
@@ -1565,10 +1578,11 @@ class _DelayingSessionRepository implements SessionRepository {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PromptPart> parts,
+    required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
   }) async {
-    return _base.sendPrompt(sessionId: sessionId, parts: parts, agent: agent, model: model);
+    return _base.sendPrompt(sessionId: sessionId, parts: parts, variant: variant, agent: agent, model: model);
   }
 
   @override

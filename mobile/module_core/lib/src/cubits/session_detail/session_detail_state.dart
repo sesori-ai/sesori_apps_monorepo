@@ -31,11 +31,13 @@ sealed class SessionDetailState with _$SessionDetailState {
     required List<AgentInfo> availableAgents,
     required List<ProviderInfo> availableProviders,
     required List<CommandInfo> availableCommands,
+    required List<SessionVariant> availableVariants,
 
     // Currently selected agent and model (pre-populated from defaults, never null once loaded).
     required String selectedAgent,
     required String selectedProviderID,
     required String selectedModelID,
+    required SessionVariant? selectedVariant,
     required CommandInfo? stagedCommand,
     required bool isRefreshing,
   }) = SessionDetailLoaded;

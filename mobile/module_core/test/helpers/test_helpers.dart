@@ -132,6 +132,7 @@ void delegateSessionRepositoryToService({
       text: any(named: "text"),
       agent: any(named: "agent"),
       model: any(named: "model"),
+      variant: any(named: "variant"),
       command: any(named: "command"),
     ),
   ).thenAnswer(
@@ -141,6 +142,7 @@ void delegateSessionRepositoryToService({
       agent: invocation.namedArguments[#agent] as String?,
       providerID: (invocation.namedArguments[#model] as PromptModel?)?.providerID,
       modelID: (invocation.namedArguments[#model] as PromptModel?)?.modelID,
+      variant: invocation.namedArguments[#variant] as SessionVariant?,
       command: invocation.namedArguments[#command] as String?,
     ),
   );

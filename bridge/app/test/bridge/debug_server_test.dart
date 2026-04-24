@@ -378,6 +378,7 @@ class _FakeBridgePlugin implements BridgePlugin {
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
+    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async => const PluginSession(
@@ -426,6 +427,7 @@ class _FakeBridgePlugin implements BridgePlugin {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PluginPromptPart> parts,
+    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {}
@@ -480,6 +482,7 @@ class _FakeBridgePlugin implements BridgePlugin {
     required String sessionId,
     required String command,
     required String arguments,
+    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {}
@@ -531,6 +534,7 @@ class _TrackingBridgePlugin implements BridgePlugin {
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
+    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async => const PluginSession(
@@ -579,6 +583,7 @@ class _TrackingBridgePlugin implements BridgePlugin {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PluginPromptPart> parts,
+    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {}
@@ -629,6 +634,7 @@ class _TrackingBridgePlugin implements BridgePlugin {
     required String sessionId,
     required String command,
     required String arguments,
+    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {}

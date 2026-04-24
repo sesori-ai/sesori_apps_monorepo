@@ -9,6 +9,7 @@ import "../../core/routing/app_router.dart";
 import "../../core/widgets/agent_model_buttons.dart";
 import "../../core/widgets/agent_picker_sheet.dart";
 import "../../core/widgets/model_picker_sheet.dart";
+import "../../core/widgets/variant_picker_sheet.dart";
 import "../session_detail/widgets/prompt_input.dart";
 
 class NewSessionScreen extends StatelessWidget {
@@ -24,6 +25,7 @@ class NewSessionScreen extends StatelessWidget {
     return BlocProvider(
       create: (_) => NewSessionCubit(
         sessionService: getIt<SessionService>(),
+        variantOptionsBuilder: getIt<AgentVariantOptionsBuilder>(),
         projectId: projectId,
       ),
       child: _NewSessionBody(projectId: projectId),
@@ -68,6 +70,15 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     );
   }
 
+  void _openVariantPicker(AgentModelData data) {
+    VariantPickerSheet.show(
+      context,
+      selectedVariant: data.variant,
+      availableVariants: data.availableVariants,
+      onVariantChanged: context.read<NewSessionCubit>().selectVariant,
+    );
+  }
+
   Widget? _buildErrorBanner(NewSessionState state) {
     return switch (state) {
       NewSessionError(:final message) => Padding(
@@ -96,11 +107,14 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
 
     return AgentModelButtons(
       providers: data.providers,
+      availableVariants: data.availableVariants,
       selectedAgent: selectedAgent,
       selectedProviderID: data.providerID ?? "",
       selectedModelID: data.modelID ?? "",
+      selectedVariant: data.variant,
       onAgentTap: () => _openAgentPicker(data),
       onModelTap: () => _openModelPicker(data),
+      onVariantTap: () => _openVariantPicker(data),
     );
   }
 

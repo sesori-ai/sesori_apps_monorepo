@@ -109,6 +109,7 @@ void main() {
           projectId: "/repo",
           dedicatedWorktree: true,
           parts: [PromptPart.text(text: "Start")],
+          variant: SessionVariant(id: "xhigh"),
           agent: null,
           model: null,
           command: null,
@@ -123,6 +124,7 @@ void main() {
       expect(plugin.lastCreateSessionDirectory, equals("/repo/.worktrees/session-001"));
       expect(plugin.lastCreateSessionParts, isNotNull);
       expect(plugin.lastCreateSessionParts, hasLength(2));
+      expect(plugin.lastCreateSessionVariant, equals("xhigh"));
       expect(
         plugin.lastCreateSessionParts![0],
         equals(
@@ -170,6 +172,7 @@ void main() {
           projectId: "/repo",
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Start")],
+          variant: null,
           agent: null,
           model: null,
           command: null,
@@ -220,6 +223,7 @@ void main() {
             projectId: "/repo",
             dedicatedWorktree: true,
             parts: [PromptPart.text(text: "Start")],
+            variant: null,
             agent: null,
             model: null,
             command: null,
@@ -269,6 +273,7 @@ void main() {
           projectId: "/repo",
           dedicatedWorktree: true,
           parts: <PromptPart>[],
+          variant: null,
           agent: null,
           model: null,
           command: null,
@@ -340,6 +345,7 @@ void main() {
             projectId: "/repo",
             dedicatedWorktree: true,
             parts: [PromptPart.text(text: "Start")],
+            variant: null,
             agent: null,
             model: null,
             command: null,
@@ -373,6 +379,7 @@ void main() {
           projectId: "/repo",
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Start")],
+          variant: null,
           agent: null,
           model: null,
           command: null,
@@ -434,6 +441,7 @@ void main() {
           projectId: "/repo",
           dedicatedWorktree: true,
           parts: [PromptPart.text(text: "Start")],
+          variant: null,
           agent: null,
           model: null,
           command: null,
@@ -465,6 +473,7 @@ void main() {
           projectId: "/repo",
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Start")],
+          variant: null,
           agent: null,
           model: null,
           command: null,
@@ -498,6 +507,7 @@ void main() {
           projectId: "/repo",
           dedicatedWorktree: true,
           parts: [PromptPart.text(text: "Start")],
+          variant: null,
           agent: null,
           model: null,
           command: null,
@@ -517,6 +527,7 @@ void main() {
           projectId: "/tmp",
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Hello")],
+          variant: null,
           agent: "architect",
           model: PromptModel(providerID: "openai", modelID: "gpt-5"),
           command: null,
@@ -569,6 +580,7 @@ void main() {
           projectId: "/repo",
           dedicatedWorktree: true,
           parts: [PromptPart.text(text: "Fix the login bug")],
+          variant: null,
           agent: null,
           model: null,
           command: null,
@@ -608,6 +620,7 @@ void main() {
           projectId: "/repo",
           dedicatedWorktree: true,
           parts: [PromptPart.text(text: "Start")],
+          variant: null,
           agent: null,
           model: null,
           command: null,
@@ -640,6 +653,7 @@ void main() {
           projectId: "/repo",
           dedicatedWorktree: false,
           parts: [PromptPart.fileData(mime: "image/png", base64: "abc", filename: "img.png")],
+          variant: null,
           agent: null,
           model: null,
           command: null,
@@ -671,6 +685,7 @@ void main() {
           projectId: "/repo",
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "   ")],
+          variant: null,
           agent: null,
           model: null,
           command: null,
@@ -701,6 +716,7 @@ void main() {
           projectId: "/repo",
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Review this code")],
+          variant: SessionVariant(id: "low"),
           agent: null,
           model: null,
           command: "review",
@@ -714,9 +730,11 @@ void main() {
       expect(plugin.lastCreateSessionAgent, isNull);
       expect(plugin.lastCreateSessionModel, isNull);
       expect(plugin.lastCreateSessionParts, isEmpty);
+      expect(plugin.lastCreateSessionVariant, equals("low"));
       expect(plugin.lastSendCommandSessionId, equals("cmd-session-1"));
       expect(plugin.lastSendCommand, equals("review"));
       expect(plugin.lastSendCommandArguments, equals("Review this code"));
+      expect(plugin.lastSendCommandVariant, equals("low"));
     });
 
     test("dedicated worktree command carries worktree guardrail in command arguments", () async {
@@ -742,6 +760,7 @@ void main() {
           projectId: "/repo",
           dedicatedWorktree: true,
           parts: [PromptPart.text(text: "Review this code")],
+          variant: null,
           agent: null,
           model: null,
           command: "review",
@@ -795,6 +814,7 @@ void main() {
           projectId: "/repo",
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Review this code")],
+          variant: null,
           agent: "coder",
           model: PromptModel(providerID: "openai", modelID: "gpt-5"),
           command: "review",
@@ -827,6 +847,7 @@ void main() {
           projectId: "brand-new-proj",
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Hello")],
+          variant: null,
           agent: null,
           model: null,
           command: null,
@@ -861,6 +882,7 @@ void main() {
           projectId: "/repo",
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Hello")],
+          variant: null,
           agent: null,
           model: null,
           command: null,
@@ -891,6 +913,7 @@ void main() {
           projectId: "/repo",
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Hello")],
+          variant: null,
           agent: "coder",
           model: PromptModel(providerID: "openai", modelID: "gpt-5.4"),
           command: "   ",
@@ -947,6 +970,7 @@ void main() {
           projectId: "/repo",
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Fix the login bug")],
+          variant: null,
           agent: null,
           model: null,
           command: null,
@@ -1028,6 +1052,7 @@ class _ThrowingCreateSessionPlugin extends FakeBridgePlugin {
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
+    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) {
@@ -1057,6 +1082,7 @@ class _OrderCheckingCommandPlugin extends FakeBridgePlugin {
     required String sessionId,
     required String command,
     required String arguments,
+    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
@@ -1066,6 +1092,7 @@ class _OrderCheckingCommandPlugin extends FakeBridgePlugin {
       sessionId: sessionId,
       command: command,
       arguments: arguments,
+      variant: variant,
       agent: agent,
       model: model,
     );

@@ -41,6 +41,7 @@ void main() {
         text: "hello",
         agent: "build",
         model: const PromptModel(providerID: "openai", modelID: "gpt-4.1"),
+        variant: const SessionVariant(id: "xhigh"),
         command: "review",
       ),
     ).thenAnswer((_) async => ApiResponse.success(null));
@@ -70,6 +71,7 @@ void main() {
       text: "hello",
       agent: "build",
       model: const PromptModel(providerID: "openai", modelID: "gpt-4.1"),
+      variant: const SessionVariant(id: "xhigh"),
       command: "review",
     );
     await repository.abortSession(sessionId: "session-1");
@@ -95,6 +97,7 @@ void main() {
         text: "hello",
         agent: "build",
         model: const PromptModel(providerID: "openai", modelID: "gpt-4.1"),
+        variant: const SessionVariant(id: "xhigh"),
         command: "review",
       ),
     ).called(1);
