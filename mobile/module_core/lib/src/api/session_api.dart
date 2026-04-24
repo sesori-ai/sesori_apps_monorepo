@@ -44,7 +44,7 @@ class SessionApi {
     required String text,
     required String? agent,
     required PromptModel? model,
-    required SessionEffort? effort,
+    required String? variant,
     required String? command,
     required bool dedicatedWorktree,
   }) {
@@ -56,7 +56,7 @@ class SessionApi {
         parts: [PromptPart.text(text: text)],
         agent: agent,
         model: model,
-        effort: effort,
+        variant: variant,
         command: command,
         dedicatedWorktree: dedicatedWorktree,
       ),
@@ -68,7 +68,7 @@ class SessionApi {
     required String text,
     required String? agent,
     required PromptModel? model,
-    required SessionEffort? effort,
+    required String? variant,
     required String? command,
   }) {
     return _client.post(
@@ -79,7 +79,7 @@ class SessionApi {
         parts: [PromptPart.text(text: text)],
         agent: agent,
         model: model,
-        effort: effort,
+        variant: variant,
         command: command,
       ),
     );

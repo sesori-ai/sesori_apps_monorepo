@@ -101,18 +101,17 @@ class SessionService {
     required String? agent,
     required String? providerID,
     required String? modelID,
-    required SessionEffort? effort,
+    required String? variant,
     required String? command,
     required bool dedicatedWorktree,
   }) {
     final normalizedCommand = _normalizeOptionalText(command);
-    final normalizedEffort = _normalizeOptionalEffort(effort);
     return _repository.createSessionWithMessage(
       projectId: projectId,
       text: text,
       agent: agent,
       model: _resolveModel(providerID: providerID, modelID: modelID),
-      effort: normalizedEffort,
+      variant: variant,
       command: normalizedCommand,
       dedicatedWorktree: dedicatedWorktree,
     );
@@ -124,17 +123,16 @@ class SessionService {
     required String? agent,
     required String? providerID,
     required String? modelID,
-    required SessionEffort? effort,
+    required String? variant,
     required String? command,
   }) {
     final normalizedCommand = _normalizeOptionalText(command);
-    final normalizedEffort = _normalizeOptionalEffort(effort);
     return _repository.sendMessage(
       sessionId: sessionId,
       text: text,
       agent: agent,
       model: _resolveModel(providerID: providerID, modelID: modelID),
-      effort: normalizedEffort,
+      variant: variant,
       command: normalizedCommand,
     );
   }
@@ -145,13 +143,6 @@ class SessionService {
     if (normalizedProviderID == null || normalizedModelID == null) return null;
     return PromptModel(providerID: normalizedProviderID, modelID: normalizedModelID);
   }
-}
-
-SessionEffort? _normalizeOptionalEffort(SessionEffort? effort) {
-  return switch (effort) {
-    SessionEffort.medium => null,
-    final value => value,
-  };
 }
 
 String? _normalizeOptionalText(String? value) {

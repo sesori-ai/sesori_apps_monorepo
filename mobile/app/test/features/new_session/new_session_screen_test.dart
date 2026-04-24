@@ -15,12 +15,12 @@ import "../../helpers/test_helpers.dart";
 
 class MockVoiceTranscriptionService extends Mock implements VoiceTranscriptionService {}
 
-AgentInfo _testAgent({required String name, required String description}) {
+AgentInfo _testAgent({required String name, required String description, String? variant}) {
   return AgentInfo(
     name: name,
     description: description,
     model: null,
-    variant: null,
+    variant: variant,
     mode: AgentMode.primary,
   );
 }
@@ -55,7 +55,9 @@ void main() {
       (_) async => ApiResponse.success(
         Agents(
           agents: [
-            _testAgent(name: "coder", description: "A coding assistant"),
+            _testAgent(name: "coder", description: "A coding assistant", variant: null),
+            _testAgent(name: "coder", description: "A coding assistant", variant: "xhigh"),
+            _testAgent(name: "coder", description: "A coding assistant", variant: "low"),
             _testAgent(name: "reviewer", description: "A review assistant"),
           ],
         ),
@@ -80,36 +82,37 @@ void main() {
     await GetIt.instance.reset();
   });
 
-  testWidgets("defaults to Medium effort and updates composer button after selection", (tester) async {
+  testWidgets("shows variant picker when selected agent has multiple variants", (tester) async {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(OutlinedButton, "Medium"), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, "Default"), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(OutlinedButton, "Medium"));
+    await tester.tap(find.widgetWithText(OutlinedButton, "Default"));
     await tester.pumpAndSettle();
 
-    expect(find.text("Low"), findsOneWidget);
-    expect(find.text("Medium"), findsWidgets);
-    expect(find.text("Max"), findsOneWidget);
+    expect(find.text("Variant"), findsOneWidget);
+    expect(find.text("Default"), findsWidgets);
+    expect(find.text("low"), findsOneWidget);
+    expect(find.text("xhigh"), findsOneWidget);
 
-    await tester.tap(find.text("Max"));
+    await tester.tap(find.text("xhigh"));
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(OutlinedButton, "Max"), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, "xhigh"), findsOneWidget);
   });
 
-  testWidgets("keeps the selected effort after changing agent", (tester) async {
+  testWidgets("resets selected variant after changing agent", (tester) async {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(OutlinedButton, "Medium"));
+    await tester.tap(find.widgetWithText(OutlinedButton, "Default"));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(ListTile, "Max"));
+    await tester.tap(find.widgetWithText(ListTile, "xhigh"));
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(OutlinedButton, "Max"), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, "xhigh"), findsOneWidget);
 
     await tester.tap(find.widgetWithText(OutlinedButton, "coder"));
     await tester.pumpAndSettle();
@@ -118,6 +121,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(OutlinedButton, "reviewer"), findsOneWidget);
-    expect(find.widgetWithText(OutlinedButton, "Max"), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, "xhigh"), findsNothing);
+    expect(find.widgetWithText(OutlinedButton, "Default"), findsNothing);
   });
 }

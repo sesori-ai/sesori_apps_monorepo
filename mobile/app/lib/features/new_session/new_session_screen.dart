@@ -2,15 +2,14 @@ import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_shared/sesori_shared.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/widgets/agent_model_buttons.dart";
 import "../../core/widgets/agent_picker_sheet.dart";
-import "../../core/widgets/effort_picker_sheet.dart";
 import "../../core/widgets/model_picker_sheet.dart";
+import "../../core/widgets/variant_picker_sheet.dart";
 import "../session_detail/widgets/prompt_input.dart";
 
 class NewSessionScreen extends StatelessWidget {
@@ -70,11 +69,12 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     );
   }
 
-  void _openEffortPicker(SessionEffort selectedEffort) {
-    EffortPickerSheet.show(
+  void _openVariantPicker(AgentModelData data) {
+    VariantPickerSheet.show(
       context,
-      selectedEffort: selectedEffort,
-      onEffortChanged: context.read<NewSessionCubit>().selectEffort,
+      selectedVariant: data.variant,
+      availableVariants: data.availableVariants,
+      onVariantChanged: context.read<NewSessionCubit>().selectVariant,
     );
   }
 
@@ -106,13 +106,14 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
 
     return AgentModelButtons(
       providers: data.providers,
+      availableVariants: data.availableVariants,
       selectedAgent: selectedAgent,
       selectedProviderID: data.providerID ?? "",
       selectedModelID: data.modelID ?? "",
-      selectedEffort: data.effort,
+      selectedVariant: data.variant,
       onAgentTap: () => _openAgentPicker(data),
       onModelTap: () => _openModelPicker(data),
-      onEffortTap: () => _openEffortPicker(data.effort),
+      onVariantTap: () => _openVariantPicker(data),
     );
   }
 

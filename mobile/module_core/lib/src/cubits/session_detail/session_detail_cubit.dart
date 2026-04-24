@@ -121,7 +121,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final preservedSelectedAgent = current.selectedAgent;
     final preservedSelectedProviderID = current.selectedProviderID;
     final preservedSelectedModelID = current.selectedModelID;
-    final preservedSelectedEffort = current.selectedEffort;
+    final preservedSelectedVariant = current.selectedVariant;
     final preservedStagedCommand = current.stagedCommand;
 
     emit(current.copyWith(isRefreshing: true));
@@ -144,6 +144,10 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
               .where((a) => !a.hidden && a.mode != AgentMode.subagent)
               .toList();
           final availableProviders = snapshot.providerData?.items ?? <ProviderInfo>[];
+          final availableVariants = _computeVariants(
+            agents: availableAgents,
+            selectedAgentName: preservedSelectedAgent,
+          );
 
           final streamingText = _streamingBuffer.snapshot();
           _streamingBuffer.clear();
@@ -163,11 +167,12 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
               availableAgents: availableAgents,
               availableProviders: availableProviders,
               availableCommands: snapshot.commands,
+              availableVariants: availableVariants,
               sessionTitle: snapshot.canonicalSessionTitle ?? current.sessionTitle,
               selectedAgent: preservedSelectedAgent,
               selectedProviderID: preservedSelectedProviderID,
               selectedModelID: preservedSelectedModelID,
-              selectedEffort: preservedSelectedEffort,
+              selectedVariant: preservedSelectedVariant,
               stagedCommand: _resolveStagedCommand(
                 availableCommands: snapshot.commands,
                 stagedCommand: preservedStagedCommand,
@@ -574,7 +579,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         providerID: current.selectedProviderID,
         modelID: current.selectedModelID,
       ),
-      effort: current.selectedEffort,
+      variant: current.selectedVariant,
       command: normalizedCommand,
     );
 
@@ -624,7 +629,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           providerID: current.selectedProviderID,
           modelID: current.selectedModelID,
         ),
-        effort: current.selectedEffort,
+        variant: current.selectedVariant,
         command: submission.command,
       );
 
@@ -821,7 +826,13 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (current is! SessionDetailLoaded) return;
 
     if (isClosed) return;
-    emit(current.copyWith(selectedAgent: agent));
+    emit(
+      current.copyWith(
+        selectedAgent: agent,
+        availableVariants: _computeVariants(agents: current.availableAgents, selectedAgentName: agent),
+        selectedVariant: null,
+      ),
+    );
   }
 
   void selectModel({required String providerID, required String modelID}) {
@@ -832,12 +843,12 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     emit(current.copyWith(selectedProviderID: providerID, selectedModelID: modelID));
   }
 
-  void selectEffort(SessionEffort effort) {
+  void selectVariant(String? variant) {
     final current = state;
     if (current is! SessionDetailLoaded) return;
 
     if (isClosed) return;
-    emit(current.copyWith(selectedEffort: effort));
+    emit(current.copyWith(selectedVariant: variant));
   }
 
   void stageCommand(CommandInfo command) {
@@ -913,6 +924,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       defaultProviderID = "";
       defaultModelID = "";
     }
+    final availableVariants = _computeVariants(agents: agents, selectedAgentName: defaultAgent);
 
     return SessionDetailState.loaded(
           messages: snapshot.messages,
@@ -930,14 +942,36 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           availableAgents: agents,
           availableProviders: providers,
           availableCommands: snapshot.commands,
+          availableVariants: availableVariants,
           selectedAgent: defaultAgent,
           selectedProviderID: defaultProviderID,
           selectedModelID: defaultModelID,
-          selectedEffort: SessionEffort.medium,
+          selectedVariant: null,
           stagedCommand: null,
           isRefreshing: false,
         )
         as SessionDetailLoaded;
+  }
+
+  List<String> _computeVariants({
+    required List<AgentInfo> agents,
+    required String? selectedAgentName,
+  }) {
+    if (selectedAgentName == null) {
+      return const [];
+    }
+
+    final variants = <String>[];
+    for (final agent in agents) {
+      final variant = agent.variant;
+      if (agent.name != selectedAgentName || variant == null || variant == "none") {
+        continue;
+      }
+      if (!variants.contains(variant)) {
+        variants.add(variant);
+      }
+    }
+    return variants;
   }
 
   List<SesoriQuestionAsked> _mapPendingQuestions(List<PendingQuestion> pendingQuestions) {

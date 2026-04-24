@@ -422,8 +422,8 @@ void main() {
     });
   });
 
-  group("OpenCodeRepository effort mapping", () {
-    test("sendPrompt maps low effort to low variant", () async {
+  group("OpenCodeRepository variant passthrough", () {
+    test("sendPrompt forwards raw variant", () async {
       final api = _FakeApi();
       final repository = OpenCodeRepository(api);
 
@@ -432,42 +432,33 @@ void main() {
         directory: " /repo ",
         parts: const [PluginPromptPart.text(text: "Continue")],
         agent: "build",
-        effort: PluginEffort.low,
+        variant: "custom-low",
         model: (providerID: "openai", modelID: "gpt-5.4"),
       );
 
       expect(api.lastPromptSessionId, equals("ses-1"));
       expect(api.lastPromptDirectory, equals("/repo"));
-      expect(api.lastPromptBody?.toJson()["variant"], equals("low"));
+      expect(api.lastPromptBody?.toJson()["variant"], equals("custom-low"));
     });
 
-    test("sendPrompt maps medium and null effort to omitted variant", () async {
+    test("sendPrompt omits variant when null", () async {
       final api = _FakeApi();
       final repository = OpenCodeRepository(api);
 
-      await repository.sendPrompt(
-        sessionId: "ses-medium",
-        directory: "/repo",
-        parts: const [PluginPromptPart.text(text: "Medium")],
-        agent: null,
-        effort: PluginEffort.medium,
-        model: null,
-      );
       await repository.sendPrompt(
         sessionId: "ses-null",
         directory: "/repo",
         parts: const [PluginPromptPart.text(text: "Null")],
         agent: null,
-        effort: null,
+        variant: null,
         model: null,
       );
 
-      expect(api.promptBodies, hasLength(2));
-      expect(api.promptBodies[0].toJson().containsKey("variant"), isFalse);
-      expect(api.promptBodies[1].toJson().containsKey("variant"), isFalse);
+      expect(api.promptBodies, hasLength(1));
+      expect(api.promptBodies.single.toJson().containsKey("variant"), isFalse);
     });
 
-    test("sendCommand maps max effort to xhigh variant", () async {
+    test("sendCommand forwards raw variant", () async {
       final api = _FakeApi();
       final repository = OpenCodeRepository(api);
 
@@ -477,7 +468,7 @@ void main() {
         command: "/review-work",
         arguments: "recent changes",
         agent: "reviewer",
-        effort: PluginEffort.max,
+        variant: "xhigh",
         model: (providerID: "openai", modelID: "gpt-4.1"),
       );
 

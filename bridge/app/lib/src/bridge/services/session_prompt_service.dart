@@ -10,7 +10,7 @@ class SessionPromptService {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PromptPart> parts,
-    required SessionEffort? effort,
+    required String? variant,
     required String? agent,
     required PromptModel? model,
     required String? command,
@@ -20,7 +20,7 @@ class SessionPromptService {
       await _sessionRepository.sendPrompt(
         sessionId: sessionId,
         parts: parts,
-        effort: effort,
+        variant: variant,
         agent: agent,
         model: model,
       );
@@ -32,7 +32,7 @@ class SessionPromptService {
       sessionId: sessionId,
       command: normalizedCommand,
       arguments: textPart?.text ?? '',
-      effort: effort,
+      variant: variant,
       agent: agent,
       model: model,
     );

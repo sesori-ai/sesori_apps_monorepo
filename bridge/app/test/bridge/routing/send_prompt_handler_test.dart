@@ -59,7 +59,7 @@ void main() {
         body: const SendPromptRequest(
           sessionId: "s1",
           parts: [PromptPart.text(text: "Hello")],
-          effort: null,
+          variant: null,
           agent: null,
           model: null,
           command: null,
@@ -81,7 +81,7 @@ void main() {
             PromptPart.text(text: "Hello"),
             PromptPart.text(text: "World"),
           ],
-          effort: SessionEffort.low,
+          variant: "low",
           agent: null,
           model: null,
           command: null,
@@ -95,7 +95,7 @@ void main() {
       expect(plugin.lastSendPromptParts, hasLength(2));
       expect(plugin.lastSendPromptParts![0], equals(const PluginPromptPart.text(text: "Hello")));
       expect(plugin.lastSendPromptParts![1], equals(const PluginPromptPart.text(text: "World")));
-      expect(plugin.lastSendPromptEffort, equals(PluginEffort.low));
+      expect(plugin.lastSendPromptVariant, equals("low"));
     });
 
     test("parses agent + model", () async {
@@ -104,7 +104,7 @@ void main() {
         body: const SendPromptRequest(
           sessionId: "s1",
           parts: [PromptPart.text(text: "Hello")],
-          effort: null,
+          variant: null,
           agent: "planner",
           model: PromptModel(providerID: "openai", modelID: "gpt-4o"),
           command: null,
@@ -125,7 +125,7 @@ void main() {
         body: const SendPromptRequest(
           sessionId: "s42",
           parts: [PromptPart.text(text: "Ship it")],
-          effort: null,
+          variant: null,
           agent: "coder",
           model: PromptModel(
             providerID: "anthropic",
@@ -152,7 +152,7 @@ void main() {
         body: const SendPromptRequest(
           sessionId: "s1",
           parts: [PromptPart.text(text: "Hello")],
-          effort: null,
+          variant: null,
           agent: null,
           model: null,
           command: null,
@@ -171,7 +171,7 @@ void main() {
         body: const SendPromptRequest(
           sessionId: "s1",
           parts: [PromptPart.text(text: "Hello")],
-          effort: null,
+          variant: null,
           agent: null,
           model: null,
           command: null,
@@ -192,7 +192,7 @@ void main() {
         body: const SendPromptRequest(
           sessionId: "s7",
           parts: [PromptPart.text(text: "review this")],
-          effort: SessionEffort.max,
+          variant: "xhigh",
           agent: null,
           model: null,
           command: "review",
@@ -206,7 +206,7 @@ void main() {
       expect(plugin.lastSendCommandSessionId, equals("s7"));
       expect(plugin.lastSendCommand, equals("review"));
       expect(plugin.lastSendCommandArguments, equals("review this"));
-      expect(plugin.lastSendCommandEffort, equals(PluginEffort.max));
+      expect(plugin.lastSendCommandVariant, equals("xhigh"));
       expect(plugin.lastSendCommandAgent, isNull);
       expect(plugin.lastSendCommandModel, isNull);
     });
@@ -219,7 +219,7 @@ void main() {
           parts: [
             PromptPart.filePath(mime: "text/plain", path: "/tmp/f.txt", filename: null),
           ],
-          effort: null,
+          variant: null,
           agent: null,
           model: null,
           command: "attach",
@@ -240,7 +240,7 @@ void main() {
         body: const SendPromptRequest(
           sessionId: "s10",
           parts: [PromptPart.text(text: "review this")],
-          effort: null,
+          variant: null,
           agent: "coder",
           model: PromptModel(providerID: "openai", modelID: "gpt-5.4"),
           command: "review",
@@ -262,7 +262,7 @@ void main() {
         body: const SendPromptRequest(
           sessionId: "s9",
           parts: [PromptPart.text(text: "Hello")],
-          effort: SessionEffort.medium,
+          variant: null,
           agent: "coder",
           model: PromptModel(providerID: "openai", modelID: "gpt-5.4"),
           command: "   ",
@@ -275,7 +275,7 @@ void main() {
       expect(plugin.lastSendPromptSessionId, equals("s9"));
       expect(plugin.lastSendPromptAgent, equals("coder"));
       expect(plugin.lastSendPromptModel?.providerID, equals("openai"));
-      expect(plugin.lastSendPromptEffort, isNull);
+      expect(plugin.lastSendPromptVariant, isNull);
       expect(plugin.lastSendCommandSessionId, isNull);
     });
 
@@ -286,7 +286,7 @@ void main() {
           body: const SendPromptRequest(
             sessionId: "",
             parts: [PromptPart.text(text: "Hello")],
-            effort: null,
+            variant: null,
             agent: null,
             model: null,
             command: null,

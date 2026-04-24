@@ -22,10 +22,11 @@ void main() {
       availableAgents: [],
       availableProviders: [],
       availableCommands: [],
+      availableVariants: [],
       selectedAgent: "build",
       selectedProviderID: "p",
       selectedModelID: "m",
-      selectedEffort: SessionEffort.medium,
+      selectedVariant: null,
       stagedCommand: null,
       isRefreshing: false,
     );

@@ -1,7 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show BridgePlugin, Log, PluginEffort, PluginSession;
+    show BridgePlugin, Log, PluginSession;
 import "package:sesori_shared/sesori_shared.dart"
-    show CommandListResponse, PrState, PromptModel, PromptPart, PullRequestInfo, Session, SessionEffort;
+    show CommandListResponse, PrState, PromptModel, PromptPart, PullRequestInfo, Session;
 
 import "../api/database/tables/pull_requests_table.dart";
 import "../persistence/daos/session_dao.dart";
@@ -57,7 +57,7 @@ class SessionRepository {
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
-    required SessionEffort? effort,
+    required String? variant,
     required String? agent,
     required PromptModel? model,
   }) async {
@@ -65,7 +65,7 @@ class SessionRepository {
       directory: directory,
       parentSessionId: parentSessionId,
       parts: parts.map((part) => part.toPlugin()).toList(growable: false),
-      effort: _toPluginEffort(effort: effort),
+      variant: variant,
       agent: agent,
       model: switch (model) {
         PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
@@ -94,7 +94,7 @@ class SessionRepository {
     required String sessionId,
     required String command,
     required String arguments,
-    required SessionEffort? effort,
+    required String? variant,
     required String? agent,
     required PromptModel? model,
   }) {
@@ -102,7 +102,7 @@ class SessionRepository {
       sessionId: sessionId,
       command: command,
       arguments: arguments,
-      effort: _toPluginEffort(effort: effort),
+      variant: variant,
       agent: agent,
       model: switch (model) {
         PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
@@ -114,14 +114,14 @@ class SessionRepository {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PromptPart> parts,
-    required SessionEffort? effort,
+    required String? variant,
     required String? agent,
     required PromptModel? model,
   }) {
     return _plugin.sendPrompt(
       sessionId: sessionId,
       parts: parts.map((part) => part.toPlugin()).toList(growable: false),
-      effort: _toPluginEffort(effort: effort),
+      variant: variant,
       agent: agent,
       model: switch (model) {
         PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
@@ -250,15 +250,6 @@ class SessionRepository {
 
   Future<SessionDto?> getStoredSession({required String sessionId}) {
     return _sessionDao.getSession(sessionId: sessionId);
-  }
-
-  PluginEffort? _toPluginEffort({required SessionEffort? effort}) {
-    return switch (effort) {
-      SessionEffort.low => PluginEffort.low,
-      SessionEffort.medium => null,
-      SessionEffort.max => PluginEffort.max,
-      null => null,
-    };
   }
 
   Future<PluginSession?> _getPluginSession({required String projectId, required String sessionId}) async {

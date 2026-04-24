@@ -9,8 +9,8 @@ import "../../../core/constants.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/routing/app_router.dart";
 import "../../../core/widgets/agent_picker_sheet.dart";
-import "../../../core/widgets/effort_picker_sheet.dart";
 import "../../../core/widgets/model_picker_sheet.dart";
+import "../../../core/widgets/variant_picker_sheet.dart";
 import "permission_modal.dart";
 import "question_modal.dart";
 import "session_detail_loaded_view.dart";
@@ -116,7 +116,7 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
                   onShowPendingPermissions: _showPendingPermissions,
                   onOpenAgentPicker: _openAgentPicker,
                   onOpenModelPicker: _openModelPicker,
-                  onOpenEffortPicker: _openEffortPicker,
+                  onOpenVariantPicker: _openVariantPicker,
                 ),
         SessionDetailFailed(:final error) => SessionDetailErrorView(
           error: error,
@@ -167,11 +167,16 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
     );
   }
 
-  void _openEffortPicker() {
+  void _openVariantPicker() {
     final cubit = context.read<SessionDetailCubit>();
     final state = cubit.state;
     if (state is! SessionDetailLoaded) return;
-    EffortPickerSheet.show(context, selectedEffort: state.selectedEffort, onEffortChanged: cubit.selectEffort);
+    VariantPickerSheet.show(
+      context,
+      selectedVariant: state.selectedVariant,
+      availableVariants: state.availableVariants,
+      onVariantChanged: cubit.selectVariant,
+    );
   }
 
   void _showQuestionModal(SesoriQuestionAsked question) {

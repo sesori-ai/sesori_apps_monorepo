@@ -199,7 +199,7 @@ void delegateSessionRepositoryToService({
       text: any(named: "text"),
       agent: any(named: "agent"),
       model: any(named: "model"),
-      effort: any(named: "effort"),
+      variant: any(named: "variant"),
       command: any(named: "command"),
     ),
   ).thenAnswer(
@@ -209,7 +209,7 @@ void delegateSessionRepositoryToService({
       agent: invocation.namedArguments[#agent] as String?,
       providerID: (invocation.namedArguments[#model] as PromptModel?)?.providerID,
       modelID: (invocation.namedArguments[#model] as PromptModel?)?.modelID,
-      effort: invocation.namedArguments[#effort] as SessionEffort?,
+      variant: invocation.namedArguments[#variant] as String?,
       command: invocation.namedArguments[#command] as String?,
     ),
   );
@@ -229,7 +229,6 @@ void registerAllFallbackValues() {
   registerFallbackValue(Duration.zero);
   registerFallbackValue(const RecordConfig());
   registerFallbackValue(http.MultipartFile.fromString("audio", ""));
-  registerFallbackValue(SessionEffort.medium);
   registerFallbackValue(OAuthProvider.github);
   registerFallbackValue(StackTrace.empty);
 }

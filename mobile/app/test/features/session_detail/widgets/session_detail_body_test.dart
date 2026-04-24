@@ -62,10 +62,11 @@ SessionDetailState _loadedState() {
     availableAgents: [testAgentInfo()],
     availableProviders: [provider],
     availableCommands: const [],
+    availableVariants: const ["xhigh", "low"],
     selectedAgent: "coder",
     selectedProviderID: provider.id,
     selectedModelID: provider.defaultModelID!,
-    selectedEffort: SessionEffort.medium,
+    selectedVariant: null,
     stagedCommand: null,
     isRefreshing: false,
   );
@@ -97,18 +98,18 @@ void main() {
     await GetIt.instance.reset();
   });
 
-  testWidgets("opens the effort picker and forwards the selection to the cubit", (tester) async {
+  testWidgets("opens the variant picker and forwards the selection to the cubit", (tester) async {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(OutlinedButton, "Medium"));
+    await tester.tap(find.widgetWithText(OutlinedButton, "Default"));
     await tester.pumpAndSettle();
 
-    expect(find.text("Effort"), findsOneWidget);
+    expect(find.text("Variant"), findsOneWidget);
 
-    await tester.tap(find.text("Max"));
+    await tester.tap(find.text("xhigh"));
     await tester.pumpAndSettle();
 
-    verify(() => cubit.selectEffort(SessionEffort.max)).called(1);
+    verify(() => cubit.selectVariant("xhigh")).called(1);
   });
 }

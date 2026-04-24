@@ -17,7 +17,7 @@ void main() {
   });
 
   group("SessionApi", () {
-    test("createSessionWithMessage builds a request body with null effort when omitted", () async {
+    test("createSessionWithMessage builds a request body with null variant when omitted", () async {
       const session = Session(
         id: "session-1",
         projectID: "project-1",
@@ -42,7 +42,7 @@ void main() {
         text: "hello",
         agent: "build",
         model: const PromptModel(providerID: "openai", modelID: "gpt-5.4"),
-        effort: null,
+        variant: null,
         command: "review",
         dedicatedWorktree: true,
       );
@@ -55,10 +55,10 @@ void main() {
         ),
       )..called(1);
       final request = verification.captured.single as CreateSessionRequest;
-      expect(request.effort, isNull);
+      expect(request.variant, isNull);
     });
 
-    test("sendMessage builds a request body with null effort when omitted", () async {
+    test("sendMessage builds a request body with null variant when omitted", () async {
       when(
         () => client.post<void>(
           any(),
@@ -72,7 +72,7 @@ void main() {
         text: "hello",
         agent: "build",
         model: const PromptModel(providerID: "openai", modelID: "gpt-5.4"),
-        effort: null,
+        variant: null,
         command: "review",
       );
 
@@ -84,7 +84,7 @@ void main() {
         ),
       )..called(1);
       final request = verification.captured.single as SendPromptRequest;
-      expect(request.effort, isNull);
+      expect(request.variant, isNull);
     });
 
     test("listCommands posts the project request body", () async {

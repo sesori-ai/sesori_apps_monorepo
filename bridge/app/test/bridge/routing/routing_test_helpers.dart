@@ -71,7 +71,7 @@ class FakeBridgePlugin implements BridgePlugin {
   String? lastCreateSessionParentId;
   String? lastCreateSessionProjectId;
   List<PluginPromptPart>? lastCreateSessionParts;
-  PluginEffort? lastCreateSessionEffort;
+  String? lastCreateSessionVariant;
   String? lastCreateSessionAgent;
   ({String providerID, String modelID})? lastCreateSessionModel;
   String? lastRenameSessionId;
@@ -83,13 +83,13 @@ class FakeBridgePlugin implements BridgePlugin {
   String? lastGetChildSessionsSessionId;
   String? lastSendPromptSessionId;
   List<PluginPromptPart>? lastSendPromptParts;
-  PluginEffort? lastSendPromptEffort;
+  String? lastSendPromptVariant;
   String? lastSendPromptAgent;
   ({String providerID, String modelID})? lastSendPromptModel;
   String? lastSendCommandSessionId;
   String? lastSendCommand;
   String? lastSendCommandArguments;
-  PluginEffort? lastSendCommandEffort;
+  String? lastSendCommandVariant;
   String? lastSendCommandAgent;
   ({String providerID, String modelID})? lastSendCommandModel;
   String? lastAbortSessionId;
@@ -161,7 +161,7 @@ class FakeBridgePlugin implements BridgePlugin {
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
-    required PluginEffort? effort,
+    required String? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
@@ -169,7 +169,7 @@ class FakeBridgePlugin implements BridgePlugin {
     lastCreateSessionParentId = parentSessionId;
     lastCreateSessionProjectId = directory;
     lastCreateSessionParts = parts;
-    lastCreateSessionEffort = effort;
+    lastCreateSessionVariant = variant;
     lastCreateSessionAgent = agent;
     lastCreateSessionModel = model;
     return createSessionResult ??
@@ -256,13 +256,13 @@ class FakeBridgePlugin implements BridgePlugin {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PluginPromptPart> parts,
-    required PluginEffort? effort,
+    required String? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
     lastSendPromptSessionId = sessionId;
     lastSendPromptParts = parts;
-    lastSendPromptEffort = effort;
+    lastSendPromptVariant = variant;
     lastSendPromptAgent = agent;
     lastSendPromptModel = model;
   }
@@ -272,14 +272,14 @@ class FakeBridgePlugin implements BridgePlugin {
     required String sessionId,
     required String command,
     required String arguments,
-    required PluginEffort? effort,
+    required String? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
     lastSendCommandSessionId = sessionId;
     lastSendCommand = command;
     lastSendCommandArguments = arguments;
-    lastSendCommandEffort = effort;
+    lastSendCommandVariant = variant;
     lastSendCommandAgent = agent;
     lastSendCommandModel = model;
   }
@@ -611,7 +611,7 @@ class _NoopSessionRepository implements SessionRepository {
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
-    required SessionEffort? effort,
+    required String? variant,
     required String? agent,
     required PromptModel? model,
   }) async => const Session(
@@ -672,7 +672,7 @@ class _NoopSessionRepository implements SessionRepository {
     required String sessionId,
     required String command,
     required String arguments,
-    required SessionEffort? effort,
+    required String? variant,
     required String? agent,
     required PromptModel? model,
   }) async {}
@@ -684,7 +684,7 @@ class _NoopSessionRepository implements SessionRepository {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PromptPart> parts,
-    required SessionEffort? effort,
+    required String? variant,
     required String? agent,
     required PromptModel? model,
   }) async {}
@@ -725,7 +725,7 @@ class FakeSessionRepository implements SessionRepository {
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
-    required SessionEffort? effort,
+    required String? variant,
     required String? agent,
     required PromptModel? model,
   }) async => const Session(
@@ -894,7 +894,7 @@ class FakeSessionRepository implements SessionRepository {
     required String sessionId,
     required String command,
     required String arguments,
-    required SessionEffort? effort,
+    required String? variant,
     required String? agent,
     required PromptModel? model,
   }) async {
@@ -902,7 +902,7 @@ class FakeSessionRepository implements SessionRepository {
       sessionId: sessionId,
       command: command,
       arguments: arguments,
-      effort: _toPluginEffort(effort: effort),
+      variant: variant,
       agent: agent,
       model: switch (model) {
         PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
@@ -926,14 +926,14 @@ class FakeSessionRepository implements SessionRepository {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PromptPart> parts,
-    required SessionEffort? effort,
+    required String? variant,
     required String? agent,
     required PromptModel? model,
   }) async {
     await _plugin.sendPrompt(
       sessionId: sessionId,
       parts: parts.map((part) => part.toPlugin()).toList(growable: false),
-      effort: _toPluginEffort(effort: effort),
+      variant: variant,
       agent: agent,
       model: switch (model) {
         PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
@@ -954,12 +954,4 @@ class FakeSessionRepository implements SessionRepository {
     pullRequest: null,
   );
 
-  PluginEffort? _toPluginEffort({required SessionEffort? effort}) {
-    return switch (effort) {
-      SessionEffort.low => PluginEffort.low,
-      SessionEffort.medium => null,
-      SessionEffort.max => PluginEffort.max,
-      null => null,
-    };
-  }
 }

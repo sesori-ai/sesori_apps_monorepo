@@ -4,7 +4,6 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         Log,
         PluginApiException,
         PluginCommand,
-        PluginEffort,
         PluginPermissionReply,
         PluginPromptPart,
         PluginProvidersResult,
@@ -66,7 +65,7 @@ class OpenCodeService {
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
     required String? agent,
-    required PluginEffort? effort,
+    required String? variant,
     required ({String providerID, String modelID})? model,
   }) async {
     final session = await repository.createSession(
@@ -77,13 +76,13 @@ class OpenCodeService {
     if (parts.isNotEmpty) {
       try {
         await repository.sendPrompt(
-          sessionId: session.id,
-          directory: session.directory,
-          parts: parts,
-          agent: agent,
-          effort: effort,
-          model: model,
-        );
+        sessionId: session.id,
+        directory: session.directory,
+        parts: parts,
+        agent: agent,
+        variant: variant,
+        model: model,
+      );
       } catch (e, st) {
         await _deleteFailedCreatedSession(session: session, error: e, stackTrace: st);
         rethrow;
@@ -98,7 +97,7 @@ class OpenCodeService {
     required String sessionId,
     required List<PluginPromptPart> parts,
     required String? agent,
-    required PluginEffort? effort,
+    required String? variant,
     required ({String providerID, String modelID})? model,
   }) {
     final directory = _getTrackedDirectory(sessionId: sessionId);
@@ -107,7 +106,7 @@ class OpenCodeService {
       directory: directory,
       parts: parts,
       agent: agent,
-      effort: effort,
+      variant: variant,
       model: model,
     );
   }
@@ -117,7 +116,7 @@ class OpenCodeService {
     required String command,
     required String arguments,
     required String? agent,
-    required PluginEffort? effort,
+    required String? variant,
     required ({String providerID, String modelID})? model,
   }) {
     final directory = _getTrackedDirectory(sessionId: sessionId);
@@ -127,7 +126,7 @@ class OpenCodeService {
       command: command,
       arguments: arguments,
       agent: agent,
-      effort: effort,
+      variant: variant,
       model: model,
     );
   }

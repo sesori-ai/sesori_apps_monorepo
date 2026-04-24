@@ -208,14 +208,14 @@ void main() {
       final service = OpenCodeService(repository, tracker);
       const parts = [PluginPromptPart.text(text: "Start")];
 
-      final session = await service.createSession(
-        directory: "/repo",
-        parentSessionId: "parent-1",
-        parts: parts,
-        agent: "build",
-        effort: PluginEffort.low,
-        model: (providerID: "openai", modelID: "gpt-5.4"),
-      );
+        final session = await service.createSession(
+          directory: "/repo",
+          parentSessionId: "parent-1",
+          parts: parts,
+          agent: "build",
+          variant: "low",
+          model: (providerID: "openai", modelID: "gpt-5.4"),
+        );
 
       expect(repository.lastCreateDirectory, equals("/repo"));
       expect(repository.lastCreateParentSessionId, equals("parent-1"));
@@ -225,7 +225,7 @@ void main() {
       expect(repository.lastPromptDirectory, equals("/repo/subdir"));
       expect(repository.lastPromptParts, equals(parts));
       expect(repository.lastPromptAgent, equals("build"));
-      expect(repository.lastPromptEffort, equals(PluginEffort.low));
+      expect(repository.lastPromptVariant, equals("low"));
       expect(repository.lastPromptModel?.providerID, equals("openai"));
       expect(repository.lastPromptModel?.modelID, equals("gpt-5.4"));
       expect(session.id, equals("ses-new"));
@@ -247,14 +247,14 @@ void main() {
       );
       final service = OpenCodeService(repository, tracker);
 
-      final session = await service.createSession(
-        directory: "/repo",
-        parentSessionId: null,
-        parts: const [],
-        agent: null,
-        effort: null,
-        model: null,
-      );
+        final session = await service.createSession(
+          directory: "/repo",
+          parentSessionId: null,
+          parts: const [],
+          agent: null,
+          variant: null,
+          model: null,
+        );
 
       expect(repository.lastPromptSessionId, isNull);
       expect(session.id, equals("ses-new"));
@@ -277,13 +277,13 @@ void main() {
 
       await expectLater(
         () => service.createSession(
-          directory: "/repo",
-          parentSessionId: null,
-          parts: const [PluginPromptPart.text(text: "Start")],
-          agent: "build",
-          effort: PluginEffort.max,
-          model: null,
-        ),
+            directory: "/repo",
+            parentSessionId: null,
+            parts: const [PluginPromptPart.text(text: "Start")],
+            agent: "build",
+            variant: "xhigh",
+            model: null,
+          ),
         throwsA(isA<StateError>()),
       );
 
@@ -304,14 +304,14 @@ void main() {
         sessionId: "ses-1",
         parts: parts,
         agent: null,
-        effort: PluginEffort.medium,
+        variant: null,
         model: null,
       );
 
       expect(repository.lastPromptSessionId, equals("ses-1"));
       expect(repository.lastPromptDirectory, equals("/repo"));
       expect(repository.lastPromptParts, equals(parts));
-      expect(repository.lastPromptEffort, equals(PluginEffort.medium));
+      expect(repository.lastPromptVariant, isNull);
     });
   });
 
@@ -326,7 +326,7 @@ void main() {
         command: "/review-work",
         arguments: "recent changes",
         agent: "reviewer",
-        effort: PluginEffort.max,
+        variant: "xhigh",
         model: (providerID: "openai", modelID: "gpt-4.1"),
       );
 
@@ -335,7 +335,7 @@ void main() {
       expect(repository.lastCommandName, equals("/review-work"));
       expect(repository.lastCommandArguments, equals("recent changes"));
       expect(repository.lastCommandAgent, equals("reviewer"));
-      expect(repository.lastCommandEffort, equals(PluginEffort.max));
+      expect(repository.lastCommandVariant, equals("xhigh"));
       expect(repository.lastCommandModel, equals((providerID: "openai", modelID: "gpt-4.1")));
     });
   });
@@ -641,7 +641,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   String? lastPromptDirectory;
   List<PluginPromptPart>? lastPromptParts;
   String? lastPromptAgent;
-  PluginEffort? lastPromptEffort;
+  String? lastPromptVariant;
   ({String providerID, String modelID})? lastPromptModel;
   Object? sendPromptError;
   String? lastCommandSessionId;
@@ -649,7 +649,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   String? lastCommandName;
   String? lastCommandArguments;
   String? lastCommandAgent;
-  PluginEffort? lastCommandEffort;
+  String? lastCommandVariant;
   ({String providerID, String modelID})? lastCommandModel;
   String? lastDeletedSessionId;
   String? lastDeletedDirectory;
@@ -709,7 +709,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     required String? directory,
     required List<PluginPromptPart> parts,
     required String? agent,
-    required PluginEffort? effort,
+    required String? variant,
     required ({String providerID, String modelID})? model,
   }) async {
     if (sendPromptError case final error?) {
@@ -719,7 +719,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     lastPromptDirectory = directory;
     lastPromptParts = parts;
     lastPromptAgent = agent;
-    lastPromptEffort = effort;
+    lastPromptVariant = variant;
     lastPromptModel = model;
   }
 
@@ -730,7 +730,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     required String command,
     required String arguments,
     required String? agent,
-    required PluginEffort? effort,
+    required String? variant,
     required ({String providerID, String modelID})? model,
   }) async {
     lastCommandSessionId = sessionId;
@@ -738,7 +738,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     lastCommandName = command;
     lastCommandArguments = arguments;
     lastCommandAgent = agent;
-    lastCommandEffort = effort;
+    lastCommandVariant = variant;
     lastCommandModel = model;
   }
 

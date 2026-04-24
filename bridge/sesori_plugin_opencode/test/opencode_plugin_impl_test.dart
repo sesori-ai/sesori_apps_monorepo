@@ -79,7 +79,7 @@ void main() {
         parentSessionId: "s-root",
         parts: const [PluginPromptPart.text(text: "Start from here")],
         agent: "build",
-        effort: PluginEffort.low,
+        variant: "low",
         model: (providerID: "openai", modelID: "gpt-5.4"),
       );
 
@@ -104,7 +104,7 @@ void main() {
         sessionId: "s-root",
         parts: const [PluginPromptPart.text(text: "Continue")],
         agent: null,
-        effort: PluginEffort.medium,
+        variant: null,
         model: null,
       );
 
@@ -124,7 +124,7 @@ void main() {
         command: "/review-work",
         arguments: "recent changes",
         agent: "reviewer",
-        effort: PluginEffort.max,
+        variant: "xhigh",
         model: (providerID: "openai", modelID: "gpt-4.1"),
       );
 

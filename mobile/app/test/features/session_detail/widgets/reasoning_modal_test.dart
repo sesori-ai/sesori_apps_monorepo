@@ -41,10 +41,11 @@ SessionDetailState _loadedState({
     availableAgents: const [],
     availableProviders: const [],
     availableCommands: const [],
+    availableVariants: const [],
     selectedAgent: "coder",
     selectedProviderID: "anthropic",
     selectedModelID: "claude-3-5-sonnet",
-    selectedEffort: SessionEffort.medium,
+    selectedVariant: null,
     stagedCommand: null,
     isRefreshing: false,
   );

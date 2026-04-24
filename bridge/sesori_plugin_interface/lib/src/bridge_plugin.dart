@@ -1,7 +1,6 @@
 import "bridge_sse_event.dart";
 import "models/plugin_agent.dart";
 import "models/plugin_command.dart";
-import "models/plugin_effort.dart";
 import "models/plugin_message.dart";
 import "models/plugin_pending_question.dart";
 import "models/plugin_project.dart";
@@ -39,7 +38,7 @@ abstract class BridgePlugin {
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
-    required PluginEffort? effort,
+    required String? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   });
@@ -68,7 +67,7 @@ abstract class BridgePlugin {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PluginPromptPart> parts,
-    required PluginEffort? effort,
+    required String? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   });
@@ -77,7 +76,7 @@ abstract class BridgePlugin {
     required String sessionId,
     required String command,
     required String arguments,
-    required PluginEffort? effort,
+    required String? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   });

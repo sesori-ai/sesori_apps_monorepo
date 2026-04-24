@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$SendPromptRequest {
 
- String get sessionId; List<PromptPart> get parts; String? get agent; PromptModel? get model; String? get command; SessionEffort? get effort;
+ String get sessionId; List<PromptPart> get parts; String? get agent; PromptModel? get model; String? get command; String? get variant;
 /// Create a copy of SendPromptRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $SendPromptRequestCopyWith<SendPromptRequest> get copyWith => _$SendPromptReques
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SendPromptRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&const DeepCollectionEquality().equals(other.parts, parts)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.model, model) || other.model == model)&&(identical(other.command, command) || other.command == command)&&(identical(other.effort, effort) || other.effort == effort));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SendPromptRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&const DeepCollectionEquality().equals(other.parts, parts)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.model, model) || other.model == model)&&(identical(other.command, command) || other.command == command)&&(identical(other.variant, variant) || other.variant == variant));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,const DeepCollectionEquality().hash(parts),agent,model,command,effort);
+int get hashCode => Object.hash(runtimeType,sessionId,const DeepCollectionEquality().hash(parts),agent,model,command,variant);
 
 @override
 String toString() {
-  return 'SendPromptRequest(sessionId: $sessionId, parts: $parts, agent: $agent, model: $model, command: $command, effort: $effort)';
+  return 'SendPromptRequest(sessionId: $sessionId, parts: $parts, agent: $agent, model: $model, command: $command, variant: $variant)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $SendPromptRequestCopyWith<$Res>  {
   factory $SendPromptRequestCopyWith(SendPromptRequest value, $Res Function(SendPromptRequest) _then) = _$SendPromptRequestCopyWithImpl;
 @useResult
 $Res call({
- String sessionId, List<PromptPart> parts, String? agent, PromptModel? model, String? command, SessionEffort? effort
+ String sessionId, List<PromptPart> parts, String? agent, PromptModel? model, String? command, String? variant
 });
 
 
@@ -65,15 +65,15 @@ class _$SendPromptRequestCopyWithImpl<$Res>
 
 /// Create a copy of SendPromptRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? parts = null,Object? agent = freezed,Object? model = freezed,Object? command = freezed,Object? effort = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? parts = null,Object? agent = freezed,Object? model = freezed,Object? command = freezed,Object? variant = freezed,}) {
   return _then(_self.copyWith(
 sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,parts: null == parts ? _self.parts : parts // ignore: cast_nullable_to_non_nullable
 as List<PromptPart>,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
 as PromptModel?,command: freezed == command ? _self.command : command // ignore: cast_nullable_to_non_nullable
-as String?,effort: freezed == effort ? _self.effort : effort // ignore: cast_nullable_to_non_nullable
-as SessionEffort?,
+as String?,variant: freezed == variant ? _self.variant : variant // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 /// Create a copy of SendPromptRequest
@@ -97,7 +97,7 @@ $PromptModelCopyWith<$Res>? get model {
 @JsonSerializable()
 
 class _SendPromptRequest implements SendPromptRequest {
-  const _SendPromptRequest({required this.sessionId, required final  List<PromptPart> parts, required this.agent, required this.model, required this.command, required this.effort}): _parts = parts;
+  const _SendPromptRequest({required this.sessionId, required final  List<PromptPart> parts, required this.agent, required this.model, required this.command, required this.variant}): _parts = parts;
   factory _SendPromptRequest.fromJson(Map<String, dynamic> json) => _$SendPromptRequestFromJson(json);
 
 @override final  String sessionId;
@@ -111,7 +111,7 @@ class _SendPromptRequest implements SendPromptRequest {
 @override final  String? agent;
 @override final  PromptModel? model;
 @override final  String? command;
-@override final  SessionEffort? effort;
+@override final  String? variant;
 
 /// Create a copy of SendPromptRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -126,16 +126,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SendPromptRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&const DeepCollectionEquality().equals(other._parts, _parts)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.model, model) || other.model == model)&&(identical(other.command, command) || other.command == command)&&(identical(other.effort, effort) || other.effort == effort));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SendPromptRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&const DeepCollectionEquality().equals(other._parts, _parts)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.model, model) || other.model == model)&&(identical(other.command, command) || other.command == command)&&(identical(other.variant, variant) || other.variant == variant));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,const DeepCollectionEquality().hash(_parts),agent,model,command,effort);
+int get hashCode => Object.hash(runtimeType,sessionId,const DeepCollectionEquality().hash(_parts),agent,model,command,variant);
 
 @override
 String toString() {
-  return 'SendPromptRequest(sessionId: $sessionId, parts: $parts, agent: $agent, model: $model, command: $command, effort: $effort)';
+  return 'SendPromptRequest(sessionId: $sessionId, parts: $parts, agent: $agent, model: $model, command: $command, variant: $variant)';
 }
 
 
@@ -146,7 +146,7 @@ abstract mixin class _$SendPromptRequestCopyWith<$Res> implements $SendPromptReq
   factory _$SendPromptRequestCopyWith(_SendPromptRequest value, $Res Function(_SendPromptRequest) _then) = __$SendPromptRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String sessionId, List<PromptPart> parts, String? agent, PromptModel? model, String? command, SessionEffort? effort
+ String sessionId, List<PromptPart> parts, String? agent, PromptModel? model, String? command, String? variant
 });
 
 
@@ -163,15 +163,15 @@ class __$SendPromptRequestCopyWithImpl<$Res>
 
 /// Create a copy of SendPromptRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? parts = null,Object? agent = freezed,Object? model = freezed,Object? command = freezed,Object? effort = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? parts = null,Object? agent = freezed,Object? model = freezed,Object? command = freezed,Object? variant = freezed,}) {
   return _then(_SendPromptRequest(
 sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,parts: null == parts ? _self._parts : parts // ignore: cast_nullable_to_non_nullable
 as List<PromptPart>,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
 as PromptModel?,command: freezed == command ? _self.command : command // ignore: cast_nullable_to_non_nullable
-as String?,effort: freezed == effort ? _self.effort : effort // ignore: cast_nullable_to_non_nullable
-as SessionEffort?,
+as String?,variant: freezed == variant ? _self.variant : variant // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

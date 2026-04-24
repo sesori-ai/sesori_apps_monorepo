@@ -6,24 +6,26 @@ import "../extensions/build_context_x.dart";
 
 class AgentModelButtons extends StatelessWidget {
   final List<ProviderInfo> providers;
+  final List<String> availableVariants;
   final String selectedAgent;
   final String selectedProviderID;
   final String selectedModelID;
-  final SessionEffort selectedEffort;
+  final String? selectedVariant;
   final VoidCallback onAgentTap;
   final VoidCallback onModelTap;
-  final VoidCallback onEffortTap;
+  final VoidCallback onVariantTap;
 
   const AgentModelButtons({
     super.key,
     required this.providers,
+    required this.availableVariants,
     required this.selectedAgent,
     required this.selectedProviderID,
     required this.selectedModelID,
-    required this.selectedEffort,
+    required this.selectedVariant,
     required this.onAgentTap,
     required this.onModelTap,
-    required this.onEffortTap,
+    required this.onVariantTap,
   });
 
   String _resolveModelName(AppLocalizations loc) {
@@ -35,14 +37,6 @@ class AgentModelButtons extends StatelessWidget {
     }
     if (selectedModelID.isNotEmpty) return selectedModelID;
     return loc.sessionDetailPickerModel;
-  }
-
-  String _resolveEffortLabel(AppLocalizations loc) {
-    return switch (selectedEffort) {
-      SessionEffort.low => loc.sessionDetailEffortLow,
-      SessionEffort.medium => loc.sessionDetailEffortMedium,
-      SessionEffort.max => loc.sessionDetailEffortMax,
-    };
   }
 
   @override
@@ -89,20 +83,22 @@ class AgentModelButtons extends StatelessWidget {
               style: buttonStyle,
             ),
           ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: OutlinedButton.icon(
-              onPressed: onEffortTap,
-              icon: Icon(Icons.speed_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
-              label: Text(
-                _resolveEffortLabel(loc),
-                style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
-                overflow: .ellipsis,
-                maxLines: 1,
+          if (availableVariants.length >= 2) ...[
+            const SizedBox(width: 8),
+            Flexible(
+              child: OutlinedButton.icon(
+                onPressed: onVariantTap,
+                icon: Icon(Icons.speed_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
+                label: Text(
+                  selectedVariant ?? loc.sessionDetailVariantDefault,
+                  style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                  overflow: .ellipsis,
+                  maxLines: 1,
+                ),
+                style: buttonStyle,
               ),
-              style: buttonStyle,
             ),
-          ),
+          ],
         ],
       ),
     );

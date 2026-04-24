@@ -282,7 +282,7 @@ void main() {
       expect(result, equals("/repo-b"));
     });
 
-    test("createSession maps shared effort to plugin effort", () async {
+    test("createSession passes variant directly to plugin", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
 
@@ -295,28 +295,23 @@ void main() {
         ),
       );
 
-      final cases = <({SessionEffort? sessionEffort, PluginEffort? pluginEffort})>[
-        (sessionEffort: SessionEffort.low, pluginEffort: PluginEffort.low),
-        (sessionEffort: SessionEffort.medium, pluginEffort: null),
-        (sessionEffort: SessionEffort.max, pluginEffort: PluginEffort.max),
-        (sessionEffort: null, pluginEffort: null),
-      ];
+      final cases = <String?>["low", "xhigh", null];
 
-      for (final testCase in cases) {
+      for (final variant in cases) {
         await repository.createSession(
           directory: "/repo",
           parentSessionId: null,
           parts: const [PromptPart.text(text: "Ship it")],
-          effort: testCase.sessionEffort,
+          variant: variant,
           agent: null,
           model: null,
         );
 
-        expect(plugin.lastCreateSessionEffort, equals(testCase.pluginEffort));
+        expect(plugin.lastCreateSessionVariant, equals(variant));
       }
     });
 
-    test("sendPrompt and sendCommand map shared effort to plugin effort", () async {
+    test("sendPrompt and sendCommand pass variant directly to plugin", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
 
@@ -329,32 +324,27 @@ void main() {
         ),
       );
 
-      final cases = <({SessionEffort? sessionEffort, PluginEffort? pluginEffort})>[
-        (sessionEffort: SessionEffort.low, pluginEffort: PluginEffort.low),
-        (sessionEffort: SessionEffort.medium, pluginEffort: null),
-        (sessionEffort: SessionEffort.max, pluginEffort: PluginEffort.max),
-        (sessionEffort: null, pluginEffort: null),
-      ];
+      final cases = <String?>["low", "xhigh", null];
 
-      for (final testCase in cases) {
+      for (final variant in cases) {
         await repository.sendPrompt(
           sessionId: "s1",
           parts: const [PromptPart.text(text: "Prompt")],
-          effort: testCase.sessionEffort,
+          variant: variant,
           agent: null,
           model: null,
         );
-        expect(plugin.lastSendPromptEffort, equals(testCase.pluginEffort));
+        expect(plugin.lastSendPromptVariant, equals(variant));
 
         await repository.sendCommand(
           sessionId: "s1",
           command: "review",
           arguments: "Prompt",
-          effort: testCase.sessionEffort,
+          variant: variant,
           agent: null,
           model: null,
         );
-        expect(plugin.lastSendCommandEffort, equals(testCase.pluginEffort));
+        expect(plugin.lastSendCommandVariant, equals(variant));
       }
     });
   });
@@ -376,9 +366,9 @@ class _FakeBridgePlugin implements BridgePlugin {
   PluginSession? renameSessionResult;
   String? lastRenameSessionId;
   String? lastRenameSessionTitle;
-  PluginEffort? lastCreateSessionEffort;
-  PluginEffort? lastSendPromptEffort;
-  PluginEffort? lastSendCommandEffort;
+  String? lastCreateSessionVariant;
+  String? lastSendPromptVariant;
+  String? lastSendCommandVariant;
 
   @override
   String get id => "fake";
@@ -406,11 +396,11 @@ class _FakeBridgePlugin implements BridgePlugin {
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
-    required PluginEffort? effort,
+    required String? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
-    lastCreateSessionEffort = effort;
+    lastCreateSessionVariant = variant;
     return createSessionResult;
   }
 
@@ -418,11 +408,11 @@ class _FakeBridgePlugin implements BridgePlugin {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PluginPromptPart> parts,
-    required PluginEffort? effort,
+    required String? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
-    lastSendPromptEffort = effort;
+    lastSendPromptVariant = variant;
   }
 
   @override
@@ -430,11 +420,11 @@ class _FakeBridgePlugin implements BridgePlugin {
     required String sessionId,
     required String command,
     required String arguments,
-    required PluginEffort? effort,
+    required String? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
-    lastSendCommandEffort = effort;
+    lastSendCommandVariant = variant;
   }
 
   @override

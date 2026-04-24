@@ -198,7 +198,7 @@ void main() {
       );
     });
 
-    test("silent refresh preserves selectedAgent, selectedProviderID, selectedModelID, and selectedEffort", () async {
+    test("silent refresh preserves selectedAgent, selectedProviderID, selectedModelID, and selectedVariant", () async {
       final cubit = SessionDetailCubit(
         mockConnectionService,
         loadService: loadService,
@@ -213,7 +213,7 @@ void main() {
       await _awaitLoaded(cubit);
       cubit.selectAgent("oracle");
       cubit.selectModel(providerID: "openai", modelID: "gpt-4.1");
-      cubit.selectEffort(SessionEffort.max);
+      cubit.selectVariant("xhigh");
 
       when(() => mockSessionService.listAgents()).thenAnswer(
         (_) async => ApiResponse.success(
@@ -255,18 +255,18 @@ void main() {
       expect(loaded.selectedAgent, "oracle");
       expect(loaded.selectedProviderID, "openai");
       expect(loaded.selectedModelID, "gpt-4.1");
-      expect(loaded.selectedEffort, SessionEffort.max);
+      expect(loaded.selectedVariant, "xhigh");
       expect(loaded.isRefreshing, isFalse);
     });
 
-    test("sendMessage forwards selectedEffort to repository", () async {
+    test("sendMessage forwards selectedVariant to repository", () async {
       when(
         () => mockSessionRepository.sendMessage(
           sessionId: sessionId,
           text: "hello",
           agent: "coder",
           model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
-          effort: SessionEffort.low,
+          variant: "low",
           command: null,
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
@@ -283,7 +283,7 @@ void main() {
       addTearDown(cubit.close);
 
       await _awaitLoaded(cubit);
-      cubit.selectEffort(SessionEffort.low);
+      cubit.selectVariant("low");
 
       await cubit.sendMessage(text: "hello", command: null);
 
@@ -293,7 +293,7 @@ void main() {
           text: "hello",
           agent: "coder",
           model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
-          effort: SessionEffort.low,
+          variant: "low",
           command: null,
         ),
       ).called(1);
@@ -480,7 +480,7 @@ void main() {
         expect(afterFailure.selectedAgent, before.selectedAgent);
         expect(afterFailure.selectedProviderID, before.selectedProviderID);
         expect(afterFailure.selectedModelID, before.selectedModelID);
-        expect(afterFailure.selectedEffort, before.selectedEffort);
+        expect(afterFailure.selectedVariant, before.selectedVariant);
       },
     );
 

@@ -35,14 +35,14 @@ void main() {
       verify(() => mockRepository.listCommands(projectId: "project-1")).called(1);
     });
 
-    test("createSessionWithMessage omits default medium effort before repository call", () async {
+    test("createSessionWithMessage forwards raw variant", () async {
       when(
         () => mockRepository.createSessionWithMessage(
           projectId: any(named: "projectId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
           model: any(named: "model"),
-          effort: any(named: "effort"),
+          variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
         ),
@@ -54,7 +54,7 @@ void main() {
         agent: "build",
         providerID: "openai",
         modelID: "gpt-4.1",
-        effort: SessionEffort.medium,
+        variant: "custom-build",
         command: "review",
         dedicatedWorktree: true,
       );
@@ -65,21 +65,21 @@ void main() {
           text: "lib/main.dart",
           agent: "build",
           model: const PromptModel(providerID: "openai", modelID: "gpt-4.1"),
-          effort: null,
+          variant: "custom-build",
           command: "review",
           dedicatedWorktree: true,
         ),
       ).called(1);
     });
 
-    test("sendMessage omits default medium effort before repository call", () async {
+    test("sendMessage forwards raw variant", () async {
       when(
         () => mockRepository.sendMessage(
           sessionId: any(named: "sessionId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
           model: any(named: "model"),
-          effort: any(named: "effort"),
+          variant: any(named: "variant"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
@@ -90,7 +90,7 @@ void main() {
         agent: "build",
         providerID: "openai",
         modelID: "gpt-4.1",
-        effort: SessionEffort.medium,
+        variant: "custom-build",
         command: "review",
       );
 
@@ -100,20 +100,20 @@ void main() {
           text: "lib/main.dart",
           agent: "build",
           model: const PromptModel(providerID: "openai", modelID: "gpt-4.1"),
-          effort: null,
+          variant: "custom-build",
           command: "review",
         ),
       ).called(1);
     });
 
-    test("sendMessage preserves agent and model when command is present", () async {
+    test("sendMessage preserves agent model and variant when command is present", () async {
       when(
         () => mockRepository.sendMessage(
           sessionId: any(named: "sessionId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
           model: any(named: "model"),
-          effort: any(named: "effort"),
+          variant: any(named: "variant"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
@@ -124,7 +124,7 @@ void main() {
         agent: "build",
         providerID: "openai",
         modelID: "gpt-4.1",
-        effort: SessionEffort.max,
+        variant: "xhigh",
         command: "review",
       );
 
@@ -134,7 +134,7 @@ void main() {
           text: "lib/main.dart",
           agent: "build",
           model: const PromptModel(providerID: "openai", modelID: "gpt-4.1"),
-          effort: SessionEffort.max,
+          variant: "xhigh",
           command: "review",
         ),
       ).called(1);
@@ -147,7 +147,7 @@ void main() {
           text: any(named: "text"),
           agent: any(named: "agent"),
           model: any(named: "model"),
-          effort: any(named: "effort"),
+          variant: any(named: "variant"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
@@ -158,7 +158,7 @@ void main() {
         agent: "build",
         providerID: "   ",
         modelID: "",
-        effort: null,
+        variant: null,
         command: null,
       );
 
@@ -168,7 +168,7 @@ void main() {
           text: "hello",
           agent: "build",
           model: null,
-          effort: null,
+          variant: null,
           command: null,
         ),
       ).called(1);
@@ -181,7 +181,7 @@ void main() {
           text: any(named: "text"),
           agent: any(named: "agent"),
           model: any(named: "model"),
-          effort: any(named: "effort"),
+          variant: any(named: "variant"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
@@ -192,7 +192,7 @@ void main() {
         agent: "build",
         providerID: "openai",
         modelID: "gpt-5.4",
-        effort: SessionEffort.low,
+        variant: "low",
         command: "   ",
       );
 
@@ -202,7 +202,7 @@ void main() {
           text: "hello",
           agent: "build",
           model: const PromptModel(providerID: "openai", modelID: "gpt-5.4"),
-          effort: SessionEffort.low,
+          variant: "low",
           command: null,
         ),
       ).called(1);
@@ -215,7 +215,7 @@ void main() {
           text: any(named: "text"),
           agent: any(named: "agent"),
           model: any(named: "model"),
-          effort: any(named: "effort"),
+          variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
         ),
@@ -227,7 +227,7 @@ void main() {
         agent: "build",
         providerID: "openai",
         modelID: "gpt-5.4",
-        effort: SessionEffort.max,
+        variant: "xhigh",
         command: "   ",
         dedicatedWorktree: false,
       );
@@ -238,7 +238,7 @@ void main() {
           text: "hello",
           agent: "build",
           model: const PromptModel(providerID: "openai", modelID: "gpt-5.4"),
-          effort: SessionEffort.max,
+          variant: "xhigh",
           command: null,
           dedicatedWorktree: false,
         ),

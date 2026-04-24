@@ -33,13 +33,13 @@ void main() {
       projectId: "project-1",
     );
 
-    test("defaults selectedEffort to medium", () {
+    test("defaults selectedVariant to null", () {
       final cubit = buildCubit();
       addTearDown(cubit.close);
 
       expect(
         cubit.state,
-        isA<NewSessionIdle>().having((state) => state.selectedEffort, "selectedEffort", SessionEffort.medium),
+        isA<NewSessionIdle>().having((state) => state.selectedVariant, "selectedVariant", isNull),
       );
     });
 
@@ -84,7 +84,7 @@ void main() {
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
-            effort: any(named: "effort"),
+            variant: any(named: "variant"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
           ),
@@ -111,7 +111,7 @@ void main() {
             agent: null,
             providerID: null,
             modelID: null,
-            effort: SessionEffort.medium,
+            variant: null,
             command: null,
             dedicatedWorktree: false,
           ),
@@ -129,7 +129,7 @@ void main() {
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
-            effort: any(named: "effort"),
+            variant: any(named: "variant"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
           ),
@@ -159,7 +159,7 @@ void main() {
             agent: null,
             providerID: null,
             modelID: null,
-            effort: SessionEffort.medium,
+            variant: null,
             command: "review",
             dedicatedWorktree: true,
           ),
@@ -168,8 +168,19 @@ void main() {
     );
 
     blocTest<NewSessionCubit, NewSessionState>(
-      "selectEffort updates state and createSession forwards effort",
+      "selectVariant updates state and createSession forwards variant",
       build: () {
+        when(() => mockSessionService.listAgents()).thenAnswer(
+          (_) async => ApiResponse.success(
+            const Agents(
+              agents: [
+                AgentInfo(name: "build", description: "Build", model: null, variant: null, mode: AgentMode.primary),
+                AgentInfo(name: "build", description: "Build", model: null, variant: "xhigh", mode: AgentMode.primary),
+                AgentInfo(name: "build", description: "Build", model: null, variant: "low", mode: AgentMode.primary),
+              ],
+            ),
+          ),
+        );
         when(
           () => mockSessionService.createSessionWithMessage(
             projectId: any(named: "projectId"),
@@ -177,7 +188,7 @@ void main() {
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
-            effort: any(named: "effort"),
+            variant: any(named: "variant"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
           ),
@@ -185,7 +196,8 @@ void main() {
         return buildCubit();
       },
       act: (cubit) async {
-        cubit.selectEffort(SessionEffort.max);
+        await Future<void>.delayed(Duration.zero);
+        cubit.selectVariant("xhigh");
         await cubit.createSession(
           text: "hello",
           dedicatedWorktree: true,
@@ -193,9 +205,11 @@ void main() {
         );
       },
       expect: () => [
-        isA<NewSessionIdle>().having((state) => state.selectedEffort, "selectedEffort", SessionEffort.max),
-        isA<NewSessionSending>().having((state) => state.selectedEffort, "selectedEffort", SessionEffort.max),
-        isA<NewSessionSending>().having((state) => state.selectedEffort, "selectedEffort", SessionEffort.max),
+        isA<NewSessionIdle>()
+            .having((state) => state.availableVariants, "availableVariants", ["xhigh", "low"])
+            .having((state) => state.selectedVariant, "selectedVariant", isNull),
+        isA<NewSessionIdle>().having((state) => state.selectedVariant, "selectedVariant", "xhigh"),
+        isA<NewSessionSending>().having((state) => state.selectedVariant, "selectedVariant", "xhigh"),
         isA<NewSessionCreated>(),
       ],
       verify: (_) {
@@ -203,15 +217,47 @@ void main() {
           () => mockSessionService.createSessionWithMessage(
             projectId: "project-1",
             text: "hello",
-            agent: null,
-            providerID: null,
-            modelID: null,
-            effort: SessionEffort.max,
+            agent: "build",
+            providerID: "",
+            modelID: "",
+            variant: "xhigh",
             command: null,
             dedicatedWorktree: true,
           ),
         ).called(1);
       },
+    );
+
+    blocTest<NewSessionCubit, NewSessionState>(
+      "selectAgent recomputes availableVariants and resets selectedVariant",
+      build: () {
+        when(() => mockSessionService.listAgents()).thenAnswer(
+          (_) async => ApiResponse.success(
+            const Agents(
+              agents: [
+                AgentInfo(name: "build", description: "Build", model: null, variant: null, mode: AgentMode.primary),
+                AgentInfo(name: "build", description: "Build", model: null, variant: "xhigh", mode: AgentMode.primary),
+                AgentInfo(name: "oracle", description: "Oracle", model: null, variant: "deep", mode: AgentMode.primary),
+                AgentInfo(name: "oracle", description: "Oracle", model: null, variant: "none", mode: AgentMode.primary),
+              ],
+            ),
+          ),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        cubit.selectVariant("xhigh");
+        cubit.selectAgent("oracle");
+      },
+      expect: () => [
+        isA<NewSessionIdle>().having((state) => state.availableVariants, "initial variants", ["xhigh"]),
+        isA<NewSessionIdle>().having((state) => state.selectedVariant, "selectedVariant", "xhigh"),
+        isA<NewSessionIdle>()
+            .having((state) => state.selectedAgent, "selectedAgent", "oracle")
+            .having((state) => state.availableVariants, "oracle variants", ["deep"])
+            .having((state) => state.selectedVariant, "reset selectedVariant", isNull),
+      ],
     );
   });
 }

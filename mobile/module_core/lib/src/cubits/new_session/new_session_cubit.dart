@@ -6,6 +6,8 @@ import "../../capabilities/session/session_service.dart";
 import "new_session_state.dart";
 
 class NewSessionCubit extends Cubit<NewSessionState> {
+  static const _noChange = Object();
+
   final SessionService _sessionService;
   final String _projectId;
 
@@ -15,17 +17,18 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   }) : _sessionService = sessionService,
        _projectId = projectId,
        super(
-         const NewSessionState.idle(
-           availableAgents: [],
-           availableProviders: [],
-           availableCommands: [],
-           selectedAgent: null,
-           selectedProviderID: null,
-           selectedModelID: null,
-           selectedEffort: SessionEffort.medium,
-           stagedCommand: null,
-         ),
-       ) {
+          const NewSessionState.idle(
+            availableAgents: [],
+            availableProviders: [],
+            availableCommands: [],
+            availableVariants: [],
+            selectedAgent: null,
+            selectedProviderID: null,
+            selectedModelID: null,
+            selectedVariant: null,
+            stagedCommand: null,
+          ),
+        ) {
     _loadComposerData();
   }
 
@@ -72,13 +75,17 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         defaultModelID = "";
       }
 
+      final availableVariants = _computeVariants(agents: agents, selectedAgentName: defaultAgent);
+
       _emitAgentModelUpdate(
         availableAgents: agents,
         availableProviders: providers,
         availableCommands: commands,
+        availableVariants: availableVariants,
         selectedAgent: defaultAgent,
         selectedProviderID: defaultProviderID,
         selectedModelID: defaultModelID,
+        selectedVariant: null,
       );
     } catch (_) {
       return;
@@ -92,10 +99,11 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     List<AgentInfo>? availableAgents,
     List<ProviderInfo>? availableProviders,
     List<CommandInfo>? availableCommands,
+    List<String>? availableVariants,
     String? selectedAgent,
     String? selectedProviderID,
     String? selectedModelID,
-    SessionEffort? selectedEffort,
+    Object? selectedVariant = _noChange,
   }) {
     if (isClosed) return;
     final current = state;
@@ -106,10 +114,11 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             availableAgents: availableAgents ?? current.availableAgents,
             availableProviders: availableProviders ?? current.availableProviders,
             availableCommands: availableCommands ?? current.availableCommands,
+            availableVariants: availableVariants ?? current.availableVariants,
             selectedAgent: selectedAgent ?? current.selectedAgent,
             selectedProviderID: selectedProviderID ?? current.selectedProviderID,
             selectedModelID: selectedModelID ?? current.selectedModelID,
-            selectedEffort: selectedEffort ?? current.selectedEffort,
+            selectedVariant: selectedVariant == _noChange ? current.selectedVariant : selectedVariant as String?,
           ),
         );
       case NewSessionSending():
@@ -118,10 +127,11 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             availableAgents: availableAgents ?? current.availableAgents,
             availableProviders: availableProviders ?? current.availableProviders,
             availableCommands: availableCommands ?? current.availableCommands,
+            availableVariants: availableVariants ?? current.availableVariants,
             selectedAgent: selectedAgent ?? current.selectedAgent,
             selectedProviderID: selectedProviderID ?? current.selectedProviderID,
             selectedModelID: selectedModelID ?? current.selectedModelID,
-            selectedEffort: selectedEffort ?? current.selectedEffort,
+            selectedVariant: selectedVariant == _noChange ? current.selectedVariant : selectedVariant as String?,
           ),
         );
       case NewSessionError():
@@ -130,10 +140,11 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             availableAgents: availableAgents ?? current.availableAgents,
             availableProviders: availableProviders ?? current.availableProviders,
             availableCommands: availableCommands ?? current.availableCommands,
+            availableVariants: availableVariants ?? current.availableVariants,
             selectedAgent: selectedAgent ?? current.selectedAgent,
             selectedProviderID: selectedProviderID ?? current.selectedProviderID,
             selectedModelID: selectedModelID ?? current.selectedModelID,
-            selectedEffort: selectedEffort ?? current.selectedEffort,
+            selectedVariant: selectedVariant == _noChange ? current.selectedVariant : selectedVariant as String?,
           ),
         );
       case NewSessionCreated():
@@ -142,11 +153,18 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   }
 
   void selectAgent(String agent) {
-    _emitAgentModelUpdate(selectedAgent: agent);
+    final current = state.agentModelData;
+    if (current == null) return;
+
+    _emitAgentModelUpdate(
+      selectedAgent: agent,
+      availableVariants: _computeVariants(agents: current.agents, selectedAgentName: agent),
+      selectedVariant: null,
+    );
   }
 
-  void selectEffort(SessionEffort effort) {
-    _emitAgentModelUpdate(selectedEffort: effort);
+  void selectVariant(String? variant) {
+    _emitAgentModelUpdate(selectedVariant: variant);
   }
 
   void stageCommand(CommandInfo command) {
@@ -201,10 +219,11 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         availableAgents: config?.agents ?? const [],
         availableProviders: config?.providers ?? const [],
         availableCommands: config?.commands ?? const [],
+        availableVariants: config?.availableVariants ?? const [],
         selectedAgent: config?.agent,
         selectedProviderID: config?.providerID,
         selectedModelID: config?.modelID,
-        selectedEffort: config?.effort ?? SessionEffort.medium,
+        selectedVariant: config?.variant,
         stagedCommand: config?.stagedCommand,
       ),
     );
@@ -215,7 +234,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       agent: config?.agent,
       providerID: config?.providerID,
       modelID: config?.modelID,
-      effort: config?.effort,
+      variant: config?.variant,
       command: normalizedCommand,
       dedicatedWorktree: dedicatedWorktree,
     );
@@ -236,10 +255,11 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             availableAgents: current?.agents ?? const [],
             availableProviders: current?.providers ?? const [],
             availableCommands: current?.commands ?? const [],
+            availableVariants: current?.availableVariants ?? const [],
             selectedAgent: current?.agent,
             selectedProviderID: current?.providerID,
             selectedModelID: current?.modelID,
-            selectedEffort: current?.effort ?? SessionEffort.medium,
+            selectedVariant: current?.variant,
             stagedCommand: current?.stagedCommand,
           ),
         );
@@ -255,5 +275,26 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       GenericError() => "Failed to create session.",
       EmptyResponseError() => "Empty response from server.",
     };
+  }
+
+  List<String> _computeVariants({
+    required List<AgentInfo> agents,
+    required String? selectedAgentName,
+  }) {
+    if (selectedAgentName == null) {
+      return const [];
+    }
+
+    final variants = <String>[];
+    for (final agent in agents) {
+      final variant = agent.variant;
+      if (agent.name != selectedAgentName || variant == null || variant == "none") {
+        continue;
+      }
+      if (!variants.contains(variant)) {
+        variants.add(variant);
+      }
+    }
+    return variants;
   }
 }
