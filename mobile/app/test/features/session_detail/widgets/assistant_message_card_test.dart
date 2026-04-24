@@ -119,6 +119,11 @@ void main() {
 
     final markdownBodies = tester.widgetList<MarkdownBody>(find.byType(MarkdownBody)).toList();
     expect(markdownBodies.map((widget) => widget.data), ['First paragraph', 'Second paragraph']);
+
+    // Verify selectable is disabled so SelectionArea owns selection.
+    for (final body in markdownBodies) {
+      expect(body.selectable, isFalse);
+    }
   });
 
   testWidgets("preserves mixed text-tool-text rendering inside one SelectionArea", (tester) async {
