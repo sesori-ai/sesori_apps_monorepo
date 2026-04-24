@@ -55,9 +55,7 @@ void main() {
       (_) async => ApiResponse.success(
         Agents(
           agents: [
-            _testAgent(name: "coder", description: "A coding assistant", variant: null),
             _testAgent(name: "coder", description: "A coding assistant", variant: "xhigh"),
-            _testAgent(name: "coder", description: "A coding assistant", variant: "low"),
             _testAgent(name: "reviewer", description: "A review assistant"),
           ],
         ),
@@ -83,7 +81,7 @@ void main() {
     await GetIt.instance.reset();
   });
 
-  testWidgets("shows variant picker when selected agent has multiple variants", (tester) async {
+  testWidgets("shows variant picker when selected agent has a variant", (tester) async {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
@@ -94,7 +92,6 @@ void main() {
 
     expect(find.text("Variant"), findsOneWidget);
     expect(find.text("Default"), findsWidgets);
-    expect(find.text("low"), findsOneWidget);
     expect(find.text("xhigh"), findsOneWidget);
 
     await tester.tap(find.text("xhigh"));

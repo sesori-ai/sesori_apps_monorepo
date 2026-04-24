@@ -83,7 +83,7 @@ class AgentModelButtons extends StatelessWidget {
               style: buttonStyle,
             ),
           ),
-          if (availableVariants.length >= 2) ...[
+          if (availableVariants.isNotEmpty) ...[
             const SizedBox(width: 8),
             Flexible(
               child: OutlinedButton.icon(

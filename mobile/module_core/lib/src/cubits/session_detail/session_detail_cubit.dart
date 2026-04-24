@@ -148,10 +148,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
               .where((a) => !a.hidden && a.mode != AgentMode.subagent)
               .toList();
           final availableProviders = snapshot.providerData?.items ?? <ProviderInfo>[];
-          final availableVariants = _variantOptionsBuilder.build(
-            agents: availableAgents,
-            selectedAgentName: preservedSelectedAgent,
-          );
+          final selectedAgentInfo = availableAgents.firstWhereOrNull((a) => a.name == preservedSelectedAgent);
+          final availableVariants = _variantOptionsBuilder.build(agent: selectedAgentInfo);
 
           final streamingText = _streamingBuffer.snapshot();
           _streamingBuffer.clear();
@@ -831,11 +829,12 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final current = state;
     if (current is! SessionDetailLoaded) return;
 
+    final selectedAgentInfo = current.availableAgents.firstWhereOrNull((a) => a.name == agent);
     if (isClosed) return;
     emit(
       current.copyWith(
         selectedAgent: agent,
-        availableVariants: _variantOptionsBuilder.build(agents: current.availableAgents, selectedAgentName: agent),
+        availableVariants: _variantOptionsBuilder.build(agent: selectedAgentInfo),
         selectedVariant: null,
       ),
     );
@@ -930,7 +929,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       defaultProviderID = "";
       defaultModelID = "";
     }
-    final availableVariants = _variantOptionsBuilder.build(agents: agents, selectedAgentName: defaultAgent);
+    final defaultAgentInfo = agents.firstWhereOrNull((a) => a.name == defaultAgent);
+    final availableVariants = _variantOptionsBuilder.build(agent: defaultAgentInfo);
 
     return SessionDetailState.loaded(
           messages: snapshot.messages,

@@ -177,9 +177,7 @@ void main() {
           (_) async => ApiResponse.success(
             const Agents(
               agents: [
-                AgentInfo(name: "build", description: "Build", model: null, variant: null, mode: AgentMode.primary),
                 AgentInfo(name: "build", description: "Build", model: null, variant: "xhigh", mode: AgentMode.primary),
-                AgentInfo(name: "build", description: "Build", model: null, variant: "low", mode: AgentMode.primary),
               ],
             ),
           ),
@@ -211,7 +209,6 @@ void main() {
         isA<NewSessionIdle>()
             .having((state) => state.availableVariants, "availableVariants", const [
               SessionVariant(id: "xhigh"),
-              SessionVariant(id: "low"),
             ])
             .having((state) => state.selectedVariant, "selectedVariant", isNull),
         isA<NewSessionIdle>().having(
@@ -249,7 +246,6 @@ void main() {
           (_) async => ApiResponse.success(
             const Agents(
               agents: [
-                AgentInfo(name: "build", description: "Build", model: null, variant: null, mode: AgentMode.primary),
                 AgentInfo(name: "build", description: "Build", model: null, variant: "xhigh", mode: AgentMode.primary),
                 AgentInfo(name: "oracle", description: "Oracle", model: null, variant: "deep", mode: AgentMode.primary),
                 AgentInfo(name: "oracle", description: "Oracle", model: null, variant: "none", mode: AgentMode.primary),

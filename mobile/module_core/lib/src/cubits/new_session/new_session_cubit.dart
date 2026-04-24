@@ -1,4 +1,5 @@
 import "package:bloc/bloc.dart";
+import "package:collection/collection.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -7,8 +8,6 @@ import "../../services/agent_variant_options_builder.dart";
 import "new_session_state.dart";
 
 class NewSessionCubit extends Cubit<NewSessionState> {
-  static const _noChange = Object();
-
   final SessionService _sessionService;
   final AgentVariantOptionsBuilder _variantOptionsBuilder;
   final String _projectId;
@@ -33,8 +32,8 @@ class NewSessionCubit extends Cubit<NewSessionState> {
            stagedCommand: null,
          ),
        ) {
-    _loadComposerData();
-  }
+     _loadComposerData();
+   }
 
   Future<void> _loadComposerData() async {
     try {
@@ -79,7 +78,8 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         defaultModelID = "";
       }
 
-      final availableVariants = _variantOptionsBuilder.build(agents: agents, selectedAgentName: defaultAgent);
+      final selectedAgentInfo = agents.firstWhereOrNull((a) => a.name == defaultAgent);
+      final availableVariants = _variantOptionsBuilder.build(agent: selectedAgentInfo);
 
       _emitAgentModelUpdate(
         availableAgents: agents,
@@ -98,7 +98,6 @@ class NewSessionCubit extends Cubit<NewSessionState> {
 
   /// Applies agent/model field updates to the current state, regardless of
   /// which variant is active. No-op when the cubit is closed or in `created`.
-  // ignore: no_slop_linter/prefer_required_named_parameters, optional state patch parameters
   void _emitAgentModelUpdate({
     List<AgentInfo>? availableAgents,
     List<ProviderInfo>? availableProviders,
@@ -107,7 +106,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     String? selectedAgent,
     String? selectedProviderID,
     String? selectedModelID,
-    Object? selectedVariant = _noChange,
+    required SessionVariant? selectedVariant,
   }) {
     if (isClosed) return;
     final current = state;
@@ -122,9 +121,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             selectedAgent: selectedAgent ?? current.selectedAgent,
             selectedProviderID: selectedProviderID ?? current.selectedProviderID,
             selectedModelID: selectedModelID ?? current.selectedModelID,
-            selectedVariant: selectedVariant == _noChange
-                ? current.selectedVariant
-                : selectedVariant as SessionVariant?,
+            selectedVariant: selectedVariant,
           ),
         );
       case NewSessionSending():
@@ -137,9 +134,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             selectedAgent: selectedAgent ?? current.selectedAgent,
             selectedProviderID: selectedProviderID ?? current.selectedProviderID,
             selectedModelID: selectedModelID ?? current.selectedModelID,
-            selectedVariant: selectedVariant == _noChange
-                ? current.selectedVariant
-                : selectedVariant as SessionVariant?,
+            selectedVariant: selectedVariant,
           ),
         );
       case NewSessionError():
@@ -152,9 +147,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             selectedAgent: selectedAgent ?? current.selectedAgent,
             selectedProviderID: selectedProviderID ?? current.selectedProviderID,
             selectedModelID: selectedModelID ?? current.selectedModelID,
-            selectedVariant: selectedVariant == _noChange
-                ? current.selectedVariant
-                : selectedVariant as SessionVariant?,
+            selectedVariant: selectedVariant,
           ),
         );
       case NewSessionCreated():
@@ -166,9 +159,10 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     final current = state.agentModelData;
     if (current == null) return;
 
+    final selectedAgentInfo = current.agents.firstWhereOrNull((a) => a.name == agent);
     _emitAgentModelUpdate(
       selectedAgent: agent,
-      availableVariants: _variantOptionsBuilder.build(agents: current.agents, selectedAgentName: agent),
+      availableVariants: _variantOptionsBuilder.build(agent: selectedAgentInfo),
       selectedVariant: null,
     );
   }
@@ -205,9 +199,13 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     }
   }
 
-  // ignore: no_slop_linter/prefer_required_named_parameters, public cubit API consumed by UI layer
   void selectModel(String providerID, String modelID) {
-    _emitAgentModelUpdate(selectedProviderID: providerID, selectedModelID: modelID);
+    final current = state.agentModelData;
+    _emitAgentModelUpdate(
+      selectedProviderID: providerID,
+      selectedModelID: modelID,
+      selectedVariant: current?.variant,
+    );
   }
 
   Future<void> createSession({
