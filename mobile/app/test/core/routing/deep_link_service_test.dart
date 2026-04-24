@@ -11,20 +11,20 @@ void main() {
   setUpAll(registerAllFallbackValues);
 
   group("DeepLinkService", () {
-    late MockAuthRedirectService mockAuthRedirectService;
+    late MockOAuthCallbackDispatcher mockOAuthCallbackDispatcher;
     late MockDeepLinkSource mockDeepLinkSource;
     late StreamController<Uri> controller;
     late DeepLinkService service;
 
     setUp(() {
-      mockAuthRedirectService = MockAuthRedirectService();
+      mockOAuthCallbackDispatcher = MockOAuthCallbackDispatcher();
       mockDeepLinkSource = MockDeepLinkSource();
       controller = StreamController<Uri>.broadcast();
 
       when(() => mockDeepLinkSource.linkStream).thenAnswer((_) => controller.stream);
-      when(() => mockAuthRedirectService.handleOAuthCallback(any())).thenAnswer((_) async => const AppRoute.projects());
+      when(() => mockOAuthCallbackDispatcher.handleOAuthCallback(any())).thenAnswer((_) async => const AppRoute.projects());
 
-      service = DeepLinkService(mockAuthRedirectService, mockDeepLinkSource);
+      service = DeepLinkService(mockOAuthCallbackDispatcher, mockDeepLinkSource);
     });
 
     tearDown(() async {
@@ -38,7 +38,7 @@ void main() {
       await controller.close();
       controller = StreamController<Uri>.broadcast(onListen: () => listenCount++);
       when(() => mockDeepLinkSource.linkStream).thenAnswer((_) => controller.stream);
-      service = DeepLinkService(mockAuthRedirectService, mockDeepLinkSource);
+      service = DeepLinkService(mockOAuthCallbackDispatcher, mockDeepLinkSource);
 
       // when
       service.init();
@@ -58,7 +58,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       // then
-      verify(() => mockAuthRedirectService.handleOAuthCallback(Uri.parse(uri))).called(1);
+      verify(() => mockOAuthCallbackDispatcher.handleOAuthCallback(Uri.parse(uri))).called(1);
     });
 
     test("ignores URI with wrong scheme", () async {
@@ -70,7 +70,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       // then
-      verifyNever(() => mockAuthRedirectService.handleOAuthCallback(any()));
+      verifyNever(() => mockOAuthCallbackDispatcher.handleOAuthCallback(any()));
     });
 
     test("ignores URI with wrong path", () async {
@@ -82,7 +82,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       // then
-      verifyNever(() => mockAuthRedirectService.handleOAuthCallback(any()));
+      verifyNever(() => mockOAuthCallbackDispatcher.handleOAuthCallback(any()));
     });
 
     test("ignores URI with wrong host", () async {
@@ -94,7 +94,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       // then
-      verifyNever(() => mockAuthRedirectService.handleOAuthCallback(any()));
+      verifyNever(() => mockOAuthCallbackDispatcher.handleOAuthCallback(any()));
     });
 
     test("double init is no-op", () async {
@@ -103,7 +103,7 @@ void main() {
       await controller.close();
       controller = StreamController<Uri>.broadcast(onListen: () => listenCount++);
       when(() => mockDeepLinkSource.linkStream).thenAnswer((_) => controller.stream);
-      service = DeepLinkService(mockAuthRedirectService, mockDeepLinkSource);
+      service = DeepLinkService(mockOAuthCallbackDispatcher, mockDeepLinkSource);
 
       // when
       service.init();
@@ -120,7 +120,7 @@ void main() {
       await controller.close();
       controller = StreamController<Uri>.broadcast(onListen: () => listenCount++);
       when(() => mockDeepLinkSource.linkStream).thenAnswer((_) => controller.stream);
-      service = DeepLinkService(mockAuthRedirectService, mockDeepLinkSource);
+      service = DeepLinkService(mockOAuthCallbackDispatcher, mockDeepLinkSource);
 
       // when
       service.init();
@@ -137,7 +137,7 @@ void main() {
     test("concurrent callback processing is guarded", () async {
       // given
       final completer = Completer<AppRoute?>();
-      when(() => mockAuthRedirectService.handleOAuthCallback(any())).thenAnswer((_) => completer.future);
+      when(() => mockOAuthCallbackDispatcher.handleOAuthCallback(any())).thenAnswer((_) => completer.future);
       service.init();
 
       // when
@@ -146,7 +146,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       // then
-      verify(() => mockAuthRedirectService.handleOAuthCallback(any())).called(1);
+      verify(() => mockOAuthCallbackDispatcher.handleOAuthCallback(any())).called(1);
 
       completer.complete(const AppRoute.projects());
       await Future<void>.delayed(Duration.zero);

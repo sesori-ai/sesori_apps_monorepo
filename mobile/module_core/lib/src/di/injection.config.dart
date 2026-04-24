@@ -48,10 +48,10 @@ import 'package:sesori_dart_core/src/repositories/project_repository.dart'
     as _i80;
 import 'package:sesori_dart_core/src/repositories/session_repository.dart'
     as _i7;
-import 'package:sesori_dart_core/src/routing/auth_redirect_service.dart'
-    as _i436;
 import 'package:sesori_dart_core/src/routing/notification_open_dispatcher.dart'
     as _i516;
+import 'package:sesori_dart_core/src/routing/oauth_callback_dispatcher.dart'
+    as _i607;
 import 'package:sesori_dart_core/src/services/foreground_notification_dispatcher.dart'
     as _i101;
 import 'package:sesori_dart_core/src/services/notification_registration_service.dart'
@@ -70,6 +70,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i369.ClockProvider>(() => const _i369.ClockProvider());
     gh.lazySingleton<_i369.RelayClientFactory>(
       () => const _i369.RelayClientFactory(),
+    );
+    gh.lazySingleton<_i607.OAuthCallbackDispatcher>(
+      () => _i607.OAuthCallbackDispatcher(gh<_i442.OAuthFlowProvider>()),
     );
     gh.lazySingleton<_i895.RoomKeyStorage>(
       () => _i895.RoomKeyStorage(gh<_i442.SecureStorage>()),
@@ -116,14 +119,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i603.SessionApi>(
       () => _i603.SessionApi(client: gh<_i857.RelayHttpApiClient>()),
-    );
-    gh.lazySingleton<_i436.AuthRedirectService>(
-      () => _i436.AuthRedirectService(
-        gh<_i442.OAuthFlowProvider>(),
-        gh<_i442.AuthSession>(),
-        gh<_i442.AuthTokenProvider>(),
-        gh<_i369.ConnectionService>(),
-      ),
     );
     gh.lazySingleton<_i471.NotificationRepository>(
       () => _i471.NotificationRepository(api: gh<_i400.NotificationApi>()),

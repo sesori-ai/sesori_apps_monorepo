@@ -53,6 +53,8 @@ export "src/cubits/session_diffs/diff_cubit.dart";
 export "src/cubits/session_diffs/diff_state.dart";
 export "src/cubits/session_list/session_list_cubit.dart";
 export "src/cubits/session_list/session_list_state.dart";
+export "src/cubits/splash/splash_cubit.dart";
+export "src/cubits/splash/splash_state.dart";
 // DI
 export "src/di/injection.dart";
 // Logging
@@ -75,8 +77,8 @@ export "src/repositories/project_repository.dart";
 export "src/repositories/session_repository.dart";
 // Routing
 export "src/routing/app_routes.dart";
-export "src/routing/auth_redirect_service.dart";
 export "src/routing/notification_open_dispatcher.dart";
+export "src/routing/oauth_callback_dispatcher.dart";
 // Services
 export "src/services/foreground_notification_dispatcher.dart";
 export "src/services/notification_registration_service.dart";

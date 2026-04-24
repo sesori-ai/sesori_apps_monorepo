@@ -9,7 +9,7 @@ import "../../features/session_detail/session_detail_screen.dart";
 import "../../features/session_diffs/session_diffs_screen.dart";
 import "../../features/session_list/session_list_screen.dart";
 import "../../features/settings/notification_settings_screen.dart";
-import "../di/injection.dart";
+import "../../features/splash/splash_screen.dart";
 
 extension AppRouteToGoRoute on AppRouteDef {
   /// Returns the [GoRoute] for this route definition with an exhaustive
@@ -25,6 +25,7 @@ extension AppRouteToGoRoute on AppRouteDef {
         );
 
         return switch (route) {
+          AppRouteSplash() => const SplashScreen(),
           AppRouteLogin() => const LoginScreen(),
           AppRouteProjects() => const ProjectListScreen(),
           AppRouteNotificationSettings() => const NotificationSettingsScreen(),
@@ -79,16 +80,7 @@ extension GoRouterNavigation on GoRouter {
 // ---------------------------------------------------------------------------
 
 final appRouter = GoRouter(
-  initialLocation: AppRouteDef.login.path,
-  redirect: (context, state) async {
-    // Session restore: if on login and tokens exist, skip to projects
-    if (state.matchedLocation == AppRouteDef.login.path) {
-      final authRedirect = getIt<AuthRedirectService>();
-      return (await authRedirect.tryRestoreSession())?.buildPath();
-    }
-
-    return null;
-  },
+  initialLocation: AppRouteDef.splash.path,
   onException: (context, state, router) {
     // Deep links (e.g. com.sesori.app://auth/callback) are handled
     // entirely by DeepLinkService via app_links — no GoRouter navigation
