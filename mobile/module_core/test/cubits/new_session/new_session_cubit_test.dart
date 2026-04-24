@@ -277,5 +277,56 @@ void main() {
             .having((state) => state.selectedVariant, "reset selectedVariant", isNull),
       ],
     );
+
+    blocTest<NewSessionCubit, NewSessionState>(
+      "selectModel recomputes availableVariants by model and resets selectedVariant",
+      build: () {
+        when(() => mockSessionService.listAgents()).thenAnswer(
+          (_) async => ApiResponse.success(
+            const Agents(
+              agents: [
+                AgentInfo(
+                  name: "build",
+                  description: "Build",
+                  model: AgentModel(providerID: "openai", modelID: "gpt-4"),
+                  variant: "fast",
+                  mode: AgentMode.primary,
+                ),
+                AgentInfo(
+                  name: "build",
+                  description: "Build",
+                  model: AgentModel(providerID: "anthropic", modelID: "claude-3"),
+                  variant: "deep",
+                  mode: AgentMode.primary,
+                ),
+              ],
+            ),
+          ),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        cubit.selectVariant(const SessionVariant(id: "fast"));
+        cubit.selectModel("anthropic", "claude-3");
+      },
+      expect: () => [
+        isA<NewSessionIdle>().having(
+          (state) => state.availableVariants,
+          "initial variants",
+          const [SessionVariant(id: "fast")],
+        ),
+        isA<NewSessionIdle>().having(
+          (state) => state.selectedVariant,
+          "selectedVariant",
+          const SessionVariant(id: "fast"),
+        ),
+        isA<NewSessionIdle>()
+            .having((state) => state.selectedProviderID, "selectedProviderID", "anthropic")
+            .having((state) => state.selectedModelID, "selectedModelID", "claude-3")
+            .having((state) => state.availableVariants, "anthropic variants", const [SessionVariant(id: "deep")])
+            .having((state) => state.selectedVariant, "reset selectedVariant", isNull),
+      ],
+    );
   });
 }

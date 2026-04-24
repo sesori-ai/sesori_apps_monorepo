@@ -1,5 +1,4 @@
 import "package:bloc/bloc.dart";
-import "package:collection/collection.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -78,8 +77,12 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         defaultModelID = "";
       }
 
-      final selectedAgentInfo = agents.firstWhereOrNull((a) => a.name == defaultAgent);
-      final availableVariants = _variantOptionsBuilder.build(agent: selectedAgentInfo);
+      final availableVariants = _variantOptionsBuilder.build(
+        agents: agents,
+        agentName: defaultAgent,
+        providerID: defaultProviderID,
+        modelID: defaultModelID,
+      );
 
       _emitAgentModelUpdate(
         availableAgents: agents,
@@ -159,10 +162,14 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     final current = state.agentModelData;
     if (current == null) return;
 
-    final selectedAgentInfo = current.agents.firstWhereOrNull((a) => a.name == agent);
     _emitAgentModelUpdate(
       selectedAgent: agent,
-      availableVariants: _variantOptionsBuilder.build(agent: selectedAgentInfo),
+      availableVariants: _variantOptionsBuilder.build(
+        agents: current.agents,
+        agentName: agent,
+        providerID: current.providerID,
+        modelID: current.modelID,
+      ),
       selectedVariant: null,
     );
   }
@@ -201,10 +208,20 @@ class NewSessionCubit extends Cubit<NewSessionState> {
 
   void selectModel(String providerID, String modelID) {
     final current = state.agentModelData;
+    if (current == null) return;
+
+    final availableVariants = _variantOptionsBuilder.build(
+      agents: current.agents,
+      agentName: current.agent,
+      providerID: providerID,
+      modelID: modelID,
+    );
+
     _emitAgentModelUpdate(
       selectedProviderID: providerID,
       selectedModelID: modelID,
-      selectedVariant: current?.variant,
+      availableVariants: availableVariants,
+      selectedVariant: null,
     );
   }
 
