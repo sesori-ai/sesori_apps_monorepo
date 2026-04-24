@@ -176,7 +176,9 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
               selectedAgent: preservedSelectedAgent,
               selectedProviderID: preservedSelectedProviderID,
               selectedModelID: preservedSelectedModelID,
-              selectedVariant: preservedSelectedVariant,
+              selectedVariant: availableVariants.any((v) => v.id == preservedSelectedVariant?.id)
+                  ? preservedSelectedVariant
+                  : null,
               stagedCommand: _resolveStagedCommand(
                 availableCommands: snapshot.commands,
                 stagedCommand: preservedStagedCommand,

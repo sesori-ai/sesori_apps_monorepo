@@ -259,7 +259,8 @@ void main() {
       expect(loaded.selectedAgent, "oracle");
       expect(loaded.selectedProviderID, "openai");
       expect(loaded.selectedModelID, "gpt-4.1");
-      expect(loaded.selectedVariant, const SessionVariant(id: "xhigh"));
+      // Variant cleared because agent changed and xhigh is no longer available
+      expect(loaded.selectedVariant, isNull);
       expect(loaded.isRefreshing, isFalse);
     });
 
