@@ -6,130 +6,30 @@ void main() {
   group("AgentVariantOptionsBuilder", () {
     const builder = AgentVariantOptionsBuilder();
 
-    test("returns empty list when providerID is null", () {
-      final result = builder.build(
-        agents: const [
-          AgentInfo(
-            name: "build",
-            description: "Build",
-            model: AgentModel(providerID: "openai", modelID: "gpt-4"),
-            variant: "xhigh",
-            mode: AgentMode.primary,
-          ),
-        ],
-        providerID: null,
-        modelID: "gpt-4",
-      );
+    test("returns empty list when agentModel is null", () {
+      final result = builder.build(agentModel: null);
       expect(result, isEmpty);
     });
 
-    test("returns empty list when modelID is null", () {
+    test("returns variant from agentModel", () {
       final result = builder.build(
-        agents: const [
-          AgentInfo(
-            name: "build",
-            description: "Build",
-            model: AgentModel(providerID: "openai", modelID: "gpt-4"),
-            variant: "xhigh",
-            mode: AgentMode.primary,
-          ),
-        ],
-        providerID: "openai",
-        modelID: null,
+        agentModel: const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "xhigh"),
       );
-      expect(result, isEmpty);
-    });
-
-    test("returns variant matching the model", () {
-      final result = builder.build(
-        agents: const [
-          AgentInfo(
-            name: "build",
-            description: "Build",
-            model: AgentModel(providerID: "openai", modelID: "gpt-4"),
-            variant: "fast",
-            mode: AgentMode.primary,
-          ),
-          AgentInfo(
-            name: "review",
-            description: "Review",
-            model: AgentModel(providerID: "anthropic", modelID: "claude-3"),
-            variant: "deep",
-            mode: AgentMode.primary,
-          ),
-        ],
-        providerID: "anthropic",
-        modelID: "claude-3",
-      );
-      expect(result, const [SessionVariant(id: "deep")]);
-    });
-
-    test("returns empty list when no agent has the model", () {
-      final result = builder.build(
-        agents: const [
-          AgentInfo(
-            name: "build",
-            description: "Build",
-            model: AgentModel(providerID: "openai", modelID: "gpt-4"),
-            variant: "fast",
-            mode: AgentMode.primary,
-          ),
-        ],
-        providerID: "google",
-        modelID: "gemini",
-      );
-      expect(result, isEmpty);
+      expect(result, const [SessionVariant(id: "xhigh")]);
     });
 
     test("returns empty list when variant is none", () {
       final result = builder.build(
-        agents: const [
-          AgentInfo(
-            name: "build",
-            description: "Build",
-            model: AgentModel(providerID: "openai", modelID: "gpt-4"),
-            variant: "none",
-            mode: AgentMode.primary,
-          ),
-        ],
-        providerID: "openai",
-        modelID: "gpt-4",
+        agentModel: const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "none"),
       );
       expect(result, isEmpty);
     });
 
     test("returns empty list when variant is null", () {
       final result = builder.build(
-        agents: const [
-          AgentInfo(
-            name: "build",
-            description: "Build",
-            model: AgentModel(providerID: "openai", modelID: "gpt-4"),
-            variant: null,
-            mode: AgentMode.primary,
-          ),
-        ],
-        providerID: "openai",
-        modelID: "gpt-4",
+        agentModel: const AgentModel(providerID: "openai", modelID: "gpt-4", variant: null),
       );
       expect(result, isEmpty);
-    });
-
-    test("ignores agent name and only matches by model", () {
-      final result = builder.build(
-        agents: const [
-          AgentInfo(
-            name: "foo",
-            description: "Foo",
-            model: AgentModel(providerID: "openai", modelID: "gpt-4"),
-            variant: "xhigh",
-            mode: AgentMode.primary,
-          ),
-        ],
-        providerID: "openai",
-        modelID: "gpt-4",
-      );
-      expect(result, const [SessionVariant(id: "xhigh")]);
     });
   });
 }

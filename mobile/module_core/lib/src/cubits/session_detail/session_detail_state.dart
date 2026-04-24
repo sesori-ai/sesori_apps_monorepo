@@ -20,8 +20,7 @@ sealed class SessionDetailState with _$SessionDetailState {
     required String? sessionTitle,
     // Agent/model from the latest assistant message.
     required String? agent,
-    required String? modelID,
-    required String? providerID,
+    required AgentModel? assistantAgentModel,
     // Background tasks (child sessions).
     required List<Session> children,
     required Map<String, SessionStatus> childStatuses,
@@ -35,8 +34,7 @@ sealed class SessionDetailState with _$SessionDetailState {
 
     // Currently selected agent and model (pre-populated from defaults, never null once loaded).
     required String selectedAgent,
-    required String selectedProviderID,
-    required String selectedModelID,
+    required AgentModel? selectedAgentModel,
     required SessionVariant? selectedVariant,
     required CommandInfo? stagedCommand,
     required bool isRefreshing,

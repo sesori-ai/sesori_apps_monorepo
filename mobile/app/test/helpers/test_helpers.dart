@@ -397,7 +397,6 @@ AgentInfo testAgentInfo() {
     name: "coder",
     description: "A coding assistant",
     model: null,
-    variant: null,
     mode: AgentMode.primary,
   );
 }

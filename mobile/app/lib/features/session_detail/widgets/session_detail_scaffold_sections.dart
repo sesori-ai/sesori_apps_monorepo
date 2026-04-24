@@ -15,7 +15,7 @@ class SessionDetailTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final subtitle = switch (state) {
-      SessionDetailLoaded(:final agent, :final modelID) => [?agent, ?modelID].join(" · "),
+      SessionDetailLoaded(:final agent, :final assistantAgentModel) => [?agent, assistantAgentModel?.modelID].join(" · "),
       _ => "",
     };
     final title = switch (state) {

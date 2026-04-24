@@ -180,8 +180,7 @@ void main() {
                 AgentInfo(
                   name: "build",
                   description: "Build",
-                  model: AgentModel(providerID: "openai", modelID: "gpt-4"),
-                  variant: "xhigh",
+                  model: AgentModel(providerID: "openai", modelID: "gpt-4", variant: "xhigh"),
                   mode: AgentMode.primary,
                 ),
               ],
@@ -255,15 +254,13 @@ void main() {
                 AgentInfo(
                   name: "build",
                   description: "Build",
-                  model: AgentModel(providerID: "openai", modelID: "gpt-4"),
-                  variant: "xhigh",
+                  model: AgentModel(providerID: "openai", modelID: "gpt-4", variant: "xhigh"),
                   mode: AgentMode.primary,
                 ),
                 AgentInfo(
-                  name: "oracle",
-                  description: "Oracle",
-                  model: AgentModel(providerID: "openai", modelID: "gpt-4"),
-                  variant: "xhigh",
+                  name: "build",
+                  description: "Build",
+                  model: AgentModel(providerID: "openai", modelID: "gpt-4", variant: "xhigh"),
                   mode: AgentMode.primary,
                 ),
               ],
@@ -305,15 +302,13 @@ void main() {
                 AgentInfo(
                   name: "build",
                   description: "Build",
-                  model: AgentModel(providerID: "openai", modelID: "gpt-4"),
-                  variant: "fast",
+                  model: AgentModel(providerID: "openai", modelID: "gpt-4", variant: "fast"),
                   mode: AgentMode.primary,
                 ),
                 AgentInfo(
                   name: "build",
                   description: "Build",
-                  model: AgentModel(providerID: "anthropic", modelID: "claude-3"),
-                  variant: "deep",
+                  model: AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "deep"),
                   mode: AgentMode.primary,
                 ),
               ],
@@ -339,8 +334,11 @@ void main() {
           const SessionVariant(id: "fast"),
         ),
         isA<NewSessionIdle>()
-            .having((state) => state.selectedProviderID, "selectedProviderID", "anthropic")
-            .having((state) => state.selectedModelID, "selectedModelID", "claude-3")
+            .having(
+              (state) => state.selectedAgentModel,
+              "selectedAgentModel",
+              const AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "deep"),
+            )
             .having((state) => state.availableVariants, "anthropic variants", const [SessionVariant(id: "deep")])
             .having((state) => state.selectedVariant, "reset selectedVariant", isNull),
       ],

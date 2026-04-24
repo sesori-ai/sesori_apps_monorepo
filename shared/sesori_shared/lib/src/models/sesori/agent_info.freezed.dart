@@ -155,7 +155,7 @@ as List<AgentInfo>,
 /// @nodoc
 mixin _$AgentInfo {
 
- String get name; String? get description; AgentModel? get model; String? get variant;@JsonKey(unknownEnumValue: AgentMode.unknown) AgentMode get mode; bool get hidden;
+ String get name; String? get description; AgentModel? get model;@JsonKey(unknownEnumValue: AgentMode.unknown) AgentMode get mode; bool get hidden;
 /// Create a copy of AgentInfo
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -168,16 +168,16 @@ $AgentInfoCopyWith<AgentInfo> get copyWith => _$AgentInfoCopyWithImpl<AgentInfo>
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AgentInfo&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.model, model) || other.model == model)&&(identical(other.variant, variant) || other.variant == variant)&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.hidden, hidden) || other.hidden == hidden));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AgentInfo&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.model, model) || other.model == model)&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.hidden, hidden) || other.hidden == hidden));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,description,model,variant,mode,hidden);
+int get hashCode => Object.hash(runtimeType,name,description,model,mode,hidden);
 
 @override
 String toString() {
-  return 'AgentInfo(name: $name, description: $description, model: $model, variant: $variant, mode: $mode, hidden: $hidden)';
+  return 'AgentInfo(name: $name, description: $description, model: $model, mode: $mode, hidden: $hidden)';
 }
 
 
@@ -188,7 +188,7 @@ abstract mixin class $AgentInfoCopyWith<$Res>  {
   factory $AgentInfoCopyWith(AgentInfo value, $Res Function(AgentInfo) _then) = _$AgentInfoCopyWithImpl;
 @useResult
 $Res call({
- String name, String? description, AgentModel? model, String? variant,@JsonKey(unknownEnumValue: AgentMode.unknown) AgentMode mode, bool hidden
+ String name, String? description, AgentModel? model,@JsonKey(unknownEnumValue: AgentMode.unknown) AgentMode mode, bool hidden
 });
 
 
@@ -205,13 +205,12 @@ class _$AgentInfoCopyWithImpl<$Res>
 
 /// Create a copy of AgentInfo
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? description = freezed,Object? model = freezed,Object? variant = freezed,Object? mode = null,Object? hidden = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? description = freezed,Object? model = freezed,Object? mode = null,Object? hidden = null,}) {
   return _then(_self.copyWith(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
-as AgentModel?,variant: freezed == variant ? _self.variant : variant // ignore: cast_nullable_to_non_nullable
-as String?,mode: null == mode ? _self.mode : mode // ignore: cast_nullable_to_non_nullable
+as AgentModel?,mode: null == mode ? _self.mode : mode // ignore: cast_nullable_to_non_nullable
 as AgentMode,hidden: null == hidden ? _self.hidden : hidden // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
@@ -237,13 +236,12 @@ $AgentModelCopyWith<$Res>? get model {
 @JsonSerializable()
 
 class _AgentInfo implements AgentInfo {
-  const _AgentInfo({required this.name, required this.description, required this.model, required this.variant, @JsonKey(unknownEnumValue: AgentMode.unknown) required this.mode, this.hidden = false});
+  const _AgentInfo({required this.name, required this.description, required this.model, @JsonKey(unknownEnumValue: AgentMode.unknown) required this.mode, this.hidden = false});
   factory _AgentInfo.fromJson(Map<String, dynamic> json) => _$AgentInfoFromJson(json);
 
 @override final  String name;
 @override final  String? description;
 @override final  AgentModel? model;
-@override final  String? variant;
 @override@JsonKey(unknownEnumValue: AgentMode.unknown) final  AgentMode mode;
 @override@JsonKey() final  bool hidden;
 
@@ -260,16 +258,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AgentInfo&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.model, model) || other.model == model)&&(identical(other.variant, variant) || other.variant == variant)&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.hidden, hidden) || other.hidden == hidden));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AgentInfo&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.model, model) || other.model == model)&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.hidden, hidden) || other.hidden == hidden));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,description,model,variant,mode,hidden);
+int get hashCode => Object.hash(runtimeType,name,description,model,mode,hidden);
 
 @override
 String toString() {
-  return 'AgentInfo(name: $name, description: $description, model: $model, variant: $variant, mode: $mode, hidden: $hidden)';
+  return 'AgentInfo(name: $name, description: $description, model: $model, mode: $mode, hidden: $hidden)';
 }
 
 
@@ -280,7 +278,7 @@ abstract mixin class _$AgentInfoCopyWith<$Res> implements $AgentInfoCopyWith<$Re
   factory _$AgentInfoCopyWith(_AgentInfo value, $Res Function(_AgentInfo) _then) = __$AgentInfoCopyWithImpl;
 @override @useResult
 $Res call({
- String name, String? description, AgentModel? model, String? variant,@JsonKey(unknownEnumValue: AgentMode.unknown) AgentMode mode, bool hidden
+ String name, String? description, AgentModel? model,@JsonKey(unknownEnumValue: AgentMode.unknown) AgentMode mode, bool hidden
 });
 
 
@@ -297,13 +295,12 @@ class __$AgentInfoCopyWithImpl<$Res>
 
 /// Create a copy of AgentInfo
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? description = freezed,Object? model = freezed,Object? variant = freezed,Object? mode = null,Object? hidden = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? description = freezed,Object? model = freezed,Object? mode = null,Object? hidden = null,}) {
   return _then(_AgentInfo(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
-as AgentModel?,variant: freezed == variant ? _self.variant : variant // ignore: cast_nullable_to_non_nullable
-as String?,mode: null == mode ? _self.mode : mode // ignore: cast_nullable_to_non_nullable
+as AgentModel?,mode: null == mode ? _self.mode : mode // ignore: cast_nullable_to_non_nullable
 as AgentMode,hidden: null == hidden ? _self.hidden : hidden // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
@@ -328,7 +325,7 @@ $AgentModelCopyWith<$Res>? get model {
 /// @nodoc
 mixin _$AgentModel {
 
- String get modelID; String get providerID;
+ String get modelID; String get providerID; String? get variant;
 /// Create a copy of AgentModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -341,16 +338,16 @@ $AgentModelCopyWith<AgentModel> get copyWith => _$AgentModelCopyWithImpl<AgentMo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AgentModel&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AgentModel&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.variant, variant) || other.variant == variant));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,modelID,providerID);
+int get hashCode => Object.hash(runtimeType,modelID,providerID,variant);
 
 @override
 String toString() {
-  return 'AgentModel(modelID: $modelID, providerID: $providerID)';
+  return 'AgentModel(modelID: $modelID, providerID: $providerID, variant: $variant)';
 }
 
 
@@ -361,7 +358,7 @@ abstract mixin class $AgentModelCopyWith<$Res>  {
   factory $AgentModelCopyWith(AgentModel value, $Res Function(AgentModel) _then) = _$AgentModelCopyWithImpl;
 @useResult
 $Res call({
- String modelID, String providerID
+ String modelID, String providerID, String? variant
 });
 
 
@@ -378,11 +375,12 @@ class _$AgentModelCopyWithImpl<$Res>
 
 /// Create a copy of AgentModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? modelID = null,Object? providerID = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? modelID = null,Object? providerID = null,Object? variant = freezed,}) {
   return _then(_self.copyWith(
 modelID: null == modelID ? _self.modelID : modelID // ignore: cast_nullable_to_non_nullable
 as String,providerID: null == providerID ? _self.providerID : providerID // ignore: cast_nullable_to_non_nullable
-as String,
+as String,variant: freezed == variant ? _self.variant : variant // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -394,11 +392,12 @@ as String,
 @JsonSerializable()
 
 class _AgentModel implements AgentModel {
-  const _AgentModel({required this.modelID, required this.providerID});
+  const _AgentModel({required this.modelID, required this.providerID, required this.variant});
   factory _AgentModel.fromJson(Map<String, dynamic> json) => _$AgentModelFromJson(json);
 
 @override final  String modelID;
 @override final  String providerID;
+@override final  String? variant;
 
 /// Create a copy of AgentModel
 /// with the given fields replaced by the non-null parameter values.
@@ -413,16 +412,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AgentModel&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AgentModel&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.variant, variant) || other.variant == variant));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,modelID,providerID);
+int get hashCode => Object.hash(runtimeType,modelID,providerID,variant);
 
 @override
 String toString() {
-  return 'AgentModel(modelID: $modelID, providerID: $providerID)';
+  return 'AgentModel(modelID: $modelID, providerID: $providerID, variant: $variant)';
 }
 
 
@@ -433,7 +432,7 @@ abstract mixin class _$AgentModelCopyWith<$Res> implements $AgentModelCopyWith<$
   factory _$AgentModelCopyWith(_AgentModel value, $Res Function(_AgentModel) _then) = __$AgentModelCopyWithImpl;
 @override @useResult
 $Res call({
- String modelID, String providerID
+ String modelID, String providerID, String? variant
 });
 
 
@@ -450,11 +449,12 @@ class __$AgentModelCopyWithImpl<$Res>
 
 /// Create a copy of AgentModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? modelID = null,Object? providerID = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? modelID = null,Object? providerID = null,Object? variant = freezed,}) {
   return _then(_AgentModel(
 modelID: null == modelID ? _self.modelID : modelID // ignore: cast_nullable_to_non_nullable
 as String,providerID: null == providerID ? _self.providerID : providerID // ignore: cast_nullable_to_non_nullable
-as String,
+as String,variant: freezed == variant ? _self.variant : variant // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

@@ -223,7 +223,7 @@ void main() {
         (_) async => ApiResponse.success(
           const Agents(
             agents: [
-              AgentInfo(name: "build", description: "build", model: null, variant: null, mode: AgentMode.primary),
+              AgentInfo(name: "build", description: "build", model: null, mode: AgentMode.primary),
             ],
           ),
         ),
@@ -257,8 +257,10 @@ void main() {
 
       final loaded = cubit.state as SessionDetailLoaded;
       expect(loaded.selectedAgent, "oracle");
-      expect(loaded.selectedProviderID, "openai");
-      expect(loaded.selectedModelID, "gpt-4.1");
+      expect(
+        loaded.selectedAgentModel,
+        const AgentModel(providerID: "openai", modelID: "gpt-4.1", variant: null),
+      );
       // Variant cleared because agent changed and xhigh is no longer available
       expect(loaded.selectedVariant, isNull);
       expect(loaded.isRefreshing, isFalse);
@@ -490,8 +492,7 @@ void main() {
         expect(afterFailure.isRefreshing, isFalse);
         expect(afterFailure.messages, before.messages);
         expect(afterFailure.selectedAgent, before.selectedAgent);
-        expect(afterFailure.selectedProviderID, before.selectedProviderID);
-        expect(afterFailure.selectedModelID, before.selectedModelID);
+        expect(afterFailure.selectedAgentModel, before.selectedAgentModel);
         expect(afterFailure.selectedVariant, before.selectedVariant);
       },
     );
@@ -615,7 +616,7 @@ MessageWithParts _messageWithParts({String messageId = "msg-1"}) {
 
 List<AgentInfo> _agents() {
   return const [
-    AgentInfo(name: "coder", description: "A coding assistant", model: null, variant: null, mode: AgentMode.primary),
+    AgentInfo(name: "coder", description: "A coding assistant", model: null, mode: AgentMode.primary),
   ];
 }
 

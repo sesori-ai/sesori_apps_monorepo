@@ -1,4 +1,3 @@
-import "package:collection/collection.dart";
 import "package:injectable/injectable.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -6,24 +5,8 @@ import "package:sesori_shared/sesori_shared.dart";
 class AgentVariantOptionsBuilder {
   const AgentVariantOptionsBuilder();
 
-  List<SessionVariant> build({
-    required List<AgentInfo> agents,
-    required String? providerID,
-    required String? modelID,
-  }) {
-    final hasModel = providerID != null &&
-        providerID.isNotEmpty &&
-        modelID != null &&
-        modelID.isNotEmpty;
-    if (!hasModel) return const [];
-
-    final agent = agents.firstWhereOrNull(
-      (a) =>
-          a.model?.providerID == providerID &&
-          a.model?.modelID == modelID,
-    );
-
-    final variant = agent?.variant;
+  List<SessionVariant> build({required AgentModel? agentModel}) {
+    final variant = agentModel?.variant;
     if (variant == null || variant == "none") {
       return const [];
     }

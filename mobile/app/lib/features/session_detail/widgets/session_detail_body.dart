@@ -156,11 +156,12 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
     final cubit = context.read<SessionDetailCubit>();
     final state = cubit.state;
     if (state is! SessionDetailLoaded) return;
+    final agentModel = state.selectedAgentModel;
     ModelPickerSheet.show(
       context,
       providers: state.availableProviders,
-      selectedProviderID: state.selectedProviderID,
-      selectedModelID: state.selectedModelID,
+      selectedProviderID: agentModel?.providerID ?? "",
+      selectedModelID: agentModel?.modelID ?? "",
       onModelChanged: (providerID, modelID) {
         cubit.selectModel(providerID: providerID, modelID: modelID);
       },

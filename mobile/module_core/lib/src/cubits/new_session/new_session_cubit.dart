@@ -1,4 +1,5 @@
 import "package:bloc/bloc.dart";
+import "package:collection/collection.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -25,8 +26,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
            availableCommands: [],
            availableVariants: [],
            selectedAgent: null,
-           selectedProviderID: null,
-           selectedModelID: null,
+           selectedAgentModel: null,
            selectedVariant: null,
            stagedCommand: null,
          ),
@@ -60,28 +60,25 @@ class NewSessionCubit extends Cubit<NewSessionState> {
 
       final defaultAgent = agents.isNotEmpty ? agents.first.name : "build";
       final agentModel = agents.isNotEmpty ? agents.first.model : null;
-      final String defaultProviderID;
-      final String defaultModelID;
+      final AgentModel? defaultAgentModel;
       if (agentModel != null) {
-        defaultProviderID = agentModel.providerID;
-        defaultModelID = agentModel.modelID;
+        defaultAgentModel = agentModel;
       } else if (providers.isNotEmpty) {
-        defaultProviderID = providers.first.id;
-        final firstProviderDefaultModelId = providers.first.defaultModelID;
-        defaultModelID =
-            firstProviderDefaultModelId != null && providers.first.models.containsKey(firstProviderDefaultModelId)
-            ? firstProviderDefaultModelId
-            : providers.first.models.values.first.id;
+        final firstProvider = providers.first;
+        final defaultModelID = firstProvider.defaultModelID;
+        final modelID = defaultModelID != null && firstProvider.models.containsKey(defaultModelID)
+            ? defaultModelID
+            : firstProvider.models.values.first.id;
+        defaultAgentModel = AgentModel(
+          providerID: firstProvider.id,
+          modelID: modelID,
+          variant: null,
+        );
       } else {
-        defaultProviderID = "";
-        defaultModelID = "";
+        defaultAgentModel = null;
       }
 
-      final availableVariants = _variantOptionsBuilder.build(
-        agents: agents,
-        providerID: defaultProviderID,
-        modelID: defaultModelID,
-      );
+      final availableVariants = _variantOptionsBuilder.build(agentModel: defaultAgentModel);
 
       _emitAgentModelUpdate(
         availableAgents: agents,
@@ -89,8 +86,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         availableCommands: commands,
         availableVariants: availableVariants,
         selectedAgent: defaultAgent,
-        selectedProviderID: defaultProviderID,
-        selectedModelID: defaultModelID,
+        selectedAgentModel: defaultAgentModel,
         selectedVariant: null,
       );
     } catch (_) {
@@ -106,8 +102,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     List<CommandInfo>? availableCommands,
     List<SessionVariant>? availableVariants,
     String? selectedAgent,
-    String? selectedProviderID,
-    String? selectedModelID,
+    AgentModel? selectedAgentModel,
     required SessionVariant? selectedVariant,
   }) {
     if (isClosed) return;
@@ -121,8 +116,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             availableCommands: availableCommands ?? current.availableCommands,
             availableVariants: availableVariants ?? current.availableVariants,
             selectedAgent: selectedAgent ?? current.selectedAgent,
-            selectedProviderID: selectedProviderID ?? current.selectedProviderID,
-            selectedModelID: selectedModelID ?? current.selectedModelID,
+            selectedAgentModel: selectedAgentModel ?? current.selectedAgentModel,
             selectedVariant: selectedVariant,
           ),
         );
@@ -134,8 +128,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             availableCommands: availableCommands ?? current.availableCommands,
             availableVariants: availableVariants ?? current.availableVariants,
             selectedAgent: selectedAgent ?? current.selectedAgent,
-            selectedProviderID: selectedProviderID ?? current.selectedProviderID,
-            selectedModelID: selectedModelID ?? current.selectedModelID,
+            selectedAgentModel: selectedAgentModel ?? current.selectedAgentModel,
             selectedVariant: selectedVariant,
           ),
         );
@@ -147,8 +140,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             availableCommands: availableCommands ?? current.availableCommands,
             availableVariants: availableVariants ?? current.availableVariants,
             selectedAgent: selectedAgent ?? current.selectedAgent,
-            selectedProviderID: selectedProviderID ?? current.selectedProviderID,
-            selectedModelID: selectedModelID ?? current.selectedModelID,
+            selectedAgentModel: selectedAgentModel ?? current.selectedAgentModel,
             selectedVariant: selectedVariant,
           ),
         );
@@ -203,17 +195,32 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     final current = state.agentModelData;
     if (current == null) return;
 
-    final availableVariants = _variantOptionsBuilder.build(
+    final agentModel = _resolveAgentModel(
       agents: current.agents,
       providerID: providerID,
       modelID: modelID,
     );
+    final availableVariants = _variantOptionsBuilder.build(agentModel: agentModel);
 
     _emitAgentModelUpdate(
-      selectedProviderID: providerID,
-      selectedModelID: modelID,
+      selectedAgentModel: agentModel,
       availableVariants: availableVariants,
       selectedVariant: null,
+    );
+  }
+
+  AgentModel? _resolveAgentModel({
+    required List<AgentInfo> agents,
+    required String providerID,
+    required String modelID,
+  }) {
+    final agent = agents.firstWhereOrNull(
+      (a) => a.model?.providerID == providerID && a.model?.modelID == modelID,
+    );
+    return agent?.model ?? AgentModel(
+      providerID: providerID,
+      modelID: modelID,
+      variant: null,
     );
   }
 
@@ -238,8 +245,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         availableCommands: config?.commands ?? const [],
         availableVariants: config?.availableVariants ?? const [],
         selectedAgent: config?.agent,
-        selectedProviderID: config?.providerID,
-        selectedModelID: config?.modelID,
+        selectedAgentModel: config?.agentModel,
         selectedVariant: config?.variant,
         stagedCommand: config?.stagedCommand,
       ),
@@ -249,8 +255,8 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       projectId: _projectId,
       text: trimmed,
       agent: config?.agent,
-      providerID: config?.providerID,
-      modelID: config?.modelID,
+      providerID: config?.agentModel?.providerID,
+      modelID: config?.agentModel?.modelID,
       variant: config?.variant,
       command: normalizedCommand,
       dedicatedWorktree: dedicatedWorktree,
@@ -274,8 +280,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             availableCommands: current?.commands ?? const [],
             availableVariants: current?.availableVariants ?? const [],
             selectedAgent: current?.agent,
-            selectedProviderID: current?.providerID,
-            selectedModelID: current?.modelID,
+            selectedAgentModel: current?.agentModel,
             selectedVariant: current?.variant,
             stagedCommand: current?.stagedCommand,
           ),

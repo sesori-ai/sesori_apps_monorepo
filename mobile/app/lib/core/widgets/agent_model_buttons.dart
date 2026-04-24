@@ -8,8 +8,7 @@ class AgentModelButtons extends StatelessWidget {
   final List<ProviderInfo> providers;
   final List<SessionVariant> availableVariants;
   final String selectedAgent;
-  final String selectedProviderID;
-  final String selectedModelID;
+  final AgentModel? selectedAgentModel;
   final SessionVariant? selectedVariant;
   final VoidCallback onAgentTap;
   final VoidCallback onModelTap;
@@ -20,8 +19,7 @@ class AgentModelButtons extends StatelessWidget {
     required this.providers,
     required this.availableVariants,
     required this.selectedAgent,
-    required this.selectedProviderID,
-    required this.selectedModelID,
+    required this.selectedAgentModel,
     required this.selectedVariant,
     required this.onAgentTap,
     required this.onModelTap,
@@ -29,13 +27,15 @@ class AgentModelButtons extends StatelessWidget {
   });
 
   String _resolveModelName(AppLocalizations loc) {
+    final agentModel = selectedAgentModel;
+    if (agentModel == null) return loc.sessionDetailPickerModel;
     for (final provider in providers) {
-      if (provider.id == selectedProviderID) {
-        final model = provider.models[selectedModelID];
+      if (provider.id == agentModel.providerID) {
+        final model = provider.models[agentModel.modelID];
         if (model != null) return model.name;
       }
     }
-    if (selectedModelID.isNotEmpty) return selectedModelID;
+    if (agentModel.modelID.isNotEmpty) return agentModel.modelID;
     return loc.sessionDetailPickerModel;
   }
 

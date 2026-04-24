@@ -349,8 +349,11 @@ void main() {
       expect: () => [
         isA<SessionDetailLoaded>(),
         isA<SessionDetailLoaded>()
-            .having((state) => state.selectedProviderID, "selectedProviderID", "openai")
-            .having((state) => state.selectedModelID, "selectedModelID", "gpt-4.1"),
+            .having(
+              (state) => state.selectedAgentModel,
+              "selectedAgentModel",
+              const AgentModel(providerID: "openai", modelID: "gpt-4.1", variant: null),
+            ),
       ],
     );
 

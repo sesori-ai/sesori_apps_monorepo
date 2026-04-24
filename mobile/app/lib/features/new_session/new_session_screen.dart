@@ -61,11 +61,12 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
 
   void _openModelPicker(AgentModelData data) {
     final cubit = context.read<NewSessionCubit>();
+    final agentModel = data.agentModel;
     ModelPickerSheet.show(
       context,
       providers: data.providers,
-      selectedProviderID: data.providerID ?? "",
-      selectedModelID: data.modelID ?? "",
+      selectedProviderID: agentModel?.providerID ?? "",
+      selectedModelID: agentModel?.modelID ?? "",
       onModelChanged: cubit.selectModel,
     );
   }
@@ -109,8 +110,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
       providers: data.providers,
       availableVariants: data.availableVariants,
       selectedAgent: selectedAgent,
-      selectedProviderID: data.providerID ?? "",
-      selectedModelID: data.modelID ?? "",
+      selectedAgentModel: data.agentModel,
       selectedVariant: data.variant,
       onAgentTap: () => _openAgentPicker(data),
       onModelTap: () => _openModelPicker(data),

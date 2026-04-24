@@ -12,7 +12,6 @@ _AgentInfo _$AgentInfoFromJson(Map json) => _AgentInfo(
   model: json['model'] == null
       ? null
       : AgentModel.fromJson(Map<String, dynamic>.from(json['model'] as Map)),
-  variant: json['variant'] as String?,
   mode: $enumDecode(
     _$AgentModeEnumMap,
     json['mode'],
@@ -26,7 +25,6 @@ Map<String, dynamic> _$AgentInfoToJson(_AgentInfo instance) =>
       'name': instance.name,
       'description': instance.description,
       'model': instance.model?.toJson(),
-      'variant': instance.variant,
       'mode': _$AgentModeEnumMap[instance.mode]!,
       'hidden': instance.hidden,
     };
@@ -41,10 +39,12 @@ const _$AgentModeEnumMap = {
 _AgentModel _$AgentModelFromJson(Map json) => _AgentModel(
   modelID: json['modelID'] as String,
   providerID: json['providerID'] as String,
+  variant: json['variant'] as String?,
 );
 
 Map<String, dynamic> _$AgentModelToJson(_AgentModel instance) =>
     <String, dynamic>{
       'modelID': instance.modelID,
       'providerID': instance.providerID,
+      'variant': instance.variant,
     };

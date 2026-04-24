@@ -291,7 +291,7 @@ void _stubLoadApis(MockSessionService service) {
     (_) async => ApiResponse.success(
       const Agents(
         agents: [
-          AgentInfo(name: "build", description: "build", model: null, variant: null, mode: AgentMode.primary),
+          AgentInfo(name: "build", description: "build", model: null, mode: AgentMode.primary),
         ],
       ),
     ),

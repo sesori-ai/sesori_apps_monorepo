@@ -19,8 +19,7 @@ AgentInfo _testAgent({required String name, required String description, String?
   return AgentInfo(
     name: name,
     description: description,
-    model: const AgentModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
-    variant: variant,
+    model: AgentModel(providerID: "anthropic", modelID: "claude-3-5-sonnet", variant: variant),
     mode: AgentMode.primary,
   );
 }
