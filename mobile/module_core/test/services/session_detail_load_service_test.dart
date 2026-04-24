@@ -220,7 +220,7 @@ void _stubRepositorySnapshot({
 
 MessageWithParts _messageWithParts() {
   return const MessageWithParts(
-    info: Message(id: "msg-1", role: "assistant", sessionID: "session-1", agent: null, modelID: null, providerID: null),
+    info: Message.assistant(id: "msg-1", sessionID: "session-1", agent: null, modelID: null, providerID: null),
     parts: <MessagePart>[],
   );
 }

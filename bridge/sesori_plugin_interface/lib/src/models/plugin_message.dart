@@ -93,5 +93,14 @@ sealed class PluginMessage with _$PluginMessage {
     required String? agent,
     required String? modelID,
     required String? providerID,
+    PluginMessageError? error,
   }) = _PluginMessage;
+}
+
+@freezed
+sealed class PluginMessageError with _$PluginMessageError {
+  const factory PluginMessageError({
+    required String name,
+    required String message,
+  }) = _PluginMessageError;
 }

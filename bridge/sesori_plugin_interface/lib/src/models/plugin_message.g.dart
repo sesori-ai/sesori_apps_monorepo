@@ -62,4 +62,8 @@ Map<String, dynamic> _$PluginMessageToJson(_PluginMessage instance) =>
       'agent': instance.agent,
       'modelID': instance.modelID,
       'providerID': instance.providerID,
+      'error': instance.error?.toJson(),
     };
+
+Map<String, dynamic> _$PluginMessageErrorToJson(_PluginMessageError instance) =>
+    <String, dynamic>{'name': instance.name, 'message': instance.message};

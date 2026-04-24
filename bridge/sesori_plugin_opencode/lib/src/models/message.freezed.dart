@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Message {
 
- String get role; String get id; String get sessionID; String? get parentID; String? get agent; String? get modelID; String? get providerID; double? get cost; MessageTokens? get tokens; MessageTime? get time; String? get finish;
+ String get role; String get id; String get sessionID; String? get parentID; String? get agent; String? get modelID; String? get providerID; double? get cost; MessageTokens? get tokens; MessageTime? get time; String? get finish; MessageError? get error;
 /// Create a copy of Message
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $MessageCopyWith<Message> get copyWith => _$MessageCopyWithImpl<Message>(this as
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Message&&(identical(other.role, role) || other.role == role)&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.parentID, parentID) || other.parentID == parentID)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.cost, cost) || other.cost == cost)&&(identical(other.tokens, tokens) || other.tokens == tokens)&&(identical(other.time, time) || other.time == time)&&(identical(other.finish, finish) || other.finish == finish));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Message&&(identical(other.role, role) || other.role == role)&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.parentID, parentID) || other.parentID == parentID)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.cost, cost) || other.cost == cost)&&(identical(other.tokens, tokens) || other.tokens == tokens)&&(identical(other.time, time) || other.time == time)&&(identical(other.finish, finish) || other.finish == finish)&&(identical(other.error, error) || other.error == error));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,role,id,sessionID,parentID,agent,modelID,providerID,cost,tokens,time,finish);
+int get hashCode => Object.hash(runtimeType,role,id,sessionID,parentID,agent,modelID,providerID,cost,tokens,time,finish,error);
 
 @override
 String toString() {
-  return 'Message(role: $role, id: $id, sessionID: $sessionID, parentID: $parentID, agent: $agent, modelID: $modelID, providerID: $providerID, cost: $cost, tokens: $tokens, time: $time, finish: $finish)';
+  return 'Message(role: $role, id: $id, sessionID: $sessionID, parentID: $parentID, agent: $agent, modelID: $modelID, providerID: $providerID, cost: $cost, tokens: $tokens, time: $time, finish: $finish, error: $error)';
 }
 
 
@@ -48,11 +48,11 @@ abstract mixin class $MessageCopyWith<$Res>  {
   factory $MessageCopyWith(Message value, $Res Function(Message) _then) = _$MessageCopyWithImpl;
 @useResult
 $Res call({
- String role, String id, String sessionID, String? parentID, String? agent, String? modelID, String? providerID, double? cost, MessageTokens? tokens, MessageTime? time, String? finish
+ String role, String id, String sessionID, String? parentID, String? agent, String? modelID, String? providerID, double? cost, MessageTokens? tokens, MessageTime? time, String? finish, MessageError? error
 });
 
 
-$MessageTokensCopyWith<$Res>? get tokens;$MessageTimeCopyWith<$Res>? get time;
+$MessageTokensCopyWith<$Res>? get tokens;$MessageTimeCopyWith<$Res>? get time;$MessageErrorCopyWith<$Res>? get error;
 
 }
 /// @nodoc
@@ -65,7 +65,7 @@ class _$MessageCopyWithImpl<$Res>
 
 /// Create a copy of Message
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? role = null,Object? id = null,Object? sessionID = null,Object? parentID = freezed,Object? agent = freezed,Object? modelID = freezed,Object? providerID = freezed,Object? cost = freezed,Object? tokens = freezed,Object? time = freezed,Object? finish = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? role = null,Object? id = null,Object? sessionID = null,Object? parentID = freezed,Object? agent = freezed,Object? modelID = freezed,Object? providerID = freezed,Object? cost = freezed,Object? tokens = freezed,Object? time = freezed,Object? finish = freezed,Object? error = freezed,}) {
   return _then(_self.copyWith(
 role: null == role ? _self.role : role // ignore: cast_nullable_to_non_nullable
 as String,id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
@@ -78,7 +78,8 @@ as String?,cost: freezed == cost ? _self.cost : cost // ignore: cast_nullable_to
 as double?,tokens: freezed == tokens ? _self.tokens : tokens // ignore: cast_nullable_to_non_nullable
 as MessageTokens?,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
 as MessageTime?,finish: freezed == finish ? _self.finish : finish // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
+as MessageError?,
   ));
 }
 /// Create a copy of Message
@@ -105,6 +106,18 @@ $MessageTimeCopyWith<$Res>? get time {
   return $MessageTimeCopyWith<$Res>(_self.time!, (value) {
     return _then(_self.copyWith(time: value));
   });
+}/// Create a copy of Message
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$MessageErrorCopyWith<$Res>? get error {
+    if (_self.error == null) {
+    return null;
+  }
+
+  return $MessageErrorCopyWith<$Res>(_self.error!, (value) {
+    return _then(_self.copyWith(error: value));
+  });
 }
 }
 
@@ -114,7 +127,7 @@ $MessageTimeCopyWith<$Res>? get time {
 @JsonSerializable()
 
 class _Message implements Message {
-  const _Message({required this.role, required this.id, required this.sessionID, this.parentID, this.agent, this.modelID, this.providerID, this.cost, this.tokens, this.time, this.finish});
+  const _Message({required this.role, required this.id, required this.sessionID, this.parentID, this.agent, this.modelID, this.providerID, this.cost, this.tokens, this.time, this.finish, this.error});
   factory _Message.fromJson(Map<String, dynamic> json) => _$MessageFromJson(json);
 
 @override final  String role;
@@ -128,6 +141,7 @@ class _Message implements Message {
 @override final  MessageTokens? tokens;
 @override final  MessageTime? time;
 @override final  String? finish;
+@override final  MessageError? error;
 
 /// Create a copy of Message
 /// with the given fields replaced by the non-null parameter values.
@@ -142,16 +156,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Message&&(identical(other.role, role) || other.role == role)&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.parentID, parentID) || other.parentID == parentID)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.cost, cost) || other.cost == cost)&&(identical(other.tokens, tokens) || other.tokens == tokens)&&(identical(other.time, time) || other.time == time)&&(identical(other.finish, finish) || other.finish == finish));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Message&&(identical(other.role, role) || other.role == role)&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.parentID, parentID) || other.parentID == parentID)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.cost, cost) || other.cost == cost)&&(identical(other.tokens, tokens) || other.tokens == tokens)&&(identical(other.time, time) || other.time == time)&&(identical(other.finish, finish) || other.finish == finish)&&(identical(other.error, error) || other.error == error));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,role,id,sessionID,parentID,agent,modelID,providerID,cost,tokens,time,finish);
+int get hashCode => Object.hash(runtimeType,role,id,sessionID,parentID,agent,modelID,providerID,cost,tokens,time,finish,error);
 
 @override
 String toString() {
-  return 'Message(role: $role, id: $id, sessionID: $sessionID, parentID: $parentID, agent: $agent, modelID: $modelID, providerID: $providerID, cost: $cost, tokens: $tokens, time: $time, finish: $finish)';
+  return 'Message(role: $role, id: $id, sessionID: $sessionID, parentID: $parentID, agent: $agent, modelID: $modelID, providerID: $providerID, cost: $cost, tokens: $tokens, time: $time, finish: $finish, error: $error)';
 }
 
 
@@ -162,11 +176,11 @@ abstract mixin class _$MessageCopyWith<$Res> implements $MessageCopyWith<$Res> {
   factory _$MessageCopyWith(_Message value, $Res Function(_Message) _then) = __$MessageCopyWithImpl;
 @override @useResult
 $Res call({
- String role, String id, String sessionID, String? parentID, String? agent, String? modelID, String? providerID, double? cost, MessageTokens? tokens, MessageTime? time, String? finish
+ String role, String id, String sessionID, String? parentID, String? agent, String? modelID, String? providerID, double? cost, MessageTokens? tokens, MessageTime? time, String? finish, MessageError? error
 });
 
 
-@override $MessageTokensCopyWith<$Res>? get tokens;@override $MessageTimeCopyWith<$Res>? get time;
+@override $MessageTokensCopyWith<$Res>? get tokens;@override $MessageTimeCopyWith<$Res>? get time;@override $MessageErrorCopyWith<$Res>? get error;
 
 }
 /// @nodoc
@@ -179,7 +193,7 @@ class __$MessageCopyWithImpl<$Res>
 
 /// Create a copy of Message
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? role = null,Object? id = null,Object? sessionID = null,Object? parentID = freezed,Object? agent = freezed,Object? modelID = freezed,Object? providerID = freezed,Object? cost = freezed,Object? tokens = freezed,Object? time = freezed,Object? finish = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? role = null,Object? id = null,Object? sessionID = null,Object? parentID = freezed,Object? agent = freezed,Object? modelID = freezed,Object? providerID = freezed,Object? cost = freezed,Object? tokens = freezed,Object? time = freezed,Object? finish = freezed,Object? error = freezed,}) {
   return _then(_Message(
 role: null == role ? _self.role : role // ignore: cast_nullable_to_non_nullable
 as String,id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
@@ -192,7 +206,8 @@ as String?,cost: freezed == cost ? _self.cost : cost // ignore: cast_nullable_to
 as double?,tokens: freezed == tokens ? _self.tokens : tokens // ignore: cast_nullable_to_non_nullable
 as MessageTokens?,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
 as MessageTime?,finish: freezed == finish ? _self.finish : finish // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
+as MessageError?,
   ));
 }
 
@@ -220,7 +235,328 @@ $MessageTimeCopyWith<$Res>? get time {
   return $MessageTimeCopyWith<$Res>(_self.time!, (value) {
     return _then(_self.copyWith(time: value));
   });
+}/// Create a copy of Message
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$MessageErrorCopyWith<$Res>? get error {
+    if (_self.error == null) {
+    return null;
+  }
+
+  return $MessageErrorCopyWith<$Res>(_self.error!, (value) {
+    return _then(_self.copyWith(error: value));
+  });
 }
+}
+
+
+/// @nodoc
+mixin _$MessageError {
+
+ String get name; MessageErrorData get data;
+/// Create a copy of MessageError
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$MessageErrorCopyWith<MessageError> get copyWith => _$MessageErrorCopyWithImpl<MessageError>(this as MessageError, _$identity);
+
+  /// Serializes this MessageError to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageError&&(identical(other.name, name) || other.name == name)&&(identical(other.data, data) || other.data == data));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,name,data);
+
+@override
+String toString() {
+  return 'MessageError(name: $name, data: $data)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $MessageErrorCopyWith<$Res>  {
+  factory $MessageErrorCopyWith(MessageError value, $Res Function(MessageError) _then) = _$MessageErrorCopyWithImpl;
+@useResult
+$Res call({
+ String name, MessageErrorData data
+});
+
+
+$MessageErrorDataCopyWith<$Res> get data;
+
+}
+/// @nodoc
+class _$MessageErrorCopyWithImpl<$Res>
+    implements $MessageErrorCopyWith<$Res> {
+  _$MessageErrorCopyWithImpl(this._self, this._then);
+
+  final MessageError _self;
+  final $Res Function(MessageError) _then;
+
+/// Create a copy of MessageError
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? data = null,}) {
+  return _then(_self.copyWith(
+name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,data: null == data ? _self.data : data // ignore: cast_nullable_to_non_nullable
+as MessageErrorData,
+  ));
+}
+/// Create a copy of MessageError
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$MessageErrorDataCopyWith<$Res> get data {
+  
+  return $MessageErrorDataCopyWith<$Res>(_self.data, (value) {
+    return _then(_self.copyWith(data: value));
+  });
+}
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _MessageError implements MessageError {
+  const _MessageError({required this.name, required this.data});
+  factory _MessageError.fromJson(Map<String, dynamic> json) => _$MessageErrorFromJson(json);
+
+@override final  String name;
+@override final  MessageErrorData data;
+
+/// Create a copy of MessageError
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$MessageErrorCopyWith<_MessageError> get copyWith => __$MessageErrorCopyWithImpl<_MessageError>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$MessageErrorToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MessageError&&(identical(other.name, name) || other.name == name)&&(identical(other.data, data) || other.data == data));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,name,data);
+
+@override
+String toString() {
+  return 'MessageError(name: $name, data: $data)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$MessageErrorCopyWith<$Res> implements $MessageErrorCopyWith<$Res> {
+  factory _$MessageErrorCopyWith(_MessageError value, $Res Function(_MessageError) _then) = __$MessageErrorCopyWithImpl;
+@override @useResult
+$Res call({
+ String name, MessageErrorData data
+});
+
+
+@override $MessageErrorDataCopyWith<$Res> get data;
+
+}
+/// @nodoc
+class __$MessageErrorCopyWithImpl<$Res>
+    implements _$MessageErrorCopyWith<$Res> {
+  __$MessageErrorCopyWithImpl(this._self, this._then);
+
+  final _MessageError _self;
+  final $Res Function(_MessageError) _then;
+
+/// Create a copy of MessageError
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? data = null,}) {
+  return _then(_MessageError(
+name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,data: null == data ? _self.data : data // ignore: cast_nullable_to_non_nullable
+as MessageErrorData,
+  ));
+}
+
+/// Create a copy of MessageError
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$MessageErrorDataCopyWith<$Res> get data {
+  
+  return $MessageErrorDataCopyWith<$Res>(_self.data, (value) {
+    return _then(_self.copyWith(data: value));
+  });
+}
+}
+
+
+/// @nodoc
+mixin _$MessageErrorData {
+
+ String get message; String? get responseBody; int? get statusCode; bool? get isRetryable; Map<String, String>? get metadata;
+/// Create a copy of MessageErrorData
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$MessageErrorDataCopyWith<MessageErrorData> get copyWith => _$MessageErrorDataCopyWithImpl<MessageErrorData>(this as MessageErrorData, _$identity);
+
+  /// Serializes this MessageErrorData to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageErrorData&&(identical(other.message, message) || other.message == message)&&(identical(other.responseBody, responseBody) || other.responseBody == responseBody)&&(identical(other.statusCode, statusCode) || other.statusCode == statusCode)&&(identical(other.isRetryable, isRetryable) || other.isRetryable == isRetryable)&&const DeepCollectionEquality().equals(other.metadata, metadata));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,message,responseBody,statusCode,isRetryable,const DeepCollectionEquality().hash(metadata));
+
+@override
+String toString() {
+  return 'MessageErrorData(message: $message, responseBody: $responseBody, statusCode: $statusCode, isRetryable: $isRetryable, metadata: $metadata)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $MessageErrorDataCopyWith<$Res>  {
+  factory $MessageErrorDataCopyWith(MessageErrorData value, $Res Function(MessageErrorData) _then) = _$MessageErrorDataCopyWithImpl;
+@useResult
+$Res call({
+ String message, String? responseBody, int? statusCode, bool? isRetryable, Map<String, String>? metadata
+});
+
+
+
+
+}
+/// @nodoc
+class _$MessageErrorDataCopyWithImpl<$Res>
+    implements $MessageErrorDataCopyWith<$Res> {
+  _$MessageErrorDataCopyWithImpl(this._self, this._then);
+
+  final MessageErrorData _self;
+  final $Res Function(MessageErrorData) _then;
+
+/// Create a copy of MessageErrorData
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? message = null,Object? responseBody = freezed,Object? statusCode = freezed,Object? isRetryable = freezed,Object? metadata = freezed,}) {
+  return _then(_self.copyWith(
+message: null == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
+as String,responseBody: freezed == responseBody ? _self.responseBody : responseBody // ignore: cast_nullable_to_non_nullable
+as String?,statusCode: freezed == statusCode ? _self.statusCode : statusCode // ignore: cast_nullable_to_non_nullable
+as int?,isRetryable: freezed == isRetryable ? _self.isRetryable : isRetryable // ignore: cast_nullable_to_non_nullable
+as bool?,metadata: freezed == metadata ? _self.metadata : metadata // ignore: cast_nullable_to_non_nullable
+as Map<String, String>?,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _MessageErrorData implements MessageErrorData {
+  const _MessageErrorData({required this.message, this.responseBody, this.statusCode, this.isRetryable, final  Map<String, String>? metadata}): _metadata = metadata;
+  factory _MessageErrorData.fromJson(Map<String, dynamic> json) => _$MessageErrorDataFromJson(json);
+
+@override final  String message;
+@override final  String? responseBody;
+@override final  int? statusCode;
+@override final  bool? isRetryable;
+ final  Map<String, String>? _metadata;
+@override Map<String, String>? get metadata {
+  final value = _metadata;
+  if (value == null) return null;
+  if (_metadata is EqualUnmodifiableMapView) return _metadata;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableMapView(value);
+}
+
+
+/// Create a copy of MessageErrorData
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$MessageErrorDataCopyWith<_MessageErrorData> get copyWith => __$MessageErrorDataCopyWithImpl<_MessageErrorData>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$MessageErrorDataToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MessageErrorData&&(identical(other.message, message) || other.message == message)&&(identical(other.responseBody, responseBody) || other.responseBody == responseBody)&&(identical(other.statusCode, statusCode) || other.statusCode == statusCode)&&(identical(other.isRetryable, isRetryable) || other.isRetryable == isRetryable)&&const DeepCollectionEquality().equals(other._metadata, _metadata));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,message,responseBody,statusCode,isRetryable,const DeepCollectionEquality().hash(_metadata));
+
+@override
+String toString() {
+  return 'MessageErrorData(message: $message, responseBody: $responseBody, statusCode: $statusCode, isRetryable: $isRetryable, metadata: $metadata)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$MessageErrorDataCopyWith<$Res> implements $MessageErrorDataCopyWith<$Res> {
+  factory _$MessageErrorDataCopyWith(_MessageErrorData value, $Res Function(_MessageErrorData) _then) = __$MessageErrorDataCopyWithImpl;
+@override @useResult
+$Res call({
+ String message, String? responseBody, int? statusCode, bool? isRetryable, Map<String, String>? metadata
+});
+
+
+
+
+}
+/// @nodoc
+class __$MessageErrorDataCopyWithImpl<$Res>
+    implements _$MessageErrorDataCopyWith<$Res> {
+  __$MessageErrorDataCopyWithImpl(this._self, this._then);
+
+  final _MessageErrorData _self;
+  final $Res Function(_MessageErrorData) _then;
+
+/// Create a copy of MessageErrorData
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? message = null,Object? responseBody = freezed,Object? statusCode = freezed,Object? isRetryable = freezed,Object? metadata = freezed,}) {
+  return _then(_MessageErrorData(
+message: null == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
+as String,responseBody: freezed == responseBody ? _self.responseBody : responseBody // ignore: cast_nullable_to_non_nullable
+as String?,statusCode: freezed == statusCode ? _self.statusCode : statusCode // ignore: cast_nullable_to_non_nullable
+as int?,isRetryable: freezed == isRetryable ? _self.isRetryable : isRetryable // ignore: cast_nullable_to_non_nullable
+as bool?,metadata: freezed == metadata ? _self._metadata : metadata // ignore: cast_nullable_to_non_nullable
+as Map<String, String>?,
+  ));
+}
+
+
 }
 
 

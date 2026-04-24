@@ -55,9 +55,8 @@ MessageWithParts _messageWithPart({
   String? text,
 }) {
   return MessageWithParts(
-    info: Message(
+    info: Message.assistant(
       id: messageId,
-      role: "assistant",
       sessionID: "session-1",
       agent: null,
       modelID: null,

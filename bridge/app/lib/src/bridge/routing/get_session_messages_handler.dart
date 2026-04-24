@@ -1,7 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../plugin_to_shared_mapping.dart";
+import "../repositories/mappers/plugin_message_mapper.dart";
 import "request_handler.dart";
 
 /// Handles `POST /session/messages` — returns all messages for a session.
@@ -30,22 +30,8 @@ class GetSessionMessagesHandler extends BodyRequestHandler<SessionIdRequest, Mes
 
     final pluginMessages = await _plugin.getSessionMessages(sessionId);
 
-    final messages = pluginMessages
-        .map(
-          (m) => MessageWithParts(
-            info: Message(
-              role: m.info.role,
-              id: m.info.id,
-              sessionID: m.info.sessionID,
-              agent: m.info.agent,
-              modelID: m.info.modelID,
-              providerID: m.info.providerID,
-            ),
-            parts: m.parts.map((p) => p.toShared()).toList(),
-          ),
-        )
-        .toList();
-
-    return MessageWithPartsResponse(messages: messages);
+    return MessageWithPartsResponse(
+      messages: pluginMessages.toSharedMessageWithParts(),
+    );
   }
 }

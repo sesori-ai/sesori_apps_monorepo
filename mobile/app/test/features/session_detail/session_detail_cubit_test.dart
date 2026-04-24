@@ -507,13 +507,10 @@ void main() {
       },
       act: (cubit) async {
         await _awaitLoaded(cubit);
-        const message = Message(
+        const message = Message.user(
           id: "msg-new",
-          role: "user",
           sessionID: sessionId,
           agent: null,
-          modelID: null,
-          providerID: null,
         );
         sessionEvents.add(const SesoriMessageUpdated(info: message));
       },

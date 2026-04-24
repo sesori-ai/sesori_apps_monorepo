@@ -24,6 +24,9 @@ _Message _$MessageFromJson(Map json) => _Message(
       ? null
       : MessageTime.fromJson(Map<String, dynamic>.from(json['time'] as Map)),
   finish: json['finish'] as String?,
+  error: json['error'] == null
+      ? null
+      : MessageError.fromJson(Map<String, dynamic>.from(json['error'] as Map)),
 );
 
 Map<String, dynamic> _$MessageToJson(_Message instance) => <String, dynamic>{
@@ -38,7 +41,37 @@ Map<String, dynamic> _$MessageToJson(_Message instance) => <String, dynamic>{
   'tokens': instance.tokens?.toJson(),
   'time': instance.time?.toJson(),
   'finish': instance.finish,
+  'error': instance.error?.toJson(),
 };
+
+_MessageError _$MessageErrorFromJson(Map json) => _MessageError(
+  name: json['name'] as String,
+  data: MessageErrorData.fromJson(
+    Map<String, dynamic>.from(json['data'] as Map),
+  ),
+);
+
+Map<String, dynamic> _$MessageErrorToJson(_MessageError instance) =>
+    <String, dynamic>{'name': instance.name, 'data': instance.data.toJson()};
+
+_MessageErrorData _$MessageErrorDataFromJson(Map json) => _MessageErrorData(
+  message: json['message'] as String,
+  responseBody: json['responseBody'] as String?,
+  statusCode: (json['statusCode'] as num?)?.toInt(),
+  isRetryable: json['isRetryable'] as bool?,
+  metadata: (json['metadata'] as Map?)?.map(
+    (k, e) => MapEntry(k as String, e as String),
+  ),
+);
+
+Map<String, dynamic> _$MessageErrorDataToJson(_MessageErrorData instance) =>
+    <String, dynamic>{
+      'message': instance.message,
+      'responseBody': instance.responseBody,
+      'statusCode': instance.statusCode,
+      'isRetryable': instance.isRetryable,
+      'metadata': instance.metadata,
+    };
 
 _MessageTime _$MessageTimeFromJson(Map json) => _MessageTime(
   created: (json['created'] as num).toInt(),

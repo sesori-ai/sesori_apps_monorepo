@@ -147,6 +147,17 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           final streamingText = _streamingBuffer.snapshot();
           _streamingBuffer.clear();
 
+          final assistantModelID = switch (latestAssistant) {
+            MessageAssistant(:final modelID) => modelID,
+            MessageError(:final modelID) => modelID,
+            _ => null,
+          };
+          final assistantProviderID = switch (latestAssistant) {
+            MessageAssistant(:final providerID) => providerID,
+            MessageError(:final providerID) => providerID,
+            _ => null,
+          };
+
           emit(
             current.copyWith(
               messages: snapshot.messages,
@@ -155,8 +166,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
               pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
               pendingPermissions: current.pendingPermissions,
               agent: latestAssistant?.agent,
-              modelID: latestAssistant?.modelID,
-              providerID: latestAssistant?.providerID,
+              modelID: assistantModelID,
+              providerID: assistantProviderID,
               children: snapshot.childSessions,
               childStatuses: childStatuses,
               availableAgents: availableAgents,
@@ -198,7 +209,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   /// Returns the latest assistant [Message] from the list, or null if none.
   Message? _latestAssistantMessage(List<MessageWithParts> messages) {
     for (var i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].info.role == "assistant") return messages[i].info;
+      final info = messages[i].info;
+      if (info is MessageAssistant) return info;
     }
     return null;
   }
@@ -404,7 +416,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
     if (isClosed) return;
 
-    if (message.role == "assistant") {
+    if (message is MessageAssistant) {
       emit(
         current.copyWith(
           messages: messages,
@@ -902,6 +914,17 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       defaultModelID = "";
     }
 
+    final assistantModelID = switch (latestAssistant) {
+      MessageAssistant(:final modelID) => modelID,
+      MessageError(:final modelID) => modelID,
+      _ => null,
+    };
+    final assistantProviderID = switch (latestAssistant) {
+      MessageAssistant(:final providerID) => providerID,
+      MessageError(:final providerID) => providerID,
+      _ => null,
+    };
+
     return SessionDetailState.loaded(
           messages: snapshot.messages,
           streamingText: const {},
@@ -910,8 +933,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           pendingPermissions: const [],
           sessionTitle: snapshot.canonicalSessionTitle,
           agent: latestAssistant?.agent,
-          modelID: latestAssistant?.modelID,
-          providerID: latestAssistant?.providerID,
+          modelID: assistantModelID,
+          providerID: assistantProviderID,
           children: childSessions,
           childStatuses: childStatuses,
           queuedMessages: const [],

@@ -18,9 +18,33 @@ sealed class Message with _$Message {
     MessageTokens? tokens,
     MessageTime? time,
     String? finish,
+    MessageError? error,
   }) = _Message;
 
   factory Message.fromJson(Map<String, dynamic> json) => _$MessageFromJson(json);
+}
+
+@Freezed(fromJson: true, toJson: true)
+sealed class MessageError with _$MessageError {
+  const factory MessageError({
+    required String name,
+    required MessageErrorData data,
+  }) = _MessageError;
+
+  factory MessageError.fromJson(Map<String, dynamic> json) => _$MessageErrorFromJson(json);
+}
+
+@Freezed(fromJson: true, toJson: true)
+sealed class MessageErrorData with _$MessageErrorData {
+  const factory MessageErrorData({
+    required String message,
+    String? responseBody,
+    int? statusCode,
+    bool? isRetryable,
+    Map<String, String>? metadata,
+  }) = _MessageErrorData;
+
+  factory MessageErrorData.fromJson(Map<String, dynamic> json) => _$MessageErrorDataFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: true)

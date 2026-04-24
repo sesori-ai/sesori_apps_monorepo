@@ -64,15 +64,11 @@ MessageWithParts _message({
 }) {
   final resolvedPartId = partId ?? "$messageId-part";
 
+  final info = role == "user"
+      ? Message.user(id: messageId, sessionID: "session-1", agent: null)
+      : Message.assistant(id: messageId, sessionID: "session-1", agent: null, modelID: null, providerID: null);
   return MessageWithParts(
-    info: Message(
-      id: messageId,
-      role: role,
-      sessionID: "session-1",
-      agent: null,
-      modelID: null,
-      providerID: null,
-    ),
+    info: info,
     parts: [
       MessagePart(
         id: resolvedPartId,
