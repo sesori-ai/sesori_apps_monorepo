@@ -79,7 +79,6 @@ class NewSessionCubit extends Cubit<NewSessionState> {
 
       final availableVariants = _variantOptionsBuilder.build(
         agents: agents,
-        agentName: defaultAgent,
         providerID: defaultProviderID,
         modelID: defaultModelID,
       );
@@ -164,13 +163,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
 
     _emitAgentModelUpdate(
       selectedAgent: agent,
-      availableVariants: _variantOptionsBuilder.build(
-        agents: current.agents,
-        agentName: agent,
-        providerID: current.providerID,
-        modelID: current.modelID,
-      ),
-      selectedVariant: null,
+      selectedVariant: current.variant,
     );
   }
 
@@ -212,7 +205,6 @@ class NewSessionCubit extends Cubit<NewSessionState> {
 
     final availableVariants = _variantOptionsBuilder.build(
       agents: current.agents,
-      agentName: current.agent,
       providerID: providerID,
       modelID: modelID,
     );

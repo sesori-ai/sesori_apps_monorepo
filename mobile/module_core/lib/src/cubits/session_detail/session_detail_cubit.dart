@@ -150,7 +150,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           final availableProviders = snapshot.providerData?.items ?? <ProviderInfo>[];
           final availableVariants = _variantOptionsBuilder.build(
             agents: availableAgents,
-            agentName: preservedSelectedAgent,
             providerID: preservedSelectedProviderID,
             modelID: preservedSelectedModelID,
           );
@@ -847,18 +846,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (current is! SessionDetailLoaded) return;
 
     if (isClosed) return;
-    emit(
-      current.copyWith(
-        selectedAgent: agent,
-        availableVariants: _variantOptionsBuilder.build(
-          agents: current.availableAgents,
-          agentName: agent,
-          providerID: current.selectedProviderID,
-          modelID: current.selectedModelID,
-        ),
-        selectedVariant: null,
-      ),
-    );
+    emit(current.copyWith(selectedAgent: agent));
   }
 
   void selectModel({required String providerID, required String modelID}) {
@@ -867,7 +855,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
     final availableVariants = _variantOptionsBuilder.build(
       agents: current.availableAgents,
-      agentName: current.selectedAgent,
       providerID: providerID,
       modelID: modelID,
     );
@@ -966,7 +953,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     }
     final availableVariants = _variantOptionsBuilder.build(
       agents: agents,
-      agentName: defaultAgent,
       providerID: defaultProviderID,
       modelID: defaultModelID,
     );

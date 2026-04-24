@@ -8,28 +8,20 @@ class AgentVariantOptionsBuilder {
 
   List<SessionVariant> build({
     required List<AgentInfo> agents,
-    required String? agentName,
     required String? providerID,
     required String? modelID,
   }) {
-    if (agentName == null) return const [];
-
-    final matchingByName = agents.where((a) => a.name == agentName);
     final hasModel = providerID != null &&
         providerID.isNotEmpty &&
         modelID != null &&
         modelID.isNotEmpty;
+    if (!hasModel) return const [];
 
-    final AgentInfo? agent;
-    if (hasModel) {
-      agent = matchingByName.firstWhereOrNull(
-        (a) =>
-            a.model?.providerID == providerID &&
-            a.model?.modelID == modelID,
-      ) ?? matchingByName.firstOrNull;
-    } else {
-      agent = matchingByName.firstOrNull;
-    }
+    final agent = agents.firstWhereOrNull(
+      (a) =>
+          a.model?.providerID == providerID &&
+          a.model?.modelID == modelID,
+    );
 
     final variant = agent?.variant;
     if (variant == null || variant == "none") {

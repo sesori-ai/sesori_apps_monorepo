@@ -19,7 +19,7 @@ AgentInfo _testAgent({required String name, required String description, String?
   return AgentInfo(
     name: name,
     description: description,
-    model: null,
+    model: const AgentModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
     variant: variant,
     mode: AgentMode.primary,
   );
@@ -100,7 +100,7 @@ void main() {
     expect(find.widgetWithText(OutlinedButton, "xhigh"), findsOneWidget);
   });
 
-  testWidgets("resets selected variant after changing agent", (tester) async {
+  testWidgets("preserves selected variant when changing agent with same model", (tester) async {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
@@ -119,7 +119,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(OutlinedButton, "reviewer"), findsOneWidget);
-    expect(find.widgetWithText(OutlinedButton, "xhigh"), findsNothing);
-    expect(find.widgetWithText(OutlinedButton, "Default"), findsNothing);
+    // Variant is model-dependent; both agents share the same model, so xhigh persists
+    expect(find.widgetWithText(OutlinedButton, "xhigh"), findsOneWidget);
   });
 }

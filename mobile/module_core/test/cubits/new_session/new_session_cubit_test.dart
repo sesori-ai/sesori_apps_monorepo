@@ -177,7 +177,13 @@ void main() {
           (_) async => ApiResponse.success(
             const Agents(
               agents: [
-                AgentInfo(name: "build", description: "Build", model: null, variant: "xhigh", mode: AgentMode.primary),
+                AgentInfo(
+                  name: "build",
+                  description: "Build",
+                  model: AgentModel(providerID: "openai", modelID: "gpt-4"),
+                  variant: "xhigh",
+                  mode: AgentMode.primary,
+                ),
               ],
             ),
           ),
@@ -229,8 +235,8 @@ void main() {
             projectId: "project-1",
             text: "hello",
             agent: "build",
-            providerID: "",
-            modelID: "",
+            providerID: "openai",
+            modelID: "gpt-4",
             variant: const SessionVariant(id: "xhigh"),
             command: null,
             dedicatedWorktree: true,
@@ -240,15 +246,26 @@ void main() {
     );
 
     blocTest<NewSessionCubit, NewSessionState>(
-      "selectAgent recomputes availableVariants and resets selectedVariant",
+      "selectAgent changes agent without affecting variants",
       build: () {
         when(() => mockSessionService.listAgents()).thenAnswer(
           (_) async => ApiResponse.success(
             const Agents(
               agents: [
-                AgentInfo(name: "build", description: "Build", model: null, variant: "xhigh", mode: AgentMode.primary),
-                AgentInfo(name: "oracle", description: "Oracle", model: null, variant: "deep", mode: AgentMode.primary),
-                AgentInfo(name: "oracle", description: "Oracle", model: null, variant: "none", mode: AgentMode.primary),
+                AgentInfo(
+                  name: "build",
+                  description: "Build",
+                  model: AgentModel(providerID: "openai", modelID: "gpt-4"),
+                  variant: "xhigh",
+                  mode: AgentMode.primary,
+                ),
+                AgentInfo(
+                  name: "oracle",
+                  description: "Oracle",
+                  model: AgentModel(providerID: "openai", modelID: "gpt-4"),
+                  variant: "xhigh",
+                  mode: AgentMode.primary,
+                ),
               ],
             ),
           ),
@@ -273,8 +290,8 @@ void main() {
         ),
         isA<NewSessionIdle>()
             .having((state) => state.selectedAgent, "selectedAgent", "oracle")
-            .having((state) => state.availableVariants, "oracle variants", const [SessionVariant(id: "deep")])
-            .having((state) => state.selectedVariant, "reset selectedVariant", isNull),
+            .having((state) => state.availableVariants, "variants unchanged", const [SessionVariant(id: "xhigh")])
+            .having((state) => state.selectedVariant, "selectedVariant preserved", const SessionVariant(id: "xhigh")),
       ],
     );
 
