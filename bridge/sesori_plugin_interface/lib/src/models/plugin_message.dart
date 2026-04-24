@@ -84,14 +84,37 @@ sealed class PluginToolState with _$PluginToolState {
   }) = _PluginToolState;
 }
 
-@freezed
+/// Sealed class representing a plugin-level message.
+///
+/// Three variants:
+/// - [PluginMessageUser]: a message sent by the user
+/// - [PluginMessageAssistant]: a regular assistant response
+/// - [PluginMessageError]: an assistant message that failed with an error
+///
+/// The JSON serialization uses `"role"` as the union key.
+@Freezed(unionKey: "role")
 sealed class PluginMessage with _$PluginMessage {
-  const factory PluginMessage({
-    required String role,
+  const factory PluginMessage.user({
+    required String id,
+    required String sessionID,
+    required String? agent,
+  }) = PluginMessageUser;
+
+  const factory PluginMessage.assistant({
     required String id,
     required String sessionID,
     required String? agent,
     required String? modelID,
     required String? providerID,
-  }) = _PluginMessage;
+  }) = PluginMessageAssistant;
+
+  const factory PluginMessage.error({
+    required String id,
+    required String sessionID,
+    required String? agent,
+    required String? modelID,
+    required String? providerID,
+    required String errorName,
+    required String errorMessage,
+  }) = PluginMessageError;
 }

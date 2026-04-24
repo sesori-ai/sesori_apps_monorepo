@@ -157,10 +157,9 @@ void main() {
 
   group('messageUpdated round-trip', () {
     test('serializes and deserializes Message info correctly', () {
-      const message = Message(
+      const message = Message.assistant(
         id: 'msg_001',
         sessionID: 'ses_abc',
-        role: 'assistant',
         agent: null,
         modelID: null,
         providerID: null,
@@ -179,7 +178,7 @@ void main() {
       final cast = parsed as SesoriMessageUpdated;
       expect(cast.info.id, 'msg_001');
       expect(cast.info.sessionID, 'ses_abc');
-      expect(cast.info.role, 'assistant');
+      expect(cast.info, isA<MessageAssistant>());
     });
   });
 
@@ -377,7 +376,7 @@ void main() {
 
     test('messageUpdated implements SesoriSessionEvent', () {
       const event = SesoriSseEvent.messageUpdated(
-        info: Message(id: 'm', sessionID: 's', role: 'user', agent: null, modelID: null, providerID: null),
+        info: Message.user(id: 'm', sessionID: 's', agent: null),
       );
       expect(event, isA<SesoriSessionEvent>());
     });
@@ -538,7 +537,7 @@ void main() {
 
     test('messageUpdated uses message.updated', () {
       final json = const SesoriSseEvent.messageUpdated(
-        info: Message(id: 'm', sessionID: 's', role: 'user', agent: null, modelID: null, providerID: null),
+        info: Message.user(id: 'm', sessionID: 's', agent: null),
       ).toJson();
       expect(json['type'], 'message.updated');
     });

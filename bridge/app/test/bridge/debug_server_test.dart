@@ -273,13 +273,10 @@ void main() {
     test("POST /session/messages returns messages", () async {
       plugin.messagesResult = [
         const PluginMessageWithParts(
-          info: PluginMessage(
-            role: "user",
+          info: PluginMessage.user(
             id: "m1",
             sessionID: "s1",
             agent: null,
-            modelID: null,
-            providerID: null,
           ),
           parts: [],
         ),

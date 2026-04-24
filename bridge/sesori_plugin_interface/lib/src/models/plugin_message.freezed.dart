@@ -519,7 +519,7 @@ as String?,
 /// @nodoc
 mixin _$PluginMessage {
 
- String get role; String get id; String get sessionID; String? get agent; String? get modelID; String? get providerID;
+ String get id; String get sessionID; String? get agent;
 /// Create a copy of PluginMessage
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -532,16 +532,16 @@ $PluginMessageCopyWith<PluginMessage> get copyWith => _$PluginMessageCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessage&&(identical(other.role, role) || other.role == role)&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessage&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.agent, agent) || other.agent == agent));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,role,id,sessionID,agent,modelID,providerID);
+int get hashCode => Object.hash(runtimeType,id,sessionID,agent);
 
 @override
 String toString() {
-  return 'PluginMessage(role: $role, id: $id, sessionID: $sessionID, agent: $agent, modelID: $modelID, providerID: $providerID)';
+  return 'PluginMessage(id: $id, sessionID: $sessionID, agent: $agent)';
 }
 
 
@@ -552,7 +552,7 @@ abstract mixin class $PluginMessageCopyWith<$Res>  {
   factory $PluginMessageCopyWith(PluginMessage value, $Res Function(PluginMessage) _then) = _$PluginMessageCopyWithImpl;
 @useResult
 $Res call({
- String role, String id, String sessionID, String? agent, String? modelID, String? providerID
+ String id, String sessionID, String? agent
 });
 
 
@@ -569,14 +569,11 @@ class _$PluginMessageCopyWithImpl<$Res>
 
 /// Create a copy of PluginMessage
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? role = null,Object? id = null,Object? sessionID = null,Object? agent = freezed,Object? modelID = freezed,Object? providerID = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sessionID = null,Object? agent = freezed,}) {
   return _then(_self.copyWith(
-role: null == role ? _self.role : role // ignore: cast_nullable_to_non_nullable
-as String,id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
-as String?,modelID: freezed == modelID ? _self.modelID : modelID // ignore: cast_nullable_to_non_nullable
-as String?,providerID: freezed == providerID ? _self.providerID : providerID // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -588,51 +585,52 @@ as String?,
 /// @nodoc
 @JsonSerializable(createFactory: false)
 
-class _PluginMessage implements PluginMessage {
-  const _PluginMessage({required this.role, required this.id, required this.sessionID, required this.agent, required this.modelID, required this.providerID});
+class PluginMessageUser implements PluginMessage {
+  const PluginMessageUser({required this.id, required this.sessionID, required this.agent, final  String? $type}): $type = $type ?? 'user';
   
 
-@override final  String role;
 @override final  String id;
 @override final  String sessionID;
 @override final  String? agent;
-@override final  String? modelID;
-@override final  String? providerID;
+
+@JsonKey(name: 'role')
+final String $type;
+
 
 /// Create a copy of PluginMessage
 /// with the given fields replaced by the non-null parameter values.
 @override @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-_$PluginMessageCopyWith<_PluginMessage> get copyWith => __$PluginMessageCopyWithImpl<_PluginMessage>(this, _$identity);
+$PluginMessageUserCopyWith<PluginMessageUser> get copyWith => _$PluginMessageUserCopyWithImpl<PluginMessageUser>(this, _$identity);
 
 @override
 Map<String, dynamic> toJson() {
-  return _$PluginMessageToJson(this, );
+  return _$PluginMessageUserToJson(this, );
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginMessage&&(identical(other.role, role) || other.role == role)&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessageUser&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.agent, agent) || other.agent == agent));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,role,id,sessionID,agent,modelID,providerID);
+int get hashCode => Object.hash(runtimeType,id,sessionID,agent);
 
 @override
 String toString() {
-  return 'PluginMessage(role: $role, id: $id, sessionID: $sessionID, agent: $agent, modelID: $modelID, providerID: $providerID)';
+  return 'PluginMessage.user(id: $id, sessionID: $sessionID, agent: $agent)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class _$PluginMessageCopyWith<$Res> implements $PluginMessageCopyWith<$Res> {
-  factory _$PluginMessageCopyWith(_PluginMessage value, $Res Function(_PluginMessage) _then) = __$PluginMessageCopyWithImpl;
+abstract mixin class $PluginMessageUserCopyWith<$Res> implements $PluginMessageCopyWith<$Res> {
+  factory $PluginMessageUserCopyWith(PluginMessageUser value, $Res Function(PluginMessageUser) _then) = _$PluginMessageUserCopyWithImpl;
 @override @useResult
 $Res call({
- String role, String id, String sessionID, String? agent, String? modelID, String? providerID
+ String id, String sessionID, String? agent
 });
 
 
@@ -640,24 +638,187 @@ $Res call({
 
 }
 /// @nodoc
-class __$PluginMessageCopyWithImpl<$Res>
-    implements _$PluginMessageCopyWith<$Res> {
-  __$PluginMessageCopyWithImpl(this._self, this._then);
+class _$PluginMessageUserCopyWithImpl<$Res>
+    implements $PluginMessageUserCopyWith<$Res> {
+  _$PluginMessageUserCopyWithImpl(this._self, this._then);
 
-  final _PluginMessage _self;
-  final $Res Function(_PluginMessage) _then;
+  final PluginMessageUser _self;
+  final $Res Function(PluginMessageUser) _then;
 
 /// Create a copy of PluginMessage
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? role = null,Object? id = null,Object? sessionID = null,Object? agent = freezed,Object? modelID = freezed,Object? providerID = freezed,}) {
-  return _then(_PluginMessage(
-role: null == role ? _self.role : role // ignore: cast_nullable_to_non_nullable
-as String,id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? agent = freezed,}) {
+  return _then(PluginMessageUser(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createFactory: false)
+
+class PluginMessageAssistant implements PluginMessage {
+  const PluginMessageAssistant({required this.id, required this.sessionID, required this.agent, required this.modelID, required this.providerID, final  String? $type}): $type = $type ?? 'assistant';
+  
+
+@override final  String id;
+@override final  String sessionID;
+@override final  String? agent;
+ final  String? modelID;
+ final  String? providerID;
+
+@JsonKey(name: 'role')
+final String $type;
+
+
+/// Create a copy of PluginMessage
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginMessageAssistantCopyWith<PluginMessageAssistant> get copyWith => _$PluginMessageAssistantCopyWithImpl<PluginMessageAssistant>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginMessageAssistantToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessageAssistant&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,sessionID,agent,modelID,providerID);
+
+@override
+String toString() {
+  return 'PluginMessage.assistant(id: $id, sessionID: $sessionID, agent: $agent, modelID: $modelID, providerID: $providerID)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginMessageAssistantCopyWith<$Res> implements $PluginMessageCopyWith<$Res> {
+  factory $PluginMessageAssistantCopyWith(PluginMessageAssistant value, $Res Function(PluginMessageAssistant) _then) = _$PluginMessageAssistantCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String sessionID, String? agent, String? modelID, String? providerID
+});
+
+
+
+
+}
+/// @nodoc
+class _$PluginMessageAssistantCopyWithImpl<$Res>
+    implements $PluginMessageAssistantCopyWith<$Res> {
+  _$PluginMessageAssistantCopyWithImpl(this._self, this._then);
+
+  final PluginMessageAssistant _self;
+  final $Res Function(PluginMessageAssistant) _then;
+
+/// Create a copy of PluginMessage
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? agent = freezed,Object? modelID = freezed,Object? providerID = freezed,}) {
+  return _then(PluginMessageAssistant(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
 as String?,modelID: freezed == modelID ? _self.modelID : modelID // ignore: cast_nullable_to_non_nullable
 as String?,providerID: freezed == providerID ? _self.providerID : providerID // ignore: cast_nullable_to_non_nullable
 as String?,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createFactory: false)
+
+class PluginMessageError implements PluginMessage {
+  const PluginMessageError({required this.id, required this.sessionID, required this.agent, required this.modelID, required this.providerID, required this.errorName, required this.errorMessage, final  String? $type}): $type = $type ?? 'error';
+  
+
+@override final  String id;
+@override final  String sessionID;
+@override final  String? agent;
+ final  String? modelID;
+ final  String? providerID;
+ final  String errorName;
+ final  String errorMessage;
+
+@JsonKey(name: 'role')
+final String $type;
+
+
+/// Create a copy of PluginMessage
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginMessageErrorCopyWith<PluginMessageError> get copyWith => _$PluginMessageErrorCopyWithImpl<PluginMessageError>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginMessageErrorToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessageError&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.errorName, errorName) || other.errorName == errorName)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,sessionID,agent,modelID,providerID,errorName,errorMessage);
+
+@override
+String toString() {
+  return 'PluginMessage.error(id: $id, sessionID: $sessionID, agent: $agent, modelID: $modelID, providerID: $providerID, errorName: $errorName, errorMessage: $errorMessage)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginMessageErrorCopyWith<$Res> implements $PluginMessageCopyWith<$Res> {
+  factory $PluginMessageErrorCopyWith(PluginMessageError value, $Res Function(PluginMessageError) _then) = _$PluginMessageErrorCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String sessionID, String? agent, String? modelID, String? providerID, String errorName, String errorMessage
+});
+
+
+
+
+}
+/// @nodoc
+class _$PluginMessageErrorCopyWithImpl<$Res>
+    implements $PluginMessageErrorCopyWith<$Res> {
+  _$PluginMessageErrorCopyWithImpl(this._self, this._then);
+
+  final PluginMessageError _self;
+  final $Res Function(PluginMessageError) _then;
+
+/// Create a copy of PluginMessage
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? agent = freezed,Object? modelID = freezed,Object? providerID = freezed,Object? errorName = null,Object? errorMessage = null,}) {
+  return _then(PluginMessageError(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
+as String?,modelID: freezed == modelID ? _self.modelID : modelID // ignore: cast_nullable_to_non_nullable
+as String?,providerID: freezed == providerID ? _self.providerID : providerID // ignore: cast_nullable_to_non_nullable
+as String?,errorName: null == errorName ? _self.errorName : errorName // ignore: cast_nullable_to_non_nullable
+as String,errorMessage: null == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 

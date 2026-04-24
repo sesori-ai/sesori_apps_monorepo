@@ -1,7 +1,10 @@
-import "package:opencode_plugin/opencode_plugin.dart";
+import "package:opencode_plugin/opencode_plugin.dart" hide Message, MessageError, MessageErrorData, MessageWithParts;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show ActiveSession, ProjectActivitySummary;
 import "package:test/test.dart";
+
+import "package:opencode_plugin/src/models/message_with_parts.dart" as plugin;
+import "package:opencode_plugin/src/models/message.dart" as plugin_msg;
 
 void main() {
   group("OpenCodeService.getProjects", () {
@@ -475,14 +478,27 @@ void main() {
   });
 }
 
-MessageWithParts _msg(String role, String id) {
-  return MessageWithParts(
-    info: Message(role: role, id: id, sessionID: "ses-1"),
+plugin.MessageWithParts _msg(String role, String id) {
+  return plugin.MessageWithParts(
+    info: plugin_msg.Message(
+      role: role,
+      id: id,
+      sessionID: "ses-1",
+      parentID: null,
+      agent: null,
+      modelID: null,
+      providerID: null,
+      cost: null,
+      tokens: null,
+      time: null,
+      finish: null,
+      error: null,
+    ),
     parts: const [],
   );
 }
 
-String? _messageId(MessageWithParts message) {
+String? _messageId(plugin.MessageWithParts message) {
   return message.info.id;
 }
 
@@ -490,7 +506,7 @@ class FakeOpenCodeApi implements OpenCodeApi {
   @override
   String get serverURL => "http://fake";
 
-  List<MessageWithParts> messages;
+  List<plugin.MessageWithParts> messages;
   Object? messagesError;
   String? lastRequestedSessionId;
   String? lastRequestedDirectory;
@@ -501,7 +517,7 @@ class FakeOpenCodeApi implements OpenCodeApi {
   Future<bool> healthCheck() async => true;
 
   @override
-  Future<List<MessageWithParts>> getMessages({required String sessionId, required String? directory}) async {
+  Future<List<plugin.MessageWithParts>> getMessages({required String sessionId, required String? directory}) async {
     lastRequestedSessionId = sessionId;
     lastRequestedDirectory = directory;
     if (messagesError != null) throw messagesError!;
@@ -649,7 +665,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     List<Session> sessions = const [],
     List<PluginCommand> commands = const [],
     PluginSession? createdSession,
-    List<MessageWithParts> messages = const [],
+    List<plugin.MessageWithParts> messages = const [],
     Object? messagesError,
   }) : _projects = projects,
         _sessions = sessions,

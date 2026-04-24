@@ -290,9 +290,8 @@ HealthResponse testHealthResponse() {
 MessageWithParts testMessageWithParts({String? id}) {
   final messageId = id ?? "msg-1";
   return MessageWithParts(
-    info: Message(
+    info: Message.assistant(
       id: messageId,
-      role: "assistant",
       sessionID: "session-1",
       agent: null,
       modelID: null,

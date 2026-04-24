@@ -289,7 +289,7 @@ void _stubLoadApis(MockSessionService service) {
 
 MessageWithParts _messageWithParts() {
   return const MessageWithParts(
-    info: Message(id: "msg-1", role: "assistant", sessionID: _sessionId, agent: null, modelID: null, providerID: null),
+    info: Message.assistant(id: "msg-1", sessionID: _sessionId, agent: null, modelID: null, providerID: null),
     parts: <MessagePart>[],
   );
 }

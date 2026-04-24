@@ -547,9 +547,8 @@ void _stubLoadApis(MockSessionService service, {required String sessionId}) {
 
 MessageWithParts _messageWithParts({String messageId = "msg-1"}) {
   return MessageWithParts(
-    info: Message(
+    info: Message.assistant(
       id: messageId,
-      role: "assistant",
       sessionID: "session-1",
       agent: null,
       modelID: null,

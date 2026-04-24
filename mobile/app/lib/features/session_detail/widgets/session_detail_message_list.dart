@@ -3,6 +3,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 import "assistant_message_card.dart";
+import "error_message_card.dart";
 import "follow_detach_scrollable.dart";
 import "jump_to_edge_pill.dart";
 import "scroll_follow_tracker.dart";
@@ -204,14 +205,16 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
     required List<Session> children,
     required Map<String, SessionStatus> childStatuses,
   }) {
-    return message.info.role == "user"
-        ? UserMessageCard(message: message)
-        : AssistantMessageCard(
-            projectId: widget.projectId,
-            message: message,
-            streamingText: streamingText,
-            children: children,
-            childStatuses: childStatuses,
-          );
+    return switch (message.info) {
+      MessageUser() => UserMessageCard(message: message),
+      MessageAssistant() => AssistantMessageCard(
+          projectId: widget.projectId,
+          message: message,
+          streamingText: streamingText,
+          children: children,
+          childStatuses: childStatuses,
+        ),
+      MessageError() => ErrorMessageCard(message: message.info as MessageError),
+    };
   }
 }
