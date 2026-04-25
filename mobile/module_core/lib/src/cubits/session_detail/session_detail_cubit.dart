@@ -12,7 +12,6 @@ import "../../logging/logging.dart";
 import "../../platform/notification_canceller.dart";
 import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
-import "../../services/agent_variant_options_builder.dart";
 import "../../services/session_detail_load_service.dart";
 import "prompt_send_queue.dart";
 import "queued_session_submission.dart";
@@ -24,7 +23,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   final SessionRepository _sessionRepository;
   final ConnectionService _connectionService;
   final PermissionRepository _permissionRepository;
-  final AgentVariantOptionsBuilder _variantOptionsBuilder;
   final String _sessionId;
   final String? _routeProjectId;
   final NotificationCanceller _notificationCanceller;
@@ -58,7 +56,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     required SessionDetailLoadService loadService,
     required SessionRepository promptDispatcher,
     required PermissionRepository permissionRepository,
-    required AgentVariantOptionsBuilder variantOptionsBuilder,
     required String sessionId,
     String? projectId,
     required NotificationCanceller notificationCanceller,
@@ -67,7 +64,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
        _sessionRepository = promptDispatcher,
        _connectionService = connectionService,
        _permissionRepository = permissionRepository,
-       _variantOptionsBuilder = variantOptionsBuilder,
        _sessionId = sessionId,
        _routeProjectId = projectId,
        _notificationCanceller = notificationCanceller,
@@ -123,9 +119,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (current is! SessionDetailLoaded) return;
 
     final preservedSelectedAgent = current.selectedAgent;
-    final preservedSelectedProviderID = current.selectedProviderID;
-    final preservedSelectedModelID = current.selectedModelID;
-    final preservedSelectedVariant = current.selectedVariant;
+    final preservedSelectedAgentModel = current.selectedAgentModel;
     final preservedStagedCommand = current.stagedCommand;
 
     emit(current.copyWith(isRefreshing: true));
@@ -148,20 +142,15 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
               .where((a) => !a.hidden && a.mode != AgentMode.subagent)
               .toList();
           final availableProviders = snapshot.providerData?.items ?? <ProviderInfo>[];
-          final selectedAgentInfo = availableAgents.firstWhereOrNull((a) => a.name == preservedSelectedAgent);
-          final availableVariants = _variantOptionsBuilder.build(agent: selectedAgentInfo);
 
           final streamingText = _streamingBuffer.snapshot();
           _streamingBuffer.clear();
 
-          final assistantModelID = switch (latestAssistant) {
-            MessageAssistant(:final modelID) => modelID,
-            MessageError(:final modelID) => modelID,
-            _ => null,
-          };
-          final assistantProviderID = switch (latestAssistant) {
-            MessageAssistant(:final providerID) => providerID,
-            MessageError(:final providerID) => providerID,
+          final assistantAgentModel = switch (latestAssistant) {
+            MessageAssistant(:final modelID, :final providerID) =>
+              _resolveAgentModel(agents: availableAgents, providerID: providerID, modelID: modelID),
+            MessageError(:final modelID, :final providerID) =>
+              _resolveAgentModel(agents: availableAgents, providerID: providerID, modelID: modelID),
             _ => null,
           };
 
@@ -173,21 +162,15 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
               pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
               pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
               agent: latestAssistant?.agent,
-              modelID: assistantModelID,
-              providerID: assistantProviderID,
+              assistantAgentModel: assistantAgentModel,
               children: snapshot.childSessions,
               childStatuses: childStatuses,
               availableAgents: availableAgents,
               availableProviders: availableProviders,
               availableCommands: snapshot.commands,
-              availableVariants: availableVariants,
               sessionTitle: snapshot.canonicalSessionTitle ?? current.sessionTitle,
               selectedAgent: preservedSelectedAgent,
-              selectedProviderID: preservedSelectedProviderID,
-              selectedModelID: preservedSelectedModelID,
-              selectedVariant: availableVariants.any((v) => v.id == preservedSelectedVariant?.id)
-                  ? preservedSelectedVariant
-                  : null,
+              selectedAgentModel: preservedSelectedAgentModel,
               stagedCommand: _resolveStagedCommand(
                 availableCommands: snapshot.commands,
                 stagedCommand: preservedStagedCommand,
@@ -429,12 +412,18 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (isClosed) return;
 
     if (message is MessageAssistant) {
+      final assistantAgentModel = message.providerID != null && message.modelID != null
+          ? _resolveAgentModel(
+              agents: current.availableAgents,
+              providerID: message.providerID,
+              modelID: message.modelID,
+            )
+          : current.assistantAgentModel;
       emit(
         current.copyWith(
           messages: messages,
           agent: message.agent ?? current.agent,
-          modelID: message.modelID ?? current.modelID,
-          providerID: message.providerID ?? current.providerID,
+          assistantAgentModel: assistantAgentModel,
         ),
       );
     } else {
@@ -592,11 +581,10 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       sessionId: _sessionId,
       text: trimmed,
       agent: current.selectedAgent,
-      model: _resolvePromptModel(
-        providerID: current.selectedProviderID,
-        modelID: current.selectedModelID,
-      ),
-      variant: current.selectedVariant,
+      model: _agentModelToPromptModel(current.selectedAgentModel),
+      variant: current.selectedAgentModel?.variant == null
+          ? null
+          : SessionVariant(id: current.selectedAgentModel!.variant!),
       command: normalizedCommand,
     );
 
@@ -642,11 +630,10 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         sessionId: _sessionId,
         text: submission.text,
         agent: current.selectedAgent,
-        model: _resolvePromptModel(
-          providerID: current.selectedProviderID,
-          modelID: current.selectedModelID,
-        ),
-        variant: current.selectedVariant,
+        model: _agentModelToPromptModel(current.selectedAgentModel),
+        variant: current.selectedAgentModel?.variant == null
+            ? null
+            : SessionVariant(id: current.selectedAgentModel!.variant!),
         command: submission.command,
       );
 
@@ -682,11 +669,25 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     return normalized;
   }
 
-  PromptModel? _resolvePromptModel({required String? providerID, required String? modelID}) {
-    final normalizedProviderID = _normalizeOptionalText(providerID);
-    final normalizedModelID = _normalizeOptionalText(modelID);
-    if (normalizedProviderID == null || normalizedModelID == null) return null;
-    return PromptModel(providerID: normalizedProviderID, modelID: normalizedModelID);
+  PromptModel? _agentModelToPromptModel(AgentModel? agentModel) {
+    if (agentModel == null) return null;
+    return PromptModel(providerID: agentModel.providerID, modelID: agentModel.modelID);
+  }
+
+  AgentModel? _resolveAgentModel({
+    required List<AgentInfo> agents,
+    required String? providerID,
+    required String? modelID,
+  }) {
+    if (providerID == null || modelID == null) return null;
+    final agent = agents.firstWhereOrNull(
+      (a) => a.model?.providerID == providerID && a.model?.modelID == modelID,
+    );
+    return agent?.model ?? AgentModel(
+      providerID: providerID,
+      modelID: modelID,
+      variant: null,
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -842,31 +843,32 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final current = state;
     if (current is! SessionDetailLoaded) return;
 
-    final selectedAgentInfo = current.availableAgents.firstWhereOrNull((a) => a.name == agent);
     if (isClosed) return;
-    emit(
-      current.copyWith(
-        selectedAgent: agent,
-        availableVariants: _variantOptionsBuilder.build(agent: selectedAgentInfo),
-        selectedVariant: null,
-      ),
-    );
+    emit(current.copyWith(selectedAgent: agent));
   }
 
   void selectModel({required String providerID, required String modelID}) {
     final current = state;
     if (current is! SessionDetailLoaded) return;
 
+    final agentModel = _resolveAgentModel(
+      agents: current.availableAgents,
+      providerID: providerID,
+      modelID: modelID,
+    );
+
     if (isClosed) return;
-    emit(current.copyWith(selectedProviderID: providerID, selectedModelID: modelID));
+    emit(current.copyWith(selectedAgentModel: agentModel));
   }
 
   void selectVariant(SessionVariant? variant) {
     final current = state;
     if (current is! SessionDetailLoaded) return;
+    final agentModel = current.selectedAgentModel;
+    if (agentModel == null) return;
 
     if (isClosed) return;
-    emit(current.copyWith(selectedVariant: variant));
+    emit(current.copyWith(selectedAgentModel: agentModel.copyWith(variant: variant?.id)));
   }
 
   void stageCommand(CommandInfo command) {
@@ -926,33 +928,29 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final providers = snapshot.providerData?.items ?? <ProviderInfo>[];
     final defaultAgent = agents.isNotEmpty ? agents.first.name : "build";
     final agentModel = agents.isNotEmpty ? agents.first.model : null;
-    final String defaultProviderID;
-    final String defaultModelID;
+    final AgentModel? defaultAgentModel;
     if (agentModel != null) {
-      defaultProviderID = agentModel.providerID;
-      defaultModelID = agentModel.modelID;
+      defaultAgentModel = agentModel;
     } else if (providers.isNotEmpty) {
-      defaultProviderID = providers.first.id;
-      final firstProviderDefaultModelId = providers.first.defaultModelID;
-      defaultModelID =
-          firstProviderDefaultModelId != null && providers.first.models.containsKey(firstProviderDefaultModelId)
-          ? firstProviderDefaultModelId
-          : providers.first.models.values.first.id;
+      final firstProvider = providers.first;
+      final defaultModelID = firstProvider.defaultModelID;
+      final modelID = defaultModelID != null && firstProvider.models.containsKey(defaultModelID)
+          ? defaultModelID
+          : firstProvider.models.values.first.id;
+      defaultAgentModel = AgentModel(
+        providerID: firstProvider.id,
+        modelID: modelID,
+        variant: null,
+      );
     } else {
-      defaultProviderID = "";
-      defaultModelID = "";
+      defaultAgentModel = null;
     }
-    final defaultAgentInfo = agents.firstWhereOrNull((a) => a.name == defaultAgent);
-    final availableVariants = _variantOptionsBuilder.build(agent: defaultAgentInfo);
 
-    final assistantModelID = switch (latestAssistant) {
-      MessageAssistant(:final modelID) => modelID,
-      MessageError(:final modelID) => modelID,
-      _ => null,
-    };
-    final assistantProviderID = switch (latestAssistant) {
-      MessageAssistant(:final providerID) => providerID,
-      MessageError(:final providerID) => providerID,
+    final assistantAgentModel = switch (latestAssistant) {
+      MessageAssistant(:final modelID, :final providerID) =>
+        _resolveAgentModel(agents: agents, providerID: providerID, modelID: modelID),
+      MessageError(:final modelID, :final providerID) =>
+        _resolveAgentModel(agents: agents, providerID: providerID, modelID: modelID),
       _ => null,
     };
 
@@ -964,19 +962,15 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
           sessionTitle: snapshot.canonicalSessionTitle,
           agent: latestAssistant?.agent,
-          modelID: assistantModelID,
-          providerID: assistantProviderID,
+          assistantAgentModel: assistantAgentModel,
           children: childSessions,
           childStatuses: childStatuses,
           queuedMessages: const [],
           availableAgents: agents,
           availableProviders: providers,
           availableCommands: snapshot.commands,
-          availableVariants: availableVariants,
           selectedAgent: defaultAgent,
-          selectedProviderID: defaultProviderID,
-          selectedModelID: defaultModelID,
-          selectedVariant: null,
+          selectedAgentModel: defaultAgentModel,
           stagedCommand: null,
           isRefreshing: false,
         )

@@ -23,13 +23,13 @@ class GetAgentsHandler extends GetRequestHandler<Agents> {
             name: a.name,
             description: a.description,
             model: switch (a.model) {
-              PluginAgentModel(:final modelID, :final providerID) => AgentModel(
+              PluginAgentModel(:final modelID, :final providerID, :final variant) => AgentModel(
                 modelID: modelID,
                 providerID: providerID,
+                variant: variant,
               ),
               null => null,
             },
-            variant: a.variant?.safeName,
             mode: switch (a.mode) {
               PluginAgentMode.all => AgentMode.all,
               PluginAgentMode.primary => AgentMode.primary,

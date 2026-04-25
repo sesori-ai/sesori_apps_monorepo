@@ -37,8 +37,7 @@ void main() {
         const PluginAgent(
           name: "planner",
           description: "Plans tasks",
-          model: PluginAgentModel(modelID: "gpt-4o", providerID: "openai"),
-          variant: PluginAgentVariant.high,
+          model: PluginAgentModel(modelID: "gpt-4o", providerID: "openai", variant: "high"),
           mode: PluginAgentMode.primary,
           hidden: true,
         ),
@@ -54,10 +53,9 @@ void main() {
       final agent = response.agents[0];
       expect(agent.name, equals("planner"));
       expect(agent.description, equals("Plans tasks"));
-      expect(agent.variant, equals("high"));
       expect(agent.mode, equals(AgentMode.primary));
       expect(agent.hidden, isTrue);
-      expect(agent.model, equals(const AgentModel(modelID: "gpt-4o", providerID: "openai")));
+      expect(agent.model, equals(const AgentModel(modelID: "gpt-4o", providerID: "openai", variant: "high")));
     });
 
     test("maps unknown plugin agent modes to AgentMode.unknown", () async {
@@ -66,7 +64,6 @@ void main() {
           name: "tolerant-agent",
           description: null,
           model: null,
-          variant: null,
           mode: PluginAgentMode.unknown,
           hidden: false,
         ),
@@ -87,8 +84,7 @@ void main() {
         const PluginAgent(
           name: "with-model",
           description: null,
-          model: PluginAgentModel(modelID: "m1", providerID: "p1"),
-          variant: null,
+          model: PluginAgentModel(modelID: "m1", providerID: "p1", variant: null),
           mode: PluginAgentMode.all,
           hidden: false,
         ),
@@ -96,7 +92,6 @@ void main() {
           name: "without-model",
           description: null,
           model: null,
-          variant: null,
           mode: PluginAgentMode.subagent,
           hidden: false,
         ),

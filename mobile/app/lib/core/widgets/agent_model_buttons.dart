@@ -6,11 +6,8 @@ import "../extensions/build_context_x.dart";
 
 class AgentModelButtons extends StatelessWidget {
   final List<ProviderInfo> providers;
-  final List<SessionVariant> availableVariants;
   final String selectedAgent;
-  final String selectedProviderID;
-  final String selectedModelID;
-  final SessionVariant? selectedVariant;
+  final AgentModel? selectedAgentModel;
   final VoidCallback onAgentTap;
   final VoidCallback onModelTap;
   final VoidCallback onVariantTap;
@@ -18,24 +15,24 @@ class AgentModelButtons extends StatelessWidget {
   const AgentModelButtons({
     super.key,
     required this.providers,
-    required this.availableVariants,
     required this.selectedAgent,
-    required this.selectedProviderID,
-    required this.selectedModelID,
-    required this.selectedVariant,
+    required this.selectedAgentModel,
     required this.onAgentTap,
     required this.onModelTap,
     required this.onVariantTap,
   });
 
   String _resolveModelName(AppLocalizations loc) {
+    final providerID = selectedAgentModel?.providerID;
+    final modelID = selectedAgentModel?.modelID;
+    if (providerID == null || modelID == null) return loc.sessionDetailPickerModel;
     for (final provider in providers) {
-      if (provider.id == selectedProviderID) {
-        final model = provider.models[selectedModelID];
+      if (provider.id == providerID) {
+        final model = provider.models[modelID];
         if (model != null) return model.name;
       }
     }
-    if (selectedModelID.isNotEmpty) return selectedModelID;
+    if (modelID.isNotEmpty) return modelID;
     return loc.sessionDetailPickerModel;
   }
 
@@ -43,6 +40,14 @@ class AgentModelButtons extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final loc = context.loc;
+    final availableVariants = switch (selectedAgentModel?.variant) {
+      final variant when variant != null && variant != "none" => [SessionVariant(id: variant)],
+      _ => <SessionVariant>[],
+    };
+    final selectedVariant = switch (selectedAgentModel?.variant) {
+      final variant when variant != null && variant != "none" => SessionVariant(id: variant),
+      _ => null,
+    };
     final buttonStyle = OutlinedButton.styleFrom(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       minimumSize: .zero,

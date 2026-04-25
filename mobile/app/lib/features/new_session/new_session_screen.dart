@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
@@ -25,7 +26,6 @@ class NewSessionScreen extends StatelessWidget {
     return BlocProvider(
       create: (_) => NewSessionCubit(
         sessionService: getIt<SessionService>(),
-        variantOptionsBuilder: getIt<AgentVariantOptionsBuilder>(),
         projectId: projectId,
       ),
       child: _NewSessionBody(projectId: projectId),
@@ -61,20 +61,28 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
 
   void _openModelPicker(AgentModelData data) {
     final cubit = context.read<NewSessionCubit>();
+    final agentModel = data.agentModel;
     ModelPickerSheet.show(
       context,
       providers: data.providers,
-      selectedProviderID: data.providerID ?? "",
-      selectedModelID: data.modelID ?? "",
+      selectedProviderID: agentModel?.providerID ?? "",
+      selectedModelID: agentModel?.modelID ?? "",
       onModelChanged: cubit.selectModel,
     );
   }
 
   void _openVariantPicker(AgentModelData data) {
+    final agentModel = data.agentModel;
+    final availableVariants = agentModel?.variant != null && agentModel!.variant != 'none'
+        ? [SessionVariant(id: agentModel.variant!)]
+        : <SessionVariant>[];
+    final selectedVariant = agentModel?.variant != null && agentModel!.variant != 'none'
+        ? SessionVariant(id: agentModel.variant!)
+        : null;
     VariantPickerSheet.show(
       context,
-      selectedVariant: data.variant,
-      availableVariants: data.availableVariants,
+      selectedVariant: selectedVariant,
+      availableVariants: availableVariants,
       onVariantChanged: context.read<NewSessionCubit>().selectVariant,
     );
   }
@@ -107,11 +115,8 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
 
     return AgentModelButtons(
       providers: data.providers,
-      availableVariants: data.availableVariants,
       selectedAgent: selectedAgent,
-      selectedProviderID: data.providerID ?? "",
-      selectedModelID: data.modelID ?? "",
-      selectedVariant: data.variant,
+      selectedAgentModel: data.agentModel,
       onAgentTap: () => _openAgentPicker(data),
       onModelTap: () => _openModelPicker(data),
       onVariantTap: () => _openVariantPicker(data),
