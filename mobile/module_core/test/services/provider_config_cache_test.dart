@@ -1,7 +1,6 @@
+import "package:sesori_dart_core/src/services/provider_config_cache.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
-
-import "../../lib/src/services/provider_config_cache.dart";
 
 void main() {
   group("ProviderConfigCache", () {
@@ -20,7 +19,7 @@ void main() {
     });
 
     test("set and get roundtrip", () {
-      final response = ProviderListResponse(
+      const response = ProviderListResponse(
         items: [
           ProviderInfo(
             id: "anthropic",
@@ -41,11 +40,11 @@ void main() {
     test("clear removes all entries", () {
       cache.set(
         projectId: "project-1",
-        response: ProviderListResponse(items: [], connectedOnly: true),
+        response: const ProviderListResponse(items: [], connectedOnly: true),
       );
       cache.set(
         projectId: "project-2",
-        response: ProviderListResponse(items: [], connectedOnly: true),
+        response: const ProviderListResponse(items: [], connectedOnly: true),
       );
 
       cache.clear();
@@ -55,7 +54,7 @@ void main() {
     });
 
     test("different projectIds are independent", () {
-      final response1 = ProviderListResponse(
+      const response1 = ProviderListResponse(
         items: [
           ProviderInfo(
             id: "anthropic",
@@ -66,7 +65,7 @@ void main() {
         ],
         connectedOnly: true,
       );
-      final response2 = ProviderListResponse(
+      const response2 = ProviderListResponse(
         items: [
           ProviderInfo(
             id: "openai",

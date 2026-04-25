@@ -1,3 +1,4 @@
+import "package:collection/collection.dart";
 import "package:flutter/material.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -40,10 +41,17 @@ class AgentModelButtons extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final loc = context.loc;
-    final availableVariants = switch (selectedAgentModel?.variant) {
-      final variant when variant != null && variant != "none" => [SessionVariant(id: variant)],
-      _ => <SessionVariant>[],
-    };
+    final providerID = selectedAgentModel?.providerID;
+    final modelID = selectedAgentModel?.modelID;
+    final provider = providerID != null
+        ? providers.firstWhereOrNull((p) => p.id == providerID)
+        : null;
+    final model = provider?.models[modelID];
+    final availableVariants = model?.variants
+            .where((v) => v != "none")
+            .map((v) => SessionVariant(id: v))
+            .toList() ??
+        <SessionVariant>[];
     final selectedVariant = switch (selectedAgentModel?.variant) {
       final variant when variant != null && variant != "none" => SessionVariant(id: variant),
       _ => null,

@@ -30,9 +30,9 @@ class NewSessionCubit extends Cubit<NewSessionState> {
 
   Future<void> _loadComposerData() async {
     try {
-      final (agentsResponse, providersResponse, commandsResponse) = await wait3(
+      final (ApiResponse<Agents> agentsResponse, ApiResponse<ProviderListResponse> providersResponse, ApiResponse<CommandListResponse> commandsResponse) = await wait3(
         _sessionService.listAgents(),
-        _sessionService.listProviders(),
+        _sessionService.listProviders(projectId: _projectId),
         _sessionService.listCommands(projectId: _projectId),
       );
 
@@ -132,7 +132,15 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   }
 
   void selectAgent(String agent) {
-    _emitAgentModelUpdate(selectedAgent: agent);
+    final current = state;
+    final agentInfo = switch (current) {
+      NewSessionIdle() => current.availableAgents.firstWhereOrNull((a) => a.name == agent),
+      NewSessionSending() => current.availableAgents.firstWhereOrNull((a) => a.name == agent),
+      NewSessionError() => current.availableAgents.firstWhereOrNull((a) => a.name == agent),
+      NewSessionCreated() => null,
+    };
+    final agentModel = agentInfo?.model;
+    _emitAgentModelUpdate(selectedAgent: agent, selectedAgentModel: agentModel);
   }
 
   void selectVariant(SessionVariant? variant) {
@@ -187,6 +195,16 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     final current = state.agentModelData;
     if (current == null) return;
 
+    final previousVariant = current.agentModel?.variant;
+    final availableVariants = _availableVariantsFor(
+      providers: current.providers,
+      providerID: providerID,
+      modelID: modelID,
+    );
+    final variant = previousVariant != null && availableVariants.contains(previousVariant)
+        ? previousVariant
+        : null;
+
     final agentModel = _resolveAgentModel(
       agents: current.agents,
       providerID: providerID,
@@ -194,8 +212,18 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     );
 
     _emitAgentModelUpdate(
-      selectedAgentModel: agentModel,
+      selectedAgentModel: agentModel?.copyWith(variant: variant),
     );
+  }
+
+  List<String> _availableVariantsFor({
+    required List<ProviderInfo> providers,
+    required String providerID,
+    required String modelID,
+  }) {
+    final provider = providers.firstWhereOrNull((p) => p.id == providerID);
+    final model = provider?.models[modelID];
+    return model?.variants ?? [];
   }
 
   AgentModel? _resolveAgentModel({

@@ -60,7 +60,7 @@ void main() {
         ),
       ),
     );
-    when(() => sessionService.listProviders()).thenAnswer(
+    when(() => sessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer(
       (_) async => ApiResponse.success(testProviderListResponse()),
     );
     when(() => sessionService.listCommands(projectId: any(named: "projectId"))).thenAnswer(
@@ -117,7 +117,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(OutlinedButton, "reviewer"), findsOneWidget);
-    // Changing the agent does not overwrite the currently selected model variant.
-    expect(find.widgetWithText(OutlinedButton, "xhigh"), findsOneWidget);
+    // Changing the agent seeds the variant from the agent's default.
+    // Reviewer has variant: null, so the button shows "Default".
+    expect(find.widgetWithText(OutlinedButton, "Default"), findsOneWidget);
   });
 }

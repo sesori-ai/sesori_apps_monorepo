@@ -843,13 +843,26 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final current = state;
     if (current is! SessionDetailLoaded) return;
 
+    final agentInfo = current.availableAgents.firstWhereOrNull((a) => a.name == agent);
+    final agentModel = agentInfo?.model;
+
     if (isClosed) return;
-    emit(current.copyWith(selectedAgent: agent));
+    emit(current.copyWith(selectedAgent: agent, selectedAgentModel: agentModel));
   }
 
   void selectModel({required String providerID, required String modelID}) {
     final current = state;
     if (current is! SessionDetailLoaded) return;
+
+    final previousVariant = current.selectedAgentModel?.variant;
+    final availableVariants = _availableVariantsFor(
+      providers: current.availableProviders,
+      providerID: providerID,
+      modelID: modelID,
+    );
+    final variant = previousVariant != null && availableVariants.contains(previousVariant)
+        ? previousVariant
+        : null;
 
     final agentModel = _resolveAgentModel(
       agents: current.availableAgents,
@@ -858,7 +871,17 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     );
 
     if (isClosed) return;
-    emit(current.copyWith(selectedAgentModel: agentModel));
+    emit(current.copyWith(selectedAgentModel: agentModel?.copyWith(variant: variant)));
+  }
+
+  List<String> _availableVariantsFor({
+    required List<ProviderInfo> providers,
+    required String providerID,
+    required String modelID,
+  }) {
+    final provider = providers.firstWhereOrNull((p) => p.id == providerID);
+    final model = provider?.models[modelID];
+    return model?.variants ?? [];
   }
 
   void selectVariant(SessionVariant? variant) {

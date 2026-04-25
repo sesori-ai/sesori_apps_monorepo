@@ -432,6 +432,7 @@ ProviderListResponse testProviderListResponse() {
             id: "claude-3-5-sonnet",
             providerID: "anthropic",
             name: "Claude 3.5 Sonnet",
+            variants: ["xhigh"],
             family: null,
             releaseDate: null,
           ),
