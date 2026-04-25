@@ -1,5 +1,5 @@
 import 'package:sesori_bridge/src/api/bridge_settings_api.dart';
-import 'package:sesori_bridge/src/foundation/bridge_settings.dart';
+import 'package:sesori_bridge/src/repositories/bridge_settings.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
 import 'package:test/test.dart';
 

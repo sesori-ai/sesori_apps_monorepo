@@ -1,6 +1,6 @@
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 
-import '../foundation/bridge_settings.dart';
+import '../repositories/bridge_settings.dart';
 import '../repositories/bridge_settings_repository.dart';
 import '../repositories/wake_lock_repository.dart';
 

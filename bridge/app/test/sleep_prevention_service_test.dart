@@ -1,5 +1,5 @@
 import 'package:sesori_bridge/src/api/bridge_settings_api.dart';
-import 'package:sesori_bridge/src/foundation/bridge_settings.dart';
+import 'package:sesori_bridge/src/repositories/bridge_settings.dart';
 import 'package:sesori_bridge/src/foundation/wake_lock_client.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
 import 'package:sesori_bridge/src/repositories/wake_lock_repository.dart';

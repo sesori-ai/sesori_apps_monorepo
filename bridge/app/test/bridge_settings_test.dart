@@ -1,4 +1,4 @@
-import 'package:sesori_bridge/src/foundation/bridge_settings.dart';
+import 'package:sesori_bridge/src/repositories/bridge_settings.dart';
 import 'package:test/test.dart';
 
 void main() {

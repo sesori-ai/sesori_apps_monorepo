@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 
 import '../api/bridge_settings_api.dart';
-import '../foundation/bridge_settings.dart';
+import 'bridge_settings.dart';
 
 class BridgeSettingsRepository {
   static const JsonEncoder _jsonEncoder = JsonEncoder.withIndent('  ');
