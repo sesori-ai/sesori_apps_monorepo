@@ -12,7 +12,6 @@ import "../../logging/logging.dart";
 import "../../platform/notification_canceller.dart";
 import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
-import "../../services/agent_variant_options_builder.dart";
 import "../../services/session_detail_load_service.dart";
 import "prompt_send_queue.dart";
 import "queued_session_submission.dart";
@@ -24,7 +23,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   final SessionRepository _sessionRepository;
   final ConnectionService _connectionService;
   final PermissionRepository _permissionRepository;
-  final AgentVariantOptionsBuilder _variantOptionsBuilder;
   final String _sessionId;
   final String? _routeProjectId;
   final NotificationCanceller _notificationCanceller;
@@ -58,7 +56,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     required SessionDetailLoadService loadService,
     required SessionRepository promptDispatcher,
     required PermissionRepository permissionRepository,
-    required AgentVariantOptionsBuilder variantOptionsBuilder,
     required String sessionId,
     String? projectId,
     required NotificationCanceller notificationCanceller,
@@ -67,7 +64,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
        _sessionRepository = promptDispatcher,
        _connectionService = connectionService,
        _permissionRepository = permissionRepository,
-       _variantOptionsBuilder = variantOptionsBuilder,
        _sessionId = sessionId,
        _routeProjectId = projectId,
        _notificationCanceller = notificationCanceller,
@@ -124,7 +120,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
     final preservedSelectedAgent = current.selectedAgent;
     final preservedSelectedAgentModel = current.selectedAgentModel;
-    final preservedSelectedVariant = current.selectedVariant;
     final preservedStagedCommand = current.stagedCommand;
 
     emit(current.copyWith(isRefreshing: true));
@@ -147,7 +142,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
               .where((a) => !a.hidden && a.mode != AgentMode.subagent)
               .toList();
           final availableProviders = snapshot.providerData?.items ?? <ProviderInfo>[];
-          final availableVariants = _variantOptionsBuilder.build(agentModel: preservedSelectedAgentModel);
 
           final streamingText = _streamingBuffer.snapshot();
           _streamingBuffer.clear();
@@ -174,13 +168,9 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
               availableAgents: availableAgents,
               availableProviders: availableProviders,
               availableCommands: snapshot.commands,
-              availableVariants: availableVariants,
               sessionTitle: snapshot.canonicalSessionTitle ?? current.sessionTitle,
               selectedAgent: preservedSelectedAgent,
               selectedAgentModel: preservedSelectedAgentModel,
-              selectedVariant: availableVariants.any((v) => v.id == preservedSelectedVariant?.id)
-                  ? preservedSelectedVariant
-                  : null,
               stagedCommand: _resolveStagedCommand(
                 availableCommands: snapshot.commands,
                 stagedCommand: preservedStagedCommand,
@@ -422,11 +412,13 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (isClosed) return;
 
     if (message is MessageAssistant) {
-      final assistantAgentModel = _resolveAgentModel(
-        agents: current.availableAgents,
-        providerID: message.providerID,
-        modelID: message.modelID,
-      );
+      final assistantAgentModel = message.providerID != null && message.modelID != null
+          ? _resolveAgentModel(
+              agents: current.availableAgents,
+              providerID: message.providerID,
+              modelID: message.modelID,
+            )
+          : current.assistantAgentModel;
       emit(
         current.copyWith(
           messages: messages,
@@ -590,7 +582,9 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       text: trimmed,
       agent: current.selectedAgent,
       model: _agentModelToPromptModel(current.selectedAgentModel),
-      variant: current.selectedVariant,
+      variant: current.selectedAgentModel?.variant == null
+          ? null
+          : SessionVariant(id: current.selectedAgentModel!.variant!),
       command: normalizedCommand,
     );
 
@@ -637,7 +631,9 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         text: submission.text,
         agent: current.selectedAgent,
         model: _agentModelToPromptModel(current.selectedAgentModel),
-        variant: current.selectedVariant,
+        variant: current.selectedAgentModel?.variant == null
+            ? null
+            : SessionVariant(id: current.selectedAgentModel!.variant!),
         command: submission.command,
       );
 
@@ -860,24 +856,19 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       providerID: providerID,
       modelID: modelID,
     );
-    final availableVariants = _variantOptionsBuilder.build(agentModel: agentModel);
 
     if (isClosed) return;
-    emit(
-      current.copyWith(
-        selectedAgentModel: agentModel,
-        availableVariants: availableVariants,
-        selectedVariant: null,
-      ),
-    );
+    emit(current.copyWith(selectedAgentModel: agentModel));
   }
 
   void selectVariant(SessionVariant? variant) {
     final current = state;
     if (current is! SessionDetailLoaded) return;
+    final agentModel = current.selectedAgentModel;
+    if (agentModel == null) return;
 
     if (isClosed) return;
-    emit(current.copyWith(selectedVariant: variant));
+    emit(current.copyWith(selectedAgentModel: agentModel.copyWith(variant: variant?.id)));
   }
 
   void stageCommand(CommandInfo command) {
@@ -954,7 +945,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     } else {
       defaultAgentModel = null;
     }
-    final availableVariants = _variantOptionsBuilder.build(agentModel: defaultAgentModel);
 
     final assistantAgentModel = switch (latestAssistant) {
       MessageAssistant(:final modelID, :final providerID) =>
@@ -979,10 +969,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           availableAgents: agents,
           availableProviders: providers,
           availableCommands: snapshot.commands,
-          availableVariants: availableVariants,
           selectedAgent: defaultAgent,
           selectedAgentModel: defaultAgentModel,
-          selectedVariant: null,
           stagedCommand: null,
           isRefreshing: false,
         )

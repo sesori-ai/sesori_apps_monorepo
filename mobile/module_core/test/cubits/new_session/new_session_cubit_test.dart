@@ -3,7 +3,6 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_cubit.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_state.dart";
-import "package:sesori_dart_core/src/services/agent_variant_options_builder.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -31,17 +30,16 @@ void main() {
 
     NewSessionCubit buildCubit() => NewSessionCubit(
       sessionService: mockSessionService,
-      variantOptionsBuilder: const AgentVariantOptionsBuilder(),
       projectId: "project-1",
     );
 
-    test("defaults selectedVariant to null", () {
+    test("defaults selectedAgentModel to null", () {
       final cubit = buildCubit();
       addTearDown(cubit.close);
 
       expect(
         cubit.state,
-        isA<NewSessionIdle>().having((state) => state.selectedVariant, "selectedVariant", isNull),
+        isA<NewSessionIdle>().having((state) => state.selectedAgentModel, "selectedAgentModel", isNull),
       );
     });
 
@@ -138,7 +136,6 @@ void main() {
         ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s-command")));
         return NewSessionCubit(
           sessionService: mockSessionService,
-          variantOptionsBuilder: const AgentVariantOptionsBuilder(),
           projectId: "project-1",
         );
       },
@@ -180,7 +177,7 @@ void main() {
                 AgentInfo(
                   name: "build",
                   description: "Build",
-                  model: AgentModel(providerID: "openai", modelID: "gpt-4", variant: "xhigh"),
+                  model: AgentModel(providerID: "openai", modelID: "gpt-4", variant: null),
                   mode: AgentMode.primary,
                 ),
               ],
@@ -212,19 +209,16 @@ void main() {
       },
       expect: () => [
         isA<NewSessionIdle>()
-            .having((state) => state.availableVariants, "availableVariants", const [
-              SessionVariant(id: "xhigh"),
-            ])
-            .having((state) => state.selectedVariant, "selectedVariant", isNull),
+            .having((state) => state.selectedAgentModel?.variant, "selectedAgentModel.variant", isNull),
         isA<NewSessionIdle>().having(
-          (state) => state.selectedVariant,
-          "selectedVariant",
-          const SessionVariant(id: "xhigh"),
+          (state) => state.selectedAgentModel?.variant,
+          "selectedAgentModel.variant",
+          "xhigh",
         ),
         isA<NewSessionSending>().having(
-          (state) => state.selectedVariant,
-          "selectedVariant",
-          const SessionVariant(id: "xhigh"),
+          (state) => state.selectedAgentModel?.variant,
+          "selectedAgentModel.variant",
+          "xhigh",
         ),
         isA<NewSessionCreated>(),
       ],
@@ -245,7 +239,7 @@ void main() {
     );
 
     blocTest<NewSessionCubit, NewSessionState>(
-      "selectAgent changes agent without affecting variants",
+      "selectAgent changes agent without affecting selected model variant",
       build: () {
         when(() => mockSessionService.listAgents()).thenAnswer(
           (_) async => ApiResponse.success(
@@ -254,13 +248,13 @@ void main() {
                 AgentInfo(
                   name: "build",
                   description: "Build",
-                  model: AgentModel(providerID: "openai", modelID: "gpt-4", variant: "xhigh"),
+                  model: AgentModel(providerID: "openai", modelID: "gpt-4", variant: null),
                   mode: AgentMode.primary,
                 ),
                 AgentInfo(
                   name: "build",
                   description: "Build",
-                  model: AgentModel(providerID: "openai", modelID: "gpt-4", variant: "xhigh"),
+                  model: AgentModel(providerID: "openai", modelID: "gpt-4", variant: null),
                   mode: AgentMode.primary,
                 ),
               ],
@@ -276,24 +270,23 @@ void main() {
       },
       expect: () => [
         isA<NewSessionIdle>().having(
-          (state) => state.availableVariants,
-          "initial variants",
-          const [SessionVariant(id: "xhigh")],
+          (state) => state.selectedAgentModel?.variant,
+          "initial selectedAgentModel.variant",
+          isNull,
         ),
         isA<NewSessionIdle>().having(
-          (state) => state.selectedVariant,
-          "selectedVariant",
-          const SessionVariant(id: "xhigh"),
+          (state) => state.selectedAgentModel?.variant,
+          "selectedAgentModel.variant",
+          "xhigh",
         ),
         isA<NewSessionIdle>()
             .having((state) => state.selectedAgent, "selectedAgent", "oracle")
-            .having((state) => state.availableVariants, "variants unchanged", const [SessionVariant(id: "xhigh")])
-            .having((state) => state.selectedVariant, "selectedVariant preserved", const SessionVariant(id: "xhigh")),
+            .having((state) => state.selectedAgentModel?.variant, "selectedAgentModel.variant preserved", "xhigh"),
       ],
     );
 
     blocTest<NewSessionCubit, NewSessionState>(
-      "selectModel recomputes availableVariants by model and resets selectedVariant",
+      "selectModel updates selectedAgentModel to the chosen model variant",
       build: () {
         when(() => mockSessionService.listAgents()).thenAnswer(
           (_) async => ApiResponse.success(
@@ -319,28 +312,20 @@ void main() {
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        cubit.selectVariant(const SessionVariant(id: "fast"));
         cubit.selectModel("anthropic", "claude-3");
       },
       expect: () => [
         isA<NewSessionIdle>().having(
-          (state) => state.availableVariants,
-          "initial variants",
-          const [SessionVariant(id: "fast")],
-        ),
-        isA<NewSessionIdle>().having(
-          (state) => state.selectedVariant,
-          "selectedVariant",
-          const SessionVariant(id: "fast"),
+          (state) => state.selectedAgentModel,
+          "initial selectedAgentModel",
+          const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "fast"),
         ),
         isA<NewSessionIdle>()
             .having(
               (state) => state.selectedAgentModel,
               "selectedAgentModel",
               const AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "deep"),
-            )
-            .having((state) => state.availableVariants, "anthropic variants", const [SessionVariant(id: "deep")])
-            .having((state) => state.selectedVariant, "reset selectedVariant", isNull),
+            ),
       ],
     );
   });

@@ -21,10 +21,8 @@ void main() {
       availableAgents: [],
       availableProviders: [],
       availableCommands: [],
-      availableVariants: [],
       selectedAgent: "build",
       selectedAgentModel: null,
-      selectedVariant: null,
       stagedCommand: null,
       isRefreshing: false,
     );

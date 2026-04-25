@@ -101,10 +101,8 @@ class SessionDetailLoadedView extends StatelessWidget {
             header: null,
             composerHeader: AgentModelButtons(
               providers: state.availableProviders,
-              availableVariants: state.availableVariants,
               selectedAgent: state.selectedAgent,
               selectedAgentModel: state.selectedAgentModel,
-              selectedVariant: state.selectedVariant,
               onAgentTap: onOpenAgentPicker,
               onModelTap: onOpenModelPicker,
               onVariantTap: onOpenVariantPicker,

@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
@@ -25,7 +26,6 @@ class NewSessionScreen extends StatelessWidget {
     return BlocProvider(
       create: (_) => NewSessionCubit(
         sessionService: getIt<SessionService>(),
-        variantOptionsBuilder: getIt<AgentVariantOptionsBuilder>(),
         projectId: projectId,
       ),
       child: _NewSessionBody(projectId: projectId),
@@ -72,10 +72,17 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
   }
 
   void _openVariantPicker(AgentModelData data) {
+    final agentModel = data.agentModel;
+    final availableVariants = agentModel?.variant != null && agentModel!.variant != 'none'
+        ? [SessionVariant(id: agentModel.variant!)]
+        : <SessionVariant>[];
+    final selectedVariant = agentModel?.variant != null && agentModel!.variant != 'none'
+        ? SessionVariant(id: agentModel.variant!)
+        : null;
     VariantPickerSheet.show(
       context,
-      selectedVariant: data.variant,
-      availableVariants: data.availableVariants,
+      selectedVariant: selectedVariant,
+      availableVariants: availableVariants,
       onVariantChanged: context.read<NewSessionCubit>().selectVariant,
     );
   }
@@ -108,10 +115,8 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
 
     return AgentModelButtons(
       providers: data.providers,
-      availableVariants: data.availableVariants,
       selectedAgent: selectedAgent,
       selectedAgentModel: data.agentModel,
-      selectedVariant: data.variant,
       onAgentTap: () => _openAgentPicker(data),
       onModelTap: () => _openModelPicker(data),
       onVariantTap: () => _openVariantPicker(data),

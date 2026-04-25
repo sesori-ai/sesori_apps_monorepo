@@ -12,7 +12,6 @@ import "package:sesori_dart_core/src/platform/notification_canceller.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
-import "package:sesori_dart_core/src/services/agent_variant_options_builder.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -111,7 +110,6 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
-          variantOptionsBuilder: const AgentVariantOptionsBuilder(),
           sessionId: sessionId,
           notificationCanceller: mockNotificationCanceller,
           failureReporter: MockFailureReporter(),
@@ -163,7 +161,6 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
@@ -201,13 +198,12 @@ void main() {
       );
     });
 
-    test("silent refresh preserves selectedAgent, selectedProviderID, selectedModelID, and selectedVariant", () async {
+    test("silent refresh preserves selectedAgent and selectedAgentModel", () async {
       final cubit = SessionDetailCubit(
         mockConnectionService,
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
@@ -259,14 +255,12 @@ void main() {
       expect(loaded.selectedAgent, "oracle");
       expect(
         loaded.selectedAgentModel,
-        const AgentModel(providerID: "openai", modelID: "gpt-4.1", variant: null),
+        const AgentModel(providerID: "openai", modelID: "gpt-4.1", variant: "xhigh"),
       );
-      // Variant cleared because agent changed and xhigh is no longer available
-      expect(loaded.selectedVariant, isNull);
       expect(loaded.isRefreshing, isFalse);
     });
 
-    test("sendMessage forwards selectedVariant to repository", () async {
+    test("sendMessage forwards selectedAgentModel variant to repository", () async {
       when(
         () => mockSessionRepository.sendMessage(
           sessionId: sessionId,
@@ -283,7 +277,6 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
@@ -313,7 +306,6 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
@@ -376,7 +368,6 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
@@ -410,7 +401,6 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
@@ -442,7 +432,6 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
@@ -465,7 +454,6 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
-          variantOptionsBuilder: const AgentVariantOptionsBuilder(),
           sessionId: sessionId,
           notificationCanceller: mockNotificationCanceller,
           failureReporter: MockFailureReporter(),
@@ -493,7 +481,6 @@ void main() {
         expect(afterFailure.messages, before.messages);
         expect(afterFailure.selectedAgent, before.selectedAgent);
         expect(afterFailure.selectedAgentModel, before.selectedAgentModel);
-        expect(afterFailure.selectedVariant, before.selectedVariant);
       },
     );
 
@@ -503,7 +490,6 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),

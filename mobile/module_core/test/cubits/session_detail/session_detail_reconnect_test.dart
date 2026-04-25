@@ -11,7 +11,6 @@ import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.
 import "package:sesori_dart_core/src/platform/notification_canceller.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
-import "package:sesori_dart_core/src/services/agent_variant_options_builder.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -87,7 +86,6 @@ void main() {
       loadService: loadService,
       promptDispatcher: promptDispatcher,
       permissionRepository: mockPermissionRepository,
-      variantOptionsBuilder: const AgentVariantOptionsBuilder(),
       sessionId: _sessionId,
       notificationCanceller: mockNotificationCanceller,
       failureReporter: MockFailureReporter(),
@@ -160,7 +158,6 @@ void main() {
       loadService: mockLoadService,
       promptDispatcher: mockSessionRepository,
       permissionRepository: mockPermissionRepository,
-      variantOptionsBuilder: const AgentVariantOptionsBuilder(),
       sessionId: _sessionId,
       notificationCanceller: mockNotificationCanceller,
       failureReporter: MockFailureReporter(),
@@ -244,7 +241,6 @@ void main() {
       loadService: mockLoadService,
       promptDispatcher: mockSessionRepository,
       permissionRepository: mockPermissionRepository,
-      variantOptionsBuilder: const AgentVariantOptionsBuilder(),
       sessionId: _sessionId,
       notificationCanceller: mockNotificationCanceller,
       failureReporter: MockFailureReporter(),

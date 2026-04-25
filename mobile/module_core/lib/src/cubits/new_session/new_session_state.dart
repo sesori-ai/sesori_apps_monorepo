@@ -9,10 +9,8 @@ sealed class NewSessionState with _$NewSessionState {
     required List<AgentInfo> availableAgents,
     required List<ProviderInfo> availableProviders,
     required List<CommandInfo> availableCommands,
-    required List<SessionVariant> availableVariants,
     required String? selectedAgent,
     required AgentModel? selectedAgentModel,
-    required SessionVariant? selectedVariant,
     required CommandInfo? stagedCommand,
   }) = NewSessionIdle;
 
@@ -20,10 +18,8 @@ sealed class NewSessionState with _$NewSessionState {
     required List<AgentInfo> availableAgents,
     required List<ProviderInfo> availableProviders,
     required List<CommandInfo> availableCommands,
-    required List<SessionVariant> availableVariants,
     required String? selectedAgent,
     required AgentModel? selectedAgentModel,
-    required SessionVariant? selectedVariant,
     required CommandInfo? stagedCommand,
   }) = NewSessionSending;
 
@@ -32,10 +28,8 @@ sealed class NewSessionState with _$NewSessionState {
     required List<AgentInfo> availableAgents,
     required List<ProviderInfo> availableProviders,
     required List<CommandInfo> availableCommands,
-    required List<SessionVariant> availableVariants,
     required String? selectedAgent,
     required AgentModel? selectedAgentModel,
-    required SessionVariant? selectedVariant,
     required CommandInfo? stagedCommand,
   }) = NewSessionError;
 
@@ -49,10 +43,8 @@ typedef AgentModelData = ({
   List<AgentInfo> agents,
   List<ProviderInfo> providers,
   List<CommandInfo> commands,
-  List<SessionVariant> availableVariants,
   String? agent,
   AgentModel? agentModel,
-  SessionVariant? variant,
   CommandInfo? stagedCommand,
 });
 
@@ -62,60 +54,48 @@ extension NewSessionStateAgentModel on NewSessionState {
       :final availableAgents,
       :final availableProviders,
       :final availableCommands,
-      :final availableVariants,
       :final selectedAgent,
       :final selectedAgentModel,
-      :final selectedVariant,
       :final stagedCommand,
     ) =>
       (
         agents: availableAgents,
         providers: availableProviders,
         commands: availableCommands,
-        availableVariants: availableVariants,
         agent: selectedAgent,
         agentModel: selectedAgentModel,
-        variant: selectedVariant,
         stagedCommand: stagedCommand,
       ),
     NewSessionSending(
       :final availableAgents,
       :final availableProviders,
       :final availableCommands,
-      :final availableVariants,
       :final selectedAgent,
       :final selectedAgentModel,
-      :final selectedVariant,
       :final stagedCommand,
     ) =>
       (
         agents: availableAgents,
         providers: availableProviders,
         commands: availableCommands,
-        availableVariants: availableVariants,
         agent: selectedAgent,
         agentModel: selectedAgentModel,
-        variant: selectedVariant,
         stagedCommand: stagedCommand,
       ),
     NewSessionError(
       :final availableAgents,
       :final availableProviders,
       :final availableCommands,
-      :final availableVariants,
       :final selectedAgent,
       :final selectedAgentModel,
-      :final selectedVariant,
       :final stagedCommand,
     ) =>
       (
         agents: availableAgents,
         providers: availableProviders,
         commands: availableCommands,
-        availableVariants: availableVariants,
         agent: selectedAgent,
         agentModel: selectedAgentModel,
-        variant: selectedVariant,
         stagedCommand: stagedCommand,
       ),
     NewSessionCreated() => null,

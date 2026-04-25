@@ -15,7 +15,7 @@ import "../../helpers/test_helpers.dart";
 
 class MockVoiceTranscriptionService extends Mock implements VoiceTranscriptionService {}
 
-AgentInfo _testAgent({required String name, required String description, String? variant}) {
+AgentInfo _testAgent({required String name, required String description, required String? variant}) {
   return AgentInfo(
     name: name,
     description: description,
@@ -55,7 +55,7 @@ void main() {
         Agents(
           agents: [
             _testAgent(name: "coder", description: "A coding assistant", variant: "xhigh"),
-            _testAgent(name: "reviewer", description: "A review assistant"),
+            _testAgent(name: "reviewer", description: "A review assistant", variant: null),
           ],
         ),
       ),
@@ -72,7 +72,6 @@ void main() {
     when(() => voiceTranscriptionService.onMaxDurationReached).thenAnswer((_) => maxDurationReached.stream);
 
     GetIt.instance.registerSingleton<SessionService>(sessionService);
-    GetIt.instance.registerSingleton<AgentVariantOptionsBuilder>(const AgentVariantOptionsBuilder());
     GetIt.instance.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
   });
 
@@ -84,26 +83,26 @@ void main() {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(OutlinedButton, "Default"), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, "xhigh"), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(OutlinedButton, "Default"));
+    await tester.tap(find.widgetWithText(OutlinedButton, "xhigh"));
     await tester.pumpAndSettle();
 
     expect(find.text("Variant"), findsOneWidget);
     expect(find.text("Default"), findsWidgets);
-    expect(find.text("xhigh"), findsOneWidget);
+    expect(find.widgetWithText(ListTile, "xhigh"), findsOneWidget);
 
-    await tester.tap(find.text("xhigh"));
+    await tester.tap(find.widgetWithText(ListTile, "xhigh"));
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(OutlinedButton, "xhigh"), findsOneWidget);
   });
 
-  testWidgets("preserves selected variant when changing agent with same model", (tester) async {
+  testWidgets("preserves selectedAgentModel variant when changing agent", (tester) async {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(OutlinedButton, "Default"));
+    await tester.tap(find.widgetWithText(OutlinedButton, "xhigh"));
     await tester.pumpAndSettle();
 
     await tester.tap(find.widgetWithText(ListTile, "xhigh"));
@@ -118,7 +117,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(OutlinedButton, "reviewer"), findsOneWidget);
-    // Variant is model-dependent; both agents share the same model, so xhigh persists
+    // Changing the agent does not overwrite the currently selected model variant.
     expect(find.widgetWithText(OutlinedButton, "xhigh"), findsOneWidget);
   });
 }
