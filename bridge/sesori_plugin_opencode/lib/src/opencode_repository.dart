@@ -248,8 +248,13 @@ class OpenCodeRepository {
 
   /// Fetches providers from the API, optionally filtering to connected-only,
   /// and maps OpenCode-specific models to plugin interface types.
-  Future<PluginProvidersResult> getProviders({required bool connectedOnly}) async {
-    final response = await _api.listProviders();
+  Future<PluginProvidersResult> getProviders({
+    required bool connectedOnly,
+    required String? projectId,
+  }) async {
+    final response = await _api.listConfigProviders(
+      directory: _normalizeDirectory(projectId),
+    );
     return mapProviderResponse(response: response, connectedOnly: connectedOnly);
   }
 

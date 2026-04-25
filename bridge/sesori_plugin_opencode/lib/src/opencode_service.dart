@@ -23,8 +23,14 @@ class OpenCodeService {
     return repository.getProjects();
   }
 
-  Future<PluginProvidersResult> getProviders({required bool connectedOnly}) {
-    return repository.getProviders(connectedOnly: connectedOnly);
+  Future<PluginProvidersResult> getProviders({
+    required bool connectedOnly,
+    required String? projectId,
+  }) {
+    return repository.getProviders(
+      connectedOnly: connectedOnly,
+      projectId: projectId,
+    );
   }
 
   Future<List<PluginCommand>> getCommands({required String? projectId}) {

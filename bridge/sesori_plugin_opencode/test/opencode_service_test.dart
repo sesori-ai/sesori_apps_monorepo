@@ -629,7 +629,11 @@ class FakeOpenCodeApi implements OpenCodeApi {
 
   @override
   Future<ProviderListResponse> listProviders() async =>
-      const ProviderListResponse(all: [], defaults: {}, connected: []);
+      const ProviderListResponse(providers: [], defaults: {}, connected: []);
+
+  @override
+  Future<ProviderListResponse> listConfigProviders({required String? directory}) async =>
+      const ProviderListResponse(providers: [], defaults: {}, connected: []);
 
   @override
   Future<Session> forkSession({

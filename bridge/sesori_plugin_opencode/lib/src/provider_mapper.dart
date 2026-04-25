@@ -18,7 +18,9 @@ PluginProvidersResult mapProviderResponse({
   required bool connectedOnly,
 }) {
   final connectedIds = response.connected.toSet();
-  final source = connectedOnly ? response.all.where((p) => connectedIds.contains(p.id)).toList() : response.all;
+  final source = connectedOnly && connectedIds.isNotEmpty
+      ? response.providers.where((p) => connectedIds.contains(p.id)).toList()
+      : response.providers;
 
   final providers = source.map((providerInfo) {
     final models = providerInfo.models.values
@@ -26,7 +28,7 @@ PluginProvidersResult mapProviderResponse({
           (m) => PluginModel(
             id: m.id,
             name: m.name,
-            variants: const [],
+            variants: m.variants,
             family: m.family,
             isAvailable: _isModelAvailable(
               status: _parseProviderModelStatus(rawStatus: m.status, modelId: m.id),

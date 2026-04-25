@@ -235,7 +235,7 @@ void main() {
       expect(messages.last.parts.single.state?.output, equals("short"));
     });
 
-    test("getProviders with connectedOnly false returns all providers", () async {
+    test("getProviders with connectedOnly false returns config providers with variants", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
 
       final result = await plugin.getProviders(connectedOnly: false);
@@ -252,12 +252,14 @@ void main() {
       final opus = anthropic.models.firstWhere((m) => m.id == "claude-3-opus");
       expect(opus.name, equals("Claude 3 Opus"));
       expect(opus.family, equals("claude-3"));
+      expect(opus.variants, equals(["low", "high"]));
       expect(opus.isAvailable, isTrue);
       expect(opus.releaseDate, equals(DateTime(2025, 3, 15)));
 
       final sonnet = anthropic.models.firstWhere((m) => m.id == "claude-3-sonnet");
       expect(sonnet.name, equals("Claude 3 Sonnet"));
       expect(sonnet.family, equals("claude-3"));
+      expect(sonnet.variants, equals(["low", "high"]));
       expect(sonnet.isAvailable, isFalse);
       expect(sonnet.releaseDate, equals(DateTime(2024, 6, 1)));
 
@@ -267,13 +269,13 @@ void main() {
       expect(custom.authType, equals(PluginProviderAuthType.unknown));
     });
 
-    test("getProviders with connectedOnly true filters to connected", () async {
+    test("getProviders with connectedOnly true still returns config providers", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
 
       final result = await plugin.getProviders(connectedOnly: true);
 
-      expect(result.providers, hasLength(1));
-      expect(result.providers.single.id, equals("anthropic"));
+      expect(result.providers, hasLength(2));
+      expect(result.providers.map((provider) => provider.id), containsAll(["anthropic", "my-custom"]));
     });
 
     test("getProviders maps known provider IDs to correct union variants", () async {
@@ -812,9 +814,10 @@ class _FakeOpenCodeServer {
         return;
       }
 
-      if (request.method == "GET" && path == "/provider") {
+      if (request.method == "GET" && path == "/config/providers") {
+        expect(request.headers.value("x-opencode-directory"), isNull);
         await _sendJson(request.response, {
-          "all": [
+          "providers": [
             {
               "id": "anthropic",
               "name": "Anthropic",
@@ -823,6 +826,11 @@ class _FakeOpenCodeServer {
                   "id": "claude-3-opus",
                   "providerID": "anthropic",
                   "name": "Claude 3 Opus",
+                  "variants": {
+                    "low": {"disabled": false},
+                    "medium": {"disabled": true},
+                    "high": {"disabled": false},
+                  },
                   "family": "claude-3",
                   "status": "active",
                   "release_date": "2025-03-15",
@@ -831,6 +839,10 @@ class _FakeOpenCodeServer {
                   "id": "claude-3-sonnet",
                   "providerID": "anthropic",
                   "name": "Claude 3 Sonnet",
+                  "variants": {
+                    "low": {"disabled": false},
+                    "high": {"disabled": false},
+                  },
                   "family": "claude-3",
                   "status": "deprecated",
                   "release_date": "2024-06-01",
@@ -844,7 +856,6 @@ class _FakeOpenCodeServer {
             },
           ],
           "default": {"anthropic": "claude-3-sonnet"},
-          "connected": ["anthropic"],
         });
         return;
       }
