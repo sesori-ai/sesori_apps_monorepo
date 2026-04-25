@@ -1,3 +1,4 @@
+import "package:collection/collection.dart";
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
@@ -73,12 +74,22 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
 
   void _openVariantPicker(AgentModelData data) {
     final agentModel = data.agentModel;
-    final availableVariants = agentModel?.variant != null && agentModel!.variant != 'none'
-        ? [SessionVariant(id: agentModel.variant!)]
-        : <SessionVariant>[];
-    final selectedVariant = agentModel?.variant != null && agentModel!.variant != 'none'
-        ? SessionVariant(id: agentModel.variant!)
+    final providerID = agentModel?.providerID;
+    final modelID = agentModel?.modelID;
+    final provider = providerID != null
+        ? data.providers.firstWhereOrNull((p) => p.id == providerID)
         : null;
+    final model = provider?.models[modelID];
+    final availableVariants = model?.variants
+            .where((v) => v != "none")
+            .map((v) => SessionVariant(id: v))
+            .toList() ??
+        <SessionVariant>[];
+    final selectedVariant = switch (agentModel?.variant) {
+      final variant when variant != null && variant != "none" =>
+        SessionVariant(id: variant),
+      _ => null,
+    };
     VariantPickerSheet.show(
       context,
       selectedVariant: selectedVariant,
