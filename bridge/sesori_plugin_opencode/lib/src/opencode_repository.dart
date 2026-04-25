@@ -250,10 +250,10 @@ class OpenCodeRepository {
   /// and maps OpenCode-specific models to plugin interface types.
   Future<PluginProvidersResult> getProviders({
     required bool connectedOnly,
-    required String? projectId,
+    required String? directory,
   }) async {
     final response = await _api.listConfigProviders(
-      directory: _normalizeDirectory(projectId),
+      directory: _normalizeDirectory(directory),
     );
     return mapProviderResponse(response: response, connectedOnly: connectedOnly);
   }

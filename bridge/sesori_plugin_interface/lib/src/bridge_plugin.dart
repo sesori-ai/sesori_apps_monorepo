@@ -131,7 +131,7 @@ abstract class BridgePlugin {
   /// When [connectedOnly] is `true`, only providers that have valid credentials
   /// configured are returned. When `false`, all known providers are returned
   /// regardless of whether they are connected.
-  Future<PluginProvidersResult> getProviders({required bool connectedOnly});
+  Future<PluginProvidersResult> getProviders({required bool connectedOnly, String? directory});
 
   /// Build a summary of the active sessions for each project.
   List<PluginProjectActivitySummary> getActiveSessionsSummary();

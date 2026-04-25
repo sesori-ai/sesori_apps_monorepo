@@ -16,6 +16,8 @@ class GetProvidersHandler extends GetRequestHandler<ProviderListResponse> {
     required Map<String, String> queryParams,
     required String? fragment,
   }) {
-    return _repository.getProviders();
+    return _repository.getProviders(
+      directory: findHeader(request.headers, "x-opencode-directory"),
+    );
   }
 }

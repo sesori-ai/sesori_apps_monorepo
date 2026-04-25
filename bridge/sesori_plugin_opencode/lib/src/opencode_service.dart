@@ -25,11 +25,11 @@ class OpenCodeService {
 
   Future<PluginProvidersResult> getProviders({
     required bool connectedOnly,
-    required String? projectId,
+    required String? directory,
   }) {
     return repository.getProviders(
       connectedOnly: connectedOnly,
-      projectId: projectId,
+      directory: directory,
     );
   }
 

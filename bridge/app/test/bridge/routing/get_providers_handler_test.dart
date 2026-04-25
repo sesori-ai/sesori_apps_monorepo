@@ -40,12 +40,24 @@ void main() {
 
     test("always requests connected providers only", () async {
       await handler.handle(
-        makeRequest("GET", "/provider"),
+        makeRequest("GET", "/provider", headers: {"x-opencode-directory": "/tmp/worktree"}),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
       expect(plugin.lastGetProvidersConnectedOnly, isTrue);
+      expect(plugin.lastGetProvidersDirectory, equals("/tmp/worktree"));
+    });
+
+    test("passes null directory when header is absent", () async {
+      await handler.handle(
+        makeRequest("GET", "/provider"),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(plugin.lastGetProvidersDirectory, isNull);
     });
 
     // ── Response format ─────────────────────────────────────────────────────

@@ -106,9 +106,9 @@ class OpenCodePlugin implements BridgePlugin {
   }
 
   @override
-  Future<PluginProvidersResult> getProviders({required bool connectedOnly}) {
+  Future<PluginProvidersResult> getProviders({required bool connectedOnly, String? directory}) {
     return _call(
-      () => _service.getProviders(connectedOnly: connectedOnly, projectId: null),
+      () => _service.getProviders(connectedOnly: connectedOnly, directory: directory),
     );
   }
 
