@@ -1,4 +1,4 @@
-import '../foundation/wake_lock_client.dart';
+import '../api/wake_lock_client.dart';
 
 class WakeLockRepository {
   final WakeLockClient _client;

@@ -1,4 +1,4 @@
-import 'package:sesori_bridge/src/foundation/wake_lock_client.dart';
+import 'wake_lock_client.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 import 'package:win32/win32.dart';
 

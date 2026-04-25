@@ -1,6 +1,6 @@
 import "dart:io";
 
-import "../foundation/wake_lock_client.dart";
+import "wake_lock_client.dart";
 
 typedef ProcessStarter = Future<Process> Function(String executable, List<String> arguments);
 

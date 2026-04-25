@@ -1,4 +1,4 @@
-import 'package:sesori_bridge/src/foundation/wake_lock_client.dart';
+import 'package:sesori_bridge/src/api/wake_lock_client.dart';
 import 'package:sesori_bridge/src/repositories/wake_lock_repository.dart';
 import 'package:test/test.dart';
 
