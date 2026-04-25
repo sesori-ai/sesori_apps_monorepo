@@ -4,6 +4,7 @@ import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/agent_repository.dart";
+import "package:sesori_bridge/src/bridge/routing/get_agents_handler.dart";
 import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/provider_repository.dart";
@@ -47,7 +48,6 @@ void main() {
       );
       final projectRepository = ProjectRepository(plugin: plugin, projectsDao: db.projectsDao);
       final providerRepository = ProviderRepository(plugin: plugin);
-      final agentRepository = AgentRepository(plugin: plugin);
       final permissionRepository = PermissionRepository(plugin: plugin);
       final sessionPersistenceService = SessionPersistenceService(
         projectsDao: db.projectsDao,
@@ -96,7 +96,7 @@ void main() {
         prSyncService: FakePrSyncService(),
         projectRepository: projectRepository,
         providerRepository: providerRepository,
-        agentRepository: agentRepository,
+        getAgentsHandler: GetAgentsHandler(AgentRepository(plugin: plugin)),
         permissionRepository: permissionRepository,
         sessionPersistenceService: sessionPersistenceService,
         worktreeService: worktreeService,
@@ -361,7 +361,6 @@ void main() {
 
       final projectRepository = ProjectRepository(plugin: plugin, projectsDao: db.projectsDao);
       final providerRepository = ProviderRepository(plugin: plugin);
-      final agentRepository = AgentRepository(plugin: plugin);
       final permissionRepository = PermissionRepository(plugin: plugin);
       final sessionPersistenceService = SessionPersistenceService(
         projectsDao: db.projectsDao,
@@ -416,7 +415,7 @@ void main() {
         prSyncService: spyPrSyncService,
         projectRepository: projectRepository,
         providerRepository: providerRepository,
-        agentRepository: agentRepository,
+        getAgentsHandler: GetAgentsHandler(AgentRepository(plugin: plugin)),
         permissionRepository: permissionRepository,
         sessionPersistenceService: sessionPersistenceService,
         worktreeService: worktreeService,

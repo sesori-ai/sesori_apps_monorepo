@@ -1,7 +1,6 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../repositories/agent_repository.dart";
 import "../repositories/permission_repository.dart";
 import "../repositories/project_repository.dart";
 import "../repositories/provider_repository.dart";
@@ -67,7 +66,7 @@ class RequestRouter {
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
     required GetSessionDiffsHandler sessionDiffsHandler,
-    required AgentRepository agentRepository,
+    required GetAgentsHandler getAgentsHandler,
   }) : _handlers = _buildHandlers(
           plugin: plugin,
           getCommandsHandler: getCommandsHandler,
@@ -83,7 +82,7 @@ class RequestRouter {
           sessionPersistenceService: sessionPersistenceService,
           worktreeService: worktreeService,
           sessionDiffsHandler: sessionDiffsHandler,
-          agentRepository: agentRepository,
+          getAgentsHandler: getAgentsHandler,
         );
 
   static List<RequestHandlerBase> _buildHandlers({
@@ -101,7 +100,7 @@ class RequestRouter {
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
     required GetSessionDiffsHandler sessionDiffsHandler,
-    required AgentRepository agentRepository,
+    required GetAgentsHandler getAgentsHandler,
   }) {
     return [
       HealthCheckHandler(plugin),
@@ -128,7 +127,7 @@ class RequestRouter {
       sendPromptHandler,
       abortSessionHandler,
       GetProvidersHandler(providerRepository),
-      GetAgentsHandler(agentRepository),
+      getAgentsHandler,
       GetSessionQuestionsHandler(plugin),
       GetProjectQuestionsHandler(plugin),
       ReplyToQuestionHandler(plugin),
