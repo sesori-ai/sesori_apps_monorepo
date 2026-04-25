@@ -18,7 +18,7 @@ class WindowsWakeLockApi implements WakeLockClient {
   @override
   Future<void> enable() async {
     _setExecutionState(
-      ES_CONTINUOUS | ES_DISPLAY_REQUIRED | ES_SYSTEM_REQUIRED,
+      ES_CONTINUOUS | ES_SYSTEM_REQUIRED,
       action: 'enable',
     );
   }

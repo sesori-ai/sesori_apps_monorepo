@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 
 void main() {
   group('WindowsWakeLockApi', () {
-    test('enable uses display and system required flags', () async {
+    test('enable uses continuous and system required flags', () async {
       var observedFlags = EXECUTION_STATE(0);
       final warnings = <String>[];
 
@@ -20,7 +20,7 @@ void main() {
 
       expect(
         observedFlags,
-        equals(ES_CONTINUOUS | ES_DISPLAY_REQUIRED | ES_SYSTEM_REQUIRED),
+        equals(ES_CONTINUOUS | ES_SYSTEM_REQUIRED),
       );
       expect(warnings, isEmpty);
     });
