@@ -37,7 +37,7 @@ void main() {
       expect(calls.single, equals(['xdg-open', '/tmp/example.txt']));
     });
 
-    test('WindowsDefaultEditorApi runs cmd start for a file', () async {
+    test('WindowsDefaultEditorApi runs cmd start with empty title for a file', () async {
       final calls = <List<String>>[];
       final api = WindowsDefaultEditorApi(
         runProcess: (executable, arguments) async {
@@ -49,7 +49,7 @@ void main() {
       await api.openFile(r'C:\temp\example.txt');
 
       expect(calls, hasLength(1));
-      expect(calls.single, equals(['cmd', '/c', 'start', r'C:\temp\example.txt']));
+      expect(calls.single, equals(['cmd', '/c', 'start', '', r'C:\temp\example.txt']));
     });
 
     test('default editor APIs swallow command failures', () async {

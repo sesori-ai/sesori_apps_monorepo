@@ -8,14 +8,14 @@ class WindowsDefaultEditorApi implements DefaultEditorApi {
   final _ProcessRunner _runProcess;
 
   WindowsDefaultEditorApi({
-    _ProcessRunner? runProcess,
-  }) : _runProcess = runProcess ?? Process.run;
+    required _ProcessRunner runProcess,
+  }) : _runProcess = runProcess;
 
   @override
   Future<void> openFile(String filePath) async {
     await _openWithCommand(
       executable: 'cmd',
-      arguments: ['/c', 'start', filePath],
+      arguments: ['/c', 'start', '', filePath],
       filePath: filePath,
     );
   }

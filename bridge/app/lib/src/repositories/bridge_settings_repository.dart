@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
+import 'package:sesori_shared/sesori_shared.dart' show jsonDecodeMap;
 
 import '../api/bridge_settings_api.dart';
 import 'bridge_settings.dart';
@@ -18,49 +19,22 @@ class BridgeSettingsRepository {
     final storedConfig = await _api.readConfig();
     if (storedConfig == null) {
       const defaults = BridgeSettings();
-      await _api.writeConfig(_serialize(defaults));
+      await _api.writeConfig(_jsonEncoder.convert(defaults.toJson()));
       return defaults;
     }
 
     try {
-      return _parseSettings(storedConfig);
+      final json = jsonDecodeMap(storedConfig);
+      return BridgeSettings.fromJson(json);
     } catch (error) {
       Log.w('[bridge-settings] invalid config at $configFilePath: $error');
       const defaults = BridgeSettings();
-      await _api.writeConfig(_serialize(defaults));
+      await _api.writeConfig(_jsonEncoder.convert(defaults.toJson()));
       return defaults;
     }
   }
 
   Future<void> saveSettings({required BridgeSettings settings}) {
-    return _api.writeConfig(_serialize(settings));
-  }
-
-  BridgeSettings _parseSettings(String jsonContent) {
-    final decoded = jsonDecode(jsonContent);
-    if (decoded is! Map) {
-      throw const FormatException('expected top-level JSON object');
-    }
-
-    return BridgeSettings(
-      sleepPrevention: _parseSleepPrevention(decoded['sleepPrevention']),
-    );
-  }
-
-  SleepPreventionMode _parseSleepPrevention(Object? rawValue) {
-    return switch (rawValue) {
-      'off' => SleepPreventionMode.off,
-      'always' => SleepPreventionMode.always,
-      _ => SleepPreventionMode.always,
-    };
-  }
-
-  String _serialize(BridgeSettings settings) {
-    return _jsonEncoder.convert({
-      'sleepPrevention': switch (settings.sleepPrevention) {
-        SleepPreventionMode.off => 'off',
-        SleepPreventionMode.always => 'always',
-      },
-    });
+    return _api.writeConfig(_jsonEncoder.convert(settings.toJson()));
   }
 }

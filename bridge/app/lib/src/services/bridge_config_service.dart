@@ -12,6 +12,7 @@ class BridgeConfigService {
   final DefaultEditorRepository _defaultEditorRepository;
 
   Future<String> openConfigFile() async {
+    // loadSettings() auto-creates the config file with defaults if missing.
     await _bridgeSettingsRepository.loadSettings();
     final configFilePath = _bridgeSettingsRepository.configFilePath;
     await _defaultEditorRepository.openFile(configFilePath);

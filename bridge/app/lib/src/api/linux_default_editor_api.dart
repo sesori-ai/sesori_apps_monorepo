@@ -8,8 +8,8 @@ class LinuxDefaultEditorApi implements DefaultEditorApi {
   final _ProcessRunner _runProcess;
 
   LinuxDefaultEditorApi({
-    _ProcessRunner? runProcess,
-  }) : _runProcess = runProcess ?? Process.run;
+    required _ProcessRunner runProcess,
+  }) : _runProcess = runProcess;
 
   @override
   Future<void> openFile(String filePath) async {

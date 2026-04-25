@@ -26,6 +26,21 @@ void main() {
       expect(invocations.single.arguments, equals(<String>["-w", io.pid.toString()]));
       expect(process.killCalled, isTrue);
     });
+
+    test("logs warning when caffeinate process fails to start", () async {
+      final invocations = <_ProcessInvocation>[];
+
+      final api = MacOSWakeLockApi(
+        processStarter: (String executable, List<String> arguments) async {
+          invocations.add(_ProcessInvocation(executable: executable, arguments: arguments));
+          throw const io.ProcessException("caffeinate", <String>["-w", "123"], "command not found");
+        },
+      );
+
+      await api.enable();
+
+      expect(invocations, hasLength(1));
+    });
   });
 }
 

@@ -1,7 +1,7 @@
 import "dart:async";
 import "dart:io";
 
-import "package:sesori_bridge/src/api/wake_lock_client.dart";
+import "wake_lock_client.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 typedef ProcessStarter = Future<Process> Function(
@@ -9,16 +9,9 @@ typedef ProcessStarter = Future<Process> Function(
   List<String> arguments,
 );
 
-Future<Process> _defaultProcessStarter(
-  String executable,
-  List<String> arguments,
-) {
-  return Process.start(executable, arguments);
-}
-
 class LinuxWakeLockApi implements WakeLockClient {
-  LinuxWakeLockApi({ProcessStarter? processStarter})
-      : _processStarter = processStarter ?? _defaultProcessStarter;
+  LinuxWakeLockApi({required ProcessStarter processStarter})
+      : _processStarter = processStarter;
 
   final ProcessStarter _processStarter;
 
@@ -44,9 +37,12 @@ class LinuxWakeLockApi implements WakeLockClient {
 
       _process = process;
       unawaited(
-        process.exitCode.then((_) {
+        process.exitCode.then((exitCode) {
           if (_process == process) {
             _process = null;
+          }
+          if (exitCode != 0) {
+            Log.w("[wake-lock] systemd-inhibit exited with code $exitCode");
           }
         }),
       );
