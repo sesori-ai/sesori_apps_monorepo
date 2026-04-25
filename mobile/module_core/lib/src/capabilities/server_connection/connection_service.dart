@@ -222,7 +222,12 @@ class ConnectionService {
 
       // A non-error status code is sufficient — the bridge only returns 200
       // when the underlying backend is healthy. The response body is ignored.
-      const health = HealthResponse(healthy: true, version: "");
+      const health = HealthResponse(
+        healthy: true,
+        version: "",
+        serverManaged: false,
+        serverState: null,
+      );
 
       _relayClient = relayClient;
       _authRetryCount = 0;

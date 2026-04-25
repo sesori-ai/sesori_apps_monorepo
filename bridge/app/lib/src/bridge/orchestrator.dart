@@ -1,5 +1,6 @@
 import "dart:async";
 import "dart:convert";
+import "dart:io";
 import "dart:math";
 import "dart:typed_data";
 
@@ -12,6 +13,12 @@ import "../auth/token_refresher.dart";
 import "../push/completion_push_listener.dart";
 import "../push/maintenance_push_listener.dart";
 import "../push/push_dispatcher.dart";
+import "../repositories/server_health_repository.dart";
+import "../server/server_health_config.dart";
+import "../server/server_health_event.dart";
+import "../server/server_health_service.dart";
+import "../server/server_health_tracker.dart";
+import "../server/server_lifecycle_service.dart";
 import "foundation/process_runner.dart";
 import "key_exchange.dart";
 import "metadata_service.dart";
@@ -24,8 +31,10 @@ import "repositories/session_repository.dart";
 import "routing/abort_session_handler.dart";
 import "routing/get_commands_handler.dart";
 import "routing/get_session_diffs_handler.dart";
+import "routing/health_check_handler.dart";
 import "routing/request_router.dart";
 import "routing/send_prompt_handler.dart";
+import "services/health_check_service.dart";
 import "services/pr_sync_service.dart";
 import "services/session_abort_service.dart";
 import "services/session_archive_service.dart";
@@ -56,6 +65,11 @@ class Orchestrator {
   final SessionPersistenceService _sessionPersistenceService;
   final WorktreeService _worktreeService;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
+  final ServerHealthConfig _serverHealthConfig;
+  final Process? _initialServerProcess;
+
+  bool _lifecycleConstructed = false;
+  bool get lifecycleConstructed => _lifecycleConstructed;
 
   Orchestrator({
     required this.config,
@@ -74,9 +88,11 @@ class Orchestrator {
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
     required SessionEventEnrichmentService sessionEventEnrichmentService,
+    required ServerHealthConfig serverHealthConfig,
+    required Process? initialServerProcess,
   }) : _client = client,
-       _plugin = plugin,
-       _metadataService = metadataService,
+        _plugin = plugin,
+        _metadataService = metadataService,
        _pushDispatcher = pushDispatcher,
        _completionListener = completionListener,
        _maintenanceListener = maintenanceListener,
@@ -85,57 +101,125 @@ class Orchestrator {
        _sessionRepository = sessionRepository,
        _prSyncService = prSyncService,
        _projectRepository = projectRepository,
-       _permissionRepository = permissionRepository,
-       _sessionPersistenceService = sessionPersistenceService,
-       _worktreeService = worktreeService,
-       _sessionEventEnrichmentService = sessionEventEnrichmentService;
+        _permissionRepository = permissionRepository,
+        _sessionPersistenceService = sessionPersistenceService,
+        _worktreeService = worktreeService,
+        _sessionEventEnrichmentService = sessionEventEnrichmentService,
+        _serverHealthConfig = serverHealthConfig,
+        _initialServerProcess = initialServerProcess;
 
   /// Creates a new session with a fresh room key and SSE manager.
-  OrchestratorSession create() {
-    final roomKey = _generateRoomKey();
-    final bytesSentController = StreamController<int>.broadcast();
-    final sessionCreationService = SessionCreationService(
-      metadataService: _metadataService,
-      worktreeService: _worktreeService,
-      sessionRepository: _sessionRepository,
-      sessionPersistenceService: _sessionPersistenceService,
-    );
-    final sessionArchiveService = SessionArchiveService(
-      worktreeService: _worktreeService,
-      sessionRepository: _sessionRepository,
-      sessionPersistenceService: _sessionPersistenceService,
-    );
-    final sessionAbortService = SessionAbortService(sessionRepository: _sessionRepository);
-    final sseManager = SSEManager(
-      replayWindow: config.sseReplayWindow,
-      onBytesSent: bytesSentController.add,
-      failureReporter: _failureReporter,
-    );
-    sseManager.setRoomKey(roomKey);
+  Future<OrchestratorSession> create() async {
+    ServerLifecycleService? lifecycle;
+    ServerHealthService? healthService;
+    ServerHealthTracker? healthTracker;
+    StreamController<int>? bytesSentController;
+    SessionAbortService? sessionAbortService;
+    StreamController<BridgeSseEvent>? enrichedPluginEventsController;
+    SSEManager? sseManager;
+    try {
+      final roomKey = _generateRoomKey();
+      bytesSentController = StreamController<int>.broadcast();
+      sessionAbortService = SessionAbortService(sessionRepository: _sessionRepository);
+      enrichedPluginEventsController = StreamController<BridgeSseEvent>.broadcast();
+      sseManager = SSEManager(
+        replayWindow: config.sseReplayWindow,
+        onBytesSent: bytesSentController.add,
+        failureReporter: _failureReporter,
+      );
+      sseManager.setRoomKey(roomKey);
 
-    return OrchestratorSession._(
-      config: config,
-      client: _client,
-      plugin: _plugin,
-      pushDispatcher: _pushDispatcher,
-      completionListener: _completionListener,
-      maintenanceListener: _maintenanceListener,
-      tokenRefresher: _tokenRefresher,
-      roomKey: roomKey,
-      sseManager: sseManager,
-      bytesSentController: bytesSentController,
-      failureReporter: _failureReporter,
-      sessionRepository: _sessionRepository,
-      prSyncService: _prSyncService,
-      projectRepository: _projectRepository,
-      permissionRepository: _permissionRepository,
-      sessionPersistenceService: _sessionPersistenceService,
-      worktreeService: _worktreeService,
-      sessionCreationService: sessionCreationService,
-      sessionArchiveService: sessionArchiveService,
-      sessionAbortService: sessionAbortService,
-      sessionEventEnrichmentService: _sessionEventEnrichmentService,
-    );
+      lifecycle = ServerLifecycleService(
+        config: _serverHealthConfig,
+        initialProcess: _initialServerProcess,
+      );
+      _lifecycleConstructed = true;
+
+      healthService = ServerHealthService(lifecycleService: lifecycle);
+      healthTracker = ServerHealthTracker(events: healthService.events);
+      final healthRepository = ServerHealthRepository(plugin: _plugin);
+      final healthCheckService = HealthCheckService(
+        repository: healthRepository,
+        readServerState: () => healthTracker!.currentState,
+        config: config,
+      );
+      final healthCheckHandler = HealthCheckHandler(service: healthCheckService);
+      final sessionCreationService = SessionCreationService(
+        metadataService: _metadataService,
+        worktreeService: _worktreeService,
+        sessionRepository: _sessionRepository,
+        sessionPersistenceService: _sessionPersistenceService,
+      );
+      final sessionArchiveService = SessionArchiveService(
+        worktreeService: _worktreeService,
+        sessionRepository: _sessionRepository,
+        sessionPersistenceService: _sessionPersistenceService,
+      );
+      final router = RequestRouter(
+        plugin: _plugin,
+        healthCheckHandler: healthCheckHandler,
+        getCommandsHandler: GetCommandsHandler(
+          sessionRepository: _sessionRepository,
+        ),
+        sessionRepository: _sessionRepository,
+        abortSessionHandler: AbortSessionHandler(
+          sessionAbortService: sessionAbortService,
+        ),
+        sessionCreationService: sessionCreationService,
+        sessionArchiveService: sessionArchiveService,
+        sendPromptHandler: SendPromptHandler(
+          sessionPromptService: SessionPromptService(
+            sessionRepository: _sessionRepository,
+          ),
+        ),
+        prSyncService: _prSyncService,
+        projectRepository: _projectRepository,
+        providerRepository: ProviderRepository(plugin: _plugin),
+        permissionRepository: _permissionRepository,
+        sessionPersistenceService: _sessionPersistenceService,
+        worktreeService: _worktreeService,
+        sessionDiffsHandler: GetSessionDiffsHandler(
+          sessionRepository: _sessionRepository,
+          processRunner: ProcessRunner(),
+        ),
+      );
+      final mapper = BridgeEventMapper(
+        plugin: _plugin,
+        failureReporter: _failureReporter,
+      );
+
+      return OrchestratorSession._(
+        config: config,
+        client: _client,
+        plugin: _plugin,
+        pushDispatcher: _pushDispatcher,
+        completionListener: _completionListener,
+        maintenanceListener: _maintenanceListener,
+        tokenRefresher: _tokenRefresher,
+        roomKey: roomKey,
+        sseManager: sseManager,
+        bytesSentController: bytesSentController,
+        failureReporter: _failureReporter,
+        prSyncService: _prSyncService,
+        sessionEventEnrichmentService: _sessionEventEnrichmentService,
+        sessionAbortService: sessionAbortService,
+        enrichedPluginEventsController: enrichedPluginEventsController,
+        serverLifecycleService: lifecycle,
+        serverHealthService: healthService,
+        serverHealthTracker: healthTracker,
+        router: router,
+        mapper: mapper,
+      );
+    } catch (_) {
+      if (lifecycle != null) await lifecycle.stop();
+      if (healthService != null) await healthService.dispose();
+      if (healthTracker != null) await healthTracker.dispose();
+      await bytesSentController?.close();
+      await sessionAbortService?.dispose();
+      await enrichedPluginEventsController?.close();
+      sseManager?.stop();
+      rethrow;
+    }
   }
 
   static List<int> _generateRoomKey() {
@@ -167,6 +251,10 @@ class OrchestratorSession {
   final PrSyncService _prSyncService;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final SessionAbortService _sessionAbortService;
+  final StreamController<BridgeSseEvent> _enrichedPluginEventsController;
+  final ServerLifecycleService _serverLifecycleService;
+  final ServerHealthService _serverHealthService;
+  final ServerHealthTracker _serverHealthTracker;
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
   bool _cancelled = false;
@@ -183,63 +271,45 @@ class OrchestratorSession {
     required SSEManager sseManager,
     required StreamController<int> bytesSentController,
     required FailureReporter failureReporter,
-    required SessionRepository sessionRepository,
     required PrSyncService prSyncService,
-    required ProjectRepository projectRepository,
-    required PermissionRepository permissionRepository,
-    required SessionPersistenceService sessionPersistenceService,
-    required WorktreeService worktreeService,
-    required SessionCreationService sessionCreationService,
-    required SessionArchiveService sessionArchiveService,
     required SessionAbortService sessionAbortService,
     required SessionEventEnrichmentService sessionEventEnrichmentService,
+    required StreamController<BridgeSseEvent> enrichedPluginEventsController,
+    required ServerLifecycleService serverLifecycleService,
+    required ServerHealthService serverHealthService,
+    required ServerHealthTracker serverHealthTracker,
+    required RequestRouter router,
+    required BridgeEventMapper mapper,
   }) : _client = client,
-       _plugin = plugin,
-       _pushDispatcher = pushDispatcher,
+         _plugin = plugin,
+         _pushDispatcher = pushDispatcher,
        _completionListener = completionListener,
        _maintenanceListener = maintenanceListener,
        _tokenRefresher = tokenRefresher,
        _roomKey = roomKey,
-       _sseManager = sseManager,
-       _bytesSentController = bytesSentController,
-       _failureReporter = failureReporter,
-       _prSyncService = prSyncService,
-        _sessionAbortService = sessionAbortService,
-         _router = RequestRouter(
-            plugin: plugin,
-            getCommandsHandler: GetCommandsHandler(
-              sessionRepository: sessionRepository,
-            ),
-           sessionRepository: sessionRepository,
-           abortSessionHandler: AbortSessionHandler(sessionAbortService: sessionAbortService),
-           sessionCreationService: sessionCreationService,
-           sessionArchiveService: sessionArchiveService,
-           sendPromptHandler: SendPromptHandler(
-             sessionPromptService: SessionPromptService(sessionRepository: sessionRepository),
-           ),
-           prSyncService: prSyncService,
-           projectRepository: projectRepository,
-           providerRepository: ProviderRepository(plugin: plugin),
-          permissionRepository: permissionRepository,
-          sessionPersistenceService: sessionPersistenceService,
-          worktreeService: worktreeService,
-          sessionDiffsHandler: GetSessionDiffsHandler(
-            sessionRepository: sessionRepository,
-            processRunner: ProcessRunner(),
-          ),
-       ),
-       _mapper = BridgeEventMapper(
-         plugin: plugin,
-         failureReporter: failureReporter,
-       ),
-       _sessionEventEnrichmentService = sessionEventEnrichmentService;
+        _sseManager = sseManager,
+        _bytesSentController = bytesSentController,
+         _failureReporter = failureReporter,
+         _prSyncService = prSyncService,
+         _sessionAbortService = sessionAbortService,
+         _enrichedPluginEventsController = enrichedPluginEventsController,
+         _serverLifecycleService = serverLifecycleService,
+         _serverHealthService = serverHealthService,
+         _serverHealthTracker = serverHealthTracker,
+         _router = router,
+         _mapper = mapper,
+        _sessionEventEnrichmentService = sessionEventEnrichmentService;
 
   /// Broadcast stream of byte counts emitted each time data is sent to a phone.
   ///
   /// Includes both API responses and SSE events. Subscribe to this stream to
   /// track bandwidth (e.g. with [BandwidthTracker]).
   Stream<int> get bytesSent => _bytesSentController.stream;
+  Stream<BridgeSseEvent> get enrichedPluginEvents => _enrichedPluginEventsController.stream;
+  BridgeEventMapper get mapper => _mapper;
   RequestRouter get router => _router;
+
+  Future<void> stopServerLifecycle() => _serverLifecycleService.stop();
 
   Future<void> run() async {
     final kxManager = KeyExchangeManager(_roomKey);
@@ -263,11 +333,17 @@ class OrchestratorSession {
         _completionListener.handleSseEvent(startupSummary);
       }
 
+      _serverLifecycleService.processExitEvents
+          .listen(_serverHealthService.onProcessExited)
+          .addTo(_subscriptions);
+
       Log.d("[dbg] subscribing to plugin event stream...");
       _plugin.events
           .asyncMap<BridgeSseEvent>(_sessionEventEnrichmentService.enrich)
           .listen(
             (event) {
+              _enrichedPluginEventsController.add(event);
+              _maybeNotifyServerHealth(event);
               unawaited(_processPluginEvent(event));
             },
             onError: (Object e, StackTrace st) {
@@ -289,6 +365,7 @@ class OrchestratorSession {
           )
           .addTo(_subscriptions);
       Log.d("[dbg] plugin event stream subscribed");
+      _serverHealthService.events.listen(_handleServerHealthEvent).addTo(_subscriptions);
       _prSyncService.prChanges
           .listen((String projectId) {
             _sseManager.enqueueEvent(SesoriSseEvent.sessionsUpdated(projectID: projectId));
@@ -339,10 +416,14 @@ class OrchestratorSession {
           backoff = const Duration(seconds: 1);
           Log.i("Reconnected to relay");
           break;
-        }
       }
+     }
     } finally {
       Log.i("Disconnecting...");
+      await _serverLifecycleService.stop();
+      await _serverHealthService.dispose();
+      await _serverHealthTracker.dispose();
+      await _enrichedPluginEventsController.close();
       await _subscriptions.cancel();
       await _sessionAbortService.dispose();
       await _completionListener.dispose();
@@ -371,6 +452,59 @@ class OrchestratorSession {
   Future<void> cancel() async {
     _cancelled = true;
     await _client.close();
+  }
+
+  void _maybeNotifyServerHealth(BridgeSseEvent event) {
+    switch (event) {
+      case BridgeSseServerUnavailable(:final message):
+        _serverHealthService.onServerUnreachable(message);
+      case BridgeSseServerAccessRestored():
+        _serverHealthService.onServerReachable();
+      default:
+        break;
+    }
+  }
+
+  Future<void> _handleServerHealthEvent(ServerHealthEvent event) async {
+    switch (event) {
+      case ServerHealthEventRunning():
+        await _sseManager.dispatchEphemeral(
+          const SesoriSseEvent.serverStatus(
+            status: ServerStatusKind.restored,
+            message: null,
+            reason: null,
+          ),
+        );
+      case ServerHealthEventUnreachable(:final message):
+        await _sseManager.dispatchEphemeral(
+          SesoriSseEvent.serverStatus(
+            status: ServerStatusKind.unavailable,
+            message: message,
+            reason: null,
+          ),
+        );
+      case ServerHealthEventRestarting():
+        // Lifecycle progress; not forwarded to phones.
+        break;
+      case ServerHealthEventFailed(:final reason):
+        await _sseManager.dispatchEphemeral(
+          SesoriSseEvent.serverStatus(
+            status: ServerStatusKind.fatal,
+            message: null,
+            reason: reason,
+          ),
+        );
+        unawaited(
+          _failureReporter.recordFailure(
+            error: StateError(reason),
+            stackTrace: StackTrace.current,
+            uniqueIdentifier: "server.lifecycle.fatal",
+            fatal: true,
+            reason: reason,
+            information: const [],
+          ),
+        );
+    }
   }
 
   Future<void> _processPluginEvent(BridgeSseEvent event) async {

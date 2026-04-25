@@ -13,7 +13,7 @@ import "../helpers/test_helpers.dart";
 void main() {
   const connectedStatus = ConnectionStatus.connected(
     config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token"),
-    health: HealthResponse(healthy: true, version: "0.1.200"),
+    health: HealthResponse(healthy: true, version: "0.1.200", serverManaged: false, serverState: null),
   );
 
   setUpAll(registerAllFallbackValues);

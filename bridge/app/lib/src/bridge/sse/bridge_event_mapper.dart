@@ -152,6 +152,8 @@ class BridgeEventMapper {
         ),
         BridgeSseWorktreeReady() => const SesoriSseEvent.worktreeReady(),
         BridgeSseWorktreeFailed() => const SesoriSseEvent.worktreeFailed(),
+        BridgeSseServerUnavailable() => null,
+        BridgeSseServerAccessRestored() => null,
       };
     } catch (e, st) {
       Log.e("[sse-mapper] error mapping event ${event.runtimeType}: $e\n$st");

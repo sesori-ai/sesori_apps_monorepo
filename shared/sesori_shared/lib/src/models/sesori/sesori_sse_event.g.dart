@@ -515,3 +515,24 @@ SesoriWorktreeFailed _$SesoriWorktreeFailedFromJson(Map json) =>
 Map<String, dynamic> _$SesoriWorktreeFailedToJson(
   SesoriWorktreeFailed instance,
 ) => <String, dynamic>{'type': instance.$type};
+
+SesoriServerStatus _$SesoriServerStatusFromJson(Map json) => SesoriServerStatus(
+  status: $enumDecode(_$ServerStatusKindEnumMap, json['status']),
+  message: json['message'] as String?,
+  reason: json['reason'] as String?,
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$SesoriServerStatusToJson(SesoriServerStatus instance) =>
+    <String, dynamic>{
+      'status': _$ServerStatusKindEnumMap[instance.status]!,
+      'message': instance.message,
+      'reason': instance.reason,
+      'type': instance.$type,
+    };
+
+const _$ServerStatusKindEnumMap = {
+  ServerStatusKind.unavailable: 'unavailable',
+  ServerStatusKind.restored: 'restored',
+  ServerStatusKind.fatal: 'fatal',
+};

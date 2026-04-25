@@ -711,7 +711,7 @@ void main() {
           relayHost: "relay.example.com",
           authToken: "test-token",
         );
-        const health = HealthResponse(healthy: true, version: "0.1.200");
+        const health = HealthResponse(healthy: true, version: "0.1.200", serverManaged: false, serverState: null);
         statusController.add(
           const ConnectionStatus.connected(config: config, health: health),
         );
@@ -741,7 +741,7 @@ void main() {
           relayHost: "relay.example.com",
           authToken: "test-token",
         );
-        const health = HealthResponse(healthy: true, version: "0.1.200");
+        const health = HealthResponse(healthy: true, version: "0.1.200", serverManaged: false, serverState: null);
         statusController.add(
           const ConnectionStatus.connected(config: config, health: health),
         );
@@ -781,7 +781,7 @@ void main() {
           relayHost: "relay.example.com",
           authToken: "test-token",
         );
-        const health = HealthResponse(healthy: true, version: "0.1.200");
+        const health = HealthResponse(healthy: true, version: "0.1.200", serverManaged: false, serverState: null);
         const connected = ConnectionStatus.connected(config: config, health: health);
 
         // Fire two rapid ConnectionConnected events.
@@ -815,7 +815,7 @@ void main() {
           relayHost: "relay.example.com",
           authToken: "test-token",
         );
-        const health = HealthResponse(healthy: true, version: "0.1.200");
+        const health = HealthResponse(healthy: true, version: "0.1.200", serverManaged: false, serverState: null);
         statusController.add(
           const ConnectionStatus.connected(config: config, health: health),
         );
@@ -869,7 +869,7 @@ void main() {
         final retryFuture = cubit.retryLoadProjects();
         await Future<void>.delayed(Duration.zero);
         await Future<void>.delayed(Duration.zero);
-        const health = HealthResponse(healthy: true, version: "0.1.200");
+        const health = HealthResponse(healthy: true, version: "0.1.200", serverManaged: false, serverState: null);
         statusController.add(
           const ConnectionStatus.connected(config: config, health: health),
         );
@@ -899,7 +899,7 @@ void main() {
           relayHost: "relay.example.com",
           authToken: "test-token",
         );
-        const health = HealthResponse(healthy: true, version: "0.1.200");
+        const health = HealthResponse(healthy: true, version: "0.1.200", serverManaged: false, serverState: null);
         when(() => mockConnectionService.currentStatus).thenReturn(
           const ConnectionStatus.connected(config: config, health: health),
         );
@@ -1012,7 +1012,7 @@ void main() {
             relayHost: "relay.example.com",
             authToken: "test-token",
           );
-          const health = HealthResponse(healthy: true, version: "0.1.200");
+          const health = HealthResponse(healthy: true, version: "0.1.200", serverManaged: false, serverState: null);
           statusController.add(
             const ConnectionStatus.connected(config: config, health: health),
           );

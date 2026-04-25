@@ -59,6 +59,8 @@ void main() {
         const health = HealthResponse(
           healthy: true,
           version: "0.1.200",
+          serverManaged: false,
+          serverState: null,
         );
 
         statusStream.add(

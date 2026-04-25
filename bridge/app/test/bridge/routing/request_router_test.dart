@@ -1,7 +1,9 @@
+import "dart:async";
 import "dart:convert";
 
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
+import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
@@ -12,14 +14,18 @@ import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/abort_session_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/get_commands_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/get_session_diffs_handler.dart";
+import "package:sesori_bridge/src/bridge/routing/health_check_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/request_router.dart";
 import "package:sesori_bridge/src/bridge/routing/send_prompt_handler.dart";
+import "package:sesori_bridge/src/bridge/services/health_check_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_abort_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_archive_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_prompt_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
+import "package:sesori_bridge/src/repositories/server_health_repository.dart";
+import "package:sesori_bridge/src/server/server_health_tracker.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -34,11 +40,13 @@ void main() {
     late FakeMetadataService metadataService;
     late RequestRouter router;
     late AppDatabase db;
+    late ServerHealthTracker healthTracker;
 
     setUp(() {
       plugin = FakeBridgePlugin();
       metadataService = FakeMetadataService();
       db = createTestDatabase();
+      healthTracker = ServerHealthTracker(events: const Stream.empty());
       final sessionRepository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
@@ -79,6 +87,21 @@ void main() {
       );
       router = RequestRouter(
         plugin: plugin,
+        healthCheckHandler: HealthCheckHandler(
+          service: HealthCheckService(
+            repository: ServerHealthRepository(plugin: plugin),
+            readServerState: () => healthTracker.currentState,
+            config: const BridgeConfig(
+              relayURL: "ws://127.0.0.1:9999",
+              serverURL: "http://127.0.0.1:4096",
+              serverPassword: null,
+              authBackendURL: "https://api.sesori.test",
+              sseReplayWindow: Duration(minutes: 5),
+              version: "test",
+              serverManaged: true,
+            ),
+          ),
+        ),
         getCommandsHandler: GetCommandsHandler(
           sessionRepository: sessionRepository,
         ),
@@ -102,6 +125,7 @@ void main() {
     });
 
     tearDown(() async {
+      await healthTracker.dispose();
       await plugin.close();
       await db.close();
     });
@@ -388,6 +412,21 @@ void main() {
 
       router = RequestRouter(
         plugin: plugin,
+        healthCheckHandler: HealthCheckHandler(
+          service: HealthCheckService(
+            repository: ServerHealthRepository(plugin: plugin),
+            readServerState: () => healthTracker.currentState,
+            config: const BridgeConfig(
+              relayURL: "ws://127.0.0.1:9999",
+              serverURL: "http://127.0.0.1:4096",
+              serverPassword: null,
+              authBackendURL: "https://api.sesori.test",
+              sseReplayWindow: Duration(minutes: 5),
+              version: "test",
+              serverManaged: true,
+            ),
+          ),
+        ),
         getCommandsHandler: GetCommandsHandler(
           sessionRepository: sessionRepository,
         ),

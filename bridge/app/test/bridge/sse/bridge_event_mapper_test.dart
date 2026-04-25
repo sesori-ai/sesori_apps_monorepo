@@ -25,6 +25,18 @@ void main() {
       expect(result, isNull);
     });
 
+    test("returns null for server unavailable events", () {
+      final result = mapper.map(const BridgeSseServerUnavailable());
+
+      expect(result, isNull);
+    });
+
+    test("returns null for server access restored events", () {
+      final result = mapper.map(const BridgeSseServerAccessRestored());
+
+      expect(result, isNull);
+    });
+
     test("maps session.created with provided enriched payload", () {
       final result = mapper.map(
         const BridgeSseSessionCreated(

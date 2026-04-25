@@ -291,7 +291,12 @@ void main() {
     statusController = BehaviorSubject<ConnectionStatus>.seeded(
       const ConnectionStatus.connected(
         config: ServerConnectionConfig(relayHost: "relay.example.com"),
-        health: HealthResponse(healthy: true, version: "0.1.200"),
+        health: HealthResponse(
+          healthy: true,
+          version: "0.1.200",
+          serverManaged: false,
+          serverState: null,
+        ),
       ),
     );
 
@@ -300,7 +305,12 @@ void main() {
     when(() => mockConnectionService.currentStatus).thenReturn(
       const ConnectionStatus.connected(
         config: ServerConnectionConfig(relayHost: "relay.example.com"),
-        health: HealthResponse(healthy: true, version: "0.1.200"),
+        health: HealthResponse(
+          healthy: true,
+          version: "0.1.200",
+          serverManaged: false,
+          serverState: null,
+        ),
       ),
     );
     when(

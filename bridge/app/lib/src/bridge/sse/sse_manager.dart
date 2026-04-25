@@ -129,6 +129,15 @@ class SSEManager {
     }
   }
 
+  /// Sends [event] to all current subscribers. Does NOT write to orphan queues,
+  /// so phones that connect later do not receive [event].
+  Future<void> dispatchEphemeral(SesoriSseEvent event) async {
+    for (final queue in _subscribers.values) {
+      queue.enqueue(event);
+    }
+    // deliberately skip _orphanQueues
+  }
+
   void _disposeOrphans() {
     for (final orphan in _orphanQueues) {
       orphan.queue.dispose();

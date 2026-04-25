@@ -7,7 +7,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Bridg
 
 import "../../auth/token.dart";
 import "../../auth/token_manager.dart";
-import "../../server/process.dart";
+import "../../server/server_health_config.dart";
 import "../../updater/api/archive_extractor_api.dart";
 import "../../updater/api/checksum_manifest_api.dart";
 import "../../updater/api/checksum_verifier_api.dart";
@@ -96,7 +96,6 @@ class BridgeRuntimeRunner {
       _optimizeOpenCodeDbIfNeeded(environment: Platform.environment);
 
       final serverRuntime = await resolveServer(options: options);
-      shutdownCoordinator.add(disposable: () async => stopServer(serverRuntime.process));
 
       final tokenManager = TokenManager(
         initialToken: authTokens.accessToken,
@@ -106,13 +105,22 @@ class BridgeRuntimeRunner {
       );
       shutdownCoordinator.add(disposable: tokenManager.dispose);
 
-      final runtime = BridgeRuntime.create(
+      final serverHealthConfig = ServerHealthConfig(
+        serverURL: serverRuntime.serverUrl,
+        password: serverRuntime.serverPassword ?? "",
+        binaryPath: options.opencodeBin,
+        isManaged: !options.noAutoStart,
+      );
+
+      final runtime = await BridgeRuntime.create(
         config: BridgeConfig(
           relayURL: options.relayUrl,
           serverURL: serverRuntime.serverUrl,
           serverPassword: serverRuntime.serverPassword,
           authBackendURL: options.authBackendUrl,
           sseReplayWindow: SSEManager.defaultReplayWindow,
+          version: appVersion,
+          serverManaged: !options.noAutoStart,
         ),
         plugin: pluginFactory(
           serverUrl: serverRuntime.serverUrl,
@@ -124,8 +132,11 @@ class BridgeRuntimeRunner {
         database: AppDatabase.create(),
         processRunner: processRunner,
         failureReporter: LogFailureReporter(),
+        serverHealthConfig: serverHealthConfig,
+        initialServerProcess: serverRuntime.process,
       );
       shutdownCoordinator.add(disposable: runtime.close);
+      shutdownCoordinator.add(disposable: runtime.session.stopServerLifecycle);
 
       await BridgeDiagnostics().runAll();
       await startDebugServerIfRequested(

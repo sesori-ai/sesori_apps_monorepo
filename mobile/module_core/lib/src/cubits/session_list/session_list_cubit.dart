@@ -96,9 +96,10 @@ class SessionListCubit extends Cubit<SessionListState> {
           _onSessionUpdated(info);
         case SesoriSessionDeleted(:final info):
           _onSessionDeleted(info);
-        case SesoriServerConnected() ||
+        case             SesoriServerConnected() ||
             SesoriServerHeartbeat() ||
             SesoriServerInstanceDisposed() ||
+            SesoriServerStatus() ||
             SesoriGlobalDisposed() ||
             SesoriSessionDiff() ||
             SesoriSessionError() ||

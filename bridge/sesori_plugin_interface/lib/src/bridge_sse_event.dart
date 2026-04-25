@@ -259,3 +259,16 @@ class BridgeSseWorktreeReady extends BridgeSseEvent {
 class BridgeSseWorktreeFailed extends BridgeSseEvent {
   const BridgeSseWorktreeFailed();
 }
+
+sealed class BridgeSseServerStatus extends BridgeSseEvent {
+  const BridgeSseServerStatus();
+}
+
+class BridgeSseServerUnavailable extends BridgeSseServerStatus {
+  final String? message;
+  const BridgeSseServerUnavailable({this.message});
+}
+
+class BridgeSseServerAccessRestored extends BridgeSseServerStatus {
+  const BridgeSseServerAccessRestored();
+}
