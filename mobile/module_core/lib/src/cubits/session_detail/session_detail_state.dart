@@ -36,6 +36,7 @@ sealed class SessionDetailState with _$SessionDetailState {
     required AgentModel? selectedAgentModel,
     required CommandInfo? stagedCommand,
     required bool isRefreshing,
+    @Default([]) List<SessionVariant> availableVariants,
   }) = SessionDetailLoaded;
 
   const factory SessionDetailState.failed({required ApiError error}) = SessionDetailFailed;

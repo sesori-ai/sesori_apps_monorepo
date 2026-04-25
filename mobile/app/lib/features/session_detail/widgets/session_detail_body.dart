@@ -1,6 +1,5 @@
 import "dart:async";
 
-import "package:collection/collection.dart";
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -174,17 +173,6 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
     final state = cubit.state;
     if (state is! SessionDetailLoaded) return;
     final agentModel = state.selectedAgentModel;
-    final providerID = agentModel?.providerID;
-    final modelID = agentModel?.modelID;
-    final provider = providerID != null
-        ? state.availableProviders.firstWhereOrNull((p) => p.id == providerID)
-        : null;
-    final model = provider?.models[modelID];
-    final availableVariants = model?.variants
-            .where((v) => v != "none")
-            .map((v) => SessionVariant(id: v))
-            .toList() ??
-        <SessionVariant>[];
     final selectedVariant = switch (agentModel?.variant) {
       final variant when variant != null && variant != "none" =>
         SessionVariant(id: variant),
@@ -193,7 +181,7 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
     VariantPickerSheet.show(
       context,
       selectedVariant: selectedVariant,
-      availableVariants: availableVariants,
+      availableVariants: state.availableVariants,
       onVariantChanged: cubit.selectVariant,
     );
   }

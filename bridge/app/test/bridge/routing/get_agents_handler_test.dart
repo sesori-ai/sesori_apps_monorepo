@@ -1,3 +1,4 @@
+import "package:sesori_bridge/src/bridge/repositories/agent_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/get_agents_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -8,11 +9,13 @@ import "routing_test_helpers.dart";
 void main() {
   group("GetAgentsHandler", () {
     late FakeBridgePlugin plugin;
+    late AgentRepository repository;
     late GetAgentsHandler handler;
 
     setUp(() {
       plugin = FakeBridgePlugin();
-      handler = GetAgentsHandler(plugin);
+      repository = AgentRepository(plugin: plugin);
+      handler = GetAgentsHandler(repository);
     });
 
     tearDown(() => plugin.close());

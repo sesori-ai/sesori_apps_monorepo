@@ -1,4 +1,3 @@
-import "package:collection/collection.dart";
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
@@ -74,17 +73,6 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
 
   void _openVariantPicker(AgentModelData data) {
     final agentModel = data.agentModel;
-    final providerID = agentModel?.providerID;
-    final modelID = agentModel?.modelID;
-    final provider = providerID != null
-        ? data.providers.firstWhereOrNull((p) => p.id == providerID)
-        : null;
-    final model = provider?.models[modelID];
-    final availableVariants = model?.variants
-            .where((v) => v != "none")
-            .map((v) => SessionVariant(id: v))
-            .toList() ??
-        <SessionVariant>[];
     final selectedVariant = switch (agentModel?.variant) {
       final variant when variant != null && variant != "none" =>
         SessionVariant(id: variant),
@@ -93,7 +81,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     VariantPickerSheet.show(
       context,
       selectedVariant: selectedVariant,
-      availableVariants: availableVariants,
+      availableVariants: data.availableVariants,
       onVariantChanged: context.read<NewSessionCubit>().selectVariant,
     );
   }
@@ -124,14 +112,31 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     final selectedAgent = data?.agent;
     if (data == null || data.agents.isEmpty || selectedAgent == null) return null;
 
+    final modelName = _resolveModelName(data);
     return AgentModelButtons(
-      providers: data.providers,
+      availableVariants: data.availableVariants,
+      modelName: modelName,
       selectedAgent: selectedAgent,
       selectedAgentModel: data.agentModel,
       onAgentTap: () => _openAgentPicker(data),
       onModelTap: () => _openModelPicker(data),
       onVariantTap: () => _openVariantPicker(data),
     );
+  }
+
+  String _resolveModelName(AgentModelData data) {
+    final providerID = data.agentModel?.providerID;
+    final modelID = data.agentModel?.modelID;
+    final loc = context.loc;
+    if (providerID == null || modelID == null) return loc.sessionDetailPickerModel;
+    for (final provider in data.providers) {
+      if (provider.id == providerID) {
+        final model = provider.models[modelID];
+        if (model != null) return model.name;
+      }
+    }
+    if (modelID.isNotEmpty) return modelID;
+    return loc.sessionDetailPickerModel;
   }
 
   @override

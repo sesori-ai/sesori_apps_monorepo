@@ -1,13 +1,13 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../repositories/agent_repository.dart";
 import "request_handler.dart";
 
 /// Handles `GET /agent` — returns all available agents from the plugin.
 class GetAgentsHandler extends GetRequestHandler<Agents> {
-  final BridgePlugin _plugin;
+  final AgentRepository _repository;
 
-  GetAgentsHandler(this._plugin) : super("/agent");
+  GetAgentsHandler(this._repository) : super("/agent");
 
   @override
   Future<Agents> handle(
@@ -16,31 +16,6 @@ class GetAgentsHandler extends GetRequestHandler<Agents> {
     required Map<String, String> queryParams,
     required String? fragment,
   }) async {
-    final pluginAgents = await _plugin.getAgents();
-    final agents = pluginAgents
-        .map(
-          (a) => AgentInfo(
-            name: a.name,
-            description: a.description,
-            model: switch (a.model) {
-              PluginAgentModel(:final modelID, :final providerID, :final variant) => AgentModel(
-                modelID: modelID,
-                providerID: providerID,
-                variant: variant,
-              ),
-              null => null,
-            },
-            mode: switch (a.mode) {
-              PluginAgentMode.all => AgentMode.all,
-              PluginAgentMode.primary => AgentMode.primary,
-              PluginAgentMode.subagent => AgentMode.subagent,
-              PluginAgentMode.unknown => AgentMode.unknown,
-            },
-            hidden: a.hidden,
-          ),
-        )
-        .toList();
-
-    return Agents(agents: agents);
+    return _repository.getAgents();
   }
 }

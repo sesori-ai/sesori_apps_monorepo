@@ -14,12 +14,9 @@ import "package:sesori_dart_core/src/platform/route_source.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_dart_core/src/routing/app_routes.dart";
-import "package:sesori_dart_core/src/services/provider_config_cache.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 class MockProjectService extends Mock implements ProjectService {}
-
-class MockProviderConfigCache extends Mock implements ProviderConfigCache {}
 
 class MockProjectApi extends Mock implements ProjectApi {}
 

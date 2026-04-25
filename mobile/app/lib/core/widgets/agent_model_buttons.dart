@@ -1,12 +1,11 @@
-import "package:collection/collection.dart";
 import "package:flutter/material.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../../l10n/app_localizations.dart";
 import "../extensions/build_context_x.dart";
 
 class AgentModelButtons extends StatelessWidget {
-  final List<ProviderInfo> providers;
+  final List<SessionVariant> availableVariants;
+  final String modelName;
   final String selectedAgent;
   final AgentModel? selectedAgentModel;
   final VoidCallback onAgentTap;
@@ -15,7 +14,8 @@ class AgentModelButtons extends StatelessWidget {
 
   const AgentModelButtons({
     super.key,
-    required this.providers,
+    required this.availableVariants,
+    required this.modelName,
     required this.selectedAgent,
     required this.selectedAgentModel,
     required this.onAgentTap,
@@ -23,35 +23,10 @@ class AgentModelButtons extends StatelessWidget {
     required this.onVariantTap,
   });
 
-  String _resolveModelName(AppLocalizations loc) {
-    final providerID = selectedAgentModel?.providerID;
-    final modelID = selectedAgentModel?.modelID;
-    if (providerID == null || modelID == null) return loc.sessionDetailPickerModel;
-    for (final provider in providers) {
-      if (provider.id == providerID) {
-        final model = provider.models[modelID];
-        if (model != null) return model.name;
-      }
-    }
-    if (modelID.isNotEmpty) return modelID;
-    return loc.sessionDetailPickerModel;
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final loc = context.loc;
-    final providerID = selectedAgentModel?.providerID;
-    final modelID = selectedAgentModel?.modelID;
-    final provider = providerID != null
-        ? providers.firstWhereOrNull((p) => p.id == providerID)
-        : null;
-    final model = provider?.models[modelID];
-    final availableVariants = model?.variants
-            .where((v) => v != "none")
-            .map((v) => SessionVariant(id: v))
-            .toList() ??
-        <SessionVariant>[];
     final selectedVariant = switch (selectedAgentModel?.variant) {
       final variant when variant != null && variant != "none" => SessionVariant(id: variant),
       _ => null,
@@ -88,7 +63,7 @@ class AgentModelButtons extends StatelessWidget {
               onPressed: onModelTap,
               icon: Icon(Icons.memory_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
               label: Text(
-                _resolveModelName(loc),
+                modelName,
                 style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
                 overflow: .ellipsis,
                 maxLines: 1,
