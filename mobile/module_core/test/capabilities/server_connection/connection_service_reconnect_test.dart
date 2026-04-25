@@ -166,7 +166,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 1400));
       verify(() => authTokenProvider.getFreshAccessToken(minTtl: any(named: "minTtl"))).called(1);
 
-      lifecycleController.add(LifecycleState.hidden);
+      lifecycleController.add(LifecycleState.paused);
       await Future<void>.delayed(Duration.zero);
       tokenCompleter.complete("fresh-token");
 
