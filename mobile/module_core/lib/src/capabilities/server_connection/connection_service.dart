@@ -103,9 +103,9 @@ class ConnectionService {
           case .inactive:
             break;
           case .hidden:
-            _onAppBackgrounded();
-          case .paused:
             break;
+          case .paused:
+            _onAppBackgrounded();
           case .detached:
             break;
         }
