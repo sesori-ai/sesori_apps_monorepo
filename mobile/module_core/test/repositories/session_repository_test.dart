@@ -1,6 +1,7 @@
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
+import "package:sesori_dart_core/src/services/provider_config_cache.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -11,7 +12,7 @@ void main() {
 
   test("session detail flows route through session api and repository", () async {
     final api = MockSessionApi();
-    final repository = SessionRepository(api: api);
+    final repository = SessionRepository(api: api, cache: ProviderConfigCache());
 
     when(() => api.getMessages(sessionId: "session-1")).thenAnswer(
       (_) async => ApiResponse.success(const MessageWithPartsResponse(messages: <MessageWithParts>[])),

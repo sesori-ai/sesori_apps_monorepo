@@ -191,6 +191,7 @@ void _stubRepositorySnapshot({
                 id: "gpt-4.1",
                 providerID: "openai",
                 name: "GPT-4.1",
+                variants: [],
                 family: null,
                 releaseDate: null,
               ),

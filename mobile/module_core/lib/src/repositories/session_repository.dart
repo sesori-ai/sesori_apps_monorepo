@@ -3,12 +3,18 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/session_api.dart";
+import "../services/provider_config_cache.dart";
 
 @lazySingleton
 class SessionRepository {
   final SessionApi _api;
+  final ProviderConfigCache _cache;
 
-  SessionRepository({required SessionApi api}) : _api = api;
+  SessionRepository({
+    required SessionApi api,
+    required ProviderConfigCache cache,
+  })  : _api = api,
+        _cache = cache;
 
   Future<ApiResponse<Session>> archiveSession({
     required String sessionId,
@@ -90,8 +96,18 @@ class SessionRepository {
     return _api.listAgents();
   }
 
-  Future<ApiResponse<ProviderListResponse>> listProviders() {
-    return _api.listProviders();
+  Future<ApiResponse<ProviderListResponse>> listProviders({String? projectId}) async {
+    if (projectId != null && _cache.has(projectId: projectId)) {
+      return ApiResponse.success(_cache.get(projectId: projectId)!);
+    }
+
+    final response = await _api.listProviders();
+
+    if (projectId != null && response is SuccessResponse<ProviderListResponse>) {
+      _cache.set(projectId: projectId, response: response.data);
+    }
+
+    return response;
   }
 
   Future<ApiResponse<CommandListResponse>> listCommands({required String projectId}) {

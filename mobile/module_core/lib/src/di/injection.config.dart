@@ -56,6 +56,8 @@ import 'package:sesori_dart_core/src/services/foreground_notification_dispatcher
     as _i101;
 import 'package:sesori_dart_core/src/services/notification_registration_service.dart'
     as _i659;
+import 'package:sesori_dart_core/src/services/provider_config_cache.dart'
+    as _i342;
 import 'package:sesori_dart_core/src/services/session_detail_load_service.dart'
     as _i709;
 import 'package:sesori_shared/sesori_shared.dart' as _i553;
@@ -70,6 +72,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i369.ClockProvider>(() => const _i369.ClockProvider());
     gh.lazySingleton<_i369.RelayClientFactory>(
       () => const _i369.RelayClientFactory(),
+    );
+    gh.lazySingleton<_i342.ProviderConfigCache>(
+      () => _i342.ProviderConfigCache(),
     );
     gh.lazySingleton<_i895.RoomKeyStorage>(
       () => _i895.RoomKeyStorage(gh<_i442.SecureStorage>()),
@@ -136,9 +141,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i680.ProjectService>(
       () => _i680.ProjectService(gh<_i857.RelayHttpApiClient>()),
     );
-    gh.lazySingleton<_i7.SessionRepository>(
-      () => _i7.SessionRepository(api: gh<_i603.SessionApi>()),
-    );
     gh.lazySingleton<_i101.ForegroundNotificationDispatcher>(
       () => _i101.ForegroundNotificationDispatcher(
         notificationPreferencesRepository:
@@ -165,11 +167,14 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i80.ProjectRepository>(
       () => _i80.ProjectRepository(api: gh<_i733.ProjectApi>()),
     );
-    gh.lazySingleton<_i12.SessionService>(
-      () => _i12.SessionService(repository: gh<_i7.SessionRepository>()),
-    );
     gh.lazySingleton<_i679.PermissionRepository>(
       () => _i679.PermissionRepository(api: gh<_i231.PermissionApi>()),
+    );
+    gh.lazySingleton<_i7.SessionRepository>(
+      () => _i7.SessionRepository(
+        api: gh<_i603.SessionApi>(),
+        cache: gh<_i342.ProviderConfigCache>(),
+      ),
     );
     gh.lazySingleton<_i709.SessionDetailLoadService>(
       () => _i709.SessionDetailLoadService(
@@ -177,6 +182,9 @@ extension GetItInjectableX on _i174.GetIt {
         projectRepository: gh<_i80.ProjectRepository>(),
         connectionService: gh<_i369.ConnectionService>(),
       ),
+    );
+    gh.lazySingleton<_i12.SessionService>(
+      () => _i12.SessionService(repository: gh<_i7.SessionRepository>()),
     );
     return this;
   }
