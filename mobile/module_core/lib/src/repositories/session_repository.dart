@@ -101,7 +101,7 @@ class SessionRepository {
       return ApiResponse.success(_cache.get(projectId: projectId)!);
     }
 
-    final response = await _api.listProviders();
+    final response = await _api.listProviders(projectId: projectId);
 
     if (projectId != null && response is SuccessResponse<ProviderListResponse>) {
       _cache.set(projectId: projectId, response: response.data);

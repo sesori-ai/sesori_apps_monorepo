@@ -18,6 +18,7 @@ class GetProvidersHandler extends GetRequestHandler<ProviderListResponse> {
   }) {
     return _repository.getProviders(
       directory: findHeader(request.headers, "x-opencode-directory"),
+      projectId: queryParams["projectId"],
     );
   }
 }

@@ -9,7 +9,7 @@ class ProviderRepository {
 
   ProviderRepository({required BridgePlugin plugin}) : _plugin = plugin;
 
-  Future<ProviderListResponse> getProviders({String? directory}) async {
+  Future<ProviderListResponse> getProviders({String? directory, String? projectId}) async {
     final result = await _plugin.getProviders(connectedOnly: true, directory: directory);
     final providers = result.providers.map((p) => p.toSharedProviderInfo()).toList();
     return ProviderListResponse(items: providers, connectedOnly: true);
