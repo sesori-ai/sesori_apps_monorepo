@@ -2,8 +2,16 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:opencode_plugin/opencode_plugin.dart';
+import 'package:sesori_bridge/src/api/bridge_settings_api.dart';
+import 'package:sesori_bridge/src/api/default_editor_api.dart';
+import 'package:sesori_bridge/src/api/linux_default_editor_api.dart';
+import 'package:sesori_bridge/src/api/macos_default_editor_api.dart';
+import 'package:sesori_bridge/src/api/windows_default_editor_api.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_cli_options.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_runtime_runner.dart';
+import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
+import 'package:sesori_bridge/src/repositories/default_editor_repository.dart';
+import 'package:sesori_bridge/src/services/bridge_config_service.dart';
 import 'package:sesori_bridge/src/version.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log, LogLevel;
 
@@ -11,6 +19,28 @@ const String _defaultRelayURL = 'wss://relay.sesori.com';
 const String _defaultAuthURL = 'https://api.sesori.com';
 
 Future<void> main(List<String> args) async {
+  if (args.isNotEmpty && args[0] == 'config') {
+    final api = BridgeSettingsApi();
+    final settingsRepository = BridgeSettingsRepository(api: api);
+    final DefaultEditorApi editorApi = switch (Platform.operatingSystem) {
+      'macos' => MacosDefaultEditorApi(),
+      'linux' => LinuxDefaultEditorApi(),
+      'windows' => WindowsDefaultEditorApi(),
+      _ => throw UnsupportedError(
+        'Unsupported platform for config command: ${Platform.operatingSystem}',
+      ),
+    };
+    final editorRepository = DefaultEditorRepository(api: editorApi);
+    final configService = BridgeConfigService(
+      bridgeSettingsRepository: settingsRepository,
+      defaultEditorRepository: editorRepository,
+    );
+
+    final configFilePath = await configService.openConfigFile();
+    stdout.writeln('Opening config file at $configFilePath');
+    exit(0);
+  }
+
   final parser = ArgParser()
     ..addFlag(
       'version',
