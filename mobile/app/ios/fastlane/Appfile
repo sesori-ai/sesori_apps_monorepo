@@ -1,0 +1,8 @@
+# App identifier for the main release build
+app_identifier("com.sesori.app")
+
+# Apple Developer Portal team ID
+team_id("AQNCF7663C")
+
+# App Store Connect team ID (same as portal team for most accounts)
+itc_team_id("AQNCF7663C")
