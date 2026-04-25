@@ -26,6 +26,7 @@ PluginProvidersResult mapProviderResponse({
           (m) => PluginModel(
             id: m.id,
             name: m.name,
+            variants: const [],
             family: m.family,
             isAvailable: _isModelAvailable(
               status: _parseProviderModelStatus(rawStatus: m.status, modelId: m.id),
