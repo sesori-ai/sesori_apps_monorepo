@@ -5,18 +5,34 @@ import 'package:opencode_plugin/opencode_plugin.dart';
 import 'package:sesori_bridge/src/api/bridge_settings_api.dart';
 import 'package:sesori_bridge/src/api/default_editor_api.dart';
 import 'package:sesori_bridge/src/api/linux_default_editor_api.dart';
+import 'package:sesori_bridge/src/api/linux_wake_lock_api.dart';
 import 'package:sesori_bridge/src/api/macos_default_editor_api.dart';
+import 'package:sesori_bridge/src/api/macos_wake_lock_api.dart';
 import 'package:sesori_bridge/src/api/windows_default_editor_api.dart';
+import 'package:sesori_bridge/src/api/windows_wake_lock_api.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_cli_options.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_runtime_runner.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
 import 'package:sesori_bridge/src/repositories/default_editor_repository.dart';
+import 'package:sesori_bridge/src/repositories/wake_lock_repository.dart';
 import 'package:sesori_bridge/src/services/bridge_config_service.dart';
+import 'package:sesori_bridge/src/services/sleep_prevention_service.dart';
 import 'package:sesori_bridge/src/version.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log, LogLevel;
 
 const String _defaultRelayURL = 'wss://relay.sesori.com';
 const String _defaultAuthURL = 'https://api.sesori.com';
+
+Future<Process> _startProcess(String executable, List<String> args) {
+  return Process.start(executable, args);
+}
+
+OpenCodePlugin _createOpenCodePlugin({
+  required String serverUrl,
+  required String? serverPassword,
+}) {
+  return OpenCodePlugin(serverUrl: serverUrl, password: serverPassword);
+}
 
 Future<void> main(List<String> args) async {
   if (args.isNotEmpty && args[0] == 'config') {
@@ -119,11 +135,42 @@ Future<void> main(List<String> args) async {
   );
   Log.level = LogLevel.values.byName(options.logLevelName);
 
+  final settingsRepository = BridgeSettingsRepository(api: BridgeSettingsApi());
+  final SleepPreventionService? sleepPreventionService = switch (
+    Platform.operatingSystem
+  ) {
+    'macos' => SleepPreventionService(
+      bridgeSettingsRepository: settingsRepository,
+      wakeLockRepository: WakeLockRepository(
+        client: MacOSWakeLockApi(processStarter: _startProcess),
+      ),
+    ),
+    'linux' => SleepPreventionService(
+      bridgeSettingsRepository: settingsRepository,
+      wakeLockRepository: WakeLockRepository(client: LinuxWakeLockApi()),
+    ),
+    'windows' => SleepPreventionService(
+      bridgeSettingsRepository: settingsRepository,
+      wakeLockRepository: WakeLockRepository(client: WindowsWakeLockApi()),
+    ),
+    _ => null,
+  };
+
+  if (sleepPreventionService == null) {
+    Log.w('Sleep prevention unavailable on ${Platform.operatingSystem}');
+  } else {
+    try {
+      final mode = await sleepPreventionService.applyConfiguredMode();
+      Log.i('Sleep prevention: ${mode.name}');
+    } on Object catch (error) {
+      Log.w('Sleep prevention failed: $error');
+    }
+  }
+
   final exitCode = await runBridgeApp(
     options: options,
-    pluginFactory: ({required String serverUrl, required String? serverPassword}) {
-      return OpenCodePlugin(serverUrl: serverUrl, password: serverPassword);
-    },
+    pluginFactory: _createOpenCodePlugin,
   );
+  await sleepPreventionService?.dispose();
   exit(exitCode);
 }
