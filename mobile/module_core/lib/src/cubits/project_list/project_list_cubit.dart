@@ -13,6 +13,7 @@ import "../../capabilities/sse/sse_event_repository.dart";
 import "../../logging/logging.dart";
 import "../../platform/route_source.dart";
 import "../../routing/app_routes.dart";
+import "../../services/provider_config_cache.dart";
 import "project_list_state.dart";
 
 /// How long to wait after an activity event before auto-refreshing project
@@ -24,6 +25,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   final ProjectService _projectService;
   final ConnectionService _connectionService;
   final SseEventRepository _sseEventRepository;
+  final ProviderConfigCache _providerConfigCache;
   final FailureReporter _failureReporter;
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
@@ -32,13 +34,15 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     ProjectService projectService,
     ConnectionService connectionService,
     SseEventRepository sseEventRepository,
+    ProviderConfigCache providerConfigCache,
     RouteSource routeSource, {
     required FailureReporter failureReporter,
   }) : _projectService = projectService,
-       _connectionService = connectionService,
-       _sseEventRepository = sseEventRepository,
-       _failureReporter = failureReporter,
-       super(const ProjectListState.loading()) {
+        _connectionService = connectionService,
+        _sseEventRepository = sseEventRepository,
+        _providerConfigCache = providerConfigCache,
+        _failureReporter = failureReporter,
+        super(const ProjectListState.loading()) {
     loadProjects();
 
     // 1. Immediate activity badge updates (no API call).
@@ -156,6 +160,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   }
 
   Future<void> loadProjects() async {
+    _providerConfigCache.clear();
     emit(const ProjectListState.loading());
     await _fetchProjects();
   }

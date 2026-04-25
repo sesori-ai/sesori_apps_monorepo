@@ -80,6 +80,7 @@ export "src/routing/notification_open_dispatcher.dart";
 // Services
 export "src/services/foreground_notification_dispatcher.dart";
 export "src/services/notification_registration_service.dart";
+export "src/services/provider_config_cache.dart";
 export "src/services/session_detail_load_service.dart";
 // Utils
 export "src/utils/diff/diff_engine.dart";

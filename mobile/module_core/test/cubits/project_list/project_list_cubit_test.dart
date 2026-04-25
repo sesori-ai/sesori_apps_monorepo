@@ -33,6 +33,7 @@ void main() {
     late MockProjectService mockProjectService;
     late MockConnectionService mockConnectionService;
     late MockSseEventRepository mockSseEventRepository;
+    late MockProviderConfigCache mockProviderConfigCache;
     late MockRouteSource mockRouteSource;
     late MockFailureReporter mockFailureReporter;
     late BehaviorSubject<ConnectionStatus> statusController;
@@ -41,6 +42,7 @@ void main() {
       mockProjectService = MockProjectService();
       mockConnectionService = MockConnectionService();
       mockSseEventRepository = MockSseEventRepository();
+      mockProviderConfigCache = MockProviderConfigCache();
       mockRouteSource = MockRouteSource();
       mockFailureReporter = MockFailureReporter();
       statusController = BehaviorSubject<ConnectionStatus>.seeded(
@@ -72,6 +74,7 @@ void main() {
       mockProjectService,
       mockConnectionService,
       mockSseEventRepository,
+      mockProviderConfigCache,
       mockRouteSource,
       failureReporter: mockFailureReporter,
     );
@@ -83,6 +86,7 @@ void main() {
     blocTest<ProjectListCubit, ProjectListState>(
       "constructor triggers loadProjects: emits ProjectListLoaded with fetched projects",
       build: () {
+        when(() => mockProviderConfigCache.clear()).thenReturn(null);
         when(
           () => mockProjectService.listProjects(),
         ).thenAnswer((_) async => ApiResponse.success(Projects(data: [testProject()])));
@@ -95,6 +99,9 @@ void main() {
           [testProject()],
         ),
       ],
+      verify: (_) {
+        verify(() => mockProviderConfigCache.clear()).called(1);
+      },
     );
 
     // -------------------------------------------------------------------------
@@ -104,6 +111,7 @@ void main() {
     blocTest<ProjectListCubit, ProjectListState>(
       "load success with empty list: emits ProjectListLoaded with empty projects",
       build: () {
+        when(() => mockProviderConfigCache.clear()).thenReturn(null);
         when(
           () => mockProjectService.listProjects(),
         ).thenAnswer((_) async => ApiResponse.success(const Projects(data: <Project>[])));
@@ -116,6 +124,9 @@ void main() {
           isEmpty,
         ),
       ],
+      verify: (_) {
+        verify(() => mockProviderConfigCache.clear()).called(1);
+      },
     );
 
     // -------------------------------------------------------------------------
@@ -125,12 +136,16 @@ void main() {
     blocTest<ProjectListCubit, ProjectListState>(
       "load failure: listProjects error emits ProjectListFailed",
       build: () {
+        when(() => mockProviderConfigCache.clear()).thenReturn(null);
         when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
         return buildCubit();
       },
       expect: () => [
         isA<ProjectListFailed>(),
       ],
+      verify: (_) {
+        verify(() => mockProviderConfigCache.clear()).called(1);
+      },
     );
 
     // -------------------------------------------------------------------------
@@ -140,6 +155,7 @@ void main() {
     blocTest<ProjectListCubit, ProjectListState>(
       "hideProject: removes project from state and calls service.hideProject",
       build: () {
+        when(() => mockProviderConfigCache.clear()).thenReturn(null);
         when(() => mockProjectService.listProjects()).thenAnswer(
           (_) async => ApiResponse.success(Projects(data: [projectA, projectB, projectC])),
         );
@@ -183,6 +199,7 @@ void main() {
     blocTest<ProjectListCubit, ProjectListState>(
       "createProject: calls service, refreshes project list, and returns true on success",
       build: () {
+        when(() => mockProviderConfigCache.clear()).thenReturn(null);
         when(
           () => mockProjectService.listProjects(),
         ).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
@@ -221,6 +238,7 @@ void main() {
     blocTest<ProjectListCubit, ProjectListState>(
       "createProject: returns false and emits no state on API error",
       build: () {
+        when(() => mockProviderConfigCache.clear()).thenReturn(null);
         when(
           () => mockProjectService.listProjects(),
         ).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
@@ -245,6 +263,7 @@ void main() {
     blocTest<ProjectListCubit, ProjectListState>(
       "discoverProject: refreshes project list on success",
       build: () {
+        when(() => mockProviderConfigCache.clear()).thenReturn(null);
         when(
           () => mockProjectService.listProjects(),
         ).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
@@ -287,6 +306,7 @@ void main() {
     blocTest<ProjectListCubit, ProjectListState>(
       "renameProject: calls service, refreshes project list, and returns true on success",
       build: () {
+        when(() => mockProviderConfigCache.clear()).thenReturn(null);
         when(
           () => mockProjectService.listProjects(),
         ).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
@@ -392,6 +412,9 @@ void main() {
         isA<ProjectListLoading>(), // explicit loadProjects begins
         isA<ProjectListLoaded>(), // explicit loadProjects completes
       ],
+      verify: (_) {
+        verify(() => mockProviderConfigCache.clear()).called(2);
+      },
     );
 
     // -------------------------------------------------------------------------

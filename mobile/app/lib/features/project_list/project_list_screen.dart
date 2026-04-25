@@ -23,6 +23,7 @@ class ProjectListScreen extends StatelessWidget {
         getIt<ProjectService>(),
         getIt<ConnectionService>(),
         getIt<SseEventRepository>(),
+        getIt<ProviderConfigCache>(),
         getIt<RouteSource>(),
         failureReporter: getIt<FailureReporter>(),
       ),
