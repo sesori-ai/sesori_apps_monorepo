@@ -69,6 +69,8 @@ SessionDetailState _loadedState() {
     ),
     stagedCommand: null,
     isRefreshing: false,
+    availableVariants: const [SessionVariant(id: "xhigh")],
+    selectedVariant: const SessionVariant(id: "xhigh"),
   );
 }
 

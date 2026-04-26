@@ -7,7 +7,7 @@ class AgentModelButtons extends StatelessWidget {
   final List<SessionVariant> availableVariants;
   final String modelName;
   final String selectedAgent;
-  final AgentModel? selectedAgentModel;
+  final SessionVariant? selectedVariant;
   final VoidCallback onAgentTap;
   final VoidCallback onModelTap;
   final VoidCallback onVariantTap;
@@ -17,7 +17,7 @@ class AgentModelButtons extends StatelessWidget {
     required this.availableVariants,
     required this.modelName,
     required this.selectedAgent,
-    required this.selectedAgentModel,
+    required this.selectedVariant,
     required this.onAgentTap,
     required this.onModelTap,
     required this.onVariantTap,
@@ -27,10 +27,6 @@ class AgentModelButtons extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final loc = context.loc;
-    final selectedVariant = switch (selectedAgentModel?.variant) {
-      final variant when variant != null && variant != "none" => SessionVariant(id: variant),
-      _ => null,
-    };
     final buttonStyle = OutlinedButton.styleFrom(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       minimumSize: .zero,

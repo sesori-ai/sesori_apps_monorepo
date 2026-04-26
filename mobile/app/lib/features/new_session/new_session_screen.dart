@@ -2,7 +2,6 @@ import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_shared/sesori_shared.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
@@ -72,15 +71,9 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
   }
 
   void _openVariantPicker(AgentModelData data) {
-    final agentModel = data.agentModel;
-    final selectedVariant = switch (agentModel?.variant) {
-      final variant when variant != null && variant != "none" =>
-        SessionVariant(id: variant),
-      _ => null,
-    };
     VariantPickerSheet.show(
       context,
-      selectedVariant: selectedVariant,
+      selectedVariant: data.selectedVariant,
       availableVariants: data.availableVariants,
       onVariantChanged: context.read<NewSessionCubit>().selectVariant,
     );
@@ -117,7 +110,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
       availableVariants: data.availableVariants,
       modelName: modelName,
       selectedAgent: selectedAgent,
-      selectedAgentModel: data.agentModel,
+      selectedVariant: data.selectedVariant,
       onAgentTap: () => _openAgentPicker(data),
       onModelTap: () => _openModelPicker(data),
       onVariantTap: () => _openVariantPicker(data),

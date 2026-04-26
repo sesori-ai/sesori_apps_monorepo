@@ -172,15 +172,9 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
     final cubit = context.read<SessionDetailCubit>();
     final state = cubit.state;
     if (state is! SessionDetailLoaded) return;
-    final agentModel = state.selectedAgentModel;
-    final selectedVariant = switch (agentModel?.variant) {
-      final variant when variant != null && variant != "none" =>
-        SessionVariant(id: variant),
-      _ => null,
-    };
     VariantPickerSheet.show(
       context,
-      selectedVariant: selectedVariant,
+      selectedVariant: state.selectedVariant,
       availableVariants: state.availableVariants,
       onVariantChanged: cubit.selectVariant,
     );
