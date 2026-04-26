@@ -17,7 +17,7 @@ import "session_detail_loaded_view.dart";
 import "session_detail_scaffold_sections.dart";
 
 class SessionDetailBody extends StatefulWidget {
-  final String? projectId;
+  final String projectId;
   final String sessionId;
   final String? sessionTitle;
   final bool readOnly;
@@ -76,14 +76,12 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
           IconButton(
             icon: const Icon(Icons.difference_outlined),
             tooltip: "File changes",
-            onPressed: widget.projectId == null
-                ? null
-                : () => context.pushRoute(
-                    AppRoute.sessionDiffs(
-                      projectId: widget.projectId!,
-                      sessionId: widget.sessionId,
-                    ),
-                  ),
+            onPressed: () => context.pushRoute(
+              AppRoute.sessionDiffs(
+                projectId: widget.projectId,
+                sessionId: widget.sessionId,
+              ),
+            ),
           ),
           if (isBusy)
             Padding(

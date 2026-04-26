@@ -22,15 +22,18 @@ class SessionDetailLoadService {
        _projectRepository = projectRepository,
        _connectionService = connectionService;
 
-  Future<SessionDetailLoadResult> load({required String sessionId, String? projectId}) {
+  Future<SessionDetailLoadResult> load({required String sessionId, required String projectId}) {
     return _loadSnapshot(sessionId: sessionId, projectId: projectId);
   }
 
-  Future<SessionDetailLoadResult> reload({required String sessionId, String? projectId}) {
+  Future<SessionDetailLoadResult> reload({required String sessionId, required String projectId}) {
     return _loadSnapshot(sessionId: sessionId, projectId: projectId);
   }
 
-  Future<SessionDetailLoadResult> _loadSnapshot({required String sessionId, String? projectId}) async {
+  Future<SessionDetailLoadResult> _loadSnapshot({
+    required String sessionId,
+    required String projectId,
+  }) async {
     if (_connectionService.currentStatus is! ConnectionConnected) {
       return const SessionDetailLoadResult.waitingForConnection();
     }
@@ -54,7 +57,7 @@ class SessionDetailLoadService {
         _repository.getChildren(sessionId: sessionId),
         _repository.getSessionStatuses(),
         _repository.listAgents(),
-        _repository.listProviders(),
+        _repository.listProviders(projectId: projectId),
       ).wait;
       final projectContext = await projectContextFuture;
       final effectiveProjectId = routeProjectId ?? projectContext?.projectId;

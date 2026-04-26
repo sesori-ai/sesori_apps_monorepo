@@ -86,7 +86,7 @@ class SessionService {
     return _repository.listAgents();
   }
 
-  Future<ApiResponse<ProviderListResponse>> listProviders({String? projectId}) {
+  Future<ApiResponse<ProviderListResponse>> listProviders({required String projectId}) {
     return _repository.listProviders(projectId: projectId);
   }
 

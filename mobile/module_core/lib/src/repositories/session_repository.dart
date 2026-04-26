@@ -93,14 +93,14 @@ class SessionRepository {
     return _api.listAgents();
   }
 
-  Future<ApiResponse<ProviderListResponse>> listProviders({String? projectId}) async {
-    if (projectId != null && _providerCache.containsKey(projectId)) {
+  Future<ApiResponse<ProviderListResponse>> listProviders({required String projectId}) async {
+    if (_providerCache.containsKey(projectId)) {
       return ApiResponse.success(_providerCache[projectId]!);
     }
 
     final response = await _api.listProviders(projectId: projectId);
 
-    if (projectId != null && response is SuccessResponse<ProviderListResponse>) {
+    if (response is SuccessResponse<ProviderListResponse>) {
       _providerCache[projectId] = response.data;
     }
 

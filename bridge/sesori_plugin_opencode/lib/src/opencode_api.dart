@@ -462,7 +462,9 @@ class OpenCodeApi {
       headers: headers,
     );
     _ensureSuccess(response, "GET /config/providers");
-    return ProviderListResponse.fromJson(jsonDecodeMap(response.body));
+    return ProviderListResponse.fromJson(
+      jsonDecodeMap(response.body),
+    );
   }
 
   Future<Map<String, SessionStatus>> getSessionStatuses({required String? directory}) async {

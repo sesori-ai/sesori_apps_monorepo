@@ -126,12 +126,10 @@ abstract class BridgePlugin {
   /// otherwise.
   Future<bool> healthCheck();
 
-  /// Get providers and their models from the backend.
-  ///
-  /// When [connectedOnly] is `true`, only providers that have valid credentials
-  /// configured are returned. When `false`, all known providers are returned
-  /// regardless of whether they are connected.
-  Future<PluginProvidersResult> getProviders({required bool connectedOnly, String? directory});
+  /// Get connected providers and their models from the backend.
+  Future<PluginProvidersResult> getProviders({
+    required String projectId,
+  });
 
   /// Build a summary of the active sessions for each project.
   List<PluginProjectActivitySummary> getActiveSessionsSummary();

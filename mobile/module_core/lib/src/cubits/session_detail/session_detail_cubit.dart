@@ -24,7 +24,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   final ConnectionService _connectionService;
   final PermissionRepository _permissionRepository;
   final String _sessionId;
-  final String? _routeProjectId;
+  final String _projectId;
   final NotificationCanceller _notificationCanceller;
   final FailureReporter _failureReporter;
   final PromptSendQueue _promptQueue = PromptSendQueue();
@@ -38,7 +38,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   Future<void>? _activeRefresh;
   bool _needsStaleRefresh = false;
   bool _waitingForConnection = false;
-  String? _projectId;
 
   /// Fires the [SesoriQuestionAsked] whenever a new question arrives, so the
   /// screen can auto-open the question modal.
@@ -57,7 +56,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     required SessionRepository promptDispatcher,
     required PermissionRepository permissionRepository,
     required String sessionId,
-    String? projectId,
+    required String projectId,
     required NotificationCanceller notificationCanceller,
     required FailureReporter failureReporter,
   }) : _loadService = loadService,
@@ -65,10 +64,9 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
        _connectionService = connectionService,
        _permissionRepository = permissionRepository,
        _sessionId = sessionId,
-       _routeProjectId = projectId,
+       _projectId = projectId,
        _notificationCanceller = notificationCanceller,
        _failureReporter = failureReporter,
-       _projectId = projectId,
        super(const SessionDetailState.loading()) {
     _streamingBuffer = StreamingTextBuffer(onFlush: _emitStreamingSnapshot);
     _eventSubscription = _connectionService.sessionEvents(_sessionId).listen(_handleEvent);
@@ -85,14 +83,13 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   Future<void> _loadMessages({required bool isReload}) async {
     emit(const SessionDetailState.loading());
     final result = isReload
-        ? await _loadService.reload(sessionId: _sessionId, projectId: _projectId ?? _routeProjectId)
-        : await _loadService.load(sessionId: _sessionId, projectId: _projectId ?? _routeProjectId);
+        ? await _loadService.reload(sessionId: _sessionId, projectId: _projectId)
+        : await _loadService.load(sessionId: _sessionId, projectId: _projectId);
     if (isClosed) return;
 
     switch (result) {
       case SessionDetailLoadResultLoaded(:final snapshot):
         _waitingForConnection = false;
-        _projectId = snapshot.projectId;
         emit(_buildLoadedState(snapshot: snapshot));
         _tryDrainQueue();
       case SessionDetailLoadResultWaitingForConnection():
@@ -125,13 +122,12 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     emit(current.copyWith(isRefreshing: true));
 
     try {
-      final result = await _loadService.reload(sessionId: _sessionId, projectId: _projectId ?? _routeProjectId);
+      final result = await _loadService.reload(sessionId: _sessionId, projectId: _projectId);
       if (isClosed) return;
 
       switch (result) {
         case SessionDetailLoadResultLoaded(:final snapshot):
           _waitingForConnection = false;
-          _projectId = snapshot.projectId ?? _projectId;
           final latestAssistant = _latestAssistantMessage(snapshot.messages);
           final childIds = snapshot.childSessions.map((c) => c.id).toSet();
           final childStatuses = Map<String, SessionStatus>.fromEntries(
@@ -147,10 +143,16 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           _streamingBuffer.clear();
 
           final assistantAgentModel = switch (latestAssistant) {
-            MessageAssistant(:final modelID, :final providerID) =>
-              _resolveAgentModel(agents: availableAgents, providerID: providerID, modelID: modelID),
-            MessageError(:final modelID, :final providerID) =>
-              _resolveAgentModel(agents: availableAgents, providerID: providerID, modelID: modelID),
+            MessageAssistant(:final modelID, :final providerID) => _resolveAgentModel(
+              agents: availableAgents,
+              providerID: providerID,
+              modelID: modelID,
+            ),
+            MessageError(:final modelID, :final providerID) => _resolveAgentModel(
+              agents: availableAgents,
+              providerID: providerID,
+              modelID: modelID,
+            ),
             _ => null,
           };
 
@@ -691,11 +693,12 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final agent = agents.firstWhereOrNull(
       (a) => a.model?.providerID == providerID && a.model?.modelID == modelID,
     );
-    return agent?.model ?? AgentModel(
-      providerID: providerID,
-      modelID: modelID,
-      variant: null,
-    );
+    return agent?.model ??
+        AgentModel(
+          providerID: providerID,
+          modelID: modelID,
+          variant: null,
+        );
   }
 
   // ---------------------------------------------------------------------------
@@ -855,15 +858,17 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final agentModel = agentInfo?.model;
 
     if (isClosed) return;
-    emit(current.copyWith(
-      selectedAgent: agent,
-      selectedAgentModel: agentModel,
-      availableVariants: _deriveAvailableVariants(
-        providers: current.availableProviders,
-        model: agentModel,
+    emit(
+      current.copyWith(
+        selectedAgent: agent,
+        selectedAgentModel: agentModel,
+        availableVariants: _deriveAvailableVariants(
+          providers: current.availableProviders,
+          model: agentModel,
+        ),
+        selectedVariant: _deriveSelectedVariant(agentModel),
       ),
-      selectedVariant: _deriveSelectedVariant(agentModel),
-    ));
+    );
   }
 
   void selectModel({required String providerID, required String modelID}) {
@@ -887,11 +892,13 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     );
 
     if (isClosed) return;
-    emit(current.copyWith(
-      selectedAgentModel: agentModel?.copyWith(variant: variant),
-      availableVariants: availableVariants,
-      selectedVariant: _deriveSelectedVariant(agentModel?.copyWith(variant: variant)),
-    ));
+    emit(
+      current.copyWith(
+        selectedAgentModel: agentModel?.copyWith(variant: variant),
+        availableVariants: availableVariants,
+        selectedVariant: _deriveSelectedVariant(agentModel?.copyWith(variant: variant)),
+      ),
+    );
   }
 
   void selectVariant(SessionVariant? variant) {
@@ -980,10 +987,16 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     }
 
     final assistantAgentModel = switch (latestAssistant) {
-      MessageAssistant(:final modelID, :final providerID) =>
-        _resolveAgentModel(agents: agents, providerID: providerID, modelID: modelID),
-      MessageError(:final modelID, :final providerID) =>
-        _resolveAgentModel(agents: agents, providerID: providerID, modelID: modelID),
+      MessageAssistant(:final modelID, :final providerID) => _resolveAgentModel(
+        agents: agents,
+        providerID: providerID,
+        modelID: modelID,
+      ),
+      MessageError(:final modelID, :final providerID) => _resolveAgentModel(
+        agents: agents,
+        providerID: providerID,
+        modelID: modelID,
+      ),
       _ => null,
     };
 
@@ -1024,15 +1037,9 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   }) {
     final providerID = model?.providerID;
     final modelID = model?.modelID;
-    final provider = providerID != null
-        ? providers.firstWhereOrNull((p) => p.id == providerID)
-        : null;
+    final provider = providerID != null ? providers.firstWhereOrNull((p) => p.id == providerID) : null;
     final m = provider?.models[modelID];
-    return m?.variants
-            .where((v) => v != "none")
-            .map((v) => SessionVariant(id: v))
-            .toList() ??
-        [];
+    return m?.variants.where((v) => v != "none").map((v) => SessionVariant(id: v)).toList() ?? [];
   }
 
   SessionVariant? _deriveSelectedVariant(AgentModel? model) {
