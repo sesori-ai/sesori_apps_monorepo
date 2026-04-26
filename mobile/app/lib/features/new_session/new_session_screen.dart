@@ -25,7 +25,6 @@ class NewSessionScreen extends StatelessWidget {
     return BlocProvider(
       create: (_) => NewSessionCubit(
         sessionService: getIt<SessionService>(),
-        variantOptionsBuilder: getIt<AgentVariantOptionsBuilder>(),
         projectId: projectId,
       ),
       child: _NewSessionBody(projectId: projectId),
@@ -61,11 +60,12 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
 
   void _openModelPicker(AgentModelData data) {
     final cubit = context.read<NewSessionCubit>();
+    final agentModel = data.agentModel;
     ModelPickerSheet.show(
       context,
       providers: data.providers,
-      selectedProviderID: data.providerID ?? "",
-      selectedModelID: data.modelID ?? "",
+      selectedProviderID: agentModel?.providerID ?? "",
+      selectedModelID: agentModel?.modelID ?? "",
       onModelChanged: cubit.selectModel,
     );
   }
@@ -73,7 +73,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
   void _openVariantPicker(AgentModelData data) {
     VariantPickerSheet.show(
       context,
-      selectedVariant: data.variant,
+      selectedVariant: data.selectedVariant,
       availableVariants: data.availableVariants,
       onVariantChanged: context.read<NewSessionCubit>().selectVariant,
     );
@@ -105,17 +105,31 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     final selectedAgent = data?.agent;
     if (data == null || data.agents.isEmpty || selectedAgent == null) return null;
 
+    final modelName = _resolveModelName(data);
     return AgentModelButtons(
-      providers: data.providers,
       availableVariants: data.availableVariants,
+      modelName: modelName,
       selectedAgent: selectedAgent,
-      selectedProviderID: data.providerID ?? "",
-      selectedModelID: data.modelID ?? "",
-      selectedVariant: data.variant,
+      selectedVariant: data.selectedVariant,
       onAgentTap: () => _openAgentPicker(data),
       onModelTap: () => _openModelPicker(data),
       onVariantTap: () => _openVariantPicker(data),
     );
+  }
+
+  String _resolveModelName(AgentModelData data) {
+    final providerID = data.agentModel?.providerID;
+    final modelID = data.agentModel?.modelID;
+    final loc = context.loc;
+    if (providerID == null || modelID == null) return loc.sessionDetailPickerModel;
+    for (final provider in data.providers) {
+      if (provider.id == providerID) {
+        final model = provider.models[modelID];
+        if (model != null) return model.name;
+      }
+    }
+    if (modelID.isNotEmpty) return modelID;
+    return loc.sessionDetailPickerModel;
   }
 
   @override

@@ -78,7 +78,6 @@ export "src/routing/app_routes.dart";
 export "src/routing/auth_redirect_service.dart";
 export "src/routing/notification_open_dispatcher.dart";
 // Services
-export "src/services/agent_variant_options_builder.dart";
 export "src/services/foreground_notification_dispatcher.dart";
 export "src/services/notification_registration_service.dart";
 export "src/services/session_detail_load_service.dart";

@@ -17,11 +17,13 @@ import "key_exchange.dart";
 import "metadata_service.dart";
 import "models/bridge_config.dart";
 import "relay_client.dart";
+import "repositories/agent_repository.dart";
 import "repositories/permission_repository.dart";
 import "repositories/project_repository.dart";
 import "repositories/provider_repository.dart";
 import "repositories/session_repository.dart";
 import "routing/abort_session_handler.dart";
+import "routing/get_agents_handler.dart";
 import "routing/get_commands_handler.dart";
 import "routing/get_session_diffs_handler.dart";
 import "routing/request_router.dart";
@@ -220,7 +222,10 @@ class OrchestratorSession {
            prSyncService: prSyncService,
            projectRepository: projectRepository,
            providerRepository: ProviderRepository(plugin: plugin),
-          permissionRepository: permissionRepository,
+            getAgentsHandler: GetAgentsHandler(
+              AgentRepository(plugin: plugin),
+            ),
+           permissionRepository: permissionRepository,
           sessionPersistenceService: sessionPersistenceService,
           worktreeService: worktreeService,
           sessionDiffsHandler: GetSessionDiffsHandler(

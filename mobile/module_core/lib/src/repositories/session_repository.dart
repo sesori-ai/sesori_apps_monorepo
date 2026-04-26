@@ -7,8 +7,11 @@ import "../api/session_api.dart";
 @lazySingleton
 class SessionRepository {
   final SessionApi _api;
+  final _providerCache = <String, ProviderListResponse>{};
 
-  SessionRepository({required SessionApi api}) : _api = api;
+  SessionRepository({
+    required SessionApi api,
+  }) : _api = api;
 
   Future<ApiResponse<Session>> archiveSession({
     required String sessionId,
@@ -90,8 +93,18 @@ class SessionRepository {
     return _api.listAgents();
   }
 
-  Future<ApiResponse<ProviderListResponse>> listProviders() {
-    return _api.listProviders();
+  Future<ApiResponse<ProviderListResponse>> listProviders({required String projectId}) async {
+    if (_providerCache.containsKey(projectId)) {
+      return ApiResponse.success(_providerCache[projectId]!);
+    }
+
+    final response = await _api.listProviders(projectId: projectId);
+
+    if (response is SuccessResponse<ProviderListResponse>) {
+      _providerCache[projectId] = response.data;
+    }
+
+    return response;
   }
 
   Future<ApiResponse<CommandListResponse>> listCommands({required String projectId}) {

@@ -66,6 +66,7 @@ class RequestRouter {
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
     required GetSessionDiffsHandler sessionDiffsHandler,
+    required GetAgentsHandler getAgentsHandler,
   }) : _handlers = _buildHandlers(
           plugin: plugin,
           getCommandsHandler: getCommandsHandler,
@@ -81,6 +82,7 @@ class RequestRouter {
           sessionPersistenceService: sessionPersistenceService,
           worktreeService: worktreeService,
           sessionDiffsHandler: sessionDiffsHandler,
+          getAgentsHandler: getAgentsHandler,
         );
 
   static List<RequestHandlerBase> _buildHandlers({
@@ -98,6 +100,7 @@ class RequestRouter {
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
     required GetSessionDiffsHandler sessionDiffsHandler,
+    required GetAgentsHandler getAgentsHandler,
   }) {
     return [
       HealthCheckHandler(plugin),
@@ -124,7 +127,7 @@ class RequestRouter {
       sendPromptHandler,
       abortSessionHandler,
       GetProvidersHandler(providerRepository),
-      GetAgentsHandler(plugin),
+      getAgentsHandler,
       GetSessionQuestionsHandler(plugin),
       GetProjectQuestionsHandler(plugin),
       ReplyToQuestionHandler(plugin),

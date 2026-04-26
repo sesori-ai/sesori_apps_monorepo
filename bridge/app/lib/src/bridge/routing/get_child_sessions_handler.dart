@@ -3,7 +3,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../repositories/session_repository.dart";
 import "request_handler.dart";
 
-/// Handles `GET /session/:id/children` — returns direct child sessions.
+/// Handles `POST /session/:id/children` — returns direct child sessions.
 class GetChildSessionsHandler extends BodyRequestHandler<SessionIdRequest, SessionListResponse> {
   final SessionRepository _sessionRepository;
 

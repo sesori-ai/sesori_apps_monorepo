@@ -22,8 +22,6 @@ mixin _$ProviderInfo {
 @pragma('vm:prefer-inline')
 $ProviderInfoCopyWith<ProviderInfo> get copyWith => _$ProviderInfoCopyWithImpl<ProviderInfo>(this as ProviderInfo, _$identity);
 
-  /// Serializes this ProviderInfo to a JSON map.
-  Map<String, dynamic> toJson();
 
 
 @override
@@ -79,7 +77,7 @@ as Map<String, ProviderModel>,
 
 
 /// @nodoc
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 
 class _ProviderInfo implements ProviderInfo {
   const _ProviderInfo({required this.id, required this.name, required final  Map<String, ProviderModel> models}): _models = models;
@@ -101,10 +99,7 @@ class _ProviderInfo implements ProviderInfo {
 @pragma('vm:prefer-inline')
 _$ProviderInfoCopyWith<_ProviderInfo> get copyWith => __$ProviderInfoCopyWithImpl<_ProviderInfo>(this, _$identity);
 
-@override
-Map<String, dynamic> toJson() {
-  return _$ProviderInfoToJson(this, );
-}
+
 
 @override
 bool operator ==(Object other) {
@@ -161,29 +156,27 @@ as Map<String, ProviderModel>,
 /// @nodoc
 mixin _$ProviderModel {
 
- String get id; String get providerID; String get name; String? get family; String get status;@JsonKey(name: "release_date") String? get releaseDate;
+ String get id; String get providerID; String get name;@JsonKey(fromJson: _variantsFromJson) List<String> get variants; String? get family; String get status;@JsonKey(name: "release_date") String? get releaseDate;
 /// Create a copy of ProviderModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
 $ProviderModelCopyWith<ProviderModel> get copyWith => _$ProviderModelCopyWithImpl<ProviderModel>(this as ProviderModel, _$identity);
 
-  /// Serializes this ProviderModel to a JSON map.
-  Map<String, dynamic> toJson();
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProviderModel&&(identical(other.id, id) || other.id == id)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.name, name) || other.name == name)&&(identical(other.family, family) || other.family == family)&&(identical(other.status, status) || other.status == status)&&(identical(other.releaseDate, releaseDate) || other.releaseDate == releaseDate));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProviderModel&&(identical(other.id, id) || other.id == id)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other.variants, variants)&&(identical(other.family, family) || other.family == family)&&(identical(other.status, status) || other.status == status)&&(identical(other.releaseDate, releaseDate) || other.releaseDate == releaseDate));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,providerID,name,family,status,releaseDate);
+int get hashCode => Object.hash(runtimeType,id,providerID,name,const DeepCollectionEquality().hash(variants),family,status,releaseDate);
 
 @override
 String toString() {
-  return 'ProviderModel(id: $id, providerID: $providerID, name: $name, family: $family, status: $status, releaseDate: $releaseDate)';
+  return 'ProviderModel(id: $id, providerID: $providerID, name: $name, variants: $variants, family: $family, status: $status, releaseDate: $releaseDate)';
 }
 
 
@@ -194,7 +187,7 @@ abstract mixin class $ProviderModelCopyWith<$Res>  {
   factory $ProviderModelCopyWith(ProviderModel value, $Res Function(ProviderModel) _then) = _$ProviderModelCopyWithImpl;
 @useResult
 $Res call({
- String id, String providerID, String name, String? family, String status,@JsonKey(name: "release_date") String? releaseDate
+ String id, String providerID, String name,@JsonKey(fromJson: _variantsFromJson) List<String> variants, String? family, String status,@JsonKey(name: "release_date") String? releaseDate
 });
 
 
@@ -211,12 +204,13 @@ class _$ProviderModelCopyWithImpl<$Res>
 
 /// Create a copy of ProviderModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? providerID = null,Object? name = null,Object? family = freezed,Object? status = null,Object? releaseDate = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? providerID = null,Object? name = null,Object? variants = null,Object? family = freezed,Object? status = null,Object? releaseDate = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,providerID: null == providerID ? _self.providerID : providerID // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,family: freezed == family ? _self.family : family // ignore: cast_nullable_to_non_nullable
+as String,variants: null == variants ? _self.variants : variants // ignore: cast_nullable_to_non_nullable
+as List<String>,family: freezed == family ? _self.family : family // ignore: cast_nullable_to_non_nullable
 as String?,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as String,releaseDate: freezed == releaseDate ? _self.releaseDate : releaseDate // ignore: cast_nullable_to_non_nullable
 as String?,
@@ -228,15 +222,22 @@ as String?,
 
 
 /// @nodoc
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 
 class _ProviderModel implements ProviderModel {
-  const _ProviderModel({required this.id, required this.providerID, required this.name, this.family, this.status = "active", @JsonKey(name: "release_date") this.releaseDate});
+  const _ProviderModel({required this.id, required this.providerID, required this.name, @JsonKey(fromJson: _variantsFromJson) final  List<String> variants = const <String>[], this.family, this.status = "active", @JsonKey(name: "release_date") this.releaseDate}): _variants = variants;
   factory _ProviderModel.fromJson(Map<String, dynamic> json) => _$ProviderModelFromJson(json);
 
 @override final  String id;
 @override final  String providerID;
 @override final  String name;
+ final  List<String> _variants;
+@override@JsonKey(fromJson: _variantsFromJson) List<String> get variants {
+  if (_variants is EqualUnmodifiableListView) return _variants;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_variants);
+}
+
 @override final  String? family;
 @override@JsonKey() final  String status;
 @override@JsonKey(name: "release_date") final  String? releaseDate;
@@ -247,23 +248,20 @@ class _ProviderModel implements ProviderModel {
 @pragma('vm:prefer-inline')
 _$ProviderModelCopyWith<_ProviderModel> get copyWith => __$ProviderModelCopyWithImpl<_ProviderModel>(this, _$identity);
 
-@override
-Map<String, dynamic> toJson() {
-  return _$ProviderModelToJson(this, );
-}
+
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProviderModel&&(identical(other.id, id) || other.id == id)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.name, name) || other.name == name)&&(identical(other.family, family) || other.family == family)&&(identical(other.status, status) || other.status == status)&&(identical(other.releaseDate, releaseDate) || other.releaseDate == releaseDate));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProviderModel&&(identical(other.id, id) || other.id == id)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other._variants, _variants)&&(identical(other.family, family) || other.family == family)&&(identical(other.status, status) || other.status == status)&&(identical(other.releaseDate, releaseDate) || other.releaseDate == releaseDate));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,providerID,name,family,status,releaseDate);
+int get hashCode => Object.hash(runtimeType,id,providerID,name,const DeepCollectionEquality().hash(_variants),family,status,releaseDate);
 
 @override
 String toString() {
-  return 'ProviderModel(id: $id, providerID: $providerID, name: $name, family: $family, status: $status, releaseDate: $releaseDate)';
+  return 'ProviderModel(id: $id, providerID: $providerID, name: $name, variants: $variants, family: $family, status: $status, releaseDate: $releaseDate)';
 }
 
 
@@ -274,7 +272,7 @@ abstract mixin class _$ProviderModelCopyWith<$Res> implements $ProviderModelCopy
   factory _$ProviderModelCopyWith(_ProviderModel value, $Res Function(_ProviderModel) _then) = __$ProviderModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String providerID, String name, String? family, String status,@JsonKey(name: "release_date") String? releaseDate
+ String id, String providerID, String name,@JsonKey(fromJson: _variantsFromJson) List<String> variants, String? family, String status,@JsonKey(name: "release_date") String? releaseDate
 });
 
 
@@ -291,12 +289,13 @@ class __$ProviderModelCopyWithImpl<$Res>
 
 /// Create a copy of ProviderModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? providerID = null,Object? name = null,Object? family = freezed,Object? status = null,Object? releaseDate = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? providerID = null,Object? name = null,Object? variants = null,Object? family = freezed,Object? status = null,Object? releaseDate = freezed,}) {
   return _then(_ProviderModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,providerID: null == providerID ? _self.providerID : providerID // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,family: freezed == family ? _self.family : family // ignore: cast_nullable_to_non_nullable
+as String,variants: null == variants ? _self._variants : variants // ignore: cast_nullable_to_non_nullable
+as List<String>,family: freezed == family ? _self.family : family // ignore: cast_nullable_to_non_nullable
 as String?,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as String,releaseDate: freezed == releaseDate ? _self.releaseDate : releaseDate // ignore: cast_nullable_to_non_nullable
 as String?,
@@ -310,29 +309,27 @@ as String?,
 /// @nodoc
 mixin _$ProviderListResponse {
 
- List<ProviderInfo> get all;@JsonKey(name: "default") Map<String, String> get defaults; List<String> get connected;
+@JsonKey(readValue: _readProvidersJsonKey) List<ProviderInfo> get providers;@JsonKey(name: "default") Map<String, String> get defaults; List<String>? get connected;
 /// Create a copy of ProviderListResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
 $ProviderListResponseCopyWith<ProviderListResponse> get copyWith => _$ProviderListResponseCopyWithImpl<ProviderListResponse>(this as ProviderListResponse, _$identity);
 
-  /// Serializes this ProviderListResponse to a JSON map.
-  Map<String, dynamic> toJson();
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProviderListResponse&&const DeepCollectionEquality().equals(other.all, all)&&const DeepCollectionEquality().equals(other.defaults, defaults)&&const DeepCollectionEquality().equals(other.connected, connected));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProviderListResponse&&const DeepCollectionEquality().equals(other.providers, providers)&&const DeepCollectionEquality().equals(other.defaults, defaults)&&const DeepCollectionEquality().equals(other.connected, connected));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(all),const DeepCollectionEquality().hash(defaults),const DeepCollectionEquality().hash(connected));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(providers),const DeepCollectionEquality().hash(defaults),const DeepCollectionEquality().hash(connected));
 
 @override
 String toString() {
-  return 'ProviderListResponse(all: $all, defaults: $defaults, connected: $connected)';
+  return 'ProviderListResponse(providers: $providers, defaults: $defaults, connected: $connected)';
 }
 
 
@@ -343,7 +340,7 @@ abstract mixin class $ProviderListResponseCopyWith<$Res>  {
   factory $ProviderListResponseCopyWith(ProviderListResponse value, $Res Function(ProviderListResponse) _then) = _$ProviderListResponseCopyWithImpl;
 @useResult
 $Res call({
- List<ProviderInfo> all,@JsonKey(name: "default") Map<String, String> defaults, List<String> connected
+@JsonKey(readValue: _readProvidersJsonKey) List<ProviderInfo> providers,@JsonKey(name: "default") Map<String, String> defaults, List<String>? connected
 });
 
 
@@ -360,12 +357,12 @@ class _$ProviderListResponseCopyWithImpl<$Res>
 
 /// Create a copy of ProviderListResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? all = null,Object? defaults = null,Object? connected = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? providers = null,Object? defaults = null,Object? connected = freezed,}) {
   return _then(_self.copyWith(
-all: null == all ? _self.all : all // ignore: cast_nullable_to_non_nullable
+providers: null == providers ? _self.providers : providers // ignore: cast_nullable_to_non_nullable
 as List<ProviderInfo>,defaults: null == defaults ? _self.defaults : defaults // ignore: cast_nullable_to_non_nullable
-as Map<String, String>,connected: null == connected ? _self.connected : connected // ignore: cast_nullable_to_non_nullable
-as List<String>,
+as Map<String, String>,connected: freezed == connected ? _self.connected : connected // ignore: cast_nullable_to_non_nullable
+as List<String>?,
   ));
 }
 
@@ -374,17 +371,17 @@ as List<String>,
 
 
 /// @nodoc
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 
 class _ProviderListResponse implements ProviderListResponse {
-  const _ProviderListResponse({required final  List<ProviderInfo> all, @JsonKey(name: "default") required final  Map<String, String> defaults, required final  List<String> connected}): _all = all,_defaults = defaults,_connected = connected;
+  const _ProviderListResponse({@JsonKey(readValue: _readProvidersJsonKey) required final  List<ProviderInfo> providers, @JsonKey(name: "default") required final  Map<String, String> defaults, required final  List<String>? connected}): _providers = providers,_defaults = defaults,_connected = connected;
   factory _ProviderListResponse.fromJson(Map<String, dynamic> json) => _$ProviderListResponseFromJson(json);
 
- final  List<ProviderInfo> _all;
-@override List<ProviderInfo> get all {
-  if (_all is EqualUnmodifiableListView) return _all;
+ final  List<ProviderInfo> _providers;
+@override@JsonKey(readValue: _readProvidersJsonKey) List<ProviderInfo> get providers {
+  if (_providers is EqualUnmodifiableListView) return _providers;
   // ignore: implicit_dynamic_type
-  return EqualUnmodifiableListView(_all);
+  return EqualUnmodifiableListView(_providers);
 }
 
  final  Map<String, String> _defaults;
@@ -394,11 +391,13 @@ class _ProviderListResponse implements ProviderListResponse {
   return EqualUnmodifiableMapView(_defaults);
 }
 
- final  List<String> _connected;
-@override List<String> get connected {
+ final  List<String>? _connected;
+@override List<String>? get connected {
+  final value = _connected;
+  if (value == null) return null;
   if (_connected is EqualUnmodifiableListView) return _connected;
   // ignore: implicit_dynamic_type
-  return EqualUnmodifiableListView(_connected);
+  return EqualUnmodifiableListView(value);
 }
 
 
@@ -408,23 +407,20 @@ class _ProviderListResponse implements ProviderListResponse {
 @pragma('vm:prefer-inline')
 _$ProviderListResponseCopyWith<_ProviderListResponse> get copyWith => __$ProviderListResponseCopyWithImpl<_ProviderListResponse>(this, _$identity);
 
-@override
-Map<String, dynamic> toJson() {
-  return _$ProviderListResponseToJson(this, );
-}
+
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProviderListResponse&&const DeepCollectionEquality().equals(other._all, _all)&&const DeepCollectionEquality().equals(other._defaults, _defaults)&&const DeepCollectionEquality().equals(other._connected, _connected));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProviderListResponse&&const DeepCollectionEquality().equals(other._providers, _providers)&&const DeepCollectionEquality().equals(other._defaults, _defaults)&&const DeepCollectionEquality().equals(other._connected, _connected));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_all),const DeepCollectionEquality().hash(_defaults),const DeepCollectionEquality().hash(_connected));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_providers),const DeepCollectionEquality().hash(_defaults),const DeepCollectionEquality().hash(_connected));
 
 @override
 String toString() {
-  return 'ProviderListResponse(all: $all, defaults: $defaults, connected: $connected)';
+  return 'ProviderListResponse(providers: $providers, defaults: $defaults, connected: $connected)';
 }
 
 
@@ -435,7 +431,7 @@ abstract mixin class _$ProviderListResponseCopyWith<$Res> implements $ProviderLi
   factory _$ProviderListResponseCopyWith(_ProviderListResponse value, $Res Function(_ProviderListResponse) _then) = __$ProviderListResponseCopyWithImpl;
 @override @useResult
 $Res call({
- List<ProviderInfo> all,@JsonKey(name: "default") Map<String, String> defaults, List<String> connected
+@JsonKey(readValue: _readProvidersJsonKey) List<ProviderInfo> providers,@JsonKey(name: "default") Map<String, String> defaults, List<String>? connected
 });
 
 
@@ -452,12 +448,12 @@ class __$ProviderListResponseCopyWithImpl<$Res>
 
 /// Create a copy of ProviderListResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? all = null,Object? defaults = null,Object? connected = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? providers = null,Object? defaults = null,Object? connected = freezed,}) {
   return _then(_ProviderListResponse(
-all: null == all ? _self._all : all // ignore: cast_nullable_to_non_nullable
+providers: null == providers ? _self._providers : providers // ignore: cast_nullable_to_non_nullable
 as List<ProviderInfo>,defaults: null == defaults ? _self._defaults : defaults // ignore: cast_nullable_to_non_nullable
-as Map<String, String>,connected: null == connected ? _self._connected : connected // ignore: cast_nullable_to_non_nullable
-as List<String>,
+as Map<String, String>,connected: freezed == connected ? _self._connected : connected // ignore: cast_nullable_to_non_nullable
+as List<String>?,
   ));
 }
 

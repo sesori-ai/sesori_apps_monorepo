@@ -100,11 +100,9 @@ class SessionDetailLoadedView extends StatelessWidget {
             onAbort: () => context.read<SessionDetailCubit>().abort(),
             header: null,
             composerHeader: AgentModelButtons(
-              providers: state.availableProviders,
               availableVariants: state.availableVariants,
+              modelName: _resolveModelName(state),
               selectedAgent: state.selectedAgent,
-              selectedProviderID: state.selectedProviderID,
-              selectedModelID: state.selectedModelID,
               selectedVariant: state.selectedVariant,
               onAgentTap: onOpenAgentPicker,
               onModelTap: onOpenModelPicker,
@@ -117,6 +115,21 @@ class SessionDetailLoadedView extends StatelessWidget {
           ),
       ],
     );
+  }
+
+  String _resolveModelName(SessionDetailLoaded state) {
+    final providerID = state.selectedAgentModel?.providerID;
+    final modelID = state.selectedAgentModel?.modelID;
+    const fallback = 'Model';
+    if (providerID == null || modelID == null) return fallback;
+    for (final provider in state.availableProviders) {
+      if (provider.id == providerID) {
+        final model = provider.models[modelID];
+        if (model != null) return model.name;
+      }
+    }
+    if (modelID.isNotEmpty) return modelID;
+    return fallback;
   }
 }
 

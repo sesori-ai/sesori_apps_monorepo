@@ -3,6 +3,7 @@ import "dart:convert";
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/agent_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/provider_repository.dart";
@@ -10,6 +11,7 @@ import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.da
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/abort_session_handler.dart";
+import "package:sesori_bridge/src/bridge/routing/get_agents_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/get_commands_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/get_session_diffs_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/request_router.dart";
@@ -94,6 +96,7 @@ void main() {
         prSyncService: FakePrSyncService(),
         projectRepository: projectRepository,
         providerRepository: providerRepository,
+        getAgentsHandler: GetAgentsHandler(AgentRepository(plugin: plugin)),
         permissionRepository: permissionRepository,
         sessionPersistenceService: sessionPersistenceService,
         worktreeService: worktreeService,
@@ -412,6 +415,7 @@ void main() {
         prSyncService: spyPrSyncService,
         projectRepository: projectRepository,
         providerRepository: providerRepository,
+        getAgentsHandler: GetAgentsHandler(AgentRepository(plugin: plugin)),
         permissionRepository: permissionRepository,
         sessionPersistenceService: sessionPersistenceService,
         worktreeService: worktreeService,

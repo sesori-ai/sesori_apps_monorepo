@@ -194,7 +194,9 @@ void delegateSessionRepositoryToService({
   );
   when(() => repository.getSessionStatuses()).thenAnswer((_) => service.getSessionStatuses());
   when(() => repository.listAgents()).thenAnswer((_) => service.listAgents());
-  when(() => repository.listProviders()).thenAnswer((_) => service.listProviders());
+  when(() => repository.listProviders(projectId: any(named: "projectId"))).thenAnswer(
+    (invocation) => service.listProviders(projectId: invocation.namedArguments[#projectId] as String),
+  );
   when(() => repository.listCommands(projectId: any(named: "projectId"))).thenAnswer(
     (invocation) => service.listCommands(projectId: invocation.namedArguments[#projectId] as String?),
   );
@@ -397,7 +399,6 @@ AgentInfo testAgentInfo() {
     name: "coder",
     description: "A coding assistant",
     model: null,
-    variant: null,
     mode: AgentMode.primary,
   );
 }
@@ -433,6 +434,7 @@ ProviderListResponse testProviderListResponse() {
             id: "claude-3-5-sonnet",
             providerID: "anthropic",
             name: "Claude 3.5 Sonnet",
+            variants: ["xhigh"],
             family: null,
             releaseDate: null,
           ),

@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PluginModel {
 
- String get id; String get name; String? get family; bool get isAvailable; DateTime? get releaseDate;
+ String get id; String get name; List<String> get variants; String? get family; bool get isAvailable; DateTime? get releaseDate;
 /// Create a copy of PluginModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -27,16 +27,16 @@ $PluginModelCopyWith<PluginModel> get copyWith => _$PluginModelCopyWithImpl<Plug
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginModel&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.family, family) || other.family == family)&&(identical(other.isAvailable, isAvailable) || other.isAvailable == isAvailable)&&(identical(other.releaseDate, releaseDate) || other.releaseDate == releaseDate));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginModel&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other.variants, variants)&&(identical(other.family, family) || other.family == family)&&(identical(other.isAvailable, isAvailable) || other.isAvailable == isAvailable)&&(identical(other.releaseDate, releaseDate) || other.releaseDate == releaseDate));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,family,isAvailable,releaseDate);
+int get hashCode => Object.hash(runtimeType,id,name,const DeepCollectionEquality().hash(variants),family,isAvailable,releaseDate);
 
 @override
 String toString() {
-  return 'PluginModel(id: $id, name: $name, family: $family, isAvailable: $isAvailable, releaseDate: $releaseDate)';
+  return 'PluginModel(id: $id, name: $name, variants: $variants, family: $family, isAvailable: $isAvailable, releaseDate: $releaseDate)';
 }
 
 
@@ -47,7 +47,7 @@ abstract mixin class $PluginModelCopyWith<$Res>  {
   factory $PluginModelCopyWith(PluginModel value, $Res Function(PluginModel) _then) = _$PluginModelCopyWithImpl;
 @useResult
 $Res call({
- String id, String name, String? family, bool isAvailable, DateTime? releaseDate
+ String id, String name, List<String> variants, String? family, bool isAvailable, DateTime? releaseDate
 });
 
 
@@ -64,11 +64,12 @@ class _$PluginModelCopyWithImpl<$Res>
 
 /// Create a copy of PluginModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? family = freezed,Object? isAvailable = null,Object? releaseDate = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? variants = null,Object? family = freezed,Object? isAvailable = null,Object? releaseDate = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,family: freezed == family ? _self.family : family // ignore: cast_nullable_to_non_nullable
+as String,variants: null == variants ? _self.variants : variants // ignore: cast_nullable_to_non_nullable
+as List<String>,family: freezed == family ? _self.family : family // ignore: cast_nullable_to_non_nullable
 as String?,isAvailable: null == isAvailable ? _self.isAvailable : isAvailable // ignore: cast_nullable_to_non_nullable
 as bool,releaseDate: freezed == releaseDate ? _self.releaseDate : releaseDate // ignore: cast_nullable_to_non_nullable
 as DateTime?,
@@ -83,11 +84,18 @@ as DateTime?,
 @JsonSerializable(createFactory: false)
 
 class _PluginModel implements PluginModel {
-  const _PluginModel({required this.id, required this.name, this.family, this.isAvailable = true, this.releaseDate});
+  const _PluginModel({required this.id, required this.name, required final  List<String> variants, this.family, this.isAvailable = true, this.releaseDate}): _variants = variants;
   
 
 @override final  String id;
 @override final  String name;
+ final  List<String> _variants;
+@override List<String> get variants {
+  if (_variants is EqualUnmodifiableListView) return _variants;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_variants);
+}
+
 @override final  String? family;
 @override@JsonKey() final  bool isAvailable;
 @override final  DateTime? releaseDate;
@@ -105,16 +113,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginModel&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.family, family) || other.family == family)&&(identical(other.isAvailable, isAvailable) || other.isAvailable == isAvailable)&&(identical(other.releaseDate, releaseDate) || other.releaseDate == releaseDate));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginModel&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other._variants, _variants)&&(identical(other.family, family) || other.family == family)&&(identical(other.isAvailable, isAvailable) || other.isAvailable == isAvailable)&&(identical(other.releaseDate, releaseDate) || other.releaseDate == releaseDate));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,family,isAvailable,releaseDate);
+int get hashCode => Object.hash(runtimeType,id,name,const DeepCollectionEquality().hash(_variants),family,isAvailable,releaseDate);
 
 @override
 String toString() {
-  return 'PluginModel(id: $id, name: $name, family: $family, isAvailable: $isAvailable, releaseDate: $releaseDate)';
+  return 'PluginModel(id: $id, name: $name, variants: $variants, family: $family, isAvailable: $isAvailable, releaseDate: $releaseDate)';
 }
 
 
@@ -125,7 +133,7 @@ abstract mixin class _$PluginModelCopyWith<$Res> implements $PluginModelCopyWith
   factory _$PluginModelCopyWith(_PluginModel value, $Res Function(_PluginModel) _then) = __$PluginModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String name, String? family, bool isAvailable, DateTime? releaseDate
+ String id, String name, List<String> variants, String? family, bool isAvailable, DateTime? releaseDate
 });
 
 
@@ -142,11 +150,12 @@ class __$PluginModelCopyWithImpl<$Res>
 
 /// Create a copy of PluginModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? family = freezed,Object? isAvailable = null,Object? releaseDate = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? variants = null,Object? family = freezed,Object? isAvailable = null,Object? releaseDate = freezed,}) {
   return _then(_PluginModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,family: freezed == family ? _self.family : family // ignore: cast_nullable_to_non_nullable
+as String,variants: null == variants ? _self._variants : variants // ignore: cast_nullable_to_non_nullable
+as List<String>,family: freezed == family ? _self.family : family // ignore: cast_nullable_to_non_nullable
 as String?,isAvailable: null == isAvailable ? _self.isAvailable : isAvailable // ignore: cast_nullable_to_non_nullable
 as bool,releaseDate: freezed == releaseDate ? _self.releaseDate : releaseDate // ignore: cast_nullable_to_non_nullable
 as DateTime?,

@@ -7,7 +7,7 @@ import "../../core/di/injection.dart";
 import "widgets/session_detail_body.dart";
 
 class SessionDetailScreen extends StatelessWidget {
-  final String? projectId;
+  final String projectId;
   final String sessionId;
   final String? sessionTitle;
   final bool readOnly;
@@ -28,7 +28,6 @@ class SessionDetailScreen extends StatelessWidget {
         loadService: getIt<SessionDetailLoadService>(),
         promptDispatcher: getIt<SessionRepository>(),
         permissionRepository: getIt<PermissionRepository>(),
-        variantOptionsBuilder: getIt<AgentVariantOptionsBuilder>(),
         sessionId: sessionId,
         projectId: projectId,
         notificationCanceller: getIt<NotificationCanceller>(),

@@ -452,6 +452,21 @@ class OpenCodeApi {
     return ProviderListResponse.fromJson(jsonDecodeMap(response.body));
   }
 
+  Future<ProviderListResponse> listConfigProviders({required String? directory}) async {
+    final headers = <String, String>{
+      ..._authHeaders,
+      _directoryOpenCodeHeader: ?directory,
+    };
+    final response = await _client.get(
+      Uri.parse("$serverURL/config/providers"),
+      headers: headers,
+    );
+    _ensureSuccess(response, "GET /config/providers");
+    return ProviderListResponse.fromJson(
+      jsonDecodeMap(response.body),
+    );
+  }
+
   Future<Map<String, SessionStatus>> getSessionStatuses({required String? directory}) async {
     final headers = <String, String>{
       ..._authHeaders,

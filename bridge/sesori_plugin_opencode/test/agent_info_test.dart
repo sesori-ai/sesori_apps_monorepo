@@ -19,7 +19,7 @@ void main() {
 
       final pluginAgent = agent.toPlugin();
       expect(pluginAgent.mode, equals(PluginAgentMode.unknown));
-      expect(pluginAgent.model, equals(const PluginAgentModel(modelID: "gpt-4.1", providerID: "openai")));
+      expect(pluginAgent.model, equals(const PluginAgentModel(modelID: "gpt-4.1", providerID: "openai", variant: "high")));
     });
   });
 }

@@ -24,10 +24,11 @@ class SessionApi {
     );
   }
 
-  Future<ApiResponse<ProviderListResponse>> listProviders() {
-    return _client.get(
+  Future<ApiResponse<ProviderListResponse>> listProviders({required String projectId}) {
+    return _client.post(
       "/provider",
       fromJson: ProviderListResponse.fromJson,
+      body: ProjectIdRequest(projectId: projectId),
     );
   }
 

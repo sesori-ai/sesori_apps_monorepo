@@ -13,7 +13,6 @@ import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
-import "package:sesori_dart_core/src/services/agent_variant_options_builder.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -111,8 +110,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -125,8 +124,8 @@ void main() {
         verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
         verify(() => mockSessionService.getSessionStatuses()).called(1);
         verify(() => mockSessionService.listAgents()).called(1);
-        verify(() => mockSessionService.listProviders()).called(1);
-        verify(() => mockSessionService.listCommands(projectId: "test-project")).called(1);
+        verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).called(1);
+        verify(() => mockSessionService.listCommands(projectId: "project-1")).called(1);
         verify(() => mockConnectionService.sessionEvents(sessionId)).called(1);
         verify(() => mockConnectionService.events).called(1);
       },
@@ -144,8 +143,8 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
-          variantOptionsBuilder: const AgentVariantOptionsBuilder(),
           sessionId: sessionId,
+          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -162,8 +161,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -182,8 +181,8 @@ void main() {
         verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(2);
         verify(() => mockSessionService.getSessionStatuses()).called(2);
         verify(() => mockSessionService.listAgents()).called(2);
-        verify(() => mockSessionService.listProviders()).called(2);
-        verify(() => mockSessionService.listCommands(projectId: "test-project")).called(2);
+        verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).called(2);
+        verify(() => mockSessionService.listCommands(projectId: "project-1")).called(2);
       },
     );
 
@@ -194,8 +193,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -228,8 +227,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -262,8 +261,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -311,8 +310,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -337,8 +336,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -349,8 +348,11 @@ void main() {
       expect: () => [
         isA<SessionDetailLoaded>(),
         isA<SessionDetailLoaded>()
-            .having((state) => state.selectedProviderID, "selectedProviderID", "openai")
-            .having((state) => state.selectedModelID, "selectedModelID", "gpt-4.1"),
+            .having(
+              (state) => state.selectedAgentModel,
+              "selectedAgentModel",
+              const AgentModel(providerID: "openai", modelID: "gpt-4.1", variant: null),
+            ),
       ],
     );
 
@@ -361,8 +363,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -390,8 +392,8 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
-          variantOptionsBuilder: const AgentVariantOptionsBuilder(),
           sessionId: sessionId,
+          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -441,8 +443,8 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
-          variantOptionsBuilder: const AgentVariantOptionsBuilder(),
           sessionId: sessionId,
+          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -473,8 +475,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -516,8 +518,8 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
-          variantOptionsBuilder: const AgentVariantOptionsBuilder(),
           sessionId: sessionId,
+          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -546,8 +548,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -577,8 +579,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -606,8 +608,8 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
-          variantOptionsBuilder: const AgentVariantOptionsBuilder(),
           sessionId: sessionId,
+          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -634,8 +636,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -677,8 +679,8 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
-          variantOptionsBuilder: const AgentVariantOptionsBuilder(),
           sessionId: sessionId,
+          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -706,8 +708,8 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
-          variantOptionsBuilder: const AgentVariantOptionsBuilder(),
           sessionId: sessionId,
+          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -743,8 +745,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -769,8 +771,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -813,8 +815,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -870,8 +872,8 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
-          variantOptionsBuilder: const AgentVariantOptionsBuilder(),
           sessionId: sessionId,
+          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -922,8 +924,8 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
-          variantOptionsBuilder: const AgentVariantOptionsBuilder(),
           sessionId: sessionId,
+          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -987,8 +989,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -1057,8 +1059,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       );
@@ -1135,8 +1137,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       );
@@ -1186,8 +1188,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -1270,8 +1272,8 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
-          variantOptionsBuilder: const AgentVariantOptionsBuilder(),
           sessionId: sessionId,
+          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -1403,7 +1405,7 @@ void _stubAllDefaults(
     ),
   );
   when(
-    () => service.listProviders(),
+    () => service.listProviders(projectId: any(named: "projectId")),
   ).thenAnswer(
     (_) => Future<ApiResponse<ProviderListResponse>>.value(
       ApiResponse.success(testProviderListResponse()),

@@ -11,7 +11,6 @@ import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.
 import "package:sesori_dart_core/src/platform/notification_canceller.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
-import "package:sesori_dart_core/src/services/agent_variant_options_builder.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -87,8 +86,8 @@ void main() {
       loadService: loadService,
       promptDispatcher: promptDispatcher,
       permissionRepository: mockPermissionRepository,
-      variantOptionsBuilder: const AgentVariantOptionsBuilder(),
       sessionId: _sessionId,
+      projectId: "project-1",
       notificationCanceller: mockNotificationCanceller,
       failureReporter: MockFailureReporter(),
     );
@@ -134,10 +133,10 @@ void main() {
         reply: any(named: "reply"),
       ),
     ).thenAnswer((_) async => ApiResponse.success(null));
-    when(() => mockLoadService.load(sessionId: _sessionId)).thenAnswer(
+    when(() => mockLoadService.load(sessionId: _sessionId, projectId: any(named: "projectId"))).thenAnswer(
       (_) async => const SessionDetailLoadResult.waitingForConnection(),
     );
-    when(() => mockLoadService.reload(sessionId: _sessionId)).thenAnswer(
+    when(() => mockLoadService.reload(sessionId: _sessionId, projectId: any(named: "projectId"))).thenAnswer(
       (_) async => const SessionDetailLoadResult.loaded(
         snapshot: SessionDetailSnapshot(
           projectId: "project-1",
@@ -160,8 +159,8 @@ void main() {
       loadService: mockLoadService,
       promptDispatcher: mockSessionRepository,
       permissionRepository: mockPermissionRepository,
-      variantOptionsBuilder: const AgentVariantOptionsBuilder(),
       sessionId: _sessionId,
+      projectId: "project-1",
       notificationCanceller: mockNotificationCanceller,
       failureReporter: MockFailureReporter(),
     );
@@ -169,8 +168,8 @@ void main() {
 
     await _awaitLoaded(cubit);
 
-    verify(() => mockLoadService.load(sessionId: _sessionId)).called(1);
-    verify(() => mockLoadService.reload(sessionId: _sessionId)).called(1);
+    verify(() => mockLoadService.load(sessionId: _sessionId, projectId: "project-1")).called(1);
+    verify(() => mockLoadService.reload(sessionId: _sessionId, projectId: "project-1")).called(1);
     expect(cubit.state, isA<SessionDetailLoaded>());
   });
 
@@ -244,15 +243,15 @@ void main() {
       loadService: mockLoadService,
       promptDispatcher: mockSessionRepository,
       permissionRepository: mockPermissionRepository,
-      variantOptionsBuilder: const AgentVariantOptionsBuilder(),
       sessionId: _sessionId,
+      projectId: "project-1",
       notificationCanceller: mockNotificationCanceller,
       failureReporter: MockFailureReporter(),
     );
     addTearDown(cubit.close);
 
     await _awaitLoaded(cubit);
-    verify(() => mockLoadService.load(sessionId: _sessionId, projectId: null)).called(1);
+    verify(() => mockLoadService.load(sessionId: _sessionId, projectId: "project-1")).called(1);
 
     globalEvents.add(SseEvent(data: const SesoriSseEvent.sessionsUpdated(projectID: "project-2")));
     await Future<void>.delayed(Duration.zero);
@@ -291,12 +290,12 @@ void _stubLoadApis(MockSessionService service) {
     (_) async => ApiResponse.success(
       const Agents(
         agents: [
-          AgentInfo(name: "build", description: "build", model: null, variant: null, mode: AgentMode.primary),
+          AgentInfo(name: "build", description: "build", model: null, mode: AgentMode.primary),
         ],
       ),
     ),
   );
-  when(() => service.listProviders()).thenAnswer(
+  when(() => service.listProviders(projectId: any(named: "projectId"))).thenAnswer(
     (_) async => ApiResponse.success(
       const ProviderListResponse(connectedOnly: false, items: <ProviderInfo>[]),
     ),

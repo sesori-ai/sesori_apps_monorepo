@@ -502,7 +502,7 @@ class _ThrowingSummaryPlugin implements BridgePlugin {
 
   @override
   Future<PluginProvidersResult> getProviders({
-    required bool connectedOnly,
+    required String projectId,
   }) async => const PluginProvidersResult(providers: []);
 
   @override

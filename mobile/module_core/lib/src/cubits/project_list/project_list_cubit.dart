@@ -35,10 +35,10 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     RouteSource routeSource, {
     required FailureReporter failureReporter,
   }) : _projectService = projectService,
-       _connectionService = connectionService,
-       _sseEventRepository = sseEventRepository,
-       _failureReporter = failureReporter,
-       super(const ProjectListState.loading()) {
+        _connectionService = connectionService,
+        _sseEventRepository = sseEventRepository,
+        _failureReporter = failureReporter,
+        super(const ProjectListState.loading()) {
     loadProjects();
 
     // 1. Immediate activity badge updates (no API call).

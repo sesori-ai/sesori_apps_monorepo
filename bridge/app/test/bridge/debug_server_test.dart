@@ -471,7 +471,7 @@ class _FakeBridgePlugin implements BridgePlugin {
   List<PluginProjectActivitySummary> getActiveSessionsSummary() => [];
 
   @override
-  Future<PluginProvidersResult> getProviders({required bool connectedOnly}) async =>
+  Future<PluginProvidersResult> getProviders({required String projectId}) async =>
       const PluginProvidersResult(providers: []);
 
   @override
@@ -640,7 +640,7 @@ class _TrackingBridgePlugin implements BridgePlugin {
   }) async {}
 
   @override
-  Future<PluginProvidersResult> getProviders({required bool connectedOnly}) async =>
+  Future<PluginProvidersResult> getProviders({required String projectId}) async =>
       const PluginProvidersResult(providers: []);
 
   @override

@@ -54,24 +54,23 @@ SessionDetailState _loadedState() {
     pendingPermissions: const [],
     sessionTitle: "Session",
     agent: null,
-    modelID: null,
-    providerID: null,
+    assistantAgentModel: null,
     children: const [],
     childStatuses: const {},
     queuedMessages: const [],
     availableAgents: [testAgentInfo()],
     availableProviders: [provider],
     availableCommands: const [],
-    availableVariants: const [
-      SessionVariant(id: "xhigh"),
-      SessionVariant(id: "low"),
-    ],
     selectedAgent: "coder",
-    selectedProviderID: provider.id,
-    selectedModelID: provider.defaultModelID!,
-    selectedVariant: null,
+    selectedAgentModel: AgentModel(
+      providerID: provider.id,
+      modelID: provider.defaultModelID!,
+      variant: "xhigh",
+    ),
     stagedCommand: null,
     isRefreshing: false,
+    availableVariants: const [SessionVariant(id: "xhigh")],
+    selectedVariant: const SessionVariant(id: "xhigh"),
   );
 }
 
@@ -105,12 +104,12 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(OutlinedButton, "Default"));
+    await tester.tap(find.widgetWithText(OutlinedButton, "xhigh"));
     await tester.pumpAndSettle();
 
     expect(find.text("Variant"), findsOneWidget);
 
-    await tester.tap(find.text("xhigh"));
+    await tester.tap(find.widgetWithText(ListTile, "xhigh"));
     await tester.pumpAndSettle();
 
     verify(() => cubit.selectVariant(const SessionVariant(id: "xhigh"))).called(1);

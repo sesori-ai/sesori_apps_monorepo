@@ -12,7 +12,6 @@ import "package:sesori_dart_core/src/platform/notification_canceller.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
-import "package:sesori_dart_core/src/services/agent_variant_options_builder.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -111,8 +110,8 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
-          variantOptionsBuilder: const AgentVariantOptionsBuilder(),
           sessionId: sessionId,
+          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: MockFailureReporter(),
         );
@@ -141,7 +140,7 @@ void main() {
         verifyNever(() => mockSessionService.getChildren(sessionId: sessionId));
         verifyNever(() => mockSessionService.getSessionStatuses());
         verifyNever(() => mockSessionService.listAgents());
-        verifyNever(() => mockSessionService.listProviders());
+        verifyNever(() => mockSessionService.listProviders(projectId: any(named: "projectId")));
 
         connectionStatus.add(connectedStatus);
         await Future<void>.delayed(const Duration(milliseconds: 20));
@@ -163,8 +162,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -190,7 +189,7 @@ void main() {
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
       verify(() => mockSessionService.listAgents()).called(1);
-      verify(() => mockSessionService.listProviders()).called(1);
+      verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).called(1);
 
       expect(emitted.first, isA<SessionDetailLoaded>().having((s) => s.isRefreshing, "isRefreshing", isTrue));
       expect(
@@ -201,14 +200,14 @@ void main() {
       );
     });
 
-    test("silent refresh preserves selectedAgent, selectedProviderID, selectedModelID, and selectedVariant", () async {
+    test("silent refresh preserves selectedAgent and selectedAgentModel", () async {
       final cubit = SessionDetailCubit(
         mockConnectionService,
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -223,12 +222,12 @@ void main() {
         (_) async => ApiResponse.success(
           const Agents(
             agents: [
-              AgentInfo(name: "build", description: "build", model: null, variant: null, mode: AgentMode.primary),
+              AgentInfo(name: "build", description: "build", model: null, mode: AgentMode.primary),
             ],
           ),
         ),
       );
-      when(() => mockSessionService.listProviders()).thenAnswer(
+      when(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer(
         (_) async => ApiResponse.success(
           const ProviderListResponse(
             connectedOnly: false,
@@ -242,6 +241,7 @@ void main() {
                     id: "claude-3-5-sonnet",
                     providerID: "anthropic",
                     name: "Claude 3.5 Sonnet",
+                    variants: [],
                     family: null,
                     releaseDate: null,
                   ),
@@ -257,14 +257,14 @@ void main() {
 
       final loaded = cubit.state as SessionDetailLoaded;
       expect(loaded.selectedAgent, "oracle");
-      expect(loaded.selectedProviderID, "openai");
-      expect(loaded.selectedModelID, "gpt-4.1");
-      // Variant cleared because agent changed and xhigh is no longer available
-      expect(loaded.selectedVariant, isNull);
+      expect(
+        loaded.selectedAgentModel,
+        const AgentModel(providerID: "openai", modelID: "gpt-4.1", variant: "xhigh"),
+      );
       expect(loaded.isRefreshing, isFalse);
     });
 
-    test("sendMessage forwards selectedVariant to repository", () async {
+    test("sendMessage forwards selectedAgentModel variant to repository", () async {
       when(
         () => mockSessionRepository.sendMessage(
           sessionId: sessionId,
@@ -281,8 +281,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -311,8 +311,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -337,7 +337,7 @@ void main() {
       when(
         () => mockSessionService.listAgents(),
       ).thenAnswer((_) async => ApiResponse.success(Agents(agents: _agents())));
-      when(() => mockSessionService.listProviders()).thenAnswer((_) async => ApiResponse.success(_providers()));
+      when(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer((_) async => ApiResponse.success(_providers()));
 
       final emitted = <SessionDetailState>[];
       final sub = cubit.stream.listen(emitted.add);
@@ -374,8 +374,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -388,7 +388,7 @@ void main() {
           MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-provider-fallback")]),
         ),
       );
-      when(() => mockSessionService.listProviders()).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+      when(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
 
       mockConnectionService.emitDataMayBeStale();
       await Future<void>.delayed(const Duration(milliseconds: 20));
@@ -408,8 +408,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -423,7 +423,7 @@ void main() {
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
       verify(() => mockSessionService.listAgents()).called(1);
-      verify(() => mockSessionService.listProviders()).called(1);
+      verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).called(1);
 
       messagesCompleter.complete(ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()])));
       await _awaitLoaded(cubit);
@@ -440,8 +440,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -463,8 +463,8 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
-          variantOptionsBuilder: const AgentVariantOptionsBuilder(),
           sessionId: sessionId,
+          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: MockFailureReporter(),
         );
@@ -490,9 +490,7 @@ void main() {
         expect(afterFailure.isRefreshing, isFalse);
         expect(afterFailure.messages, before.messages);
         expect(afterFailure.selectedAgent, before.selectedAgent);
-        expect(afterFailure.selectedProviderID, before.selectedProviderID);
-        expect(afterFailure.selectedModelID, before.selectedModelID);
-        expect(afterFailure.selectedVariant, before.selectedVariant);
+        expect(afterFailure.selectedAgentModel, before.selectedAgentModel);
       },
     );
 
@@ -502,8 +500,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
-        variantOptionsBuilder: const AgentVariantOptionsBuilder(),
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -531,7 +529,7 @@ void main() {
       when(
         () => mockSessionService.listAgents(),
       ).thenAnswer((_) async => ApiResponse.success(Agents(agents: _agents())));
-      when(() => mockSessionService.listProviders()).thenAnswer((_) async => ApiResponse.success(_providers()));
+      when(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer((_) async => ApiResponse.success(_providers()));
       when(() => mockSessionService.listCommands(projectId: any(named: "projectId"))).thenAnswer(
         (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
       );
@@ -551,7 +549,7 @@ void main() {
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
       verify(() => mockSessionService.listAgents()).called(1);
-      verify(() => mockSessionService.listProviders()).called(1);
+      verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).called(1);
     });
   });
 }
@@ -595,7 +593,7 @@ void _stubLoadApis(MockSessionService service, {required String sessionId}) {
   when(() => service.listAgents()).thenAnswer(
     (_) => Future<ApiResponse<Agents>>.value(ApiResponse.success(Agents(agents: _agents()))),
   );
-  when(() => service.listProviders()).thenAnswer(
+  when(() => service.listProviders(projectId: any(named: "projectId"))).thenAnswer(
     (_) => Future<ApiResponse<ProviderListResponse>>.value(ApiResponse.success(_providers())),
   );
 }
@@ -615,7 +613,7 @@ MessageWithParts _messageWithParts({String messageId = "msg-1"}) {
 
 List<AgentInfo> _agents() {
   return const [
-    AgentInfo(name: "coder", description: "A coding assistant", model: null, variant: null, mode: AgentMode.primary),
+    AgentInfo(name: "coder", description: "A coding assistant", model: null, mode: AgentMode.primary),
   ];
 }
 
@@ -632,6 +630,7 @@ ProviderListResponse _providers() {
             id: "claude-3-5-sonnet",
             providerID: "anthropic",
             name: "Claude 3.5 Sonnet",
+            variants: [],
             family: null,
             releaseDate: null,
           ),
