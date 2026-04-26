@@ -28,8 +28,10 @@ class BridgeSettingsApi {
   }
 
   static String _resolveHomeDirectory() {
+    final home = Platform.environment['HOME'];
+    final userProfile = Platform.environment['USERPROFILE'];
     final homeDirectory =
-        Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+        (home != null && home.isNotEmpty) ? home : (userProfile != null && userProfile.isNotEmpty) ? userProfile : null;
     if (homeDirectory == null) {
       throw StateError('Unable to determine home directory');
     }

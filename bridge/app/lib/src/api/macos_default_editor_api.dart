@@ -24,15 +24,14 @@ class MacosDefaultEditorApi implements DefaultEditorApi {
     required List<String> arguments,
     required String filePath,
   }) async {
-    try {
-      final ProcessResult result = await _processRunner.run(executable, arguments);
-      if (result.exitCode != 0) {
-        stderr.writeln(
-          'Warning: failed to open "$filePath" with $executable (exit ${result.exitCode}): ${result.stderr}',
-        );
-      }
-    } on Object catch (error, stackTrace) {
-      stderr.writeln('Warning: failed to open "$filePath" with $executable: $error\n$stackTrace');
+    final ProcessResult result = await _processRunner.run(executable, arguments);
+    if (result.exitCode != 0) {
+      throw ProcessException(
+        executable,
+        arguments,
+        'Failed to open "$filePath" (exit ${result.exitCode}): ${result.stderr}',
+        result.exitCode,
+      );
     }
   }
 }

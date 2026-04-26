@@ -38,9 +38,9 @@ class LinuxWakeLockApi implements WakeLockClient {
         process.exitCode.then((exitCode) {
           if (_process == process) {
             _process = null;
-          }
-          if (exitCode != 0) {
-            Log.w("[wake-lock] systemd-inhibit exited with code $exitCode");
+            if (exitCode != 0) {
+              Log.w("[wake-lock] systemd-inhibit exited unexpectedly with code $exitCode");
+            }
           }
         }),
       );

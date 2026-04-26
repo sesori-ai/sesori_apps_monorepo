@@ -1,4 +1,3 @@
-import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 import 'package:win32/win32.dart';
 
 import 'wake_lock_client.dart';
@@ -9,8 +8,8 @@ typedef WarningLogger = void Function(String message);
 /// Windows wake lock implementation backed by `SetThreadExecutionState`.
 class WindowsWakeLockApi implements WakeLockClient {
   WindowsWakeLockApi({
-    this.executionStateSetter = SetThreadExecutionState,
-    this.warningLogger = Log.w,
+    required this.executionStateSetter,
+    required this.warningLogger,
   });
 
   final ExecutionStateSetter executionStateSetter;
