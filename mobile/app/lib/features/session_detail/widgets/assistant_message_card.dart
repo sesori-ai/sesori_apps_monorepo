@@ -29,11 +29,13 @@ class AssistantMessageCard extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Column(
-        crossAxisAlignment: .start,
-        children: [
-          for (final part in visibleParts) _buildPart(context: context, part: part),
-        ],
+      child: SelectionArea(
+        child: Column(
+          crossAxisAlignment: .start,
+          children: [
+            for (final part in visibleParts) _buildPart(context: context, part: part),
+          ],
+        ),
       ),
     );
   }
