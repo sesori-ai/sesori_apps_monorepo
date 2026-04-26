@@ -13,7 +13,6 @@ sealed class NewSessionState with _$NewSessionState {
     required AgentModel? selectedAgentModel,
     required CommandInfo? stagedCommand,
     @Default([]) List<SessionVariant> availableVariants,
-    SessionVariant? selectedVariant,
   }) = NewSessionIdle;
 
   const factory NewSessionState.sending({
@@ -24,7 +23,6 @@ sealed class NewSessionState with _$NewSessionState {
     required AgentModel? selectedAgentModel,
     required CommandInfo? stagedCommand,
     @Default([]) List<SessionVariant> availableVariants,
-    SessionVariant? selectedVariant,
   }) = NewSessionSending;
 
   const factory NewSessionState.error({
@@ -36,7 +34,6 @@ sealed class NewSessionState with _$NewSessionState {
     required AgentModel? selectedAgentModel,
     required CommandInfo? stagedCommand,
     @Default([]) List<SessionVariant> availableVariants,
-    SessionVariant? selectedVariant,
   }) = NewSessionError;
 
   const factory NewSessionState.created({required Session session}) = NewSessionCreated;
@@ -53,7 +50,6 @@ typedef AgentModelData = ({
   AgentModel? agentModel,
   CommandInfo? stagedCommand,
   List<SessionVariant> availableVariants,
-  SessionVariant? selectedVariant,
 });
 
 extension NewSessionStateAgentModel on NewSessionState {
@@ -66,7 +62,6 @@ extension NewSessionStateAgentModel on NewSessionState {
       :final selectedAgentModel,
       :final stagedCommand,
       :final availableVariants,
-      :final selectedVariant,
     ) =>
       (
         agents: availableAgents,
@@ -76,7 +71,6 @@ extension NewSessionStateAgentModel on NewSessionState {
         agentModel: selectedAgentModel,
         stagedCommand: stagedCommand,
         availableVariants: availableVariants,
-        selectedVariant: selectedVariant,
       ),
     NewSessionSending(
       :final availableAgents,
@@ -86,7 +80,6 @@ extension NewSessionStateAgentModel on NewSessionState {
       :final selectedAgentModel,
       :final stagedCommand,
       :final availableVariants,
-      :final selectedVariant,
     ) =>
       (
         agents: availableAgents,
@@ -96,7 +89,6 @@ extension NewSessionStateAgentModel on NewSessionState {
         agentModel: selectedAgentModel,
         stagedCommand: stagedCommand,
         availableVariants: availableVariants,
-        selectedVariant: selectedVariant,
       ),
     NewSessionError(
       :final availableAgents,
@@ -106,7 +98,6 @@ extension NewSessionStateAgentModel on NewSessionState {
       :final selectedAgentModel,
       :final stagedCommand,
       :final availableVariants,
-      :final selectedVariant,
     ) =>
       (
         agents: availableAgents,
@@ -116,7 +107,6 @@ extension NewSessionStateAgentModel on NewSessionState {
         agentModel: selectedAgentModel,
         stagedCommand: stagedCommand,
         availableVariants: availableVariants,
-        selectedVariant: selectedVariant,
       ),
     NewSessionCreated() => null,
   };

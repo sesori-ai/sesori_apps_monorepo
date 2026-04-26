@@ -14,7 +14,7 @@ Widget _buildApp({required ValueChanged<SessionVariant?> onVariantChanged}) {
           body: FilledButton(
             onPressed: () => VariantPickerSheet.show(
               context,
-              selectedVariant: null,
+              selectedVariantId: null,
               availableVariants: const [
                 SessionVariant(id: "low"),
                 SessionVariant(id: "xhigh"),

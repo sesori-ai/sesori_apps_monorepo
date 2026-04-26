@@ -73,7 +73,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
   void _openVariantPicker(AgentModelData data) {
     VariantPickerSheet.show(
       context,
-      selectedVariant: data.selectedVariant,
+      selectedVariantId: data.agentModel?.variant,
       availableVariants: data.availableVariants,
       onVariantChanged: context.read<NewSessionCubit>().selectVariant,
     );
@@ -110,7 +110,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
       availableVariants: data.availableVariants,
       modelName: modelName,
       selectedAgent: selectedAgent,
-      selectedVariant: data.selectedVariant,
+      selectedAgentModel: data.agentModel,
       onAgentTap: () => _openAgentPicker(data),
       onModelTap: () => _openModelPicker(data),
       onVariantTap: () => _openVariantPicker(data),

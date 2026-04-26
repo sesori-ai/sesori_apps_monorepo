@@ -15,19 +15,19 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     required String projectId,
   }) : _sessionService = sessionService,
        _projectId = projectId,
-         super(
-          const NewSessionState.idle(
-            availableAgents: [],
-            availableProviders: [],
-            availableCommands: [],
-            selectedAgent: null,
-            selectedAgentModel: null,
-            stagedCommand: null,
-            availableVariants: [],
-          ),
-        ) {
-     _loadComposerData();
-   }
+          super(
+           const NewSessionState.idle(
+             availableAgents: [],
+             availableProviders: [],
+             availableCommands: [],
+             selectedAgent: null,
+             selectedAgentModel: null,
+             stagedCommand: null,
+             availableVariants: [],
+           ),
+         ) {
+      _loadComposerData();
+    }
 
   Future<void> _loadComposerData() async {
     try {
@@ -102,7 +102,6 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       providers: availableProviders ?? data.providers,
       model: selectedAgentModel ?? data.agentModel,
     );
-    final selectedVariant = _deriveSelectedVariant(selectedAgentModel ?? data.agentModel);
     switch (current) {
       case NewSessionIdle():
         emit(
@@ -113,7 +112,6 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             selectedAgent: selectedAgent ?? current.selectedAgent,
             selectedAgentModel: selectedAgentModel ?? current.selectedAgentModel,
             availableVariants: derivedVariants,
-            selectedVariant: selectedVariant,
           ),
         );
       case NewSessionSending():
@@ -125,7 +123,6 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             selectedAgent: selectedAgent ?? current.selectedAgent,
             selectedAgentModel: selectedAgentModel ?? current.selectedAgentModel,
             availableVariants: derivedVariants,
-            selectedVariant: selectedVariant,
           ),
         );
       case NewSessionError():
@@ -137,7 +134,6 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             selectedAgent: selectedAgent ?? current.selectedAgent,
             selectedAgentModel: selectedAgentModel ?? current.selectedAgentModel,
             availableVariants: derivedVariants,
-            selectedVariant: selectedVariant,
           ),
         );
       case NewSessionCreated():
@@ -162,14 +158,6 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         [];
   }
 
-  SessionVariant? _deriveSelectedVariant(AgentModel? model) {
-    final variant = model?.variant;
-    if (variant != null && variant != "none") {
-      return SessionVariant(id: variant);
-    }
-    return null;
-  }
-
   void selectAgent(String agent) {
     final current = state;
     final agentInfo = switch (current) {
@@ -188,30 +176,15 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       case NewSessionIdle():
         final agentModel = current.selectedAgentModel;
         if (agentModel == null) return;
-        emit(
-          current.copyWith(
-            selectedAgentModel: agentModel.copyWith(variant: variant?.id),
-            selectedVariant: variant,
-          ),
-        );
+        emit(current.copyWith(selectedAgentModel: agentModel.copyWith(variant: variant?.id)));
       case NewSessionSending():
         final agentModel = current.selectedAgentModel;
         if (agentModel == null) return;
-        emit(
-          current.copyWith(
-            selectedAgentModel: agentModel.copyWith(variant: variant?.id),
-            selectedVariant: variant,
-          ),
-        );
+        emit(current.copyWith(selectedAgentModel: agentModel.copyWith(variant: variant?.id)));
       case NewSessionError():
         final agentModel = current.selectedAgentModel;
         if (agentModel == null) return;
-        emit(
-          current.copyWith(
-            selectedAgentModel: agentModel.copyWith(variant: variant?.id),
-            selectedVariant: variant,
-          ),
-        );
+        emit(current.copyWith(selectedAgentModel: agentModel.copyWith(variant: variant?.id)));
       case NewSessionCreated():
         return;
     }
@@ -316,7 +289,6 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         selectedAgentModel: config?.agentModel,
         stagedCommand: config?.stagedCommand,
         availableVariants: config?.availableVariants ?? const [],
-        selectedVariant: config?.selectedVariant,
       ),
     );
 
@@ -351,7 +323,6 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             selectedAgentModel: current?.agentModel,
             stagedCommand: current?.stagedCommand,
             availableVariants: current?.availableVariants ?? const [],
-            selectedVariant: current?.selectedVariant,
           ),
         );
     }

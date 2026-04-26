@@ -70,7 +70,6 @@ SessionDetailState _loadedState() {
     stagedCommand: null,
     isRefreshing: false,
     availableVariants: const [SessionVariant(id: "xhigh")],
-    selectedVariant: const SessionVariant(id: "xhigh"),
   );
 }
 
@@ -133,7 +132,7 @@ void main() {
       availableProviders: testProviderListResponse().items,
       availableCommands: const [],
       selectedAgent: "coder",
-      selectedAgentModel: AgentModel(
+      selectedAgentModel: const AgentModel(
         providerID: "anthropic",
         modelID: "claude-3-5-sonnet",
         variant: null,
@@ -141,7 +140,6 @@ void main() {
       stagedCommand: null,
       isRefreshing: false,
       availableVariants: const [SessionVariant(id: "xhigh")],
-      selectedVariant: null,
     );
 
     final controller = StreamController<SessionDetailState>.broadcast();

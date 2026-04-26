@@ -357,7 +357,7 @@ void main() {
     );
 
     blocTest<SessionDetailCubit, SessionDetailState>(
-      "selectVariant updates selectedVariant in state",
+      "selectVariant updates selectedAgentModel variant",
       build: () {
         when(
           () => mockSessionService.listProviders(projectId: any(named: "projectId")),
@@ -402,26 +402,20 @@ void main() {
       },
       expect: () => [
         isA<SessionDetailLoaded>().having(
-          (state) => state.selectedVariant,
-          "initial selectedVariant",
+          (state) => state.selectedAgentModel?.variant,
+          "initial variant",
           isNull,
         ),
-        isA<SessionDetailLoaded>()
-            .having(
-              (state) => state.selectedVariant,
-              "selectedVariant",
-              const SessionVariant(id: "fast"),
-            )
-            .having(
-              (state) => state.selectedAgentModel?.variant,
-              "selectedAgentModel.variant",
-              "fast",
-            ),
+        isA<SessionDetailLoaded>().having(
+          (state) => state.selectedAgentModel?.variant,
+          "variant",
+          "fast",
+        ),
       ],
     );
 
     blocTest<SessionDetailCubit, SessionDetailState>(
-      "selectVariant to null clears selectedVariant in state",
+      "selectVariant to null clears selectedAgentModel variant",
       build: () {
         when(
           () => mockSessionService.listProviders(projectId: any(named: "projectId")),
@@ -467,32 +461,20 @@ void main() {
       },
       expect: () => [
         isA<SessionDetailLoaded>().having(
-          (state) => state.selectedVariant,
-          "initial selectedVariant",
+          (state) => state.selectedAgentModel?.variant,
+          "initial variant",
           isNull,
         ),
-        isA<SessionDetailLoaded>()
-            .having(
-              (state) => state.selectedVariant,
-              "selectedVariant after fast",
-              const SessionVariant(id: "fast"),
-            )
-            .having(
-              (state) => state.selectedAgentModel?.variant,
-              "selectedAgentModel.variant after fast",
-              "fast",
-            ),
-        isA<SessionDetailLoaded>()
-            .having(
-              (state) => state.selectedVariant,
-              "selectedVariant after null",
-              isNull,
-            )
-            .having(
-              (state) => state.selectedAgentModel?.variant,
-              "selectedAgentModel.variant after null",
-              isNull,
-            ),
+        isA<SessionDetailLoaded>().having(
+          (state) => state.selectedAgentModel?.variant,
+          "variant after fast",
+          "fast",
+        ),
+        isA<SessionDetailLoaded>().having(
+          (state) => state.selectedAgentModel?.variant,
+          "variant after null",
+          isNull,
+        ),
       ],
     );
 

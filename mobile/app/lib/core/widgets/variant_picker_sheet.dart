@@ -6,27 +6,27 @@ import "../extensions/build_context_x.dart";
 import "app_modal_bottom_sheet.dart";
 
 class VariantPickerSheet extends StatelessWidget {
-  final SessionVariant? selectedVariant;
+  final String? selectedVariantId;
   final List<SessionVariant> availableVariants;
   final ValueChanged<SessionVariant?> onVariantChanged;
 
   const VariantPickerSheet({
     super.key,
-    required this.selectedVariant,
+    required this.selectedVariantId,
     required this.availableVariants,
     required this.onVariantChanged,
   });
 
   static Future<void> show(
     BuildContext context, {
-    required SessionVariant? selectedVariant,
+    required String? selectedVariantId,
     required List<SessionVariant> availableVariants,
     required ValueChanged<SessionVariant?> onVariantChanged,
   }) {
     return showAppModalBottomSheet(
       context: context,
       builder: (_) => VariantPickerSheet(
-        selectedVariant: selectedVariant,
+        selectedVariantId: selectedVariantId,
         availableVariants: availableVariants,
         onVariantChanged: (variant) {
           onVariantChanged(variant);
@@ -66,13 +66,13 @@ class VariantPickerSheet extends StatelessWidget {
         ),
         _VariantTile(
           label: loc.sessionDetailVariantDefault,
-          isSelected: selectedVariant == null,
+          isSelected: selectedVariantId == null,
           onTap: () => onVariantChanged(null),
         ),
         for (final variant in availableVariants)
           _VariantTile(
             label: variant.id,
-            isSelected: variant == selectedVariant,
+            isSelected: variant.id == selectedVariantId,
             onTap: () => onVariantChanged(variant),
           ),
         const SizedBox(height: 8),

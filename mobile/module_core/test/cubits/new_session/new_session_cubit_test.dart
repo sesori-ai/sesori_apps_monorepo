@@ -330,7 +330,7 @@ void main() {
     );
 
     blocTest<NewSessionCubit, NewSessionState>(
-      "selectVariant updates selectedVariant in state",
+      "selectVariant updates selectedAgentModel variant",
       build: () {
         when(() => mockSessionService.listAgents()).thenAnswer(
           (_) async => ApiResponse.success(
@@ -378,26 +378,20 @@ void main() {
       },
       expect: () => [
         isA<NewSessionIdle>().having(
-          (state) => state.selectedVariant,
-          "initial selectedVariant",
+          (state) => state.selectedAgentModel?.variant,
+          "initial variant",
           isNull,
         ),
-        isA<NewSessionIdle>()
-            .having(
-              (state) => state.selectedVariant,
-              "selectedVariant",
-              const SessionVariant(id: "fast"),
-            )
-            .having(
-              (state) => state.selectedAgentModel?.variant,
-              "selectedAgentModel.variant",
-              "fast",
-            ),
+        isA<NewSessionIdle>().having(
+          (state) => state.selectedAgentModel?.variant,
+          "variant",
+          "fast",
+        ),
       ],
     );
 
     blocTest<NewSessionCubit, NewSessionState>(
-      "selectVariant to null clears selectedVariant in state",
+      "selectVariant to null clears selectedAgentModel variant",
       build: () {
         when(() => mockSessionService.listAgents()).thenAnswer(
           (_) async => ApiResponse.success(
@@ -445,21 +439,15 @@ void main() {
       },
       expect: () => [
         isA<NewSessionIdle>().having(
-          (state) => state.selectedVariant,
-          "initial selectedVariant",
-          const SessionVariant(id: "fast"),
+          (state) => state.selectedAgentModel?.variant,
+          "initial variant",
+          "fast",
         ),
-        isA<NewSessionIdle>()
-            .having(
-              (state) => state.selectedVariant,
-              "selectedVariant",
-              isNull,
-            )
-            .having(
-              (state) => state.selectedAgentModel?.variant,
-              "selectedAgentModel.variant",
-              isNull,
-            ),
+        isA<NewSessionIdle>().having(
+          (state) => state.selectedAgentModel?.variant,
+          "variant",
+          isNull,
+        ),
       ],
     );
   });

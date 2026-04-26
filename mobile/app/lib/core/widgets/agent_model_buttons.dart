@@ -7,7 +7,7 @@ class AgentModelButtons extends StatelessWidget {
   final List<SessionVariant> availableVariants;
   final String modelName;
   final String selectedAgent;
-  final SessionVariant? selectedVariant;
+  final AgentModel? selectedAgentModel;
   final VoidCallback onAgentTap;
   final VoidCallback onModelTap;
   final VoidCallback onVariantTap;
@@ -17,7 +17,7 @@ class AgentModelButtons extends StatelessWidget {
     required this.availableVariants,
     required this.modelName,
     required this.selectedAgent,
-    required this.selectedVariant,
+    required this.selectedAgentModel,
     required this.onAgentTap,
     required this.onModelTap,
     required this.onVariantTap,
@@ -74,7 +74,7 @@ class AgentModelButtons extends StatelessWidget {
                 onPressed: onVariantTap,
                 icon: Icon(Icons.speed_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
                 label: Text(
-                  selectedVariant?.id ?? loc.sessionDetailVariantDefault,
+                  selectedAgentModel?.variant ?? loc.sessionDetailVariantDefault,
                   style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
                   overflow: .ellipsis,
                   maxLines: 1,
