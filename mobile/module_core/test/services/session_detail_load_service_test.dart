@@ -48,7 +48,7 @@ void main() {
       connectionStatus.add(connectedStatus);
       _stubRepositorySnapshot(repository: repository, projectRepository: projectRepository);
 
-      final result = await service.load(sessionId: "session-1");
+      final result = await service.load(sessionId: "session-1", projectId: "project-1");
 
       expect(result, isA<SessionDetailLoadResultLoaded>());
       final loaded = result as SessionDetailLoadResultLoaded;
@@ -72,13 +72,13 @@ void main() {
     });
 
     test("initial load waits for connection readiness and then loads", () async {
-      final waiting = await service.load(sessionId: "session-1");
+      final waiting = await service.load(sessionId: "session-1", projectId: "project-1");
       expect(waiting, isA<SessionDetailLoadResultWaitingForConnection>());
 
       connectionStatus.add(connectedStatus);
       _stubRepositorySnapshot(repository: repository, projectRepository: projectRepository);
 
-      final loaded = await service.load(sessionId: "session-1");
+      final loaded = await service.load(sessionId: "session-1", projectId: "project-1");
       expect(loaded, isA<SessionDetailLoadResultLoaded>());
     });
 
@@ -102,7 +102,7 @@ void main() {
       when(
         () => repository.listAgents(),
       ).thenAnswer((_) async => ApiResponse.success(const Agents(agents: <AgentInfo>[])));
-      when(() => repository.listProviders()).thenAnswer(
+      when(() => repository.listProviders(projectId: any(named: "projectId"))).thenAnswer(
         (_) async => ApiResponse.success(const ProviderListResponse(connectedOnly: false, items: <ProviderInfo>[])),
       );
       when(() => projectRepository.findSessionContext(sessionId: "session-1")).thenAnswer(
@@ -112,7 +112,7 @@ void main() {
         (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
       );
 
-      final result = await service.load(sessionId: "session-1");
+      final result = await service.load(sessionId: "session-1", projectId: "project-1");
 
       expect(result, isA<SessionDetailLoadResultFailed>());
       verify(() => repository.getMessages(sessionId: "session-1")).called(1);
@@ -126,7 +126,7 @@ void main() {
         canonicalSessionTitle: null,
       );
 
-      final result = await service.load(sessionId: "session-1");
+      final result = await service.load(sessionId: "session-1", projectId: "project-1");
 
       expect(result, isA<SessionDetailLoadResultLoaded>());
       final loaded = result as SessionDetailLoadResultLoaded;
@@ -138,7 +138,7 @@ void main() {
       _stubRepositorySnapshot(repository: repository, projectRepository: projectRepository);
       when(() => projectRepository.findSessionContext(sessionId: "session-1")).thenThrow(Exception("lookup failed"));
 
-      final result = await service.load(sessionId: "session-1");
+      final result = await service.load(sessionId: "session-1", projectId: "project-1");
 
       expect(result, isA<SessionDetailLoadResultLoaded>());
       final loaded = result as SessionDetailLoadResultLoaded;
@@ -177,7 +177,7 @@ void _stubRepositorySnapshot({
       ),
     ),
   );
-  when(() => repository.listProviders()).thenAnswer(
+  when(() => repository.listProviders(projectId: any(named: "projectId"))).thenAnswer(
     (_) async => ApiResponse.success(
       const ProviderListResponse(
         connectedOnly: false,

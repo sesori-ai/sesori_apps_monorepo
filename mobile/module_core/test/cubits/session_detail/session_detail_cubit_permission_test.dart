@@ -114,6 +114,7 @@ void main() {
     test("permission event adds to state and fires stream", () async {
       final cubit = _buildCubit(
         sessionId: sessionId,
+        projectId: "project-1",
         connectionService: mockConnectionService,
         loadService: loadService,
         promptDispatcher: promptDispatcher,
@@ -146,6 +147,7 @@ void main() {
     test("duplicate permission IDs are ignored", () async {
       final cubit = _buildCubit(
         sessionId: sessionId,
+        projectId: "project-1",
         connectionService: mockConnectionService,
         loadService: loadService,
         promptDispatcher: promptDispatcher,
@@ -184,6 +186,7 @@ void main() {
 
       final cubit = _buildCubit(
         sessionId: sessionId,
+        projectId: "project-1",
         connectionService: mockConnectionService,
         loadService: loadService,
         promptDispatcher: promptDispatcher,
@@ -241,6 +244,7 @@ void main() {
 
       final cubit = _buildCubit(
         sessionId: sessionId,
+        projectId: "project-1",
         connectionService: mockConnectionService,
         loadService: loadService,
         promptDispatcher: promptDispatcher,
@@ -274,7 +278,7 @@ void main() {
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
       verify(() => mockSessionService.listAgents()).called(1);
-      verify(() => mockSessionService.listProviders()).called(1);
+      verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).called(1);
     });
 
     test("non-loaded state ignores permission events", () async {
@@ -283,6 +287,7 @@ void main() {
 
       final cubit = _buildCubit(
         sessionId: sessionId,
+        projectId: "project-1",
         connectionService: mockConnectionService,
         loadService: loadService,
         promptDispatcher: promptDispatcher,
@@ -314,6 +319,7 @@ void main() {
 
 SessionDetailCubit _buildCubit({
   required String sessionId,
+  required String projectId,
   required MockConnectionService connectionService,
   required SessionDetailLoadService loadService,
   required SessionRepository promptDispatcher,
@@ -327,6 +333,7 @@ SessionDetailCubit _buildCubit({
     promptDispatcher: promptDispatcher,
     permissionRepository: permissionRepository,
     sessionId: sessionId,
+    projectId: projectId,
     notificationCanceller: notificationCanceller,
     failureReporter: failureReporter,
   );
@@ -371,7 +378,7 @@ void _stubLoadApis(MockSessionService service, {required String sessionId}) {
   when(() => service.listAgents()).thenAnswer(
     (_) => Future<ApiResponse<Agents>>.value(ApiResponse.success(Agents(agents: _agents()))),
   );
-  when(() => service.listProviders()).thenAnswer(
+  when(() => service.listProviders(projectId: any(named: "projectId"))).thenAnswer(
     (_) => Future<ApiResponse<ProviderListResponse>>.value(ApiResponse.success(_providers())),
   );
 }

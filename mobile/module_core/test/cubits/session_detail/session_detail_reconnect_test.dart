@@ -87,6 +87,7 @@ void main() {
       promptDispatcher: promptDispatcher,
       permissionRepository: mockPermissionRepository,
       sessionId: _sessionId,
+      projectId: "project-1",
       notificationCanceller: mockNotificationCanceller,
       failureReporter: MockFailureReporter(),
     );
@@ -132,10 +133,10 @@ void main() {
         reply: any(named: "reply"),
       ),
     ).thenAnswer((_) async => ApiResponse.success(null));
-    when(() => mockLoadService.load(sessionId: _sessionId)).thenAnswer(
+    when(() => mockLoadService.load(sessionId: _sessionId, projectId: any(named: "projectId"))).thenAnswer(
       (_) async => const SessionDetailLoadResult.waitingForConnection(),
     );
-    when(() => mockLoadService.reload(sessionId: _sessionId)).thenAnswer(
+    when(() => mockLoadService.reload(sessionId: _sessionId, projectId: any(named: "projectId"))).thenAnswer(
       (_) async => const SessionDetailLoadResult.loaded(
         snapshot: SessionDetailSnapshot(
           projectId: "project-1",
@@ -159,6 +160,7 @@ void main() {
       promptDispatcher: mockSessionRepository,
       permissionRepository: mockPermissionRepository,
       sessionId: _sessionId,
+      projectId: "project-1",
       notificationCanceller: mockNotificationCanceller,
       failureReporter: MockFailureReporter(),
     );
@@ -166,8 +168,8 @@ void main() {
 
     await _awaitLoaded(cubit);
 
-    verify(() => mockLoadService.load(sessionId: _sessionId)).called(1);
-    verify(() => mockLoadService.reload(sessionId: _sessionId)).called(1);
+    verify(() => mockLoadService.load(sessionId: _sessionId, projectId: "project-1")).called(1);
+    verify(() => mockLoadService.reload(sessionId: _sessionId, projectId: "project-1")).called(1);
     expect(cubit.state, isA<SessionDetailLoaded>());
   });
 
@@ -242,13 +244,14 @@ void main() {
       promptDispatcher: mockSessionRepository,
       permissionRepository: mockPermissionRepository,
       sessionId: _sessionId,
+      projectId: "project-1",
       notificationCanceller: mockNotificationCanceller,
       failureReporter: MockFailureReporter(),
     );
     addTearDown(cubit.close);
 
     await _awaitLoaded(cubit);
-    verify(() => mockLoadService.load(sessionId: _sessionId, projectId: null)).called(1);
+    verify(() => mockLoadService.load(sessionId: _sessionId, projectId: "project-1")).called(1);
 
     globalEvents.add(SseEvent(data: const SesoriSseEvent.sessionsUpdated(projectID: "project-2")));
     await Future<void>.delayed(Duration.zero);
@@ -292,7 +295,7 @@ void _stubLoadApis(MockSessionService service) {
       ),
     ),
   );
-  when(() => service.listProviders()).thenAnswer(
+  when(() => service.listProviders(projectId: any(named: "projectId"))).thenAnswer(
     (_) async => ApiResponse.success(
       const ProviderListResponse(connectedOnly: false, items: <ProviderInfo>[]),
     ),

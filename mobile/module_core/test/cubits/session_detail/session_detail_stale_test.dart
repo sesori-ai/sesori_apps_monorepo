@@ -111,6 +111,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
+          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: MockFailureReporter(),
         );
@@ -139,7 +140,7 @@ void main() {
         verifyNever(() => mockSessionService.getChildren(sessionId: sessionId));
         verifyNever(() => mockSessionService.getSessionStatuses());
         verifyNever(() => mockSessionService.listAgents());
-        verifyNever(() => mockSessionService.listProviders());
+        verifyNever(() => mockSessionService.listProviders(projectId: any(named: "projectId")));
 
         connectionStatus.add(connectedStatus);
         await Future<void>.delayed(const Duration(milliseconds: 20));
@@ -162,6 +163,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -187,7 +189,7 @@ void main() {
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
       verify(() => mockSessionService.listAgents()).called(1);
-      verify(() => mockSessionService.listProviders()).called(1);
+      verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).called(1);
 
       expect(emitted.first, isA<SessionDetailLoaded>().having((s) => s.isRefreshing, "isRefreshing", isTrue));
       expect(
@@ -205,6 +207,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -224,7 +227,7 @@ void main() {
           ),
         ),
       );
-      when(() => mockSessionService.listProviders()).thenAnswer(
+      when(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer(
         (_) async => ApiResponse.success(
           const ProviderListResponse(
             connectedOnly: false,
@@ -279,6 +282,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -308,6 +312,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -332,7 +337,7 @@ void main() {
       when(
         () => mockSessionService.listAgents(),
       ).thenAnswer((_) async => ApiResponse.success(Agents(agents: _agents())));
-      when(() => mockSessionService.listProviders()).thenAnswer((_) async => ApiResponse.success(_providers()));
+      when(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer((_) async => ApiResponse.success(_providers()));
 
       final emitted = <SessionDetailState>[];
       final sub = cubit.stream.listen(emitted.add);
@@ -370,6 +375,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -382,7 +388,7 @@ void main() {
           MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-provider-fallback")]),
         ),
       );
-      when(() => mockSessionService.listProviders()).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+      when(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
 
       mockConnectionService.emitDataMayBeStale();
       await Future<void>.delayed(const Duration(milliseconds: 20));
@@ -403,6 +409,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -416,7 +423,7 @@ void main() {
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
       verify(() => mockSessionService.listAgents()).called(1);
-      verify(() => mockSessionService.listProviders()).called(1);
+      verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).called(1);
 
       messagesCompleter.complete(ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()])));
       await _awaitLoaded(cubit);
@@ -434,6 +441,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -456,6 +464,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
+          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: MockFailureReporter(),
         );
@@ -492,6 +501,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -519,7 +529,7 @@ void main() {
       when(
         () => mockSessionService.listAgents(),
       ).thenAnswer((_) async => ApiResponse.success(Agents(agents: _agents())));
-      when(() => mockSessionService.listProviders()).thenAnswer((_) async => ApiResponse.success(_providers()));
+      when(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer((_) async => ApiResponse.success(_providers()));
       when(() => mockSessionService.listCommands(projectId: any(named: "projectId"))).thenAnswer(
         (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
       );
@@ -539,7 +549,7 @@ void main() {
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
       verify(() => mockSessionService.listAgents()).called(1);
-      verify(() => mockSessionService.listProviders()).called(1);
+      verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).called(1);
     });
   });
 }
@@ -583,7 +593,7 @@ void _stubLoadApis(MockSessionService service, {required String sessionId}) {
   when(() => service.listAgents()).thenAnswer(
     (_) => Future<ApiResponse<Agents>>.value(ApiResponse.success(Agents(agents: _agents()))),
   );
-  when(() => service.listProviders()).thenAnswer(
+  when(() => service.listProviders(projectId: any(named: "projectId"))).thenAnswer(
     (_) => Future<ApiResponse<ProviderListResponse>>.value(ApiResponse.success(_providers())),
   );
 }

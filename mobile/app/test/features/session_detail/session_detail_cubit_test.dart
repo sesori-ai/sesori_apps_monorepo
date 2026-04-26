@@ -111,6 +111,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -123,7 +124,7 @@ void main() {
         verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
         verify(() => mockSessionService.getSessionStatuses()).called(1);
         verify(() => mockSessionService.listAgents()).called(1);
-        verify(() => mockSessionService.listProviders()).called(1);
+        verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).called(1);
         verify(() => mockSessionService.listCommands(projectId: "test-project")).called(1);
         verify(() => mockConnectionService.sessionEvents(sessionId)).called(1);
         verify(() => mockConnectionService.events).called(1);
@@ -143,6 +144,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
+          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -160,6 +162,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -178,7 +181,7 @@ void main() {
         verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(2);
         verify(() => mockSessionService.getSessionStatuses()).called(2);
         verify(() => mockSessionService.listAgents()).called(2);
-        verify(() => mockSessionService.listProviders()).called(2);
+        verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).called(2);
         verify(() => mockSessionService.listCommands(projectId: "test-project")).called(2);
       },
     );
@@ -191,6 +194,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -224,6 +228,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -257,6 +262,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -305,6 +311,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -330,6 +337,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -356,6 +364,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -384,6 +393,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
+          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -434,6 +444,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
+          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -465,6 +476,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -507,6 +519,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
+          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -536,6 +549,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -566,6 +580,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -594,6 +609,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
+          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -621,6 +637,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -663,6 +680,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
+          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -691,6 +709,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
+          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -727,6 +746,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -752,6 +772,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -795,6 +816,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -851,6 +873,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
+          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -902,6 +925,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
+          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -966,6 +990,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -1035,6 +1060,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       );
@@ -1112,6 +1138,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       );
@@ -1162,6 +1189,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
+        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -1245,6 +1273,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
+          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -1376,7 +1405,7 @@ void _stubAllDefaults(
     ),
   );
   when(
-    () => service.listProviders(),
+    () => service.listProviders(projectId: any(named: "projectId")),
   ).thenAnswer(
     (_) => Future<ApiResponse<ProviderListResponse>>.value(
       ApiResponse.success(testProviderListResponse()),

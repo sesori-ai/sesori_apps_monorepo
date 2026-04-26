@@ -18,7 +18,7 @@ void main() {
       when(
         () => mockSessionService.listAgents(),
       ).thenAnswer((_) async => ApiResponse<Agents>.success(const Agents(agents: <AgentInfo>[])));
-      when(() => mockSessionService.listProviders()).thenAnswer(
+      when(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer(
         (_) async => ApiResponse<ProviderListResponse>.success(
           const ProviderListResponse(items: [], connectedOnly: false),
         ),
