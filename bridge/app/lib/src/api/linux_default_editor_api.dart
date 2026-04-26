@@ -1,15 +1,14 @@
 import 'dart:io';
 
+import '../bridge/foundation/process_runner.dart';
 import 'default_editor_api.dart';
 
-typedef _ProcessRunner = Future<ProcessResult> Function(String executable, List<String> arguments);
-
 class LinuxDefaultEditorApi implements DefaultEditorApi {
-  final _ProcessRunner _runProcess;
+  final ProcessRunner _runProcess;
 
   LinuxDefaultEditorApi({
-    required _ProcessRunner runProcess,
-  }) : _runProcess = runProcess;
+    required ProcessRunner processRunner,
+  }) : _runProcess = processRunner;
 
   @override
   Future<void> openFile(String filePath) async {
@@ -26,7 +25,7 @@ class LinuxDefaultEditorApi implements DefaultEditorApi {
     required String filePath,
   }) async {
     try {
-      final ProcessResult result = await _runProcess(executable, arguments);
+      final ProcessResult result = await _runProcess.run(executable, arguments);
       if (result.exitCode != 0) {
         stderr.writeln(
           'Warning: failed to open "$filePath" with $executable (exit ${result.exitCode}): ${result.stderr}',

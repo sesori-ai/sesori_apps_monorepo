@@ -3,8 +3,8 @@ import 'package:sesori_bridge/src/repositories/wake_lock_repository.dart';
 import 'package:test/test.dart';
 
 class _FakeWakeLockClient implements WakeLockClient {
-  var enableCalls = 0;
-  var disableCalls = 0;
+  int enableCalls = 0;
+  int disableCalls = 0;
 
   @override
   Future<void> enable() async {

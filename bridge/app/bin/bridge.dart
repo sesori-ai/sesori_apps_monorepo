@@ -5,6 +5,7 @@ import 'package:opencode_plugin/opencode_plugin.dart';
 import 'package:sesori_bridge/src/api/bridge_settings_api.dart';
 import 'package:sesori_bridge/src/api/default_editor_api.dart';
 import 'package:sesori_bridge/src/api/wake_lock_client.dart';
+import 'package:sesori_bridge/src/bridge/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_cli_options.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_runtime_runner.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
@@ -26,11 +27,18 @@ OpenCodePlugin _createOpenCodePlugin({
 }
 
 Future<void> main(List<String> args) async {
+  if (!(Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
+    Log.e("Unsupported platform ${Platform.operatingSystem}");
+    exit(0);
+  }
+
   if (args.isNotEmpty && args[0] == 'config') {
     final api = BridgeSettingsApi();
     final settingsRepository = BridgeSettingsRepository(api: api);
     final editorRepository = DefaultEditorRepository(
-      api: DefaultEditorApi.forPlatform(),
+      api: DefaultEditorApi.forPlatform(
+        processRunner: ProcessRunner(),
+      ),
     );
     final configService = BridgeConfigService(
       bridgeSettingsRepository: settingsRepository,
@@ -121,33 +129,24 @@ Future<void> main(List<String> args) async {
   Log.level = LogLevel.values.byName(options.logLevelName);
 
   final settingsRepository = BridgeSettingsRepository(api: BridgeSettingsApi());
-  final SleepPreventionService? sleepPreventionService = switch (
-    Platform.operatingSystem
-  ) {
-    'macos' || 'linux' || 'windows' => SleepPreventionService(
-      bridgeSettingsRepository: settingsRepository,
-      wakeLockRepository: WakeLockRepository(
-        client: WakeLockClient.forPlatform(),
-      ),
+  final SleepPreventionService sleepPreventionService = SleepPreventionService(
+    bridgeSettingsRepository: settingsRepository,
+    wakeLockRepository: WakeLockRepository(
+      client: WakeLockClient.forPlatform(),
     ),
-    _ => null,
-  };
+  );
 
-  if (sleepPreventionService == null) {
-    Log.w('Sleep prevention unavailable on ${Platform.operatingSystem}');
-  } else {
-    try {
-      final mode = await sleepPreventionService.applyConfiguredMode();
-      Log.i('Sleep prevention: ${mode.name}');
-    } on Object catch (error) {
-      Log.w('Sleep prevention failed: $error');
-    }
+  try {
+    final mode = await sleepPreventionService.applyConfiguredMode();
+    Log.i('Sleep prevention mode: ${mode.name}');
+  } on Object catch (error) {
+    Log.w('Sleep prevention failed: $error');
   }
 
   final exitCode = await runBridgeApp(
     options: options,
     pluginFactory: _createOpenCodePlugin,
   );
-  await sleepPreventionService?.dispose();
+  await sleepPreventionService.dispose();
   exit(exitCode);
 }

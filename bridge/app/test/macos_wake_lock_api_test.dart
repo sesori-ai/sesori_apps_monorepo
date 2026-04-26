@@ -7,13 +7,12 @@ import "package:test/test.dart";
 void main() {
   group("MacOSWakeLockApi", () {
     test("starts caffeinate with the current pid and kills it on disable", () async {
-      late _FakeProcess process;
+      final process = _FakeProcess();
       final invocations = <_ProcessInvocation>[];
 
       final api = MacOSWakeLockApi(
         processStarter: (String executable, List<String> arguments) async {
           invocations.add(_ProcessInvocation(executable: executable, arguments: arguments));
-          process = _FakeProcess();
           return process;
         },
       );

@@ -1,17 +1,15 @@
 import "dart:async";
 import "dart:io";
 
-import "wake_lock_client.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
-typedef ProcessStarter = Future<Process> Function(
-  String executable,
-  List<String> arguments,
-);
+import "../bridge/foundation/process_starter.dart";
+import "wake_lock_client.dart";
 
 class LinuxWakeLockApi implements WakeLockClient {
-  LinuxWakeLockApi({required ProcessStarter processStarter})
-      : _processStarter = processStarter;
+  LinuxWakeLockApi({
+    required ProcessStarter processStarter,
+  }) : _processStarter = processStarter;
 
   final ProcessStarter _processStarter;
 

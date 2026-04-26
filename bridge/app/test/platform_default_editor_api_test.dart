@@ -10,7 +10,7 @@ void main() {
     test('MacosDefaultEditorApi runs open for a file', () async {
       final calls = <List<String>>[];
       final api = MacosDefaultEditorApi(
-        runProcess: (executable, arguments) async {
+        processRunner: (executable, arguments) async {
           calls.add([executable, ...arguments]);
           return ProcessResult(0, 0, '', '');
         },
@@ -25,7 +25,7 @@ void main() {
     test('LinuxDefaultEditorApi runs xdg-open for a file', () async {
       final calls = <List<String>>[];
       final api = LinuxDefaultEditorApi(
-        runProcess: (executable, arguments) async {
+        processRunner: (executable, arguments) async {
           calls.add([executable, ...arguments]);
           return ProcessResult(0, 0, '', '');
         },
@@ -54,7 +54,7 @@ void main() {
 
     test('default editor APIs swallow command failures', () async {
       final api = MacosDefaultEditorApi(
-        runProcess: (_, __) async {
+        processRunner: (_, __) async {
           throw const SocketException('boom');
         },
       );

@@ -1,6 +1,6 @@
 import 'package:sesori_bridge/src/api/bridge_settings_api.dart';
-import 'package:sesori_bridge/src/repositories/bridge_settings.dart';
 import 'package:sesori_bridge/src/api/wake_lock_client.dart';
+import 'package:sesori_bridge/src/repositories/bridge_settings.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
 import 'package:sesori_bridge/src/repositories/wake_lock_repository.dart';
 import 'package:sesori_bridge/src/services/sleep_prevention_service.dart';

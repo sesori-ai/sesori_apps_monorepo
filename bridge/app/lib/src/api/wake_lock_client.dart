@@ -10,14 +10,12 @@ abstract class WakeLockClient {
 
   Future<void> disable();
 
-  static WakeLockClient forPlatform() {
-    return switch (Platform.operatingSystem) {
-      'macos' => MacOSWakeLockApi(processStarter: Process.start),
-      'linux' => LinuxWakeLockApi(processStarter: Process.start),
-      'windows' => WindowsWakeLockApi(),
-      _ => throw UnsupportedError(
-        'Unsupported platform for wake lock: ${Platform.operatingSystem}',
-      ),
-    };
-  }
+  factory WakeLockClient.forPlatform() => switch (true) {
+    _ when Platform.isMacOS => MacOSWakeLockApi(processStarter: Process.start),
+    _ when Platform.isLinux => LinuxWakeLockApi(processStarter: Process.start),
+    _ when Platform.isWindows => WindowsWakeLockApi(),
+    _ => throw UnsupportedError(
+      'Unsupported platform for wake lock: ${Platform.operatingSystem}',
+    ),
+  };
 }

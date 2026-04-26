@@ -1,17 +1,17 @@
 import 'package:sesori_bridge/src/api/windows_wake_lock_api.dart';
-import 'package:win32/win32.dart';
 import 'package:test/test.dart';
+import 'package:win32/win32.dart';
 
 void main() {
   group('WindowsWakeLockApi', () {
     test('enable uses continuous and system required flags', () async {
-      var observedFlags = EXECUTION_STATE(0);
+      var observedFlags = const EXECUTION_STATE(0);
       final warnings = <String>[];
 
       final api = WindowsWakeLockApi(
         executionStateSetter: (flags) {
           observedFlags = flags;
-          return EXECUTION_STATE(1);
+          return const EXECUTION_STATE(1);
         },
         warningLogger: warnings.add,
       );
@@ -26,13 +26,13 @@ void main() {
     });
 
     test('disable uses continuous flag only', () async {
-      var observedFlags = EXECUTION_STATE(0);
+      var observedFlags = const EXECUTION_STATE(0);
       final warnings = <String>[];
 
       final api = WindowsWakeLockApi(
         executionStateSetter: (flags) {
           observedFlags = flags;
-          return EXECUTION_STATE(1);
+          return const EXECUTION_STATE(1);
         },
         warningLogger: warnings.add,
       );
@@ -47,7 +47,7 @@ void main() {
       final warnings = <String>[];
 
       final api = WindowsWakeLockApi(
-        executionStateSetter: (_) => EXECUTION_STATE(0),
+        executionStateSetter: (_) => const EXECUTION_STATE(0),
         warningLogger: warnings.add,
       );
 

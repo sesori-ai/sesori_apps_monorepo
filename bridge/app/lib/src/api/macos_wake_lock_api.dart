@@ -1,7 +1,8 @@
 import "dart:io";
 
-import "wake_lock_client.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+
+import "wake_lock_client.dart";
 
 typedef ProcessStarter = Future<Process> Function(String executable, List<String> arguments);
 
