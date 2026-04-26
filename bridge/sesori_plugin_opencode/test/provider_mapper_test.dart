@@ -35,7 +35,7 @@ void main() {
         connected: ["openai"],
       );
 
-      final mapped = mapProviderResponse(response: response, connectedOnly: false);
+      final mapped = mapProviderResponse(response: response);
 
       expect(mapped.providers, hasLength(1));
       final provider = mapped.providers.first;
@@ -75,7 +75,7 @@ void main() {
         connected: ["openai"],
       );
 
-      final mapped = mapProviderResponse(response: response, connectedOnly: false);
+      final mapped = mapProviderResponse(response: response);
 
       expect(mapped.providers, hasLength(1));
       expect(mapped.providers.single.models.single.isAvailable, isTrue);
@@ -104,7 +104,7 @@ void main() {
         "default": {"openai": "openai/gpt-4.1"},
       });
 
-      final mapped = mapProviderResponse(response: response, connectedOnly: false);
+      final mapped = mapProviderResponse(response: response);
 
       expect(mapped.providers.single.models.single.variants, equals(["low", "high"]));
     });

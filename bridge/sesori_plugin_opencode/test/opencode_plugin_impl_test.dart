@@ -238,7 +238,7 @@ void main() {
     test("getProviders with connectedOnly false returns config providers with variants", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
 
-      final result = await plugin.getProviders(connectedOnly: false);
+      final result = await plugin.getProviders(projectId: "project-1");
 
       expect(result.providers, hasLength(2));
 
@@ -272,7 +272,7 @@ void main() {
     test("getProviders with connectedOnly true still returns config providers", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
 
-      final result = await plugin.getProviders(connectedOnly: true);
+      final result = await plugin.getProviders(projectId: "project-1");
 
       expect(result.providers, hasLength(2));
       expect(result.providers.map((provider) => provider.id), containsAll(["anthropic", "my-custom"]));
@@ -281,7 +281,7 @@ void main() {
     test("getProviders maps known provider IDs to correct union variants", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
 
-      final result = await plugin.getProviders(connectedOnly: false);
+      final result = await plugin.getProviders(projectId: "project-1");
 
       final anthropic = result.providers.firstWhere((p) => p.id == "anthropic");
       expect(anthropic, isA<PluginProviderAnthropic>());
@@ -815,7 +815,7 @@ class _FakeOpenCodeServer {
       }
 
       if (request.method == "GET" && path == "/config/providers") {
-        expect(request.headers.value("x-opencode-directory"), isNull);
+        expect(request.headers.value("x-opencode-directory"), equals("project-1"));
         await _sendJson(request.response, {
           "providers": [
             {

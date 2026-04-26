@@ -66,8 +66,7 @@ class FakeBridgePlugin implements BridgePlugin {
 
   String? lastGetMessagesSessionId;
 
-  bool? lastGetProvidersConnectedOnly;
-  String? lastGetProvidersDirectory;
+  String? lastGetProvidersProjectId;
   String? lastCreateSessionDirectory;
   String? lastCreateSessionParentId;
   String? lastCreateSessionProjectId;
@@ -339,9 +338,8 @@ class FakeBridgePlugin implements BridgePlugin {
   List<PluginProjectActivitySummary> getActiveSessionsSummary() => [];
 
   @override
-  Future<PluginProvidersResult> getProviders({required bool connectedOnly, String? directory}) async {
-    lastGetProvidersConnectedOnly = connectedOnly;
-    lastGetProvidersDirectory = directory;
+  Future<PluginProvidersResult> getProviders({required String projectId}) async {
+    lastGetProvidersProjectId = projectId;
     return providersResult;
   }
 

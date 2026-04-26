@@ -344,7 +344,7 @@ class _FakeBridgePlugin implements BridgePlugin {
   Future<bool> healthCheck() => throw UnimplementedError();
 
   @override
-  Future<PluginProvidersResult> getProviders({required bool connectedOnly, String? directory}) =>
+  Future<PluginProvidersResult> getProviders({required String projectId}) =>
       throw UnimplementedError();
 
   @override

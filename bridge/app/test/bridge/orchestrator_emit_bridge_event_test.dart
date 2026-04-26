@@ -1126,7 +1126,7 @@ class _SummaryPlugin implements BridgePlugin {
   }
 
   @override
-  Future<PluginProvidersResult> getProviders({required bool connectedOnly, String? directory}) async {
+  Future<PluginProvidersResult> getProviders({required String projectId}) async {
     return const PluginProvidersResult(providers: <PluginProvider>[]);
   }
 
@@ -1261,7 +1261,7 @@ class _NoopPlugin implements BridgePlugin {
   }
 
   @override
-  Future<PluginProvidersResult> getProviders({required bool connectedOnly, String? directory}) async {
+  Future<PluginProvidersResult> getProviders({required String projectId}) async {
     return const PluginProvidersResult(providers: <PluginProvider>[]);
   }
 

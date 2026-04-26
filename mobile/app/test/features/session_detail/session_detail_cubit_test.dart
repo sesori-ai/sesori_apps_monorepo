@@ -125,7 +125,7 @@ void main() {
         verify(() => mockSessionService.getSessionStatuses()).called(1);
         verify(() => mockSessionService.listAgents()).called(1);
         verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).called(1);
-        verify(() => mockSessionService.listCommands(projectId: "test-project")).called(1);
+        verify(() => mockSessionService.listCommands(projectId: "project-1")).called(1);
         verify(() => mockConnectionService.sessionEvents(sessionId)).called(1);
         verify(() => mockConnectionService.events).called(1);
       },
@@ -182,7 +182,7 @@ void main() {
         verify(() => mockSessionService.getSessionStatuses()).called(2);
         verify(() => mockSessionService.listAgents()).called(2);
         verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).called(2);
-        verify(() => mockSessionService.listCommands(projectId: "test-project")).called(2);
+        verify(() => mockSessionService.listCommands(projectId: "project-1")).called(2);
       },
     );
 

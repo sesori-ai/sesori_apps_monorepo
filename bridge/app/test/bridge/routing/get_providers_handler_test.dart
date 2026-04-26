@@ -20,51 +20,41 @@ void main() {
 
     // ── Route matching ──────────────────────────────────────────────────────
 
-    test("canHandle GET /provider", () {
-      expect(handler.canHandle(makeRequest("GET", "/provider")), isTrue);
+    test("canHandle POST /provider", () {
+      expect(handler.canHandle(makeRequest("POST", "/provider")), isTrue);
     });
 
-    test("does not handle POST /provider", () {
-      expect(handler.canHandle(makeRequest("POST", "/provider")), isFalse);
+    test("does not handle GET /provider", () {
+      expect(handler.canHandle(makeRequest("GET", "/provider")), isFalse);
     });
 
-    test("does not handle GET /project", () {
-      expect(handler.canHandle(makeRequest("GET", "/project")), isFalse);
+    test("does not handle POST /project", () {
+      expect(handler.canHandle(makeRequest("POST", "/project")), isFalse);
     });
 
-    test("does not handle GET /provider/extra", () {
-      expect(handler.canHandle(makeRequest("GET", "/provider/extra")), isFalse);
+    test("does not handle POST /provider/extra", () {
+      expect(handler.canHandle(makeRequest("POST", "/provider/extra")), isFalse);
     });
 
-    // ── Query parameter handling ────────────────────────────────────────────
+    // ── Body parameter handling ─────────────────────────────────────────────
 
-    test("always requests connected providers only", () async {
+    test("passes projectId from body to plugin", () async {
       await handler.handle(
-        makeRequest("GET", "/provider", headers: {"x-opencode-directory": "/tmp/worktree"}),
+        makeRequest("POST", "/provider"),
+        body: const ProjectIdRequest(projectId: "project-1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
-      expect(plugin.lastGetProvidersConnectedOnly, isTrue);
-      expect(plugin.lastGetProvidersDirectory, equals("/tmp/worktree"));
-    });
-
-    test("passes null directory when header is absent", () async {
-      await handler.handle(
-        makeRequest("GET", "/provider"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
-      );
-
-      expect(plugin.lastGetProvidersDirectory, isNull);
+      expect(plugin.lastGetProvidersProjectId, equals("project-1"));
     });
 
     // ── Response format ─────────────────────────────────────────────────────
 
     test("returns typed provider list response", () async {
       final response = await handler.handle(
-        makeRequest("GET", "/provider"),
+        makeRequest("POST", "/provider"),
+        body: const ProjectIdRequest(projectId: "project-1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -74,32 +64,13 @@ void main() {
 
     test("returns empty items list when plugin has no providers", () async {
       final response = await handler.handle(
-        makeRequest("GET", "/provider"),
+        makeRequest("POST", "/provider"),
+        body: const ProjectIdRequest(projectId: "project-1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
       expect(response.items, isEmpty);
-    });
-
-    test("response includes connectedOnly flag set to true by default", () async {
-      final response = await handler.handle(
-        makeRequest("GET", "/provider"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
-      );
-      expect(response.connectedOnly, isTrue);
-    });
-
-    test("response includes connectedOnly flag set to true when specified false", () async {
-      final response = await handler.handle(
-        makeRequest("GET", "/provider"),
-        pathParams: {},
-        queryParams: {"connectedOnly": "false"},
-        fragment: null,
-      );
-      expect(response.connectedOnly, isTrue);
     });
 
     // ── Data transformation ─────────────────────────────────────────────────
@@ -118,7 +89,8 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("GET", "/provider"),
+        makeRequest("POST", "/provider"),
+        body: const ProjectIdRequest(projectId: "project-1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -144,7 +116,8 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("GET", "/provider"),
+        makeRequest("POST", "/provider"),
+        body: const ProjectIdRequest(projectId: "project-1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -168,7 +141,8 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("GET", "/provider"),
+        makeRequest("POST", "/provider"),
+        body: const ProjectIdRequest(projectId: "project-1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -195,7 +169,8 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("GET", "/provider"),
+        makeRequest("POST", "/provider"),
+        body: const ProjectIdRequest(projectId: "project-1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -249,7 +224,8 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("GET", "/provider"),
+        makeRequest("POST", "/provider"),
+        body: const ProjectIdRequest(projectId: "project-1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -286,7 +262,8 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("GET", "/provider"),
+        makeRequest("POST", "/provider"),
+        body: const ProjectIdRequest(projectId: "project-1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -315,7 +292,8 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("GET", "/provider"),
+        makeRequest("POST", "/provider"),
+        body: const ProjectIdRequest(projectId: "project-1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -342,7 +320,8 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("GET", "/provider"),
+        makeRequest("POST", "/provider"),
+        body: const ProjectIdRequest(projectId: "project-1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -365,7 +344,8 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("GET", "/provider"),
+        makeRequest("POST", "/provider"),
+        body: const ProjectIdRequest(projectId: "project-1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -402,7 +382,8 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("GET", "/provider"),
+        makeRequest("POST", "/provider"),
+        body: const ProjectIdRequest(projectId: "project-1"),
         pathParams: {},
         queryParams: {},
         fragment: null,

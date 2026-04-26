@@ -234,14 +234,10 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     final current = state.agentModelData;
     if (current == null) return;
 
-    final previousVariant = current.agentModel?.variant;
     final availableVariants = _deriveAvailableVariants(
       providers: current.providers,
       model: AgentModel(providerID: providerID, modelID: modelID, variant: null),
     );
-    final variant = previousVariant != null && availableVariants.any((v) => v.id == previousVariant)
-        ? previousVariant
-        : null;
 
     final agentModel = _resolveAgentModel(
       agents: current.agents,
@@ -249,8 +245,20 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       modelID: modelID,
     );
 
+    final previousVariant = current.agentModel?.variant;
+    final String? variant;
+    if (previousVariant != null && availableVariants.any((v) => v.id == previousVariant)) {
+      variant = previousVariant;
+    } else {
+      variant = agentModel?.variant ?? (availableVariants.isNotEmpty ? availableVariants.first.id : null);
+    }
+
     _emitAgentModelUpdate(
-      selectedAgentModel: agentModel?.copyWith(variant: variant),
+      selectedAgentModel: agentModel?.copyWith(variant: variant) ?? AgentModel(
+        providerID: providerID,
+        modelID: modelID,
+        variant: variant,
+      ),
     );
   }
 
