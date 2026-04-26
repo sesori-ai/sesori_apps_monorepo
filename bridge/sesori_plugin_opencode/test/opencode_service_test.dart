@@ -1,10 +1,9 @@
 import "package:opencode_plugin/opencode_plugin.dart" hide Message, MessageError, MessageErrorData, MessageWithParts;
+import "package:opencode_plugin/src/models/message.dart" as plugin_msg;
+import "package:opencode_plugin/src/models/message_with_parts.dart" as plugin;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show ActiveSession, ProjectActivitySummary;
 import "package:test/test.dart";
-
-import "package:opencode_plugin/src/models/message_with_parts.dart" as plugin;
-import "package:opencode_plugin/src/models/message.dart" as plugin_msg;
 
 void main() {
   group("OpenCodeService.getProjects", () {
