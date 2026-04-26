@@ -29,7 +29,7 @@ class LinuxWakeLockApi implements WakeLockClient {
       final process = await _processStarter(
         "systemd-inhibit",
         const <String>[
-          "--what=idle:sleep",
+          "--what=idle:sleep:handle-lid-switch",
           "--who=sesori-bridge",
           "--why=Bridge is running",
           "cat",
@@ -63,4 +63,7 @@ class LinuxWakeLockApi implements WakeLockClient {
 
     process.kill();
   }
+
+  @override
+  bool get preventsLidCloseSleep => true;
 }

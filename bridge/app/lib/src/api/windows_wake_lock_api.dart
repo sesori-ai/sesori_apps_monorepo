@@ -37,4 +37,7 @@ class WindowsWakeLockApi implements WakeLockClient {
       warningLogger('[wake-lock] SetThreadExecutionState($action) failed');
     }
   }
+
+  @override
+  bool get preventsLidCloseSleep => false;
 }

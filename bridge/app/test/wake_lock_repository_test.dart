@@ -15,6 +15,9 @@ class _FakeWakeLockClient implements WakeLockClient {
   Future<void> disable() async {
     disableCalls += 1;
   }
+
+  @override
+  bool get preventsLidCloseSleep => true;
 }
 
 void main() {
@@ -32,6 +35,13 @@ void main() {
       await repository.disable();
       expect(client.disableCalls, equals(1));
       expect(repository.isEnabled, isFalse);
+    });
+
+    test('exposes preventsLidCloseSleep from the client', () {
+      final client = _FakeWakeLockClient();
+      final repository = WakeLockRepository(client: client);
+
+      expect(repository.preventsLidCloseSleep, isTrue);
     });
   });
 }

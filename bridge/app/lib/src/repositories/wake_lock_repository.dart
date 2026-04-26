@@ -8,6 +8,8 @@ class WakeLockRepository {
 
   bool get isEnabled => _isEnabled;
 
+  bool get preventsLidCloseSleep => _client.preventsLidCloseSleep;
+
   Future<void> enable() async {
     await _client.enable();
     _isEnabled = true;

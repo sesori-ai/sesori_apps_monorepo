@@ -22,8 +22,18 @@ void main() {
 
       expect(invocations, hasLength(1));
       expect(invocations.single.executable, equals("caffeinate"));
-      expect(invocations.single.arguments, equals(<String>["-w", io.pid.toString()]));
+      expect(
+        invocations.single.arguments,
+        equals(<String>["-s", "-w", io.pid.toString()]),
+      );
       expect(process.killCalled, isTrue);
+    });
+
+    test("does not claim to prevent lid-close sleep", () {
+      final api = MacOSWakeLockApi(
+        processStarter: (_, __) async => _FakeProcess(),
+      );
+      expect(api.preventsLidCloseSleep, isFalse);
     });
 
     test("logs warning when caffeinate process fails to start", () async {

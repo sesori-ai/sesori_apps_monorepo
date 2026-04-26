@@ -5,6 +5,7 @@ import 'package:opencode_plugin/opencode_plugin.dart';
 import 'package:sesori_bridge/src/api/bridge_settings_api.dart';
 import 'package:sesori_bridge/src/api/default_editor_api.dart';
 import 'package:sesori_bridge/src/api/wake_lock_client.dart';
+import 'package:sesori_bridge/src/bridge/foundation/device_type_detector.dart';
 import 'package:sesori_bridge/src/bridge/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_cli_options.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_runtime_runner.dart';
@@ -133,6 +134,9 @@ Future<void> main(List<String> args) async {
     bridgeSettingsRepository: settingsRepository,
     wakeLockRepository: WakeLockRepository(
       client: WakeLockClient.forPlatform(),
+    ),
+    deviceTypeDetector: DeviceTypeDetector(
+      processRunner: ProcessRunner(),
     ),
   );
 

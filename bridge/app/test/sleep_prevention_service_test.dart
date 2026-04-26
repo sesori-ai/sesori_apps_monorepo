@@ -1,5 +1,6 @@
 import 'package:sesori_bridge/src/api/bridge_settings_api.dart';
 import 'package:sesori_bridge/src/api/wake_lock_client.dart';
+import 'package:sesori_bridge/src/bridge/foundation/device_type_detector.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
 import 'package:sesori_bridge/src/repositories/wake_lock_repository.dart';
@@ -16,6 +17,7 @@ void main() {
       final service = SleepPreventionService(
         bridgeSettingsRepository: BridgeSettingsRepository(api: settingsApi),
         wakeLockRepository: WakeLockRepository(client: wakeLockClient),
+        deviceTypeDetector: _FakeDeviceTypeDetector(isLaptop: false),
       );
 
       final appliedMode = await service.applyConfiguredMode();
@@ -33,6 +35,7 @@ void main() {
       final service = SleepPreventionService(
         bridgeSettingsRepository: BridgeSettingsRepository(api: settingsApi),
         wakeLockRepository: WakeLockRepository(client: wakeLockClient),
+        deviceTypeDetector: _FakeDeviceTypeDetector(isLaptop: false),
       );
 
       final appliedMode = await service.applyConfiguredMode();
@@ -53,6 +56,7 @@ void main() {
       final service = SleepPreventionService(
         bridgeSettingsRepository: BridgeSettingsRepository(api: settingsApi),
         wakeLockRepository: WakeLockRepository(client: wakeLockClient),
+        deviceTypeDetector: _FakeDeviceTypeDetector(isLaptop: false),
       );
 
       final firstMode = await service.applyConfiguredMode();
@@ -73,6 +77,7 @@ void main() {
       final service = SleepPreventionService(
         bridgeSettingsRepository: BridgeSettingsRepository(api: settingsApi),
         wakeLockRepository: WakeLockRepository(client: wakeLockClient),
+        deviceTypeDetector: _FakeDeviceTypeDetector(isLaptop: false),
       );
 
       final appliedMode = await service.applyConfiguredMode();
@@ -89,6 +94,7 @@ void main() {
       final service = SleepPreventionService(
         bridgeSettingsRepository: BridgeSettingsRepository(api: settingsApi),
         wakeLockRepository: WakeLockRepository(client: wakeLockClient),
+        deviceTypeDetector: _FakeDeviceTypeDetector(isLaptop: false),
       );
 
       final appliedMode = await service.applyConfiguredMode();
@@ -105,6 +111,7 @@ void main() {
       final service = SleepPreventionService(
         bridgeSettingsRepository: BridgeSettingsRepository(api: settingsApi),
         wakeLockRepository: WakeLockRepository(client: wakeLockClient),
+        deviceTypeDetector: _FakeDeviceTypeDetector(isLaptop: false),
       );
 
       await service.dispose();
@@ -119,12 +126,98 @@ void main() {
       final service = SleepPreventionService(
         bridgeSettingsRepository: BridgeSettingsRepository(api: settingsApi),
         wakeLockRepository: WakeLockRepository(client: wakeLockClient),
+        deviceTypeDetector: _FakeDeviceTypeDetector(isLaptop: false),
       );
 
       await service.dispose();
 
       expect(wakeLockClient.disableCalls, equals(1));
     });
+
+    test(
+      'does not warn about lid-close when platform prevents it',
+      () async {
+        final settingsApi = _QueueBridgeSettingsApi(
+          readResults: <String?>['{"sleepPrevention":"always"}'],
+        );
+        final wakeLockClient = _FakeWakeLockClient(
+          preventsLidCloseSleep: true,
+        );
+        final service = SleepPreventionService(
+          bridgeSettingsRepository: BridgeSettingsRepository(api: settingsApi),
+          wakeLockRepository: WakeLockRepository(client: wakeLockClient),
+          deviceTypeDetector: _FakeDeviceTypeDetector(isLaptop: true),
+        );
+
+        final appliedMode = await service.applyConfiguredMode();
+
+        expect(appliedMode, SleepPreventionMode.always);
+      },
+    );
+
+    test(
+      'does not warn about lid-close when device is not a laptop',
+      () async {
+        final settingsApi = _QueueBridgeSettingsApi(
+          readResults: <String?>['{"sleepPrevention":"always"}'],
+        );
+        final wakeLockClient = _FakeWakeLockClient(
+          preventsLidCloseSleep: false,
+        );
+        final service = SleepPreventionService(
+          bridgeSettingsRepository: BridgeSettingsRepository(api: settingsApi),
+          wakeLockRepository: WakeLockRepository(client: wakeLockClient),
+          deviceTypeDetector: _FakeDeviceTypeDetector(isLaptop: false),
+        );
+
+        final appliedMode = await service.applyConfiguredMode();
+
+        expect(appliedMode, SleepPreventionMode.always);
+      },
+    );
+
+    test(
+      'does not warn about lid-close when wake lock is off',
+      () async {
+        final settingsApi = _QueueBridgeSettingsApi(
+          readResults: <String?>['{"sleepPrevention":"off"}'],
+        );
+        final wakeLockClient = _FakeWakeLockClient(
+          preventsLidCloseSleep: false,
+        );
+        final service = SleepPreventionService(
+          bridgeSettingsRepository: BridgeSettingsRepository(api: settingsApi),
+          wakeLockRepository: WakeLockRepository(client: wakeLockClient),
+          deviceTypeDetector: _FakeDeviceTypeDetector(isLaptop: true),
+        );
+
+        final appliedMode = await service.applyConfiguredMode();
+
+        expect(appliedMode, SleepPreventionMode.off);
+      },
+    );
+
+    test(
+      'warns about lid-close when wake lock enabled on laptop and '
+      'platform cannot prevent lid-close sleep',
+      () async {
+        final settingsApi = _QueueBridgeSettingsApi(
+          readResults: <String?>['{"sleepPrevention":"always"}'],
+        );
+        final wakeLockClient = _FakeWakeLockClient(
+          preventsLidCloseSleep: false,
+        );
+        final service = SleepPreventionService(
+          bridgeSettingsRepository: BridgeSettingsRepository(api: settingsApi),
+          wakeLockRepository: WakeLockRepository(client: wakeLockClient),
+          deviceTypeDetector: _FakeDeviceTypeDetector(isLaptop: true),
+        );
+
+        final appliedMode = await service.applyConfiguredMode();
+
+        expect(appliedMode, SleepPreventionMode.always);
+      },
+    );
   });
 }
 
@@ -156,6 +249,8 @@ class _QueueBridgeSettingsApi implements BridgeSettingsApi {
 class _FakeWakeLockClient implements WakeLockClient {
   final bool failEnable;
   final bool failDisable;
+  @override
+  final bool preventsLidCloseSleep;
 
   int enableCalls = 0;
   int disableCalls = 0;
@@ -163,6 +258,7 @@ class _FakeWakeLockClient implements WakeLockClient {
   _FakeWakeLockClient({
     this.failEnable = false,
     this.failDisable = false,
+    this.preventsLidCloseSleep = false,
   });
 
   @override
@@ -180,4 +276,14 @@ class _FakeWakeLockClient implements WakeLockClient {
       throw StateError('disable failed');
     }
   }
+}
+
+class _FakeDeviceTypeDetector implements DeviceTypeDetector {
+  final bool _isLaptop;
+
+  _FakeDeviceTypeDetector({required bool isLaptop})
+    : _isLaptop = isLaptop;
+
+  @override
+  Future<bool> isLaptop() async => _isLaptop;
 }
