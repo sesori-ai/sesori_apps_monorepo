@@ -29,7 +29,7 @@ OpenCodePlugin _createOpenCodePlugin({
 Future<void> main(List<String> args) async {
   if (!(Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
     Log.e("Unsupported platform ${Platform.operatingSystem}");
-    exit(0);
+    exit(1);
   }
 
   if (args.isNotEmpty && args[0] == 'config') {
