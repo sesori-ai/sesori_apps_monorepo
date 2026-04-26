@@ -98,6 +98,96 @@ void main() {
     expect(find.widgetWithText(OutlinedButton, "xhigh"), findsOneWidget);
   });
 
+  testWidgets("selecting a different variant updates the displayed variant", (tester) async {
+    when(() => sessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer(
+      (_) async => ApiResponse.success(
+        const ProviderListResponse(
+          connectedOnly: false,
+          items: [
+            ProviderInfo(
+              id: "anthropic",
+              name: "Anthropic",
+              defaultModelID: "claude-3-5-sonnet",
+              models: {
+                "claude-3-5-sonnet": ProviderModel(
+                  id: "claude-3-5-sonnet",
+                  providerID: "anthropic",
+                  name: "Claude 3.5 Sonnet",
+                  variants: ["xhigh", "low"],
+                  family: null,
+                  releaseDate: null,
+                ),
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+
+    // Initially shows the agent's default variant.
+    expect(find.widgetWithText(OutlinedButton, "xhigh"), findsOneWidget);
+
+    // Open variant picker.
+    await tester.tap(find.widgetWithText(OutlinedButton, "xhigh"));
+    await tester.pumpAndSettle();
+
+    // Select a different variant.
+    await tester.tap(find.widgetWithText(ListTile, "low"));
+    await tester.pumpAndSettle();
+
+    // The UI should now reflect the newly selected variant.
+    expect(find.widgetWithText(OutlinedButton, "low"), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, "xhigh"), findsNothing);
+  });
+
+  testWidgets("selecting Default clears the displayed variant", (tester) async {
+    when(() => sessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer(
+      (_) async => ApiResponse.success(
+        const ProviderListResponse(
+          connectedOnly: false,
+          items: [
+            ProviderInfo(
+              id: "anthropic",
+              name: "Anthropic",
+              defaultModelID: "claude-3-5-sonnet",
+              models: {
+                "claude-3-5-sonnet": ProviderModel(
+                  id: "claude-3-5-sonnet",
+                  providerID: "anthropic",
+                  name: "Claude 3.5 Sonnet",
+                  variants: ["xhigh", "low"],
+                  family: null,
+                  releaseDate: null,
+                ),
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+
+    // Initially shows the agent's default variant.
+    expect(find.widgetWithText(OutlinedButton, "xhigh"), findsOneWidget);
+
+    // Open variant picker.
+    await tester.tap(find.widgetWithText(OutlinedButton, "xhigh"));
+    await tester.pumpAndSettle();
+
+    // Select Default (null variant).
+    await tester.tap(find.widgetWithText(ListTile, "Default"));
+    await tester.pumpAndSettle();
+
+    // The UI should now show "Default".
+    expect(find.widgetWithText(OutlinedButton, "Default"), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, "xhigh"), findsNothing);
+  });
+
   testWidgets("preserves selectedAgentModel variant when changing agent", (tester) async {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();

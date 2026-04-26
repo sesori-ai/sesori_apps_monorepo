@@ -908,7 +908,12 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (agentModel == null) return;
 
     if (isClosed) return;
-    emit(current.copyWith(selectedAgentModel: agentModel.copyWith(variant: variant?.id)));
+    emit(
+      current.copyWith(
+        selectedAgentModel: agentModel.copyWith(variant: variant?.id),
+        selectedVariant: variant,
+      ),
+    );
   }
 
   void stageCommand(CommandInfo command) {

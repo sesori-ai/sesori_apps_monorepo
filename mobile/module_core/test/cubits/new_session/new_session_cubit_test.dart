@@ -328,5 +328,139 @@ void main() {
             ),
       ],
     );
+
+    blocTest<NewSessionCubit, NewSessionState>(
+      "selectVariant updates selectedVariant in state",
+      build: () {
+        when(() => mockSessionService.listAgents()).thenAnswer(
+          (_) async => ApiResponse.success(
+            const Agents(
+              agents: [
+                AgentInfo(
+                  name: "build",
+                  description: "Build",
+                  model: AgentModel(providerID: "openai", modelID: "gpt-4", variant: null),
+                  mode: AgentMode.primary,
+                ),
+              ],
+            ),
+          ),
+        );
+        when(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer(
+          (_) async => ApiResponse.success(
+            const ProviderListResponse(
+              connectedOnly: false,
+              items: [
+                ProviderInfo(
+                  id: "openai",
+                  name: "OpenAI",
+                  defaultModelID: "gpt-4",
+                  models: {
+                    "gpt-4": ProviderModel(
+                      id: "gpt-4",
+                      providerID: "openai",
+                      name: "GPT-4",
+                      variants: ["fast", "slow"],
+                      family: null,
+                      releaseDate: null,
+                    ),
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        cubit.selectVariant(const SessionVariant(id: "fast"));
+      },
+      expect: () => [
+        isA<NewSessionIdle>().having(
+          (state) => state.selectedVariant,
+          "initial selectedVariant",
+          isNull,
+        ),
+        isA<NewSessionIdle>()
+            .having(
+              (state) => state.selectedVariant,
+              "selectedVariant",
+              const SessionVariant(id: "fast"),
+            )
+            .having(
+              (state) => state.selectedAgentModel?.variant,
+              "selectedAgentModel.variant",
+              "fast",
+            ),
+      ],
+    );
+
+    blocTest<NewSessionCubit, NewSessionState>(
+      "selectVariant to null clears selectedVariant in state",
+      build: () {
+        when(() => mockSessionService.listAgents()).thenAnswer(
+          (_) async => ApiResponse.success(
+            const Agents(
+              agents: [
+                AgentInfo(
+                  name: "build",
+                  description: "Build",
+                  model: AgentModel(providerID: "openai", modelID: "gpt-4", variant: "fast"),
+                  mode: AgentMode.primary,
+                ),
+              ],
+            ),
+          ),
+        );
+        when(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer(
+          (_) async => ApiResponse.success(
+            const ProviderListResponse(
+              connectedOnly: false,
+              items: [
+                ProviderInfo(
+                  id: "openai",
+                  name: "OpenAI",
+                  defaultModelID: "gpt-4",
+                  models: {
+                    "gpt-4": ProviderModel(
+                      id: "gpt-4",
+                      providerID: "openai",
+                      name: "GPT-4",
+                      variants: ["fast", "slow"],
+                      family: null,
+                      releaseDate: null,
+                    ),
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        cubit.selectVariant(null);
+      },
+      expect: () => [
+        isA<NewSessionIdle>().having(
+          (state) => state.selectedVariant,
+          "initial selectedVariant",
+          const SessionVariant(id: "fast"),
+        ),
+        isA<NewSessionIdle>()
+            .having(
+              (state) => state.selectedVariant,
+              "selectedVariant",
+              isNull,
+            )
+            .having(
+              (state) => state.selectedAgentModel?.variant,
+              "selectedAgentModel.variant",
+              isNull,
+            ),
+      ],
+    );
   });
 }

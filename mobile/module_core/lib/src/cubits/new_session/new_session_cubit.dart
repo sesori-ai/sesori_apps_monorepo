@@ -188,15 +188,30 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       case NewSessionIdle():
         final agentModel = current.selectedAgentModel;
         if (agentModel == null) return;
-        emit(current.copyWith(selectedAgentModel: agentModel.copyWith(variant: variant?.id)));
+        emit(
+          current.copyWith(
+            selectedAgentModel: agentModel.copyWith(variant: variant?.id),
+            selectedVariant: variant,
+          ),
+        );
       case NewSessionSending():
         final agentModel = current.selectedAgentModel;
         if (agentModel == null) return;
-        emit(current.copyWith(selectedAgentModel: agentModel.copyWith(variant: variant?.id)));
+        emit(
+          current.copyWith(
+            selectedAgentModel: agentModel.copyWith(variant: variant?.id),
+            selectedVariant: variant,
+          ),
+        );
       case NewSessionError():
         final agentModel = current.selectedAgentModel;
         if (agentModel == null) return;
-        emit(current.copyWith(selectedAgentModel: agentModel.copyWith(variant: variant?.id)));
+        emit(
+          current.copyWith(
+            selectedAgentModel: agentModel.copyWith(variant: variant?.id),
+            selectedVariant: variant,
+          ),
+        );
       case NewSessionCreated():
         return;
     }
