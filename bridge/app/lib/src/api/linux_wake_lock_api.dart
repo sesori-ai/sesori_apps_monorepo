@@ -22,14 +22,17 @@ class LinuxWakeLockApi implements WakeLockClient {
     }
 
     try {
+      // Use `cat` instead of `sleep infinity` so the child exits when the
+      // bridge dies. `cat` blocks on stdin; when the bridge process exits
+      // (even via SIGKILL), the OS closes the stdin pipe, `cat` gets EOF,
+      // exits, and systemd releases the inhibitor lock automatically.
       final process = await _processStarter(
         "systemd-inhibit",
         const <String>[
           "--what=idle:sleep",
           "--who=sesori-bridge",
           "--why=Bridge is running",
-          "sleep",
-          "infinity",
+          "cat",
         ],
       );
 

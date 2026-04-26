@@ -29,8 +29,7 @@ void main() {
           "--what=idle:sleep",
           "--who=sesori-bridge",
           "--why=Bridge is running",
-          "sleep",
-          "infinity",
+          "cat",
         ]),
       );
       expect(fakeProcess.killSignals, hasLength(1));
@@ -50,8 +49,7 @@ void main() {
               "--what=idle:sleep",
               "--who=sesori-bridge",
               "--why=Bridge is running",
-              "sleep",
-              "infinity",
+              "cat",
             ],
             "No such file or directory",
           );
