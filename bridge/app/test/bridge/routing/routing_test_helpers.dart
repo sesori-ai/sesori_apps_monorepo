@@ -80,6 +80,8 @@ class FakeBridgePlugin implements BridgePluginApi {
   String? lastRenameProjectName;
   String? lastDeleteSessionId;
   String? lastArchiveSessionId;
+  String? lastDeleteWorkspaceProjectId;
+  String? lastDeleteWorkspaceWorktreePath;
   String? lastGetChildSessionsSessionId;
   String? lastSendPromptSessionId;
   List<PluginPromptPart>? lastSendPromptParts;
@@ -230,6 +232,15 @@ class FakeBridgePlugin implements BridgePluginApi {
     if (archiveSessionCompleter case final completer?) {
       await completer.future;
     }
+  }
+
+  @override
+  Future<void> deleteWorkspace({
+    required String projectId,
+    required String worktreePath,
+  }) async {
+    lastDeleteWorkspaceProjectId = projectId;
+    lastDeleteWorkspaceWorktreePath = worktreePath;
   }
 
   @override

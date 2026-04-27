@@ -1008,6 +1008,7 @@ class _FakeWorktreeService extends WorktreeService {
             processRunner: _NoopProcessRunner(),
             gitPathExists: ({required String gitPath}) => true,
           ),
+          plugin: _FakeBridgePlugin(),
         ),
       );
 
@@ -1097,4 +1098,12 @@ class _OrderCheckingCommandPlugin extends FakeBridgePlugin {
       model: model,
     );
   }
+}
+
+class _FakeBridgePlugin extends FakeBridgePlugin {
+  @override
+  Future<void> deleteWorkspace({
+    required String projectId,
+    required String worktreePath,
+  }) async {}
 }

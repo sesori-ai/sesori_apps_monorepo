@@ -76,6 +76,7 @@ void main() {
           processRunner: FakeProcessRunner(),
           gitPathExists: ({required String gitPath}) => true,
         ),
+        plugin: plugin,
       ),
     );
     final relayClient = RelayClient(
@@ -208,6 +209,7 @@ void main() {
           processRunner: FakeProcessRunner(),
           gitPathExists: ({required String gitPath}) => true,
         ),
+        plugin: plugin,
       ),
     );
 
@@ -321,6 +323,7 @@ void main() {
           processRunner: FakeProcessRunner(),
           gitPathExists: ({required String gitPath}) => true,
         ),
+        plugin: plugin,
       ),
     );
     final relayClient = RelayClient(
@@ -472,6 +475,7 @@ void main() {
           processRunner: FakeProcessRunner(),
           gitPathExists: ({required String gitPath}) => true,
         ),
+        plugin: plugin,
       ),
     );
     final relayClient = RelayClient(
@@ -566,6 +570,7 @@ void main() {
           processRunner: FakeProcessRunner(),
           gitPathExists: ({required String gitPath}) => true,
         ),
+        plugin: plugin,
       ),
     );
     final relayClient = RelayClient(
@@ -685,6 +690,7 @@ void main() {
           processRunner: FakeProcessRunner(),
           gitPathExists: ({required String gitPath}) => true,
         ),
+        plugin: plugin,
       ),
     );
     final relayClient = RelayClient(
@@ -1134,6 +1140,12 @@ class _SummaryPlugin implements BridgePluginApi {
   Future<void> archiveSession({required String sessionId}) async {}
 
   @override
+  Future<void> deleteWorkspace({
+    required String projectId,
+    required String worktreePath,
+  }) async {}
+
+  @override
   Future<void> dispose() async {}
 
   Future<void> close() => _controller.close();
@@ -1267,6 +1279,12 @@ class _NoopPlugin implements BridgePluginApi {
 
   @override
   Future<void> archiveSession({required String sessionId}) async {}
+
+  @override
+  Future<void> deleteWorkspace({
+    required String projectId,
+    required String worktreePath,
+  }) async {}
 
   @override
   Future<void> dispose() async {}

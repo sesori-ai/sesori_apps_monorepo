@@ -84,21 +84,22 @@ void main() {
           db: database,
         ),
         worktreeService: WorktreeService(
-          worktreeRepository: WorktreeRepository(
-            projectsDao: database.projectsDao,
-            sessionDao: database.sessionDao,
-            gitApi: GitCliApi(
-              processRunner: FakeProcessRunner((
-                String executable,
-                List<String> arguments, {
-                String? workingDirectory,
-                Duration timeout = const Duration(seconds: 15),
-              }) async {
-                return ProcessResult(0, 127, "", "command not found");
-              }),
-              gitPathExists: ({required String gitPath}) => true,
-            ),
+        worktreeRepository: WorktreeRepository(
+          projectsDao: database.projectsDao,
+          sessionDao: database.sessionDao,
+          gitApi: GitCliApi(
+            processRunner: FakeProcessRunner((
+              String executable,
+              List<String> arguments, {
+              String? workingDirectory,
+              Duration timeout = const Duration(seconds: 15),
+            }) async {
+              return ProcessResult(0, 127, "", "command not found");
+            }),
+            gitPathExists: ({required String gitPath}) => true,
           ),
+          plugin: plugin,
+        ),
         ),
         sessionEventEnrichmentService: SessionEventEnrichmentService(
           sessionRepository: sessionRepository,
@@ -229,6 +230,7 @@ class _TestHarness {
           }),
           gitPathExists: ({required String gitPath}) => true,
         ),
+        plugin: plugin,
       ),
     );
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
@@ -422,6 +424,12 @@ class _ThrowingSummaryPlugin implements BridgePluginApi {
 
   @override
   Future<void> archiveSession({required String sessionId}) async {}
+
+  @override
+  Future<void> deleteWorkspace({
+    required String projectId,
+    required String worktreePath,
+  }) async {}
 
   @override
   Future<List<PluginSession>> getChildSessions(String sessionId) async => [];

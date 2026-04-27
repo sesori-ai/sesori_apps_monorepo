@@ -413,6 +413,12 @@ class _FakeBridgePlugin implements BridgePluginApi {
   Future<void> archiveSession({required String sessionId}) async {}
 
   @override
+  Future<void> deleteWorkspace({
+    required String projectId,
+    required String worktreePath,
+  }) async {}
+
+  @override
   Future<List<PluginSession>> getChildSessions(String sessionId) async => [];
 
   @override
@@ -567,6 +573,12 @@ class _TrackingBridgePlugin implements BridgePluginApi {
 
   @override
   Future<void> archiveSession({required String sessionId}) async {}
+
+  @override
+  Future<void> deleteWorkspace({
+    required String projectId,
+    required String worktreePath,
+  }) async {}
 
   @override
   Future<List<PluginSession>> getChildSessions(String sessionId) async => [];

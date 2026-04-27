@@ -428,5 +428,11 @@ class _FakeBridgePlugin implements BridgePluginApi {
   }
 
   @override
+  Future<void> deleteWorkspace({
+    required String projectId,
+    required String worktreePath,
+  }) async {}
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

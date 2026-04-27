@@ -278,6 +278,12 @@ class _FakeBridgePlugin implements BridgePluginApi {
   Future<void> archiveSession({required String sessionId}) => throw UnimplementedError();
 
   @override
+  Future<void> deleteWorkspace({
+    required String projectId,
+    required String worktreePath,
+  }) => throw UnimplementedError();
+
+  @override
   Future<List<PluginSession>> getChildSessions(String sessionId) => throw UnimplementedError();
 
   @override

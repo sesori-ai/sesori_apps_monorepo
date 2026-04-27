@@ -62,6 +62,7 @@ void main() {
             processRunner: FakeProcessRunner(),
             gitPathExists: ({required String gitPath}) => true,
           ),
+          plugin: plugin,
         ),
       );
       final sessionDiffsHandler = GetSessionDiffsHandler(
@@ -375,6 +376,7 @@ void main() {
             processRunner: FakeProcessRunner(),
             gitPathExists: ({required String gitPath}) => true,
           ),
+          plugin: plugin,
         ),
       );
       final sessionDiffsHandler = GetSessionDiffsHandler(
