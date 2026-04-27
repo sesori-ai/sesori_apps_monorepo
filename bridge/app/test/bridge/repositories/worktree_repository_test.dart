@@ -25,21 +25,21 @@ void main() {
       await db.close();
     });
 
-    WorktreeRepository _repository() => WorktreeRepository(
-          projectsDao: db.projectsDao,
-          sessionDao: db.sessionDao,
-          gitApi: GitCliApi(
-            processRunner: processRunner,
-            gitPathExists: ({required String gitPath}) => true,
-          ),
-          plugin: plugin,
-        );
+    WorktreeRepository repository() => WorktreeRepository(
+      projectsDao: db.projectsDao,
+      sessionDao: db.sessionDao,
+      gitApi: GitCliApi(
+        processRunner: processRunner,
+        gitPathExists: ({required String gitPath}) => true,
+      ),
+      plugin: plugin,
+    );
 
     test("calls plugin.deleteWorkspace when git removal succeeds", () async {
       processRunner.enqueue(result: _ok()); // prune
       processRunner.enqueue(result: _ok()); // remove
 
-      final repo = _repository();
+      final repo = repository();
       await repo.removeWorktree(
         projectId: "/repo",
         projectPath: "/repo",
@@ -56,7 +56,7 @@ void main() {
       processRunner.enqueue(result: _ok()); // prune
       processRunner.enqueue(result: _error("worktree not found")); // remove fails
 
-      final repo = _repository();
+      final repo = repository();
       await repo.removeWorktree(
         projectId: "/repo",
         projectPath: "/repo",
@@ -72,7 +72,7 @@ void main() {
       processRunner.enqueue(result: _ok()); // remove
       plugin.throwOnDeleteWorkspace = true;
 
-      final repo = _repository();
+      final repo = repository();
       // Should not throw
       await repo.removeWorktree(
         projectId: "/repo",
@@ -110,7 +110,7 @@ class _FakeProcessRunner implements ProcessRunner {
     );
 
     if (_queue.isEmpty) {
-      throw StateError("No ProcessResult queued for: \$executable \$arguments");
+      throw StateError("No ProcessResult queued for: $executable $arguments");
     }
 
     return _queue.removeAt(0);

@@ -31,15 +31,15 @@ jobs:
         working-directory: bridge
 
       - name: Analyze bridge/app
-        run: dart analyze
+        run: dart analyze --fatal-infos
         working-directory: bridge/app
 
       - name: Analyze sesori_plugin_interface
-        run: dart analyze
+        run: dart analyze --fatal-infos
         working-directory: bridge/sesori_plugin_interface
 
       - name: Analyze sesori_plugin_opencode
-        run: dart analyze
+        run: dart analyze --fatal-infos
         working-directory: bridge/sesori_plugin_opencode
 
       - name: Run tests for bridge/app

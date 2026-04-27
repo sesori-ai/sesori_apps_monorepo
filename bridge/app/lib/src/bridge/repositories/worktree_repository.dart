@@ -158,7 +158,7 @@ class WorktreeRepository {
     if (removed) {
       _plugin
           .deleteWorkspace(
-            projectId: projectPath,
+            projectId: projectId,
             worktreePath: worktreePath,
           )
           .catchError(
