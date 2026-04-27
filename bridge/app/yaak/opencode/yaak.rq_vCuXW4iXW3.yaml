@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_vCuXW4iXW3
 createdAt: 2026-03-13T12:40:22.635390
-updatedAt: 2026-03-15T10:56:23.366754
+updatedAt: 2026-04-27T08:20:01.795664
 workspaceId: wk_CKpMKQdH7W
 folderId: fl_McTnzzzzcF
 authentication: {}
@@ -37,7 +37,7 @@ urlParameters:
   name: directory
   value: ''
   id: tg69Aa6EmW
-- enabled: false
+- enabled: true
   name: roots
   value: 'true'
   id: NKnwfKRbGd
@@ -56,4 +56,4 @@ urlParameters:
 - enabled: true
   name: ''
   value: ''
-  id: PQnwnEW5pG
+  id: ttf8wj4vRB
