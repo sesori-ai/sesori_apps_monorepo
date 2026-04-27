@@ -204,7 +204,7 @@ class OpenCodeRepository {
 
   Future<List<Session>> getSessions({required String worktree}) async {
     final (standardSessions, globalSessions) = await wait2(
-      _api.listSessions(directory: worktree),
+      _api.listSessions(directory: worktree, roots: true),
       _api.listAllSessions(directory: worktree, roots: true),
     );
 

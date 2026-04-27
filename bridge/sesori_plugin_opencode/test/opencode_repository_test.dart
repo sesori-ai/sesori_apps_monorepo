@@ -560,7 +560,7 @@ class _FakeApi implements OpenCodeApi {
   Future<List<Session>> listRootSessions() async => _sessions;
 
   @override
-  Future<List<Session>> listSessions({String? directory}) async => _sessions;
+  Future<List<Session>> listSessions({String? directory, required bool roots}) async => _sessions;
 
   @override
   Future<List<Command>> listCommands({required String? directory}) async => _commands;
