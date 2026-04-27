@@ -29,7 +29,7 @@ class ActiveSessionTracker {
   Future<void> coldStart() async {
     final (projects, sessions) = await (
       _repository.getProjects(),
-      _repository.api.listSessions(),
+      _repository.api.listSessions(roots: false),
     ).wait;
 
     _projectWorktrees
