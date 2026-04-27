@@ -124,9 +124,9 @@ void main() {
   });
 }
 
-/// Minimal [BridgePlugin] fake that only implements the surface touched by
+/// Minimal [BridgePluginApi] fake that only implements the surface touched by
 /// [ProjectRepository]. Every other member throws so accidental use is loud.
-class _FakeBridgePlugin implements BridgePlugin {
+class _FakeBridgePlugin implements BridgePluginApi {
   List<PluginProject> projectsResult = const [];
   Object? getProjectsError;
   PluginProject projectResult = const PluginProject(id: "project-id");

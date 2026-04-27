@@ -12,13 +12,13 @@ import "worktree_cleanup.dart";
 
 /// Handles `DELETE /session/delete` — deletes a session.
 class DeleteSessionHandler extends BodyRequestHandler<DeleteSessionRequest, SuccessEmptyResponse> {
-  final BridgePlugin _plugin;
+  final BridgePluginApi _plugin;
   final WorktreeService _worktreeService;
   final SessionRepository _sessionRepository;
   final SessionPersistenceService _sessionPersistenceService;
 
   DeleteSessionHandler({
-    required BridgePlugin plugin,
+    required BridgePluginApi plugin,
     required WorktreeService worktreeService,
     required SessionRepository sessionRepository,
     required SessionPersistenceService sessionPersistenceService,
@@ -50,8 +50,8 @@ class DeleteSessionHandler extends BodyRequestHandler<DeleteSessionRequest, Succ
     if (wantsGitCleanup) {
       if (sessionDto case SessionDto(
         :final projectId,
-        worktreePath: final worktreePath?,
-        branchName: final branchName?,
+        :final worktreePath?,
+        :final branchName?,
       )) {
         final cleanupResult = await performWorktreeCleanup(
           worktreeService: _worktreeService,
@@ -72,28 +72,6 @@ class DeleteSessionHandler extends BodyRequestHandler<DeleteSessionRequest, Succ
             status: 409,
             headers: {"content-type": "application/json"},
             body: jsonEncode(rejection.toJson()),
-          );
-        }
-      }
-    }
-
-    if (sessionDto case SessionDto(
-      :final projectId,
-      worktreePath: final worktreePath?,
-    )) {
-      if (body.deleteWorktree) {
-        try {
-          await _plugin.deleteWorkspace(
-            projectDirectory: projectId,
-            worktreePath: worktreePath,
-          );
-        } on PluginApiException catch (error) {
-          // Best-effort: if the workspace is already gone or the backend does
-          // not recognize it, log and continue so the session deletion still
-          // succeeds.
-          Log.w(
-            "deleteSession: failed to remove workspace from backend for session $sessionId: "
-            "${error.statusCode} ${error.endpoint}",
           );
         }
       }

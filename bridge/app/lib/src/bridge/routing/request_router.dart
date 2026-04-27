@@ -52,7 +52,7 @@ class RequestRouter {
   final List<RequestHandlerBase> _handlers;
 
   RequestRouter({
-    required BridgePlugin plugin,
+    required BridgePluginApi plugin,
     required GetCommandsHandler getCommandsHandler,
     required SessionRepository sessionRepository,
     required AbortSessionHandler abortSessionHandler,
@@ -86,7 +86,7 @@ class RequestRouter {
         );
 
   static List<RequestHandlerBase> _buildHandlers({
-    required BridgePlugin plugin,
+    required BridgePluginApi plugin,
     required GetCommandsHandler getCommandsHandler,
     required SessionRepository sessionRepository,
     required AbortSessionHandler abortSessionHandler,

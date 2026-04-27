@@ -44,7 +44,7 @@ import "sse/sse_manager.dart";
 class Orchestrator {
   final BridgeConfig config;
   final RelayClient _client;
-  final BridgePlugin _plugin;
+  final BridgePluginApi _plugin;
   final MetadataService _metadataService;
   final PushDispatcher _pushDispatcher;
   final CompletionPushListener _completionListener;
@@ -62,7 +62,7 @@ class Orchestrator {
   Orchestrator({
     required this.config,
     required RelayClient client,
-    required BridgePlugin plugin,
+    required BridgePluginApi plugin,
     required MetadataService metadataService,
     required PushDispatcher pushDispatcher,
     required CompletionPushListener completionListener,
@@ -103,7 +103,6 @@ class Orchestrator {
       sessionPersistenceService: _sessionPersistenceService,
     );
     final sessionArchiveService = SessionArchiveService(
-      plugin: _plugin,
       worktreeService: _worktreeService,
       sessionRepository: _sessionRepository,
       sessionPersistenceService: _sessionPersistenceService,
@@ -156,7 +155,7 @@ class Orchestrator {
 class OrchestratorSession {
   final BridgeConfig config;
   final RelayClient _client;
-  final BridgePlugin _plugin;
+  final BridgePluginApi _plugin;
   final List<int> _roomKey;
   final SSEManager _sseManager;
   final RequestRouter _router;
@@ -177,7 +176,7 @@ class OrchestratorSession {
   OrchestratorSession._({
     required this.config,
     required RelayClient client,
-    required BridgePlugin plugin,
+    required BridgePluginApi plugin,
     required PushDispatcher pushDispatcher,
     required CompletionPushListener completionListener,
     required MaintenancePushListener maintenanceListener,
@@ -207,32 +206,32 @@ class OrchestratorSession {
        _bytesSentController = bytesSentController,
        _failureReporter = failureReporter,
        _prSyncService = prSyncService,
-        _sessionAbortService = sessionAbortService,
-         _router = RequestRouter(
-            plugin: plugin,
-            getCommandsHandler: GetCommandsHandler(
-              sessionRepository: sessionRepository,
-            ),
+       _sessionAbortService = sessionAbortService,
+       _router = RequestRouter(
+         plugin: plugin,
+         getCommandsHandler: GetCommandsHandler(
            sessionRepository: sessionRepository,
-           abortSessionHandler: AbortSessionHandler(sessionAbortService: sessionAbortService),
-           sessionCreationService: sessionCreationService,
-           sessionArchiveService: sessionArchiveService,
-           sendPromptHandler: SendPromptHandler(
-             sessionPromptService: SessionPromptService(sessionRepository: sessionRepository),
-           ),
-           prSyncService: prSyncService,
-           projectRepository: projectRepository,
-           providerRepository: ProviderRepository(plugin: plugin),
-            getAgentsHandler: GetAgentsHandler(
-              AgentRepository(plugin: plugin),
-            ),
-           permissionRepository: permissionRepository,
-          sessionPersistenceService: sessionPersistenceService,
-          worktreeService: worktreeService,
-          sessionDiffsHandler: GetSessionDiffsHandler(
-            sessionRepository: sessionRepository,
-            processRunner: ProcessRunner(),
-          ),
+         ),
+         sessionRepository: sessionRepository,
+         abortSessionHandler: AbortSessionHandler(sessionAbortService: sessionAbortService),
+         sessionCreationService: sessionCreationService,
+         sessionArchiveService: sessionArchiveService,
+         sendPromptHandler: SendPromptHandler(
+           sessionPromptService: SessionPromptService(sessionRepository: sessionRepository),
+         ),
+         prSyncService: prSyncService,
+         projectRepository: projectRepository,
+         providerRepository: ProviderRepository(plugin: plugin),
+         getAgentsHandler: GetAgentsHandler(
+           AgentRepository(plugin: plugin),
+         ),
+         permissionRepository: permissionRepository,
+         sessionPersistenceService: sessionPersistenceService,
+         worktreeService: worktreeService,
+         sessionDiffsHandler: GetSessionDiffsHandler(
+           sessionRepository: sessionRepository,
+           processRunner: ProcessRunner(),
+         ),
        ),
        _mapper = BridgeEventMapper(
          plugin: plugin,

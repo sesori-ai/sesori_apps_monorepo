@@ -12,7 +12,8 @@ import "models/plugin_session_status.dart";
 import "models/plugin_session_variant.dart";
 import "plugin_permission_reply.dart";
 
-abstract class BridgePlugin {
+// Note: as far as architecture goes, this MUST be treated as part of API layer
+abstract class BridgePluginApi {
   /// Unique plugin identifier (e.g., "opencode", "codex")
   String get id;
 
@@ -64,11 +65,9 @@ abstract class BridgePlugin {
   /// from disk. If the workspace is already gone or the backend does not
   /// recognize it, the call should succeed silently.
   ///
-  /// [projectDirectory] is the project root worktree used to identify the
-  /// project in the backend.
   /// [worktreePath] is the specific worktree directory to remove.
   Future<void> deleteWorkspace({
-    required String projectDirectory,
+    required String projectId,
     required String worktreePath,
   });
 

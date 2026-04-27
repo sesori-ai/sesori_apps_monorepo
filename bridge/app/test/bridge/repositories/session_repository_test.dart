@@ -350,7 +350,7 @@ void main() {
   });
 }
 
-class _FakeBridgePlugin implements BridgePlugin {
+class _FakeBridgePlugin implements BridgePluginApi {
   List<PluginProject> projectsResult = const [];
   List<PluginSession> sessionsResult = const [];
   Map<String, List<PluginSession>> sessionsByWorktree = const {};

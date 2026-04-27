@@ -784,19 +784,6 @@ void main() {
       await db.close();
     });
 
-    // pruneWorktrees
-
-    test("pruneWorktrees: calls git worktree prune with projectPath", () async {
-      processRunner.enqueue(result: _ok());
-
-      await service.pruneWorktrees(projectPath: _projectId);
-
-      expect(processRunner.invocations, hasLength(1));
-      final inv = processRunner.invocations.first;
-      expect(inv.arguments, equals(["worktree", "prune"]));
-      expect(inv.workingDirectory, equals(_projectId));
-    });
-
     // removeWorktree (force: false)
 
     test("removeWorktree(force: false): calls prune then remove without --force", () async {

@@ -37,8 +37,8 @@ RelayRequest makeRequest(
         )
         as RelayRequest;
 
-/// Hand-written fake [BridgePlugin] used across routing handler tests.
-class FakeBridgePlugin implements BridgePlugin {
+/// Hand-written fake [BridgePluginApi] used across routing handler tests.
+class FakeBridgePlugin implements BridgePluginApi {
   final _controller = StreamController<BridgeSseEvent>.broadcast();
 
   // ── Configurable return values ───────────────────────────────────────────

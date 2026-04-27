@@ -6,7 +6,7 @@ import "request_handler.dart";
 
 /// Handles `POST /session/messages` — returns all messages for a session.
 class GetSessionMessagesHandler extends BodyRequestHandler<SessionIdRequest, MessageWithPartsResponse> {
-  final BridgePlugin _plugin;
+  final BridgePluginApi _plugin;
 
   GetSessionMessagesHandler(this._plugin)
     : super(

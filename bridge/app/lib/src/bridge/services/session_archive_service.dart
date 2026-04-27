@@ -21,18 +21,15 @@ class SessionNotFoundException implements Exception {}
 class SessionInitializationException implements Exception {}
 
 class SessionArchiveService {
-  final BridgePlugin _plugin;
   final WorktreeService _worktreeService;
   final SessionRepository _sessionRepository;
   final SessionPersistenceService _sessionPersistenceService;
 
   SessionArchiveService({
-    required BridgePlugin plugin,
     required WorktreeService worktreeService,
     required SessionRepository sessionRepository,
     required SessionPersistenceService sessionPersistenceService,
-  }) : _plugin = plugin,
-       _worktreeService = worktreeService,
+  }) : _worktreeService = worktreeService,
        _sessionRepository = sessionRepository,
        _sessionPersistenceService = sessionPersistenceService;
 
@@ -145,19 +142,6 @@ class SessionArchiveService {
       );
       if (cleanupResult case CleanupRejected(:final rejection)) {
         throw SessionArchiveConflictException(rejection: rejection);
-      }
-      if (deleteWorktree) {
-        try {
-          await _plugin.deleteWorkspace(
-            projectDirectory: projectId,
-            worktreePath: worktreePath,
-          );
-        } on PluginApiException catch (error) {
-          Log.w(
-            "archive: failed to remove workspace from backend for session ${sessionDto.sessionId}: "
-            "${error.statusCode} ${error.endpoint}",
-          );
-        }
       }
     }
   }

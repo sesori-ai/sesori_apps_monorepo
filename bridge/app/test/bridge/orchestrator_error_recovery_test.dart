@@ -344,7 +344,7 @@ _TestPushSubsystem _createPushSubsystem() {
   );
 }
 
-class _ThrowingSummaryPlugin implements BridgePlugin {
+class _ThrowingSummaryPlugin implements BridgePluginApi {
   final _controller = StreamController<BridgeSseEvent>.broadcast();
 
   int subscribeCount = 0;

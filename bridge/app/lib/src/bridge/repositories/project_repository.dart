@@ -1,4 +1,4 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePlugin;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePluginApi;
 import "package:sesori_shared/sesori_shared.dart" show Project;
 
 import "../persistence/daos/projects_dao.dart";
@@ -16,11 +16,11 @@ import "mappers/plugin_project_mapper.dart";
 /// [ProjectsDao.insertProjectIfMissing] directly from a Layer 2 repository
 /// (e.g. [PullRequestRepository]).
 class ProjectRepository {
-  final BridgePlugin _plugin;
+  final BridgePluginApi _plugin;
   final ProjectsDao _projectsDao;
 
   ProjectRepository({
-    required BridgePlugin plugin,
+    required BridgePluginApi plugin,
     required ProjectsDao projectsDao,
   }) : _plugin = plugin,
        _projectsDao = projectsDao;

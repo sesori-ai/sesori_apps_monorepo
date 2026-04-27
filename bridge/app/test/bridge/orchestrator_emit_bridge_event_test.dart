@@ -986,7 +986,7 @@ class _AbortEventPlugin extends _EventPlugin {
   }
 }
 
-class _SummaryPlugin implements BridgePlugin {
+class _SummaryPlugin implements BridgePluginApi {
   final void Function() onSubscribe;
   final StreamController<BridgeSseEvent> _controller = StreamController<BridgeSseEvent>.broadcast();
 
@@ -1139,7 +1139,7 @@ class _SummaryPlugin implements BridgePlugin {
   Future<void> close() => _controller.close();
 }
 
-class _NoopPlugin implements BridgePlugin {
+class _NoopPlugin implements BridgePluginApi {
   final StreamController<BridgeSseEvent> _controller = StreamController<BridgeSseEvent>.broadcast();
 
   @override

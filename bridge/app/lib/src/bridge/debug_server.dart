@@ -11,7 +11,7 @@ import "services/session_event_enrichment_service.dart";
 import "sse/bridge_event_mapper.dart";
 
 class DebugServer {
-  final BridgePlugin _plugin;
+  final BridgePluginApi _plugin;
   final RequestRouter _router;
   final BridgeEventMapper _mapper;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
@@ -26,7 +26,7 @@ class DebugServer {
   int _nextRequestId = 1;
 
   DebugServer({
-    required BridgePlugin plugin,
+    required BridgePluginApi plugin,
     required RequestRouter router,
     required this.port,
     required FailureReporter failureReporter,

@@ -18,7 +18,7 @@ import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
 
 _DebugServerHarness _createDebugServerHarness({
-  required BridgePlugin plugin,
+  required BridgePluginApi plugin,
   required AppDatabase db,
   required int port,
 }) {
@@ -346,7 +346,7 @@ class _FakeTokenRefresher implements TokenRefresher {
 // Fake plugin implementations
 // ---------------------------------------------------------------------------
 
-class _FakeBridgePlugin implements BridgePlugin {
+class _FakeBridgePlugin implements BridgePluginApi {
   final _controller = StreamController<BridgeSseEvent>.broadcast();
 
   List<PluginProject> projectsResult = [];
@@ -495,7 +495,7 @@ class _FakeBridgePlugin implements BridgePlugin {
 }
 
 /// Plugin that tracks subscribe/unsubscribe counts via a wrapping stream.
-class _TrackingBridgePlugin implements BridgePlugin {
+class _TrackingBridgePlugin implements BridgePluginApi {
   final _eventController = StreamController<BridgeSseEvent>.broadcast();
   int subscribeCount = 0;
   int unsubscribeCount = 0;

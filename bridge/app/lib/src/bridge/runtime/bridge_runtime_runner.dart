@@ -3,7 +3,7 @@ import "dart:io";
 import "package:clock/clock.dart";
 import "package:http/http.dart" as http;
 import "package:rxdart/rxdart.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePlugin, Log;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePluginApi, Log;
 
 import "../../auth/token.dart";
 import "../../auth/token_manager.dart";
@@ -42,7 +42,7 @@ import "bridge_runtime_auth.dart";
 import "bridge_runtime_server.dart";
 import "bridge_shutdown_coordinator.dart";
 
-typedef BridgePluginFactory = BridgePlugin Function({required String serverUrl, required String? serverPassword});
+typedef BridgePluginFactory = BridgePluginApi Function({required String serverUrl, required String? serverPassword});
 
 Future<int> runBridgeApp({
   required BridgeCliOptions options,
