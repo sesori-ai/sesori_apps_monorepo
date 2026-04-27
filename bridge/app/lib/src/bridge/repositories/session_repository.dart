@@ -1,5 +1,5 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show BridgePlugin, Log, PluginSession, PluginSessionVariant;
+    show BridgePluginApi, Log, PluginSession, PluginSessionVariant;
 import "package:sesori_shared/sesori_shared.dart"
     show CommandListResponse, PrState, PromptModel, PromptPart, PullRequestInfo, Session, SessionVariant;
 
@@ -14,12 +14,12 @@ import "models/stored_session.dart";
 import "pull_request_repository.dart";
 
 class SessionRepository {
-  final BridgePlugin _plugin;
+  final BridgePluginApi _plugin;
   final SessionDao _sessionDao;
   final PullRequestRepository _pullRequestRepository;
 
   SessionRepository({
-    required BridgePlugin plugin,
+    required BridgePluginApi plugin,
     required SessionDao sessionDao,
     required PullRequestRepository pullRequestRepository,
   }) : _plugin = plugin,

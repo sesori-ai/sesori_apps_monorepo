@@ -550,14 +550,22 @@ class FakeOpenCodeApi implements OpenCodeApi {
   }) async => throw UnimplementedError();
 
   @override
+  Future<List<Session>> getChildren({
+    required String sessionId,
+    required String? directory,
+  }) async => [];
+
+  @override
+  Future<Map<String, SessionStatus>> getSessionStatuses({required String? directory}) async => {};
+
+  @override
   Future<void> deleteSession({required String sessionId, required String? directory}) async {}
 
   @override
-  Future<List<Session>> getChildren({required String sessionId, required String? directory}) async => [];
-
-  @override
-  Future<Map<String, SessionStatus>> getSessionStatuses({required String? directory}) async =>
-      <String, SessionStatus>{};
+  Future<void> removeWorktree({
+    required String directory,
+    required String worktreePath,
+  }) async {}
 
   @override
   Future<void> sendPrompt({

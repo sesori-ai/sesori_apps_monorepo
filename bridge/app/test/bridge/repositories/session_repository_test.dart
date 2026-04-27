@@ -350,7 +350,7 @@ void main() {
   });
 }
 
-class _FakeBridgePlugin implements BridgePlugin {
+class _FakeBridgePlugin implements BridgePluginApi {
   List<PluginProject> projectsResult = const [];
   List<PluginSession> sessionsResult = const [];
   Map<String, List<PluginSession>> sessionsByWorktree = const {};
@@ -426,6 +426,12 @@ class _FakeBridgePlugin implements BridgePlugin {
   }) async {
     lastSendCommandVariant = variant?.id;
   }
+
+  @override
+  Future<void> deleteWorkspace({
+    required String projectId,
+    required String worktreePath,
+  }) async {}
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

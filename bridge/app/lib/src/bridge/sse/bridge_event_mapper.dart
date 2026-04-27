@@ -9,11 +9,11 @@ import "../plugin_to_shared_mapping.dart";
 ///
 /// Handles all event type conversions and builds the projects summary event.
 class BridgeEventMapper {
-  final BridgePlugin _plugin;
+  final BridgePluginApi _plugin;
   final FailureReporter _failureReporter;
 
   BridgeEventMapper({
-    required BridgePlugin plugin,
+    required BridgePluginApi plugin,
     required FailureReporter failureReporter,
   }) : _plugin = plugin,
        _failureReporter = failureReporter;

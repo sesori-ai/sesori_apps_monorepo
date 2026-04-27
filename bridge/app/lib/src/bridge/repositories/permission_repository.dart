@@ -11,9 +11,9 @@ import "package:sesori_shared/sesori_shared.dart";
 /// plugin-contract [plugin_interface.PermissionReply] to keep the two enums
 /// decoupled.
 class PermissionRepository {
-  final BridgePlugin _plugin;
+  final BridgePluginApi _plugin;
 
-  PermissionRepository({required BridgePlugin plugin}) : _plugin = plugin;
+  PermissionRepository({required BridgePluginApi plugin}) : _plugin = plugin;
 
   Future<void> replyToPermission({
     required String requestId,

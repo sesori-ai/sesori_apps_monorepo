@@ -12,13 +12,13 @@ import "worktree_cleanup.dart";
 
 /// Handles `DELETE /session/delete` — deletes a session.
 class DeleteSessionHandler extends BodyRequestHandler<DeleteSessionRequest, SuccessEmptyResponse> {
-  final BridgePlugin _plugin;
+  final BridgePluginApi _plugin;
   final WorktreeService _worktreeService;
   final SessionRepository _sessionRepository;
   final SessionPersistenceService _sessionPersistenceService;
 
   DeleteSessionHandler({
-    required BridgePlugin plugin,
+    required BridgePluginApi plugin,
     required WorktreeService worktreeService,
     required SessionRepository sessionRepository,
     required SessionPersistenceService sessionPersistenceService,
@@ -50,8 +50,8 @@ class DeleteSessionHandler extends BodyRequestHandler<DeleteSessionRequest, Succ
     if (wantsGitCleanup) {
       if (sessionDto case SessionDto(
         :final projectId,
-        worktreePath: final worktreePath?,
-        branchName: final branchName?,
+        :final worktreePath?,
+        :final branchName?,
       )) {
         final cleanupResult = await performWorktreeCleanup(
           worktreeService: _worktreeService,

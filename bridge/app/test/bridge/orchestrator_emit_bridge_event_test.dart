@@ -76,6 +76,7 @@ void main() {
           processRunner: FakeProcessRunner(),
           gitPathExists: ({required String gitPath}) => true,
         ),
+        plugin: plugin,
       ),
     );
     final relayClient = RelayClient(
@@ -208,6 +209,7 @@ void main() {
           processRunner: FakeProcessRunner(),
           gitPathExists: ({required String gitPath}) => true,
         ),
+        plugin: plugin,
       ),
     );
 
@@ -321,6 +323,7 @@ void main() {
           processRunner: FakeProcessRunner(),
           gitPathExists: ({required String gitPath}) => true,
         ),
+        plugin: plugin,
       ),
     );
     final relayClient = RelayClient(
@@ -472,6 +475,7 @@ void main() {
           processRunner: FakeProcessRunner(),
           gitPathExists: ({required String gitPath}) => true,
         ),
+        plugin: plugin,
       ),
     );
     final relayClient = RelayClient(
@@ -566,6 +570,7 @@ void main() {
           processRunner: FakeProcessRunner(),
           gitPathExists: ({required String gitPath}) => true,
         ),
+        plugin: plugin,
       ),
     );
     final relayClient = RelayClient(
@@ -685,6 +690,7 @@ void main() {
           processRunner: FakeProcessRunner(),
           gitPathExists: ({required String gitPath}) => true,
         ),
+        plugin: plugin,
       ),
     );
     final relayClient = RelayClient(
@@ -986,7 +992,7 @@ class _AbortEventPlugin extends _EventPlugin {
   }
 }
 
-class _SummaryPlugin implements BridgePlugin {
+class _SummaryPlugin implements BridgePluginApi {
   final void Function() onSubscribe;
   final StreamController<BridgeSseEvent> _controller = StreamController<BridgeSseEvent>.broadcast();
 
@@ -1134,12 +1140,18 @@ class _SummaryPlugin implements BridgePlugin {
   Future<void> archiveSession({required String sessionId}) async {}
 
   @override
+  Future<void> deleteWorkspace({
+    required String projectId,
+    required String worktreePath,
+  }) async {}
+
+  @override
   Future<void> dispose() async {}
 
   Future<void> close() => _controller.close();
 }
 
-class _NoopPlugin implements BridgePlugin {
+class _NoopPlugin implements BridgePluginApi {
   final StreamController<BridgeSseEvent> _controller = StreamController<BridgeSseEvent>.broadcast();
 
   @override
@@ -1267,6 +1279,12 @@ class _NoopPlugin implements BridgePlugin {
 
   @override
   Future<void> archiveSession({required String sessionId}) async {}
+
+  @override
+  Future<void> deleteWorkspace({
+    required String projectId,
+    required String worktreePath,
+  }) async {}
 
   @override
   Future<void> dispose() async {}

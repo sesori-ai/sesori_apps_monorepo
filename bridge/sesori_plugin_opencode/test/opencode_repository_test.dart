@@ -596,16 +596,10 @@ class _FakeApi implements OpenCodeApi {
   Future<void> deleteSession({required String sessionId, required String? directory}) async {}
 
   @override
-  Future<List<Session>> getChildren({required String sessionId, required String? directory}) async => [];
-
-  @override
-  Future<List<GlobalSession>> listAllSessions({
-    required String? directory,
-    required bool roots,
-  }) async => _globalSessions;
-
-  @override
-  Future<List<MessageWithParts>> getMessages({required String sessionId, required String? directory}) async => [];
+  Future<void> removeWorktree({
+    required String directory,
+    required String worktreePath,
+  }) async {}
 
   @override
   Future<void> sendPrompt({
@@ -661,6 +655,24 @@ class _FakeApi implements OpenCodeApi {
 
   @override
   Future<Project> getProject({required String directory}) async => throw UnimplementedError();
+
+  @override
+  Future<List<Session>> getChildren({
+    required String sessionId,
+    required String? directory,
+  }) async => [];
+
+  @override
+  Future<List<MessageWithParts>> getMessages({
+    required String sessionId,
+    required String? directory,
+  }) async => [];
+
+  @override
+  Future<List<GlobalSession>> listAllSessions({
+    required String? directory,
+    required bool roots,
+  }) async => _globalSessions;
 
   @override
   Future<Map<String, SessionStatus>> getSessionStatuses({required String? directory}) async => {};

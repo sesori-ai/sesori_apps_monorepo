@@ -921,7 +921,6 @@ void main() {
           statuses: {
             "session-b": const SessionStatus.busy(),
           },
-          throwForDirectories: {"/repo-a"},
         );
 
         final active = tracker.getActiveStatuses();
@@ -1057,14 +1056,12 @@ OpenCodeRepository _fakeRepository({
   List<Project>? projects,
   List<Session>? sessions,
   Map<String, SessionStatus>? statuses,
-  Set<String>? throwForDirectories,
 }) {
   return OpenCodeRepository(
     _FakeApi(
       projects: projects,
       sessions: sessions,
       statuses: statuses,
-      throwForDirectories: throwForDirectories,
     ),
   );
 }
@@ -1073,14 +1070,12 @@ Future<ActiveSessionTracker> _coldStartedTracker({
   required List<Project> projects,
   List<Session> sessions = const [],
   Map<String, SessionStatus> statuses = const {},
-  Set<String> throwForDirectories = const {},
 }) async {
   final tracker = ActiveSessionTracker(
     _fakeRepository(
       projects: projects,
       sessions: sessions,
       statuses: statuses,
-      throwForDirectories: throwForDirectories,
     ),
   );
   await tracker.coldStart();
@@ -1091,17 +1086,14 @@ class _FakeApi implements OpenCodeApi {
   final List<Project> _projects;
   final List<Session> _sessions;
   final Map<String, SessionStatus> _statuses;
-  final Set<String> _throwForDirectories;
 
   _FakeApi({
     List<Project>? projects,
     List<Session>? sessions,
     Map<String, SessionStatus>? statuses,
-    Set<String>? throwForDirectories,
   }) : _projects = projects ?? [],
        _sessions = sessions ?? [],
-       _statuses = statuses ?? {},
-       _throwForDirectories = throwForDirectories ?? {};
+       _statuses = statuses ?? {};
 
   @override
   String get serverURL => "http://fake";
@@ -1140,16 +1132,10 @@ class _FakeApi implements OpenCodeApi {
   Future<void> deleteSession({required String sessionId, required String? directory}) async {}
 
   @override
-  Future<List<Session>> getChildren({required String sessionId, required String? directory}) async => [];
-
-  @override
-  Future<List<GlobalSession>> listAllSessions({
-    required String? directory,
-    required bool roots,
-  }) async => [];
-
-  @override
-  Future<List<MessageWithParts>> getMessages({required String sessionId, required String? directory}) async => [];
+  Future<void> removeWorktree({
+    required String directory,
+    required String worktreePath,
+  }) async {}
 
   @override
   Future<void> sendPrompt({
@@ -1198,11 +1184,25 @@ class _FakeApi implements OpenCodeApi {
   Future<Project> getProject({required String directory}) async => throw UnimplementedError();
 
   @override
+  Future<List<Session>> getChildren({
+    required String sessionId,
+    required String? directory,
+  }) async => [];
+
+  @override
+  Future<List<MessageWithParts>> getMessages({
+    required String sessionId,
+    required String? directory,
+  }) async => [];
+
+  @override
+  Future<List<GlobalSession>> listAllSessions({
+    required String? directory,
+    required bool roots,
+  }) async => [];
+
+  @override
   Future<Map<String, SessionStatus>> getSessionStatuses({required String? directory}) async {
-    if (directory != null && _throwForDirectories.contains(directory)) {
-      throw Exception("Fake error for directory: $directory");
-    }
-    if (directory == null) return _statuses;
     final sessionIdsInDirectory = _sessions
         .where((s) => s.directory == directory || s.directory.startsWith("$directory/"))
         .map((s) => s.id)

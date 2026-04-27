@@ -37,8 +37,8 @@ RelayRequest makeRequest(
         )
         as RelayRequest;
 
-/// Hand-written fake [BridgePlugin] used across routing handler tests.
-class FakeBridgePlugin implements BridgePlugin {
+/// Hand-written fake [BridgePluginApi] used across routing handler tests.
+class FakeBridgePlugin implements BridgePluginApi {
   final _controller = StreamController<BridgeSseEvent>.broadcast();
 
   // ── Configurable return values ───────────────────────────────────────────
@@ -80,6 +80,8 @@ class FakeBridgePlugin implements BridgePlugin {
   String? lastRenameProjectName;
   String? lastDeleteSessionId;
   String? lastArchiveSessionId;
+  String? lastDeleteWorkspaceProjectId;
+  String? lastDeleteWorkspaceWorktreePath;
   String? lastGetChildSessionsSessionId;
   String? lastSendPromptSessionId;
   List<PluginPromptPart>? lastSendPromptParts;
@@ -230,6 +232,15 @@ class FakeBridgePlugin implements BridgePlugin {
     if (archiveSessionCompleter case final completer?) {
       await completer.future;
     }
+  }
+
+  @override
+  Future<void> deleteWorkspace({
+    required String projectId,
+    required String worktreePath,
+  }) async {
+    lastDeleteWorkspaceProjectId = projectId;
+    lastDeleteWorkspaceWorktreePath = worktreePath;
   }
 
   @override

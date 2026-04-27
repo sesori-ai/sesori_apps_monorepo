@@ -236,9 +236,9 @@ Session _session({
   pullRequest: null,
 );
 
-/// Minimal [BridgePlugin] fake that only implements [getProjects].
+/// Minimal [BridgePluginApi] fake that only implements [getProjects].
 /// Every other member throws [UnimplementedError] so accidental use is loud.
-class _FakeBridgePlugin implements BridgePlugin {
+class _FakeBridgePlugin implements BridgePluginApi {
   final List<PluginProject> _projects;
 
   _FakeBridgePlugin({required List<PluginProject> projects}) : _projects = projects;
@@ -276,6 +276,12 @@ class _FakeBridgePlugin implements BridgePlugin {
 
   @override
   Future<void> archiveSession({required String sessionId}) => throw UnimplementedError();
+
+  @override
+  Future<void> deleteWorkspace({
+    required String projectId,
+    required String worktreePath,
+  }) => throw UnimplementedError();
 
   @override
   Future<List<PluginSession>> getChildSessions(String sessionId) => throw UnimplementedError();

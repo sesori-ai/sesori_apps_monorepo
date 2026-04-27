@@ -12,7 +12,8 @@ import "models/plugin_session_status.dart";
 import "models/plugin_session_variant.dart";
 import "plugin_permission_reply.dart";
 
-abstract class BridgePlugin {
+// Note: as far as architecture goes, this MUST be treated as part of API layer
+abstract class BridgePluginApi {
   /// Unique plugin identifier (e.g., "opencode", "codex")
   String get id;
 
@@ -57,6 +58,18 @@ abstract class BridgePlugin {
   /// This is best-effort — the local database archive state is authoritative.
   /// Unarchive is not propagated to the backend; it only clears the local DB.
   Future<void> archiveSession({required String sessionId});
+
+  /// Delete a workspace (git worktree / sandbox) from the backend.
+  ///
+  /// This is best-effort — the caller should have already removed the worktree
+  /// from disk. If the workspace is already gone or the backend does not
+  /// recognize it, the call should succeed silently.
+  ///
+  /// [worktreePath] is the specific worktree directory to remove.
+  Future<void> deleteWorkspace({
+    required String projectId,
+    required String worktreePath,
+  });
 
   Future<List<PluginSession>> getChildSessions(String sessionId);
 

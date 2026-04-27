@@ -26,7 +26,7 @@ String formatDroppedSseFrameLog({
   return "[opencode][sse][$category]$suffix $message";
 }
 
-class OpenCodePlugin implements BridgePlugin {
+class OpenCodePlugin implements BridgePluginApi {
   final OpenCodeService _service;
   final SseEventParser _parser;
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
@@ -403,6 +403,19 @@ class OpenCodePlugin implements BridgePlugin {
         body: {
           "time": {"archived": DateTime.now().millisecondsSinceEpoch},
         },
+      ),
+    );
+  }
+
+  @override
+  Future<void> deleteWorkspace({
+    required String projectId,
+    required String worktreePath,
+  }) {
+    return _call(
+      () => _service.repository.api.removeWorktree(
+        directory: projectId,
+        worktreePath: worktreePath,
       ),
     );
   }

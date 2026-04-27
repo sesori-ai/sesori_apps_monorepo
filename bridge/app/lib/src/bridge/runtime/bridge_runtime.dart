@@ -3,7 +3,7 @@ import "dart:io";
 
 import "package:http/http.dart" as http;
 import "package:rxdart/rxdart.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePlugin, Log;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePluginApi, Log;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../auth/access_token_provider.dart";
@@ -41,14 +41,14 @@ import "bridge_shutdown_coordinator.dart";
 
 class BridgeRuntime {
   final AppDatabase _database;
-  final BridgePlugin _plugin;
+  final BridgePluginApi _plugin;
   final FailureReporter _failureReporter;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final OrchestratorSession session;
 
   BridgeRuntime({
     required AppDatabase database,
-    required BridgePlugin plugin,
+    required BridgePluginApi plugin,
     required FailureReporter failureReporter,
     required SessionEventEnrichmentService sessionEventEnrichmentService,
     required this.session,
@@ -59,7 +59,7 @@ class BridgeRuntime {
 
   static BridgeRuntime create({
     required BridgeConfig config,
-    required BridgePlugin plugin,
+    required BridgePluginApi plugin,
     required http.Client httpClient,
     required AccessTokenProvider accessTokenProvider,
     required TokenRefresher tokenRefresher,
@@ -152,6 +152,7 @@ class BridgeRuntime {
           worktreeRepository: WorktreeRepository(
             projectsDao: database.projectsDao,
             sessionDao: database.sessionDao,
+            plugin: plugin,
             gitApi: GitCliApi(processRunner: processRunner, gitPathExists: _gitPathExists),
           ),
         ),

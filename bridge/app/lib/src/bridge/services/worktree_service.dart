@@ -171,11 +171,8 @@ class WorktreeService {
     );
   }
 
-  Future<void> pruneWorktrees({required String projectPath}) async {
-    await _worktreeRepository.pruneWorktrees(projectPath: projectPath);
-  }
-
   Future<bool> removeWorktree({
+    required String projectId,
     required String projectPath,
     required String worktreePath,
     required bool force,
@@ -187,6 +184,7 @@ class WorktreeService {
       return false;
     }
     return _worktreeRepository.removeWorktree(
+      projectId: projectId,
       projectPath: projectPath,
       worktreePath: worktreePath,
       force: force,

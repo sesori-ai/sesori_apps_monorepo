@@ -8,7 +8,7 @@ import "request_handler.dart";
 ///
 /// Returns ALL pending questions for a session.
 class GetSessionQuestionsHandler extends BodyRequestHandler<SessionIdRequest, PendingQuestionResponse> {
-  final BridgePlugin _plugin;
+  final BridgePluginApi _plugin;
 
   GetSessionQuestionsHandler(this._plugin)
     : super(

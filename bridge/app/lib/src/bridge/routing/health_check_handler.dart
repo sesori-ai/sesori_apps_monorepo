@@ -5,7 +5,7 @@ import "request_handler.dart";
 
 /// Handles `GET /global/health` — proxies the backend's health status.
 class HealthCheckHandler extends GetRequestHandler<SuccessEmptyResponse> {
-  final BridgePlugin _plugin;
+  final BridgePluginApi _plugin;
 
   HealthCheckHandler(this._plugin) : super("/global/health");
 
