@@ -357,6 +357,128 @@ void main() {
     );
 
     blocTest<SessionDetailCubit, SessionDetailState>(
+      "selectVariant updates selectedAgentModel variant",
+      build: () {
+        when(
+          () => mockSessionService.listProviders(projectId: any(named: "projectId")),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            const ProviderListResponse(
+              connectedOnly: false,
+              items: [
+                ProviderInfo(
+                  id: "openai",
+                  name: "OpenAI",
+                  defaultModelID: "gpt-4",
+                  models: {
+                    "gpt-4": ProviderModel(
+                      id: "gpt-4",
+                      providerID: "openai",
+                      name: "GPT-4",
+                      variants: ["fast", "slow"],
+                      family: null,
+                      releaseDate: null,
+                    ),
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+        return SessionDetailCubit(
+          mockConnectionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
+          permissionRepository: mockPermissionRepository,
+          sessionId: sessionId,
+          projectId: "project-1",
+          notificationCanceller: mockNotificationCanceller,
+          failureReporter: mockFailureReporter,
+        );
+      },
+      act: (cubit) async {
+        await _awaitLoaded(cubit);
+        cubit.selectVariant(const SessionVariant(id: "fast"));
+      },
+      expect: () => [
+        isA<SessionDetailLoaded>().having(
+          (state) => state.selectedAgentModel?.variant,
+          "initial variant",
+          isNull,
+        ),
+        isA<SessionDetailLoaded>().having(
+          (state) => state.selectedAgentModel?.variant,
+          "variant",
+          "fast",
+        ),
+      ],
+    );
+
+    blocTest<SessionDetailCubit, SessionDetailState>(
+      "selectVariant to null clears selectedAgentModel variant",
+      build: () {
+        when(
+          () => mockSessionService.listProviders(projectId: any(named: "projectId")),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            const ProviderListResponse(
+              connectedOnly: false,
+              items: [
+                ProviderInfo(
+                  id: "openai",
+                  name: "OpenAI",
+                  defaultModelID: "gpt-4",
+                  models: {
+                    "gpt-4": ProviderModel(
+                      id: "gpt-4",
+                      providerID: "openai",
+                      name: "GPT-4",
+                      variants: ["fast", "slow"],
+                      family: null,
+                      releaseDate: null,
+                    ),
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+        return SessionDetailCubit(
+          mockConnectionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
+          permissionRepository: mockPermissionRepository,
+          sessionId: sessionId,
+          projectId: "project-1",
+          notificationCanceller: mockNotificationCanceller,
+          failureReporter: mockFailureReporter,
+        );
+      },
+      act: (cubit) async {
+        await _awaitLoaded(cubit);
+        cubit.selectVariant(const SessionVariant(id: "fast"));
+        cubit.selectVariant(null);
+      },
+      expect: () => [
+        isA<SessionDetailLoaded>().having(
+          (state) => state.selectedAgentModel?.variant,
+          "initial variant",
+          isNull,
+        ),
+        isA<SessionDetailLoaded>().having(
+          (state) => state.selectedAgentModel?.variant,
+          "variant after fast",
+          "fast",
+        ),
+        isA<SessionDetailLoaded>().having(
+          (state) => state.selectedAgentModel?.variant,
+          "variant after null",
+          isNull,
+        ),
+      ],
+    );
+
+    blocTest<SessionDetailCubit, SessionDetailState>(
       "abort delegates to service.abortSession",
       build: () => SessionDetailCubit(
         mockConnectionService,

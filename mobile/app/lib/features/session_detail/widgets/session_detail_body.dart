@@ -172,7 +172,7 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
     if (state is! SessionDetailLoaded) return;
     VariantPickerSheet.show(
       context,
-      selectedVariant: state.selectedVariant,
+      selectedVariantId: state.selectedAgentModel?.variant,
       availableVariants: state.availableVariants,
       onVariantChanged: cubit.selectVariant,
     );

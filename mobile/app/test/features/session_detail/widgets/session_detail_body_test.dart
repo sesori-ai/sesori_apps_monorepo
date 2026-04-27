@@ -70,7 +70,6 @@ SessionDetailState _loadedState() {
     stagedCommand: null,
     isRefreshing: false,
     availableVariants: const [SessionVariant(id: "xhigh")],
-    selectedVariant: const SessionVariant(id: "xhigh"),
   );
 }
 
@@ -113,5 +112,64 @@ void main() {
     await tester.pumpAndSettle();
 
     verify(() => cubit.selectVariant(const SessionVariant(id: "xhigh"))).called(1);
+  });
+
+  testWidgets("selecting a different variant updates the displayed variant", (tester) async {
+    final initialState = _loadedState();
+    final updatedState = SessionDetailState.loaded(
+      messages: const [],
+      streamingText: const {},
+      sessionStatus: const SessionStatus.idle(),
+      pendingQuestions: const [],
+      pendingPermissions: const [],
+      sessionTitle: "Session",
+      agent: null,
+      assistantAgentModel: null,
+      children: const [],
+      childStatuses: const {},
+      queuedMessages: const [],
+      availableAgents: [testAgentInfo()],
+      availableProviders: testProviderListResponse().items,
+      availableCommands: const [],
+      selectedAgent: "coder",
+      selectedAgentModel: const AgentModel(
+        providerID: "anthropic",
+        modelID: "claude-3-5-sonnet",
+        variant: null,
+      ),
+      stagedCommand: null,
+      isRefreshing: false,
+      availableVariants: const [SessionVariant(id: "xhigh")],
+    );
+
+    final controller = StreamController<SessionDetailState>.broadcast();
+    addTearDown(controller.close);
+    when(() => cubit.state).thenReturn(initialState);
+    when(() => cubit.stream).thenAnswer((_) => controller.stream);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    // Initially shows the selected variant.
+    expect(find.widgetWithText(OutlinedButton, "xhigh"), findsOneWidget);
+
+    // Open variant picker.
+    await tester.tap(find.widgetWithText(OutlinedButton, "xhigh"));
+    await tester.pumpAndSettle();
+
+    // Select Default (null variant).
+    await tester.tap(find.widgetWithText(ListTile, "Default"));
+    await tester.pumpAndSettle();
+
+    verify(() => cubit.selectVariant(null)).called(1);
+
+    // Emit the updated state to simulate the cubit update.
+    when(() => cubit.state).thenReturn(updatedState);
+    controller.add(updatedState);
+    await tester.pumpAndSettle();
+
+    // The UI should now show "Default".
+    expect(find.widgetWithText(OutlinedButton, "Default"), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, "xhigh"), findsNothing);
   });
 }

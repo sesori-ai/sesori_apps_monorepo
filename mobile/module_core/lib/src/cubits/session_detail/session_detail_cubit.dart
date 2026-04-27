@@ -160,7 +160,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             providers: availableProviders,
             model: preservedSelectedAgentModel,
           );
-          final selectedVariant = _deriveSelectedVariant(preservedSelectedAgentModel);
 
           emit(
             current.copyWith(
@@ -185,7 +184,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
               ),
               isRefreshing: false,
               availableVariants: availableVariants,
-              selectedVariant: selectedVariant,
             ),
           );
         case SessionDetailLoadResultWaitingForConnection():
@@ -866,7 +864,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           providers: current.availableProviders,
           model: agentModel,
         ),
-        selectedVariant: _deriveSelectedVariant(agentModel),
       ),
     );
   }
@@ -896,7 +893,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       current.copyWith(
         selectedAgentModel: agentModel?.copyWith(variant: variant),
         availableVariants: availableVariants,
-        selectedVariant: _deriveSelectedVariant(agentModel?.copyWith(variant: variant)),
       ),
     );
   }
@@ -1004,7 +1000,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       providers: providers,
       model: defaultAgentModel,
     );
-    final selectedVariant = _deriveSelectedVariant(defaultAgentModel);
 
     return SessionDetailState.loaded(
           messages: snapshot.messages,
@@ -1026,7 +1021,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           stagedCommand: null,
           isRefreshing: false,
           availableVariants: availableVariants,
-          selectedVariant: selectedVariant,
         )
         as SessionDetailLoaded;
   }
@@ -1040,14 +1034,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final provider = providerID != null ? providers.firstWhereOrNull((p) => p.id == providerID) : null;
     final m = provider?.models[modelID];
     return m?.variants.where((v) => v != "none").map((v) => SessionVariant(id: v)).toList() ?? [];
-  }
-
-  SessionVariant? _deriveSelectedVariant(AgentModel? model) {
-    final variant = model?.variant;
-    if (variant != null && variant != "none") {
-      return SessionVariant(id: variant);
-    }
-    return null;
   }
 
   List<SesoriQuestionAsked> _mapPendingQuestions(List<PendingQuestion> pendingQuestions) {

@@ -103,7 +103,7 @@ class SessionDetailLoadedView extends StatelessWidget {
               availableVariants: state.availableVariants,
               modelName: _resolveModelName(state),
               selectedAgent: state.selectedAgent,
-              selectedVariant: state.selectedVariant,
+              selectedAgentModel: state.selectedAgentModel,
               onAgentTap: onOpenAgentPicker,
               onModelTap: onOpenModelPicker,
               onVariantTap: onOpenVariantPicker,
