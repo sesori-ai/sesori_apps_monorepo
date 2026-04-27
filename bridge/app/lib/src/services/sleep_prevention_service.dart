@@ -30,7 +30,9 @@ class SleepPreventionService {
       case SleepPreventionMode.always:
         try {
           await _wakeLockRepository.enable();
-          await _warnIfLidCloseSleepNotPrevented();
+          await _warnIfLidCloseSleepNotPrevented().catchError((error) {
+            _warningLogger("[SleepPreventionService] Failed to determine device type and lid close behavior");
+          });
         } on Object catch (error) {
           _warningLogger(
             '[SleepPreventionService] failed to enable wake lock: $error',
