@@ -16,7 +16,10 @@ class MacOSWakeLockApi implements WakeLockClient {
   Future<void> enable() async {
     await disable();
     try {
-      _process = await _processStarter("caffeinate", <String>["-w", pid.toString()]);
+      _process = await _processStarter(
+        "caffeinate",
+        <String>["-i", "-s", "-w", pid.toString()],
+      );
     } on ProcessException catch (error) {
       Log.w("[wake-lock] caffeinate unavailable: $error");
     }
@@ -28,4 +31,7 @@ class MacOSWakeLockApi implements WakeLockClient {
     _process = null;
     process?.kill();
   }
+
+  @override
+  bool get preventsLidCloseSleep => false;
 }

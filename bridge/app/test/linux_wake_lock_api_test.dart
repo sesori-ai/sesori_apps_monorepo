@@ -26,7 +26,7 @@ void main() {
       expect(
         invocations.single.arguments,
         equals(<String>[
-          "--what=idle:sleep",
+          "--what=idle:sleep:handle-lid-switch",
           "--who=sesori-bridge",
           "--why=Bridge is running",
           "cat",
@@ -34,6 +34,13 @@ void main() {
       );
       expect(fakeProcess.killSignals, hasLength(1));
       expect(fakeProcess.killSignals.single, equals(ProcessSignal.sigterm));
+    });
+
+    test("claims to prevent lid-close sleep", () {
+      final api = LinuxWakeLockApi(
+        processStarter: (_, __) async => _FakeProcess(),
+      );
+      expect(api.preventsLidCloseSleep, isTrue);
     });
 
     test("logs a warning when systemd-inhibit is unavailable", () async {
@@ -46,7 +53,7 @@ void main() {
           throw const ProcessException(
             "systemd-inhibit",
             <String>[
-              "--what=idle:sleep",
+              "--what=idle:sleep:handle-lid-switch",
               "--who=sesori-bridge",
               "--why=Bridge is running",
               "cat",

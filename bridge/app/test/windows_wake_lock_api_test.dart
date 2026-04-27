@@ -43,6 +43,14 @@ void main() {
       expect(warnings, isEmpty);
     });
 
+    test('does not claim to prevent lid-close sleep', () {
+      final api = WindowsWakeLockApi(
+        executionStateSetter: (_) => const EXECUTION_STATE(1),
+        warningLogger: (_) {},
+      );
+      expect(api.preventsLidCloseSleep, isFalse);
+    });
+
     test('logs a warning when the Windows call fails', () async {
       final warnings = <String>[];
 
