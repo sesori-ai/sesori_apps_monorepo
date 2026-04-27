@@ -37,6 +37,7 @@ class ServerHealthService {
   _State _state = _State.running;
   Timer? _retryTimer;
   int _attempt = 0;
+  bool _disposed = false;
 
   ServerHealthService({required ServerLifecycleService lifecycleService}) : _lifecycleService = lifecycleService;
 
@@ -55,11 +56,13 @@ class ServerHealthService {
   }
 
   Future<void> dispose() async {
+    _disposed = true;
     _retryTimer?.cancel();
     await _eventsController.close();
   }
 
   void _transition(_Trigger trigger) {
+    if (_disposed) return;
     switch ((_state, trigger)) {
       case (_State.running, _UnreachableTrigger(:final message)):
         _state = _State.unreachable;
@@ -90,6 +93,10 @@ class ServerHealthService {
           _state = _State.failed;
           _eventsController.add(const ServerHealthEventFailed(reason: "Server restart failed after 4 attempts"));
         }
+      case (_State.failed, _ReachableTrigger()):
+        _state = _State.running;
+        _attempt = 0;
+        _eventsController.add(const ServerHealthEventRunning());
       default:
         // Ignore invalid transitions
         break;
@@ -101,10 +108,13 @@ class ServerHealthService {
     final delays = [Duration.zero, const Duration(seconds: 60), const Duration(seconds: 120), const Duration(seconds: 240)];
     final delay = delays[_attempt - 1];
     _retryTimer = Timer(delay, () async {
+      if (_disposed) return;
       try {
         await _lifecycleService.restart();
+        if (_disposed) return;
         _transition(const _RestartSuccessTrigger());
       } catch (_) {
+        if (_disposed) return;
         _transition(const _RestartFailureTrigger());
       }
     });

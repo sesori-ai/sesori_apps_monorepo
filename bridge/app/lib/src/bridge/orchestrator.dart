@@ -298,7 +298,11 @@ class OrchestratorSession {
          _serverHealthTracker = serverHealthTracker,
          _router = router,
          _mapper = mapper,
-        _sessionEventEnrichmentService = sessionEventEnrichmentService;
+         _sessionEventEnrichmentService = sessionEventEnrichmentService {
+    _serverLifecycleService.processExitEvents
+        .listen(_serverHealthService.onProcessExited)
+        .addTo(_subscriptions);
+  }
 
   /// Broadcast stream of byte counts emitted each time data is sent to a phone.
   ///
@@ -332,10 +336,6 @@ class OrchestratorSession {
       if (startupSummary != null) {
         _completionListener.handleSseEvent(startupSummary);
       }
-
-      _serverLifecycleService.processExitEvents
-          .listen(_serverHealthService.onProcessExited)
-          .addTo(_subscriptions);
 
       Log.d("[dbg] subscribing to plugin event stream...");
       _plugin.events
@@ -420,11 +420,11 @@ class OrchestratorSession {
      }
     } finally {
       Log.i("Disconnecting...");
+      await _subscriptions.cancel();
       await _serverLifecycleService.stop();
       await _serverHealthService.dispose();
       await _serverHealthTracker.dispose();
       await _enrichedPluginEventsController.close();
-      await _subscriptions.cancel();
       await _sessionAbortService.dispose();
       await _completionListener.dispose();
       _maintenanceListener.dispose();

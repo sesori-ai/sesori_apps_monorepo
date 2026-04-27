@@ -7,6 +7,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Bridg
 
 import "../../auth/token.dart";
 import "../../auth/token_manager.dart";
+import "../../server/process.dart" as server_process;
 import "../../server/server_health_config.dart";
 import "../../updater/api/archive_extractor_api.dart";
 import "../../updater/api/checksum_manifest_api.dart";
@@ -96,6 +97,12 @@ class BridgeRuntimeRunner {
       _optimizeOpenCodeDbIfNeeded(environment: Platform.environment);
 
       final serverRuntime = await resolveServer(options: options);
+      shutdownCoordinator.add(disposable: () async {
+        final process = serverRuntime.process;
+        if (process != null) {
+          await server_process.stopServer(process);
+        }
+      });
 
       final tokenManager = TokenManager(
         initialToken: authTokens.accessToken,

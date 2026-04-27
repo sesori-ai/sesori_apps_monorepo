@@ -7,17 +7,16 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "../models/server_health_signal.dart";
 
 /// Returns true if [error] is a ClientException whose message embeds a
-/// SocketException with "Connection refused" and errno 61 — the typical
-/// symptom of the target server not being running.
+/// SocketException with "Connection refused" — the typical symptom of the
+/// target server not being running.
 ///
 /// ClientException.message has the form:
-/// "SocketException: Connection refused (OS Error: Connection refused, errno = 61), ..."
-/// so we detect it by pattern rather than a typed field.
+/// "SocketException: Connection refused (OS Error: Connection refused, errno = N), ..."
+/// We match only on "Connection refused" since the errno value is platform-
+/// specific (61 on macOS, 111 on Linux, 10061 on Windows).
 bool _isConnectionRefused(Object error) {
   if (error is http.ClientException) {
-    final msg = error.message;
-    // errno 61 = ECONNREFUSED on macOS and Linux
-    return msg.contains("Connection refused") && msg.contains("errno = 61");
+    return error.message.contains("Connection refused");
   }
   return false;
 }
@@ -59,6 +58,7 @@ class SseConnection {
     if (_active) return;
     _active = true;
     _generation++;
+    _hasWarnedServerUnavailable = false;
     unawaited(_streamLoop(_generation));
   }
 
