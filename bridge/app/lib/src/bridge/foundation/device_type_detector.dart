@@ -1,5 +1,7 @@
+import "dart:async";
 import "dart:io";
 
+import "package:meta/meta.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "process_runner.dart";
@@ -28,30 +30,28 @@ class DeviceTypeDetector {
   final ProcessRunner _processRunner;
   final PlatformChecker _platformChecker;
   final String _linuxPowerSupplyPath;
-  bool? _isLaptop;
+  Future<bool>? _isLaptop;
 
   DeviceTypeDetector({
     required ProcessRunner processRunner,
     required PlatformChecker platformChecker,
-    String linuxPowerSupplyPath = "/sys/class/power_supply/",
+    @visibleForTesting String linuxPowerSupplyPath = "/sys/class/power_supply/",
   }) : _processRunner = processRunner,
        _platformChecker = platformChecker,
        _linuxPowerSupplyPath = linuxPowerSupplyPath;
 
-  Future<bool> isLaptop() async {
-    if (_isLaptop != null) {
-      return _isLaptop!;
-    }
+  Future<bool> isLaptop() async => _isLaptop ??= _computeIsLaptop();
+
+  Future<bool> _computeIsLaptop() {
     if (_platformChecker.isMacOS) {
-      _isLaptop = await _isMacOSLaptop();
+      return _isMacOSLaptop();
     } else if (_platformChecker.isWindows) {
-      _isLaptop = await _isWindowsLaptop();
+      return _isWindowsLaptop();
     } else if (_platformChecker.isLinux) {
-      _isLaptop = await _isLinuxLaptop();
+      return _isLinuxLaptop();
     } else {
-      _isLaptop = false;
+      return Future.value(false);
     }
-    return _isLaptop!;
   }
 
   Future<bool> _isMacOSLaptop() async {
@@ -102,13 +102,11 @@ class DeviceTypeDetector {
   Future<bool> _isLinuxLaptop() async {
     try {
       final dir = Directory(_linuxPowerSupplyPath);
-      // ignore: avoid_slow_async_io
-      if (!await dir.exists()) {
+      if (!dir.existsSync()) {
         return false;
       }
-      // ignore: avoid_slow_async_io
-      final entries = await dir.list().toList();
-      return entries.any(
+      final dirsStream = dir.list();
+      return await dirsStream.any(
         (e) => e.path.split("/").last.startsWith("BAT"),
       );
     } on Object catch (error) {
