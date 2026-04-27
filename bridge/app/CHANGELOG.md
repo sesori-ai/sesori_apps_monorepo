@@ -1,5 +1,22 @@
 # Changelog
 
+## [v0.5.0] - 2026-04-27
+
+### Added
+- OS sleep prevention with configurable settings file (#131)
+- Session effort selection support across mobile and bridge (#125)
+- Inline chat error display in session detail (#126)
+- OpenCode notification when deleting workspace from Sesori (#134)
+- Improved wake lock lid-close behavior with laptop device-type warnings (#132)
+
+### Fixed
+- Pass `roots=true` to OpenCode `/session` API to prevent child sessions from crowding out root sessions (#135)
+- Model-aware variant recomputation in agent picker (#128)
+- Recognize `command.executed` SSE frames instead of dropping them (#124)
+
+### Changed
+- Updated Yaak API definitions
+
 ## [v0.4.1] - 2026-04-22
 
 ### Added
