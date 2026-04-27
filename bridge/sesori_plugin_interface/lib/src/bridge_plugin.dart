@@ -58,6 +58,20 @@ abstract class BridgePlugin {
   /// Unarchive is not propagated to the backend; it only clears the local DB.
   Future<void> archiveSession({required String sessionId});
 
+  /// Delete a workspace (git worktree / sandbox) from the backend.
+  ///
+  /// This is best-effort — the caller should have already removed the worktree
+  /// from disk. If the workspace is already gone or the backend does not
+  /// recognize it, the call should succeed silently.
+  ///
+  /// [projectDirectory] is the project root worktree used to identify the
+  /// project in the backend.
+  /// [worktreePath] is the specific worktree directory to remove.
+  Future<void> deleteWorkspace({
+    required String projectDirectory,
+    required String worktreePath,
+  });
+
   Future<List<PluginSession>> getChildSessions(String sessionId);
 
   Future<Map<String, PluginSessionStatus>> getSessionStatuses();

@@ -103,6 +103,7 @@ class Orchestrator {
       sessionPersistenceService: _sessionPersistenceService,
     );
     final sessionArchiveService = SessionArchiveService(
+      plugin: _plugin,
       worktreeService: _worktreeService,
       sessionRepository: _sessionRepository,
       sessionPersistenceService: _sessionPersistenceService,

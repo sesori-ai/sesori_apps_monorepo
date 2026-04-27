@@ -1140,16 +1140,10 @@ class _FakeApi implements OpenCodeApi {
   Future<void> deleteSession({required String sessionId, required String? directory}) async {}
 
   @override
-  Future<List<Session>> getChildren({required String sessionId, required String? directory}) async => [];
-
-  @override
-  Future<List<GlobalSession>> listAllSessions({
-    required String? directory,
-    required bool roots,
-  }) async => [];
-
-  @override
-  Future<List<MessageWithParts>> getMessages({required String sessionId, required String? directory}) async => [];
+  Future<void> removeWorktree({
+    required String directory,
+    required String worktreePath,
+  }) async {}
 
   @override
   Future<void> sendPrompt({
@@ -1198,11 +1192,25 @@ class _FakeApi implements OpenCodeApi {
   Future<Project> getProject({required String directory}) async => throw UnimplementedError();
 
   @override
+  Future<List<Session>> getChildren({
+    required String sessionId,
+    required String? directory,
+  }) async => [];
+
+  @override
+  Future<List<MessageWithParts>> getMessages({
+    required String sessionId,
+    required String? directory,
+  }) async => [];
+
+  @override
+  Future<List<GlobalSession>> listAllSessions({
+    required String? directory,
+    required bool roots,
+  }) async => [];
+
+  @override
   Future<Map<String, SessionStatus>> getSessionStatuses({required String? directory}) async {
-    if (directory != null && _throwForDirectories.contains(directory)) {
-      throw Exception("Fake error for directory: $directory");
-    }
-    if (directory == null) return _statuses;
     final sessionIdsInDirectory = _sessions
         .where((s) => s.directory == directory || s.directory.startsWith("$directory/"))
         .map((s) => s.id)

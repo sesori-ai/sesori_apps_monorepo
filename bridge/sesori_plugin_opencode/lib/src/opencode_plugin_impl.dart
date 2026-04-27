@@ -408,6 +408,19 @@ class OpenCodePlugin implements BridgePlugin {
   }
 
   @override
+  Future<void> deleteWorkspace({
+    required String projectDirectory,
+    required String worktreePath,
+  }) {
+    return _call(
+      () => _service.repository.api.removeWorktree(
+        directory: projectDirectory,
+        worktreePath: worktreePath,
+      ),
+    );
+  }
+
+  @override
   Future<PluginProject> renameProject({required String projectId, required String name}) async {
     // CRITICAL: projectId is the worktree path (PluginProject.id = worktree, see project.dart:33)
     // Must resolve the real OpenCode project UUID before calling PATCH

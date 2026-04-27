@@ -197,6 +197,27 @@ class OpenCodeApi {
     _ensureSuccess(response, "DELETE /session/$sessionId");
   }
 
+  /// Removes a worktree (workspace) from OpenCode.
+  ///
+  /// Sends `DELETE /experimental/worktree` with the worktree directory in the
+  /// body. The [directory] header must be the project root worktree so that
+  /// OpenCode knows which project the sandbox belongs to.
+  Future<void> removeWorktree({
+    required String directory,
+    required String worktreePath,
+  }) async {
+    final response = await _client.delete(
+      Uri.parse("$serverURL/experimental/worktree"),
+      headers: {
+        ..._authHeaders,
+        "content-type": "application/json",
+        _directoryOpenCodeHeader: directory,
+      },
+      body: jsonEncode({"directory": worktreePath}),
+    );
+    _ensureSuccess(response, "DELETE /experimental/worktree");
+  }
+
   Future<List<Session>> getChildren({
     required String sessionId,
     required String? directory,

@@ -77,6 +77,28 @@ class DeleteSessionHandler extends BodyRequestHandler<DeleteSessionRequest, Succ
       }
     }
 
+    if (sessionDto case SessionDto(
+      :final projectId,
+      worktreePath: final worktreePath?,
+    )) {
+      if (body.deleteWorktree) {
+        try {
+          await _plugin.deleteWorkspace(
+            projectDirectory: projectId,
+            worktreePath: worktreePath,
+          );
+        } on PluginApiException catch (error) {
+          // Best-effort: if the workspace is already gone or the backend does
+          // not recognize it, log and continue so the session deletion still
+          // succeeds.
+          Log.w(
+            "deleteSession: failed to remove workspace from backend for session $sessionId: "
+            "${error.statusCode} ${error.endpoint}",
+          );
+        }
+      }
+    }
+
     try {
       await _plugin.deleteSession(sessionId);
     } on PluginApiException catch (error) {
