@@ -24,7 +24,7 @@ void main() {
       expect(invocations.single.executable, equals("caffeinate"));
       expect(
         invocations.single.arguments,
-        equals(<String>["-s", "-w", io.pid.toString()]),
+        equals(<String>["-i", "-s", "-w", io.pid.toString()]),
       );
       expect(process.killCalled, isTrue);
     });

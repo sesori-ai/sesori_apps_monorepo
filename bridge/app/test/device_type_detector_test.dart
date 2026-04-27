@@ -91,6 +91,76 @@ void main() {
       final isLaptop = await detector.isLaptop();
       expect(isLaptop, isFalse);
     });
+
+    test("caches result across multiple calls", () async {
+      final processRunner = _FakeProcessRunner(
+        results: <String, _FakeResult>{
+          "sysctl": _FakeResult(
+            exitCode: 0,
+            stdout: "MacBookPro18,1\n",
+          ),
+        },
+      );
+      final detector = DeviceTypeDetector(
+        processRunner: processRunner,
+        platformChecker: _FakePlatformChecker(isMacOS: true),
+      );
+
+      final first = await detector.isLaptop();
+      final second = await detector.isLaptop();
+
+      expect(first, isTrue);
+      expect(second, isTrue);
+      expect(processRunner.callCount("sysctl"), equals(1));
+    });
+
+    test("detects Linux laptop when battery entries exist", () async {
+      final tempDir = await Directory.systemTemp.createTemp(
+        "device_type_detector_test_",
+      );
+      await File("${tempDir.path}/BAT0").create();
+      await File("${tempDir.path}/AC").create();
+
+      final detector = DeviceTypeDetector(
+        processRunner: _FakeProcessRunner(results: const <String, _FakeResult>{}),
+        platformChecker: _FakePlatformChecker(isLinux: true),
+        linuxPowerSupplyPath: tempDir.path,
+      );
+
+      final isLaptop = await detector.isLaptop();
+      expect(isLaptop, isTrue);
+
+      await tempDir.delete(recursive: true);
+    });
+
+    test("detects Linux desktop when no battery entries exist", () async {
+      final tempDir = await Directory.systemTemp.createTemp(
+        "device_type_detector_test_",
+      );
+      await File("${tempDir.path}/AC").create();
+
+      final detector = DeviceTypeDetector(
+        processRunner: _FakeProcessRunner(results: const <String, _FakeResult>{}),
+        platformChecker: _FakePlatformChecker(isLinux: true),
+        linuxPowerSupplyPath: tempDir.path,
+      );
+
+      final isLaptop = await detector.isLaptop();
+      expect(isLaptop, isFalse);
+
+      await tempDir.delete(recursive: true);
+    });
+
+    test("returns false for Linux when power supply dir does not exist", () async {
+      final detector = DeviceTypeDetector(
+        processRunner: _FakeProcessRunner(results: const <String, _FakeResult>{}),
+        platformChecker: _FakePlatformChecker(isLinux: true),
+        linuxPowerSupplyPath: "/nonexistent/path/",
+      );
+
+      final isLaptop = await detector.isLaptop();
+      expect(isLaptop, isFalse);
+    });
   });
 }
 
@@ -108,6 +178,7 @@ class _FakeResult {
 
 class _FakeProcessRunner implements ProcessRunner {
   final Map<String, _FakeResult> results;
+  final Map<String, int> _callCounts = <String, int>{};
 
   _FakeProcessRunner({required this.results});
 
@@ -118,6 +189,7 @@ class _FakeProcessRunner implements ProcessRunner {
     String? workingDirectory,
     Duration timeout = const Duration(seconds: 15),
   }) async {
+    _callCounts[executable] = (_callCounts[executable] ?? 0) + 1;
     final result = results[executable];
     if (result == null) {
       throw ProcessException(executable, arguments, "command not found");
@@ -129,6 +201,8 @@ class _FakeProcessRunner implements ProcessRunner {
       result.stderr,
     );
   }
+
+  int callCount(String executable) => _callCounts[executable] ?? 0;
 }
 
 class _FakePlatformChecker implements PlatformChecker {

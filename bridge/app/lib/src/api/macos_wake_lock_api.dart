@@ -18,7 +18,7 @@ class MacOSWakeLockApi implements WakeLockClient {
     try {
       _process = await _processStarter(
         "caffeinate",
-        <String>["-s", "-w", pid.toString()],
+        <String>["-i", "-s", "-w", pid.toString()],
       );
     } on ProcessException catch (error) {
       Log.w("[wake-lock] caffeinate unavailable: $error");

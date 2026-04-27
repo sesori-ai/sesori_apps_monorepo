@@ -137,6 +137,7 @@ Future<void> main(List<String> args) async {
     ),
     deviceTypeDetector: DeviceTypeDetector(
       processRunner: ProcessRunner(),
+      platformChecker: DefaultPlatformChecker(),
     ),
   );
 
