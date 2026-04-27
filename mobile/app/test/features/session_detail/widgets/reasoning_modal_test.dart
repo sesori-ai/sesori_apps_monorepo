@@ -33,7 +33,8 @@ SessionDetailState _loadedState({
     pendingPermissions: const [],
     sessionTitle: null,
     agent: null,
-    assistantAgentModel: null,
+    modelID: null,
+    providerID: null,
     children: const [],
     childStatuses: const {},
     queuedMessages: const [],
@@ -41,11 +42,8 @@ SessionDetailState _loadedState({
     availableProviders: const [],
     availableCommands: const [],
     selectedAgent: "coder",
-    selectedAgentModel: const AgentModel(
-      providerID: "anthropic",
-      modelID: "claude-3-5-sonnet",
-      variant: null,
-    ),
+    selectedProviderID: "anthropic",
+    selectedModelID: "claude-3-5-sonnet",
     stagedCommand: null,
     isRefreshing: false,
   );
@@ -57,8 +55,9 @@ MessageWithParts _messageWithPart({
   String? text,
 }) {
   return MessageWithParts(
-    info: Message.assistant(
+    info: Message(
       id: messageId,
+      role: "assistant",
       sessionID: "session-1",
       agent: null,
       modelID: null,

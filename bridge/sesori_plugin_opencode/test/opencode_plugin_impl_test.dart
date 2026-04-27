@@ -79,7 +79,6 @@ void main() {
         parentSessionId: "s-root",
         parts: const [PluginPromptPart.text(text: "Start from here")],
         agent: "build",
-        variant: const PluginSessionVariant(id: "low"),
         model: (providerID: "openai", modelID: "gpt-5.4"),
       );
 
@@ -91,7 +90,6 @@ void main() {
       );
       expect(server.lastCreatedSessionParentId, equals("s-root"));
       expect(server.lastPromptBody?['agent'], equals('build'));
-      expect(server.lastPromptBody?['variant'], equals('low'));
       expect(server.lastPromptBody?['model'], equals({"providerID": "openai", "modelID": "gpt-5.4"}));
     });
 
@@ -104,19 +102,12 @@ void main() {
         sessionId: "s-root",
         parts: const [PluginPromptPart.text(text: "Continue")],
         agent: null,
-        variant: null,
         model: null,
       );
 
       expect(server.requestLog, equals(["POST /session/s-root/prompt_async"]));
       expect(server.lastPromptDirectoryHeader, equals("/repo"));
-      expect(
-        server.lastPromptBody?['parts'],
-        equals([
-          {"type": "text", "text": "Continue"},
-        ]),
-      );
-      expect(server.lastPromptBody?.containsKey('variant'), isFalse);
+      expect(server.lastPromptBody?['parts'], equals([{"type": "text", "text": "Continue"}]));
     });
 
     test("sendCommand resolves tracked directory before sending", () async {
@@ -129,7 +120,6 @@ void main() {
         command: "/review-work",
         arguments: "recent changes",
         agent: "reviewer",
-        variant: const PluginSessionVariant(id: "xhigh"),
         model: (providerID: "openai", modelID: "gpt-4.1"),
       );
 
@@ -141,7 +131,6 @@ void main() {
           "command": "/review-work",
           "arguments": "recent changes",
           "agent": "reviewer",
-          "variant": "xhigh",
           "model": "openai/gpt-4.1",
         }),
       );
@@ -154,15 +143,15 @@ void main() {
 
       expect(messages, hasLength(2));
       final user = messages.first;
-      expect(user.info, isA<PluginMessageUser>());
+      expect(user.info.role, equals("user"));
       expect(user.info.id, equals("m-user"));
       expect(user.info.sessionID, equals("ses-1"));
 
       final assistant = messages.last;
-      expect(assistant.info, isA<PluginMessageAssistant>());
+      expect(assistant.info.role, equals("assistant"));
       expect(assistant.info.id, equals("m-assistant"));
-      expect((assistant.info as PluginMessageAssistant).modelID, equals("gpt"));
-      expect((assistant.info as PluginMessageAssistant).providerID, equals("openai"));
+      expect(assistant.info.modelID, equals("gpt"));
+      expect(assistant.info.providerID, equals("openai"));
     });
 
     test("getSessionMessages filters file and snapshot parts", () async {
@@ -235,10 +224,10 @@ void main() {
       expect(messages.last.parts.single.state?.output, equals("short"));
     });
 
-    test("getProviders with connectedOnly false returns config providers with variants", () async {
+    test("getProviders with connectedOnly false returns all providers", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
 
-      final result = await plugin.getProviders(projectId: "project-1");
+      final result = await plugin.getProviders(connectedOnly: false);
 
       expect(result.providers, hasLength(2));
 
@@ -252,14 +241,12 @@ void main() {
       final opus = anthropic.models.firstWhere((m) => m.id == "claude-3-opus");
       expect(opus.name, equals("Claude 3 Opus"));
       expect(opus.family, equals("claude-3"));
-      expect(opus.variants, equals(["low", "high"]));
       expect(opus.isAvailable, isTrue);
       expect(opus.releaseDate, equals(DateTime(2025, 3, 15)));
 
       final sonnet = anthropic.models.firstWhere((m) => m.id == "claude-3-sonnet");
       expect(sonnet.name, equals("Claude 3 Sonnet"));
       expect(sonnet.family, equals("claude-3"));
-      expect(sonnet.variants, equals(["low", "high"]));
       expect(sonnet.isAvailable, isFalse);
       expect(sonnet.releaseDate, equals(DateTime(2024, 6, 1)));
 
@@ -269,19 +256,19 @@ void main() {
       expect(custom.authType, equals(PluginProviderAuthType.unknown));
     });
 
-    test("getProviders with connectedOnly true still returns config providers", () async {
+    test("getProviders with connectedOnly true filters to connected", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
 
-      final result = await plugin.getProviders(projectId: "project-1");
+      final result = await plugin.getProviders(connectedOnly: true);
 
-      expect(result.providers, hasLength(2));
-      expect(result.providers.map((provider) => provider.id), containsAll(["anthropic", "my-custom"]));
+      expect(result.providers, hasLength(1));
+      expect(result.providers.single.id, equals("anthropic"));
     });
 
     test("getProviders maps known provider IDs to correct union variants", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
 
-      final result = await plugin.getProviders(projectId: "project-1");
+      final result = await plugin.getProviders(connectedOnly: false);
 
       final anthropic = result.providers.firstWhere((p) => p.id == "anthropic");
       expect(anthropic, isA<PluginProviderAnthropic>());
@@ -814,10 +801,9 @@ class _FakeOpenCodeServer {
         return;
       }
 
-      if (request.method == "GET" && path == "/config/providers") {
-        expect(request.headers.value("x-opencode-directory"), equals("project-1"));
+      if (request.method == "GET" && path == "/provider") {
         await _sendJson(request.response, {
-          "providers": [
+          "all": [
             {
               "id": "anthropic",
               "name": "Anthropic",
@@ -826,11 +812,6 @@ class _FakeOpenCodeServer {
                   "id": "claude-3-opus",
                   "providerID": "anthropic",
                   "name": "Claude 3 Opus",
-                  "variants": {
-                    "low": {"disabled": false},
-                    "medium": {"disabled": true},
-                    "high": {"disabled": false},
-                  },
                   "family": "claude-3",
                   "status": "active",
                   "release_date": "2025-03-15",
@@ -839,10 +820,6 @@ class _FakeOpenCodeServer {
                   "id": "claude-3-sonnet",
                   "providerID": "anthropic",
                   "name": "Claude 3 Sonnet",
-                  "variants": {
-                    "low": {"disabled": false},
-                    "high": {"disabled": false},
-                  },
                   "family": "claude-3",
                   "status": "deprecated",
                   "release_date": "2024-06-01",
@@ -856,6 +833,7 @@ class _FakeOpenCodeServer {
             },
           ],
           "default": {"anthropic": "claude-3-sonnet"},
+          "connected": ["anthropic"],
         });
         return;
       }

@@ -80,15 +80,19 @@ void main() {
     test("returns serialised message list", () async {
       plugin.messagesResult = [
         const PluginMessageWithParts(
-          info: PluginMessage.user(
+          info: PluginMessage(
+            role: "user",
             id: "m1",
             sessionID: "s1",
             agent: null,
+            modelID: null,
+            providerID: null,
           ),
           parts: [],
         ),
         const PluginMessageWithParts(
-          info: PluginMessage.assistant(
+          info: PluginMessage(
+            role: "assistant",
             id: "m2",
             sessionID: "s1",
             agent: null,

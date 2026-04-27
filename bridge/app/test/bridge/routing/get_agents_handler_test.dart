@@ -1,4 +1,3 @@
-import "package:sesori_bridge/src/bridge/repositories/agent_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/get_agents_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -9,13 +8,11 @@ import "routing_test_helpers.dart";
 void main() {
   group("GetAgentsHandler", () {
     late FakeBridgePlugin plugin;
-    late AgentRepository repository;
     late GetAgentsHandler handler;
 
     setUp(() {
       plugin = FakeBridgePlugin();
-      repository = AgentRepository(plugin: plugin);
-      handler = GetAgentsHandler(repository);
+      handler = GetAgentsHandler(plugin);
     });
 
     tearDown(() => plugin.close());
@@ -40,7 +37,8 @@ void main() {
         const PluginAgent(
           name: "planner",
           description: "Plans tasks",
-          model: PluginAgentModel(modelID: "gpt-4o", providerID: "openai", variant: "high"),
+          model: PluginAgentModel(modelID: "gpt-4o", providerID: "openai"),
+          variant: PluginAgentVariant.high,
           mode: PluginAgentMode.primary,
           hidden: true,
         ),
@@ -56,9 +54,10 @@ void main() {
       final agent = response.agents[0];
       expect(agent.name, equals("planner"));
       expect(agent.description, equals("Plans tasks"));
+      expect(agent.variant, equals("high"));
       expect(agent.mode, equals(AgentMode.primary));
       expect(agent.hidden, isTrue);
-      expect(agent.model, equals(const AgentModel(modelID: "gpt-4o", providerID: "openai", variant: "high")));
+      expect(agent.model, equals(const AgentModel(modelID: "gpt-4o", providerID: "openai")));
     });
 
     test("maps unknown plugin agent modes to AgentMode.unknown", () async {
@@ -67,6 +66,7 @@ void main() {
           name: "tolerant-agent",
           description: null,
           model: null,
+          variant: null,
           mode: PluginAgentMode.unknown,
           hidden: false,
         ),
@@ -87,7 +87,8 @@ void main() {
         const PluginAgent(
           name: "with-model",
           description: null,
-          model: PluginAgentModel(modelID: "m1", providerID: "p1", variant: null),
+          model: PluginAgentModel(modelID: "m1", providerID: "p1"),
+          variant: null,
           mode: PluginAgentMode.all,
           hidden: false,
         ),
@@ -95,6 +96,7 @@ void main() {
           name: "without-model",
           description: null,
           model: null,
+          variant: null,
           mode: PluginAgentMode.subagent,
           hidden: false,
         ),

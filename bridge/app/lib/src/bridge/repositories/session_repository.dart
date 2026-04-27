@@ -1,7 +1,6 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show BridgePluginApi, Log, PluginSession, PluginSessionVariant;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePlugin, Log, PluginSession;
 import "package:sesori_shared/sesori_shared.dart"
-    show CommandListResponse, PrState, PromptModel, PromptPart, PullRequestInfo, Session, SessionVariant;
+    show CommandListResponse, PrState, PromptModel, PromptPart, PullRequestInfo, Session;
 
 import "../api/database/tables/pull_requests_table.dart";
 import "../persistence/daos/session_dao.dart";
@@ -14,12 +13,12 @@ import "models/stored_session.dart";
 import "pull_request_repository.dart";
 
 class SessionRepository {
-  final BridgePluginApi _plugin;
+  final BridgePlugin _plugin;
   final SessionDao _sessionDao;
   final PullRequestRepository _pullRequestRepository;
 
   SessionRepository({
-    required BridgePluginApi plugin,
+    required BridgePlugin plugin,
     required SessionDao sessionDao,
     required PullRequestRepository pullRequestRepository,
   }) : _plugin = plugin,
@@ -57,7 +56,6 @@ class SessionRepository {
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
-    required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
   }) async {
@@ -65,7 +63,6 @@ class SessionRepository {
       directory: directory,
       parentSessionId: parentSessionId,
       parts: parts.map((part) => part.toPlugin()).toList(growable: false),
-      variant: _toPluginVariant(variant),
       agent: agent,
       model: switch (model) {
         PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
@@ -94,7 +91,6 @@ class SessionRepository {
     required String sessionId,
     required String command,
     required String arguments,
-    required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
   }) {
@@ -102,7 +98,6 @@ class SessionRepository {
       sessionId: sessionId,
       command: command,
       arguments: arguments,
-      variant: _toPluginVariant(variant),
       agent: agent,
       model: switch (model) {
         PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
@@ -114,27 +109,18 @@ class SessionRepository {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PromptPart> parts,
-    required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
   }) {
     return _plugin.sendPrompt(
       sessionId: sessionId,
       parts: parts.map((part) => part.toPlugin()).toList(growable: false),
-      variant: _toPluginVariant(variant),
       agent: agent,
       model: switch (model) {
         PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
         null => null,
       },
     );
-  }
-
-  PluginSessionVariant? _toPluginVariant(SessionVariant? variant) {
-    return switch (variant) {
-      SessionVariant(:final id) => PluginSessionVariant(id: id),
-      null => null,
-    };
   }
 
   Future<Session?> getSessionForProject({required String projectId, required String sessionId}) async {

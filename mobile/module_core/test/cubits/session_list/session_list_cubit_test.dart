@@ -1091,7 +1091,7 @@ void main() {
           relayHost: "relay.example.com",
           authToken: "test-token",
         );
-        const health = HealthResponse(healthy: true, version: "0.1.200");
+        const health = HealthResponse(healthy: true, version: "0.1.200", serverManaged: false, serverState: null);
         statusController.add(
           const ConnectionStatus.connected(config: config, health: health),
         );
@@ -1121,7 +1121,7 @@ void main() {
           relayHost: "relay.example.com",
           authToken: "test-token",
         );
-        const health = HealthResponse(healthy: true, version: "0.1.200");
+        const health = HealthResponse(healthy: true, version: "0.1.200", serverManaged: false, serverState: null);
         statusController.add(
           const ConnectionStatus.connected(config: config, health: health),
         );
@@ -1164,7 +1164,7 @@ void main() {
           relayHost: "relay.example.com",
           authToken: "test-token",
         );
-        const health = HealthResponse(healthy: true, version: "0.1.200");
+        const health = HealthResponse(healthy: true, version: "0.1.200", serverManaged: false, serverState: null);
         const connected = ConnectionStatus.connected(config: config, health: health);
 
         // Fire two rapid ConnectionConnected events.
@@ -1199,7 +1199,7 @@ void main() {
           relayHost: "relay.example.com",
           authToken: "test-token",
         );
-        const health = HealthResponse(healthy: true, version: "0.1.200");
+        const health = HealthResponse(healthy: true, version: "0.1.200", serverManaged: false, serverState: null);
         statusController.add(
           const ConnectionStatus.connected(config: config, health: health),
         );
@@ -1714,7 +1714,7 @@ void main() {
         statusController.add(
           const ConnectionStatus.connected(
             config: ServerConnectionConfig(relayHost: "test.example.com"),
-            health: HealthResponse(healthy: true, version: "0.1.0"),
+            health: HealthResponse(healthy: true, version: "0.1.0", serverManaged: false, serverState: null),
           ),
         );
         await Future<void>.delayed(const Duration(milliseconds: 100));

@@ -8,7 +8,7 @@ import "request_handler.dart";
 
 /// Handles `POST /project/create` — creates a new project directory with git init.
 class CreateProjectHandler extends BodyRequestHandler<ProjectPathRequest, Project> {
-  final BridgePluginApi _plugin;
+  final BridgePlugin _plugin;
 
   CreateProjectHandler(this._plugin)
     : super(

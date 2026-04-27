@@ -4,11 +4,11 @@ A custom Dart linter to prevent sloppy code patterns. Built with `analysis_serve
 
 ## Available Rules
 
-| Rule                        | Description                                                                               | Severity |
-| --------------------------- | ----------------------------------------------------------------------------------------- | -------- |
-| `avoid_bang_operator`       | Prevents usage of the null assertion operator (`!`)                                       | WARNING  |
-| `avoid_dynamic_return_type` | Prevents implicit or `dynamic` return types on functions                                  | WARNING  |
-| `avoid_implicit_tostring`   | Prevents implicit `toString()` in string interpolation (except String, int, double, bool) | WARNING  |
+| Rule | Description | Severity |
+|------|-------------|----------|
+| `avoid_bang_operator` | Prevents usage of the null assertion operator (`!`) | WARNING |
+| `avoid_dynamic_return_type` | Prevents implicit or `dynamic` return types on functions | WARNING |
+| `avoid_implicit_tostring` | Prevents implicit `toString()` in string interpolation (except String, int, double, bool) | WARNING |
 
 > **Note:** All rules use WARNING severity to allow incremental cleanup. CI is configured to fail if any changed files contain warnings, encouraging cleanup of files you touch.
 
@@ -21,7 +21,7 @@ In your `analysis_options.yaml`:
 ```yaml
 plugins:
   no_slop_linter:
-    path: modules/no_slop_linter # adjust path as needed
+    path: modules/no_slop_linter  # adjust path as needed
 ```
 
 ### 2. Install Plugin Dependencies
@@ -74,7 +74,7 @@ jobs:
         run: flutter pub get
 
       - name: Run analysis
-        run: flutter analyze --fatal-infos
+        run: flutter analyze --no-fatal-infos
 ```
 
 ## Configuration
@@ -105,13 +105,11 @@ final value = nullableValue!;
 The bang operator (`!`) asserts a nullable value is non-null. If wrong, it throws a runtime `TypeError`.
 
 **Problems:**
-
 - Runtime exceptions instead of compile-time safety
 - Hides potential null-related bugs
 - Makes code harder to reason about
 
 **Better alternatives:**
-
 ```dart
 // Instead of:
 final name = user.name!;
@@ -135,7 +133,6 @@ if (user.name case final name?) {
 Functions without explicit return types default to `dynamic`, which bypasses type checking and can hide bugs.
 
 **Examples that trigger this rule:**
-
 ```dart
 foo() { }              // ERROR: implicit return type
 dynamic bar() => 1;    // ERROR: explicit dynamic
@@ -143,7 +140,6 @@ get value => _value;   // ERROR: getter without return type
 ```
 
 **Better alternatives:**
-
 ```dart
 void foo() { }              // explicit void
 int bar() => 1;             // explicit int
@@ -156,7 +152,6 @@ Future<void> baz() async {} // explicit Future<void>
 When a non-String value is used in string interpolation, Dart implicitly calls `toString()` on it.
 
 **Allowed types** (predictable `toString()`):
-
 - `String`, `int`, `double`, `bool`
 
 **The real problem:** When a dependency update changes a type from `String` to a class, code using that value in string interpolation (e.g., as a map key) will still compile but silently break at runtime.
@@ -171,13 +166,11 @@ cache['user_$userId'] = data;  // worked fine
 ```
 
 **Other problems:**
-
 - Unexpected output if `toString()` is not properly overridden
 - Silent bugs that only manifest at runtime
 - Harder to spot in code reviews
 
 **Better alternatives:**
-
 ```dart
 // These are OK (allowed types):
 final count = 42;

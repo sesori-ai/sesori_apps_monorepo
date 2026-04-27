@@ -9,11 +9,11 @@ import "../plugin_to_shared_mapping.dart";
 ///
 /// Handles all event type conversions and builds the projects summary event.
 class BridgeEventMapper {
-  final BridgePluginApi _plugin;
+  final BridgePlugin _plugin;
   final FailureReporter _failureReporter;
 
   BridgeEventMapper({
-    required BridgePluginApi plugin,
+    required BridgePlugin plugin,
     required FailureReporter failureReporter,
   }) : _plugin = plugin,
        _failureReporter = failureReporter;
@@ -152,6 +152,8 @@ class BridgeEventMapper {
         ),
         BridgeSseWorktreeReady() => const SesoriSseEvent.worktreeReady(),
         BridgeSseWorktreeFailed() => const SesoriSseEvent.worktreeFailed(),
+        BridgeSseServerUnavailable() => null,
+        BridgeSseServerAccessRestored() => null,
       };
     } catch (e, st) {
       Log.e("[sse-mapper] error mapping event ${event.runtimeType}: $e\n$st");

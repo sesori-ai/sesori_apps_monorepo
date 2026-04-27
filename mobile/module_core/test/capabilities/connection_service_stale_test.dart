@@ -48,7 +48,7 @@ void main() {
       authToken: "token",
     );
 
-    const health = HealthResponse(healthy: true, version: "0.1.200");
+    const health = HealthResponse(healthy: true, version: "0.1.200", serverManaged: false, serverState: null);
 
     Future<void> flush() => Future<void>.delayed(Duration.zero);
 
@@ -88,7 +88,7 @@ void main() {
       var staleEmissions = 0;
       final sub = service.dataMayBeStale.listen((_) => staleEmissions++);
 
-      lifecycleController.add(LifecycleState.paused);
+      lifecycleController.add(LifecycleState.hidden);
       await flush();
       now = now.add(const Duration(minutes: 5));
       lifecycleController.add(LifecycleState.resumed);
@@ -104,7 +104,7 @@ void main() {
       var staleEmissions = 0;
       final sub = service.dataMayBeStale.listen((_) => staleEmissions++);
 
-      lifecycleController.add(LifecycleState.paused);
+      lifecycleController.add(LifecycleState.hidden);
       await flush();
       // 4 minutes is safely under the 4:30 stale threshold (90% of 5 min)
       now = now.add(const Duration(minutes: 4));
@@ -121,7 +121,7 @@ void main() {
       var staleEmissions = 0;
       final sub = service.dataMayBeStale.listen((_) => staleEmissions++);
 
-      lifecycleController.add(LifecycleState.paused);
+      lifecycleController.add(LifecycleState.hidden);
       await flush();
       now = now.add(const Duration(minutes: 6));
       lifecycleController.add(LifecycleState.resumed);
@@ -137,7 +137,7 @@ void main() {
       var staleEmissions = 0;
       final sub = service.dataMayBeStale.listen((_) => staleEmissions++);
 
-      lifecycleController.add(LifecycleState.paused);
+      lifecycleController.add(LifecycleState.hidden);
       await flush();
       now = now.add(const Duration(minutes: 6));
       lifecycleController.add(LifecycleState.resumed);
@@ -153,14 +153,14 @@ void main() {
       var staleEmissions = 0;
       final sub = service.dataMayBeStale.listen((_) => staleEmissions++);
 
-      lifecycleController.add(LifecycleState.paused);
+      lifecycleController.add(LifecycleState.hidden);
       await flush();
       now = now.add(const Duration(minutes: 2));
       lifecycleController.add(LifecycleState.resumed);
       await flush();
       expect(staleEmissions, 0);
 
-      lifecycleController.add(LifecycleState.paused);
+      lifecycleController.add(LifecycleState.hidden);
       await flush();
       now = now.add(const Duration(minutes: 6));
       lifecycleController.add(LifecycleState.resumed);
@@ -176,7 +176,7 @@ void main() {
       var staleEmissions = 0;
       final sub = service.dataMayBeStale.listen((_) => staleEmissions++);
 
-      lifecycleController.add(LifecycleState.paused);
+      lifecycleController.add(LifecycleState.hidden);
       await flush();
       now = now.add(const Duration(minutes: 6));
       lifecycleController.add(LifecycleState.resumed);

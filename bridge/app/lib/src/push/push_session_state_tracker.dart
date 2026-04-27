@@ -33,7 +33,7 @@ class PushSessionStateTracker {
         }
       case SesoriMessageUpdated(:final info):
         _messageRoles[info.id] = _PushTrackedMessageRole(
-          role: info is MessageAssistant ? "assistant" : info is MessageUser ? "user" : "error",
+          role: info.role,
           sessionId: info.sessionID,
           updatedAt: now,
         );
@@ -491,15 +491,9 @@ class PushSessionStateTracker {
   }
 
   void _updateLatestAssistantText({required MessagePart part}) {
-    final messageRole = _messageRoles[part.messageID];
-    if (part.type != MessagePartType.text || messageRole == null) {
+    if (part.type != MessagePartType.text || _messageRoles[part.messageID]?.role != "assistant") {
       return;
     }
-    final isAssistant = switch (messageRole.role) {
-      "assistant" => true,
-      _ => false,
-    };
-    if (!isAssistant) return;
 
     _stateForSession(sessionId: part.sessionID).latestAssistantText = part.text ?? "";
   }

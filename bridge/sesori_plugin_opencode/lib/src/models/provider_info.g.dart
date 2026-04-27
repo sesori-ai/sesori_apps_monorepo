@@ -17,27 +17,49 @@ _ProviderInfo _$ProviderInfoFromJson(Map json) => _ProviderInfo(
   ),
 );
 
+Map<String, dynamic> _$ProviderInfoToJson(_ProviderInfo instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'name': instance.name,
+      'models': instance.models.map((k, e) => MapEntry(k, e.toJson())),
+    };
+
 _ProviderModel _$ProviderModelFromJson(Map json) => _ProviderModel(
   id: json['id'] as String,
   providerID: json['providerID'] as String,
   name: json['name'] as String,
-  variants: json['variants'] == null
-      ? const <String>[]
-      : _variantsFromJson(json['variants']),
   family: json['family'] as String?,
   status: json['status'] as String? ?? "active",
   releaseDate: json['release_date'] as String?,
 );
 
+Map<String, dynamic> _$ProviderModelToJson(_ProviderModel instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'providerID': instance.providerID,
+      'name': instance.name,
+      'family': instance.family,
+      'status': instance.status,
+      'release_date': instance.releaseDate,
+    };
+
 _ProviderListResponse _$ProviderListResponseFromJson(Map json) =>
     _ProviderListResponse(
-      providers: (_readProvidersJsonKey(json, 'providers') as List<dynamic>)
+      all: (json['all'] as List<dynamic>)
           .map(
             (e) => ProviderInfo.fromJson(Map<String, dynamic>.from(e as Map)),
           )
           .toList(),
       defaults: Map<String, String>.from(json['default'] as Map),
-      connected: (json['connected'] as List<dynamic>?)
-          ?.map((e) => e as String)
+      connected: (json['connected'] as List<dynamic>)
+          .map((e) => e as String)
           .toList(),
     );
+
+Map<String, dynamic> _$ProviderListResponseToJson(
+  _ProviderListResponse instance,
+) => <String, dynamic>{
+  'all': instance.all.map((e) => e.toJson()).toList(),
+  'default': instance.defaults,
+  'connected': instance.connected,
+};

@@ -9,11 +9,9 @@ import "models/plugin_prompt_part.dart";
 import "models/plugin_provider.dart";
 import "models/plugin_session.dart";
 import "models/plugin_session_status.dart";
-import "models/plugin_session_variant.dart";
 import "plugin_permission_reply.dart";
 
-// Note: as far as architecture goes, this MUST be treated as part of API layer
-abstract class BridgePluginApi {
+abstract class BridgePlugin {
   /// Unique plugin identifier (e.g., "opencode", "codex")
   String get id;
 
@@ -40,7 +38,6 @@ abstract class BridgePluginApi {
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
-    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   });
@@ -59,18 +56,6 @@ abstract class BridgePluginApi {
   /// Unarchive is not propagated to the backend; it only clears the local DB.
   Future<void> archiveSession({required String sessionId});
 
-  /// Delete a workspace (git worktree / sandbox) from the backend.
-  ///
-  /// This is best-effort — the caller should have already removed the worktree
-  /// from disk. If the workspace is already gone or the backend does not
-  /// recognize it, the call should succeed silently.
-  ///
-  /// [worktreePath] is the specific worktree directory to remove.
-  Future<void> deleteWorkspace({
-    required String projectId,
-    required String worktreePath,
-  });
-
   Future<List<PluginSession>> getChildSessions(String sessionId);
 
   Future<Map<String, PluginSessionStatus>> getSessionStatuses();
@@ -81,7 +66,6 @@ abstract class BridgePluginApi {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PluginPromptPart> parts,
-    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   });
@@ -90,7 +74,6 @@ abstract class BridgePluginApi {
     required String sessionId,
     required String command,
     required String arguments,
-    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   });
@@ -139,10 +122,12 @@ abstract class BridgePluginApi {
   /// otherwise.
   Future<bool> healthCheck();
 
-  /// Get connected providers and their models from the backend.
-  Future<PluginProvidersResult> getProviders({
-    required String projectId,
-  });
+  /// Get providers and their models from the backend.
+  ///
+  /// When [connectedOnly] is `true`, only providers that have valid credentials
+  /// configured are returned. When `false`, all known providers are returned
+  /// regardless of whether they are connected.
+  Future<PluginProvidersResult> getProviders({required bool connectedOnly});
 
   /// Build a summary of the active sessions for each project.
   List<PluginProjectActivitySummary> getActiveSessionsSummary();

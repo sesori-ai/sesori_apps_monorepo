@@ -236,9 +236,9 @@ Session _session({
   pullRequest: null,
 );
 
-/// Minimal [BridgePluginApi] fake that only implements [getProjects].
+/// Minimal [BridgePlugin] fake that only implements [getProjects].
 /// Every other member throws [UnimplementedError] so accidental use is loud.
-class _FakeBridgePlugin implements BridgePluginApi {
+class _FakeBridgePlugin implements BridgePlugin {
   final List<PluginProject> _projects;
 
   _FakeBridgePlugin({required List<PluginProject> projects}) : _projects = projects;
@@ -260,7 +260,6 @@ class _FakeBridgePlugin implements BridgePluginApi {
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
-    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) => throw UnimplementedError();
@@ -278,12 +277,6 @@ class _FakeBridgePlugin implements BridgePluginApi {
   Future<void> archiveSession({required String sessionId}) => throw UnimplementedError();
 
   @override
-  Future<void> deleteWorkspace({
-    required String projectId,
-    required String worktreePath,
-  }) => throw UnimplementedError();
-
-  @override
   Future<List<PluginSession>> getChildSessions(String sessionId) => throw UnimplementedError();
 
   @override
@@ -299,7 +292,6 @@ class _FakeBridgePlugin implements BridgePluginApi {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PluginPromptPart> parts,
-    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) => throw UnimplementedError();
@@ -309,7 +301,6 @@ class _FakeBridgePlugin implements BridgePluginApi {
     required String sessionId,
     required String command,
     required String arguments,
-    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {}
@@ -350,8 +341,7 @@ class _FakeBridgePlugin implements BridgePluginApi {
   Future<bool> healthCheck() => throw UnimplementedError();
 
   @override
-  Future<PluginProvidersResult> getProviders({required String projectId}) =>
-      throw UnimplementedError();
+  Future<PluginProvidersResult> getProviders({required bool connectedOnly}) => throw UnimplementedError();
 
   @override
   List<PluginProjectActivitySummary> getActiveSessionsSummary() => throw UnimplementedError();

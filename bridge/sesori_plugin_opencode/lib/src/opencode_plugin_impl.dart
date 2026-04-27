@@ -5,6 +5,7 @@ import "package:http/io_client.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../opencode_plugin.dart";
+import "models/server_health_signal.dart";
 import "sse/sse_connection.dart";
 import "sse_event_mapper.dart";
 
@@ -26,7 +27,7 @@ String formatDroppedSseFrameLog({
   return "[opencode][sse][$category]$suffix $message";
 }
 
-class OpenCodePlugin implements BridgePluginApi {
+class OpenCodePlugin implements BridgePlugin {
   final OpenCodeService _service;
   final SseEventParser _parser;
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
@@ -73,6 +74,14 @@ class OpenCodePlugin implements BridgePluginApi {
         _emitProjectsSummary();
       },
     );
+    _sseConnection.healthSignals.listen((signal) {
+      switch (signal.type) {
+        case ServerHealthSignalType.serverUnreachable:
+          _eventBuffer.add(BridgeSseServerUnavailable(message: signal.message));
+        case ServerHealthSignalType.serverReachable:
+          _eventBuffer.add(const BridgeSseServerAccessRestored());
+      }
+    });
     unawaited(_initialize());
   }
 
@@ -106,10 +115,8 @@ class OpenCodePlugin implements BridgePluginApi {
   }
 
   @override
-  Future<PluginProvidersResult> getProviders({required String projectId}) {
-    return _call(
-      () => _service.getProviders(projectId: projectId),
-    );
+  Future<PluginProvidersResult> getProviders({required bool connectedOnly}) {
+    return _call(() => _service.getProviders(connectedOnly: connectedOnly));
   }
 
   @override
@@ -166,7 +173,6 @@ class OpenCodePlugin implements BridgePluginApi {
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
     required String? agent,
-    required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) async {
     return _call(
@@ -175,7 +181,6 @@ class OpenCodePlugin implements BridgePluginApi {
         parentSessionId: parentSessionId,
         parts: parts,
         agent: agent,
-        variant: variant,
         model: model,
       ),
     );
@@ -261,7 +266,6 @@ class OpenCodePlugin implements BridgePluginApi {
     required String sessionId,
     required List<PluginPromptPart> parts,
     required String? agent,
-    required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) {
     return _call(
@@ -269,7 +273,6 @@ class OpenCodePlugin implements BridgePluginApi {
         sessionId: sessionId,
         parts: parts,
         agent: agent,
-        variant: variant,
         model: model,
       ),
     );
@@ -281,7 +284,6 @@ class OpenCodePlugin implements BridgePluginApi {
     required String command,
     required String arguments,
     required String? agent,
-    required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) {
     return _call(
@@ -290,7 +292,6 @@ class OpenCodePlugin implements BridgePluginApi {
         command: command,
         arguments: arguments,
         agent: agent,
-        variant: variant,
         model: model,
       ),
     );
@@ -403,19 +404,6 @@ class OpenCodePlugin implements BridgePluginApi {
         body: {
           "time": {"archived": DateTime.now().millisecondsSinceEpoch},
         },
-      ),
-    );
-  }
-
-  @override
-  Future<void> deleteWorkspace({
-    required String projectId,
-    required String worktreePath,
-  }) {
-    return _call(
-      () => _service.repository.api.removeWorktree(
-        directory: projectId,
-        worktreePath: worktreePath,
       ),
     );
   }
@@ -536,34 +524,15 @@ class OpenCodePlugin implements BridgePluginApi {
   PluginMessageWithParts _mapMessage(MessageWithParts raw) {
     final info = raw.info;
     final parts = raw.parts;
-    final pluginInfo = switch (info.error) {
-      final error? => PluginMessage.error(
+    return PluginMessageWithParts(
+      info: PluginMessage(
+        role: info.role,
         id: info.id,
         sessionID: info.sessionID,
         agent: info.agent,
         modelID: info.modelID,
         providerID: info.providerID,
-        errorName: error.name,
-        errorMessage: error.data.message,
       ),
-      null => switch (info.role) {
-        "user" => PluginMessage.user(
-          id: info.id,
-          sessionID: info.sessionID,
-          agent: info.agent,
-        ),
-        "assistant" => PluginMessage.assistant(
-          id: info.id,
-          sessionID: info.sessionID,
-          agent: info.agent,
-          modelID: info.modelID,
-          providerID: info.providerID,
-        ),
-        _ => throw ArgumentError('Unknown message role: ${info.role}'),
-      },
-    };
-    return PluginMessageWithParts(
-      info: pluginInfo,
       parts: parts.map(_mapper.mapPart).where((p) => p.type.isVisible).toList(),
     );
   }

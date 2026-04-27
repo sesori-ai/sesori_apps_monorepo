@@ -45,11 +45,9 @@ class ForegroundNotificationDispatcher {
   }
 
   void _onForegroundMessage(PushNotificationMessage message) {
-    unawaited(
-      _dispatchForegroundMessage(message: message).catchError((Object error, StackTrace stackTrace) {
-        logw("Failed to dispatch foreground notification", error, stackTrace);
-      }),
-    );
+    unawaited(_dispatchForegroundMessage(message: message).catchError((Object error, StackTrace stackTrace) {
+      logw("Failed to dispatch foreground notification", error, stackTrace);
+    }));
   }
 
   Future<void> _dispatchForegroundMessage({required PushNotificationMessage message}) async {

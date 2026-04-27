@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PluginAgentModel {
 
- String get modelID; String get providerID; String? get variant;
+ String get modelID; String get providerID;
 /// Create a copy of PluginAgentModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -27,16 +27,16 @@ $PluginAgentModelCopyWith<PluginAgentModel> get copyWith => _$PluginAgentModelCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAgentModel&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.variant, variant) || other.variant == variant));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAgentModel&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,modelID,providerID,variant);
+int get hashCode => Object.hash(runtimeType,modelID,providerID);
 
 @override
 String toString() {
-  return 'PluginAgentModel(modelID: $modelID, providerID: $providerID, variant: $variant)';
+  return 'PluginAgentModel(modelID: $modelID, providerID: $providerID)';
 }
 
 
@@ -47,7 +47,7 @@ abstract mixin class $PluginAgentModelCopyWith<$Res>  {
   factory $PluginAgentModelCopyWith(PluginAgentModel value, $Res Function(PluginAgentModel) _then) = _$PluginAgentModelCopyWithImpl;
 @useResult
 $Res call({
- String modelID, String providerID, String? variant
+ String modelID, String providerID
 });
 
 
@@ -64,12 +64,11 @@ class _$PluginAgentModelCopyWithImpl<$Res>
 
 /// Create a copy of PluginAgentModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? modelID = null,Object? providerID = null,Object? variant = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? modelID = null,Object? providerID = null,}) {
   return _then(_self.copyWith(
 modelID: null == modelID ? _self.modelID : modelID // ignore: cast_nullable_to_non_nullable
 as String,providerID: null == providerID ? _self.providerID : providerID // ignore: cast_nullable_to_non_nullable
-as String,variant: freezed == variant ? _self.variant : variant // ignore: cast_nullable_to_non_nullable
-as String?,
+as String,
   ));
 }
 
@@ -81,12 +80,11 @@ as String?,
 @JsonSerializable(createFactory: false)
 
 class _PluginAgentModel implements PluginAgentModel {
-  const _PluginAgentModel({required this.modelID, required this.providerID, required this.variant});
+  const _PluginAgentModel({required this.modelID, required this.providerID});
   
 
 @override final  String modelID;
 @override final  String providerID;
-@override final  String? variant;
 
 /// Create a copy of PluginAgentModel
 /// with the given fields replaced by the non-null parameter values.
@@ -101,16 +99,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginAgentModel&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.variant, variant) || other.variant == variant));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginAgentModel&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,modelID,providerID,variant);
+int get hashCode => Object.hash(runtimeType,modelID,providerID);
 
 @override
 String toString() {
-  return 'PluginAgentModel(modelID: $modelID, providerID: $providerID, variant: $variant)';
+  return 'PluginAgentModel(modelID: $modelID, providerID: $providerID)';
 }
 
 
@@ -121,7 +119,7 @@ abstract mixin class _$PluginAgentModelCopyWith<$Res> implements $PluginAgentMod
   factory _$PluginAgentModelCopyWith(_PluginAgentModel value, $Res Function(_PluginAgentModel) _then) = __$PluginAgentModelCopyWithImpl;
 @override @useResult
 $Res call({
- String modelID, String providerID, String? variant
+ String modelID, String providerID
 });
 
 
@@ -138,12 +136,11 @@ class __$PluginAgentModelCopyWithImpl<$Res>
 
 /// Create a copy of PluginAgentModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? modelID = null,Object? providerID = null,Object? variant = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? modelID = null,Object? providerID = null,}) {
   return _then(_PluginAgentModel(
 modelID: null == modelID ? _self.modelID : modelID // ignore: cast_nullable_to_non_nullable
 as String,providerID: null == providerID ? _self.providerID : providerID // ignore: cast_nullable_to_non_nullable
-as String,variant: freezed == variant ? _self.variant : variant // ignore: cast_nullable_to_non_nullable
-as String?,
+as String,
   ));
 }
 
@@ -153,7 +150,7 @@ as String?,
 /// @nodoc
 mixin _$PluginAgent {
 
- String get name; String? get description; PluginAgentModel? get model; PluginAgentMode get mode; bool get hidden;
+ String get name; String? get description; PluginAgentModel? get model; PluginAgentVariant? get variant; PluginAgentMode get mode; bool get hidden;
 /// Create a copy of PluginAgent
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -166,16 +163,16 @@ $PluginAgentCopyWith<PluginAgent> get copyWith => _$PluginAgentCopyWithImpl<Plug
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAgent&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.model, model) || other.model == model)&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.hidden, hidden) || other.hidden == hidden));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAgent&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.model, model) || other.model == model)&&(identical(other.variant, variant) || other.variant == variant)&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.hidden, hidden) || other.hidden == hidden));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,description,model,mode,hidden);
+int get hashCode => Object.hash(runtimeType,name,description,model,variant,mode,hidden);
 
 @override
 String toString() {
-  return 'PluginAgent(name: $name, description: $description, model: $model, mode: $mode, hidden: $hidden)';
+  return 'PluginAgent(name: $name, description: $description, model: $model, variant: $variant, mode: $mode, hidden: $hidden)';
 }
 
 
@@ -186,7 +183,7 @@ abstract mixin class $PluginAgentCopyWith<$Res>  {
   factory $PluginAgentCopyWith(PluginAgent value, $Res Function(PluginAgent) _then) = _$PluginAgentCopyWithImpl;
 @useResult
 $Res call({
- String name, String? description, PluginAgentModel? model, PluginAgentMode mode, bool hidden
+ String name, String? description, PluginAgentModel? model, PluginAgentVariant? variant, PluginAgentMode mode, bool hidden
 });
 
 
@@ -203,12 +200,13 @@ class _$PluginAgentCopyWithImpl<$Res>
 
 /// Create a copy of PluginAgent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? description = freezed,Object? model = freezed,Object? mode = null,Object? hidden = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? description = freezed,Object? model = freezed,Object? variant = freezed,Object? mode = null,Object? hidden = null,}) {
   return _then(_self.copyWith(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
-as PluginAgentModel?,mode: null == mode ? _self.mode : mode // ignore: cast_nullable_to_non_nullable
+as PluginAgentModel?,variant: freezed == variant ? _self.variant : variant // ignore: cast_nullable_to_non_nullable
+as PluginAgentVariant?,mode: null == mode ? _self.mode : mode // ignore: cast_nullable_to_non_nullable
 as PluginAgentMode,hidden: null == hidden ? _self.hidden : hidden // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
@@ -234,12 +232,13 @@ $PluginAgentModelCopyWith<$Res>? get model {
 @JsonSerializable(createFactory: false)
 
 class _PluginAgent implements PluginAgent {
-  const _PluginAgent({required this.name, required this.description, required this.model, required this.mode, required this.hidden});
+  const _PluginAgent({required this.name, required this.description, required this.model, required this.variant, required this.mode, required this.hidden});
   
 
 @override final  String name;
 @override final  String? description;
 @override final  PluginAgentModel? model;
+@override final  PluginAgentVariant? variant;
 @override final  PluginAgentMode mode;
 @override final  bool hidden;
 
@@ -256,16 +255,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginAgent&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.model, model) || other.model == model)&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.hidden, hidden) || other.hidden == hidden));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginAgent&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.model, model) || other.model == model)&&(identical(other.variant, variant) || other.variant == variant)&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.hidden, hidden) || other.hidden == hidden));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,description,model,mode,hidden);
+int get hashCode => Object.hash(runtimeType,name,description,model,variant,mode,hidden);
 
 @override
 String toString() {
-  return 'PluginAgent(name: $name, description: $description, model: $model, mode: $mode, hidden: $hidden)';
+  return 'PluginAgent(name: $name, description: $description, model: $model, variant: $variant, mode: $mode, hidden: $hidden)';
 }
 
 
@@ -276,7 +275,7 @@ abstract mixin class _$PluginAgentCopyWith<$Res> implements $PluginAgentCopyWith
   factory _$PluginAgentCopyWith(_PluginAgent value, $Res Function(_PluginAgent) _then) = __$PluginAgentCopyWithImpl;
 @override @useResult
 $Res call({
- String name, String? description, PluginAgentModel? model, PluginAgentMode mode, bool hidden
+ String name, String? description, PluginAgentModel? model, PluginAgentVariant? variant, PluginAgentMode mode, bool hidden
 });
 
 
@@ -293,12 +292,13 @@ class __$PluginAgentCopyWithImpl<$Res>
 
 /// Create a copy of PluginAgent
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? description = freezed,Object? model = freezed,Object? mode = null,Object? hidden = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? description = freezed,Object? model = freezed,Object? variant = freezed,Object? mode = null,Object? hidden = null,}) {
   return _then(_PluginAgent(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
-as PluginAgentModel?,mode: null == mode ? _self.mode : mode // ignore: cast_nullable_to_non_nullable
+as PluginAgentModel?,variant: freezed == variant ? _self.variant : variant // ignore: cast_nullable_to_non_nullable
+as PluginAgentVariant?,mode: null == mode ? _self.mode : mode // ignore: cast_nullable_to_non_nullable
 as PluginAgentMode,hidden: null == hidden ? _self.hidden : hidden // ignore: cast_nullable_to_non_nullable
 as bool,
   ));

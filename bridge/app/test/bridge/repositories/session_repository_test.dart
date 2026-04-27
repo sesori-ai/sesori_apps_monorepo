@@ -281,94 +281,16 @@ void main() {
 
       expect(result, equals("/repo-b"));
     });
-
-    test("createSession passes variant directly to plugin", () async {
-      final db = createTestDatabase();
-      addTearDown(db.close);
-
-      final repository = SessionRepository(
-        plugin: plugin,
-        sessionDao: db.sessionDao,
-        pullRequestRepository: PullRequestRepository(
-          pullRequestDao: db.pullRequestDao,
-          projectsDao: db.projectsDao,
-        ),
-      );
-
-      final cases = <SessionVariant?>[const SessionVariant(id: "low"), const SessionVariant(id: "xhigh"), null];
-
-      for (final variant in cases) {
-        await repository.createSession(
-          directory: "/repo",
-          parentSessionId: null,
-          parts: const [PromptPart.text(text: "Ship it")],
-          variant: variant,
-          agent: null,
-          model: null,
-        );
-
-        expect(plugin.lastCreateSessionVariant, equals(variant?.id));
-      }
-    });
-
-    test("sendPrompt and sendCommand pass variant directly to plugin", () async {
-      final db = createTestDatabase();
-      addTearDown(db.close);
-
-      final repository = SessionRepository(
-        plugin: plugin,
-        sessionDao: db.sessionDao,
-        pullRequestRepository: PullRequestRepository(
-          pullRequestDao: db.pullRequestDao,
-          projectsDao: db.projectsDao,
-        ),
-      );
-
-      final cases = <SessionVariant?>[const SessionVariant(id: "low"), const SessionVariant(id: "xhigh"), null];
-
-      for (final variant in cases) {
-        await repository.sendPrompt(
-          sessionId: "s1",
-          parts: const [PromptPart.text(text: "Prompt")],
-          variant: variant,
-          agent: null,
-          model: null,
-        );
-        expect(plugin.lastSendPromptVariant, equals(variant?.id));
-
-        await repository.sendCommand(
-          sessionId: "s1",
-          command: "review",
-          arguments: "Prompt",
-          variant: variant,
-          agent: null,
-          model: null,
-        );
-        expect(plugin.lastSendCommandVariant, equals(variant?.id));
-      }
-    });
   });
 }
 
-class _FakeBridgePlugin implements BridgePluginApi {
+class _FakeBridgePlugin implements BridgePlugin {
   List<PluginProject> projectsResult = const [];
   List<PluginSession> sessionsResult = const [];
   Map<String, List<PluginSession>> sessionsByWorktree = const {};
-  PluginSession createSessionResult = const PluginSession(
-    id: "created-session",
-    projectID: "/repo",
-    directory: "/repo",
-    parentID: null,
-    title: null,
-    time: null,
-    summary: null,
-  );
   PluginSession? renameSessionResult;
   String? lastRenameSessionId;
   String? lastRenameSessionTitle;
-  String? lastCreateSessionVariant;
-  String? lastSendPromptVariant;
-  String? lastSendCommandVariant;
 
   @override
   String get id => "fake";
@@ -390,48 +312,6 @@ class _FakeBridgePlugin implements BridgePluginApi {
     lastRenameSessionTitle = title;
     return renameSessionResult!;
   }
-
-  @override
-  Future<PluginSession> createSession({
-    required String directory,
-    required String? parentSessionId,
-    required List<PluginPromptPart> parts,
-    required PluginSessionVariant? variant,
-    required String? agent,
-    required ({String providerID, String modelID})? model,
-  }) async {
-    lastCreateSessionVariant = variant?.id;
-    return createSessionResult;
-  }
-
-  @override
-  Future<void> sendPrompt({
-    required String sessionId,
-    required List<PluginPromptPart> parts,
-    required PluginSessionVariant? variant,
-    required String? agent,
-    required ({String providerID, String modelID})? model,
-  }) async {
-    lastSendPromptVariant = variant?.id;
-  }
-
-  @override
-  Future<void> sendCommand({
-    required String sessionId,
-    required String command,
-    required String arguments,
-    required PluginSessionVariant? variant,
-    required String? agent,
-    required ({String providerID, String modelID})? model,
-  }) async {
-    lastSendCommandVariant = variant?.id;
-  }
-
-  @override
-  Future<void> deleteWorkspace({
-    required String projectId,
-    required String worktreePath,
-  }) async {}
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

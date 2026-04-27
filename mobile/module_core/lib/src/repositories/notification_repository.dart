@@ -11,9 +11,7 @@ class NotificationRepository {
   NotificationRepository({required NotificationApi api}) : _api = api;
 
   Future<void> registerToken({required String token, required DevicePlatform platform}) {
-    return _api.registerToken(
-      request: RegisterTokenRequest(token: token, platform: platform),
-    );
+    return _api.registerToken(request: RegisterTokenRequest(token: token, platform: platform));
   }
 
   Future<void> unregisterToken({required String token}) {

@@ -9,7 +9,11 @@ sealed class HealthResponse with _$HealthResponse {
   const factory HealthResponse({
     required bool healthy,
     required String version,
+    required bool? serverManaged,
+    required ServerStateKind? serverState,
   }) = _HealthResponse;
 
   factory HealthResponse.fromJson(Map<String, dynamic> json) => _$HealthResponseFromJson(json);
 }
+
+enum ServerStateKind { running, unreachable, restarting, failed }

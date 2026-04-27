@@ -26,7 +26,7 @@ void main() {
   const sessionId = "session-1";
   const connectedStatus = ConnectionStatus.connected(
     config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token"),
-    health: HealthResponse(healthy: true, version: "0.1.200"),
+    health: HealthResponse(healthy: true, version: "0.1.200", serverManaged: false, serverState: null),
   );
 
   setUpAll(() {
@@ -114,7 +114,6 @@ void main() {
     test("permission event adds to state and fires stream", () async {
       final cubit = _buildCubit(
         sessionId: sessionId,
-        projectId: "project-1",
         connectionService: mockConnectionService,
         loadService: loadService,
         promptDispatcher: promptDispatcher,
@@ -147,7 +146,6 @@ void main() {
     test("duplicate permission IDs are ignored", () async {
       final cubit = _buildCubit(
         sessionId: sessionId,
-        projectId: "project-1",
         connectionService: mockConnectionService,
         loadService: loadService,
         promptDispatcher: promptDispatcher,
@@ -186,7 +184,6 @@ void main() {
 
       final cubit = _buildCubit(
         sessionId: sessionId,
-        projectId: "project-1",
         connectionService: mockConnectionService,
         loadService: loadService,
         promptDispatcher: promptDispatcher,
@@ -244,7 +241,6 @@ void main() {
 
       final cubit = _buildCubit(
         sessionId: sessionId,
-        projectId: "project-1",
         connectionService: mockConnectionService,
         loadService: loadService,
         promptDispatcher: promptDispatcher,
@@ -278,7 +274,7 @@ void main() {
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
       verify(() => mockSessionService.listAgents()).called(1);
-      verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).called(1);
+      verify(() => mockSessionService.listProviders()).called(1);
     });
 
     test("non-loaded state ignores permission events", () async {
@@ -287,7 +283,6 @@ void main() {
 
       final cubit = _buildCubit(
         sessionId: sessionId,
-        projectId: "project-1",
         connectionService: mockConnectionService,
         loadService: loadService,
         promptDispatcher: promptDispatcher,
@@ -319,7 +314,6 @@ void main() {
 
 SessionDetailCubit _buildCubit({
   required String sessionId,
-  required String projectId,
   required MockConnectionService connectionService,
   required SessionDetailLoadService loadService,
   required SessionRepository promptDispatcher,
@@ -333,7 +327,6 @@ SessionDetailCubit _buildCubit({
     promptDispatcher: promptDispatcher,
     permissionRepository: permissionRepository,
     sessionId: sessionId,
-    projectId: projectId,
     notificationCanceller: notificationCanceller,
     failureReporter: failureReporter,
   );
@@ -355,13 +348,6 @@ void _stubLoadApis(MockSessionService service, {required String sessionId}) {
     ),
   );
   when(
-    () => service.getPendingPermissions(),
-  ).thenAnswer(
-    (_) => Future<ApiResponse<PendingPermissionResponse>>.value(
-      ApiResponse.success(const PendingPermissionResponse(data: <PendingPermission>[])),
-    ),
-  );
-  when(
     () => service.getChildren(sessionId: any(named: "sessionId")),
   ).thenAnswer(
     (_) => Future<ApiResponse<SessionListResponse>>.value(
@@ -378,15 +364,16 @@ void _stubLoadApis(MockSessionService service, {required String sessionId}) {
   when(() => service.listAgents()).thenAnswer(
     (_) => Future<ApiResponse<Agents>>.value(ApiResponse.success(Agents(agents: _agents()))),
   );
-  when(() => service.listProviders(projectId: any(named: "projectId"))).thenAnswer(
+  when(() => service.listProviders()).thenAnswer(
     (_) => Future<ApiResponse<ProviderListResponse>>.value(ApiResponse.success(_providers())),
   );
 }
 
 MessageWithParts _messageWithParts({String messageId = "msg-1"}) {
   return MessageWithParts(
-    info: Message.assistant(
+    info: Message(
       id: messageId,
+      role: "assistant",
       sessionID: "session-1",
       agent: null,
       modelID: null,
@@ -398,7 +385,7 @@ MessageWithParts _messageWithParts({String messageId = "msg-1"}) {
 
 List<AgentInfo> _agents() {
   return const [
-    AgentInfo(name: "coder", description: "A coding assistant", model: null, mode: AgentMode.primary),
+    AgentInfo(name: "coder", description: "A coding assistant", model: null, variant: null, mode: AgentMode.primary),
   ];
 }
 
@@ -415,7 +402,6 @@ ProviderListResponse _providers() {
             id: "claude-3-5-sonnet",
             providerID: "anthropic",
             name: "Claude 3.5 Sonnet",
-            variants: [],
             family: null,
             releaseDate: null,
           ),

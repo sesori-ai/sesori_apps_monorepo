@@ -5,8 +5,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginPermissionReply,
         PluginPromptPart,
         PluginProvidersResult,
-        PluginSession,
-        PluginSessionVariant;
+        PluginSession;
 import "package:sesori_shared/sesori_shared.dart" show wait2;
 
 import "models/command.dart";
@@ -81,18 +80,12 @@ class OpenCodeRepository {
     required String? directory,
     required List<PluginPromptPart> parts,
     required String? agent,
-    required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) {
     return _api.sendPrompt(
       sessionId: sessionId,
       directory: _normalizeDirectory(directory),
-      body: SendPromptBody(
-        parts: parts,
-        agent: agent,
-        variant: variant?.id,
-        model: model,
-      ),
+      body: SendPromptBody(parts: parts, agent: agent, model: model),
     );
   }
 
@@ -102,7 +95,6 @@ class OpenCodeRepository {
     required String command,
     required String arguments,
     required String? agent,
-    required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) {
     return _api.sendCommand(
@@ -112,7 +104,6 @@ class OpenCodeRepository {
         command: command,
         arguments: arguments,
         agent: agent,
-        variant: variant?.id,
         model: model,
       ),
     );
@@ -204,7 +195,7 @@ class OpenCodeRepository {
 
   Future<List<Session>> getSessions({required String worktree}) async {
     final (standardSessions, globalSessions) = await wait2(
-      _api.listSessions(directory: worktree, roots: true),
+      _api.listSessions(directory: worktree),
       _api.listAllSessions(directory: worktree, roots: true),
     );
 
@@ -248,13 +239,9 @@ class OpenCodeRepository {
 
   /// Fetches providers from the API, optionally filtering to connected-only,
   /// and maps OpenCode-specific models to plugin interface types.
-  Future<PluginProvidersResult> getProviders({
-    required String? directory,
-  }) async {
-    final response = await _api.listConfigProviders(
-      directory: _normalizeDirectory(directory),
-    );
-    return mapProviderResponse(response: response);
+  Future<PluginProvidersResult> getProviders({required bool connectedOnly}) async {
+    final response = await _api.listProviders();
+    return mapProviderResponse(response: response, connectedOnly: connectedOnly);
   }
 
   Future<List<PendingQuestion>> getPendingQuestions() {

@@ -1,5 +1,4 @@
 import "package:bloc/bloc.dart";
-import "package:collection/collection.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -15,25 +14,25 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     required String projectId,
   }) : _sessionService = sessionService,
        _projectId = projectId,
-          super(
-           const NewSessionState.idle(
-             availableAgents: [],
-             availableProviders: [],
-             availableCommands: [],
-             selectedAgent: null,
-             selectedAgentModel: null,
-             stagedCommand: null,
-             availableVariants: [],
-           ),
-         ) {
-      _loadComposerData();
-    }
+       super(
+         const NewSessionState.idle(
+           availableAgents: [],
+           availableProviders: [],
+           availableCommands: [],
+           selectedAgent: null,
+           selectedProviderID: null,
+           selectedModelID: null,
+           stagedCommand: null,
+         ),
+       ) {
+    _loadComposerData();
+  }
 
   Future<void> _loadComposerData() async {
     try {
-      final (ApiResponse<Agents> agentsResponse, ApiResponse<ProviderListResponse> providersResponse, ApiResponse<CommandListResponse> commandsResponse) = await wait3(
+      final (agentsResponse, providersResponse, commandsResponse) = await wait3(
         _sessionService.listAgents(),
-        _sessionService.listProviders(projectId: _projectId),
+        _sessionService.listProviders(),
         _sessionService.listCommands(projectId: _projectId),
       );
 
@@ -55,22 +54,21 @@ class NewSessionCubit extends Cubit<NewSessionState> {
 
       final defaultAgent = agents.isNotEmpty ? agents.first.name : "build";
       final agentModel = agents.isNotEmpty ? agents.first.model : null;
-      final AgentModel? defaultAgentModel;
+      final String defaultProviderID;
+      final String defaultModelID;
       if (agentModel != null) {
-        defaultAgentModel = agentModel;
+        defaultProviderID = agentModel.providerID;
+        defaultModelID = agentModel.modelID;
       } else if (providers.isNotEmpty) {
-        final firstProvider = providers.first;
-        final defaultModelID = firstProvider.defaultModelID;
-        final modelID = defaultModelID != null && firstProvider.models.containsKey(defaultModelID)
-            ? defaultModelID
-            : firstProvider.models.values.first.id;
-        defaultAgentModel = AgentModel(
-          providerID: firstProvider.id,
-          modelID: modelID,
-          variant: null,
-        );
+        defaultProviderID = providers.first.id;
+        final firstProviderDefaultModelId = providers.first.defaultModelID;
+        defaultModelID =
+            firstProviderDefaultModelId != null && providers.first.models.containsKey(firstProviderDefaultModelId)
+            ? firstProviderDefaultModelId
+            : providers.first.models.values.first.id;
       } else {
-        defaultAgentModel = null;
+        defaultProviderID = "";
+        defaultModelID = "";
       }
 
       _emitAgentModelUpdate(
@@ -78,30 +76,27 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         availableProviders: providers,
         availableCommands: commands,
         selectedAgent: defaultAgent,
-        selectedAgentModel: defaultAgentModel,
+        selectedProviderID: defaultProviderID,
+        selectedModelID: defaultModelID,
       );
     } catch (_) {
       return;
     }
   }
 
-  /// Applies agent/model field updates to the current state.
-  /// No-op when the cubit is closed or in `created`.
+  /// Applies agent/model field updates to the current state, regardless of
+  /// which variant is active. No-op when the cubit is closed or in `created`.
+  // ignore: no_slop_linter/prefer_required_named_parameters, optional state patch parameters
   void _emitAgentModelUpdate({
     List<AgentInfo>? availableAgents,
     List<ProviderInfo>? availableProviders,
     List<CommandInfo>? availableCommands,
     String? selectedAgent,
-    AgentModel? selectedAgentModel,
+    String? selectedProviderID,
+    String? selectedModelID,
   }) {
     if (isClosed) return;
     final current = state;
-    final data = current.agentModelData;
-    if (data == null) return;
-    final derivedVariants = _deriveAvailableVariants(
-      providers: availableProviders ?? data.providers,
-      model: selectedAgentModel ?? data.agentModel,
-    );
     switch (current) {
       case NewSessionIdle():
         emit(
@@ -110,8 +105,8 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             availableProviders: availableProviders ?? current.availableProviders,
             availableCommands: availableCommands ?? current.availableCommands,
             selectedAgent: selectedAgent ?? current.selectedAgent,
-            selectedAgentModel: selectedAgentModel ?? current.selectedAgentModel,
-            availableVariants: derivedVariants,
+            selectedProviderID: selectedProviderID ?? current.selectedProviderID,
+            selectedModelID: selectedModelID ?? current.selectedModelID,
           ),
         );
       case NewSessionSending():
@@ -121,8 +116,8 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             availableProviders: availableProviders ?? current.availableProviders,
             availableCommands: availableCommands ?? current.availableCommands,
             selectedAgent: selectedAgent ?? current.selectedAgent,
-            selectedAgentModel: selectedAgentModel ?? current.selectedAgentModel,
-            availableVariants: derivedVariants,
+            selectedProviderID: selectedProviderID ?? current.selectedProviderID,
+            selectedModelID: selectedModelID ?? current.selectedModelID,
           ),
         );
       case NewSessionError():
@@ -132,8 +127,8 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             availableProviders: availableProviders ?? current.availableProviders,
             availableCommands: availableCommands ?? current.availableCommands,
             selectedAgent: selectedAgent ?? current.selectedAgent,
-            selectedAgentModel: selectedAgentModel ?? current.selectedAgentModel,
-            availableVariants: derivedVariants,
+            selectedProviderID: selectedProviderID ?? current.selectedProviderID,
+            selectedModelID: selectedModelID ?? current.selectedModelID,
           ),
         );
       case NewSessionCreated():
@@ -141,53 +136,8 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     }
   }
 
-  List<SessionVariant> _deriveAvailableVariants({
-    required List<ProviderInfo> providers,
-    required AgentModel? model,
-  }) {
-    final providerID = model?.providerID;
-    final modelID = model?.modelID;
-    final provider = providerID != null
-        ? providers.firstWhereOrNull((p) => p.id == providerID)
-        : null;
-    final m = provider?.models[modelID];
-    return m?.variants
-            .where((v) => v != "none")
-            .map((v) => SessionVariant(id: v))
-            .toList() ??
-        [];
-  }
-
   void selectAgent(String agent) {
-    final current = state;
-    final agentInfo = switch (current) {
-      NewSessionIdle() => current.availableAgents.firstWhereOrNull((a) => a.name == agent),
-      NewSessionSending() => current.availableAgents.firstWhereOrNull((a) => a.name == agent),
-      NewSessionError() => current.availableAgents.firstWhereOrNull((a) => a.name == agent),
-      NewSessionCreated() => null,
-    };
-    final agentModel = agentInfo?.model;
-    _emitAgentModelUpdate(selectedAgent: agent, selectedAgentModel: agentModel);
-  }
-
-  void selectVariant(SessionVariant? variant) {
-    final current = state;
-    switch (current) {
-      case NewSessionIdle():
-        final agentModel = current.selectedAgentModel;
-        if (agentModel == null) return;
-        emit(current.copyWith(selectedAgentModel: agentModel.copyWith(variant: variant?.id)));
-      case NewSessionSending():
-        final agentModel = current.selectedAgentModel;
-        if (agentModel == null) return;
-        emit(current.copyWith(selectedAgentModel: agentModel.copyWith(variant: variant?.id)));
-      case NewSessionError():
-        final agentModel = current.selectedAgentModel;
-        if (agentModel == null) return;
-        emit(current.copyWith(selectedAgentModel: agentModel.copyWith(variant: variant?.id)));
-      case NewSessionCreated():
-        return;
-    }
+    _emitAgentModelUpdate(selectedAgent: agent);
   }
 
   void stageCommand(CommandInfo command) {
@@ -218,51 +168,9 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     }
   }
 
+  // ignore: no_slop_linter/prefer_required_named_parameters, public cubit API consumed by UI layer
   void selectModel(String providerID, String modelID) {
-    final current = state.agentModelData;
-    if (current == null) return;
-
-    final availableVariants = _deriveAvailableVariants(
-      providers: current.providers,
-      model: AgentModel(providerID: providerID, modelID: modelID, variant: null),
-    );
-
-    final agentModel = _resolveAgentModel(
-      agents: current.agents,
-      providerID: providerID,
-      modelID: modelID,
-    );
-
-    final previousVariant = current.agentModel?.variant;
-    final String? variant;
-    if (previousVariant != null && availableVariants.any((v) => v.id == previousVariant)) {
-      variant = previousVariant;
-    } else {
-      variant = agentModel?.variant ?? (availableVariants.isNotEmpty ? availableVariants.first.id : null);
-    }
-
-    _emitAgentModelUpdate(
-      selectedAgentModel: agentModel?.copyWith(variant: variant) ?? AgentModel(
-        providerID: providerID,
-        modelID: modelID,
-        variant: variant,
-      ),
-    );
-  }
-
-  AgentModel? _resolveAgentModel({
-    required List<AgentInfo> agents,
-    required String providerID,
-    required String modelID,
-  }) {
-    final agent = agents.firstWhereOrNull(
-      (a) => a.model?.providerID == providerID && a.model?.modelID == modelID,
-    );
-    return agent?.model ?? AgentModel(
-      providerID: providerID,
-      modelID: modelID,
-      variant: null,
-    );
+    _emitAgentModelUpdate(selectedProviderID: providerID, selectedModelID: modelID);
   }
 
   Future<void> createSession({
@@ -278,7 +186,6 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     if (trimmed.isEmpty && !hasCommand) return;
 
     final config = state.agentModelData;
-    final variantId = config?.agentModel?.variant;
 
     emit(
       NewSessionState.sending(
@@ -286,9 +193,9 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         availableProviders: config?.providers ?? const [],
         availableCommands: config?.commands ?? const [],
         selectedAgent: config?.agent,
-        selectedAgentModel: config?.agentModel,
+        selectedProviderID: config?.providerID,
+        selectedModelID: config?.modelID,
         stagedCommand: config?.stagedCommand,
-        availableVariants: config?.availableVariants ?? const [],
       ),
     );
 
@@ -296,9 +203,8 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       projectId: _projectId,
       text: trimmed,
       agent: config?.agent,
-      providerID: config?.agentModel?.providerID,
-      modelID: config?.agentModel?.modelID,
-      variant: variantId == null ? null : SessionVariant(id: variantId),
+      providerID: config?.providerID,
+      modelID: config?.modelID,
       command: normalizedCommand,
       dedicatedWorktree: dedicatedWorktree,
     );
@@ -320,9 +226,9 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             availableProviders: current?.providers ?? const [],
             availableCommands: current?.commands ?? const [],
             selectedAgent: current?.agent,
-            selectedAgentModel: current?.agentModel,
+            selectedProviderID: current?.providerID,
+            selectedModelID: current?.modelID,
             stagedCommand: current?.stagedCommand,
-            availableVariants: current?.availableVariants ?? const [],
           ),
         );
     }

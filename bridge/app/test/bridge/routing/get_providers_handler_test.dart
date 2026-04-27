@@ -20,41 +20,39 @@ void main() {
 
     // ── Route matching ──────────────────────────────────────────────────────
 
-    test("canHandle POST /provider", () {
-      expect(handler.canHandle(makeRequest("POST", "/provider")), isTrue);
+    test("canHandle GET /provider", () {
+      expect(handler.canHandle(makeRequest("GET", "/provider")), isTrue);
     });
 
-    test("does not handle GET /provider", () {
-      expect(handler.canHandle(makeRequest("GET", "/provider")), isFalse);
+    test("does not handle POST /provider", () {
+      expect(handler.canHandle(makeRequest("POST", "/provider")), isFalse);
     });
 
-    test("does not handle POST /project", () {
-      expect(handler.canHandle(makeRequest("POST", "/project")), isFalse);
+    test("does not handle GET /project", () {
+      expect(handler.canHandle(makeRequest("GET", "/project")), isFalse);
     });
 
-    test("does not handle POST /provider/extra", () {
-      expect(handler.canHandle(makeRequest("POST", "/provider/extra")), isFalse);
+    test("does not handle GET /provider/extra", () {
+      expect(handler.canHandle(makeRequest("GET", "/provider/extra")), isFalse);
     });
 
-    // ── Body parameter handling ─────────────────────────────────────────────
+    // ── Query parameter handling ────────────────────────────────────────────
 
-    test("passes projectId from body to plugin", () async {
+    test("always requests connected providers only", () async {
       await handler.handle(
-        makeRequest("POST", "/provider"),
-        body: const ProjectIdRequest(projectId: "project-1"),
+        makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
-      expect(plugin.lastGetProvidersProjectId, equals("project-1"));
+      expect(plugin.lastGetProvidersConnectedOnly, isTrue);
     });
 
     // ── Response format ─────────────────────────────────────────────────────
 
     test("returns typed provider list response", () async {
       final response = await handler.handle(
-        makeRequest("POST", "/provider"),
-        body: const ProjectIdRequest(projectId: "project-1"),
+        makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -64,13 +62,32 @@ void main() {
 
     test("returns empty items list when plugin has no providers", () async {
       final response = await handler.handle(
-        makeRequest("POST", "/provider"),
-        body: const ProjectIdRequest(projectId: "project-1"),
+        makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
       expect(response.items, isEmpty);
+    });
+
+    test("response includes connectedOnly flag set to true by default", () async {
+      final response = await handler.handle(
+        makeRequest("GET", "/provider"),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+      expect(response.connectedOnly, isTrue);
+    });
+
+    test("response includes connectedOnly flag set to true when specified false", () async {
+      final response = await handler.handle(
+        makeRequest("GET", "/provider"),
+        pathParams: {},
+        queryParams: {"connectedOnly": "false"},
+        fragment: null,
+      );
+      expect(response.connectedOnly, isTrue);
     });
 
     // ── Data transformation ─────────────────────────────────────────────────
@@ -89,8 +106,7 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("POST", "/provider"),
-        body: const ProjectIdRequest(projectId: "project-1"),
+        makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -116,8 +132,7 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("POST", "/provider"),
-        body: const ProjectIdRequest(projectId: "project-1"),
+        makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -141,8 +156,7 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("POST", "/provider"),
-        body: const ProjectIdRequest(projectId: "project-1"),
+        makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -160,8 +174,8 @@ void main() {
             name: "Anthropic",
             authType: PluginProviderAuthType.apiKey,
             models: [
-              PluginModel(id: "claude-3-opus", name: "Claude 3 Opus", variants: [], family: "claude-3"),
-              PluginModel(id: "claude-3-sonnet", name: "Claude 3 Sonnet", variants: []),
+              PluginModel(id: "claude-3-opus", name: "Claude 3 Opus", family: "claude-3"),
+              PluginModel(id: "claude-3-sonnet", name: "Claude 3 Sonnet"),
             ],
             defaultModelID: "claude-3-sonnet",
           ),
@@ -169,8 +183,7 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("POST", "/provider"),
-        body: const ProjectIdRequest(projectId: "project-1"),
+        makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -203,7 +216,6 @@ void main() {
               PluginModel(
                 id: "gpt-4o",
                 name: "GPT-4o",
-                variants: [],
                 family: "gpt-4",
                 isAvailable: true,
                 releaseDate: DateTime(2025, 1, 15),
@@ -211,12 +223,11 @@ void main() {
               PluginModel(
                 id: "gpt-3.5",
                 name: "GPT-3.5",
-                variants: [],
                 family: "gpt-3",
                 isAvailable: false,
                 releaseDate: DateTime(2023, 3, 1),
               ),
-              const PluginModel(id: "gpt-4-turbo", name: "GPT-4 Turbo", variants: [], family: "gpt-4"),
+              const PluginModel(id: "gpt-4-turbo", name: "GPT-4 Turbo", family: "gpt-4"),
             ],
             defaultModelID: "gpt-4o",
           ),
@@ -224,8 +235,7 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("POST", "/provider"),
-        body: const ProjectIdRequest(projectId: "project-1"),
+        makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -254,7 +264,7 @@ void main() {
             name: "OpenAI",
             authType: PluginProviderAuthType.apiKey,
             models: [
-              PluginModel(id: "openai/gpt-4.1-mini", name: "GPT-4.1 Mini", variants: [], isAvailable: true),
+              PluginModel(id: "openai/gpt-4.1-mini", name: "GPT-4.1 Mini", isAvailable: true),
             ],
             defaultModelID: "openai/gpt-4.1-mini",
           ),
@@ -262,8 +272,7 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("POST", "/provider"),
-        body: const ProjectIdRequest(projectId: "project-1"),
+        makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -283,8 +292,8 @@ void main() {
             name: "Anthropic",
             authType: PluginProviderAuthType.apiKey,
             models: [
-              PluginModel(id: "m1", name: "Available", variants: [], isAvailable: true),
-              PluginModel(id: "m2", name: "Deprecated", variants: [], isAvailable: false),
+              PluginModel(id: "m1", name: "Available", isAvailable: true),
+              PluginModel(id: "m2", name: "Deprecated", isAvailable: false),
             ],
             defaultModelID: null,
           ),
@@ -292,8 +301,7 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("POST", "/provider"),
-        body: const ProjectIdRequest(projectId: "project-1"),
+        makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -312,7 +320,7 @@ void main() {
             name: "OpenAI",
             authType: PluginProviderAuthType.apiKey,
             models: [
-              PluginModel(id: "gpt-4.1", name: "GPT-4.1", variants: [], family: "gpt-4.1", isAvailable: true),
+              PluginModel(id: "gpt-4.1", name: "GPT-4.1", family: "gpt-4.1", isAvailable: true),
             ],
             defaultModelID: null,
           ),
@@ -320,8 +328,7 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("POST", "/provider"),
-        body: const ProjectIdRequest(projectId: "project-1"),
+        makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -344,8 +351,7 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("POST", "/provider"),
-        body: const ProjectIdRequest(projectId: "project-1"),
+        makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -382,8 +388,7 @@ void main() {
       );
 
       final response = await handler.handle(
-        makeRequest("POST", "/provider"),
-        body: const ProjectIdRequest(projectId: "project-1"),
+        makeRequest("GET", "/provider"),
         pathParams: {},
         queryParams: {},
         fragment: null,

@@ -24,7 +24,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   final ConnectionService _connectionService;
   final PermissionRepository _permissionRepository;
   final String _sessionId;
-  final String _projectId;
+  final String? _routeProjectId;
   final NotificationCanceller _notificationCanceller;
   final FailureReporter _failureReporter;
   final PromptSendQueue _promptQueue = PromptSendQueue();
@@ -38,6 +38,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   Future<void>? _activeRefresh;
   bool _needsStaleRefresh = false;
   bool _waitingForConnection = false;
+  String? _projectId;
 
   /// Fires the [SesoriQuestionAsked] whenever a new question arrives, so the
   /// screen can auto-open the question modal.
@@ -56,18 +57,19 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     required SessionRepository promptDispatcher,
     required PermissionRepository permissionRepository,
     required String sessionId,
-    required String projectId,
+    String? projectId,
     required NotificationCanceller notificationCanceller,
     required FailureReporter failureReporter,
   }) : _loadService = loadService,
-       _sessionRepository = promptDispatcher,
-       _connectionService = connectionService,
-       _permissionRepository = permissionRepository,
-       _sessionId = sessionId,
-       _projectId = projectId,
-       _notificationCanceller = notificationCanceller,
-       _failureReporter = failureReporter,
-       super(const SessionDetailState.loading()) {
+        _sessionRepository = promptDispatcher,
+        _connectionService = connectionService,
+        _permissionRepository = permissionRepository,
+        _sessionId = sessionId,
+        _routeProjectId = projectId,
+        _notificationCanceller = notificationCanceller,
+        _failureReporter = failureReporter,
+        _projectId = projectId,
+        super(const SessionDetailState.loading()) {
     _streamingBuffer = StreamingTextBuffer(onFlush: _emitStreamingSnapshot);
     _eventSubscription = _connectionService.sessionEvents(_sessionId).listen(_handleEvent);
     _globalEventSubscription = _connectionService.events.listen(_handleGlobalEvent);
@@ -83,13 +85,14 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   Future<void> _loadMessages({required bool isReload}) async {
     emit(const SessionDetailState.loading());
     final result = isReload
-        ? await _loadService.reload(sessionId: _sessionId, projectId: _projectId)
-        : await _loadService.load(sessionId: _sessionId, projectId: _projectId);
+        ? await _loadService.reload(sessionId: _sessionId, projectId: _projectId ?? _routeProjectId)
+        : await _loadService.load(sessionId: _sessionId, projectId: _projectId ?? _routeProjectId);
     if (isClosed) return;
 
     switch (result) {
       case SessionDetailLoadResultLoaded(:final snapshot):
         _waitingForConnection = false;
+        _projectId = snapshot.projectId;
         emit(_buildLoadedState(snapshot: snapshot));
         _tryDrainQueue();
       case SessionDetailLoadResultWaitingForConnection():
@@ -116,18 +119,20 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (current is! SessionDetailLoaded) return;
 
     final preservedSelectedAgent = current.selectedAgent;
-    final preservedSelectedAgentModel = current.selectedAgentModel;
+    final preservedSelectedProviderID = current.selectedProviderID;
+    final preservedSelectedModelID = current.selectedModelID;
     final preservedStagedCommand = current.stagedCommand;
 
     emit(current.copyWith(isRefreshing: true));
 
     try {
-      final result = await _loadService.reload(sessionId: _sessionId, projectId: _projectId);
+      final result = await _loadService.reload(sessionId: _sessionId, projectId: _projectId ?? _routeProjectId);
       if (isClosed) return;
 
       switch (result) {
         case SessionDetailLoadResultLoaded(:final snapshot):
           _waitingForConnection = false;
+          _projectId = snapshot.projectId ?? _projectId;
           final latestAssistant = _latestAssistantMessage(snapshot.messages);
           final childIds = snapshot.childSessions.map((c) => c.id).toSet();
           final childStatuses = Map<String, SessionStatus>.fromEntries(
@@ -142,34 +147,16 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           final streamingText = _streamingBuffer.snapshot();
           _streamingBuffer.clear();
 
-          final assistantAgentModel = switch (latestAssistant) {
-            MessageAssistant(:final modelID, :final providerID) => _resolveAgentModel(
-              agents: availableAgents,
-              providerID: providerID,
-              modelID: modelID,
-            ),
-            MessageError(:final modelID, :final providerID) => _resolveAgentModel(
-              agents: availableAgents,
-              providerID: providerID,
-              modelID: modelID,
-            ),
-            _ => null,
-          };
-
-          final availableVariants = _deriveAvailableVariants(
-            providers: availableProviders,
-            model: preservedSelectedAgentModel,
-          );
-
           emit(
             current.copyWith(
               messages: snapshot.messages,
               streamingText: streamingText,
               sessionStatus: snapshot.statuses[_sessionId] ?? const SessionStatus.idle(),
               pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
-              pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
+              pendingPermissions: current.pendingPermissions,
               agent: latestAssistant?.agent,
-              assistantAgentModel: assistantAgentModel,
+              modelID: latestAssistant?.modelID,
+              providerID: latestAssistant?.providerID,
               children: snapshot.childSessions,
               childStatuses: childStatuses,
               availableAgents: availableAgents,
@@ -177,13 +164,13 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
               availableCommands: snapshot.commands,
               sessionTitle: snapshot.canonicalSessionTitle ?? current.sessionTitle,
               selectedAgent: preservedSelectedAgent,
-              selectedAgentModel: preservedSelectedAgentModel,
+              selectedProviderID: preservedSelectedProviderID,
+              selectedModelID: preservedSelectedModelID,
               stagedCommand: _resolveStagedCommand(
                 availableCommands: snapshot.commands,
                 stagedCommand: preservedStagedCommand,
               ),
               isRefreshing: false,
-              availableVariants: availableVariants,
             ),
           );
         case SessionDetailLoadResultWaitingForConnection():
@@ -211,8 +198,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   /// Returns the latest assistant [Message] from the list, or null if none.
   Message? _latestAssistantMessage(List<MessageWithParts> messages) {
     for (var i = messages.length - 1; i >= 0; i--) {
-      final info = messages[i].info;
-      if (info is MessageAssistant) return info;
+      if (messages[i].info.role == "assistant") return messages[i].info;
     }
     return null;
   }
@@ -244,8 +230,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           _onQuestionResolved(requestID);
         case SesoriPermissionAsked():
           _onPermissionAsked(event);
-        case SesoriPermissionReplied(:final requestID):
-          _onPermissionResolved(requestID);
         case SesoriSessionUpdated(:final info):
           _onSessionUpdated(info);
         case SesoriCommandExecuted():
@@ -257,6 +241,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             SesoriSessionCompacted() ||
             // ignore: deprecated_member_use, legacy idle event is still emitted for backward compatibility
             SesoriSessionIdle() ||
+            SesoriPermissionReplied() ||
             SesoriTodoUpdated():
           break;
       }
@@ -295,6 +280,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             SesoriServerConnected() ||
             SesoriServerHeartbeat() ||
             SesoriServerInstanceDisposed() ||
+            SesoriServerStatus() ||
             SesoriGlobalDisposed() ||
             // ignore: deprecated_member_use, legacy idle event is still emitted for backward compatibility
             SesoriSessionIdle() ||
@@ -419,19 +405,13 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
     if (isClosed) return;
 
-    if (message is MessageAssistant) {
-      final assistantAgentModel = message.providerID != null && message.modelID != null
-          ? _resolveAgentModel(
-              agents: current.availableAgents,
-              providerID: message.providerID,
-              modelID: message.modelID,
-            )
-          : current.assistantAgentModel;
+    if (message.role == "assistant") {
       emit(
         current.copyWith(
           messages: messages,
           agent: message.agent ?? current.agent,
-          assistantAgentModel: assistantAgentModel,
+          modelID: message.modelID ?? current.modelID,
+          providerID: message.providerID ?? current.providerID,
         ),
       );
     } else {
@@ -589,10 +569,10 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       sessionId: _sessionId,
       text: trimmed,
       agent: current.selectedAgent,
-      model: _agentModelToPromptModel(current.selectedAgentModel),
-      variant: current.selectedAgentModel?.variant == null
-          ? null
-          : SessionVariant(id: current.selectedAgentModel!.variant!),
+      model: _resolvePromptModel(
+        providerID: current.selectedProviderID,
+        modelID: current.selectedModelID,
+      ),
       command: normalizedCommand,
     );
 
@@ -638,10 +618,10 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         sessionId: _sessionId,
         text: submission.text,
         agent: current.selectedAgent,
-        model: _agentModelToPromptModel(current.selectedAgentModel),
-        variant: current.selectedAgentModel?.variant == null
-            ? null
-            : SessionVariant(id: current.selectedAgentModel!.variant!),
+        model: _resolvePromptModel(
+          providerID: current.selectedProviderID,
+          modelID: current.selectedModelID,
+        ),
         command: submission.command,
       );
 
@@ -677,26 +657,11 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     return normalized;
   }
 
-  PromptModel? _agentModelToPromptModel(AgentModel? agentModel) {
-    if (agentModel == null) return null;
-    return PromptModel(providerID: agentModel.providerID, modelID: agentModel.modelID);
-  }
-
-  AgentModel? _resolveAgentModel({
-    required List<AgentInfo> agents,
-    required String? providerID,
-    required String? modelID,
-  }) {
-    if (providerID == null || modelID == null) return null;
-    final agent = agents.firstWhereOrNull(
-      (a) => a.model?.providerID == providerID && a.model?.modelID == modelID,
-    );
-    return agent?.model ??
-        AgentModel(
-          providerID: providerID,
-          modelID: modelID,
-          variant: null,
-        );
+  PromptModel? _resolvePromptModel({required String? providerID, required String? modelID}) {
+    final normalizedProviderID = _normalizeOptionalText(providerID);
+    final normalizedModelID = _normalizeOptionalText(modelID);
+    if (normalizedProviderID == null || normalizedModelID == null) return null;
+    return PromptModel(providerID: normalizedProviderID, modelID: normalizedModelID);
   }
 
   // ---------------------------------------------------------------------------
@@ -852,59 +817,16 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final current = state;
     if (current is! SessionDetailLoaded) return;
 
-    final agentInfo = current.availableAgents.firstWhereOrNull((a) => a.name == agent);
-    final agentModel = agentInfo?.model;
-
     if (isClosed) return;
-    emit(
-      current.copyWith(
-        selectedAgent: agent,
-        selectedAgentModel: agentModel,
-        availableVariants: _deriveAvailableVariants(
-          providers: current.availableProviders,
-          model: agentModel,
-        ),
-      ),
-    );
+    emit(current.copyWith(selectedAgent: agent));
   }
 
   void selectModel({required String providerID, required String modelID}) {
     final current = state;
     if (current is! SessionDetailLoaded) return;
 
-    final previousVariant = current.selectedAgentModel?.variant;
-    final newModel = AgentModel(providerID: providerID, modelID: modelID, variant: null);
-    final availableVariants = _deriveAvailableVariants(
-      providers: current.availableProviders,
-      model: newModel,
-    );
-    final variant = previousVariant != null && availableVariants.any((v) => v.id == previousVariant)
-        ? previousVariant
-        : null;
-
-    final agentModel = _resolveAgentModel(
-      agents: current.availableAgents,
-      providerID: providerID,
-      modelID: modelID,
-    );
-
     if (isClosed) return;
-    emit(
-      current.copyWith(
-        selectedAgentModel: agentModel?.copyWith(variant: variant),
-        availableVariants: availableVariants,
-      ),
-    );
-  }
-
-  void selectVariant(SessionVariant? variant) {
-    final current = state;
-    if (current is! SessionDetailLoaded) return;
-    final agentModel = current.selectedAgentModel;
-    if (agentModel == null) return;
-
-    if (isClosed) return;
-    emit(current.copyWith(selectedAgentModel: agentModel.copyWith(variant: variant?.id)));
+    emit(current.copyWith(selectedProviderID: providerID, selectedModelID: modelID));
   }
 
   void stageCommand(CommandInfo command) {
@@ -964,52 +886,33 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final providers = snapshot.providerData?.items ?? <ProviderInfo>[];
     final defaultAgent = agents.isNotEmpty ? agents.first.name : "build";
     final agentModel = agents.isNotEmpty ? agents.first.model : null;
-    final AgentModel? defaultAgentModel;
+    final String defaultProviderID;
+    final String defaultModelID;
     if (agentModel != null) {
-      defaultAgentModel = agentModel;
+      defaultProviderID = agentModel.providerID;
+      defaultModelID = agentModel.modelID;
     } else if (providers.isNotEmpty) {
-      final firstProvider = providers.first;
-      final defaultModelID = firstProvider.defaultModelID;
-      final modelID = defaultModelID != null && firstProvider.models.containsKey(defaultModelID)
-          ? defaultModelID
-          : firstProvider.models.values.first.id;
-      defaultAgentModel = AgentModel(
-        providerID: firstProvider.id,
-        modelID: modelID,
-        variant: null,
-      );
+      defaultProviderID = providers.first.id;
+      final firstProviderDefaultModelId = providers.first.defaultModelID;
+      defaultModelID =
+          firstProviderDefaultModelId != null && providers.first.models.containsKey(firstProviderDefaultModelId)
+          ? firstProviderDefaultModelId
+          : providers.first.models.values.first.id;
     } else {
-      defaultAgentModel = null;
+      defaultProviderID = "";
+      defaultModelID = "";
     }
-
-    final assistantAgentModel = switch (latestAssistant) {
-      MessageAssistant(:final modelID, :final providerID) => _resolveAgentModel(
-        agents: agents,
-        providerID: providerID,
-        modelID: modelID,
-      ),
-      MessageError(:final modelID, :final providerID) => _resolveAgentModel(
-        agents: agents,
-        providerID: providerID,
-        modelID: modelID,
-      ),
-      _ => null,
-    };
-
-    final availableVariants = _deriveAvailableVariants(
-      providers: providers,
-      model: defaultAgentModel,
-    );
 
     return SessionDetailState.loaded(
           messages: snapshot.messages,
           streamingText: const {},
           sessionStatus: snapshot.statuses[_sessionId] ?? const SessionStatus.idle(),
           pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
-          pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
+          pendingPermissions: const [],
           sessionTitle: snapshot.canonicalSessionTitle,
           agent: latestAssistant?.agent,
-          assistantAgentModel: assistantAgentModel,
+          modelID: latestAssistant?.modelID,
+          providerID: latestAssistant?.providerID,
           children: childSessions,
           childStatuses: childStatuses,
           queuedMessages: const [],
@@ -1017,23 +920,12 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           availableProviders: providers,
           availableCommands: snapshot.commands,
           selectedAgent: defaultAgent,
-          selectedAgentModel: defaultAgentModel,
+          selectedProviderID: defaultProviderID,
+          selectedModelID: defaultModelID,
           stagedCommand: null,
           isRefreshing: false,
-          availableVariants: availableVariants,
         )
         as SessionDetailLoaded;
-  }
-
-  List<SessionVariant> _deriveAvailableVariants({
-    required List<ProviderInfo> providers,
-    required AgentModel? model,
-  }) {
-    final providerID = model?.providerID;
-    final modelID = model?.modelID;
-    final provider = providerID != null ? providers.firstWhereOrNull((p) => p.id == providerID) : null;
-    final m = provider?.models[modelID];
-    return m?.variants.where((v) => v != "none").map((v) => SessionVariant(id: v)).toList() ?? [];
   }
 
   List<SesoriQuestionAsked> _mapPendingQuestions(List<PendingQuestion> pendingQuestions) {
@@ -1044,20 +936,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             id: q.id,
             sessionID: q.sessionID,
             questions: q.questions,
-          ),
-        )
-        .toList();
-  }
-
-  List<SesoriPermissionAsked> _mapPendingPermissions(List<PendingPermission> pendingPermissions) {
-    return pendingPermissions
-        .where((p) => p.sessionID == _sessionId)
-        .map(
-          (p) => SesoriPermissionAsked(
-            requestID: p.id,
-            sessionID: p.sessionID,
-            tool: p.tool,
-            description: p.description,
           ),
         )
         .toList();

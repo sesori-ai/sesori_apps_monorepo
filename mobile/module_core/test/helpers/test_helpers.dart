@@ -111,20 +111,13 @@ void delegateSessionRepositoryToService({
     (invocation) => service.getPendingQuestions(sessionId: invocation.namedArguments[#sessionId]! as String),
   );
   when(
-    () => repository.getPendingPermissions(),
-  ).thenAnswer(
-    (_) => service.getPendingPermissions(),
-  );
-  when(
     () => repository.getChildren(sessionId: any(named: "sessionId")),
   ).thenAnswer(
     (invocation) => service.getChildren(sessionId: invocation.namedArguments[#sessionId]! as String),
   );
   when(() => repository.getSessionStatuses()).thenAnswer((_) => service.getSessionStatuses());
   when(() => repository.listAgents()).thenAnswer((_) => service.listAgents());
-  when(() => repository.listProviders(projectId: any(named: "projectId"))).thenAnswer(
-    (invocation) => service.listProviders(projectId: invocation.namedArguments[#projectId] as String),
-  );
+  when(() => repository.listProviders()).thenAnswer((_) => service.listProviders());
   when(() => repository.listCommands(projectId: any(named: "projectId"))).thenAnswer(
     (invocation) => service.listCommands(projectId: invocation.namedArguments[#projectId] as String?),
   );
@@ -134,7 +127,6 @@ void delegateSessionRepositoryToService({
       text: any(named: "text"),
       agent: any(named: "agent"),
       model: any(named: "model"),
-      variant: any(named: "variant"),
       command: any(named: "command"),
     ),
   ).thenAnswer(
@@ -144,7 +136,6 @@ void delegateSessionRepositoryToService({
       agent: invocation.namedArguments[#agent] as String?,
       providerID: (invocation.namedArguments[#model] as PromptModel?)?.providerID,
       modelID: (invocation.namedArguments[#model] as PromptModel?)?.modelID,
-      variant: invocation.namedArguments[#variant] as SessionVariant?,
       command: invocation.namedArguments[#command] as String?,
     ),
   );
@@ -189,7 +180,7 @@ Session testSession({String? id, String? title, DateTime? archivedAt}) {
 }
 
 HealthResponse testHealthResponse() {
-  return const HealthResponse(healthy: true, version: "0.1.200");
+  return const HealthResponse(healthy: true, version: "0.1.200", serverManaged: false, serverState: null);
 }
 
 CommandInfo testCommandInfo({

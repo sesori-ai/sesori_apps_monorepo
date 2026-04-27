@@ -7,7 +7,7 @@ import "request_handler.dart";
 ///
 /// Question IDs are globally unique. No session context needed.
 class RejectQuestionHandler extends BodyRequestHandler<RejectQuestionRequest, SuccessEmptyResponse> {
-  final BridgePluginApi _plugin;
+  final BridgePlugin _plugin;
 
   RejectQuestionHandler(this._plugin)
     : super(

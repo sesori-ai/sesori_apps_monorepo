@@ -10,14 +10,13 @@ import "../../../core/extensions/build_context_x.dart";
 import "../../../core/routing/app_router.dart";
 import "../../../core/widgets/agent_picker_sheet.dart";
 import "../../../core/widgets/model_picker_sheet.dart";
-import "../../../core/widgets/variant_picker_sheet.dart";
 import "permission_modal.dart";
 import "question_modal.dart";
 import "session_detail_loaded_view.dart";
 import "session_detail_scaffold_sections.dart";
 
 class SessionDetailBody extends StatefulWidget {
-  final String projectId;
+  final String? projectId;
   final String sessionId;
   final String? sessionTitle;
   final bool readOnly;
@@ -42,8 +41,8 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
   void initState() {
     super.initState();
     final cubit = context.read<SessionDetailCubit>();
-    _questionSub = cubit.questionStream.listen((question) => mounted ? _showQuestionModal(question) : null);
-    _permissionSub = cubit.permissionStream.listen((permission) => mounted ? _showPermissionModal(permission) : null);
+    _questionSub = cubit.questionStream.listen(_onNewQuestion);
+    _permissionSub = cubit.permissionStream.listen(_onNewPermission);
     cubit.clearNotifications();
   }
 
@@ -58,13 +57,6 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
   Widget build(BuildContext context) {
     final loc = context.loc;
     final state = context.watch<SessionDetailCubit>().state;
-    final isBusy = switch (state) {
-      SessionDetailLoaded(:final sessionStatus, :final childStatuses) => hasActiveWork(
-        sessionStatus: sessionStatus,
-        childStatuses: childStatuses,
-      ),
-      _ => false,
-    };
 
     return Scaffold(
       appBar: AppBar(
@@ -76,14 +68,16 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
           IconButton(
             icon: const Icon(Icons.difference_outlined),
             tooltip: "File changes",
-            onPressed: () => context.pushRoute(
-              AppRoute.sessionDiffs(
-                projectId: widget.projectId,
-                sessionId: widget.sessionId,
-              ),
-            ),
+            onPressed: widget.projectId == null
+                ? null
+                : () => context.pushRoute(
+                    AppRoute.sessionDiffs(
+                      projectId: widget.projectId!,
+                      sessionId: widget.sessionId,
+                    ),
+                  ),
           ),
-          if (isBusy)
+          if (_isBusy(state))
             Padding(
               padding: const EdgeInsetsDirectional.only(end: 16),
               child: SizedBox(
@@ -99,29 +93,35 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
       ),
       body: switch (state) {
         SessionDetailLoading() => const Center(child: CircularProgressIndicator()),
-        final SessionDetailLoaded loaded =>
-          widget.readOnly
-              ? SessionDetailLoadedView.readOnly(
-                  projectId: widget.projectId,
-                  state: loaded,
-                  onShowPendingQuestions: _showPendingQuestions,
-                  onShowPendingPermissions: _showPendingPermissions,
-                )
-              : SessionDetailLoadedView.editable(
-                  projectId: widget.projectId,
-                  state: loaded,
-                  onShowPendingQuestions: _showPendingQuestions,
-                  onShowPendingPermissions: _showPendingPermissions,
-                  onOpenAgentPicker: _openAgentPicker,
-                  onOpenModelPicker: _openModelPicker,
-                  onOpenVariantPicker: _openVariantPicker,
-                ),
+        final SessionDetailLoaded loaded => widget.readOnly
+            ? SessionDetailLoadedView.readOnly(
+                projectId: widget.projectId,
+                state: loaded,
+                onShowPendingQuestions: _showPendingQuestions,
+                onShowPendingPermissions: _showPendingPermissions,
+              )
+            : SessionDetailLoadedView.editable(
+                projectId: widget.projectId,
+                state: loaded,
+                onShowPendingQuestions: _showPendingQuestions,
+                onShowPendingPermissions: _showPendingPermissions,
+                onOpenAgentPicker: _openAgentPicker,
+                onOpenModelPicker: _openModelPicker,
+              ),
         SessionDetailFailed(:final error) => SessionDetailErrorView(
-          error: error,
-          onRetry: () => context.read<SessionDetailCubit>().reload(),
-        ),
+            error: error,
+            onRetry: () => context.read<SessionDetailCubit>().reload(),
+          ),
       },
     );
+  }
+
+  void _onNewQuestion(SesoriQuestionAsked question) {
+    if (mounted) _showQuestionModal(question);
+  }
+
+  void _onNewPermission(SesoriPermissionAsked permission) {
+    if (mounted) _showPermissionModal(permission);
   }
 
   void _showPendingQuestions() {
@@ -142,6 +142,7 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
     final cubit = context.read<SessionDetailCubit>();
     final state = cubit.state;
     if (state is! SessionDetailLoaded) return;
+
     AgentPickerSheet.show(
       context,
       agents: state.availableAgents,
@@ -154,27 +155,15 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
     final cubit = context.read<SessionDetailCubit>();
     final state = cubit.state;
     if (state is! SessionDetailLoaded) return;
-    final agentModel = state.selectedAgentModel;
+
     ModelPickerSheet.show(
       context,
       providers: state.availableProviders,
-      selectedProviderID: agentModel?.providerID ?? "",
-      selectedModelID: agentModel?.modelID ?? "",
+      selectedProviderID: state.selectedProviderID,
+      selectedModelID: state.selectedModelID,
       onModelChanged: (providerID, modelID) {
         cubit.selectModel(providerID: providerID, modelID: modelID);
       },
-    );
-  }
-
-  void _openVariantPicker() {
-    final cubit = context.read<SessionDetailCubit>();
-    final state = cubit.state;
-    if (state is! SessionDetailLoaded) return;
-    VariantPickerSheet.show(
-      context,
-      selectedVariantId: state.selectedAgentModel?.variant,
-      availableVariants: state.availableVariants,
-      onVariantChanged: cubit.selectVariant,
     );
   }
 
@@ -207,21 +196,20 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
     PermissionModal.show(
       context,
       permission: permission,
-      onReply:
-          ({
-            required String requestId,
-            required String sessionId,
-            required PermissionReply reply,
-          }) async {
-            final success = await context.read<SessionDetailCubit>().replyToPermission(
-              requestId: requestId,
-              sessionId: sessionId,
-              reply: reply,
-            );
-            if (!mounted) return;
-            if (!success) return _showFailureSnackBar(context.loc.permissionReplyFailed);
-            _scheduleNextPermissionModal();
-          },
+      onReply: ({
+        required String requestId,
+        required String sessionId,
+        required PermissionReply reply,
+      }) async {
+        final success = await context.read<SessionDetailCubit>().replyToPermission(
+          requestId: requestId,
+          sessionId: sessionId,
+          reply: reply,
+        );
+        if (!mounted) return;
+        if (!success) return _showFailureSnackBar(context.loc.permissionReplyFailed);
+        _scheduleNextPermissionModal();
+      },
     );
   }
 
@@ -239,12 +227,28 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
     }
   }
 
-  void _scheduleModal(VoidCallback action) =>
-      Future.delayed(const Duration(milliseconds: 200), () => mounted ? action() : null);
+  void _scheduleModal(VoidCallback action) {
+    Future.delayed(const Duration(milliseconds: 200), () {
+      if (mounted) action();
+    });
+  }
 
   void _showFailureSnackBar(String message) {
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
-      ..showSnackBar(SnackBar(content: Text(message), duration: kSnackBarDuration));
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          duration: kSnackBarDuration,
+        ),
+      );
   }
 }
+
+bool _isBusy(SessionDetailState state) => switch (state) {
+  SessionDetailLoaded(:final sessionStatus, :final childStatuses) => hasActiveWork(
+    sessionStatus: sessionStatus,
+    childStatuses: childStatuses,
+  ),
+  _ => false,
+};

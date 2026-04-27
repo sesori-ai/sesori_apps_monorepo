@@ -421,102 +421,6 @@ void main() {
       expect(session.projectID, equals("/repo"));
     });
   });
-
-  group("OpenCodeRepository variant passthrough", () {
-    test("sendPrompt forwards raw variant", () async {
-      final api = _FakeApi();
-      final repository = OpenCodeRepository(api);
-
-      await repository.sendPrompt(
-        sessionId: "ses-1",
-        directory: " /repo ",
-        parts: const [PluginPromptPart.text(text: "Continue")],
-        agent: "build",
-        variant: const PluginSessionVariant(id: "custom-low"),
-        model: (providerID: "openai", modelID: "gpt-5.4"),
-      );
-
-      expect(api.lastPromptSessionId, equals("ses-1"));
-      expect(api.lastPromptDirectory, equals("/repo"));
-      expect(api.lastPromptBody?.toJson()["variant"], equals("custom-low"));
-    });
-
-    test("sendPrompt omits variant when null", () async {
-      final api = _FakeApi();
-      final repository = OpenCodeRepository(api);
-
-      await repository.sendPrompt(
-        sessionId: "ses-null",
-        directory: "/repo",
-        parts: const [PluginPromptPart.text(text: "Null")],
-        agent: null,
-        variant: null,
-        model: null,
-      );
-
-      expect(api.promptBodies, hasLength(1));
-      expect(api.promptBodies.single.toJson().containsKey("variant"), isFalse);
-    });
-
-    test("sendCommand forwards raw variant", () async {
-      final api = _FakeApi();
-      final repository = OpenCodeRepository(api);
-
-      await repository.sendCommand(
-        sessionId: "ses-1",
-        directory: "/repo",
-        command: "/review-work",
-        arguments: "recent changes",
-        agent: "reviewer",
-        variant: const PluginSessionVariant(id: "xhigh"),
-        model: (providerID: "openai", modelID: "gpt-4.1"),
-      );
-
-      expect(api.lastCommandSessionId, equals("ses-1"));
-      expect(api.lastCommandDirectory, equals("/repo"));
-      expect(api.lastCommandBody?.toJson()["variant"], equals("xhigh"));
-    });
-  });
-
-  group("Send*Body toJson", () {
-    test("SendPromptBody emits variant only when provided", () {
-      final withVariant = const SendPromptBody(
-        parts: [PluginPromptPart.text(text: "Hello")],
-        agent: "build",
-        variant: "low",
-        model: null,
-      ).toJson();
-      final withoutVariant = const SendPromptBody(
-        parts: [PluginPromptPart.text(text: "Hello")],
-        agent: "build",
-        variant: null,
-        model: null,
-      ).toJson();
-
-      expect(withVariant["variant"], equals("low"));
-      expect(withoutVariant.containsKey("variant"), isFalse);
-    });
-
-    test("SendCommandBody emits variant only when provided", () {
-      final withVariant = const SendCommandBody(
-        command: "/review-work",
-        arguments: "recent changes",
-        agent: "reviewer",
-        variant: "xhigh",
-        model: null,
-      ).toJson();
-      final withoutVariant = const SendCommandBody(
-        command: "/review-work",
-        arguments: "recent changes",
-        agent: "reviewer",
-        variant: null,
-        model: null,
-      ).toJson();
-
-      expect(withVariant["variant"], equals("xhigh"));
-      expect(withoutVariant.containsKey("variant"), isFalse);
-    });
-  });
 }
 
 class _FakeApi implements OpenCodeApi {
@@ -527,13 +431,6 @@ class _FakeApi implements OpenCodeApi {
   final Session? _createdSession;
   String? lastCreateDirectory;
   String? lastCreateParentSessionId;
-  String? lastPromptSessionId;
-  String? lastPromptDirectory;
-  SendPromptBody? lastPromptBody;
-  final List<SendPromptBody> promptBodies = [];
-  String? lastCommandSessionId;
-  String? lastCommandDirectory;
-  SendCommandBody? lastCommandBody;
 
   _FakeApi({
     List<Session>? sessions,
@@ -542,10 +439,10 @@ class _FakeApi implements OpenCodeApi {
     List<Command>? commands,
     Session? createdSession,
   }) : _sessions = sessions ?? [],
-       _globalSessions = globalSessions ?? [],
-       _projects = projects ?? [],
-       _commands = commands ?? [],
-       _createdSession = createdSession;
+         _globalSessions = globalSessions ?? [],
+        _projects = projects ?? [],
+        _commands = commands ?? [],
+        _createdSession = createdSession;
 
   @override
   String get serverURL => "http://fake";
@@ -560,7 +457,7 @@ class _FakeApi implements OpenCodeApi {
   Future<List<Session>> listRootSessions() async => _sessions;
 
   @override
-  Future<List<Session>> listSessions({String? directory, required bool roots}) async => _sessions;
+  Future<List<Session>> listSessions({String? directory}) async => _sessions;
 
   @override
   Future<List<Command>> listCommands({required String? directory}) async => _commands;
@@ -596,33 +493,30 @@ class _FakeApi implements OpenCodeApi {
   Future<void> deleteSession({required String sessionId, required String? directory}) async {}
 
   @override
-  Future<void> removeWorktree({
-    required String directory,
-    required String worktreePath,
-  }) async {}
+  Future<List<Session>> getChildren({required String sessionId, required String? directory}) async => [];
+
+  @override
+  Future<List<GlobalSession>> listAllSessions({
+    required String? directory,
+    required bool roots,
+  }) async => _globalSessions;
+
+  @override
+  Future<List<MessageWithParts>> getMessages({required String sessionId, required String? directory}) async => [];
 
   @override
   Future<void> sendPrompt({
     required String sessionId,
     required SendPromptBody body,
     required String? directory,
-  }) async {
-    lastPromptSessionId = sessionId;
-    lastPromptDirectory = directory;
-    lastPromptBody = body;
-    promptBodies.add(body);
-  }
+  }) async {}
 
   @override
   Future<void> sendCommand({
     required String sessionId,
     required SendCommandBody body,
     required String? directory,
-  }) async {
-    lastCommandSessionId = sessionId;
-    lastCommandDirectory = directory;
-    lastCommandBody = body;
-  }
+  }) async {}
 
   @override
   Future<void> abortSession({required String sessionId, required String? directory}) async {}
@@ -657,33 +551,11 @@ class _FakeApi implements OpenCodeApi {
   Future<Project> getProject({required String directory}) async => throw UnimplementedError();
 
   @override
-  Future<List<Session>> getChildren({
-    required String sessionId,
-    required String? directory,
-  }) async => [];
-
-  @override
-  Future<List<MessageWithParts>> getMessages({
-    required String sessionId,
-    required String? directory,
-  }) async => [];
-
-  @override
-  Future<List<GlobalSession>> listAllSessions({
-    required String? directory,
-    required bool roots,
-  }) async => _globalSessions;
-
-  @override
   Future<Map<String, SessionStatus>> getSessionStatuses({required String? directory}) async => {};
 
   @override
   Future<ProviderListResponse> listProviders() async =>
-      const ProviderListResponse(providers: [], defaults: {}, connected: []);
-
-  @override
-  Future<ProviderListResponse> listConfigProviders({required String? directory}) async =>
-      const ProviderListResponse(providers: [], defaults: {}, connected: []);
+      const ProviderListResponse(all: [], defaults: {}, connected: []);
 
   @override
   Future<Project> updateProject({

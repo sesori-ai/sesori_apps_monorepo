@@ -22,18 +22,15 @@ class SessionDetailLoadService {
        _projectRepository = projectRepository,
        _connectionService = connectionService;
 
-  Future<SessionDetailLoadResult> load({required String sessionId, required String projectId}) {
+  Future<SessionDetailLoadResult> load({required String sessionId, String? projectId}) {
     return _loadSnapshot(sessionId: sessionId, projectId: projectId);
   }
 
-  Future<SessionDetailLoadResult> reload({required String sessionId, required String projectId}) {
+  Future<SessionDetailLoadResult> reload({required String sessionId, String? projectId}) {
     return _loadSnapshot(sessionId: sessionId, projectId: projectId);
   }
 
-  Future<SessionDetailLoadResult> _loadSnapshot({
-    required String sessionId,
-    required String projectId,
-  }) async {
+  Future<SessionDetailLoadResult> _loadSnapshot({required String sessionId, String? projectId}) async {
     if (_connectionService.currentStatus is! ConnectionConnected) {
       return const SessionDetailLoadResult.waitingForConnection();
     }
@@ -41,11 +38,12 @@ class SessionDetailLoadService {
     try {
       final routeProjectId = _normalizeOptionalText(projectId);
       final projectContextFuture = _loadProjectSessionContext(sessionId: sessionId);
-      final commandsFuture = routeProjectId == null ? null : _listCommands(projectId: routeProjectId);
+      final commandsFuture = routeProjectId == null
+          ? null
+          : _listCommands(projectId: routeProjectId);
       final (
         messagesResponse,
         questionsResponse,
-        permissionsResponse,
         childrenResponse,
         statusesResponse,
         agentsResponse,
@@ -53,11 +51,10 @@ class SessionDetailLoadService {
       ) = await (
         _repository.getMessages(sessionId: sessionId),
         _repository.getPendingQuestions(sessionId: sessionId),
-        _repository.getPendingPermissions(),
         _repository.getChildren(sessionId: sessionId),
         _repository.getSessionStatuses(),
         _repository.listAgents(),
-        _repository.listProviders(projectId: projectId),
+        _repository.listProviders(),
       ).wait;
       final projectContext = await projectContextFuture;
       final effectiveProjectId = routeProjectId ?? projectContext?.projectId;
@@ -71,10 +68,6 @@ class SessionDetailLoadService {
       final pendingQuestions = switch (questionsResponse) {
         SuccessResponse(:final data) => data.data,
         ErrorResponse() => <PendingQuestion>[],
-      };
-      final pendingPermissions = switch (permissionsResponse) {
-        SuccessResponse(:final data) => data.data,
-        ErrorResponse() => <PendingPermission>[],
       };
       final childSessions = switch (childrenResponse) {
         SuccessResponse(:final data) => data.items,
@@ -111,7 +104,6 @@ class SessionDetailLoadService {
           projectId: effectiveProjectId,
           messages: messages,
           pendingQuestions: pendingQuestions,
-          pendingPermissions: pendingPermissions,
           childSessions: childSessions,
           statuses: statuses,
           agents: agents,
@@ -159,7 +151,6 @@ class SessionDetailSnapshot {
   final String? projectId;
   final List<MessageWithParts> messages;
   final List<PendingQuestion> pendingQuestions;
-  final List<PendingPermission> pendingPermissions;
   final List<Session> childSessions;
   final Map<String, SessionStatus> statuses;
   final List<AgentInfo?> agents;
@@ -171,7 +162,6 @@ class SessionDetailSnapshot {
     required this.projectId,
     required this.messages,
     required this.pendingQuestions,
-    required this.pendingPermissions,
     required this.childSessions,
     required this.statuses,
     required this.agents,

@@ -1,4 +1,4 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePluginApi, Log;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../api/git_cli_api.dart";
 import "../persistence/daos/projects_dao.dart";
@@ -12,17 +12,14 @@ class WorktreeRepository {
   final GitCliApi _gitApi;
   final ProjectsDao _projectsDao;
   final SessionDao _sessionDao;
-  final BridgePluginApi _plugin;
 
   WorktreeRepository({
     required ProjectsDao projectsDao,
     required SessionDao sessionDao,
     required GitCliApi gitApi,
-    required BridgePluginApi plugin,
   }) : _gitApi = gitApi,
        _projectsDao = projectsDao,
-       _sessionDao = sessionDao,
-       _plugin = plugin;
+       _sessionDao = sessionDao;
 
   Future<({String path, String branchName, String baseBranch, String baseCommit})?> getParentWorktree({
     required String parentSessionId,
@@ -140,34 +137,21 @@ class WorktreeRepository {
     return WorktreeUnsafe(issues: issues);
   }
 
+  Future<void> pruneWorktrees({required String projectPath}) async {
+    await _gitApi.pruneWorktrees(projectPath: projectPath);
+  }
+
   Future<bool> removeWorktree({
-    required String projectId,
     required String projectPath,
     required String worktreePath,
     required bool force,
   }) async {
-    await _gitApi.pruneWorktrees(
-      projectPath: projectPath,
-    );
-    final removed = await _gitApi.removeWorktree(
+    await pruneWorktrees(projectPath: projectPath);
+    return _gitApi.removeWorktree(
       projectPath: projectPath,
       worktreePath: worktreePath,
       force: force,
     );
-
-    if (removed) {
-      _plugin
-          .deleteWorkspace(
-            projectId: projectId,
-            worktreePath: worktreePath,
-          )
-          .catchError(
-            (Object err) => Log.w("[Plugin] deleteWorkspace failed $err"),
-          )
-          .ignore();
-    }
-
-    return removed;
   }
 
   Future<bool> deleteBranch({

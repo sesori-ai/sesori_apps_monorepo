@@ -27,7 +27,6 @@ sealed class ProviderModel with _$ProviderModel {
     required String id,
     required String providerID,
     required String name,
-    required List<String> variants,
     required String? family,
     @Default(true) bool isAvailable,
     @dateConverter required DateTime? releaseDate,

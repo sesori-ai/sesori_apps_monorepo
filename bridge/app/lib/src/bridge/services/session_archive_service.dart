@@ -165,7 +165,7 @@ class SessionArchiveService {
           worktreePath: worktreePath,
           branchName: branchName,
           baseBranch: restoreBaseBranch,
-          baseCommit: _normalizeBaseCommit(baseCommit: sessionDto.baseCommit),
+          baseCommit: sessionDto.baseCommit,
         );
       }
     }
@@ -191,16 +191,5 @@ class SessionArchiveService {
       throw SessionInitializationException();
     }
     return resolved.baseBranch;
-  }
-
-  String? _normalizeBaseCommit({required String? baseCommit}) {
-    if (baseCommit == null) {
-      return null;
-    }
-    final trimmed = baseCommit.trim();
-    if (trimmed.isEmpty) {
-      return null;
-    }
-    return trimmed;
   }
 }

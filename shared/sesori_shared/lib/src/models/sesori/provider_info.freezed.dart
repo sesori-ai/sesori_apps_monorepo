@@ -164,7 +164,7 @@ as String?,
 /// @nodoc
 mixin _$ProviderModel {
 
- String get id; String get providerID; String get name; List<String> get variants; String? get family; bool get isAvailable;@dateConverter DateTime? get releaseDate;
+ String get id; String get providerID; String get name; String? get family; bool get isAvailable;@dateConverter DateTime? get releaseDate;
 /// Create a copy of ProviderModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -177,16 +177,16 @@ $ProviderModelCopyWith<ProviderModel> get copyWith => _$ProviderModelCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProviderModel&&(identical(other.id, id) || other.id == id)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other.variants, variants)&&(identical(other.family, family) || other.family == family)&&(identical(other.isAvailable, isAvailable) || other.isAvailable == isAvailable)&&(identical(other.releaseDate, releaseDate) || other.releaseDate == releaseDate));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProviderModel&&(identical(other.id, id) || other.id == id)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.name, name) || other.name == name)&&(identical(other.family, family) || other.family == family)&&(identical(other.isAvailable, isAvailable) || other.isAvailable == isAvailable)&&(identical(other.releaseDate, releaseDate) || other.releaseDate == releaseDate));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,providerID,name,const DeepCollectionEquality().hash(variants),family,isAvailable,releaseDate);
+int get hashCode => Object.hash(runtimeType,id,providerID,name,family,isAvailable,releaseDate);
 
 @override
 String toString() {
-  return 'ProviderModel(id: $id, providerID: $providerID, name: $name, variants: $variants, family: $family, isAvailable: $isAvailable, releaseDate: $releaseDate)';
+  return 'ProviderModel(id: $id, providerID: $providerID, name: $name, family: $family, isAvailable: $isAvailable, releaseDate: $releaseDate)';
 }
 
 
@@ -197,7 +197,7 @@ abstract mixin class $ProviderModelCopyWith<$Res>  {
   factory $ProviderModelCopyWith(ProviderModel value, $Res Function(ProviderModel) _then) = _$ProviderModelCopyWithImpl;
 @useResult
 $Res call({
- String id, String providerID, String name, List<String> variants, String? family, bool isAvailable,@dateConverter DateTime? releaseDate
+ String id, String providerID, String name, String? family, bool isAvailable,@dateConverter DateTime? releaseDate
 });
 
 
@@ -214,13 +214,12 @@ class _$ProviderModelCopyWithImpl<$Res>
 
 /// Create a copy of ProviderModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? providerID = null,Object? name = null,Object? variants = null,Object? family = freezed,Object? isAvailable = null,Object? releaseDate = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? providerID = null,Object? name = null,Object? family = freezed,Object? isAvailable = null,Object? releaseDate = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,providerID: null == providerID ? _self.providerID : providerID // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,variants: null == variants ? _self.variants : variants // ignore: cast_nullable_to_non_nullable
-as List<String>,family: freezed == family ? _self.family : family // ignore: cast_nullable_to_non_nullable
+as String,family: freezed == family ? _self.family : family // ignore: cast_nullable_to_non_nullable
 as String?,isAvailable: null == isAvailable ? _self.isAvailable : isAvailable // ignore: cast_nullable_to_non_nullable
 as bool,releaseDate: freezed == releaseDate ? _self.releaseDate : releaseDate // ignore: cast_nullable_to_non_nullable
 as DateTime?,
@@ -235,19 +234,12 @@ as DateTime?,
 @JsonSerializable()
 
 class _ProviderModel implements ProviderModel {
-  const _ProviderModel({required this.id, required this.providerID, required this.name, required final  List<String> variants, required this.family, this.isAvailable = true, @dateConverter required this.releaseDate}): _variants = variants;
+  const _ProviderModel({required this.id, required this.providerID, required this.name, required this.family, this.isAvailable = true, @dateConverter required this.releaseDate});
   factory _ProviderModel.fromJson(Map<String, dynamic> json) => _$ProviderModelFromJson(json);
 
 @override final  String id;
 @override final  String providerID;
 @override final  String name;
- final  List<String> _variants;
-@override List<String> get variants {
-  if (_variants is EqualUnmodifiableListView) return _variants;
-  // ignore: implicit_dynamic_type
-  return EqualUnmodifiableListView(_variants);
-}
-
 @override final  String? family;
 @override@JsonKey() final  bool isAvailable;
 @override@dateConverter final  DateTime? releaseDate;
@@ -265,16 +257,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProviderModel&&(identical(other.id, id) || other.id == id)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other._variants, _variants)&&(identical(other.family, family) || other.family == family)&&(identical(other.isAvailable, isAvailable) || other.isAvailable == isAvailable)&&(identical(other.releaseDate, releaseDate) || other.releaseDate == releaseDate));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProviderModel&&(identical(other.id, id) || other.id == id)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.name, name) || other.name == name)&&(identical(other.family, family) || other.family == family)&&(identical(other.isAvailable, isAvailable) || other.isAvailable == isAvailable)&&(identical(other.releaseDate, releaseDate) || other.releaseDate == releaseDate));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,providerID,name,const DeepCollectionEquality().hash(_variants),family,isAvailable,releaseDate);
+int get hashCode => Object.hash(runtimeType,id,providerID,name,family,isAvailable,releaseDate);
 
 @override
 String toString() {
-  return 'ProviderModel(id: $id, providerID: $providerID, name: $name, variants: $variants, family: $family, isAvailable: $isAvailable, releaseDate: $releaseDate)';
+  return 'ProviderModel(id: $id, providerID: $providerID, name: $name, family: $family, isAvailable: $isAvailable, releaseDate: $releaseDate)';
 }
 
 
@@ -285,7 +277,7 @@ abstract mixin class _$ProviderModelCopyWith<$Res> implements $ProviderModelCopy
   factory _$ProviderModelCopyWith(_ProviderModel value, $Res Function(_ProviderModel) _then) = __$ProviderModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String providerID, String name, List<String> variants, String? family, bool isAvailable,@dateConverter DateTime? releaseDate
+ String id, String providerID, String name, String? family, bool isAvailable,@dateConverter DateTime? releaseDate
 });
 
 
@@ -302,13 +294,12 @@ class __$ProviderModelCopyWithImpl<$Res>
 
 /// Create a copy of ProviderModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? providerID = null,Object? name = null,Object? variants = null,Object? family = freezed,Object? isAvailable = null,Object? releaseDate = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? providerID = null,Object? name = null,Object? family = freezed,Object? isAvailable = null,Object? releaseDate = freezed,}) {
   return _then(_ProviderModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,providerID: null == providerID ? _self.providerID : providerID // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,variants: null == variants ? _self._variants : variants // ignore: cast_nullable_to_non_nullable
-as List<String>,family: freezed == family ? _self.family : family // ignore: cast_nullable_to_non_nullable
+as String,family: freezed == family ? _self.family : family // ignore: cast_nullable_to_non_nullable
 as String?,isAvailable: null == isAvailable ? _self.isAvailable : isAvailable // ignore: cast_nullable_to_non_nullable
 as bool,releaseDate: freezed == releaseDate ? _self.releaseDate : releaseDate // ignore: cast_nullable_to_non_nullable
 as DateTime?,

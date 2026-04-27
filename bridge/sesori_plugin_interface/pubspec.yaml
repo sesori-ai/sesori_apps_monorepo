@@ -9,7 +9,6 @@ environment:
 dependencies:
   freezed_annotation: ^3.1.0
   json_annotation: ^4.11.0
-  meta: ^1.0.0
 
 dev_dependencies:
   lints: ^6.1.0

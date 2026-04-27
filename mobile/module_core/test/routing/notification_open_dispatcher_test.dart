@@ -121,7 +121,9 @@ void main() {
 
       expect(routeDispatcher.replacedStacks, hasLength(2));
       expect(
-        routeDispatcher.replacedStacks.map((stack) => stack.paths.last).toList(),
+        routeDispatcher.replacedStacks
+            .map((stack) => stack.paths.last)
+            .toList(),
         everyElement(
           const AppRoute.sessionDetail(
             projectId: "project-1",

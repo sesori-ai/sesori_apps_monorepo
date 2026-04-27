@@ -4,6 +4,24 @@ import "dart:convert";
 import "package:http/http.dart" as http;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "../models/server_health_signal.dart";
+
+/// Returns true if [error] is a ClientException whose message embeds a
+/// SocketException with "Connection refused" and errno 61 — the typical
+/// symptom of the target server not being running.
+///
+/// ClientException.message has the form:
+/// "SocketException: Connection refused (OS Error: Connection refused, errno = 61), ..."
+/// so we detect it by pattern rather than a typed field.
+bool _isConnectionRefused(Object error) {
+  if (error is http.ClientException) {
+    final msg = error.message;
+    // errno 61 = ECONNREFUSED on macOS and Linux
+    return msg.contains("Connection refused") && msg.contains("errno = 61");
+  }
+  return false;
+}
+
 class SseConnection {
   final String _targetUrl;
   final String? _password;
@@ -13,6 +31,17 @@ class SseConnection {
   bool _active = false;
   int _generation = 0;
   http.Client? _currentClient;
+  final StreamController<ServerHealthSignal> _healthSignalController =
+      StreamController<ServerHealthSignal>.broadcast();
+  /// True once a connection has succeeded at least once. While false (e.g.
+  /// during waitReady polling or before the first connection), connection-
+  /// refused errors are logged at debug level only. After the first
+  /// successful connection, the next failure emits a user-facing warning.
+  bool _serverWasEverReachable = false;
+  /// Set to true after the first user-facing "server unavailable" warning is
+  /// emitted. Reset to false when a connection succeeds so the next failure
+  /// gets a fresh warning.
+  bool _hasWarnedServerUnavailable = false;
 
   SseConnection({
     required String targetUrl,
@@ -23,6 +52,8 @@ class SseConnection {
        _password = password,
        _onEvent = onEvent,
        _onReconnect = onReconnect;
+
+  Stream<ServerHealthSignal> get healthSignals => _healthSignalController.stream;
 
   void start() {
     if (_active) return;
@@ -36,6 +67,9 @@ class SseConnection {
     _generation++;
     _currentClient?.close();
     _currentClient = null;
+    if (!_healthSignalController.isClosed) {
+      unawaited(_healthSignalController.close());
+    }
   }
 
   Future<void> _streamLoop(int generation) async {
@@ -64,16 +98,49 @@ class SseConnection {
         if (!contentType.contains("text/event-stream")) {
           throw StateError("Unexpected SSE content type: $contentType");
         }
+        if (!_active || _generation != generation) return;
 
-        if (!isFirstConnect) {
+        final wasReconnect = !isFirstConnect;
+        if (wasReconnect) {
           await _onReconnect?.call();
         }
         isFirstConnect = false;
         reconnectDelay = const Duration(seconds: 1);
+        _hasWarnedServerUnavailable = false;
+        _serverWasEverReachable = true;
+        if (wasReconnect) {
+          _healthSignalController.add(
+            const ServerHealthSignal(type: ServerHealthSignalType.serverReachable),
+          );
+        }
         await _readStream(response, generation);
       } catch (e, st) {
         if (!_active || _generation != generation) return;
-        Log.e("[sse-conn] stream loop error: $e\n$st");
+
+        if (_isConnectionRefused(e)) {
+          // "Connection refused" means the server is not running on that host/port.
+          // If the server was never reachable (e.g. --no-auto-start with no server,
+          // or during waitReady polling), stay silent at info level so the
+          // terminal isn't flooded during startup. After the first successful
+          // connection, emit a one-time user-facing warning; subsequent retries
+          // log only at debug level.
+          if (_serverWasEverReachable) {
+            if (!_hasWarnedServerUnavailable) {
+              _hasWarnedServerUnavailable = true;
+              _healthSignalController.add(
+                const ServerHealthSignal(type: ServerHealthSignalType.serverUnreachable),
+              );
+              Log.w("[sse-conn] OpenCode server is not running at $_targetUrl. "
+                  "Start it with: opencode serve");
+            } else {
+              Log.d("[sse-conn] connection refused (server still unavailable), retrying...");
+            }
+          } else {
+            Log.d("[sse-conn] connection refused (server not yet reachable), retrying...");
+          }
+        } else {
+          Log.e("[sse-conn] stream loop error: $e\n$st");
+        }
       } finally {
         client.close();
         if (_currentClient == client) _currentClient = null;

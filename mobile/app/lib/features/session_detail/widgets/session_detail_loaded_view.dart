@@ -18,7 +18,6 @@ class SessionDetailLoadedView extends StatelessWidget {
   final VoidCallback onShowPendingPermissions;
   final VoidCallback onOpenAgentPicker;
   final VoidCallback onOpenModelPicker;
-  final VoidCallback onOpenVariantPicker;
 
   const SessionDetailLoadedView.readOnly({
     super.key,
@@ -28,8 +27,7 @@ class SessionDetailLoadedView extends StatelessWidget {
     required this.onShowPendingPermissions,
   }) : readOnly = true,
        onOpenAgentPicker = _noopCallback,
-       onOpenModelPicker = _noopCallback,
-       onOpenVariantPicker = _noopCallback;
+       onOpenModelPicker = _noopCallback;
 
   const SessionDetailLoadedView.editable({
     super.key,
@@ -39,7 +37,6 @@ class SessionDetailLoadedView extends StatelessWidget {
     required this.onShowPendingPermissions,
     required this.onOpenAgentPicker,
     required this.onOpenModelPicker,
-    required this.onOpenVariantPicker,
   }) : readOnly = false;
 
   @override
@@ -100,13 +97,12 @@ class SessionDetailLoadedView extends StatelessWidget {
             onAbort: () => context.read<SessionDetailCubit>().abort(),
             header: null,
             composerHeader: AgentModelButtons(
-              availableVariants: state.availableVariants,
-              modelName: _resolveModelName(state),
+              providers: state.availableProviders,
               selectedAgent: state.selectedAgent,
-              selectedAgentModel: state.selectedAgentModel,
+              selectedProviderID: state.selectedProviderID,
+              selectedModelID: state.selectedModelID,
               onAgentTap: onOpenAgentPicker,
               onModelTap: onOpenModelPicker,
-              onVariantTap: onOpenVariantPicker,
             ),
             availableCommands: state.availableCommands,
             stagedCommand: state.stagedCommand,
@@ -115,21 +111,6 @@ class SessionDetailLoadedView extends StatelessWidget {
           ),
       ],
     );
-  }
-
-  String _resolveModelName(SessionDetailLoaded state) {
-    final providerID = state.selectedAgentModel?.providerID;
-    final modelID = state.selectedAgentModel?.modelID;
-    const fallback = 'Model';
-    if (providerID == null || modelID == null) return fallback;
-    for (final provider in state.availableProviders) {
-      if (provider.id == providerID) {
-        final model = provider.models[modelID];
-        if (model != null) return model.name;
-      }
-    }
-    if (modelID.isNotEmpty) return modelID;
-    return fallback;
   }
 }
 

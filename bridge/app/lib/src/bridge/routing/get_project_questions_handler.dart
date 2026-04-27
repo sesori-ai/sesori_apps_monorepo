@@ -6,7 +6,7 @@ import "request_handler.dart";
 
 /// Handles `POST /project/questions` — returns all pending questions for a project.
 class GetProjectQuestionsHandler extends BodyRequestHandler<ProjectIdRequest, PendingQuestionResponse> {
-  final BridgePluginApi _plugin;
+  final BridgePlugin _plugin;
 
   GetProjectQuestionsHandler(this._plugin)
     : super(

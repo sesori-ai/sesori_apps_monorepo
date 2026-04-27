@@ -24,6 +24,7 @@ sealed class AgentInfo with _$AgentInfo {
     required String name,
     required String? description,
     required AgentModel? model,
+    required String? variant,
     @JsonKey(unknownEnumValue: AgentMode.unknown) required AgentMode mode,
     @Default(false) bool hidden,
   }) = _AgentInfo;
@@ -36,7 +37,6 @@ sealed class AgentModel with _$AgentModel {
   const factory AgentModel({
     required String modelID,
     required String providerID,
-    required String? variant,
   }) = _AgentModel;
 
   factory AgentModel.fromJson(Map<String, dynamic> json) => _$AgentModelFromJson(json);

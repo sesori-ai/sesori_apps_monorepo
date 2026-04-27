@@ -117,18 +117,6 @@ jobs:
           rm -f certificate.p12
         working-directory: bridge/app
 
-      - name: Verify signing prerequisites
-        if: runner.os == 'macOS'
-        env:
-          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
-        run: |
-          if [ -z "$APPLE_TEAM_ID" ]; then
-            echo "Error: APPLE_TEAM_ID repository variable is not set." >&2
-            echo "Set it in Settings > Secrets and variables > Variables." >&2
-            exit 1
-          fi
-        working-directory: bridge/app
-
       - name: Sign binary
         if: runner.os == 'macOS'
         env:

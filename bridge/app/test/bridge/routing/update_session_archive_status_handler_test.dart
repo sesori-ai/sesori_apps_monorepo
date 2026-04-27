@@ -1043,7 +1043,6 @@ class _FakeWorktreeService extends WorktreeService {
             processRunner: _NoopProcessRunner(),
             gitPathExists: ({required String gitPath}) => true,
           ),
-          plugin: _FakeBridgePlugin(),
         ),
       );
 
@@ -1060,7 +1059,6 @@ class _FakeWorktreeService extends WorktreeService {
 
   @override
   Future<bool> removeWorktree({
-    required String projectId,
     required String projectPath,
     required String worktreePath,
     required bool force,
@@ -1108,123 +1106,6 @@ class _FakeWorktreeService extends WorktreeService {
   }) async {
     return resolveBaseBranchAndCommitResult;
   }
-}
-
-class _FakeBridgePlugin implements BridgePluginApi {
-  @override
-  String get id => "fake";
-
-  @override
-  Stream<BridgeSseEvent> get events => const Stream<BridgeSseEvent>.empty();
-
-  @override
-  Future<void> deleteWorkspace({
-    required String projectId,
-    required String worktreePath,
-  }) async {}
-
-  @override
-  Future<List<PluginProject>> getProjects() async => [];
-
-  @override
-  Future<List<PluginSession>> getSessions(String worktree, {int? start, int? limit}) async => [];
-
-  @override
-  Future<List<PluginCommand>> getCommands({required String? projectId}) async => [];
-
-  @override
-  Future<PluginSession> createSession({
-    required String directory,
-    required String? parentSessionId,
-    required List<PluginPromptPart> parts,
-    required PluginSessionVariant? variant,
-    required String? agent,
-    required ({String providerID, String modelID})? model,
-  }) async => throw UnimplementedError();
-
-  @override
-  Future<PluginSession> renameSession({required String sessionId, required String title}) async => throw UnimplementedError();
-
-  @override
-  Future<PluginProject> renameProject({required String projectId, required String name}) async => throw UnimplementedError();
-
-  @override
-  Future<void> deleteSession(String sessionId) async {}
-
-  @override
-  Future<void> archiveSession({required String sessionId}) async {}
-
-  @override
-  Future<List<PluginSession>> getChildSessions(String sessionId) async => [];
-
-  @override
-  Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => {};
-
-  @override
-  Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async => [];
-
-  @override
-  Future<void> sendPrompt({
-    required String sessionId,
-    required List<PluginPromptPart> parts,
-    required PluginSessionVariant? variant,
-    required String? agent,
-    required ({String providerID, String modelID})? model,
-  }) async {}
-
-  @override
-  Future<void> sendCommand({
-    required String sessionId,
-    required String command,
-    required String arguments,
-    required PluginSessionVariant? variant,
-    required String? agent,
-    required ({String providerID, String modelID})? model,
-  }) async {}
-
-  @override
-  Future<void> abortSession({required String sessionId}) async {}
-
-  @override
-  Future<List<PluginAgent>> getAgents() async => [];
-
-  @override
-  Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) async => [];
-
-  @override
-  Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) async => [];
-
-  @override
-  Future<void> replyToQuestion({
-    required String questionId,
-    required String sessionId,
-    required List<List<String>> answers,
-  }) async {}
-
-  @override
-  Future<void> rejectQuestion(String questionId) async {}
-
-  @override
-  Future<void> replyToPermission({
-    required String requestId,
-    required String sessionId,
-    required PluginPermissionReply reply,
-  }) async {}
-
-  @override
-  Future<PluginProject> getProject(String projectId) async => throw UnimplementedError();
-
-  @override
-  Future<bool> healthCheck() async => true;
-
-  @override
-  Future<PluginProvidersResult> getProviders({required String projectId}) async => const PluginProvidersResult(providers: []);
-
-  @override
-  List<PluginProjectActivitySummary> getActiveSessionsSummary() => [];
-
-  @override
-  Future<void> dispose() async {}
 }
 
 class _NoopProcessRunner implements ProcessRunner {

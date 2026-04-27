@@ -7,8 +7,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginPermissionReply,
         PluginPromptPart,
         PluginProvidersResult,
-        PluginSession,
-        PluginSessionVariant;
+        PluginSession;
 import "package:sesori_shared/sesori_shared.dart" show ProjectActivitySummary;
 
 import "../opencode_plugin.dart";
@@ -23,10 +22,8 @@ class OpenCodeService {
     return repository.getProjects();
   }
 
-  Future<PluginProvidersResult> getProviders({required String projectId}) {
-    return repository.getProviders(
-      directory: projectId,
-    );
+  Future<PluginProvidersResult> getProviders({required bool connectedOnly}) {
+    return repository.getProviders(connectedOnly: connectedOnly);
   }
 
   Future<List<PluginCommand>> getCommands({required String? projectId}) {
@@ -68,7 +65,6 @@ class OpenCodeService {
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
     required String? agent,
-    required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) async {
     final session = await repository.createSession(
@@ -83,7 +79,6 @@ class OpenCodeService {
           directory: session.directory,
           parts: parts,
           agent: agent,
-          variant: variant,
           model: model,
         );
       } catch (e, st) {
@@ -100,7 +95,6 @@ class OpenCodeService {
     required String sessionId,
     required List<PluginPromptPart> parts,
     required String? agent,
-    required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) {
     final directory = _getTrackedDirectory(sessionId: sessionId);
@@ -109,7 +103,6 @@ class OpenCodeService {
       directory: directory,
       parts: parts,
       agent: agent,
-      variant: variant,
       model: model,
     );
   }
@@ -119,7 +112,6 @@ class OpenCodeService {
     required String command,
     required String arguments,
     required String? agent,
-    required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) {
     final directory = _getTrackedDirectory(sessionId: sessionId);
@@ -129,7 +121,6 @@ class OpenCodeService {
       command: command,
       arguments: arguments,
       agent: agent,
-      variant: variant,
       model: model,
     );
   }

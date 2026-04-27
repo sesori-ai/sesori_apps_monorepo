@@ -34,6 +34,7 @@ import "package:sesori_bridge/src/push/push_notification_client.dart";
 import "package:sesori_bridge/src/push/push_notification_content_builder.dart";
 import "package:sesori_bridge/src/push/push_rate_limiter.dart";
 import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
+import "package:sesori_bridge/src/server/server_health_config.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
 import "package:test/test.dart";
@@ -76,7 +77,6 @@ void main() {
           processRunner: FakeProcessRunner(),
           gitPathExists: ({required String gitPath}) => true,
         ),
-        plugin: plugin,
       ),
     );
     final relayClient = RelayClient(
@@ -95,6 +95,8 @@ void main() {
         serverPassword: null,
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
+        version: "test",
+        serverManaged: true,
       ),
       client: relayClient,
       plugin: plugin,
@@ -111,9 +113,16 @@ void main() {
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
+      serverHealthConfig: const ServerHealthConfig(
+        serverURL: "http://127.0.0.1:4096",
+        password: "test",
+        binaryPath: "opencode",
+        isManaged: true,
+      ),
+      initialServerProcess: null,
     );
 
-    final session = orchestrator.create();
+    final session = await orchestrator.create();
     final runFuture = session.run();
 
     final bridgeSocket = await relayServer.nextClient();
@@ -209,7 +218,6 @@ void main() {
           processRunner: FakeProcessRunner(),
           gitPathExists: ({required String gitPath}) => true,
         ),
-        plugin: plugin,
       ),
     );
 
@@ -220,6 +228,8 @@ void main() {
         serverPassword: null,
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
+        version: "test",
+        serverManaged: true,
       ),
       client: relayClient,
       plugin: plugin,
@@ -236,9 +246,16 @@ void main() {
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
+      serverHealthConfig: const ServerHealthConfig(
+        serverURL: "http://127.0.0.1:4096",
+        password: "test",
+        binaryPath: "opencode",
+        isManaged: true,
+      ),
+      initialServerProcess: null,
     );
 
-    final session = orchestrator.create();
+    final session = await orchestrator.create();
     final runFuture = session.run();
 
     final bridgeSocket = await relayServer.nextClient();
@@ -323,7 +340,6 @@ void main() {
           processRunner: FakeProcessRunner(),
           gitPathExists: ({required String gitPath}) => true,
         ),
-        plugin: plugin,
       ),
     );
     final relayClient = RelayClient(
@@ -370,6 +386,8 @@ void main() {
         serverPassword: null,
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
+        version: "test",
+        serverManaged: true,
       ),
       client: relayClient,
       plugin: plugin,
@@ -386,9 +404,16 @@ void main() {
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
+      serverHealthConfig: const ServerHealthConfig(
+        serverURL: "http://127.0.0.1:4096",
+        password: "test",
+        binaryPath: "opencode",
+        isManaged: true,
+      ),
+      initialServerProcess: null,
     );
 
-    final session = orchestrator.create();
+    final session = await orchestrator.create();
     final runFuture = session.run();
     await plugin.waitForSubscription();
     await relayServer.nextClient();
@@ -475,7 +500,6 @@ void main() {
           processRunner: FakeProcessRunner(),
           gitPathExists: ({required String gitPath}) => true,
         ),
-        plugin: plugin,
       ),
     );
     final relayClient = RelayClient(
@@ -494,6 +518,8 @@ void main() {
         serverPassword: null,
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
+        version: "test",
+        serverManaged: true,
       ),
       client: relayClient,
       plugin: plugin,
@@ -510,9 +536,16 @@ void main() {
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
+      serverHealthConfig: const ServerHealthConfig(
+        serverURL: "http://127.0.0.1:4096",
+        password: "test",
+        binaryPath: "opencode",
+        isManaged: true,
+      ),
+      initialServerProcess: null,
     );
 
-    final session = orchestrator.create();
+    final session = await orchestrator.create();
     final runFuture = session.run();
     await relayServer.nextClient();
 
@@ -570,7 +603,6 @@ void main() {
           processRunner: FakeProcessRunner(),
           gitPathExists: ({required String gitPath}) => true,
         ),
-        plugin: plugin,
       ),
     );
     final relayClient = RelayClient(
@@ -589,6 +621,8 @@ void main() {
         serverPassword: null,
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
+        version: "test",
+        serverManaged: true,
       ),
       client: relayClient,
       plugin: plugin,
@@ -605,9 +639,16 @@ void main() {
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
+      serverHealthConfig: const ServerHealthConfig(
+        serverURL: "http://127.0.0.1:4096",
+        password: "test",
+        binaryPath: "opencode",
+        isManaged: true,
+      ),
+      initialServerProcess: null,
     );
 
-    final session = orchestrator.create();
+    final session = await orchestrator.create();
     final runFuture = session.run();
     await plugin.waitForSubscription();
     await relayServer.nextClient();
@@ -690,7 +731,6 @@ void main() {
           processRunner: FakeProcessRunner(),
           gitPathExists: ({required String gitPath}) => true,
         ),
-        plugin: plugin,
       ),
     );
     final relayClient = RelayClient(
@@ -709,6 +749,8 @@ void main() {
         serverPassword: null,
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
+        version: "test",
+        serverManaged: true,
       ),
       client: relayClient,
       plugin: plugin,
@@ -725,9 +767,16 @@ void main() {
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
+      serverHealthConfig: const ServerHealthConfig(
+        serverURL: "http://127.0.0.1:4096",
+        password: "test",
+        binaryPath: "opencode",
+        isManaged: true,
+      ),
+      initialServerProcess: null,
     );
 
-    final session = orchestrator.create();
+    final session = await orchestrator.create();
     final runFuture = session.run();
     await plugin.waitForSubscription();
     await relayServer.nextClient();
@@ -992,7 +1041,7 @@ class _AbortEventPlugin extends _EventPlugin {
   }
 }
 
-class _SummaryPlugin implements BridgePluginApi {
+class _SummaryPlugin implements BridgePlugin {
   final void Function() onSubscribe;
   final StreamController<BridgeSseEvent> _controller = StreamController<BridgeSseEvent>.broadcast();
 
@@ -1027,7 +1076,6 @@ class _SummaryPlugin implements BridgePluginApi {
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
-    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
@@ -1065,7 +1113,6 @@ class _SummaryPlugin implements BridgePluginApi {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PluginPromptPart> parts,
-    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {}
@@ -1075,7 +1122,6 @@ class _SummaryPlugin implements BridgePluginApi {
     required String sessionId,
     required String command,
     required String arguments,
-    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {}
@@ -1132,7 +1178,7 @@ class _SummaryPlugin implements BridgePluginApi {
   }
 
   @override
-  Future<PluginProvidersResult> getProviders({required String projectId}) async {
+  Future<PluginProvidersResult> getProviders({required bool connectedOnly}) async {
     return const PluginProvidersResult(providers: <PluginProvider>[]);
   }
 
@@ -1140,18 +1186,12 @@ class _SummaryPlugin implements BridgePluginApi {
   Future<void> archiveSession({required String sessionId}) async {}
 
   @override
-  Future<void> deleteWorkspace({
-    required String projectId,
-    required String worktreePath,
-  }) async {}
-
-  @override
   Future<void> dispose() async {}
 
   Future<void> close() => _controller.close();
 }
 
-class _NoopPlugin implements BridgePluginApi {
+class _NoopPlugin implements BridgePlugin {
   final StreamController<BridgeSseEvent> _controller = StreamController<BridgeSseEvent>.broadcast();
 
   @override
@@ -1175,7 +1215,6 @@ class _NoopPlugin implements BridgePluginApi {
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
-    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
@@ -1213,7 +1252,6 @@ class _NoopPlugin implements BridgePluginApi {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PluginPromptPart> parts,
-    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {}
@@ -1223,7 +1261,6 @@ class _NoopPlugin implements BridgePluginApi {
     required String sessionId,
     required String command,
     required String arguments,
-    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {}
@@ -1273,18 +1310,12 @@ class _NoopPlugin implements BridgePluginApi {
   }
 
   @override
-  Future<PluginProvidersResult> getProviders({required String projectId}) async {
+  Future<PluginProvidersResult> getProviders({required bool connectedOnly}) async {
     return const PluginProvidersResult(providers: <PluginProvider>[]);
   }
 
   @override
   Future<void> archiveSession({required String sessionId}) async {}
-
-  @override
-  Future<void> deleteWorkspace({
-    required String projectId,
-    required String worktreePath,
-  }) async {}
 
   @override
   Future<void> dispose() async {}
@@ -1440,7 +1471,6 @@ class _NoopSessionRepository implements SessionRepository {
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
-    required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
   }) async => const Session(
@@ -1500,7 +1530,6 @@ class _NoopSessionRepository implements SessionRepository {
     required String sessionId,
     required String command,
     required String arguments,
-    required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
   }) async {}
@@ -1512,7 +1541,6 @@ class _NoopSessionRepository implements SessionRepository {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PromptPart> parts,
-    required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
   }) async {}
@@ -1554,7 +1582,6 @@ class _DelayingSessionRepository implements SessionRepository {
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
-    required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
   }) {
@@ -1562,7 +1589,6 @@ class _DelayingSessionRepository implements SessionRepository {
       directory: directory,
       parentSessionId: parentSessionId,
       parts: parts,
-      variant: variant,
       agent: agent,
       model: model,
     );
@@ -1573,7 +1599,6 @@ class _DelayingSessionRepository implements SessionRepository {
     required String sessionId,
     required String command,
     required String arguments,
-    required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
   }) async {
@@ -1581,7 +1606,6 @@ class _DelayingSessionRepository implements SessionRepository {
       sessionId: sessionId,
       command: command,
       arguments: arguments,
-      variant: variant,
       agent: agent,
       model: model,
     );
@@ -1596,11 +1620,10 @@ class _DelayingSessionRepository implements SessionRepository {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PromptPart> parts,
-    required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
   }) async {
-    return _base.sendPrompt(sessionId: sessionId, parts: parts, variant: variant, agent: agent, model: model);
+    return _base.sendPrompt(sessionId: sessionId, parts: parts, agent: agent, model: model);
   }
 
   @override

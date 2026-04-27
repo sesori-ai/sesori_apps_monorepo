@@ -17,7 +17,6 @@ sealed class PluginModel with _$PluginModel {
   const factory PluginModel({
     required String id,
     required String name,
-    required List<String> variants,
     String? family,
     @Default(true) bool isAvailable,
     DateTime? releaseDate,

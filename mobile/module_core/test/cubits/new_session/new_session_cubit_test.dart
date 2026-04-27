@@ -11,14 +11,14 @@ import "../../helpers/test_helpers.dart";
 void main() {
   group("NewSessionCubit", () {
     late MockSessionService mockSessionService;
-
+    
     setUp(() {
       mockSessionService = MockSessionService();
 
       when(
         () => mockSessionService.listAgents(),
       ).thenAnswer((_) async => ApiResponse<Agents>.success(const Agents(agents: <AgentInfo>[])));
-      when(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer(
+      when(() => mockSessionService.listProviders()).thenAnswer(
         (_) async => ApiResponse<ProviderListResponse>.success(
           const ProviderListResponse(items: [], connectedOnly: false),
         ),
@@ -32,16 +32,6 @@ void main() {
       sessionService: mockSessionService,
       projectId: "project-1",
     );
-
-    test("defaults selectedAgentModel to null", () {
-      final cubit = buildCubit();
-      addTearDown(cubit.close);
-
-      expect(
-        cubit.state,
-        isA<NewSessionIdle>().having((state) => state.selectedAgentModel, "selectedAgentModel", isNull),
-      );
-    });
 
     blocTest<NewSessionCubit, NewSessionState>(
       "loads available commands into idle state",
@@ -84,7 +74,6 @@ void main() {
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
-            variant: any(named: "variant"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
           ),
@@ -111,7 +100,6 @@ void main() {
             agent: null,
             providerID: null,
             modelID: null,
-            variant: null,
             command: null,
             dedicatedWorktree: false,
           ),
@@ -129,7 +117,6 @@ void main() {
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
-            variant: any(named: "variant"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
           ),
@@ -159,296 +146,11 @@ void main() {
             agent: null,
             providerID: null,
             modelID: null,
-            variant: null,
             command: "review",
             dedicatedWorktree: true,
           ),
         ).called(1);
       },
-    );
-
-    blocTest<NewSessionCubit, NewSessionState>(
-      "selectVariant updates state and createSession forwards variant",
-      build: () {
-        when(() => mockSessionService.listAgents()).thenAnswer(
-          (_) async => ApiResponse.success(
-            const Agents(
-              agents: [
-                AgentInfo(
-                  name: "build",
-                  description: "Build",
-                  model: AgentModel(providerID: "openai", modelID: "gpt-4", variant: null),
-                  mode: AgentMode.primary,
-                ),
-              ],
-            ),
-          ),
-        );
-        when(
-          () => mockSessionService.createSessionWithMessage(
-            projectId: any(named: "projectId"),
-            text: any(named: "text"),
-            agent: any(named: "agent"),
-            providerID: any(named: "providerID"),
-            modelID: any(named: "modelID"),
-            variant: any(named: "variant"),
-            command: any(named: "command"),
-            dedicatedWorktree: any(named: "dedicatedWorktree"),
-          ),
-        ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s-effort")));
-        return buildCubit();
-      },
-      act: (cubit) async {
-        await Future<void>.delayed(Duration.zero);
-        cubit.selectVariant(const SessionVariant(id: "xhigh"));
-        await cubit.createSession(
-          text: "hello",
-          dedicatedWorktree: true,
-          command: null,
-        );
-      },
-      expect: () => [
-        isA<NewSessionIdle>()
-            .having((state) => state.selectedAgentModel?.variant, "selectedAgentModel.variant", isNull),
-        isA<NewSessionIdle>().having(
-          (state) => state.selectedAgentModel?.variant,
-          "selectedAgentModel.variant",
-          "xhigh",
-        ),
-        isA<NewSessionSending>().having(
-          (state) => state.selectedAgentModel?.variant,
-          "selectedAgentModel.variant",
-          "xhigh",
-        ),
-        isA<NewSessionCreated>(),
-      ],
-      verify: (_) {
-        verify(
-          () => mockSessionService.createSessionWithMessage(
-            projectId: "project-1",
-            text: "hello",
-            agent: "build",
-            providerID: "openai",
-            modelID: "gpt-4",
-            variant: const SessionVariant(id: "xhigh"),
-            command: null,
-            dedicatedWorktree: true,
-          ),
-        ).called(1);
-      },
-    );
-
-    blocTest<NewSessionCubit, NewSessionState>(
-      "selectAgent changes agent without affecting selected model variant",
-      build: () {
-        when(() => mockSessionService.listAgents()).thenAnswer(
-          (_) async => ApiResponse.success(
-            const Agents(
-              agents: [
-                AgentInfo(
-                  name: "build",
-                  description: "Build",
-                  model: AgentModel(providerID: "openai", modelID: "gpt-4", variant: null),
-                  mode: AgentMode.primary,
-                ),
-                AgentInfo(
-                  name: "build",
-                  description: "Build",
-                  model: AgentModel(providerID: "openai", modelID: "gpt-4", variant: null),
-                  mode: AgentMode.primary,
-                ),
-              ],
-            ),
-          ),
-        );
-        return buildCubit();
-      },
-      act: (cubit) async {
-        await Future<void>.delayed(Duration.zero);
-        cubit.selectVariant(const SessionVariant(id: "xhigh"));
-        cubit.selectAgent("oracle");
-      },
-      expect: () => [
-        isA<NewSessionIdle>().having(
-          (state) => state.selectedAgentModel?.variant,
-          "initial selectedAgentModel.variant",
-          isNull,
-        ),
-        isA<NewSessionIdle>().having(
-          (state) => state.selectedAgentModel?.variant,
-          "selectedAgentModel.variant",
-          "xhigh",
-        ),
-        isA<NewSessionIdle>()
-            .having((state) => state.selectedAgent, "selectedAgent", "oracle")
-            .having((state) => state.selectedAgentModel?.variant, "selectedAgentModel.variant preserved", "xhigh"),
-      ],
-    );
-
-    blocTest<NewSessionCubit, NewSessionState>(
-      "selectModel updates selectedAgentModel to the chosen model variant",
-      build: () {
-        when(() => mockSessionService.listAgents()).thenAnswer(
-          (_) async => ApiResponse.success(
-            const Agents(
-              agents: [
-                AgentInfo(
-                  name: "build",
-                  description: "Build",
-                  model: AgentModel(providerID: "openai", modelID: "gpt-4", variant: "fast"),
-                  mode: AgentMode.primary,
-                ),
-                AgentInfo(
-                  name: "build",
-                  description: "Build",
-                  model: AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "deep"),
-                  mode: AgentMode.primary,
-                ),
-              ],
-            ),
-          ),
-        );
-        return buildCubit();
-      },
-      act: (cubit) async {
-        await Future<void>.delayed(Duration.zero);
-        cubit.selectModel("anthropic", "claude-3");
-      },
-      expect: () => [
-        isA<NewSessionIdle>().having(
-          (state) => state.selectedAgentModel,
-          "initial selectedAgentModel",
-          const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "fast"),
-        ),
-        isA<NewSessionIdle>()
-            .having(
-              (state) => state.selectedAgentModel,
-              "selectedAgentModel",
-              const AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "deep"),
-            ),
-      ],
-    );
-
-    blocTest<NewSessionCubit, NewSessionState>(
-      "selectVariant updates selectedAgentModel variant",
-      build: () {
-        when(() => mockSessionService.listAgents()).thenAnswer(
-          (_) async => ApiResponse.success(
-            const Agents(
-              agents: [
-                AgentInfo(
-                  name: "build",
-                  description: "Build",
-                  model: AgentModel(providerID: "openai", modelID: "gpt-4", variant: null),
-                  mode: AgentMode.primary,
-                ),
-              ],
-            ),
-          ),
-        );
-        when(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer(
-          (_) async => ApiResponse.success(
-            const ProviderListResponse(
-              connectedOnly: false,
-              items: [
-                ProviderInfo(
-                  id: "openai",
-                  name: "OpenAI",
-                  defaultModelID: "gpt-4",
-                  models: {
-                    "gpt-4": ProviderModel(
-                      id: "gpt-4",
-                      providerID: "openai",
-                      name: "GPT-4",
-                      variants: ["fast", "slow"],
-                      family: null,
-                      releaseDate: null,
-                    ),
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-        return buildCubit();
-      },
-      act: (cubit) async {
-        await Future<void>.delayed(Duration.zero);
-        cubit.selectVariant(const SessionVariant(id: "fast"));
-      },
-      expect: () => [
-        isA<NewSessionIdle>().having(
-          (state) => state.selectedAgentModel?.variant,
-          "initial variant",
-          isNull,
-        ),
-        isA<NewSessionIdle>().having(
-          (state) => state.selectedAgentModel?.variant,
-          "variant",
-          "fast",
-        ),
-      ],
-    );
-
-    blocTest<NewSessionCubit, NewSessionState>(
-      "selectVariant to null clears selectedAgentModel variant",
-      build: () {
-        when(() => mockSessionService.listAgents()).thenAnswer(
-          (_) async => ApiResponse.success(
-            const Agents(
-              agents: [
-                AgentInfo(
-                  name: "build",
-                  description: "Build",
-                  model: AgentModel(providerID: "openai", modelID: "gpt-4", variant: "fast"),
-                  mode: AgentMode.primary,
-                ),
-              ],
-            ),
-          ),
-        );
-        when(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer(
-          (_) async => ApiResponse.success(
-            const ProviderListResponse(
-              connectedOnly: false,
-              items: [
-                ProviderInfo(
-                  id: "openai",
-                  name: "OpenAI",
-                  defaultModelID: "gpt-4",
-                  models: {
-                    "gpt-4": ProviderModel(
-                      id: "gpt-4",
-                      providerID: "openai",
-                      name: "GPT-4",
-                      variants: ["fast", "slow"],
-                      family: null,
-                      releaseDate: null,
-                    ),
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-        return buildCubit();
-      },
-      act: (cubit) async {
-        await Future<void>.delayed(Duration.zero);
-        cubit.selectVariant(null);
-      },
-      expect: () => [
-        isA<NewSessionIdle>().having(
-          (state) => state.selectedAgentModel?.variant,
-          "initial variant",
-          "fast",
-        ),
-        isA<NewSessionIdle>().having(
-          (state) => state.selectedAgentModel?.variant,
-          "variant",
-          isNull,
-        ),
-      ],
     );
   });
 }

@@ -95,8 +95,9 @@ void main() {
 
       tracker.handleEvent(
         const SesoriSseEvent.messageUpdated(
-          info: Message.assistant(
+          info: Message(
             id: "m-1",
+            role: "assistant",
             sessionID: "session-a",
             agent: null,
             modelID: null,
@@ -133,8 +134,9 @@ void main() {
 
       tracker.handleEvent(
         const SesoriSseEvent.messageUpdated(
-          info: Message.assistant(
+          info: Message(
             id: "assistant-msg",
+            role: "assistant",
             sessionID: "session-a",
             agent: null,
             modelID: null,
@@ -435,8 +437,9 @@ void main() {
 
       tracker.handleEvent(
         const SesoriSseEvent.messageUpdated(
-          info: Message.assistant(
+          info: Message(
             id: "m-1",
+            role: "assistant",
             sessionID: "session-a",
             agent: null,
             modelID: null,
@@ -522,8 +525,9 @@ void main() {
         )
         ..handleEvent(
           const SesoriSseEvent.messageUpdated(
-            info: Message.assistant(
+            info: Message(
               id: "m-1",
+              role: "assistant",
               sessionID: "root",
               agent: null,
               modelID: null,
@@ -638,8 +642,9 @@ void main() {
       tracker.handleEvent(SesoriSseEvent.sessionCreated(info: _session(id: "other")));
       tracker.handleEvent(
         const SesoriSseEvent.messageUpdated(
-          info: Message.assistant(
+          info: Message(
             id: "root-msg",
+            role: "assistant",
             sessionID: "root",
             agent: null,
             modelID: null,
@@ -649,8 +654,9 @@ void main() {
       );
       tracker.handleEvent(
         const SesoriSseEvent.messageUpdated(
-          info: Message.assistant(
+          info: Message(
             id: "other-msg",
+            role: "assistant",
             sessionID: "other",
             agent: null,
             modelID: null,
@@ -712,8 +718,9 @@ void main() {
       tracker
         ..handleEvent(
           const SesoriSseEvent.messageUpdated(
-            info: Message.assistant(
+            info: Message(
               id: "m-1",
+              role: "assistant",
               sessionID: "session-a",
               agent: null,
               modelID: null,
@@ -750,10 +757,13 @@ void main() {
       tracker
         ..handleEvent(
           const SesoriSseEvent.messageUpdated(
-            info: Message.user(
+            info: Message(
               id: "m-1",
+              role: "user",
               sessionID: "session-a",
               agent: null,
+              modelID: null,
+              providerID: null,
             ),
           ),
         )
@@ -1051,8 +1061,9 @@ void main() {
       clock.advance(const Duration(seconds: 1));
       tracker.handleEvent(
         const SesoriSseEvent.messageUpdated(
-          info: Message.assistant(
+          info: Message(
             id: "assistant-msg",
+            role: "assistant",
             sessionID: "child",
             agent: null,
             modelID: null,
@@ -1129,8 +1140,9 @@ void main() {
 
       tracker.handleEvent(
         const SesoriSseEvent.messageUpdated(
-          info: Message.assistant(
+          info: Message(
             id: "pruned-msg",
+            role: "assistant",
             sessionID: "child-a",
             agent: null,
             modelID: null,
@@ -1140,8 +1152,9 @@ void main() {
       );
       tracker.handleEvent(
         const SesoriSseEvent.messageUpdated(
-          info: Message.assistant(
+          info: Message(
             id: "survivor-msg",
+            role: "assistant",
             sessionID: "root-b",
             agent: null,
             modelID: null,
@@ -1265,8 +1278,9 @@ void main() {
 
       tracker.handleEvent(
         const SesoriSseEvent.messageUpdated(
-          info: Message.assistant(
+          info: Message(
             id: "late-msg",
+            role: "assistant",
             sessionID: "child",
             agent: null,
             modelID: null,
@@ -1310,8 +1324,9 @@ void main() {
 
       tracker.handleEvent(
         const SesoriSseEvent.messageUpdated(
-          info: Message.assistant(
+          info: Message(
             id: "expired-msg",
+            role: "assistant",
             sessionID: "expired-session",
             agent: null,
             modelID: null,
@@ -1346,8 +1361,9 @@ void main() {
       for (var index = 0; index <= PushSessionMaintenancePolicy.messageRoleHardCap; index++) {
         tracker.handleEvent(
           SesoriSseEvent.messageUpdated(
-            info: Message.assistant(
+            info: Message(
               id: "msg-$index",
+              role: "assistant",
               sessionID: "session-$index",
               agent: null,
               modelID: null,
@@ -1413,8 +1429,9 @@ void main() {
 
       tracker.handleEvent(
         const SesoriSseEvent.messageUpdated(
-          info: Message.assistant(
+          info: Message(
             id: "stream-msg",
+            role: "assistant",
             sessionID: "stream-session",
             agent: null,
             modelID: null,

@@ -26,7 +26,7 @@ void main() {
   const sessionId = "session-1";
   const connectedStatus = ConnectionStatus.connected(
     config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token"),
-    health: HealthResponse(healthy: true, version: "0.1.200"),
+    health: HealthResponse(healthy: true, version: "0.1.200", serverManaged: false, serverState: null),
   );
   const connectionLostStatus = ConnectionStatus.connectionLost(
     config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token"),
@@ -111,7 +111,6 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
-          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: MockFailureReporter(),
         );
@@ -140,7 +139,7 @@ void main() {
         verifyNever(() => mockSessionService.getChildren(sessionId: sessionId));
         verifyNever(() => mockSessionService.getSessionStatuses());
         verifyNever(() => mockSessionService.listAgents());
-        verifyNever(() => mockSessionService.listProviders(projectId: any(named: "projectId")));
+        verifyNever(() => mockSessionService.listProviders());
 
         connectionStatus.add(connectedStatus);
         await Future<void>.delayed(const Duration(milliseconds: 20));
@@ -163,7 +162,6 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -189,7 +187,7 @@ void main() {
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
       verify(() => mockSessionService.listAgents()).called(1);
-      verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).called(1);
+      verify(() => mockSessionService.listProviders()).called(1);
 
       expect(emitted.first, isA<SessionDetailLoaded>().having((s) => s.isRefreshing, "isRefreshing", isTrue));
       expect(
@@ -200,14 +198,13 @@ void main() {
       );
     });
 
-    test("silent refresh preserves selectedAgent and selectedAgentModel", () async {
+    test("silent refresh preserves selectedAgent, selectedProviderID, selectedModelID from current state", () async {
       final cubit = SessionDetailCubit(
         mockConnectionService,
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -216,18 +213,17 @@ void main() {
       await _awaitLoaded(cubit);
       cubit.selectAgent("oracle");
       cubit.selectModel(providerID: "openai", modelID: "gpt-4.1");
-      cubit.selectVariant(const SessionVariant(id: "xhigh"));
 
       when(() => mockSessionService.listAgents()).thenAnswer(
         (_) async => ApiResponse.success(
           const Agents(
             agents: [
-              AgentInfo(name: "build", description: "build", model: null, mode: AgentMode.primary),
+              AgentInfo(name: "build", description: "build", model: null, variant: null, mode: AgentMode.primary),
             ],
           ),
         ),
       );
-      when(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer(
+      when(() => mockSessionService.listProviders()).thenAnswer(
         (_) async => ApiResponse.success(
           const ProviderListResponse(
             connectedOnly: false,
@@ -241,7 +237,6 @@ void main() {
                     id: "claude-3-5-sonnet",
                     providerID: "anthropic",
                     name: "Claude 3.5 Sonnet",
-                    variants: [],
                     family: null,
                     releaseDate: null,
                   ),
@@ -257,52 +252,9 @@ void main() {
 
       final loaded = cubit.state as SessionDetailLoaded;
       expect(loaded.selectedAgent, "oracle");
-      expect(
-        loaded.selectedAgentModel,
-        const AgentModel(providerID: "openai", modelID: "gpt-4.1", variant: "xhigh"),
-      );
+      expect(loaded.selectedProviderID, "openai");
+      expect(loaded.selectedModelID, "gpt-4.1");
       expect(loaded.isRefreshing, isFalse);
-    });
-
-    test("sendMessage forwards selectedAgentModel variant to repository", () async {
-      when(
-        () => mockSessionRepository.sendMessage(
-          sessionId: sessionId,
-          text: "hello",
-          agent: "coder",
-          model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
-          variant: const SessionVariant(id: "low"),
-          command: null,
-        ),
-      ).thenAnswer((_) async => ApiResponse<void>.success(null));
-
-      final cubit = SessionDetailCubit(
-        mockConnectionService,
-        loadService: loadService,
-        promptDispatcher: promptDispatcher,
-        permissionRepository: mockPermissionRepository,
-        sessionId: sessionId,
-        projectId: "project-1",
-        notificationCanceller: mockNotificationCanceller,
-        failureReporter: MockFailureReporter(),
-      );
-      addTearDown(cubit.close);
-
-      await _awaitLoaded(cubit);
-      cubit.selectVariant(const SessionVariant(id: "low"));
-
-      await cubit.sendMessage(text: "hello", command: null);
-
-      verify(
-        () => mockSessionRepository.sendMessage(
-          sessionId: sessionId,
-          text: "hello",
-          agent: "coder",
-          model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
-          variant: const SessionVariant(id: "low"),
-          command: null,
-        ),
-      ).called(1);
     });
 
     test("delta race: streaming deltas arriving during refresh are preserved", () async {
@@ -312,7 +264,6 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -337,7 +288,7 @@ void main() {
       when(
         () => mockSessionService.listAgents(),
       ).thenAnswer((_) async => ApiResponse.success(Agents(agents: _agents())));
-      when(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer((_) async => ApiResponse.success(_providers()));
+      when(() => mockSessionService.listProviders()).thenAnswer((_) async => ApiResponse.success(_providers()));
 
       final emitted = <SessionDetailState>[];
       final sub = cubit.stream.listen(emitted.add);
@@ -375,7 +326,6 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -388,7 +338,7 @@ void main() {
           MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-provider-fallback")]),
         ),
       );
-      when(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+      when(() => mockSessionService.listProviders()).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
 
       mockConnectionService.emitDataMayBeStale();
       await Future<void>.delayed(const Duration(milliseconds: 20));
@@ -409,7 +359,6 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -419,11 +368,10 @@ void main() {
 
       verify(() => mockSessionService.getMessages(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
-      verify(() => mockSessionService.getPendingPermissions()).called(1);
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
       verify(() => mockSessionService.listAgents()).called(1);
-      verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).called(1);
+      verify(() => mockSessionService.listProviders()).called(1);
 
       messagesCompleter.complete(ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()])));
       await _awaitLoaded(cubit);
@@ -441,7 +389,6 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -464,7 +411,6 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
-          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: MockFailureReporter(),
         );
@@ -490,7 +436,8 @@ void main() {
         expect(afterFailure.isRefreshing, isFalse);
         expect(afterFailure.messages, before.messages);
         expect(afterFailure.selectedAgent, before.selectedAgent);
-        expect(afterFailure.selectedAgentModel, before.selectedAgentModel);
+        expect(afterFailure.selectedProviderID, before.selectedProviderID);
+        expect(afterFailure.selectedModelID, before.selectedModelID);
       },
     );
 
@@ -501,7 +448,6 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
       );
@@ -516,9 +462,6 @@ void main() {
         () => mockSessionService.getPendingQuestions(sessionId: sessionId),
       ).thenAnswer((_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])));
       when(
-        () => mockSessionService.getPendingPermissions(),
-      ).thenAnswer((_) async => ApiResponse.success(const PendingPermissionResponse(data: <PendingPermission>[])));
-      when(
         () => mockSessionService.getChildren(sessionId: sessionId),
       ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: <Session>[])));
       when(
@@ -529,7 +472,7 @@ void main() {
       when(
         () => mockSessionService.listAgents(),
       ).thenAnswer((_) async => ApiResponse.success(Agents(agents: _agents())));
-      when(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer((_) async => ApiResponse.success(_providers()));
+      when(() => mockSessionService.listProviders()).thenAnswer((_) async => ApiResponse.success(_providers()));
       when(() => mockSessionService.listCommands(projectId: any(named: "projectId"))).thenAnswer(
         (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
       );
@@ -545,11 +488,10 @@ void main() {
 
       verify(() => mockSessionService.getMessages(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
-      verify(() => mockSessionService.getPendingPermissions()).called(1);
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
       verify(() => mockSessionService.listAgents()).called(1);
-      verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).called(1);
+      verify(() => mockSessionService.listProviders()).called(1);
     });
   });
 }
@@ -570,13 +512,6 @@ void _stubLoadApis(MockSessionService service, {required String sessionId}) {
     ),
   );
   when(
-    () => service.getPendingPermissions(),
-  ).thenAnswer(
-    (_) => Future<ApiResponse<PendingPermissionResponse>>.value(
-      ApiResponse.success(const PendingPermissionResponse(data: <PendingPermission>[])),
-    ),
-  );
-  when(
     () => service.getChildren(sessionId: any(named: "sessionId")),
   ).thenAnswer(
     (_) => Future<ApiResponse<SessionListResponse>>.value(
@@ -593,15 +528,16 @@ void _stubLoadApis(MockSessionService service, {required String sessionId}) {
   when(() => service.listAgents()).thenAnswer(
     (_) => Future<ApiResponse<Agents>>.value(ApiResponse.success(Agents(agents: _agents()))),
   );
-  when(() => service.listProviders(projectId: any(named: "projectId"))).thenAnswer(
+  when(() => service.listProviders()).thenAnswer(
     (_) => Future<ApiResponse<ProviderListResponse>>.value(ApiResponse.success(_providers())),
   );
 }
 
 MessageWithParts _messageWithParts({String messageId = "msg-1"}) {
   return MessageWithParts(
-    info: Message.assistant(
+    info: Message(
       id: messageId,
+      role: "assistant",
       sessionID: "session-1",
       agent: null,
       modelID: null,
@@ -613,7 +549,7 @@ MessageWithParts _messageWithParts({String messageId = "msg-1"}) {
 
 List<AgentInfo> _agents() {
   return const [
-    AgentInfo(name: "coder", description: "A coding assistant", model: null, mode: AgentMode.primary),
+    AgentInfo(name: "coder", description: "A coding assistant", model: null, variant: null, mode: AgentMode.primary),
   ];
 }
 
@@ -630,7 +566,6 @@ ProviderListResponse _providers() {
             id: "claude-3-5-sonnet",
             providerID: "anthropic",
             name: "Claude 3.5 Sonnet",
-            variants: [],
             family: null,
             releaseDate: null,
           ),

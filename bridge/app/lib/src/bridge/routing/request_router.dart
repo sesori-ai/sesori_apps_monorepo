@@ -52,7 +52,8 @@ class RequestRouter {
   final List<RequestHandlerBase> _handlers;
 
   RequestRouter({
-    required BridgePluginApi plugin,
+    required BridgePlugin plugin,
+    required HealthCheckHandler healthCheckHandler,
     required GetCommandsHandler getCommandsHandler,
     required SessionRepository sessionRepository,
     required AbortSessionHandler abortSessionHandler,
@@ -66,9 +67,9 @@ class RequestRouter {
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
     required GetSessionDiffsHandler sessionDiffsHandler,
-    required GetAgentsHandler getAgentsHandler,
   }) : _handlers = _buildHandlers(
           plugin: plugin,
+          healthCheckHandler: healthCheckHandler,
           getCommandsHandler: getCommandsHandler,
           sessionRepository: sessionRepository,
           abortSessionHandler: abortSessionHandler,
@@ -82,11 +83,11 @@ class RequestRouter {
           sessionPersistenceService: sessionPersistenceService,
           worktreeService: worktreeService,
           sessionDiffsHandler: sessionDiffsHandler,
-          getAgentsHandler: getAgentsHandler,
         );
 
   static List<RequestHandlerBase> _buildHandlers({
-    required BridgePluginApi plugin,
+    required BridgePlugin plugin,
+    required HealthCheckHandler healthCheckHandler,
     required GetCommandsHandler getCommandsHandler,
     required SessionRepository sessionRepository,
     required AbortSessionHandler abortSessionHandler,
@@ -100,10 +101,9 @@ class RequestRouter {
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
     required GetSessionDiffsHandler sessionDiffsHandler,
-    required GetAgentsHandler getAgentsHandler,
   }) {
     return [
-      HealthCheckHandler(plugin),
+      healthCheckHandler,
       GetCurrentProjectHandler(plugin),
       GetProjectsHandler(projectRepository: projectRepository),
       getCommandsHandler,
@@ -127,7 +127,7 @@ class RequestRouter {
       sendPromptHandler,
       abortSessionHandler,
       GetProvidersHandler(providerRepository),
-      getAgentsHandler,
+      GetAgentsHandler(plugin),
       GetSessionQuestionsHandler(plugin),
       GetProjectQuestionsHandler(plugin),
       ReplyToQuestionHandler(plugin),

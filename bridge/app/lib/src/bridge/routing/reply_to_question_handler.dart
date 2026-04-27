@@ -7,7 +7,7 @@ import "request_handler.dart";
 ///
 /// Question IDs are globally unique in the backend.
 class ReplyToQuestionHandler extends BodyRequestHandler<ReplyToQuestionRequest, SuccessEmptyResponse> {
-  final BridgePluginApi _plugin;
+  final BridgePlugin _plugin;
 
   ReplyToQuestionHandler(this._plugin)
     : super(

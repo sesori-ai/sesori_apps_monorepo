@@ -13,6 +13,5 @@ export "src/models/plugin_prompt_part.dart";
 export "src/models/plugin_provider.dart";
 export "src/models/plugin_session.dart";
 export "src/models/plugin_session_status.dart";
-export "src/models/plugin_session_variant.dart";
 export "src/plugin_api_exception.dart";
 export "src/plugin_permission_reply.dart";

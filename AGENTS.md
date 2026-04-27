@@ -30,16 +30,15 @@ The full specification — including all cross-dependency rules, acceptable patt
 
 Each layer has a specific responsibility and a dedicated directory. Dependencies flow upward only — a lower layer must NEVER know about a higher layer. NO layer skipping.
 
-| Layer                    | Responsibility                                                                                                                                                                                                 | Directory                     |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| **Layer 0 — Foundation** | Transport primitives and base abstractions. HOW we communicate, not WHAT. No business logic, no decisions.                                                                                                     | `foundation/`                 |
-| **Layer 1 — API**        | Dumb data-access classes that execute operations (HTTP calls, DB queries, shell commands, plugins). Parse responses into models. No decision-making logic.                                                     | `api/`                        |
-| **Layer 2 — Repository** | Aggregates data from one or more Layer 1 sources. Maps API/DB DTOs to internal models. **MANDATORY** even when only one data source exists — it just delegates. All mapping logic lives here and nowhere else. | `repositories/`               |
-| **Layer 3 — Service**    | Business logic and coordination. Decision-making lives here. MUST use Repositories, NEVER call APIs directly.                                                                                                  | `services/`                   |
-| **Layer 4+ — Consumer**  | Consumes services/repositories. Cubits (mobile), request handlers (bridge), orchestrators.                                                                                                                     | `cubits/`, `routing/`, `sse/` |
+| Layer | Responsibility | Directory |
+|-------|---------------|-----------|
+| **Layer 0 — Foundation** | Transport primitives and base abstractions. HOW we communicate, not WHAT. No business logic, no decisions. | `foundation/` |
+| **Layer 1 — API** | Dumb data-access classes that execute operations (HTTP calls, DB queries, shell commands). Parse responses into models. No decision-making logic. | `api/` |
+| **Layer 2 — Repository** | Aggregates data from one or more Layer 1 sources. Maps API/DB DTOs to internal models. **MANDATORY** even when only one data source exists — it just delegates. All mapping logic lives here and nowhere else. | `repositories/` |
+| **Layer 3 — Service** | Business logic and coordination. Decision-making lives here. MUST use Repositories, NEVER call APIs directly. | `services/` |
+| **Layer 4+ — Consumer** | Consumes services/repositories. Cubits (mobile), request handlers (bridge), orchestrators. | `cubits/`, `routing/`, `sse/` |
 
 **Core rules:**
-
 - A Service MUST NOT call an API directly — it goes through a Repository
 - A Consumer (cubit, handler) MUST NOT import from `api/` — it goes through repositories/services
 - Within a layer: NO cross-dependency between same-level classes (unless base classes/abstractions designed for reuse within that layer)
@@ -53,25 +52,21 @@ Each layer has a specific responsibility and a dedicated directory. Dependencies
 Pick a class suffix that accurately reflects the class's role. Vague names (`Manager`, `Helper`, `Utils`, `Wrapper`) invite kitchen-sink growth and are forbidden. If a class's role doesn't match any suffix below, the class's responsibilities probably need rethinking, not a vague label.
 
 **Orchestration & business logic:**
-
 - **`Service`** — orchestrates two or more collaborators, coordinates a non-trivial state machine, or uses a Repository. This is the Layer 3 default.
 - **`Dispatcher`** — single choke point through which a class of requests flows; owns the pipeline for those requests.
 - **`Orchestrator`** — top-level composer that wires multiple layers or subsystems.
 
 **Data access:**
-
 - **`Api`** / **`Dao`** — Layer 1 data access.
 - **`Client`** — transport-level; HTTP/WebSocket to an external system.
 - **`Repository`** — Layer 2 aggregator + mapper.
 
 **Reactive / event wiring:**
-
 - **`Listener`** — subscribes to a stream/event source and delegates downstream; owns its subscription lifecycle.
 - **`Notifier`** — detects a condition and emits events.
 - **`Tracker`** — maintains state derived from events; exposes stream or snapshot access.
 
 **Pure transformations (no decisions, no orchestration):**
-
 - **`Builder`** — constructs an output artifact from inputs.
 - **`Formatter`** — converts data to presentation form.
 - **`Mapper`** — translates between data models.
@@ -80,7 +75,6 @@ Pick a class suffix that accurately reflects the class's role. Vague names (`Man
 - **`Calculator`** — computes derived values.
 
 **State management:**
-
 - **`Cubit`** — mobile only, Layer 4.
 
 **Forbidden suffixes:** `Manager`, `Helper`, `Utils`, `Wrapper`, `Handler` (except for routing handlers in the bridge `routing/` layer).
@@ -102,7 +96,6 @@ These four rules catch the common structural failures that layer rules alone mis
 ### Bridge workspace (`bridge/`)
 
 **`bridge/app` — target directory structure:**
-
 ```
 app/lib/src/
 ├── foundation/              # Layer 0
@@ -164,7 +157,6 @@ app/lib/src/
 - **New push triggers** (another stream, another timer) MUST be added as a new Listener class. `PushDispatcher` remains the outbound push choke point, while each listener owns its own trigger-specific bookkeeping, scheduling, and pre-send state handling before delegating outbound sends to the dispatcher. Do not grow a single class to own multiple triggers.
 
 **`sesori_plugin_opencode` — internal layers:**
-
 ```
 lib/src/
 ├── models/                  # Layer 0 — OpenCode-specific Freezed data classes
@@ -179,15 +171,12 @@ lib/src/
 ### Mobile workspace (`mobile/`)
 
 **Module dependency direction (never reverse, never skip):**
-
 ```
 app → module_core → module_auth → sesori_shared
 ```
-
 `app` has `module_auth` in pubspec only for DI wiring — it MUST NOT import `module_auth` types in source code.
 
 **`module_core` — target directory structure:**
-
 ```
 module_core/lib/src/
 ├── foundation/              # Layer 0
@@ -229,7 +218,6 @@ module_core/lib/src/
 - No cross-dependency between repositories, between services, or between cubits
 
 **`app` (Flutter shell) — target directory structure:**
-
 ```
 app/lib/
 ├── core/platform/           # Layer 0 — concrete Flutter implementations of module_core interfaces
@@ -252,7 +240,6 @@ app/lib/
 - `module_auth` MUST NOT import `module_core`
 
 **`module_auth` — internal structure:**
-
 ```
 module_auth/lib/src/
 ├── interfaces/              # exported API: AuthTokenProvider, OAuthFlowProvider, AuthSession
@@ -269,7 +256,7 @@ module_auth/lib/src/
 
 ## Key Architectural Patterns
 
-- **Bridge plugin system:** `BridgePluginApi` abstract class in `sesori_plugin_interface` defines the backend contract (projects, sessions, messages, events, health). THIS BELONGS TO Layer 1 (API layer). `sesori_plugin_opencode` implements it for OpenCode. New backends implement this interface.
+- **Bridge plugin system:** `BridgePlugin` abstract class in `sesori_plugin_interface` defines the backend contract (projects, sessions, messages, events, health). `sesori_plugin_opencode` implements it for OpenCode. New backends implement this interface.
 - **Relay protocol:** `RelayMessage` sealed class in `sesori_shared` defines all message types (auth, key_exchange, ready, request, response, sse_event, etc.). Binary wire format: `[version_byte][nonce (24B)][ciphertext + auth tag]`.
 - **Request routing (bridge):** Intercept-first handler chain. `RequestRouter` tries each registered handler in order; first match wins. `ProxyHandler` is the catch-all fallback.
 - **SSE pipeline (bridge):** `SseConnection` → `SseEventParser` → plugin event stream → `Orchestrator` → `SSEManager` → per-phone encrypted delivery with event buffering.
@@ -353,13 +340,17 @@ The bridge uses Drift (SQLite) for local persistence. Schema changes require a s
 
 Conventional commits: `fix:`, `feat:`, `ci:`, `docs:`, `chore:`.
 
+Branch naming: `type/short-description` (e.g. `feat/relay-reconnect`).
+
+Worktrees: Always create new worktrees inside the `.worktrees/` directory at the repo root (e.g. `.worktrees/feat-relay-reconnect`). Unless explicitly told otherwise, the worktree should start from the `main` branch.
+
 ## Testing
 
-| Location                 | Command        |
-| ------------------------ | -------------- |
-| bridge modules           | `dart test`    |
-| mobile/app               | `flutter test` |
-| mobile pure Dart modules | `dart test`    |
+| Location | Command |
+|---|---|
+| bridge modules | `dart test` |
+| mobile/app | `flutter test` |
+| mobile pure Dart modules | `dart test` |
 
 ## Dart Coding Conventions
 

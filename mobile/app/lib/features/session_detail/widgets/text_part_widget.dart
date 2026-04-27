@@ -23,7 +23,7 @@ class TextPartWidget extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: MarkdownBody(
         data: text,
-        selectable: false,
+        selectable: true,
         onTapLink: handleMarkdownLinkTap,
         styleSheet: buildSessionMarkdownStyleSheet(theme),
       ),

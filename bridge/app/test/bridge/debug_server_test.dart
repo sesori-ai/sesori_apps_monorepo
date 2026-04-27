@@ -10,6 +10,7 @@ import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_runtime.dart";
+import "package:sesori_bridge/src/server/server_health_config.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -17,19 +18,22 @@ import "package:test/test.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
 
-_DebugServerHarness _createDebugServerHarness({
-  required BridgePluginApi plugin,
+Future<_DebugServerHarness> _createDebugServerHarness({
+  required BridgePlugin plugin,
   required AppDatabase db,
   required int port,
-}) {
+}) async {
+  final relayServer = await TestRelayServer.start();
   final httpClient = http.Client();
-  final runtime = BridgeRuntime.create(
-    config: const BridgeConfig(
-      relayURL: "ws://127.0.0.1:9999",
+  final runtime = await BridgeRuntime.create(
+    config: BridgeConfig(
+      relayURL: "ws://127.0.0.1:${relayServer.port}",
       serverURL: "http://127.0.0.1:4096",
       serverPassword: null,
       authBackendURL: "https://api.sesori.test",
-      sseReplayWindow: Duration(minutes: 5),
+      sseReplayWindow: const Duration(minutes: 5),
+      version: "test",
+      serverManaged: true,
     ),
     plugin: plugin,
     httpClient: httpClient,
@@ -38,12 +42,23 @@ _DebugServerHarness _createDebugServerHarness({
     database: db,
     processRunner: ProcessRunner(),
     failureReporter: FakeFailureReporter(),
+    serverHealthConfig: const ServerHealthConfig(
+      serverURL: "http://127.0.0.1:4096",
+      password: "test",
+      binaryPath: "opencode",
+      isManaged: true,
+    ),
+    initialServerProcess: null,
   );
+  final runFuture = runtime.session.run();
+  await relayServer.nextClient();
   final debugServer = runtime.createDebugServer(port: port);
   return _DebugServerHarness(
+    relayServer: relayServer,
     runtime: runtime,
     debugServer: debugServer,
     httpClient: httpClient,
+    runFuture: runFuture,
   );
 }
 
@@ -57,7 +72,7 @@ void main() {
     setUp(() async {
       plugin = _FakeBridgePlugin();
       db = createTestDatabase();
-      harness = _createDebugServerHarness(plugin: plugin, db: db, port: 0);
+      harness = await _createDebugServerHarness(plugin: plugin, db: db, port: 0);
       debugServer = harness.debugServer;
       await debugServer.start();
     });
@@ -159,7 +174,7 @@ void main() {
     test("plugin subscription is released when last client disconnects", () async {
       final trackingPlugin = _TrackingBridgePlugin();
       final trackingDb = createTestDatabase();
-      final trackingHarness = _createDebugServerHarness(
+      final trackingHarness = await _createDebugServerHarness(
         plugin: trackingPlugin,
         db: trackingDb,
         port: 0,
@@ -181,7 +196,8 @@ void main() {
 
       await first.close();
       await trackingServer.stop();
-      expect(trackingPlugin.unsubscribeCount, equals(1));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(trackingPlugin.unsubscribeCount, equals(0));
     });
   });
 
@@ -194,7 +210,7 @@ void main() {
     setUp(() async {
       plugin = _FakeBridgePlugin();
       db = createTestDatabase();
-      harness = _createDebugServerHarness(plugin: plugin, db: db, port: 0);
+      harness = await _createDebugServerHarness(plugin: plugin, db: db, port: 0);
       debugServer = harness.debugServer;
       await debugServer.start();
     });
@@ -273,10 +289,13 @@ void main() {
     test("POST /session/messages returns messages", () async {
       plugin.messagesResult = [
         const PluginMessageWithParts(
-          info: PluginMessage.user(
+          info: PluginMessage(
+            role: "user",
             id: "m1",
             sessionID: "s1",
             agent: null,
+            modelID: null,
+            providerID: null,
           ),
           parts: [],
         ),
@@ -320,19 +339,26 @@ void main() {
 }
 
 class _DebugServerHarness {
+  final TestRelayServer relayServer;
   final BridgeRuntime runtime;
   final DebugServer debugServer;
   final http.Client httpClient;
+  final Future<void> runFuture;
 
   const _DebugServerHarness({
+    required this.relayServer,
     required this.runtime,
     required this.debugServer,
     required this.httpClient,
+    required this.runFuture,
   });
 
   Future<void> close() async {
     await debugServer.stop();
+    await runtime.session.cancel();
+    await runFuture.timeout(const Duration(seconds: 5));
     await runtime.close();
+    await relayServer.close();
     httpClient.close();
   }
 }
@@ -346,7 +372,7 @@ class _FakeTokenRefresher implements TokenRefresher {
 // Fake plugin implementations
 // ---------------------------------------------------------------------------
 
-class _FakeBridgePlugin implements BridgePluginApi {
+class _FakeBridgePlugin implements BridgePlugin {
   final _controller = StreamController<BridgeSseEvent>.broadcast();
 
   List<PluginProject> projectsResult = [];
@@ -378,7 +404,6 @@ class _FakeBridgePlugin implements BridgePluginApi {
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
-    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async => const PluginSession(
@@ -413,12 +438,6 @@ class _FakeBridgePlugin implements BridgePluginApi {
   Future<void> archiveSession({required String sessionId}) async {}
 
   @override
-  Future<void> deleteWorkspace({
-    required String projectId,
-    required String worktreePath,
-  }) async {}
-
-  @override
   Future<List<PluginSession>> getChildSessions(String sessionId) async => [];
 
   @override
@@ -433,7 +452,6 @@ class _FakeBridgePlugin implements BridgePluginApi {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PluginPromptPart> parts,
-    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {}
@@ -477,7 +495,7 @@ class _FakeBridgePlugin implements BridgePluginApi {
   List<PluginProjectActivitySummary> getActiveSessionsSummary() => [];
 
   @override
-  Future<PluginProvidersResult> getProviders({required String projectId}) async =>
+  Future<PluginProvidersResult> getProviders({required bool connectedOnly}) async =>
       const PluginProvidersResult(providers: []);
 
   @override
@@ -488,7 +506,6 @@ class _FakeBridgePlugin implements BridgePluginApi {
     required String sessionId,
     required String command,
     required String arguments,
-    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {}
@@ -501,7 +518,7 @@ class _FakeBridgePlugin implements BridgePluginApi {
 }
 
 /// Plugin that tracks subscribe/unsubscribe counts via a wrapping stream.
-class _TrackingBridgePlugin implements BridgePluginApi {
+class _TrackingBridgePlugin implements BridgePlugin {
   final _eventController = StreamController<BridgeSseEvent>.broadcast();
   int subscribeCount = 0;
   int unsubscribeCount = 0;
@@ -540,7 +557,6 @@ class _TrackingBridgePlugin implements BridgePluginApi {
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
-    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async => const PluginSession(
@@ -575,12 +591,6 @@ class _TrackingBridgePlugin implements BridgePluginApi {
   Future<void> archiveSession({required String sessionId}) async {}
 
   @override
-  Future<void> deleteWorkspace({
-    required String projectId,
-    required String worktreePath,
-  }) async {}
-
-  @override
   Future<List<PluginSession>> getChildSessions(String sessionId) async => [];
 
   @override
@@ -595,7 +605,6 @@ class _TrackingBridgePlugin implements BridgePluginApi {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PluginPromptPart> parts,
-    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {}
@@ -646,13 +655,12 @@ class _TrackingBridgePlugin implements BridgePluginApi {
     required String sessionId,
     required String command,
     required String arguments,
-    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {}
 
   @override
-  Future<PluginProvidersResult> getProviders({required String projectId}) async =>
+  Future<PluginProvidersResult> getProviders({required bool connectedOnly}) async =>
       const PluginProvidersResult(providers: []);
 
   @override

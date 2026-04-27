@@ -75,7 +75,7 @@ Raw HTTP client for the OpenCode REST API. All methods add `Authorization: Basic
 | Method | Endpoint |
 |--------|----------|
 | `listProjects()` | `GET /project` |
-| `listSessions({directory?, roots})` | `GET /session` |
+| `listSessions({directory?})` | `GET /session` |
 | `listRootSessions()` | `GET /session?roots=true` |
 | `listGlobalSessions({directory?, roots?})` | `GET /experimental/session` |
 | `getMessages(sessionId)` | `GET /session/:id/message` |

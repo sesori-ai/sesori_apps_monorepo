@@ -7,7 +7,7 @@ import "request_handler.dart";
 ///
 /// Returns statuses for ALL sessions globally — not filtered by session or project.
 class GetSessionStatusesHandler extends GetRequestHandler<SessionStatusResponse> {
-  final BridgePluginApi _plugin;
+  final BridgePlugin _plugin;
 
   GetSessionStatusesHandler(this._plugin) : super("/session/status");
 

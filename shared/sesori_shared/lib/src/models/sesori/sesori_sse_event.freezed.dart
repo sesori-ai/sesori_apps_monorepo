@@ -199,6 +199,10 @@ SesoriSseEvent _$SesoriSseEventFromJson(
           return SesoriWorktreeFailed.fromJson(
             json
           );
+                case 'server.status':
+          return SesoriServerStatus.fromJson(
+            json
+          );
         
           default:
             throw CheckedFromJsonException(
@@ -3275,5 +3279,82 @@ String toString() {
 
 
 
+
+/// @nodoc
+@JsonSerializable()
+
+class SesoriServerStatus implements SesoriSseEvent {
+  const SesoriServerStatus({required this.status, required this.message, required this.reason, final  String? $type}): $type = $type ?? 'server.status';
+  factory SesoriServerStatus.fromJson(Map<String, dynamic> json) => _$SesoriServerStatusFromJson(json);
+
+ final  ServerStatusKind status;
+ final  String? message;
+ final  String? reason;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SesoriServerStatusCopyWith<SesoriServerStatus> get copyWith => _$SesoriServerStatusCopyWithImpl<SesoriServerStatus>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SesoriServerStatusToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriServerStatus&&(identical(other.status, status) || other.status == status)&&(identical(other.message, message) || other.message == message)&&(identical(other.reason, reason) || other.reason == reason));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,status,message,reason);
+
+@override
+String toString() {
+  return 'SesoriSseEvent.serverStatus(status: $status, message: $message, reason: $reason)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SesoriServerStatusCopyWith<$Res> implements $SesoriSseEventCopyWith<$Res> {
+  factory $SesoriServerStatusCopyWith(SesoriServerStatus value, $Res Function(SesoriServerStatus) _then) = _$SesoriServerStatusCopyWithImpl;
+@useResult
+$Res call({
+ ServerStatusKind status, String? message, String? reason
+});
+
+
+
+
+}
+/// @nodoc
+class _$SesoriServerStatusCopyWithImpl<$Res>
+    implements $SesoriServerStatusCopyWith<$Res> {
+  _$SesoriServerStatusCopyWithImpl(this._self, this._then);
+
+  final SesoriServerStatus _self;
+  final $Res Function(SesoriServerStatus) _then;
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? status = null,Object? message = freezed,Object? reason = freezed,}) {
+  return _then(SesoriServerStatus(
+status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as ServerStatusKind,message: freezed == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
+as String?,reason: freezed == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
 
 // dart format on

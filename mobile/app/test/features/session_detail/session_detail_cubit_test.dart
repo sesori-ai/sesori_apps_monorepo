@@ -111,7 +111,6 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -124,8 +123,8 @@ void main() {
         verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
         verify(() => mockSessionService.getSessionStatuses()).called(1);
         verify(() => mockSessionService.listAgents()).called(1);
-        verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).called(1);
-        verify(() => mockSessionService.listCommands(projectId: "project-1")).called(1);
+        verify(() => mockSessionService.listProviders()).called(1);
+        verify(() => mockSessionService.listCommands(projectId: "test-project")).called(1);
         verify(() => mockConnectionService.sessionEvents(sessionId)).called(1);
         verify(() => mockConnectionService.events).called(1);
       },
@@ -144,7 +143,6 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
-          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -162,7 +160,6 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -181,8 +178,8 @@ void main() {
         verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(2);
         verify(() => mockSessionService.getSessionStatuses()).called(2);
         verify(() => mockSessionService.listAgents()).called(2);
-        verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).called(2);
-        verify(() => mockSessionService.listCommands(projectId: "project-1")).called(2);
+        verify(() => mockSessionService.listProviders()).called(2);
+        verify(() => mockSessionService.listCommands(projectId: "test-project")).called(2);
       },
     );
 
@@ -194,7 +191,6 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -213,7 +209,6 @@ void main() {
             agent: "coder",
             providerID: "anthropic",
             modelID: "claude-3-5-sonnet",
-            variant: null,
             command: null,
           ),
         ).called(1);
@@ -228,7 +223,6 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -247,7 +241,6 @@ void main() {
             agent: "coder",
             providerID: "anthropic",
             modelID: "claude-3-5-sonnet",
-            variant: null,
             command: "review",
           ),
         ).called(1);
@@ -262,7 +255,6 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -296,7 +288,6 @@ void main() {
             agent: "coder",
             providerID: "anthropic",
             modelID: "claude-3-5-sonnet",
-            variant: null,
             command: null,
           ),
         ).called(1);
@@ -311,7 +302,6 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -337,7 +327,6 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -348,133 +337,8 @@ void main() {
       expect: () => [
         isA<SessionDetailLoaded>(),
         isA<SessionDetailLoaded>()
-            .having(
-              (state) => state.selectedAgentModel,
-              "selectedAgentModel",
-              const AgentModel(providerID: "openai", modelID: "gpt-4.1", variant: null),
-            ),
-      ],
-    );
-
-    blocTest<SessionDetailCubit, SessionDetailState>(
-      "selectVariant updates selectedAgentModel variant",
-      build: () {
-        when(
-          () => mockSessionService.listProviders(projectId: any(named: "projectId")),
-        ).thenAnswer(
-          (_) async => ApiResponse.success(
-            const ProviderListResponse(
-              connectedOnly: false,
-              items: [
-                ProviderInfo(
-                  id: "openai",
-                  name: "OpenAI",
-                  defaultModelID: "gpt-4",
-                  models: {
-                    "gpt-4": ProviderModel(
-                      id: "gpt-4",
-                      providerID: "openai",
-                      name: "GPT-4",
-                      variants: ["fast", "slow"],
-                      family: null,
-                      releaseDate: null,
-                    ),
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-        return SessionDetailCubit(
-          mockConnectionService,
-          loadService: loadService,
-          promptDispatcher: promptDispatcher,
-          permissionRepository: mockPermissionRepository,
-          sessionId: sessionId,
-          projectId: "project-1",
-          notificationCanceller: mockNotificationCanceller,
-          failureReporter: mockFailureReporter,
-        );
-      },
-      act: (cubit) async {
-        await _awaitLoaded(cubit);
-        cubit.selectVariant(const SessionVariant(id: "fast"));
-      },
-      expect: () => [
-        isA<SessionDetailLoaded>().having(
-          (state) => state.selectedAgentModel?.variant,
-          "initial variant",
-          isNull,
-        ),
-        isA<SessionDetailLoaded>().having(
-          (state) => state.selectedAgentModel?.variant,
-          "variant",
-          "fast",
-        ),
-      ],
-    );
-
-    blocTest<SessionDetailCubit, SessionDetailState>(
-      "selectVariant to null clears selectedAgentModel variant",
-      build: () {
-        when(
-          () => mockSessionService.listProviders(projectId: any(named: "projectId")),
-        ).thenAnswer(
-          (_) async => ApiResponse.success(
-            const ProviderListResponse(
-              connectedOnly: false,
-              items: [
-                ProviderInfo(
-                  id: "openai",
-                  name: "OpenAI",
-                  defaultModelID: "gpt-4",
-                  models: {
-                    "gpt-4": ProviderModel(
-                      id: "gpt-4",
-                      providerID: "openai",
-                      name: "GPT-4",
-                      variants: ["fast", "slow"],
-                      family: null,
-                      releaseDate: null,
-                    ),
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-        return SessionDetailCubit(
-          mockConnectionService,
-          loadService: loadService,
-          promptDispatcher: promptDispatcher,
-          permissionRepository: mockPermissionRepository,
-          sessionId: sessionId,
-          projectId: "project-1",
-          notificationCanceller: mockNotificationCanceller,
-          failureReporter: mockFailureReporter,
-        );
-      },
-      act: (cubit) async {
-        await _awaitLoaded(cubit);
-        cubit.selectVariant(const SessionVariant(id: "fast"));
-        cubit.selectVariant(null);
-      },
-      expect: () => [
-        isA<SessionDetailLoaded>().having(
-          (state) => state.selectedAgentModel?.variant,
-          "initial variant",
-          isNull,
-        ),
-        isA<SessionDetailLoaded>().having(
-          (state) => state.selectedAgentModel?.variant,
-          "variant after fast",
-          "fast",
-        ),
-        isA<SessionDetailLoaded>().having(
-          (state) => state.selectedAgentModel?.variant,
-          "variant after null",
-          isNull,
-        ),
+            .having((state) => state.selectedProviderID, "selectedProviderID", "openai")
+            .having((state) => state.selectedModelID, "selectedModelID", "gpt-4.1"),
       ],
     );
 
@@ -486,7 +350,6 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -515,7 +378,6 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
-          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -566,7 +428,6 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
-          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -598,7 +459,6 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -641,17 +501,19 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
-          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
       },
       act: (cubit) async {
         await _awaitLoaded(cubit);
-        const message = Message.user(
+        const message = Message(
           id: "msg-new",
+          role: "user",
           sessionID: sessionId,
           agent: null,
+          modelID: null,
+          providerID: null,
         );
         sessionEvents.add(const SesoriMessageUpdated(info: message));
       },
@@ -671,7 +533,6 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -702,7 +563,6 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -731,7 +591,6 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
-          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -759,7 +618,6 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -802,7 +660,6 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
-          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -831,7 +688,6 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
-          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -868,7 +724,6 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -894,7 +749,6 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -923,7 +777,6 @@ void main() {
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
-            variant: any(named: "variant"),
             command: null,
           ),
         );
@@ -938,7 +791,6 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -967,7 +819,6 @@ void main() {
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
-            variant: any(named: "variant"),
             command: null,
           ),
         );
@@ -984,7 +835,6 @@ void main() {
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
-            variant: any(named: "variant"),
             command: null,
           ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
@@ -995,7 +845,6 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
-          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -1021,7 +870,6 @@ void main() {
             agent: "coder",
             providerID: "anthropic",
             modelID: "claude-3-5-sonnet",
-            variant: null,
             command: null,
           ),
         ).called(1);
@@ -1047,7 +895,6 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
-          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -1097,7 +944,6 @@ void main() {
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
-            variant: any(named: "variant"),
             command: null,
           ),
         );
@@ -1112,7 +958,6 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -1168,7 +1013,6 @@ void main() {
             agent: "coder",
             providerID: "anthropic",
             modelID: "claude-3-5-sonnet",
-            variant: null,
             command: null,
           ),
         ).called(1);
@@ -1182,7 +1026,6 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       );
@@ -1223,7 +1066,6 @@ void main() {
           agent: "coder",
           providerID: "anthropic",
           modelID: "claude-3-5-sonnet",
-          variant: null,
           command: null,
         ),
       ).called(1);
@@ -1241,7 +1083,6 @@ void main() {
           agent: any(named: "agent"),
           providerID: any(named: "providerID"),
           modelID: any(named: "modelID"),
-          variant: any(named: "variant"),
           command: any(named: "command"),
         ),
       ).thenAnswer((invocation) async {
@@ -1260,7 +1101,6 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       );
@@ -1307,11 +1147,10 @@ void main() {
       "multiple queued messages drain sequentially on reconnection",
       build: () => SessionDetailCubit(
         mockConnectionService,
-        loadService: loadService,
-        promptDispatcher: promptDispatcher,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionId: sessionId,
-        projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: mockFailureReporter,
       ),
@@ -1354,7 +1193,6 @@ void main() {
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
-            variant: any(named: "variant"),
             command: null,
           ),
         ).called(1);
@@ -1365,7 +1203,6 @@ void main() {
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
-            variant: any(named: "variant"),
             command: null,
           ),
         ).called(1);
@@ -1384,7 +1221,6 @@ void main() {
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
-            variant: any(named: "variant"),
             command: null,
           ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
@@ -1395,7 +1231,6 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionId: sessionId,
-          projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
           failureReporter: mockFailureReporter,
         );
@@ -1458,7 +1293,6 @@ void main() {
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
             modelID: any(named: "modelID"),
-            variant: any(named: "variant"),
             command: null,
           ),
         ).called(1);
@@ -1499,13 +1333,6 @@ void _stubAllDefaults(
     ),
   );
   when(
-    () => service.getPendingPermissions(),
-  ).thenAnswer(
-    (_) => Future<ApiResponse<PendingPermissionResponse>>.value(
-      ApiResponse.success(const PendingPermissionResponse(data: <PendingPermission>[])),
-    ),
-  );
-  when(
     () => service.getChildren(sessionId: any(named: "sessionId")),
   ).thenAnswer(
     (_) => Future<ApiResponse<SessionListResponse>>.value(
@@ -1527,7 +1354,7 @@ void _stubAllDefaults(
     ),
   );
   when(
-    () => service.listProviders(projectId: any(named: "projectId")),
+    () => service.listProviders(),
   ).thenAnswer(
     (_) => Future<ApiResponse<ProviderListResponse>>.value(
       ApiResponse.success(testProviderListResponse()),
@@ -1573,7 +1400,6 @@ void _stubAllDefaults(
       agent: any(named: "agent"),
       providerID: any(named: "providerID"),
       modelID: any(named: "modelID"),
-      variant: any(named: "variant"),
       command: any(named: "command"),
     ),
   ).thenAnswer((_) async => ApiResponse<void>.success(null));

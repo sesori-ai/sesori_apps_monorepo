@@ -11,7 +11,7 @@ import "services/session_event_enrichment_service.dart";
 import "sse/bridge_event_mapper.dart";
 
 class DebugServer {
-  final BridgePluginApi _plugin;
+  final Stream<BridgeSseEvent> _enrichedPluginEvents;
   final RequestRouter _router;
   final BridgeEventMapper _mapper;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
@@ -26,19 +26,19 @@ class DebugServer {
   int _nextRequestId = 1;
 
   DebugServer({
-    required BridgePluginApi plugin,
+    required Stream<BridgeSseEvent> enrichedPluginEvents,
+    required BridgeEventMapper mapper,
     required RequestRouter router,
     required this.port,
     required FailureReporter failureReporter,
     required SessionEventEnrichmentService sessionEventEnrichmentService,
-  }) : _plugin = plugin,
+  }) : _enrichedPluginEvents = enrichedPluginEvents,
        _router = router,
        _failureReporter = failureReporter,
-       _mapper = BridgeEventMapper(
-         plugin: plugin,
-         failureReporter: failureReporter,
-       ),
+       _mapper = mapper,
        _sessionEventEnrichmentService = sessionEventEnrichmentService;
+
+  SessionEventEnrichmentService get sessionEventEnrichmentService => _sessionEventEnrichmentService;
 
   int? get boundPort => _server?.port;
   RequestRouter get router => _router;
@@ -139,8 +139,7 @@ class DebugServer {
 
       _sseClients.add(response);
 
-      _pluginEventsSub ??= _plugin.events
-          .asyncMap<BridgeSseEvent>(_sessionEventEnrichmentService.enrich)
+      _pluginEventsSub ??= _enrichedPluginEvents
           .map<SesoriSseEvent?>(_mapper.map)
           .asyncMap((mapped) => _fanOutMappedEvent(mapped: mapped))
           .listen(

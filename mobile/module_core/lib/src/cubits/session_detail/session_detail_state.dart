@@ -20,7 +20,8 @@ sealed class SessionDetailState with _$SessionDetailState {
     required String? sessionTitle,
     // Agent/model from the latest assistant message.
     required String? agent,
-    required AgentModel? assistantAgentModel,
+    required String? modelID,
+    required String? providerID,
     // Background tasks (child sessions).
     required List<Session> children,
     required Map<String, SessionStatus> childStatuses,
@@ -33,10 +34,10 @@ sealed class SessionDetailState with _$SessionDetailState {
 
     // Currently selected agent and model (pre-populated from defaults, never null once loaded).
     required String selectedAgent,
-    required AgentModel? selectedAgentModel,
+    required String selectedProviderID,
+    required String selectedModelID,
     required CommandInfo? stagedCommand,
     required bool isRefreshing,
-    @Default([]) List<SessionVariant> availableVariants,
   }) = SessionDetailLoaded;
 
   const factory SessionDetailState.failed({required ApiError error}) = SessionDetailFailed;

@@ -5,7 +5,7 @@ import "request_handler.dart";
 
 /// Handles `POST /project/current` — returns project for a given project id.
 class GetCurrentProjectHandler extends BodyRequestHandler<ProjectIdRequest, Project> {
-  final BridgePluginApi _plugin;
+  final BridgePlugin _plugin;
 
   GetCurrentProjectHandler(this._plugin)
     : super(

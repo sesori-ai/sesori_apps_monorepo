@@ -16,11 +16,6 @@ _SendPromptRequest _$SendPromptRequestFromJson(Map json) => _SendPromptRequest(
       ? null
       : PromptModel.fromJson(Map<String, dynamic>.from(json['model'] as Map)),
   command: json['command'] as String?,
-  variant: json['variant'] == null
-      ? null
-      : SessionVariant.fromJson(
-          Map<String, dynamic>.from(json['variant'] as Map),
-        ),
 );
 
 Map<String, dynamic> _$SendPromptRequestToJson(_SendPromptRequest instance) =>
@@ -30,7 +25,6 @@ Map<String, dynamic> _$SendPromptRequestToJson(_SendPromptRequest instance) =>
       'agent': instance.agent,
       'model': instance.model?.toJson(),
       'command': instance.command,
-      'variant': instance.variant?.toJson(),
     };
 
 PromptPartText _$PromptPartTextFromJson(Map json) => PromptPartText(

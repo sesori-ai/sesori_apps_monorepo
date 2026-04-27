@@ -24,8 +24,9 @@ void main() {
 
       harness.completionListener.handleSseEvent(
         const SesoriSseEvent.messageUpdated(
-          info: Message.assistant(
+          info: Message(
             id: "msg-1",
+            role: "user",
             sessionID: "session-a",
             agent: null,
             modelID: null,
@@ -107,8 +108,9 @@ void main() {
         );
         harness.completionListener.handleSseEvent(
           const SesoriSseEvent.messageUpdated(
-            info: Message.assistant(
+            info: Message(
               id: "msg-1",
+              role: "assistant",
               sessionID: "child",
               agent: null,
               modelID: null,
@@ -225,8 +227,9 @@ void main() {
         );
         harness.completionListener.handleSseEvent(
           const SesoriSseEvent.messageUpdated(
-            info: Message.assistant(
+            info: Message(
               id: "msg-1",
+              role: "assistant",
               sessionID: "child",
               agent: null,
               modelID: null,

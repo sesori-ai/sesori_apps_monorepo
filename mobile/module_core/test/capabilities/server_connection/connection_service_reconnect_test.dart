@@ -86,7 +86,7 @@ void main() {
       authToken: "token",
     );
 
-    const health = HealthResponse(healthy: true, version: "0.1.200");
+    const health = HealthResponse(healthy: true, version: "0.1.200", serverManaged: false, serverState: null);
 
     setUp(() {
       cryptoService = MockRelayCryptoService();
@@ -166,7 +166,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 1400));
       verify(() => authTokenProvider.getFreshAccessToken(minTtl: any(named: "minTtl"))).called(1);
 
-      lifecycleController.add(LifecycleState.paused);
+      lifecycleController.add(LifecycleState.hidden);
       await Future<void>.delayed(Duration.zero);
       tokenCompleter.complete("fresh-token");
 

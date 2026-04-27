@@ -19,11 +19,6 @@ _CreateSessionRequest _$CreateSessionRequestFromJson(Map json) =>
               Map<String, dynamic>.from(json['model'] as Map),
             ),
       command: json['command'] as String?,
-      variant: json['variant'] == null
-          ? null
-          : SessionVariant.fromJson(
-              Map<String, dynamic>.from(json['variant'] as Map),
-            ),
       dedicatedWorktree: json['dedicatedWorktree'] as bool,
     );
 
@@ -35,6 +30,5 @@ Map<String, dynamic> _$CreateSessionRequestToJson(
   'agent': instance.agent,
   'model': instance.model?.toJson(),
   'command': instance.command,
-  'variant': instance.variant?.toJson(),
   'dedicatedWorktree': instance.dedicatedWorktree,
 };

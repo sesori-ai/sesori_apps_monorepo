@@ -69,20 +69,14 @@ class OpenCodeApi {
     return decoded.map(Session.fromJson).toList();
   }
 
-  Future<List<Session>> listSessions({String? directory, required bool roots}) async {
+  Future<List<Session>> listSessions({String? directory}) async {
     final headers = <String, String>{
       ..._authHeaders,
       _directoryOpenCodeHeader: ?directory,
     };
 
-    final queryParams = <String, String>{
-      if (roots) "roots": "true",
-    };
-
     final response = await _client.get(
-      Uri.parse("$serverURL/session").replace(
-        queryParameters: queryParams.isEmpty ? null : queryParams,
-      ),
+      Uri.parse("$serverURL/session"),
       headers: headers,
     );
     _ensureSuccess(response, "GET /session");
@@ -201,27 +195,6 @@ class OpenCodeApi {
       headers: headers,
     );
     _ensureSuccess(response, "DELETE /session/$sessionId");
-  }
-
-  /// Removes a worktree (workspace) from OpenCode.
-  ///
-  /// Sends `DELETE /experimental/worktree` with the worktree directory in the
-  /// body. The [directory] header must be the project root worktree so that
-  /// OpenCode knows which project the sandbox belongs to.
-  Future<void> removeWorktree({
-    required String directory,
-    required String worktreePath,
-  }) async {
-    final response = await _client.delete(
-      Uri.parse("$serverURL/experimental/worktree"),
-      headers: {
-        ..._authHeaders,
-        "content-type": "application/json",
-        _directoryOpenCodeHeader: directory,
-      },
-      body: jsonEncode({"directory": worktreePath}),
-    );
-    _ensureSuccess(response, "DELETE /experimental/worktree");
   }
 
   Future<List<Session>> getChildren({
@@ -477,21 +450,6 @@ class OpenCodeApi {
     );
     _ensureSuccess(response, "GET /provider");
     return ProviderListResponse.fromJson(jsonDecodeMap(response.body));
-  }
-
-  Future<ProviderListResponse> listConfigProviders({required String? directory}) async {
-    final headers = <String, String>{
-      ..._authHeaders,
-      _directoryOpenCodeHeader: ?directory,
-    };
-    final response = await _client.get(
-      Uri.parse("$serverURL/config/providers"),
-      headers: headers,
-    );
-    _ensureSuccess(response, "GET /config/providers");
-    return ProviderListResponse.fromJson(
-      jsonDecodeMap(response.body),
-    );
   }
 
   Future<Map<String, SessionStatus>> getSessionStatuses({required String? directory}) async {

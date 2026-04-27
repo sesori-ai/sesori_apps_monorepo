@@ -6,7 +6,7 @@ import "request_handler.dart";
 
 /// Handles `PATCH /project/name` — renames a project.
 class RenameProjectHandler extends BodyRequestHandler<RenameProjectRequest, Project> {
-  final BridgePluginApi _plugin;
+  final BridgePlugin _plugin;
 
   RenameProjectHandler(this._plugin)
     : super(

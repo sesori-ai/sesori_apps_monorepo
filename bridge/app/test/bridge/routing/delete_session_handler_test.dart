@@ -415,7 +415,6 @@ class _FakeWorktreeService extends WorktreeService {
             processRunner: _NoopProcessRunner(),
             gitPathExists: ({required String gitPath}) => true,
           ),
-          plugin: _FakeBridgePlugin(),
         ),
       );
 
@@ -433,7 +432,6 @@ class _FakeWorktreeService extends WorktreeService {
 
   @override
   Future<bool> removeWorktree({
-    required String projectId,
     required String projectPath,
     required String worktreePath,
     required bool force,
@@ -459,14 +457,6 @@ class _FakeWorktreeService extends WorktreeService {
     lastDeleteBranchForce = force;
     return deleteBranchResult;
   }
-}
-
-class _FakeBridgePlugin extends FakeBridgePlugin {
-  @override
-  Future<void> deleteWorkspace({
-    required String projectId,
-    required String worktreePath,
-  }) async {}
 }
 
 class _NoopProcessRunner implements ProcessRunner {

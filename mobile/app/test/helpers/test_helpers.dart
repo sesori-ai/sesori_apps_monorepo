@@ -183,20 +183,13 @@ void delegateSessionRepositoryToService({
     (invocation) => service.getPendingQuestions(sessionId: invocation.namedArguments[#sessionId]! as String),
   );
   when(
-    () => repository.getPendingPermissions(),
-  ).thenAnswer(
-    (invocation) => service.getPendingPermissions(),
-  );
-  when(
     () => repository.getChildren(sessionId: any(named: "sessionId")),
   ).thenAnswer(
     (invocation) => service.getChildren(sessionId: invocation.namedArguments[#sessionId]! as String),
   );
   when(() => repository.getSessionStatuses()).thenAnswer((_) => service.getSessionStatuses());
   when(() => repository.listAgents()).thenAnswer((_) => service.listAgents());
-  when(() => repository.listProviders(projectId: any(named: "projectId"))).thenAnswer(
-    (invocation) => service.listProviders(projectId: invocation.namedArguments[#projectId] as String),
-  );
+  when(() => repository.listProviders()).thenAnswer((_) => service.listProviders());
   when(() => repository.listCommands(projectId: any(named: "projectId"))).thenAnswer(
     (invocation) => service.listCommands(projectId: invocation.namedArguments[#projectId] as String?),
   );
@@ -206,7 +199,6 @@ void delegateSessionRepositoryToService({
       text: any(named: "text"),
       agent: any(named: "agent"),
       model: any(named: "model"),
-      variant: any(named: "variant"),
       command: any(named: "command"),
     ),
   ).thenAnswer(
@@ -216,7 +208,6 @@ void delegateSessionRepositoryToService({
       agent: invocation.namedArguments[#agent] as String?,
       providerID: (invocation.namedArguments[#model] as PromptModel?)?.providerID,
       modelID: (invocation.namedArguments[#model] as PromptModel?)?.modelID,
-      variant: invocation.namedArguments[#variant] as SessionVariant?,
       command: invocation.namedArguments[#command] as String?,
     ),
   );
@@ -287,15 +278,21 @@ Session testSession({
 
 /// Returns a realistic [HealthResponse] with [healthy] = true.
 HealthResponse testHealthResponse() {
-  return const HealthResponse(healthy: true, version: "0.1.200");
+  return const HealthResponse(
+    healthy: true,
+    version: "0.1.200",
+    serverManaged: false,
+    serverState: null,
+  );
 }
 
 /// Returns a realistic [MessageWithParts] instance.
 MessageWithParts testMessageWithParts({String? id}) {
   final messageId = id ?? "msg-1";
   return MessageWithParts(
-    info: Message.assistant(
+    info: Message(
       id: messageId,
+      role: "assistant",
       sessionID: "session-1",
       agent: null,
       modelID: null,
@@ -399,6 +396,7 @@ AgentInfo testAgentInfo() {
     name: "coder",
     description: "A coding assistant",
     model: null,
+    variant: null,
     mode: AgentMode.primary,
   );
 }
@@ -434,7 +432,6 @@ ProviderListResponse testProviderListResponse() {
             id: "claude-3-5-sonnet",
             providerID: "anthropic",
             name: "Claude 3.5 Sonnet",
-            variants: ["xhigh"],
             family: null,
             releaseDate: null,
           ),

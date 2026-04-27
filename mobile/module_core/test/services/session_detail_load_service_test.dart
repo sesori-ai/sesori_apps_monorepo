@@ -13,7 +13,7 @@ import "../helpers/test_helpers.dart";
 void main() {
   const connectedStatus = ConnectionStatus.connected(
     config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token"),
-    health: HealthResponse(healthy: true, version: "0.1.200"),
+    health: HealthResponse(healthy: true, version: "0.1.200", serverManaged: false, serverState: null),
   );
 
   setUpAll(registerAllFallbackValues);
@@ -48,7 +48,7 @@ void main() {
       connectionStatus.add(connectedStatus);
       _stubRepositorySnapshot(repository: repository, projectRepository: projectRepository);
 
-      final result = await service.load(sessionId: "session-1", projectId: "project-1");
+      final result = await service.load(sessionId: "session-1");
 
       expect(result, isA<SessionDetailLoadResultLoaded>());
       final loaded = result as SessionDetailLoadResultLoaded;
@@ -72,13 +72,13 @@ void main() {
     });
 
     test("initial load waits for connection readiness and then loads", () async {
-      final waiting = await service.load(sessionId: "session-1", projectId: "project-1");
+      final waiting = await service.load(sessionId: "session-1");
       expect(waiting, isA<SessionDetailLoadResultWaitingForConnection>());
 
       connectionStatus.add(connectedStatus);
       _stubRepositorySnapshot(repository: repository, projectRepository: projectRepository);
 
-      final loaded = await service.load(sessionId: "session-1", projectId: "project-1");
+      final loaded = await service.load(sessionId: "session-1");
       expect(loaded, isA<SessionDetailLoadResultLoaded>());
     });
 
@@ -91,9 +91,6 @@ void main() {
         () => repository.getPendingQuestions(sessionId: "session-1"),
       ).thenAnswer((_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])));
       when(
-        () => repository.getPendingPermissions(),
-      ).thenAnswer((_) async => ApiResponse.success(const PendingPermissionResponse(data: <PendingPermission>[])));
-      when(
         () => repository.getChildren(sessionId: "session-1"),
       ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: <Session>[])));
       when(() => repository.getSessionStatuses()).thenAnswer(
@@ -102,7 +99,7 @@ void main() {
       when(
         () => repository.listAgents(),
       ).thenAnswer((_) async => ApiResponse.success(const Agents(agents: <AgentInfo>[])));
-      when(() => repository.listProviders(projectId: any(named: "projectId"))).thenAnswer(
+      when(() => repository.listProviders()).thenAnswer(
         (_) async => ApiResponse.success(const ProviderListResponse(connectedOnly: false, items: <ProviderInfo>[])),
       );
       when(() => projectRepository.findSessionContext(sessionId: "session-1")).thenAnswer(
@@ -112,7 +109,7 @@ void main() {
         (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
       );
 
-      final result = await service.load(sessionId: "session-1", projectId: "project-1");
+      final result = await service.load(sessionId: "session-1");
 
       expect(result, isA<SessionDetailLoadResultFailed>());
       verify(() => repository.getMessages(sessionId: "session-1")).called(1);
@@ -126,7 +123,7 @@ void main() {
         canonicalSessionTitle: null,
       );
 
-      final result = await service.load(sessionId: "session-1", projectId: "project-1");
+      final result = await service.load(sessionId: "session-1");
 
       expect(result, isA<SessionDetailLoadResultLoaded>());
       final loaded = result as SessionDetailLoadResultLoaded;
@@ -138,7 +135,7 @@ void main() {
       _stubRepositorySnapshot(repository: repository, projectRepository: projectRepository);
       when(() => projectRepository.findSessionContext(sessionId: "session-1")).thenThrow(Exception("lookup failed"));
 
-      final result = await service.load(sessionId: "session-1", projectId: "project-1");
+      final result = await service.load(sessionId: "session-1");
 
       expect(result, isA<SessionDetailLoadResultLoaded>());
       final loaded = result as SessionDetailLoadResultLoaded;
@@ -160,9 +157,6 @@ void _stubRepositorySnapshot({
     () => repository.getPendingQuestions(sessionId: "session-1"),
   ).thenAnswer((_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])));
   when(
-    () => repository.getPendingPermissions(),
-  ).thenAnswer((_) async => ApiResponse.success(const PendingPermissionResponse(data: <PendingPermission>[])));
-  when(
     () => repository.getChildren(sessionId: "session-1"),
   ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: <Session>[])));
   when(() => repository.getSessionStatuses()).thenAnswer(
@@ -172,12 +166,12 @@ void _stubRepositorySnapshot({
     (_) async => ApiResponse.success(
       const Agents(
         agents: [
-          AgentInfo(name: "build", description: "build", model: null, mode: AgentMode.primary),
+          AgentInfo(name: "build", description: "build", model: null, variant: null, mode: AgentMode.primary),
         ],
       ),
     ),
   );
-  when(() => repository.listProviders(projectId: any(named: "projectId"))).thenAnswer(
+  when(() => repository.listProviders()).thenAnswer(
     (_) async => ApiResponse.success(
       const ProviderListResponse(
         connectedOnly: false,
@@ -191,7 +185,6 @@ void _stubRepositorySnapshot({
                 id: "gpt-4.1",
                 providerID: "openai",
                 name: "GPT-4.1",
-                variants: [],
                 family: null,
                 releaseDate: null,
               ),
@@ -227,7 +220,7 @@ void _stubRepositorySnapshot({
 
 MessageWithParts _messageWithParts() {
   return const MessageWithParts(
-    info: Message.assistant(id: "msg-1", sessionID: "session-1", agent: null, modelID: null, providerID: null),
+    info: Message(id: "msg-1", role: "assistant", sessionID: "session-1", agent: null, modelID: null, providerID: null),
     parts: <MessagePart>[],
   );
 }

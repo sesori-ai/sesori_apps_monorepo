@@ -28,6 +28,7 @@ import "package:sesori_bridge/src/push/push_notification_client.dart";
 import "package:sesori_bridge/src/push/push_notification_content_builder.dart";
 import "package:sesori_bridge/src/push/push_rate_limiter.dart";
 import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
+import "package:sesori_bridge/src/server/server_health_config.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
 import "package:test/test.dart";
@@ -56,9 +57,11 @@ void main() {
           relayURL: "ws://127.0.0.1:9999",
           serverURL: "http://127.0.0.1:4096",
           serverPassword: null,
-          authBackendURL: "http://127.0.0.1:8080",
-          sseReplayWindow: Duration(minutes: 1),
-        ),
+        authBackendURL: "http://127.0.0.1:8080",
+        sseReplayWindow: Duration(minutes: 1),
+        version: "test",
+        serverManaged: true,
+      ),
         client: _ThrowingConnectRelayClient(),
         plugin: plugin,
         metadataService: FakeMetadataService(),
@@ -84,30 +87,36 @@ void main() {
           db: database,
         ),
         worktreeService: WorktreeService(
-        worktreeRepository: WorktreeRepository(
-          projectsDao: database.projectsDao,
-          sessionDao: database.sessionDao,
-          gitApi: GitCliApi(
-            processRunner: FakeProcessRunner((
-              String executable,
-              List<String> arguments, {
-              String? workingDirectory,
-              Duration timeout = const Duration(seconds: 15),
-            }) async {
-              return ProcessResult(0, 127, "", "command not found");
-            }),
-            gitPathExists: ({required String gitPath}) => true,
+          worktreeRepository: WorktreeRepository(
+            projectsDao: database.projectsDao,
+            sessionDao: database.sessionDao,
+            gitApi: GitCliApi(
+              processRunner: FakeProcessRunner((
+                String executable,
+                List<String> arguments, {
+                String? workingDirectory,
+                Duration timeout = const Duration(seconds: 15),
+              }) async {
+                return ProcessResult(0, 127, "", "command not found");
+              }),
+              gitPathExists: ({required String gitPath}) => true,
+            ),
           ),
-          plugin: plugin,
-        ),
         ),
         sessionEventEnrichmentService: SessionEventEnrichmentService(
           sessionRepository: sessionRepository,
           failureReporter: FakeFailureReporter(),
         ),
+        serverHealthConfig: const ServerHealthConfig(
+          serverURL: "http://127.0.0.1:4096",
+          password: "test",
+          binaryPath: "opencode",
+          isManaged: true,
+        ),
+        initialServerProcess: null,
       );
 
-      final session = orchestrator.create();
+      final session = await orchestrator.create();
 
       await expectLater(session.run(), throwsA(isA<Exception>()));
 
@@ -230,7 +239,6 @@ class _TestHarness {
           }),
           gitPathExists: ({required String gitPath}) => true,
         ),
-        plugin: plugin,
       ),
     );
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
@@ -245,6 +253,8 @@ class _TestHarness {
         serverPassword: null,
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
+        version: "test",
+        serverManaged: true,
       ),
       client: relayClient,
       plugin: plugin,
@@ -261,9 +271,16 @@ class _TestHarness {
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
+      serverHealthConfig: const ServerHealthConfig(
+        serverURL: "http://127.0.0.1:4096",
+        password: "test",
+        binaryPath: "opencode",
+        isManaged: true,
+      ),
+      initialServerProcess: null,
     );
 
-    final session = orchestrator.create();
+    final session = await orchestrator.create();
     final runFuture = session.run();
 
     await relayServer.nextClient();
@@ -346,7 +363,7 @@ _TestPushSubsystem _createPushSubsystem() {
   );
 }
 
-class _ThrowingSummaryPlugin implements BridgePluginApi {
+class _ThrowingSummaryPlugin implements BridgePlugin {
   final _controller = StreamController<BridgeSseEvent>.broadcast();
 
   int subscribeCount = 0;
@@ -386,7 +403,6 @@ class _ThrowingSummaryPlugin implements BridgePluginApi {
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
-    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async => const PluginSession(
@@ -426,12 +442,6 @@ class _ThrowingSummaryPlugin implements BridgePluginApi {
   Future<void> archiveSession({required String sessionId}) async {}
 
   @override
-  Future<void> deleteWorkspace({
-    required String projectId,
-    required String worktreePath,
-  }) async {}
-
-  @override
   Future<List<PluginSession>> getChildSessions(String sessionId) async => [];
 
   @override
@@ -446,7 +456,6 @@ class _ThrowingSummaryPlugin implements BridgePluginApi {
   Future<void> sendPrompt({
     required String sessionId,
     required List<PluginPromptPart> parts,
-    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {}
@@ -503,14 +512,13 @@ class _ThrowingSummaryPlugin implements BridgePluginApi {
     required String sessionId,
     required String command,
     required String arguments,
-    required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {}
 
   @override
   Future<PluginProvidersResult> getProviders({
-    required String projectId,
+    required bool connectedOnly,
   }) async => const PluginProvidersResult(providers: []);
 
   @override

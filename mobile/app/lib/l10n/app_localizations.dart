@@ -553,18 +553,6 @@ abstract class AppLocalizations {
   /// **'Model'**
   String get sessionDetailPickerModel;
 
-  /// No description provided for @sessionDetailPickerVariant.
-  ///
-  /// In en, this message translates to:
-  /// **'Variant'**
-  String get sessionDetailPickerVariant;
-
-  /// No description provided for @sessionDetailVariantDefault.
-  ///
-  /// In en, this message translates to:
-  /// **'Default'**
-  String get sessionDetailVariantDefault;
-
   /// No description provided for @sessionDetailSelectModel.
   ///
   /// In en, this message translates to:

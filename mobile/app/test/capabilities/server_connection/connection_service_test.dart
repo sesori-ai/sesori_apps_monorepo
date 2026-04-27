@@ -112,11 +112,11 @@ void main() {
     // 6. Lifecycle stream integration
     // ------------------------------------------------------------------
 
-    test("LifecycleState.paused triggers backgrounding (idempotent)", () async {
-      lifecycleSource.emitState(LifecycleState.paused);
+    test("LifecycleState.hidden triggers backgrounding (idempotent)", () async {
+      lifecycleSource.emitState(LifecycleState.hidden);
       await Future<void>.delayed(Duration.zero);
       // Second emission is a no-op — should not throw.
-      lifecycleSource.emitState(LifecycleState.paused);
+      lifecycleSource.emitState(LifecycleState.hidden);
       await Future<void>.delayed(Duration.zero);
     });
 
@@ -126,15 +126,15 @@ void main() {
       await Future<void>.delayed(Duration.zero);
     });
 
-    test("paused then resumed: round-trip completes without error", () async {
-      lifecycleSource.emitState(LifecycleState.paused);
+    test("hidden then resumed: round-trip completes without error", () async {
+      lifecycleSource.emitState(LifecycleState.hidden);
       await Future<void>.delayed(Duration.zero);
       lifecycleSource.emitState(LifecycleState.resumed);
       await Future<void>.delayed(Duration.zero);
     });
 
     test("resumed is idempotent after round-trip", () async {
-      lifecycleSource.emitState(LifecycleState.paused);
+      lifecycleSource.emitState(LifecycleState.hidden);
       await Future<void>.delayed(Duration.zero);
       lifecycleSource.emitState(LifecycleState.resumed);
       await Future<void>.delayed(Duration.zero);
@@ -143,10 +143,10 @@ void main() {
       await Future<void>.delayed(Duration.zero);
     });
 
-    test("inactive and hidden states do not throw", () async {
+    test("inactive and paused states do not throw", () async {
       lifecycleSource.emitState(LifecycleState.inactive);
       await Future<void>.delayed(Duration.zero);
-      lifecycleSource.emitState(LifecycleState.hidden);
+      lifecycleSource.emitState(LifecycleState.paused);
       await Future<void>.delayed(Duration.zero);
     });
 

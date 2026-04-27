@@ -7,7 +7,7 @@ import "../../core/di/injection.dart";
 import "widgets/session_detail_body.dart";
 
 class SessionDetailScreen extends StatelessWidget {
-  final String projectId;
+  final String? projectId;
   final String sessionId;
   final String? sessionTitle;
   final bool readOnly;

@@ -15,14 +15,17 @@ enum _ProviderModelStatus {
 /// [PluginProvidersResult], optionally filtering to connected providers only.
 PluginProvidersResult mapProviderResponse({
   required ProviderListResponse response,
+  required bool connectedOnly,
 }) {
-  final providers = response.providers.map((providerInfo) {
+  final connectedIds = response.connected.toSet();
+  final source = connectedOnly ? response.all.where((p) => connectedIds.contains(p.id)).toList() : response.all;
+
+  final providers = source.map((providerInfo) {
     final models = providerInfo.models.values
         .map(
           (m) => PluginModel(
             id: m.id,
             name: m.name,
-            variants: m.variants,
             family: m.family,
             isAvailable: _isModelAvailable(
               status: _parseProviderModelStatus(rawStatus: m.status, modelId: m.id),
@@ -34,13 +37,7 @@ PluginProvidersResult mapProviderResponse({
           ),
         )
         .toList();
-
-    return _mapProvider(
-      id: providerInfo.id,
-      name: providerInfo.name,
-      models: models,
-      defaultModels: response.defaults,
-    );
+    return _mapProvider(id: providerInfo.id, name: providerInfo.name, models: models, defaultModels: response.defaults);
   }).toList();
 
   return PluginProvidersResult(providers: providers);

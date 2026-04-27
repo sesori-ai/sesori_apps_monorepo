@@ -28,7 +28,7 @@ const _sessionId = "session-1";
 void main() {
   const connectedStatus = ConnectionStatus.connected(
     config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token"),
-    health: HealthResponse(healthy: true, version: "0.1.200"),
+    health: HealthResponse(healthy: true, version: "0.1.200", serverManaged: false, serverState: null),
   );
 
   setUpAll(() {
@@ -87,7 +87,6 @@ void main() {
       promptDispatcher: promptDispatcher,
       permissionRepository: mockPermissionRepository,
       sessionId: _sessionId,
-      projectId: "project-1",
       notificationCanceller: mockNotificationCanceller,
       failureReporter: MockFailureReporter(),
     );
@@ -133,16 +132,15 @@ void main() {
         reply: any(named: "reply"),
       ),
     ).thenAnswer((_) async => ApiResponse.success(null));
-    when(() => mockLoadService.load(sessionId: _sessionId, projectId: any(named: "projectId"))).thenAnswer(
+    when(() => mockLoadService.load(sessionId: _sessionId)).thenAnswer(
       (_) async => const SessionDetailLoadResult.waitingForConnection(),
     );
-    when(() => mockLoadService.reload(sessionId: _sessionId, projectId: any(named: "projectId"))).thenAnswer(
+    when(() => mockLoadService.reload(sessionId: _sessionId)).thenAnswer(
       (_) async => const SessionDetailLoadResult.loaded(
         snapshot: SessionDetailSnapshot(
           projectId: "project-1",
           messages: <MessageWithParts>[],
           pendingQuestions: <PendingQuestion>[],
-          pendingPermissions: <PendingPermission>[],
           childSessions: <Session>[],
           statuses: <String, SessionStatus>{},
           agents: <AgentInfo?>[],
@@ -160,7 +158,6 @@ void main() {
       promptDispatcher: mockSessionRepository,
       permissionRepository: mockPermissionRepository,
       sessionId: _sessionId,
-      projectId: "project-1",
       notificationCanceller: mockNotificationCanceller,
       failureReporter: MockFailureReporter(),
     );
@@ -168,8 +165,8 @@ void main() {
 
     await _awaitLoaded(cubit);
 
-    verify(() => mockLoadService.load(sessionId: _sessionId, projectId: "project-1")).called(1);
-    verify(() => mockLoadService.reload(sessionId: _sessionId, projectId: "project-1")).called(1);
+    verify(() => mockLoadService.load(sessionId: _sessionId)).called(1);
+    verify(() => mockLoadService.reload(sessionId: _sessionId)).called(1);
     expect(cubit.state, isA<SessionDetailLoaded>());
   });
 
@@ -210,7 +207,6 @@ void main() {
         projectId: "project-1",
         messages: <MessageWithParts>[],
         pendingQuestions: <PendingQuestion>[],
-        pendingPermissions: <PendingPermission>[],
         childSessions: <Session>[],
         statuses: <String, SessionStatus>{},
         agents: <AgentInfo?>[],
@@ -221,20 +217,10 @@ void main() {
       isBridgeConnected: true,
     );
 
-    when(
-      () => mockLoadService.load(
-        sessionId: _sessionId,
-        projectId: any(named: "projectId"),
-      ),
-    ).thenAnswer(
+    when(() => mockLoadService.load(sessionId: _sessionId, projectId: any(named: "projectId"))).thenAnswer(
       (_) async => loadedResult,
     );
-    when(
-      () => mockLoadService.reload(
-        sessionId: _sessionId,
-        projectId: any(named: "projectId"),
-      ),
-    ).thenAnswer(
+    when(() => mockLoadService.reload(sessionId: _sessionId, projectId: any(named: "projectId"))).thenAnswer(
       (_) async => loadedResult,
     );
 
@@ -244,24 +230,18 @@ void main() {
       promptDispatcher: mockSessionRepository,
       permissionRepository: mockPermissionRepository,
       sessionId: _sessionId,
-      projectId: "project-1",
       notificationCanceller: mockNotificationCanceller,
       failureReporter: MockFailureReporter(),
     );
     addTearDown(cubit.close);
 
     await _awaitLoaded(cubit);
-    verify(() => mockLoadService.load(sessionId: _sessionId, projectId: "project-1")).called(1);
+    verify(() => mockLoadService.load(sessionId: _sessionId, projectId: null)).called(1);
 
     globalEvents.add(SseEvent(data: const SesoriSseEvent.sessionsUpdated(projectID: "project-2")));
     await Future<void>.delayed(Duration.zero);
 
-    verifyNever(
-      () => mockLoadService.reload(
-        sessionId: _sessionId,
-        projectId: any(named: "projectId"),
-      ),
-    );
+    verifyNever(() => mockLoadService.reload(sessionId: _sessionId, projectId: any(named: "projectId")));
 
     globalEvents.add(SseEvent(data: const SesoriSseEvent.sessionsUpdated(projectID: "project-1")));
     await Future<void>.delayed(Duration.zero);
@@ -274,15 +254,12 @@ void _stubLoadApis(MockSessionService service) {
   when(
     () => service.getMessages(sessionId: _sessionId),
   ).thenAnswer((_) async => ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()])));
-    when(
-      () => service.getPendingQuestions(sessionId: _sessionId),
-    ).thenAnswer((_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])));
-    when(
-      () => service.getPendingPermissions(),
-    ).thenAnswer((_) async => ApiResponse.success(const PendingPermissionResponse(data: <PendingPermission>[])));
-    when(
-      () => service.getChildren(sessionId: _sessionId),
-    ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: <Session>[])));
+  when(
+    () => service.getPendingQuestions(sessionId: _sessionId),
+  ).thenAnswer((_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])));
+  when(
+    () => service.getChildren(sessionId: _sessionId),
+  ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: <Session>[])));
   when(() => service.getSessionStatuses()).thenAnswer(
     (_) async => ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),
   );
@@ -290,12 +267,12 @@ void _stubLoadApis(MockSessionService service) {
     (_) async => ApiResponse.success(
       const Agents(
         agents: [
-          AgentInfo(name: "build", description: "build", model: null, mode: AgentMode.primary),
+          AgentInfo(name: "build", description: "build", model: null, variant: null, mode: AgentMode.primary),
         ],
       ),
     ),
   );
-  when(() => service.listProviders(projectId: any(named: "projectId"))).thenAnswer(
+  when(() => service.listProviders()).thenAnswer(
     (_) async => ApiResponse.success(
       const ProviderListResponse(connectedOnly: false, items: <ProviderInfo>[]),
     ),
@@ -307,7 +284,7 @@ void _stubLoadApis(MockSessionService service) {
 
 MessageWithParts _messageWithParts() {
   return const MessageWithParts(
-    info: Message.assistant(id: "msg-1", sessionID: _sessionId, agent: null, modelID: null, providerID: null),
+    info: Message(id: "msg-1", role: "assistant", sessionID: _sessionId, agent: null, modelID: null, providerID: null),
     parts: <MessagePart>[],
   );
 }

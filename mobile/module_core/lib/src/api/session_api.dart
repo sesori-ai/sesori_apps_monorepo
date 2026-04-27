@@ -24,11 +24,10 @@ class SessionApi {
     );
   }
 
-  Future<ApiResponse<ProviderListResponse>> listProviders({required String projectId}) {
-    return _client.post(
+  Future<ApiResponse<ProviderListResponse>> listProviders() {
+    return _client.get(
       "/provider",
       fromJson: ProviderListResponse.fromJson,
-      body: ProjectIdRequest(projectId: projectId),
     );
   }
 
@@ -45,7 +44,6 @@ class SessionApi {
     required String text,
     required String? agent,
     required PromptModel? model,
-    required SessionVariant? variant,
     required String? command,
     required bool dedicatedWorktree,
   }) {
@@ -57,7 +55,6 @@ class SessionApi {
         parts: [PromptPart.text(text: text)],
         agent: agent,
         model: model,
-        variant: variant,
         command: command,
         dedicatedWorktree: dedicatedWorktree,
       ),
@@ -69,7 +66,6 @@ class SessionApi {
     required String text,
     required String? agent,
     required PromptModel? model,
-    required SessionVariant? variant,
     required String? command,
   }) {
     return _client.post(
@@ -80,7 +76,6 @@ class SessionApi {
         parts: [PromptPart.text(text: text)],
         agent: agent,
         model: model,
-        variant: variant,
         command: command,
       ),
     );
@@ -212,13 +207,6 @@ class SessionApi {
       "/session/questions",
       fromJson: PendingQuestionResponse.fromJson,
       body: SessionIdRequest(sessionId: sessionId),
-    );
-  }
-
-  Future<ApiResponse<PendingPermissionResponse>> getPendingPermissions() {
-    return _client.get(
-      "/permission",
-      fromJson: PendingPermissionResponse.fromJson,
     );
   }
 
