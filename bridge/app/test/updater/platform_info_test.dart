@@ -289,7 +289,7 @@ void main() {
     test('returns correct path format on Windows', () {
       final dir = const ManagedRuntimePathService().currentPaths(environment: Platform.environment).cacheDirectory;
       if (Platform.isWindows) {
-        expect(dir, endsWith(r'\sesori\cache'));
+        expect(dir, endsWith(r'\sesori'));
       }
     });
   });

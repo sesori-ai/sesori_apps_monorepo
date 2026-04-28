@@ -191,7 +191,7 @@ try {
     $alreadyInPath = $pathEntries | Where-Object { $_.TrimEnd('\') -ieq $BinDir.TrimEnd('\') }
 
     if (-not $alreadyInPath) {
-        $newPath = ($pathEntries + $BinDir) -join ';'
+        $newPath = ($BinDir + ';' + ($pathEntries -join ';'))
         [Environment]::SetEnvironmentVariable('PATH', $newPath, 'User')
         Write-Host "PATH: persisted $BinDir in the user PATH." -ForegroundColor Green
     } else {
@@ -200,7 +200,7 @@ try {
 
     # Also update the current session PATH so --version works immediately
     if ($env:PATH -notlike "*$BinDir*") {
-        $env:PATH = "$env:PATH;$BinDir"
+        $env:PATH = "$BinDir;$env:PATH"
     }
 
     Write-Host ""

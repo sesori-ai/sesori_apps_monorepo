@@ -17,7 +17,7 @@ class ManagedRuntimePathService {
       return ManagedRuntimePaths(
         installRoot: installRoot,
         binaryPath: p.join(installRoot, 'bin', 'sesori-bridge.exe'),
-        cacheDirectory: p.join(installRoot, 'cache'),
+        cacheDirectory: installRoot,
       );
     }
 

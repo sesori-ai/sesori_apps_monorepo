@@ -372,7 +372,15 @@ main() {
 
     local resolved_binary
     resolved_binary="$(command -v sesori-bridge 2>/dev/null || true)"
-    if [ -n "${resolved_binary}" ] && { [ "${resolved_binary}" = "${BINARY}" ] || [ "${resolved_binary}" = "${SYMLINK}" ]; }; then
+    local symlink_ok=false
+    if [ -L "${SYMLINK}" ]; then
+        local symlink_target
+        symlink_target="$(readlink "${SYMLINK}" 2>/dev/null || true)"
+        if [ "${symlink_target}" = "${BINARY}" ]; then
+            symlink_ok=true
+        fi
+    fi
+    if [ "${symlink_ok}" = "true" ] && [ -n "${resolved_binary}" ] && { [ "${resolved_binary}" = "${BINARY}" ] || [ "${resolved_binary}" = "${SYMLINK}" ]; }; then
         echo "sesori-bridge is available in this terminal."
         echo ""
         echo "Next steps"

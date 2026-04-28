@@ -55,6 +55,27 @@ function nextCommand(binaryPath, args) {
   };
 }
 
+function isManagedSymlinkReady(installRoot) {
+  if (process.platform === "win32") {
+    return true;
+  }
+  var home = process.env.HOME;
+  if (!home) {
+    return false;
+  }
+  var symlinkPath = path.join(home, ".local", "bin", "sesori-bridge");
+  try {
+    var stat = fs.lstatSync(symlinkPath);
+    if (!stat.isSymbolicLink()) {
+      return false;
+    }
+    var target = fs.readlinkSync(symlinkPath);
+    return target === runtimeInstall.managedBinaryPath(installRoot);
+  } catch (_) {
+    return false;
+  }
+}
+
 function printInstallSummary(options) {
   var commands = nextCommand(options.binaryPath, options.args);
   console.log("");
@@ -66,7 +87,7 @@ function printInstallSummary(options) {
   console.log("");
   console.log("Next steps");
   console.log("----------");
-  if (launcher.isLocalBinInPath()) {
+  if (launcher.isLocalBinInPath() && isManagedSymlinkReady(options.installRoot)) {
     console.log("Start the bridge:");
     console.log("   " + commands.pathCommand);
   } else {
