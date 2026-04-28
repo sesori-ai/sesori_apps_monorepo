@@ -1,12 +1,12 @@
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
-import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../l10n/app_localizations.dart";
 import "email_login_form.dart";
+import "login_provider_buttons.dart";
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -57,11 +57,9 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 32),
             child: Column(
-              mainAxisAlignment: .center,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const SizedBox(height: 48),
-
-                // Hero icon
                 Container(
                   width: 96,
                   height: 96,
@@ -76,8 +74,6 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                   ),
                 ),
                 const SizedBox(height: 24),
-
-                // Title
                 Text(
                   loc.appTitle,
                   style: theme.textTheme.headlineMedium?.copyWith(
@@ -85,107 +81,26 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                   ),
                 ),
                 const SizedBox(height: 8),
-
-                // Subtitle
                 Text(
                   loc.loginSubtitle,
                   style: theme.textTheme.bodyLarge?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
-                  textAlign: .center,
+                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 48),
-
-                // GitHub button
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: FilledButton.icon(
-                    onPressed: isLoading ? null : () => _loginWithProvider(OAuthProvider.github),
-                    icon: isLoading
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.code_rounded, size: 20),
-                    label: Text(loc.loginWithGithub),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF24292F),
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: const Color(0xFF24292F).withAlpha(153),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
+                LoginProviderButtons(
+                  isLoading: isLoading,
+                  showEmailForm: _showEmailForm,
+                  onProviderSelected: () => _loginWithProvider(OAuthProvider.github),
+                  onShowEmailForm: _showEmailLogin,
                 ),
-                const SizedBox(height: 16),
-
-                // Google button
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: OutlinedButton.icon(
-                    onPressed: isLoading ? null : () => _loginWithProvider(OAuthProvider.google),
-                    icon: isLoading
-                        ? SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: theme.colorScheme.primary,
-                            ),
-                          )
-                        : Text(
-                            "G",
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: isLoading
-                                  ? theme.colorScheme.onSurface.withAlpha(97)
-                                  : theme.colorScheme.onSurface,
-                            ),
-                          ),
-                    label: Text(loc.loginWithGoogle),
-                    style:                 OutlinedButton.styleFrom(
-                      foregroundColor: theme.colorScheme.onSurface,
-                      side: BorderSide(color: theme.colorScheme.outline),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Continue with Email button
-                if (!_showEmailForm)
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: TextButton(
-                      onPressed: isLoading ? null : _showEmailLogin,
-                      style: TextButton.styleFrom(
-                        foregroundColor: theme.colorScheme.primary,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(loc.continueWithEmail),
-                    ),
-                  ),
-
                 if (_showEmailForm) ...[
                   const SizedBox(height: 8),
                   EmailLoginForm(
                     key: ValueKey(_showEmailForm),
                   ),
                 ],
-
                 switch (state) {
                   LoginAuthenticating() => Padding(
                     padding: const EdgeInsetsDirectional.only(top: 16),
@@ -194,7 +109,7 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
-                      textAlign: .center,
+                      textAlign: TextAlign.center,
                     ),
                   ),
                   LoginAwaitingCallback() => Padding(
@@ -204,15 +119,13 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
-                      textAlign: .center,
+                      textAlign: TextAlign.center,
                     ),
                   ),
                   LoginIdle() => const SizedBox.shrink(),
                   LoginFailed() => const SizedBox.shrink(),
                   LoginSuccess() => const SizedBox.shrink(),
                 },
-
-                // Error state
                 switch (state) {
                   LoginFailed(:final error) => Padding(
                     padding: const EdgeInsetsDirectional.only(top: 24),
@@ -245,7 +158,6 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                   LoginAwaitingCallback() => const SizedBox.shrink(),
                   LoginSuccess() => const SizedBox.shrink(),
                 },
-
                 const SizedBox(height: 48),
               ],
             ),

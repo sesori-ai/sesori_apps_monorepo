@@ -159,7 +159,15 @@ Future<TokenData> _loginAndPersist({
   required String authBackendUrl,
   required AuthProvider provider,
 }) async {
-  final tokens = await performLogin(authBackendUrl, provider: provider);
+  final TokenData tokens;
+  if (provider == AuthProvider.email) {
+    final (emailTokens, _) = await promptForEmailCredentials(
+      authBackendUrl: authBackendUrl,
+    );
+    tokens = emailTokens;
+  } else {
+    tokens = await performLogin(authBackendUrl, provider: provider);
+  }
   final tokensToSave = TokenData(
     accessToken: tokens.accessToken,
     refreshToken: tokens.refreshToken,
