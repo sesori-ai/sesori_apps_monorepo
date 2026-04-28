@@ -9,6 +9,7 @@ import "package:http/http.dart" as http;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
+import "auth_provider.dart";
 import "token.dart";
 
 const int _loginTimeoutSeconds = 120;
@@ -62,12 +63,17 @@ Future<void> openBrowser(String url) async {
   }
 }
 
-Future<AuthUrlResponse> _requestGitHubAuth(
+Future<AuthUrlResponse> _requestAuth(
   String authBackendURL,
+  AuthProvider provider,
   String redirectUri,
   String codeChallenge,
 ) async {
-  final uri = _buildUri(authBackendURL, "auth/github").replace(
+  final endpoint = provider == AuthProvider.email
+      ? "auth/password/login"
+      : "auth/${provider.name}";
+
+  final uri = _buildUri(authBackendURL, endpoint).replace(
     queryParameters: {
       "redirect_uri": redirectUri,
       "code_challenge": codeChallenge,
@@ -79,7 +85,7 @@ Future<AuthUrlResponse> _requestGitHubAuth(
 
   if (response.statusCode != 200) {
     throw Exception(
-      "init github auth failed: status ${response.statusCode}: ${response.body.trim()}",
+      "init ${provider.name} auth failed: status ${response.statusCode}: ${response.body.trim()}",
     );
   }
 
@@ -94,12 +100,17 @@ Future<AuthUrlResponse> _requestGitHubAuth(
 
 Future<(TokenData, String)> _exchangeCallback(
   String authBackendURL,
+  AuthProvider provider,
   String code,
   String state,
   String codeVerifier,
   String redirectUri,
 ) async {
-  final uri = _buildUri(authBackendURL, "auth/github/callback");
+  final endpoint = provider == AuthProvider.email
+      ? "auth/password/callback"
+      : "auth/${provider.name}/callback";
+
+  final uri = _buildUri(authBackendURL, endpoint);
 
   final body = jsonEncode({
     "code": code,
@@ -139,7 +150,7 @@ Future<(TokenData, String)> _exchangeCallback(
 ///
 /// 1. Generates a PKCE verifier and challenge.
 /// 2. Starts a local HTTP server on `127.0.0.1:0` for the OAuth callback.
-/// 3. Requests the GitHub auth URL from the backend.
+/// 3. Requests the auth URL from the backend for the specified [provider].
 /// 4. Opens the browser to the auth URL.
 /// 5. Waits for the callback (120s timeout).
 /// 6. Verifies the state matches.
@@ -148,7 +159,12 @@ Future<(TokenData, String)> _exchangeCallback(
 ///
 /// If the callback server fails to start, prints the URL for manual copy and
 /// throws an exception.
-Future<TokenData> login(String authBackendURL) async {
+///
+/// [provider] defaults to [AuthProvider.github] for backward compatibility.
+Future<TokenData> performLogin(
+  String authBackendURL, {
+  AuthProvider provider = AuthProvider.github,
+}) async {
   final (codeVerifier, codeChallenge) = generatePKCE();
 
   HttpServer server;
@@ -158,8 +174,9 @@ Future<TokenData> login(String authBackendURL) async {
     Log.e("Failed to start local callback server: $e");
     const fallbackRedirectUri = "http://127.0.0.1/callback";
     try {
-      final initResp = await _requestGitHubAuth(
+      final initResp = await _requestAuth(
         authBackendURL,
+        provider,
         fallbackRedirectUri,
         codeChallenge,
       );
@@ -212,13 +229,14 @@ Future<TokenData> login(String authBackendURL) async {
   });
 
   try {
-    final initResp = await _requestGitHubAuth(
+    final initResp = await _requestAuth(
       authBackendURL,
+      provider,
       redirectUri,
       codeChallenge,
     );
 
-    Log.i("Opening browser for GitHub login...");
+    Log.i("Opening browser for ${provider.name} login...");
     try {
       await openBrowser(initResp.authUrl);
     } catch (e) {
@@ -239,6 +257,7 @@ Future<TokenData> login(String authBackendURL) async {
 
     final (tokens, username) = await _exchangeCallback(
       authBackendURL,
+      provider,
       callback.code,
       callback.state,
       codeVerifier,

@@ -54,7 +54,7 @@ Future<void> logAuthenticatedUser({
 }
 
 Future<TokenData> _loginAndPersist({required String authBackendUrl}) async {
-  final tokens = await login(authBackendUrl);
+  final tokens = await performLogin(authBackendUrl);
   await saveTokens(tokens);
   return tokens;
 }
