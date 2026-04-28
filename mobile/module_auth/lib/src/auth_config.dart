@@ -2,7 +2,8 @@ const authBaseUrl = "https://api.sesori.com";
 
 enum OAuthProvider {
   github("github", "GitHub"),
-  google("google", "Google")
+  google("google", "Google"),
+  email("email", "Email")
   ;
 
   const OAuthProvider(this.key, this.label);
@@ -16,6 +17,7 @@ enum OAuthProvider {
   static OAuthProvider? fromKey(String? key) => switch (key) {
     "github" => OAuthProvider.github,
     "google" => OAuthProvider.google,
+    "email" => OAuthProvider.email,
     _ => null,
   };
 }

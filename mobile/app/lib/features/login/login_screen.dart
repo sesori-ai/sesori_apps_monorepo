@@ -6,6 +6,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../l10n/app_localizations.dart";
+import "email_login_form.dart";
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -13,7 +14,11 @@ class LoginScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => LoginCubit(getIt<OAuthFlowProvider>(), getIt<UrlLauncher>()),
+      create: (_) => LoginCubit(
+        getIt<OAuthFlowProvider>(),
+        getIt<UrlLauncher>(),
+        getIt<AuthSession>(),
+      ),
       child: const _LoginScreenBody(),
     );
   }
@@ -27,8 +32,16 @@ class _LoginScreenBody extends StatefulWidget {
 }
 
 class _LoginScreenBodyState extends State<_LoginScreenBody> {
+  bool _showEmailForm = false;
+
   Future<void> _loginWithProvider(OAuthProvider provider) async {
     await context.read<LoginCubit>().loginWithProvider(provider);
+  }
+
+  void _showEmailLogin() {
+    setState(() {
+      _showEmailForm = true;
+    });
   }
 
   @override
@@ -138,7 +151,7 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                             ),
                           ),
                     label: Text(loc.loginWithGoogle),
-                    style: OutlinedButton.styleFrom(
+                    style:                 OutlinedButton.styleFrom(
                       foregroundColor: theme.colorScheme.onSurface,
                       side: BorderSide(color: theme.colorScheme.outline),
                       shape: RoundedRectangleBorder(
@@ -147,6 +160,31 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 16),
+
+                // Continue with Email button
+                if (!_showEmailForm)
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: TextButton(
+                      onPressed: isLoading ? null : _showEmailLogin,
+                      style: TextButton.styleFrom(
+                        foregroundColor: theme.colorScheme.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(loc.continueWithEmail),
+                    ),
+                  ),
+
+                if (_showEmailForm) ...[
+                  const SizedBox(height: 8),
+                  EmailLoginForm(
+                    key: ValueKey(_showEmailForm),
+                  ),
+                ],
 
                 switch (state) {
                   LoginAuthenticating() => Padding(

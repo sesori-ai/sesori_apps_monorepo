@@ -19,23 +19,25 @@ void main() {
   group("LoginCubit", () {
     late MockOAuthFlowProvider mockOAuthFlowProvider;
     late MockUrlLauncher mockUrlLauncher;
+    late MockAuthSession mockAuthSession;
 
     setUp(() {
       mockOAuthFlowProvider = MockOAuthFlowProvider();
       mockUrlLauncher = MockUrlLauncher();
+      mockAuthSession = MockAuthSession();
 
       // Default mock behaviors
       when(() => mockUrlLauncher.launch(any())).thenAnswer((_) async => true);
     });
 
     test("initial state is LoginState.idle()", () {
-      final cubit = LoginCubit(mockOAuthFlowProvider, mockUrlLauncher);
+      final cubit = LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession);
       expect(cubit.state, isA<LoginIdle>());
     });
 
     blocTest<LoginCubit, LoginState>(
       "loginWithProvider emits authenticating then awaitingCallback on success",
-      build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher),
+      build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
       act: (cubit) async {
         when(
           () => mockOAuthFlowProvider.getAuthorizationUrl(any(), any()),
@@ -51,7 +53,7 @@ void main() {
 
     blocTest<LoginCubit, LoginState>(
       "loginWithProvider emits authenticating then failed when getAuthorizationUrl throws",
-      build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher),
+      build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
       act: (cubit) async {
         when(
           () => mockOAuthFlowProvider.getAuthorizationUrl(any(), any()),
@@ -67,7 +69,7 @@ void main() {
 
     blocTest<LoginCubit, LoginState>(
       "calls getAuthorizationUrl with correct provider and redirectUri",
-      build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher),
+      build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
       act: (cubit) async {
         when(
           () => mockOAuthFlowProvider.getAuthorizationUrl(any(), any()),
@@ -84,7 +86,7 @@ void main() {
 
     blocTest<LoginCubit, LoginState>(
       "calls getAuthorizationUrl for Google provider",
-      build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher),
+      build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
       act: (cubit) async {
         when(
           () => mockOAuthFlowProvider.getAuthorizationUrl(any(), any()),
@@ -101,7 +103,7 @@ void main() {
 
     blocTest<LoginCubit, LoginState>(
       "loginWithProvider emits failed when browser launch fails",
-      build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher),
+      build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
       act: (cubit) async {
         when(
           () => mockOAuthFlowProvider.getAuthorizationUrl(any(), any()),

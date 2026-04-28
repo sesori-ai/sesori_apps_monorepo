@@ -186,6 +186,31 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
   }
 
   @override
+  Future<AuthUser> loginWithEmail(String email, String password) async {
+    final uri = Uri.parse("$authBaseUrl/auth/password/login");
+    final response = await _post(
+      uri,
+      body: {"email": email, "password": password},
+    );
+
+    if (response.statusCode == 401) {
+      throw Exception("Invalid email or password");
+    }
+    _ensureSuccess(response, context: "Email/password login failed");
+
+    final decodedBody = jsonDecodeMap(response.body);
+    final authResponse = AuthResponse.fromJson(decodedBody);
+
+    await _tokenStorage.saveTokens(
+      accessToken: authResponse.accessToken,
+      refreshToken: authResponse.refreshToken,
+    );
+
+    _authState.add(AuthState.authenticated(user: authResponse.user));
+    return authResponse.user;
+  }
+
+  @override
   Future<void> invalidateAllSessions() async {
     final accessToken = await getFreshAccessToken();
     if (accessToken != null) {

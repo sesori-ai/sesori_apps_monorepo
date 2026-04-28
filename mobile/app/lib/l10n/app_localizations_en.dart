@@ -371,6 +371,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginWithGoogle => 'Sign in with Google';
 
   @override
+  String get continueWithEmail => 'Continue with Email';
+
+  @override
+  String get emailLabel => 'Email';
+
+  @override
+  String get emailHint => 'you@example.com';
+
+  @override
+  String get emailRequired => 'Email is required';
+
+  @override
+  String get emailInvalid => 'Please enter a valid email';
+
+  @override
+  String get passwordLabel => 'Password';
+
+  @override
+  String get passwordRequired => 'Password is required';
+
+  @override
+  String get signIn => 'Sign In';
+
+  @override
+  String get backToLogin => 'Back to login';
+
+  @override
   String get loginError => 'Sign in failed. Please try again.';
 
   @override

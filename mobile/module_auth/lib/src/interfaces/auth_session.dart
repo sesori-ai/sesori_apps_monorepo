@@ -33,6 +33,10 @@ abstract interface class AuthSession {
   /// Otherwise the state remains unchanged and returns `false`.
   Future<bool> restoreSession();
 
+  /// Authenticates using email and password.
+  /// Throws [Exception] on authentication failure (including 401).
+  Future<AuthUser> loginWithEmail(String email, String password);
+
   /// Clears local tokens and emits unauthenticated.
   /// Does NOT call the auth server — other devices remain authenticated.
   /// Use for simple sign-out on this device.

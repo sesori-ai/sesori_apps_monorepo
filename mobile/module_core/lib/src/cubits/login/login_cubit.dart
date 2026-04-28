@@ -9,13 +9,16 @@ import "login_state.dart";
 class LoginCubit extends Cubit<LoginState> {
   final OAuthFlowProvider _oAuthFlowProvider;
   final UrlLauncher _urlLauncher;
+  final AuthSession _authSession;
 
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
   LoginCubit(
     OAuthFlowProvider oAuthFlowProvider,
     UrlLauncher urlLauncher,
+    AuthSession authSession,
   ) : _oAuthFlowProvider = oAuthFlowProvider,
       _urlLauncher = urlLauncher,
+      _authSession = authSession,
       super(const LoginState.idle());
 
   Future<bool> loginWithProvider(OAuthProvider provider) async {
@@ -41,6 +44,21 @@ class LoginCubit extends Cubit<LoginState> {
       return false; // Don't navigate — GoRouter handles it on callback
     } catch (e, st) {
       loge("${provider.label} login failed", e, st);
+      if (isClosed) return false;
+      emit(LoginState.failed(error: e.toString()));
+      return false;
+    }
+  }
+
+  Future<bool> loginWithEmail(String email, String password) async {
+    emit(const LoginState.authenticating());
+
+    try {
+      await _authSession.loginWithEmail(email, password);
+      if (isClosed) return false;
+      return true;
+    } catch (e, st) {
+      loge("Email login failed", e, st);
       if (isClosed) return false;
       emit(LoginState.failed(error: e.toString()));
       return false;

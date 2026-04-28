@@ -250,6 +250,11 @@ class FakeAuthSession implements AuthSession {
 
   @override
   Future<bool> restoreSession() async => false;
+
+  @override
+  Future<AuthUser> loginWithEmail(String email, String password) async {
+    throw UnimplementedError();
+  }
 }
 
 class FakePushMessagingSource implements PushMessagingSource {
