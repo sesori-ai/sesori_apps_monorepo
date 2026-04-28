@@ -164,9 +164,17 @@ function createManagedSymlink(installRoot) {
 
   try {
     fs.mkdirSync(symlinkDir, { recursive: true });
+    var existingStat = null;
     try {
-      fs.unlinkSync(symlinkPath);
+      existingStat = fs.lstatSync(symlinkPath);
     } catch (_) {
+    }
+    if (existingStat) {
+      if (!existingStat.isSymbolicLink()) {
+        console.warn("sesori-bridge: " + symlinkPath + " already exists and is not a symlink. Skipping symlink creation.");
+        return;
+      }
+      fs.unlinkSync(symlinkPath);
     }
     fs.symlinkSync(binaryPath, symlinkPath);
   } catch (error) {

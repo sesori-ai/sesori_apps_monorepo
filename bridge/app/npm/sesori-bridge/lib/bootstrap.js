@@ -122,9 +122,11 @@ async function bootstrapManagedRuntime(pkgName) {
               "Refusing to repair it with an older npm payload. Reinstall the managed runtime explicitly, or delete the managed install directory and bootstrap again with npx."
             );
           }
+          runtimeInstall.createManagedSymlink(installRoot);
           return { binaryPath: runtimeInstall.managedBinaryPath(installRoot), installRoot: installRoot };
         }
         if (comparison === 0 && runtimeReady) {
+          runtimeInstall.createManagedSymlink(installRoot);
           return { binaryPath: runtimeInstall.managedBinaryPath(installRoot), installRoot: installRoot };
         }
       }
@@ -142,7 +144,6 @@ async function bootstrapManagedRuntime(pkgName) {
             }
           },
         });
-        runtimeInstall.createManagedSymlink(installRoot);
       } catch (error) {
         throw new Error(
           "sesori-bridge: Failed to install the managed runtime.\n" +
@@ -150,6 +151,7 @@ async function bootstrapManagedRuntime(pkgName) {
           "Refusing to run runtime binaries from npm-owned paths. Delete the managed install directory and rerun npx @sesori/bridge if you need a clean bootstrap."
         );
       }
+      runtimeInstall.createManagedSymlink(installRoot);
       return { binaryPath: runtimeInstall.managedBinaryPath(installRoot), installRoot: installRoot };
     });
   } finally {

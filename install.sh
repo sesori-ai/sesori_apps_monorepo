@@ -290,11 +290,10 @@ create_symlink() {
     mkdir -p "$(dirname "${link}")"
 
     if [ -L "${link}" ]; then
-        # Remove existing symlink
         rm "${link}"
     elif [ -e "${link}" ]; then
         echo "Warning: ${link} already exists and is not a symlink. Skipping symlink creation." >&2
-        return 1
+        return 0
     fi
 
     ln -s "${target}" "${link}"
