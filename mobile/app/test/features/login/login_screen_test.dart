@@ -4,13 +4,14 @@ import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 class MockOAuthFlowProvider extends Mock implements OAuthFlowProvider {}
 
 class MockUrlLauncher extends Mock implements UrlLauncher {}
 
 class MockAuthSession extends Mock implements AuthSession {
-  final BehaviorSubject<AuthState> _authState = BehaviorSubject.seeded(AuthState.unauthenticated());
+  final BehaviorSubject<AuthState> _authState = BehaviorSubject.seeded(const AuthState.unauthenticated());
 
   @override
   ValueStream<AuthState> get authStateStream => _authState.stream;
@@ -18,7 +19,9 @@ class MockAuthSession extends Mock implements AuthSession {
   @override
   AuthState get currentState => _authState.value;
 
-  void emitState(AuthState state) => _authState.add(state);
+  @override
+  Future<AuthUser> loginWithEmail(String email, String password) async =>
+      throw UnimplementedError();
 }
 
 void main() {

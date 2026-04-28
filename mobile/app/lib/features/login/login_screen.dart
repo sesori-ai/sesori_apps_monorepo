@@ -209,6 +209,7 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                   ),
                   LoginIdle() => const SizedBox.shrink(),
                   LoginFailed() => const SizedBox.shrink(),
+                  LoginSuccess() => const SizedBox.shrink(),
                 },
 
                 // Error state
@@ -242,6 +243,7 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                   LoginIdle() => const SizedBox.shrink(),
                   LoginAuthenticating() => const SizedBox.shrink(),
                   LoginAwaitingCallback() => const SizedBox.shrink(),
+                  LoginSuccess() => const SizedBox.shrink(),
                 },
 
                 const SizedBox(height: 48),
