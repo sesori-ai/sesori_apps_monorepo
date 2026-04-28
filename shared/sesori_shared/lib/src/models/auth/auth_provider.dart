@@ -21,10 +21,8 @@ enum AuthProvider {
   final String label;
 
   /// Creates the correct variant by its [key], or `null` if unknown.
-  static AuthProvider? fromKey(String? key) => switch (key) {
-    "github" => AuthProvider.github,
-    "google" => AuthProvider.google,
-    "email" => AuthProvider.email,
-    _ => null,
-  };
+  static AuthProvider? fromKey(String? key) =>
+      key == null
+          ? null
+          : AuthProvider.values.where((e) => e.key == key).firstOrNull;
 }

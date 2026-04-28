@@ -36,7 +36,7 @@ class TerminalPasswordReader {
 
   void _readChars(StringBuffer buffer) {
     int char;
-    while ((char = _stdin.readByteSync()) != 10 && char != 13) {
+    while ((char = _stdin.readByteSync()) != 10 && char != 13 && char != -1) {
       if (buffer.isNotEmpty && (char == 127 || char == 8)) {
         stdout.write('\b \b');
         final current = buffer.toString();
