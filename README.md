@@ -150,7 +150,7 @@ On macOS/Linux, a symlink is created at `~/.local/bin/sesori-bridge`. If `~/.loc
 
 To fully remove the packaged bridge runtime, delete the managed install directory:
 
-- macOS / Linux: `~/.local/share/sesori/`
+- macOS / Linux: `~/.local/share/sesori/` and `~/.local/bin/sesori-bridge`
 - Windows: `%LOCALAPPDATA%\sesori\`
 
 If you used the npm bootstrap path, `npm uninstall @sesori/bridge` only removes the npm package. It does not remove the managed Sesori install.

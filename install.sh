@@ -371,8 +371,9 @@ main() {
     echo "Symlink        : ${SYMLINK}"
     echo ""
 
-    # Check if sesori-bridge is available in the current session
-    if command -v sesori-bridge > /dev/null 2>&1; then
+    local resolved_binary
+    resolved_binary="$(command -v sesori-bridge 2>/dev/null || true)"
+    if [ -n "${resolved_binary}" ] && { [ "${resolved_binary}" = "${BINARY}" ] || [ "${resolved_binary}" = "${SYMLINK}" ]; }; then
         echo "sesori-bridge is available in this terminal."
         echo ""
         echo "Next steps"

@@ -216,7 +216,7 @@ try {
         # Ignore
     }
 
-    if ($sesoriAvailable) {
+    if ($sesoriAvailable -and ($sesoriAvailable.Source -ieq $BinaryPath)) {
         Write-Host "sesori-bridge is available in this terminal." -ForegroundColor Green
         Write-Host ""
         Write-Host "Next steps" -ForegroundColor Cyan
