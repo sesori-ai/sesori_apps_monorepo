@@ -51,11 +51,22 @@ class LoginCubit extends Cubit<LoginState> {
   }
 
   Future<bool> loginWithEmail(String email, String password) async {
+    if (email.trim().isEmpty) {
+      emit(const LoginState.failed(error: "emailRequired"));
+      return false;
+    }
+
+    if (password.isEmpty) {
+      emit(const LoginState.failed(error: "passwordRequired"));
+      return false;
+    }
+
     emit(const LoginState.authenticating());
 
     try {
       await _authSession.loginWithEmail(email, password);
       if (isClosed) return false;
+      emit(const LoginState.success());
       return true;
     } catch (e, st) {
       loge("Email login failed", e, st);
