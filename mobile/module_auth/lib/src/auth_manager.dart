@@ -122,7 +122,12 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     _ensureSuccess(response, context: "${provider.label} code exchange failed");
 
     final decodedBody = jsonDecodeMap(response.body);
-    final authResponse = AuthResponse.fromJson(decodedBody);
+    late AuthResponse authResponse;
+    try {
+      authResponse = AuthResponse.fromJson(decodedBody);
+    } on Object catch (e) {
+      throw Exception("Failed to parse auth response: $e");
+    }
 
     await _tokenStorage.saveTokens(
       accessToken: authResponse.accessToken,
@@ -206,7 +211,12 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     _ensureSuccess(response, context: "Email/password login failed");
 
     final decodedBody = jsonDecodeMap(response.body);
-    final authResponse = AuthResponse.fromJson(decodedBody);
+    late AuthResponse authResponse;
+    try {
+      authResponse = AuthResponse.fromJson(decodedBody);
+    } on Object catch (e) {
+      throw Exception("Failed to parse auth response: $e");
+    }
 
     await _tokenStorage.saveTokens(
       accessToken: authResponse.accessToken,
