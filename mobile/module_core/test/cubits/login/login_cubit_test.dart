@@ -1,6 +1,6 @@
 import "package:bloc_test/bloc_test.dart";
 import "package:mocktail/mocktail.dart";
-import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_auth/sesori_auth.dart" show AuthSession, OAuthFlowProvider;
 import "package:sesori_dart_core/src/cubits/login/login_cubit.dart";
 import "package:sesori_dart_core/src/cubits/login/login_state.dart";
 import "package:sesori_dart_core/src/platform/url_launcher.dart";

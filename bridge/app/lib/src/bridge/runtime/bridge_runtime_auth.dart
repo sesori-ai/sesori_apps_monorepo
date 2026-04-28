@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 
-import '../../auth/auth_provider.dart';
+import 'package:sesori_shared/sesori_shared.dart';
 import '../../auth/login.dart';
 import '../../auth/profile.dart';
 import '../../auth/token.dart';
@@ -11,19 +11,21 @@ import 'bridge_cli_options.dart';
 import 'terminal_password_reader.dart';
 
 Future<AuthProvider> promptForProvider() async {
-  stdout.writeln('Select login method: [1] GitHub [2] Google [3] Email');
-  stdout.write('Enter choice (1-3): ');
-  final input = stdin.readLineSync()?.trim();
+  while (true) {
+    stdout.writeln('Select login method: [1] GitHub [2] Google [3] Email');
+    stdout.write('Enter choice (1-3): ');
+    final input = stdin.readLineSync()?.trim();
 
-  switch (input) {
-    case '1':
-      return AuthProvider.github;
-    case '2':
-      return AuthProvider.google;
-    case '3':
-      return AuthProvider.email;
-    default:
-      return AuthProvider.github;
+    switch (input) {
+      case '1':
+        return AuthProvider.github;
+      case '2':
+        return AuthProvider.google;
+      case '3':
+        return AuthProvider.email;
+      default:
+        stdout.writeln('Invalid choice. Please enter 1, 2, or 3.');
+    }
   }
 }
 
@@ -70,6 +72,7 @@ Future<TokenData> ensureAuthenticated({required BridgeCliOptions options}) async
       options.authBackendUrl,
       storedTokens.accessToken,
       storedTokens.refreshToken,
+      lastProvider: storedTokens.lastProvider,
     );
     if (ok) {
       final tokensToSave = TokenData(
@@ -92,9 +95,9 @@ Future<TokenData> ensureAuthenticated({required BridgeCliOptions options}) async
   AuthProvider provider;
   try {
     final storedTokens = await loadTokens();
-    provider = storedTokens.lastProvider ?? AuthProvider.github;
+    provider = storedTokens.lastProvider;
   } on FileSystemException {
-    provider = AuthProvider.github;
+    provider = await promptForProvider();
   }
 
   return _loginAndPersist(

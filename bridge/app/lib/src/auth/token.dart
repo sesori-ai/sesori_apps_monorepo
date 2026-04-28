@@ -3,20 +3,18 @@ import 'dart:io';
 
 import 'package:sesori_shared/sesori_shared.dart';
 
-import 'auth_provider.dart';
-
 /// TokenData holds authentication tokens for the Sesori Bridge.
 class TokenData {
   final String accessToken;
   final String refreshToken;
   final String? bridgeToken;
-  final AuthProvider? lastProvider;
+  final AuthProvider lastProvider;
 
   TokenData({
     required this.accessToken,
     required this.refreshToken,
     this.bridgeToken,
-    this.lastProvider,
+    required this.lastProvider,
   });
 
   /// Creates a TokenData instance from a JSON map.
@@ -27,9 +25,10 @@ class TokenData {
       bridgeToken: json['bridgeToken'] as String?,
       lastProvider: json['lastProvider'] != null
           ? AuthProvider.values
-              .where((p) => p.name == json['lastProvider'])
-              .firstOrNull
-          : null,
+                  .where((p) => p.name == json['lastProvider'])
+                  .firstOrNull ??
+              AuthProvider.github
+          : AuthProvider.github,
     );
   }
 
@@ -42,9 +41,7 @@ class TokenData {
     if (bridgeToken != null) {
       json['bridgeToken'] = bridgeToken;
     }
-    if (lastProvider != null) {
-      json['lastProvider'] = lastProvider!.name;
-    }
+    json['lastProvider'] = lastProvider.name;
     return json;
   }
 }

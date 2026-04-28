@@ -118,6 +118,7 @@ class TokenManager implements AccessTokenProvider, AccessTokenUpdater, TokenRefr
       accessToken: authResponse.accessToken,
       refreshToken: authResponse.refreshToken,
       bridgeToken: tokens.bridgeToken,
+      lastProvider: tokens.lastProvider,
     );
     await _saveTokens(persistedTokens);
 

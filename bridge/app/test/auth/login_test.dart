@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:sesori_bridge/src/auth/auth_provider.dart';
 import 'package:sesori_bridge/src/auth/login.dart';
 import 'package:sesori_shared/sesori_shared.dart';
 import 'package:test/test.dart';

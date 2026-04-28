@@ -57,14 +57,23 @@ class LoginProviderButtons extends StatelessWidget {
           height: 52,
           child: OutlinedButton.icon(
             onPressed: isLoading ? null : onGoogleSelected,
-            icon: Text(
-              "G",
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.onSurface,
-              ),
-            ),
+            icon: isLoading
+                ? SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: theme.colorScheme.primary,
+                    ),
+                  )
+                : Text(
+                    "G",
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
             label: Text(loc.loginWithGoogle),
             style: OutlinedButton.styleFrom(
               foregroundColor: theme.colorScheme.onSurface,

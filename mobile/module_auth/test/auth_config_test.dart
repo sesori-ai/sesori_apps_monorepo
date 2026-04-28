@@ -1,4 +1,4 @@
-import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {

@@ -15,8 +15,9 @@ import "token.dart";
 Future<(TokenData, bool)> validateToken(
   String authBackendURL,
   String accessToken,
-  String refreshToken,
-) async {
+  String refreshToken, {
+  required AuthProvider lastProvider,
+}) async {
   // Build /auth/me URL
   final base = authBackendURL.endsWith("/") ? authBackendURL.substring(0, authBackendURL.length - 1) : authBackendURL;
   final meUri = Uri.parse("$base/auth/me");
@@ -35,7 +36,11 @@ Future<(TokenData, bool)> validateToken(
   // If 200 OK, tokens are valid
   if (meResponse.statusCode == 200) {
     return (
-      TokenData(accessToken: accessToken, refreshToken: refreshToken),
+      TokenData(
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+        lastProvider: lastProvider,
+      ),
       true,
     );
   }
@@ -43,7 +48,11 @@ Future<(TokenData, bool)> validateToken(
   // If not 401, return false (invalid but no error)
   if (meResponse.statusCode != 401) {
     return (
-      TokenData(accessToken: accessToken, refreshToken: refreshToken),
+      TokenData(
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+        lastProvider: lastProvider,
+      ),
       false,
     );
   }
@@ -66,7 +75,11 @@ Future<(TokenData, bool)> validateToken(
   // If refresh failed, return original tokens with false
   if (refreshResponse.statusCode != 200) {
     return (
-      TokenData(accessToken: accessToken, refreshToken: refreshToken),
+      TokenData(
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+        lastProvider: lastProvider,
+      ),
       false,
     );
   }
@@ -89,6 +102,7 @@ Future<(TokenData, bool)> validateToken(
     TokenData(
       accessToken: refreshed.accessToken,
       refreshToken: refreshed.refreshToken,
+      lastProvider: lastProvider,
     ),
     true,
   );

@@ -8,8 +8,6 @@ import "package:crypto/crypto.dart";
 import "package:http/http.dart" as http;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
-
-import "auth_provider.dart";
 import "email_auth_api.dart";
 import "token.dart";
 
@@ -166,6 +164,7 @@ Future<(TokenData, String)> _exchangeCallback(
     TokenData(
       accessToken: authResponse.accessToken,
       refreshToken: authResponse.refreshToken,
+      lastProvider: provider,
     ),
     authResponse.user.providerUsername ?? "",
   );
@@ -340,6 +339,7 @@ Future<(TokenData, String)> performEmailLogin(
     TokenData(
       accessToken: authResponse.accessToken,
       refreshToken: authResponse.refreshToken,
+      lastProvider: AuthProvider.email,
     ),
     authResponse.user.providerUsername ?? "",
   );

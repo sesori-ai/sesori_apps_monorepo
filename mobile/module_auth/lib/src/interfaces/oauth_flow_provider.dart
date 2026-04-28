@@ -1,5 +1,4 @@
 import "package:sesori_shared/sesori_shared.dart";
-import "../auth_config.dart";
 
 /// Drives the OAuth authorization flow (PKCE + code exchange).
 ///

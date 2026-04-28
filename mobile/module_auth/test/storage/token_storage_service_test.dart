@@ -1,10 +1,10 @@
 import "dart:convert";
 
 import "package:mocktail/mocktail.dart";
-import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_auth/sesori_auth.dart" show SecureStorage;
 import "package:sesori_auth/src/storage/oauth_storage_service.dart";
 import "package:sesori_auth/src/storage/token_storage_service.dart";
-import "package:sesori_shared/sesori_shared.dart" show parseJwtExpiry;
+import "package:sesori_shared/sesori_shared.dart" show AuthProvider, parseJwtExpiry;
 import "package:test/test.dart";
 
 class MockSecureStorage extends Mock implements SecureStorage {}

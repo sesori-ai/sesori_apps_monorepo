@@ -2,7 +2,8 @@ import "dart:developer" as developer;
 
 import "package:injectable/injectable.dart";
 
-import "../auth_config.dart";
+import "package:sesori_shared/sesori_shared.dart";
+
 import "../platform/secure_storage.dart";
 
 @lazySingleton

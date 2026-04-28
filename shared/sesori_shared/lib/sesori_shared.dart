@@ -10,6 +10,7 @@ export "src/crypto/session_encryptor.dart";
 export "src/extensions/iterable_x.dart";
 export "src/extensions/sugar_dart.dart";
 export "src/models/auth/auth_me_response.dart";
+export "src/models/auth/auth_provider.dart";
 export "src/models/auth/auth_response.dart";
 export "src/models/auth/auth_url_response.dart";
 export "src/models/auth/auth_user.dart";

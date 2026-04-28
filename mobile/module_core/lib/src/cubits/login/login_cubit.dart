@@ -1,5 +1,6 @@
 import "package:bloc/bloc.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "../../logging/logging.dart";
 import "../../platform/url_launcher.dart";
@@ -22,6 +23,9 @@ class LoginCubit extends Cubit<LoginState> {
       super(const LoginState.idle());
 
   Future<bool> loginWithProvider(AuthProvider provider) async {
+    if (provider == AuthProvider.email) {
+      throw ArgumentError('AuthProvider.email is not supported by loginWithProvider. Use loginWithEmail instead.');
+    }
     emit(const LoginState.authenticating());
 
     try {

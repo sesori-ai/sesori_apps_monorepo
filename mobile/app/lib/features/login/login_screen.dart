@@ -56,6 +56,9 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
       body: BlocListener<LoginCubit, LoginState>(
         listenWhen: (previous, current) => current is LoginSuccess,
         listener: (context, state) {
+          // Relay connection is handled reactively: AuthManager emits
+          // AuthState.authenticated → ConnectionService connects. The
+          // connection overlay shows progress; navigation proceeds immediately.
           context.goRoute(const AppRoute.projects());
         },
         child: SafeArea(
