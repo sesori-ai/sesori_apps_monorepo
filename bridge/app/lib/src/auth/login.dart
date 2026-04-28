@@ -12,6 +12,30 @@ import "package:sesori_shared/sesori_shared.dart";
 import "auth_provider.dart";
 import "token.dart";
 
+abstract class EmailLoginException implements Exception {
+  String get message;
+}
+
+class EmailLoginExceptionImpl implements EmailLoginException {
+  @override
+  final String message;
+
+  EmailLoginExceptionImpl(this.message);
+
+  @override
+  String toString() => "EmailLoginException: $message";
+}
+
+class RateLimitException implements EmailLoginException {
+  @override
+  final String message;
+
+  RateLimitException([this.message = "Rate limit exceeded. Please try again later."]);
+
+  @override
+  String toString() => "RateLimitException: $message";
+}
+
 const int _loginTimeoutSeconds = 120;
 
 class _CallbackData {
@@ -274,4 +298,61 @@ Future<TokenData> performLogin(
   } finally {
     await server.close(force: true);
   }
+}
+
+Future<(TokenData, String)> performEmailLogin(
+  String authBackendURL,
+  String email,
+  String password,
+) async {
+  final uri = _buildUri(authBackendURL, "auth/password/login");
+
+  final body = jsonEncode({
+    "email": email,
+    "password": password,
+  });
+
+  late http.Response response;
+  try {
+    response = await http.post(
+      uri,
+      headers: {"Content-Type": "application/json"},
+      body: body,
+    );
+  } catch (e) {
+    throw EmailLoginExceptionImpl("network error: $e");
+  }
+
+  if (response.statusCode == 429) {
+    throw RateLimitException();
+  }
+
+  if (response.statusCode == 401) {
+    throw EmailLoginExceptionImpl("invalid email or password");
+  }
+
+  if (response.statusCode != 200) {
+    throw EmailLoginExceptionImpl(
+      "login failed: status ${response.statusCode}: ${response.body.trim()}",
+    );
+  }
+
+  late AuthResponse authResponse;
+  try {
+    authResponse = AuthResponse.fromJson(jsonDecodeMap(response.body));
+  } catch (e) {
+    throw EmailLoginExceptionImpl("parse response: $e");
+  }
+
+  if (authResponse.accessToken.isEmpty || authResponse.refreshToken.isEmpty) {
+    throw EmailLoginExceptionImpl("response missing tokens");
+  }
+
+  return (
+    TokenData(
+      accessToken: authResponse.accessToken,
+      refreshToken: authResponse.refreshToken,
+    ),
+    authResponse.user.providerUsername ?? "",
+  );
 }
