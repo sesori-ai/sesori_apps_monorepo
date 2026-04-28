@@ -9,7 +9,7 @@ abstract interface class OAuthFlowProvider {
   /// Generates a PKCE verifier, stores it along with [provider],
   /// and returns the authorization URL to open in a browser.
   // ignore: no_slop_linter/prefer_required_named_parameters, public interface
-  Future<String> getAuthorizationUrl(OAuthProvider provider, String redirectUri);
+  Future<String> getAuthorizationUrl(AuthProvider provider, String redirectUri);
 
   /// Completes the OAuth flow: reads the stored PKCE verifier and
   /// provider, exchanges [code] for tokens, persists them, and

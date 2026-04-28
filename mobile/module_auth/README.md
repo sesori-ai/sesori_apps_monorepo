@@ -13,7 +13,7 @@ Central auth coordinator. Implements `AuthTokenProvider`, `OAuthFlowProvider`, a
 - `authStateStream` — `Stream<AuthState>` broadcasting current auth state
 - `currentState` — synchronous snapshot of the current `AuthState`
 - `getFreshAccessToken({Duration minTtl, bool forceRefresh})` — returns a valid access token, refreshing proactively when TTL drops below 90 seconds and blocking when below `minTtl` (default 30s). Deduplicates concurrent refresh calls.
-- `getAuthorizationUrl(OAuthProvider provider, String redirectUri)` — generates PKCE verifier/challenge, persists them, and returns the provider's authorization URL
+- `getAuthorizationUrl(AuthProvider provider, String redirectUri)` — generates PKCE verifier/challenge, persists them, and returns the provider's authorization URL
 - `exchangeCode({String code, String state, String redirectUri})` — completes the PKCE flow, persists tokens, emits `AuthState.authenticated`
 - `getCurrentUser()` — fetches `/auth/me` with a fresh token
 - `invalidateAllSessions()` — calls `/auth/logout`, clears all stored tokens, emits `AuthState.unauthenticated`

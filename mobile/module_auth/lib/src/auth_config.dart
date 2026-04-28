@@ -1,12 +1,12 @@
 const authBaseUrl = "https://api.sesori.com";
 
-enum OAuthProvider {
+enum AuthProvider {
   github("github", "GitHub"),
   google("google", "Google"),
   email("email", "Email")
   ;
 
-  const OAuthProvider(this.key, this.label);
+  const AuthProvider(this.key, this.label);
 
   /// URL path segment used in auth backend endpoints (e.g. `/auth/github`).
   final String key;
@@ -14,10 +14,10 @@ enum OAuthProvider {
   /// Human-readable name for logging and error messages.
   final String label;
 
-  static OAuthProvider? fromKey(String? key) => switch (key) {
-    "github" => OAuthProvider.github,
-    "google" => OAuthProvider.google,
-    "email" => OAuthProvider.email,
+  static AuthProvider? fromKey(String? key) => switch (key) {
+    "github" => AuthProvider.github,
+    "google" => AuthProvider.google,
+    "email" => AuthProvider.email,
     _ => null,
   };
 }

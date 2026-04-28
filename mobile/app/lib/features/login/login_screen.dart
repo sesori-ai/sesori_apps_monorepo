@@ -35,7 +35,7 @@ class _LoginScreenBody extends StatefulWidget {
 class _LoginScreenBodyState extends State<_LoginScreenBody> {
   bool _showEmailForm = false;
 
-  Future<void> _loginWithProvider(OAuthProvider provider) async {
+  Future<void> _loginWithProvider(AuthProvider provider) async {
     await context.read<LoginCubit>().loginWithProvider(provider);
   }
 
@@ -98,8 +98,8 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                 LoginProviderButtons(
                   isLoading: isLoading,
                   showEmailForm: _showEmailForm,
-                  onGithubSelected: () => _loginWithProvider(OAuthProvider.github),
-                  onGoogleSelected: () => _loginWithProvider(OAuthProvider.google),
+                  onGithubSelected: () => _loginWithProvider(AuthProvider.github),
+                  onGoogleSelected: () => _loginWithProvider(AuthProvider.google),
                   onShowEmailForm: _showEmailLogin,
                 ),
                 if (_showEmailForm) ...[

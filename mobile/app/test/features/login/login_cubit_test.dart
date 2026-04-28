@@ -13,7 +13,7 @@ class MockUrlLauncher extends Mock implements UrlLauncher {}
 void main() {
   setUpAll(() {
     registerAllFallbackValues();
-    registerFallbackValue(OAuthProvider.github);
+    registerFallbackValue(AuthProvider.github);
   });
 
   group("LoginCubit", () {
@@ -43,7 +43,7 @@ void main() {
           () => mockOAuthFlowProvider.getAuthorizationUrl(any(), any()),
         ).thenAnswer((_) async => "https://github.com/login/oauth/authorize?client_id=abc");
 
-        await cubit.loginWithProvider(OAuthProvider.github);
+        await cubit.loginWithProvider(AuthProvider.github);
       },
       expect: () => [
         isA<LoginAuthenticating>(),
@@ -59,7 +59,7 @@ void main() {
           () => mockOAuthFlowProvider.getAuthorizationUrl(any(), any()),
         ).thenThrow(Exception("Auth URL fetch failed"));
 
-        await cubit.loginWithProvider(OAuthProvider.google);
+        await cubit.loginWithProvider(AuthProvider.google);
       },
       expect: () => [
         isA<LoginAuthenticating>(),
@@ -75,11 +75,11 @@ void main() {
           () => mockOAuthFlowProvider.getAuthorizationUrl(any(), any()),
         ).thenAnswer((_) async => "https://auth.example.com/login");
 
-        await cubit.loginWithProvider(OAuthProvider.github);
+        await cubit.loginWithProvider(AuthProvider.github);
       },
       verify: (cubit) {
         verify(
-          () => mockOAuthFlowProvider.getAuthorizationUrl(OAuthProvider.github, any()),
+          () => mockOAuthFlowProvider.getAuthorizationUrl(AuthProvider.github, any()),
         ).called(1);
       },
     );
@@ -92,11 +92,11 @@ void main() {
           () => mockOAuthFlowProvider.getAuthorizationUrl(any(), any()),
         ).thenAnswer((_) async => "https://auth.example.com/login");
 
-        await cubit.loginWithProvider(OAuthProvider.google);
+        await cubit.loginWithProvider(AuthProvider.google);
       },
       verify: (cubit) {
         verify(
-          () => mockOAuthFlowProvider.getAuthorizationUrl(OAuthProvider.google, any()),
+          () => mockOAuthFlowProvider.getAuthorizationUrl(AuthProvider.google, any()),
         ).called(1);
       },
     );
@@ -110,7 +110,7 @@ void main() {
         ).thenAnswer((_) async => "https://auth.example.com/login");
         when(() => mockUrlLauncher.launch(any())).thenAnswer((_) async => false);
 
-        await cubit.loginWithProvider(OAuthProvider.github);
+        await cubit.loginWithProvider(AuthProvider.github);
       },
       expect: () => [
         isA<LoginAuthenticating>(),

@@ -20,7 +20,7 @@ class MockOAuthStorageService extends Mock implements OAuthStorageService {}
 void main() {
   setUpAll(() {
     registerFallbackValue(Uri.parse("https://example.com"));
-    registerFallbackValue(OAuthProvider.github);
+    registerFallbackValue(AuthProvider.github);
   });
 
   late MockHttpClient mockHttpClient;
@@ -250,7 +250,7 @@ void main() {
   group("OAuth flow", () {
     test("getAuthorizationUrl generates PKCE, stores verifier, and fetches auth URL", () async {
       when(
-        () => mockOAuthStorage.saveOAuthProviderAndPkceVerifier(
+        () => mockOAuthStorage.saveAuthProviderAndPkceVerifier(
           codeVerifier: any(named: "codeVerifier"),
           provider: any(named: "provider"),
         ),
@@ -269,18 +269,18 @@ void main() {
         ),
       );
 
-      final result = await authManager.getAuthorizationUrl(OAuthProvider.github, "myapp://oauth/callback");
+      final result = await authManager.getAuthorizationUrl(AuthProvider.github, "myapp://oauth/callback");
 
       expect(result, authUrl);
 
       final capturedSaveCall = verify(
-        () => mockOAuthStorage.saveOAuthProviderAndPkceVerifier(
+        () => mockOAuthStorage.saveAuthProviderAndPkceVerifier(
           codeVerifier: captureAny(named: "codeVerifier"),
           provider: captureAny(named: "provider"),
         ),
       );
       expect(capturedSaveCall.captured[0] as String, isNotEmpty);
-      expect(capturedSaveCall.captured[1], OAuthProvider.github);
+      expect(capturedSaveCall.captured[1], AuthProvider.github);
 
       final capturedGetCall = verify(
         () => mockHttpClient.get(
@@ -297,7 +297,7 @@ void main() {
 
     test("exchangeCode stores tokens, clears oauth temp data, and emits authenticated", () async {
       when(() => mockOAuthStorage.getPkceVerifier()).thenAnswer((_) async => "pkce-verifier");
-      when(() => mockOAuthStorage.getOAuthProvider()).thenAnswer((_) async => OAuthProvider.github);
+      when(() => mockOAuthStorage.getAuthProvider()).thenAnswer((_) async => AuthProvider.github);
       when(
         () => mockHttpClient.post(
           Uri.parse("$authBaseUrl/auth/github/callback"),
@@ -326,7 +326,7 @@ void main() {
         ),
       ).thenAnswer((_) async {});
       when(mockOAuthStorage.clearPkceVerifier).thenAnswer((_) async {});
-      when(mockOAuthStorage.clearOAuthProvider).thenAnswer((_) async {});
+      when(mockOAuthStorage.clearAuthProvider).thenAnswer((_) async {});
 
       final states = <AuthState>[];
       final sub = authManager.authStateStream.listen(states.add);
@@ -350,7 +350,7 @@ void main() {
         ),
       ).called(1);
       verify(mockOAuthStorage.clearPkceVerifier).called(1);
-      verify(mockOAuthStorage.clearOAuthProvider).called(1);
+      verify(mockOAuthStorage.clearAuthProvider).called(1);
     });
   });
 
@@ -420,7 +420,7 @@ void main() {
       ).thenAnswer((_) async => http.Response("{}", 200));
       when(mockTokenStorage.clearTokens).thenAnswer((_) async {});
       when(mockOAuthStorage.clearPkceVerifier).thenAnswer((_) async {});
-      when(mockOAuthStorage.clearOAuthProvider).thenAnswer((_) async {});
+      when(mockOAuthStorage.clearAuthProvider).thenAnswer((_) async {});
 
       final states = <AuthState>[];
       final sub = authManager.authStateStream.listen(states.add);
@@ -432,7 +432,7 @@ void main() {
 
       verify(mockTokenStorage.clearTokens).called(1);
       verify(mockOAuthStorage.clearPkceVerifier).called(1);
-      verify(mockOAuthStorage.clearOAuthProvider).called(1);
+      verify(mockOAuthStorage.clearAuthProvider).called(1);
       verifyNoMoreInteractions(mockOAuthStorage);
       expect(authManager.currentState, const AuthState.unauthenticated());
       expect(states.last, const AuthState.unauthenticated());
@@ -454,13 +454,13 @@ void main() {
 
       verifyNever(mockTokenStorage.clearTokens);
       verifyNever(mockOAuthStorage.clearPkceVerifier);
-      verifyNever(mockOAuthStorage.clearOAuthProvider);
+      verifyNever(mockOAuthStorage.clearAuthProvider);
     });
 
     test("logoutCurrentDevice clears local auth data without calling API", () async {
       when(mockTokenStorage.clearTokens).thenAnswer((_) async {});
       when(mockOAuthStorage.clearPkceVerifier).thenAnswer((_) async {});
-      when(mockOAuthStorage.clearOAuthProvider).thenAnswer((_) async {});
+      when(mockOAuthStorage.clearAuthProvider).thenAnswer((_) async {});
 
       final states = <AuthState>[];
       final sub = authManager.authStateStream.listen(states.add);
@@ -472,7 +472,7 @@ void main() {
 
       verify(mockTokenStorage.clearTokens).called(1);
       verify(mockOAuthStorage.clearPkceVerifier).called(1);
-      verify(mockOAuthStorage.clearOAuthProvider).called(1);
+      verify(mockOAuthStorage.clearAuthProvider).called(1);
       verifyNever(
         () => mockHttpClient.post(
           Uri.parse("$authBaseUrl/auth/logout"),

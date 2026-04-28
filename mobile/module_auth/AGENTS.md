@@ -21,7 +21,7 @@ Only these types are exported. Everything else is internal (`lib/src/`).
 ### Types
 
 - `AuthState` (freezed sealed class) — `unauthenticated`, `authenticating`, `authenticated`, `failed`
-- `OAuthProvider` enum — `github`, `google`
+- `AuthProvider` enum — `github`, `google`
 - `SecureStorage` abstract interface — platform-agnostic key-value secure storage
 - `authBaseUrl` constant — auth server base URL
 
@@ -29,7 +29,7 @@ Only these types are exported. Everything else is internal (`lib/src/`).
 
 ```
 lib/src/
-├── auth_config.dart        authBaseUrl, OAuthProvider enum
+├── auth_config.dart        authBaseUrl, AuthProvider enum
 ├── auth_manager.dart       AuthManager — single owner of auth lifecycle (NOT exported)
 ├── client/
 │   └── authenticated_http_api_client.dart

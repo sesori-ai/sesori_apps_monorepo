@@ -30,7 +30,7 @@ void main() {
   late MockAuthSession mockAuthSession;
 
   setUpAll(() {
-    registerFallbackValue(OAuthProvider.github);
+    registerFallbackValue(AuthProvider.github);
   });
 
   setUp(() {

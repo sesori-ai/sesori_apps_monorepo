@@ -10,6 +10,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "auth_provider.dart";
+import "email_auth_api.dart";
 import "token.dart";
 
 abstract class EmailLoginException implements Exception {
@@ -312,43 +313,23 @@ Future<(TokenData, String)> performEmailLogin(
   String email,
   String password,
 ) async {
-  final uri = _buildUri(authBackendURL, "auth/password/login");
-
-  final body = jsonEncode({
-    "email": email,
-    "password": password,
-  });
-
-  late http.Response response;
-  try {
-    response = await http.post(
-      uri,
-      headers: {"Content-Type": "application/json"},
-      body: body,
-    );
-  } catch (e) {
-    throw EmailLoginExceptionImpl("network error: $e");
-  }
-
-  if (response.statusCode == 429) {
-    throw RateLimitException();
-  }
-
-  if (response.statusCode == 401) {
-    throw EmailLoginExceptionImpl("invalid email or password");
-  }
-
-  if (response.statusCode != 200) {
-    throw EmailLoginExceptionImpl(
-      "login failed: status ${response.statusCode}: ${response.body.trim()}",
-    );
-  }
+  final api = EmailAuthApi(authBackendUrl: authBackendURL);
 
   late AuthResponse authResponse;
   try {
-    authResponse = AuthResponse.fromJson(jsonDecodeMap(response.body));
+    authResponse = await api.loginWithEmail(email, password);
+  } on EmailAuthApiException catch (e) {
+    if (e.statusCode == 429) {
+      throw RateLimitException();
+    }
+    if (e.statusCode == 401) {
+      throw EmailLoginExceptionImpl("invalid email or password");
+    }
+    throw EmailLoginExceptionImpl(
+      "login failed: status ${e.statusCode}: ${e.body.trim()}",
+    );
   } catch (e) {
-    throw EmailLoginExceptionImpl("parse response: $e");
+    throw EmailLoginExceptionImpl("network error: $e");
   }
 
   if (authResponse.accessToken.isEmpty || authResponse.refreshToken.isEmpty) {

@@ -21,7 +21,7 @@ class LoginCubit extends Cubit<LoginState> {
       _authSession = authSession,
       super(const LoginState.idle());
 
-  Future<bool> loginWithProvider(OAuthProvider provider) async {
+  Future<bool> loginWithProvider(AuthProvider provider) async {
     emit(const LoginState.authenticating());
 
     try {

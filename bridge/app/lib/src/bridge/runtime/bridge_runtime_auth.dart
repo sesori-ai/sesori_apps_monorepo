@@ -8,6 +8,7 @@ import '../../auth/profile.dart';
 import '../../auth/token.dart';
 import '../../auth/validate.dart';
 import 'bridge_cli_options.dart';
+import 'terminal_password_reader.dart';
 
 Future<AuthProvider> promptForProvider() async {
   stdout.writeln('Select login method: [1] GitHub [2] Google [3] Email');
@@ -33,7 +34,7 @@ Future<(TokenData, String)> promptForEmailCredentials({
   final email = stdin.readLineSync() ?? '';
 
   stdout.write('Password: ');
-  final password = _readPassword();
+  final password = TerminalPasswordReader(stdin: stdin).read();
 
   try {
     final (tokens, username) = await performEmailLogin(
@@ -50,53 +51,6 @@ Future<(TokenData, String)> promptForEmailCredentials({
   } on EmailLoginException catch (e) {
     Log.e('Email login failed: ${e.message}');
     rethrow;
-  }
-}
-
-String _readPassword() {
-  final buffer = StringBuffer();
-
-  if (Platform.isWindows) {
-    try {
-      Process.runSync('stty', ['-icanon', 'min', '1']);
-      Process.runSync('stty', ['-echo']);
-    } catch (_) {}
-    int char;
-    while ((char = stdin.readByteSync()) != 10 && char != 13) {
-      if (buffer.isNotEmpty && (char == 127 || char == 8)) {
-        stdout.write('\b \b');
-        final current = buffer.toString();
-        buffer.clear();
-        buffer.write(current.substring(0, current.length - 1));
-      } else if (char >= 32) {
-        buffer.writeCharCode(char);
-      }
-    }
-    try {
-      Process.runSync('stty', ['icanon']);
-      Process.runSync('stty', ['echo']);
-    } catch (_) {}
-    stdout.writeln();
-    return buffer.toString();
-  } else {
-    final termios = Process.runSync('stty', ['-g']);
-    Process.runSync('stty', ['-echo']);
-    int char;
-    while ((char = stdin.readByteSync()) != 10 && char != 13) {
-      if (buffer.isNotEmpty && (char == 127 || char == 8)) {
-        stdout.write('\b \b');
-        final current = buffer.toString();
-        buffer.clear();
-        buffer.write(current.substring(0, current.length - 1));
-      } else if (char >= 32) {
-        buffer.writeCharCode(char);
-      }
-    }
-    try {
-      Process.runSync('stty', [termios.stdout.toString().trim()]);
-    } catch (_) {}
-    stdout.writeln();
-    return buffer.toString();
   }
 }
 

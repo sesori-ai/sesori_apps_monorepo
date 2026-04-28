@@ -236,7 +236,7 @@ void registerAllFallbackValues() {
   registerFallbackValue(Duration.zero);
   registerFallbackValue(const RecordConfig());
   registerFallbackValue(http.MultipartFile.fromString("audio", ""));
-  registerFallbackValue(OAuthProvider.github);
+  registerFallbackValue(AuthProvider.github);
   registerFallbackValue(StackTrace.empty);
 }
 

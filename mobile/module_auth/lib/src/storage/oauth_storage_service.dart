@@ -13,7 +13,7 @@ class OAuthStorageService {
 
   OAuthStorageService(SecureStorage storage) : _storage = storage;
 
-  Future<void> saveOAuthProviderAndPkceVerifier({required String codeVerifier, required OAuthProvider provider}) async {
+  Future<void> saveAuthProviderAndPkceVerifier({required String codeVerifier, required AuthProvider provider}) async {
     try {
       await _storage.write(key: _pkceVerifierKey, value: codeVerifier);
       await _storage.write(key: _oauthProviderKey, value: provider.key);
@@ -56,10 +56,10 @@ class OAuthStorageService {
     }
   }
 
-  Future<OAuthProvider?> getOAuthProvider() async {
+  Future<AuthProvider?> getAuthProvider() async {
     try {
       final providerKey = await _storage.read(key: _oauthProviderKey);
-      return OAuthProvider.fromKey(providerKey);
+      return AuthProvider.fromKey(providerKey);
     } catch (error, stackTrace) {
       developer.log(
         "Failed to read OAuth provider",
@@ -71,7 +71,7 @@ class OAuthStorageService {
     }
   }
 
-  Future<void> clearOAuthProvider() async {
+  Future<void> clearAuthProvider() async {
     try {
       await _storage.delete(key: _oauthProviderKey);
     } catch (error, stackTrace) {

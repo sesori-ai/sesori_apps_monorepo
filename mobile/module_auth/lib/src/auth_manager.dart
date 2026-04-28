@@ -62,17 +62,17 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
   }
 
   @override
-  Future<String> getAuthorizationUrl(OAuthProvider provider, String redirectUri) async {
-    if (provider == OAuthProvider.email) {
+  Future<String> getAuthorizationUrl(AuthProvider provider, String redirectUri) async {
+    if (provider == AuthProvider.email) {
       throw ArgumentError(
-        'OAuthProvider.email is not supported by getAuthorizationUrl. '
+        'AuthProvider.email is not supported by getAuthorizationUrl. '
         'Use loginWithEmail for email-based authentication.',
       );
     }
 
     final (codeVerifier, codeChallenge) = await _generatePkce();
 
-    await _oAuthStorage.saveOAuthProviderAndPkceVerifier(
+    await _oAuthStorage.saveAuthProviderAndPkceVerifier(
       codeVerifier: codeVerifier,
       provider: provider,
     );
@@ -104,7 +104,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
       throw StateError("Missing PKCE verifier for OAuth code exchange");
     }
 
-    final provider = await _oAuthStorage.getOAuthProvider();
+    final provider = await _oAuthStorage.getAuthProvider();
     if (provider == null) {
       throw StateError("Missing OAuth provider for code exchange");
     }
@@ -131,7 +131,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
 
     await Future.wait([
       _oAuthStorage.clearPkceVerifier(),
-      _oAuthStorage.clearOAuthProvider(),
+      _oAuthStorage.clearAuthProvider(),
     ]);
 
     _authState.add(AuthState.authenticated(user: authResponse.user));
@@ -232,7 +232,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     await Future.wait([
       _tokenStorage.clearTokens(),
       _oAuthStorage.clearPkceVerifier(),
-      _oAuthStorage.clearOAuthProvider(),
+      _oAuthStorage.clearAuthProvider(),
     ]);
     _authState.add(const AuthState.unauthenticated());
   }
@@ -242,7 +242,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     await Future.wait([
       _tokenStorage.clearTokens(),
       _oAuthStorage.clearPkceVerifier(),
-      _oAuthStorage.clearOAuthProvider(),
+      _oAuthStorage.clearAuthProvider(),
     ]);
     _authState.add(const AuthState.unauthenticated());
   }
