@@ -238,7 +238,7 @@ class _AuthTestServer {
 
         final redirectPath = await _responseCompleter.future.timeout(
           const Duration(seconds: 10),
-          onTimeout: () => '/callback?code=test&state=$_lastState',
+          onTimeout: () => '?code=test&state=$_lastState',
         );
 
         request.response.statusCode = 200;
