@@ -63,6 +63,13 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
 
   @override
   Future<String> getAuthorizationUrl(OAuthProvider provider, String redirectUri) async {
+    if (provider == OAuthProvider.email) {
+      throw ArgumentError(
+        'OAuthProvider.email is not supported by getAuthorizationUrl. '
+        'Use loginWithEmail for email-based authentication.',
+      );
+    }
+
     final (codeVerifier, codeChallenge) = await _generatePkce();
 
     await _oAuthStorage.saveOAuthProviderAndPkceVerifier(

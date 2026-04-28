@@ -5,14 +5,16 @@ import "../../../core/extensions/build_context_x.dart";
 class LoginProviderButtons extends StatelessWidget {
   final bool isLoading;
   final bool showEmailForm;
-  final VoidCallback onProviderSelected;
+  final VoidCallback onGithubSelected;
+  final VoidCallback onGoogleSelected;
   final VoidCallback onShowEmailForm;
 
   const LoginProviderButtons({
     super.key,
     required this.isLoading,
     required this.showEmailForm,
-    required this.onProviderSelected,
+    required this.onGithubSelected,
+    required this.onGoogleSelected,
     required this.onShowEmailForm,
   });
 
@@ -27,7 +29,7 @@ class LoginProviderButtons extends StatelessWidget {
           width: double.infinity,
           height: 52,
           child: FilledButton.icon(
-            onPressed: isLoading ? null : onProviderSelected,
+            onPressed: isLoading ? null : onGithubSelected,
             icon: isLoading
                 ? const SizedBox(
                     width: 18,
@@ -54,26 +56,15 @@ class LoginProviderButtons extends StatelessWidget {
           width: double.infinity,
           height: 52,
           child: OutlinedButton.icon(
-            onPressed: isLoading ? null : onProviderSelected,
-            icon: isLoading
-                ? SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: theme.colorScheme.primary,
-                    ),
-                  )
-                : Text(
-                    "G",
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: isLoading
-                          ? theme.colorScheme.onSurface.withAlpha(97)
-                          : theme.colorScheme.onSurface,
-                    ),
-                  ),
+            onPressed: isLoading ? null : onGoogleSelected,
+            icon: Text(
+              "G",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
             label: Text(loc.loginWithGoogle),
             style: OutlinedButton.styleFrom(
               foregroundColor: theme.colorScheme.onSurface,

@@ -4,6 +4,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
+import "../../core/routing/app_router.dart";
 import "../../l10n/app_localizations.dart";
 import "email_login_form.dart";
 import "login_provider_buttons.dart";
@@ -52,13 +53,18 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
     final isLoading = state is LoginAuthenticating || state is LoginAwaitingCallback;
 
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
+      body: BlocListener<LoginCubit, LoginState>(
+        listenWhen: (previous, current) => current is LoginSuccess,
+        listener: (context, state) {
+          context.goRoute(const AppRoute.projects());
+        },
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
                 const SizedBox(height: 48),
                 Container(
                   width: 96,
@@ -92,7 +98,8 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                 LoginProviderButtons(
                   isLoading: isLoading,
                   showEmailForm: _showEmailForm,
-                  onProviderSelected: () => _loginWithProvider(OAuthProvider.github),
+                  onGithubSelected: () => _loginWithProvider(OAuthProvider.github),
+                  onGoogleSelected: () => _loginWithProvider(OAuthProvider.google),
                   onShowEmailForm: _showEmailLogin,
                 ),
                 if (_showEmailForm) ...[
@@ -164,6 +171,7 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
           ),
         ),
       ),
+    ),
     );
   }
 

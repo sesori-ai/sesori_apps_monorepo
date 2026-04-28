@@ -26,7 +26,9 @@ class TokenData {
       refreshToken: json['refreshToken'] as String,
       bridgeToken: json['bridgeToken'] as String?,
       lastProvider: json['lastProvider'] != null
-          ? AuthProvider.values.byName(json['lastProvider'] as String)
+          ? AuthProvider.values
+              .where((p) => p.name == json['lastProvider'])
+              .firstOrNull
           : null,
     );
   }

@@ -189,6 +189,13 @@ Future<TokenData> performLogin(
   String authBackendURL, {
   AuthProvider provider = AuthProvider.github,
 }) async {
+  if (provider == AuthProvider.email) {
+    throw ArgumentError(
+      'AuthProvider.email is not supported by performLogin. '
+      'Use performEmailLogin instead.',
+    );
+  }
+
   final (codeVerifier, codeChallenge) = generatePKCE();
 
   HttpServer server;

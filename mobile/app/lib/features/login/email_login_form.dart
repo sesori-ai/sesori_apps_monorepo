@@ -62,7 +62,8 @@ class _EmailLoginFormState extends State<EmailLoginForm> {
               if (value == null || value.trim().isEmpty) {
                 return loc.emailRequired;
               }
-              if (!value.contains("@")) {
+              final emailRegex = RegExp(r"^.+@.+\..+$");
+              if (!emailRegex.hasMatch(value.trim())) {
                 return loc.emailInvalid;
               }
               return null;

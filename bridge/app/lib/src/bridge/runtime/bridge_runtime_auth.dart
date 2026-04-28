@@ -64,7 +64,10 @@ String _readPassword() {
     int char;
     while ((char = stdin.readByteSync()) != 10 && char != 13) {
       if (buffer.isNotEmpty && (char == 127 || char == 8)) {
-        buffer.write('\b \b');
+        stdout.write('\b \b');
+        final current = buffer.toString();
+        buffer.clear();
+        buffer.write(current.substring(0, current.length - 1));
       } else if (char >= 32) {
         buffer.writeCharCode(char);
       }
@@ -81,7 +84,10 @@ String _readPassword() {
     int char;
     while ((char = stdin.readByteSync()) != 10 && char != 13) {
       if (buffer.isNotEmpty && (char == 127 || char == 8)) {
-        buffer.write('\b \b');
+        stdout.write('\b \b');
+        final current = buffer.toString();
+        buffer.clear();
+        buffer.write(current.substring(0, current.length - 1));
       } else if (char >= 32) {
         buffer.writeCharCode(char);
       }

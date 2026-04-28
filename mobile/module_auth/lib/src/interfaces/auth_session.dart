@@ -6,8 +6,8 @@ import "../models/auth_state.dart";
 ///
 /// Provides auth state observation and high-level session
 /// operations (get user, invalidate sessions, local logout).
-/// Cannot initiate login —
-/// use [OAuthFlowProvider] for that.
+/// Initiates email-based login directly;
+/// use [OAuthFlowProvider] for OAuth-based login.
 abstract interface class AuthSession {
   /// Push-based stream of auth state changes. Late subscribers
   /// immediately receive the current value.
