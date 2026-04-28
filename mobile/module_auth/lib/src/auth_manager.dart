@@ -223,6 +223,13 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
       refreshToken: authResponse.refreshToken,
     );
 
+    // Clear any stale OAuth temp state so a later deep-link callback
+    // cannot unexpectedly exchange using stale PKCE data.
+    await Future.wait([
+      _oAuthStorage.clearPkceVerifier(),
+      _oAuthStorage.clearAuthProvider(),
+    ]);
+
     _authState.add(AuthState.authenticated(user: authResponse.user));
     return authResponse.user;
   }
