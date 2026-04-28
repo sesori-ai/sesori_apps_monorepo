@@ -2,11 +2,12 @@
 set -euo pipefail
 
 # Sesori Bridge CLI installer
-# Installs sesori-bridge to ~/.sesori/bin/
+# Installs sesori-bridge to ~/.local/share/sesori/ and creates a symlink in ~/.local/bin/
 
-INSTALL_DIR="${HOME}/.sesori"
-BIN_DIR="${INSTALL_DIR}/bin"
-BINARY="${BIN_DIR}/sesori-bridge"
+INSTALL_DIR="${HOME}/.local/share/sesori"
+BINARY="${INSTALL_DIR}/bin/sesori-bridge"
+SYMLINK_DIR="${HOME}/.local/bin"
+SYMLINK="${SYMLINK_DIR}/sesori-bridge"
 MANAGED_MANIFEST="${INSTALL_DIR}/.managed-runtime.json"
 GITHUB_REPO="sesori-ai/sesori_apps_monorepo"
 GITHUB_RELEASES_API_URL="https://api.github.com/repos/${GITHUB_REPO}/releases"
@@ -222,8 +223,22 @@ verify_checksum() {
     fi
 }
 
+is_local_bin_in_path() {
+    case ":${PATH}:" in
+        *:"${HOME}/.local/bin":*)
+            return 0
+            ;;
+    esac
+    return 1
+}
+
 add_to_path() {
     local bin_dir="${1}"
+
+    if is_local_bin_in_path; then
+        echo "PATH: ~/.local/bin is already in your PATH."
+        return 0
+    fi
 
     local shell_name
     shell_name="$(basename "${SHELL:-}")"
@@ -235,16 +250,16 @@ add_to_path() {
         fish)
             local rc_file="${HOME}/.config/fish/config.fish"
             mkdir -p "$(dirname "${rc_file}")"
-            if ! grep -qF 'fish_add_path "$HOME/.sesori/bin"' "${rc_file}" 2>/dev/null; then
-                echo 'fish_add_path "$HOME/.sesori/bin"' >> "${rc_file}"
-                echo "PATH: persisted ~/.sesori/bin in ${rc_file}. Run 'source ${rc_file}' or open a new terminal."
+            if ! grep -qF 'fish_add_path "$HOME/.local/bin"' "${rc_file}" 2>/dev/null; then
+                echo 'fish_add_path "$HOME/.local/bin"' >> "${rc_file}"
+                echo "PATH: persisted ~/.local/bin in ${rc_file}."
             fi
             return 0
             ;;
         *) rc_files=("${HOME}/.profile") ;;
     esac
 
-    local export_line='export PATH="$HOME/.sesori/bin:$PATH"'
+    local export_line='export PATH="$HOME/.local/bin:$PATH"'
     local updated_files=()
     local rc_file
     for rc_file in "${rc_files[@]}"; do
@@ -264,8 +279,27 @@ add_to_path() {
                 joined_files+=", ${updated_files[index]}"
             fi
         done
-        echo "PATH: persisted ~/.sesori/bin in ${joined_files}. Run 'source ${updated_files[0]}' or open a new terminal."
+        echo "PATH: persisted ~/.local/bin in ${joined_files}. Run 'source ${updated_files[0]}' or open a new terminal."
     fi
+}
+
+create_symlink() {
+    local target="${1}"
+    local link="${2}"
+
+    mkdir -p "$(dirname "${link}")"
+
+    if [ -L "${link}" ]; then
+        # Remove existing symlink
+        rm "${link}"
+    elif [ -e "${link}" ]; then
+        echo "Warning: ${link} already exists and is not a symlink. Skipping symlink creation." >&2
+        return 1
+    fi
+
+    ln -s "${target}" "${link}"
+    echo "Symlink: ${link} -> ${target}"
+    return 0
 }
 
 check_conflicts() {
@@ -274,6 +308,7 @@ check_conflicts() {
     if [ -n "${existing}" ]; then
         case "${existing}" in
             "${INSTALL_DIR}"/*) : ;;
+            "${SYMLINK}") : ;;
             *)
                 echo "Warning: another sesori-bridge found at ${existing}" >&2
                 echo "It may shadow the newly installed version." >&2
@@ -297,8 +332,9 @@ main() {
     echo "Platform     : ${os}/${arch}"
     echo "Release      : ${RESOLVED_RELEASE_TAG}"
     echo "Install root : ${INSTALL_DIR}"
+    echo "Symlink      : ${SYMLINK}"
     echo ""
-    echo "[1/3] Downloading release assets..."
+    echo "[1/4] Downloading release assets..."
 
     TMPDIR_WORK="$(mktemp -d)"
     local archive="${TMPDIR_WORK}/${filename}"
@@ -307,12 +343,12 @@ main() {
     download "${archive_url}" "${archive}"
     download "${checksums_url}" "${checksums}"
 
-    echo "[2/3] Verifying checksum..."
+    echo "[2/4] Verifying checksum..."
     verify_checksum "${archive}" "${checksums}" "${filename}" "${os}"
     echo "Checksum OK."
 
-    echo "[3/3] Installing managed runtime..."
-    mkdir -p "${BIN_DIR}"
+    echo "[3/4] Installing managed runtime..."
+    mkdir -p "${INSTALL_DIR}"
     tar -xzf "${archive}" -C "${INSTALL_DIR}"
 
     chmod +x "${BINARY}"
@@ -322,21 +358,36 @@ main() {
         xattr -dr com.apple.quarantine "${BINARY}" 2>/dev/null || true
     fi
 
+    echo "[4/4] Creating symlink..."
+    create_symlink "${BINARY}" "${SYMLINK}"
+
     check_conflicts
-    add_to_path "${BIN_DIR}"
+    add_to_path "${SYMLINK_DIR}"
 
     echo ""
     echo "Sesori Bridge install complete"
     echo "============================"
     echo "Managed binary : ${BINARY}"
+    echo "Symlink        : ${SYMLINK}"
     echo ""
-    echo "Next steps"
-    echo "----------"
-    echo "1. Start the bridge:"
-    echo "   sesori-bridge"
-    echo ""
-    echo "2. If sesori-bridge is not available in this shell yet, open a new terminal or run:"
-    echo "   ${BINARY}"
+
+    # Check if sesori-bridge is available in the current session
+    if command -v sesori-bridge > /dev/null 2>&1; then
+        echo "sesori-bridge is available in this terminal."
+        echo ""
+        echo "Next steps"
+        echo "----------"
+        echo "Start the bridge:"
+        echo "   sesori-bridge"
+    else
+        echo "Next steps"
+        echo "----------"
+        echo "1. Start the bridge:"
+        echo "   sesori-bridge"
+        echo ""
+        echo "2. If 'sesori-bridge' is not available in this shell yet, open a new terminal or run:"
+        echo "   ${BINARY}"
+    fi
 }
 
 main

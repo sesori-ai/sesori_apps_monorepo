@@ -22,11 +22,11 @@ class ManagedRuntimePathService {
     }
 
     final home = _requireEnv(environment: environment, key: 'HOME');
-    final installRoot = p.join(home, '.sesori');
+    final installRoot = p.join(home, '.local', 'share', 'sesori');
     return ManagedRuntimePaths(
       installRoot: installRoot,
       binaryPath: p.join(installRoot, 'bin', 'sesori-bridge'),
-      cacheDirectory: p.join(home, '.config', 'sesori-bridge'),
+      cacheDirectory: installRoot,
     );
   }
 

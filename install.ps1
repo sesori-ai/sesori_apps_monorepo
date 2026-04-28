@@ -208,13 +208,30 @@ try {
     Write-Host "============================" -ForegroundColor Green
     Write-Host "Managed binary : $BinaryPath"
     Write-Host ""
-    Write-Host "Next steps" -ForegroundColor Cyan
-    Write-Host "----------" -ForegroundColor Cyan
-    Write-Host "1. Start the bridge:"
-    Write-Host "   sesori-bridge"
-    Write-Host ""
-    Write-Host "2. If 'sesori-bridge' is not available in this shell yet, run:" -ForegroundColor Cyan
-    Write-Host "   & \"$BinaryPath\""
+
+    $sesoriAvailable = $null
+    try {
+        $sesoriAvailable = Get-Command 'sesori-bridge' -ErrorAction SilentlyContinue
+    } catch {
+        # Ignore
+    }
+
+    if ($sesoriAvailable) {
+        Write-Host "sesori-bridge is available in this terminal." -ForegroundColor Green
+        Write-Host ""
+        Write-Host "Next steps" -ForegroundColor Cyan
+        Write-Host "----------" -ForegroundColor Cyan
+        Write-Host "Start the bridge:"
+        Write-Host "   sesori-bridge"
+    } else {
+        Write-Host "Next steps" -ForegroundColor Cyan
+        Write-Host "----------" -ForegroundColor Cyan
+        Write-Host "1. Start the bridge:"
+        Write-Host "   sesori-bridge"
+        Write-Host ""
+        Write-Host "2. If 'sesori-bridge' is not available in this shell yet, run:" -ForegroundColor Cyan
+        Write-Host "   & \"$BinaryPath\""
+    }
 
 } finally {
     # ── Cleanup temp files ────────────────────────────────────────────────────

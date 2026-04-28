@@ -139,6 +139,7 @@ async function bootstrapManagedRuntime(pkgName) {
             }
           },
         });
+        runtimeInstall.createManagedSymlink(installRoot);
       } catch (error) {
         throw new Error(
           "sesori-bridge: Failed to install the managed runtime.\n" +

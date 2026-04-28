@@ -130,7 +130,7 @@ Quick options:
 npx @sesori/bridge --version
 
 # If PATH has not refreshed in this shell yet, open a new terminal
-# or run ~/.sesori/bin/sesori-bridge directly on macOS/Linux.
+# or run ~/.local/share/sesori/bin/sesori-bridge directly on macOS/Linux.
 sesori-bridge
 
 # shell installer (macOS / Linux)
@@ -143,14 +143,14 @@ On Windows, use:
 irm https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/main/install.ps1 | iex
 ```
 
-The installers and npm bootstrap both create the same managed runtime under `~/.sesori/` on macOS/Linux or `%LOCALAPPDATA%\sesori\` on Windows.
-The PATH update is written for future shells, so first-time installs may require opening a new terminal before `sesori-bridge` resolves from PATH.
+The installers and npm bootstrap both create the same managed runtime under `~/.local/share/sesori/` on macOS/Linux or `%LOCALAPPDATA%\sesori\` on Windows.
+On macOS/Linux, a symlink is created at `~/.local/bin/sesori-bridge`. If `~/.local/bin` is already in your PATH, the command is available immediately. Otherwise, the installer adds it to your shell config and you may need to open a new terminal.
 
 ## Bridge Uninstall
 
 To fully remove the packaged bridge runtime, delete the managed install directory:
 
-- macOS / Linux: `~/.sesori/`
+- macOS / Linux: `~/.local/share/sesori/`
 - Windows: `%LOCALAPPDATA%\sesori\`
 
 If you used the npm bootstrap path, `npm uninstall @sesori/bridge` only removes the npm package. It does not remove the managed Sesori install.

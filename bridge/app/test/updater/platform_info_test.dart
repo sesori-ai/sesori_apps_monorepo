@@ -157,7 +157,7 @@ void main() {
 
     test('returns false for home directory install', () {
       final result = isNpmInstall(
-        executablePath: '/home/user/.sesori/bin/sesori-bridge',
+        executablePath: '/home/user/.local/share/sesori/bin/sesori-bridge',
       );
       expect(result, isFalse);
     });
@@ -244,12 +244,10 @@ void main() {
   });
 
   group('getInstallRoot', () {
-    test('returns ~/.sesori on Unix when HOME is set', () {
-      // This test uses the actual Platform.environment, so we can only verify
-      // the format is correct. On Unix systems, it should end with /.sesori/
+    test('returns ~/.local/share/sesori on Unix when HOME is set', () {
       final root = const ManagedRuntimePathService().currentPaths(environment: Platform.environment).installRoot;
       if (!Platform.isWindows) {
-        expect(root, endsWith('/.sesori'));
+        expect(root, endsWith('/.local/share/sesori'));
       }
     });
 
@@ -267,7 +265,7 @@ void main() {
       final path = const ManagedRuntimePathService().currentPaths(environment: Platform.environment).binaryPath;
       if (!Platform.isWindows) {
         expect(path, endsWith('/bin/sesori-bridge'));
-        expect(path, contains('/.sesori'));
+        expect(path, contains('/.local/share/sesori'));
       }
     });
 
@@ -284,7 +282,7 @@ void main() {
     test('returns correct path format on Unix', () {
       final dir = const ManagedRuntimePathService().currentPaths(environment: Platform.environment).cacheDirectory;
       if (!Platform.isWindows) {
-        expect(dir, endsWith('/.config/sesori-bridge'));
+        expect(dir, endsWith('/.local/share/sesori'));
       }
     });
 

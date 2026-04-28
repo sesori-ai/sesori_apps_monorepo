@@ -50,7 +50,7 @@ String _currentPlatformAssetName() {
 }
 
 String _managedInstallRoot({required String homePath}) {
-  return Platform.isWindows ? p.join(homePath, 'AppData', 'Local', 'sesori') : p.join(homePath, '.sesori');
+  return Platform.isWindows ? p.join(homePath, 'AppData', 'Local', 'sesori') : p.join(homePath, '.local', 'share', 'sesori');
 }
 
 String _managedBinaryPath({required String homePath}) {
@@ -600,16 +600,16 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
       expect(
         bootstrapResult.stdout,
         contains(
-          'PATH update    : Persisted ~/.sesori/bin in ${p.join(homeDir.path, '.bashrc')} and ${p.join(homeDir.path, '.profile')}. Run `source ${p.join(homeDir.path, '.bashrc')}` or open a new terminal.',
+          'PATH update    : Persisted ~/.local/bin in ${p.join(homeDir.path, '.bashrc')} and ${p.join(homeDir.path, '.profile')}. Run `source ${p.join(homeDir.path, '.bashrc')}` or open a new terminal.',
         ),
       );
       expect(
         File(p.join(homeDir.path, '.bashrc')).readAsStringSync(),
-        contains(r'export PATH="$HOME/.sesori/bin:$PATH"'),
+        contains(r'export PATH="$HOME/.local/bin:$PATH"'),
       );
       expect(
         File(p.join(homeDir.path, '.profile')).readAsStringSync(),
-        contains(r'export PATH="$HOME/.sesori/bin:$PATH"'),
+        contains(r'export PATH="$HOME/.local/bin:$PATH"'),
       );
 
       final shellResult = await Process.run(
@@ -628,11 +628,12 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
         },
       );
 
+      final symlinkPath = p.join(homeDir.path, '.local', 'bin', 'sesori-bridge');
       expect(shellResult.exitCode, equals(0), reason: '${shellResult.stdout}\n${shellResult.stderr}');
-      expect(shellResult.stdout as String, contains(_managedBinaryPath(homePath: homeDir.path)));
+      expect(shellResult.stdout as String, contains(symlinkPath));
       final recorded = await _readRecordedInvocation(recordPath: freshShellRecordPath);
       expect(recorded['marker'], equals('payload-runtime'));
-      expect(recorded['executedPath'], equals(_managedBinaryPath(homePath: homeDir.path)));
+      expect(recorded['executedPath'], equals(symlinkPath));
       expect(recorded['args'], equals(['fresh-shell']));
     });
 

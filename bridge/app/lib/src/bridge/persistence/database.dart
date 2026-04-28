@@ -114,16 +114,12 @@ class AppDatabase extends _$AppDatabase {
     },
   );
 
-  /// Creates the production database at `~/.config/sesori-bridge/sesori.db`.
-  ///
-  /// Uses [NativeDatabase.createInBackground] to run SQLite operations on a
-  /// background isolate, appropriate for the long-running bridge process.
   static AppDatabase create() {
     final homeDir = Platform.environment["HOME"] ?? Platform.environment["USERPROFILE"];
     if (homeDir == null) {
       throw StateError("Unable to determine home directory");
     }
-    final dbDir = Directory("$homeDir/.config/sesori-bridge");
+    final dbDir = Directory("$homeDir/.local/share/sesori");
     if (!dbDir.existsSync()) {
       dbDir.createSync(recursive: true);
     }

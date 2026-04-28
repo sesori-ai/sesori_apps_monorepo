@@ -786,9 +786,9 @@ void main() {
         installedFileRepository: _FakeInstalledFileRepository(),
         updateLock: UpdateLock(currentPid: pid, processRunner: ProcessRunner()),
         updateRelaunchClient: _FakeUpdateRelaunchClient(),
-        installRoot: '/Users/alex/.sesori',
+        installRoot: '/Users/alex/.local/share/sesori',
         executablePath: '/tmp/custom/bridge',
-        managedExecutablePath: '/Users/alex/.sesori/bin/sesori-bridge',
+        managedExecutablePath: '/Users/alex/.local/share/sesori/bin/sesori-bridge',
         environment: const {},
       );
       service.hasTerminal = () => false;
@@ -808,9 +808,9 @@ void main() {
         installedFileRepository: _FakeInstalledFileRepository(),
         updateLock: UpdateLock(currentPid: pid, processRunner: ProcessRunner()),
         updateRelaunchClient: _FakeUpdateRelaunchClient(),
-        installRoot: '/Users/alex/.sesori',
-        executablePath: '/Users/alex/.sesori/bin/sesori-bridge',
-        managedExecutablePath: '/Users/alex/.sesori/bin/sesori-bridge',
+        installRoot: '/Users/alex/.local/share/sesori',
+        executablePath: '/Users/alex/.local/share/sesori/bin/sesori-bridge',
+        managedExecutablePath: '/Users/alex/.local/share/sesori/bin/sesori-bridge',
         environment: const {},
       );
       service.hasTerminal = () => false;
