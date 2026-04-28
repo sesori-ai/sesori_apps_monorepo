@@ -373,7 +373,7 @@ void _expectInstallSummary({
   expect(result.stdout, contains('Sesori Bridge install complete'));
   expect(result.stdout, contains('Managed binary : ${_managedBinaryPath(homePath: homePath)}'));
   expect(result.stdout, contains('Next steps'));
-  expect(result.stdout, contains('1. Start the bridge:'));
+  expect(result.stdout, contains('Run the bridge:'));
   expect(result.stdout, contains('   $nextStep'));
 }
 

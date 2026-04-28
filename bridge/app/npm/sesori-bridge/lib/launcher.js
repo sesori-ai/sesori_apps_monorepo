@@ -142,4 +142,5 @@ function ensureManagedCommandPath(options) {
 
 module.exports = {
   ensureManagedCommandPath: ensureManagedCommandPath,
+  isLocalBinInPath: isLocalBinInPath,
 };

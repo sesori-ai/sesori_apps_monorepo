@@ -383,11 +383,9 @@ main() {
     else
         echo "Next steps"
         echo "----------"
-        echo "1. Start the bridge:"
+        echo "1. Open a new terminal"
+        echo "2. Run the bridge:"
         echo "   sesori-bridge"
-        echo ""
-        echo "2. If 'sesori-bridge' is not available in this shell yet, open a new terminal or run:"
-        echo "   ${BINARY}"
     fi
 }
 

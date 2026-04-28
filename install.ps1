@@ -226,11 +226,9 @@ try {
     } else {
         Write-Host "Next steps" -ForegroundColor Cyan
         Write-Host "----------" -ForegroundColor Cyan
-        Write-Host "1. Start the bridge:"
+        Write-Host "1. Open a new terminal"
+        Write-Host "2. Run the bridge:"
         Write-Host "   sesori-bridge"
-        Write-Host ""
-        Write-Host "2. If 'sesori-bridge' is not available in this shell yet, run:" -ForegroundColor Cyan
-        Write-Host "   & \"$BinaryPath\""
     }
 
 } finally {

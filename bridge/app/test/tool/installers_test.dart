@@ -399,9 +399,10 @@ cat "\$HOME/.zprofile"
       expect(script, contains(r'''$pathEntries | Where-Object { $_.TrimEnd('\') -ieq $BinDir.TrimEnd('\') }'''));
       expect(script, contains(r"[Environment]::SetEnvironmentVariable('PATH', $newPath, 'User')"));
       expect(script, contains(r'PATH: persisted $BinDir in the user PATH.'));
-      expect(script, contains('Write-Host "1. Start the bridge:"'));
+      expect(script, contains('Write-Host "Start the bridge:"'));
       expect(script, contains('Write-Host "   sesori-bridge"'));
-      expect(script, contains(r'Write-Host "   & \"$BinaryPath\""'));
+      expect(script, contains('Write-Host "1. Open a new terminal"'));
+      expect(script, contains('Write-Host "2. Run the bridge:"'));
     });
 
     test('writes managed runtime manifest with resolved version', () {

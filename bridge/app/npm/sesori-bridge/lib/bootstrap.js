@@ -66,11 +66,14 @@ function printInstallSummary(options) {
   console.log("");
   console.log("Next steps");
   console.log("----------");
-  console.log("1. Start the bridge:");
-  console.log("   " + commands.pathCommand);
-  console.log("");
-  console.log("2. If `sesori-bridge` is not available in this shell yet, run:");
-  console.log("   " + commands.managed);
+  if (launcher.isLocalBinInPath()) {
+    console.log("Start the bridge:");
+    console.log("   " + commands.pathCommand);
+  } else {
+    console.log("1. Open a new terminal");
+    console.log("2. Run the bridge:");
+    console.log("   " + commands.pathCommand);
+  }
 }
 
 function managedBinDir(installRoot) { return path.dirname(runtimeInstall.managedBinaryPath(installRoot)); }
