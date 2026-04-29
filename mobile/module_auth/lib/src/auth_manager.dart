@@ -122,7 +122,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     _ensureSuccess(response, context: "${provider.label} code exchange failed");
 
     final decodedBody = jsonDecodeMap(response.body);
-    late AuthResponse authResponse;
+    final AuthResponse authResponse;
     try {
       authResponse = AuthResponse.fromJson(decodedBody);
     } on Object catch (e) {
@@ -211,7 +211,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     _ensureSuccess(response, context: "Email/password login failed");
 
     final decodedBody = jsonDecodeMap(response.body);
-    late AuthResponse authResponse;
+    final AuthResponse authResponse;
     try {
       authResponse = AuthResponse.fromJson(decodedBody);
     } on Object catch (e) {
@@ -287,7 +287,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
       _ensureSuccess(response, context: "Token refresh failed");
 
       final decodedBody = jsonDecodeMap(response.body);
-      late AuthResponse authResponse;
+      final AuthResponse authResponse;
       try {
         authResponse = AuthResponse.fromJson(decodedBody);
       } on Object catch (e) {

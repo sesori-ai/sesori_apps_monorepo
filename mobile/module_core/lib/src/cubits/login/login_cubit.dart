@@ -22,10 +22,7 @@ class LoginCubit extends Cubit<LoginState> {
       _authSession = authSession,
       super(const LoginState.idle());
 
-  Future<bool> loginWithProvider(AuthProvider provider) async {
-    if (provider == AuthProvider.email) {
-      throw ArgumentError('AuthProvider.email is not supported by loginWithProvider. Use loginWithEmail instead.');
-    }
+  Future<bool> loginWithProvider(OAuthProvider provider) async {
     emit(const LoginState.authenticating());
 
     try {
