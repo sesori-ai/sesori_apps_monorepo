@@ -328,8 +328,8 @@ printf '%s\n%s\n%s\n' "\$RESOLVED_RELEASE_TAG" "\$RESOLVED_ARCHIVE_URL" "\$RESOL
         script:
             '''
 source ${jsonEncode(libraryPath)}
-add_to_path "\$HOME/.sesori/bin"
-add_to_path "\$HOME/.sesori/bin"
+add_to_path "\$HOME/.local/bin"
+add_to_path "\$HOME/.local/bin"
 cat "\$HOME/.zshrc"
 cat "\$HOME/.zprofile"
 ''',
@@ -342,13 +342,13 @@ cat "\$HOME/.zprofile"
 
       expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
       expect(
-        RegExp(r'export PATH="\$HOME/.sesori/bin:\$PATH"').allMatches(result.stdout as String).length,
+        RegExp(r'export PATH="\$HOME/.local/bin:\$PATH"').allMatches(result.stdout as String).length,
         equals(2),
       );
       expect(
         result.stdout,
         contains(
-          "PATH: persisted ~/.sesori/bin in ${p.join(tempDir.path, '.zshrc')} and ${p.join(tempDir.path, '.zprofile')}. Run 'source ${p.join(tempDir.path, '.zshrc')}' or open a new terminal.",
+          "PATH: persisted ~/.local/bin in ${p.join(tempDir.path, '.zshrc')} and ${p.join(tempDir.path, '.zprofile')}. Run 'source ${p.join(tempDir.path, '.zshrc')}' or open a new terminal.",
         ),
       );
     });
@@ -399,9 +399,10 @@ cat "\$HOME/.zprofile"
       expect(script, contains(r'''$pathEntries | Where-Object { $_.TrimEnd('\') -ieq $BinDir.TrimEnd('\') }'''));
       expect(script, contains(r"[Environment]::SetEnvironmentVariable('PATH', $newPath, 'User')"));
       expect(script, contains(r'PATH: persisted $BinDir in the user PATH.'));
-      expect(script, contains('Write-Host "1. Start the bridge:"'));
+      expect(script, contains('Write-Host "Start the bridge:"'));
       expect(script, contains('Write-Host "   sesori-bridge"'));
-      expect(script, contains(r'Write-Host "   & \"$BinaryPath\""'));
+      expect(script, contains('Write-Host "1. Open a new terminal"'));
+      expect(script, contains('Write-Host "2. Run the bridge:"'));
     });
 
     test('writes managed runtime manifest with resolved version', () {

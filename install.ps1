@@ -191,7 +191,7 @@ try {
     $alreadyInPath = $pathEntries | Where-Object { $_.TrimEnd('\') -ieq $BinDir.TrimEnd('\') }
 
     if (-not $alreadyInPath) {
-        $newPath = ($pathEntries + $BinDir) -join ';'
+        $newPath = ($BinDir + ';' + ($pathEntries -join ';'))
         [Environment]::SetEnvironmentVariable('PATH', $newPath, 'User')
         Write-Host "PATH: persisted $BinDir in the user PATH." -ForegroundColor Green
     } else {
@@ -200,7 +200,7 @@ try {
 
     # Also update the current session PATH so --version works immediately
     if ($env:PATH -notlike "*$BinDir*") {
-        $env:PATH = "$env:PATH;$BinDir"
+        $env:PATH = "$BinDir;$env:PATH"
     }
 
     Write-Host ""
@@ -208,13 +208,28 @@ try {
     Write-Host "============================" -ForegroundColor Green
     Write-Host "Managed binary : $BinaryPath"
     Write-Host ""
-    Write-Host "Next steps" -ForegroundColor Cyan
-    Write-Host "----------" -ForegroundColor Cyan
-    Write-Host "1. Start the bridge:"
-    Write-Host "   sesori-bridge"
-    Write-Host ""
-    Write-Host "2. If 'sesori-bridge' is not available in this shell yet, run:" -ForegroundColor Cyan
-    Write-Host "   & \"$BinaryPath\""
+
+    $sesoriAvailable = $null
+    try {
+        $sesoriAvailable = Get-Command 'sesori-bridge' -ErrorAction SilentlyContinue
+    } catch {
+        # Ignore
+    }
+
+    if ($sesoriAvailable -and ($sesoriAvailable.Source -ieq $BinaryPath)) {
+        Write-Host "sesori-bridge is available in this terminal." -ForegroundColor Green
+        Write-Host ""
+        Write-Host "Next steps" -ForegroundColor Cyan
+        Write-Host "----------" -ForegroundColor Cyan
+        Write-Host "Start the bridge:"
+        Write-Host "   sesori-bridge"
+    } else {
+        Write-Host "Next steps" -ForegroundColor Cyan
+        Write-Host "----------" -ForegroundColor Cyan
+        Write-Host "1. Open a new terminal"
+        Write-Host "2. Run the bridge:"
+        Write-Host "   sesori-bridge"
+    }
 
 } finally {
     # ── Cleanup temp files ────────────────────────────────────────────────────

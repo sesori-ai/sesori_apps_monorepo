@@ -55,8 +55,31 @@ function nextCommand(binaryPath, args) {
   };
 }
 
+function isManagedSymlinkReady(installRoot) {
+  if (process.platform === "win32") {
+    return true;
+  }
+  var home = process.env.HOME;
+  if (!home) {
+    return false;
+  }
+  var symlinkPath = path.join(home, ".local", "bin", "sesori-bridge");
+  try {
+    var stat = fs.lstatSync(symlinkPath);
+    if (!stat.isSymbolicLink()) {
+      return false;
+    }
+    var target = fs.readlinkSync(symlinkPath);
+    return target === runtimeInstall.managedBinaryPath(installRoot);
+  } catch (_) {
+    return false;
+  }
+}
+
 function printInstallSummary(options) {
   var commands = nextCommand(options.binaryPath, options.args);
+  var pathConfigured = launcher.isLocalBinInPath();
+  var symlinkReady = isManagedSymlinkReady(options.installRoot);
   console.log("");
   console.log("Sesori Bridge install complete");
   console.log("============================");
@@ -66,11 +89,18 @@ function printInstallSummary(options) {
   console.log("");
   console.log("Next steps");
   console.log("----------");
-  console.log("1. Start the bridge:");
-  console.log("   " + commands.pathCommand);
-  console.log("");
-  console.log("2. If `sesori-bridge` is not available in this shell yet, run:");
-  console.log("   " + commands.managed);
+  if (pathConfigured && symlinkReady) {
+    console.log("Start the bridge:");
+    console.log("   " + commands.pathCommand);
+  } else if (!pathConfigured) {
+    console.log("1. Open a new terminal");
+    console.log("2. Run the bridge:");
+    console.log("   " + commands.pathCommand);
+  } else {
+    console.log("The symlink at ~/.local/bin/sesori-bridge is missing or blocked.");
+    console.log("Run the bridge directly:");
+    console.log("   " + commands.managed);
+  }
 }
 
 function managedBinDir(installRoot) { return path.dirname(runtimeInstall.managedBinaryPath(installRoot)); }
@@ -119,9 +149,11 @@ async function bootstrapManagedRuntime(pkgName) {
               "Refusing to repair it with an older npm payload. Reinstall the managed runtime explicitly, or delete the managed install directory and bootstrap again with npx."
             );
           }
+          runtimeInstall.createManagedSymlink(installRoot);
           return { binaryPath: runtimeInstall.managedBinaryPath(installRoot), installRoot: installRoot };
         }
         if (comparison === 0 && runtimeReady) {
+          runtimeInstall.createManagedSymlink(installRoot);
           return { binaryPath: runtimeInstall.managedBinaryPath(installRoot), installRoot: installRoot };
         }
       }
@@ -146,6 +178,7 @@ async function bootstrapManagedRuntime(pkgName) {
           "Refusing to run runtime binaries from npm-owned paths. Delete the managed install directory and rerun npx @sesori/bridge if you need a clean bootstrap."
         );
       }
+      runtimeInstall.createManagedSymlink(installRoot);
       return { binaryPath: runtimeInstall.managedBinaryPath(installRoot), installRoot: installRoot };
     });
   } finally {

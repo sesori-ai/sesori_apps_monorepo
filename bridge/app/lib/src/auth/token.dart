@@ -37,13 +37,19 @@ class TokenData {
   }
 }
 
-/// Returns the path to the token file: ~/.config/sesori-bridge/token.json
 String tokenPath() {
-  final homeDir = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
-  if (homeDir == null) {
-    throw StateError('Unable to determine home directory');
+  if (Platform.isWindows) {
+    final localAppData = Platform.environment['LOCALAPPDATA'];
+    if (localAppData == null || localAppData.isEmpty) {
+      throw StateError('LOCALAPPDATA environment variable not set');
+    }
+    return '$localAppData/sesori/token.json';
   }
-  return '$homeDir/.config/sesori-bridge/token.json';
+  final homeDir = Platform.environment['HOME'];
+  if (homeDir == null || homeDir.isEmpty) {
+    throw StateError('HOME environment variable not set');
+  }
+  return '$homeDir/.local/share/sesori/token.json';
 }
 
 /// Saves the token data to the token file.

@@ -28,7 +28,7 @@ function managedInstallRoot() {
   if (!home) {
     fail("sesori-bridge: HOME must be set to bootstrap the managed runtime.");
   }
-  return path.join(home, ".sesori");
+  return path.join(home, ".local", "share", "sesori");
 }
 
 function managedBinaryPath(installRoot) {
@@ -150,6 +150,30 @@ function writeManagedManifest(installRoot, version) {
   fs.writeFileSync(managedManifestPath(installRoot), JSON.stringify({ version: version }) + os.EOL, "utf8");
 }
 
+function createManagedSymlink(installRoot) {
+  if (process.platform === "win32") {
+    return;
+  }
+  var home = process.env.HOME;
+  if (!home) {
+    return;
+  }
+  var binaryPath = managedBinaryPath(installRoot);
+  var symlinkDir = path.join(home, ".local", "bin");
+  var symlinkPath = path.join(symlinkDir, "sesori-bridge");
+
+  try {
+    fs.mkdirSync(symlinkDir, { recursive: true });
+    try {
+      fs.unlinkSync(symlinkPath);
+    } catch (_) {
+    }
+    fs.symlinkSync(binaryPath, symlinkPath);
+  } catch (error) {
+    console.warn("sesori-bridge: Failed to create symlink at " + symlinkPath + ". You may need to add " + path.dirname(binaryPath) + " to PATH manually.");
+  }
+}
+
 function installManagedRuntime(payload, installRoot, options) {
   var parentRoot = path.dirname(installRoot);
   var stageRoot = path.join(parentRoot, ".sesori-stage-" + process.pid);
@@ -183,6 +207,7 @@ function installManagedRuntime(payload, installRoot, options) {
 
 module.exports = {
   compareVersions: compareVersions,
+  createManagedSymlink: createManagedSymlink,
   installManagedRuntime: installManagedRuntime,
   managedBinaryPath: managedBinaryPath,
   managedInstallRoot: managedInstallRoot,

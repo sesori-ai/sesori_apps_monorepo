@@ -6,8 +6,8 @@ void main() {
     test('returns null for managed executable path', () {
       expect(
         unsupportedPackageRuntimeMessage(
-          executablePath: '/Users/alex/.sesori/bin/sesori-bridge',
-          managedExecutablePath: '/Users/alex/.sesori/bin/sesori-bridge',
+          executablePath: '/Users/alex/.local/share/sesori/bin/sesori-bridge',
+          managedExecutablePath: '/Users/alex/.local/share/sesori/bin/sesori-bridge',
         ),
         isNull,
       );
@@ -17,7 +17,7 @@ void main() {
       expect(
         unsupportedPackageRuntimeMessage(
           executablePath: '/tmp/custom/sesori-bridge',
-          managedExecutablePath: '/Users/alex/.sesori/bin/sesori-bridge',
+          managedExecutablePath: '/Users/alex/.local/share/sesori/bin/sesori-bridge',
         ),
         isNull,
       );
@@ -26,7 +26,7 @@ void main() {
     test('returns guidance for direct npm-owned payload execution', () {
       final message = unsupportedPackageRuntimeMessage(
         executablePath: '/tmp/project/node_modules/@sesori/bridge-linux-x64/lib/runtime/bin/sesori-bridge',
-        managedExecutablePath: '/Users/alex/.sesori/bin/sesori-bridge',
+        managedExecutablePath: '/Users/alex/.local/share/sesori/bin/sesori-bridge',
       );
 
       expect(message, isNotNull);

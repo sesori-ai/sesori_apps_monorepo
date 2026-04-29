@@ -22,7 +22,7 @@ void main() {
 
       expect(
         api.configFilePath,
-        equals('${tempHome.path}/.config/sesori-bridge/config.json'),
+        equals('${tempHome.path}/.config/sesori/config.json'),
       );
     });
 
@@ -39,7 +39,7 @@ void main() {
 
       await api.writeConfig('{"sleepPrevention":"always"}');
 
-      expect(Directory('${tempHome.path}/.config/sesori-bridge').existsSync(), isTrue);
+      expect(Directory('${tempHome.path}/.config/sesori').existsSync(), isTrue);
       expect(File(api.configFilePath).existsSync(), isTrue);
       expect(await api.readConfig(), equals('{"sleepPrevention":"always"}'));
     });

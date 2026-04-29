@@ -7,7 +7,7 @@ class BridgeSettingsApi {
       : _homeDirectory = homeDirectory ?? _resolveHomeDirectory();
 
   String get configFilePath =>
-      '$_homeDirectory/.config/sesori-bridge/config.json';
+      '$_homeDirectory/.config/sesori/config.json';
 
   Future<String?> readConfig() async {
     final file = File(configFilePath);
@@ -19,7 +19,7 @@ class BridgeSettingsApi {
   }
 
   Future<void> writeConfig(String jsonContent) async {
-    final directory = Directory('$_homeDirectory/.config/sesori-bridge');
+    final directory = Directory('$_homeDirectory/.config/sesori');
     if (!directory.existsSync()) {
       await directory.create(recursive: true);
     }
