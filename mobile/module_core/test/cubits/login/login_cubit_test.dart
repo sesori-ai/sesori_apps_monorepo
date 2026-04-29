@@ -144,7 +144,7 @@ void main() {
         "loginWithEmail emits loading then success state on successful login",
         build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
         act: (cubit) async {
-          when(() => mockAuthSession.loginWithEmail(email: any(), password: any())).thenAnswer(
+          when(() => mockAuthSession.loginWithEmail(email: any(named: "email"), password: any(named: "password"))).thenAnswer(
             (_) async => const AuthUser(
               id: "id",
               provider: "google",
@@ -168,7 +168,7 @@ void main() {
         build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
         act: (cubit) async {
           when(
-            () => mockAuthSession.loginWithEmail(email: any(), password: any()),
+            () => mockAuthSession.loginWithEmail(email: any(named: "email"), password: any(named: "password")),
           ).thenThrow(Exception("Invalid email or password"));
           await cubit.loginWithEmail(
             email: "test@example.com",
@@ -194,7 +194,7 @@ void main() {
           isA<LoginFailed>(),
         ],
         verify: (_) {
-          verifyNever(() => mockAuthSession.loginWithEmail(email: any(), password: any()));
+          verifyNever(() => mockAuthSession.loginWithEmail(email: any(named: "email"), password: any(named: "password")));
         },
       );
 
@@ -211,7 +211,7 @@ void main() {
           isA<LoginFailed>(),
         ],
         verify: (_) {
-          verifyNever(() => mockAuthSession.loginWithEmail(email: any(), password: any()));
+          verifyNever(() => mockAuthSession.loginWithEmail(email: any(named: "email"), password: any(named: "password")));
         },
       );
     });
