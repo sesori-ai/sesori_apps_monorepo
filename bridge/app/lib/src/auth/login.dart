@@ -277,7 +277,7 @@ Future<(TokenData, String)> performEmailLogin(
 
   late AuthResponse authResponse;
   try {
-    authResponse = await api.loginWithEmail(email, password);
+    authResponse = await api.loginWithEmail(email: email, password: password);
   } on EmailAuthApiException catch (e) {
     if (e.statusCode == 429) {
       throw RateLimitException();

@@ -71,7 +71,7 @@ class LoginCubit extends Cubit<LoginState> {
     emit(const LoginState.authenticating());
 
     try {
-      await _authSession.loginWithEmail(email.trim(), password);
+      await _authSession.loginWithEmail(email: email.trim(), password: password);
       if (isClosed) return false;
       emit(const LoginState.success());
       return true;

@@ -20,7 +20,7 @@ class MockAuthSession extends Mock implements AuthSession {
   AuthState get currentState => _authState.value;
 
   @override
-  Future<AuthUser> loginWithEmail(String email, String password) async =>
+  Future<AuthUser> loginWithEmail({required String email, required String password}) async =>
       throw UnimplementedError();
 }
 

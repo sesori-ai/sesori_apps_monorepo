@@ -8,9 +8,9 @@ class EmailAuthApi {
 
   EmailAuthApi({required this.authBackendUrl});
 
-  Future<AuthResponse> loginWithEmail(String email, String password) async {
+  Future<AuthResponse> loginWithEmail({required String email, required String password}) async {
     final base = authBackendUrl.endsWith("/") ? authBackendUrl.substring(0, authBackendUrl.length - 1) : authBackendUrl;
-    final uri = Uri.parse("$base/auth/password/login");
+    final uri = Uri.parse("$base/${AuthProvider.email.apiAuthPath}");
 
     final body = jsonEncode({"email": email, "password": password});
 

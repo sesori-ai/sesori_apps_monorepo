@@ -18,12 +18,14 @@ void main() {
   setUpAll(() {
     registerFallbackValue(AuthProvider.google);
     registerFallbackValue(Uri.parse(redirectUri));
-    registerFallbackValue(const AuthUser(
-      id: "id",
-      provider: "google",
-      providerUserId: "user123",
-      providerUsername: null,
-    ));
+    registerFallbackValue(
+      const AuthUser(
+        id: "id",
+        provider: "google",
+        providerUserId: "user123",
+        providerUsername: null,
+      ),
+    );
   });
 
   group("LoginCubit", () {
@@ -116,13 +118,14 @@ void main() {
         "loginWithEmail calls AuthSession.loginWithEmail with correct email/password",
         build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
         act: (cubit) async {
-          when(() => mockAuthSession.loginWithEmail("test@example.com", "password123"))
-              .thenAnswer((_) async => const AuthUser(
-                    id: "id",
-                    provider: "google",
-                    providerUserId: "user123",
-                    providerUsername: null,
-                  ));
+          when(() => mockAuthSession.loginWithEmail(email: "test@example.com", password: "password123")).thenAnswer(
+            (_) async => const AuthUser(
+              id: "id",
+              provider: "google",
+              providerUserId: "user123",
+              providerUsername: null,
+            ),
+          );
           await cubit.loginWithEmail(
             email: "test@example.com",
             password: "password123",
@@ -133,8 +136,7 @@ void main() {
           isA<LoginSuccess>(),
         ],
         verify: (_) {
-          verify(() => mockAuthSession.loginWithEmail("test@example.com", "password123"))
-              .called(1);
+          verify(() => mockAuthSession.loginWithEmail(email: "test@example.com", password: "password123")).called(1);
         },
       );
 
@@ -142,13 +144,14 @@ void main() {
         "loginWithEmail emits loading then success state on successful login",
         build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
         act: (cubit) async {
-          when(() => mockAuthSession.loginWithEmail(any(), any()))
-              .thenAnswer((_) async => const AuthUser(
-                    id: "id",
-                    provider: "google",
-                    providerUserId: "user123",
-                    providerUsername: null,
-                  ));
+          when(() => mockAuthSession.loginWithEmail(email: any(), password: any())).thenAnswer(
+            (_) async => const AuthUser(
+              id: "id",
+              provider: "google",
+              providerUserId: "user123",
+              providerUsername: null,
+            ),
+          );
           await cubit.loginWithEmail(
             email: "test@example.com",
             password: "password123",
@@ -164,8 +167,9 @@ void main() {
         "loginWithEmail emits failed state on 401 error",
         build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
         act: (cubit) async {
-          when(() => mockAuthSession.loginWithEmail(any(), any()))
-              .thenThrow(Exception("Invalid email or password"));
+          when(
+            () => mockAuthSession.loginWithEmail(email: any(), password: any()),
+          ).thenThrow(Exception("Invalid email or password"));
           await cubit.loginWithEmail(
             email: "test@example.com",
             password: "wrongpassword",
@@ -190,7 +194,7 @@ void main() {
           isA<LoginFailed>(),
         ],
         verify: (_) {
-          verifyNever(() => mockAuthSession.loginWithEmail(any(), any()));
+          verifyNever(() => mockAuthSession.loginWithEmail(email: any(), password: any()));
         },
       );
 
@@ -207,7 +211,7 @@ void main() {
           isA<LoginFailed>(),
         ],
         verify: (_) {
-          verifyNever(() => mockAuthSession.loginWithEmail(any(), any()));
+          verifyNever(() => mockAuthSession.loginWithEmail(email: any(), password: any()));
         },
       );
     });

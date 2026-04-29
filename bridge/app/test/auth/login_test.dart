@@ -134,7 +134,7 @@ void main() {
   });
 
   group('Email Password Login', () {
-    test('performEmailLogin POSTs to /auth/password/login and returns tokens', () async {
+    test('performEmailLogin POSTs to /auth/email and returns tokens', () async {
       final authServer = await _PasswordLoginTestServer.start();
       authServer.onLoginRequest = (email, password) async {
         if (email == 'test@example.com' && password == 'correct-password') {
@@ -333,7 +333,7 @@ class _PasswordLoginTestServer {
 
   void _listen() {
     _server.listen((request) async {
-      if (request.uri.path == '/auth/password/login' && request.method == 'POST') {
+      if (request.uri.path == '/auth/email' && request.method == 'POST') {
         try {
           final content = await request.fold<List<int>>(
             [],

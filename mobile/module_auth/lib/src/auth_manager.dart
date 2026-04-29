@@ -198,8 +198,8 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
   }
 
   @override
-  Future<AuthUser> loginWithEmail(String email, String password) async {
-    final uri = Uri.parse("$authBaseUrl/auth/password/login");
+  Future<AuthUser> loginWithEmail({required String email, required String password}) async {
+    final uri = Uri.parse("$authBaseUrl/auth/email");
     final response = await _post(
       uri,
       body: {"email": email, "password": password},

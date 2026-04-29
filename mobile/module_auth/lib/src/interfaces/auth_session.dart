@@ -35,7 +35,7 @@ abstract interface class AuthSession {
 
   /// Authenticates using email and password.
   /// Throws [Exception] on authentication failure (including 401).
-  Future<AuthUser> loginWithEmail(String email, String password);
+  Future<AuthUser> loginWithEmail({required String email, required String password});
 
   /// Clears local tokens and emits unauthenticated.
   /// Does NOT call the auth server — other devices remain authenticated.
