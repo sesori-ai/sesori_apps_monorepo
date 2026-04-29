@@ -10,7 +10,10 @@ class TerminalPasswordReader {
     try {
       _stdin.echoMode = false;
       final line = _stdin.readLineSync();
-      return line ?? '';
+      if (line == null) {
+        throw Exception('EOF reached while reading password');
+      }
+      return line;
     } finally {
       _stdin.echoMode = previousEchoMode;
     }

@@ -75,7 +75,10 @@ class BridgeRuntimeRunner {
     shutdownCoordinator.add(disposable: httpClient.close);
 
     final runtimeAuthService = BridgeRuntimeAuthService(
-      loginEmailRepository: LoginEmailRepository(emailAuthApi: LoginEmailApi(authBackendUrl: options.authBackendUrl)),
+      loginEmailRepository: LoginEmailRepository(
+        emailAuthApi: LoginEmailApi(authBackendUrl: options.authBackendUrl),
+        promptForCredentials: promptForEmailCredentials,
+      ),
       loginOAuthApi: LoginOAuthApi(authBackendUrl: options.authBackendUrl),
     );
 

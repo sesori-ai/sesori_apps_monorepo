@@ -1,21 +1,8 @@
-import 'dart:io';
-
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 import 'package:sesori_shared/sesori_shared.dart';
 
-import '../bridge/runtime/terminal_password_reader.dart';
 import 'login_email_api.dart';
 import 'token.dart';
-
-({String email, String password}) _promptForEmailCredentials() {
-  stdout.write('Email: ');
-  final email = stdin.readLineSync() ?? '';
-
-  stdout.write('Password: ');
-  final password = TerminalPasswordReader(stdin: stdin).read();
-
-  return (email: email, password: password);
-}
 
 class LoginEmailRepository {
   final LoginEmailApi emailAuthApi;
@@ -23,7 +10,7 @@ class LoginEmailRepository {
 
   LoginEmailRepository({
     required this.emailAuthApi,
-    this.promptForCredentials = _promptForEmailCredentials,
+    required this.promptForCredentials,
   });
 
   Future<TokenData> performEmailLogin() async {
