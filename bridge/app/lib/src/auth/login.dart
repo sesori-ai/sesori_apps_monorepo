@@ -184,10 +184,9 @@ Future<(TokenData, String)> _exchangeCallback(
 /// If the callback server fails to start, prints the URL for manual copy and
 /// throws an exception.
 ///
-/// [provider] defaults to [AuthProvider.github] for backward compatibility.
 Future<TokenData> performLogin(
   String authBackendURL, {
-  AuthProvider provider = AuthProvider.github,
+  required AuthProvider provider,
   Future<void> Function(String url) browserLauncher = openBrowser,
 }) async {
   if (provider == AuthProvider.email) {
