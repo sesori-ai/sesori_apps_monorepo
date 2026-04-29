@@ -3,10 +3,10 @@ import "dart:convert";
 import "package:http/http.dart" as http;
 import "package:sesori_shared/sesori_shared.dart";
 
-class EmailAuthApi {
+class LoginEmailApi {
   final String authBackendUrl;
 
-  EmailAuthApi({required this.authBackendUrl});
+  LoginEmailApi({required this.authBackendUrl});
 
   Future<AuthResponse> loginWithEmail({required String email, required String password}) async {
     final base = authBackendUrl.endsWith("/") ? authBackendUrl.substring(0, authBackendUrl.length - 1) : authBackendUrl;
