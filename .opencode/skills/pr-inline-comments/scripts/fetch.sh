@@ -3,38 +3,36 @@ set -euo pipefail
 
 usage() {
   cat >&2 <<'EOF'
-Usage: fetch.sh <pr-number> [--since ISO_DATETIME] [--repo OWNER/REPO]
+Usage: fetch.sh <pr-number> [--since ISO_DATETIME] [--unresolved] [--repo OWNER/REPO]
 
-Fetches inline (code) review comments on a GitHub pull request, groups
-them into threads, and optionally filters to threads whose latest comment
-is at or after ISO_DATETIME.
+Fetches inline (code) review comments on a GitHub pull request, grouped
+into threads, with optional filtering.
 
-ISO_DATETIME must be ISO 8601 / RFC 3339 with an explicit timezone:
-  2026-04-29T14:30:00Z
-  2026-04-29T17:00:00+03:00
-  2026-04-29T17:00:00+0300
-  2026-04-29T14:30:00.123Z      (fractional seconds are accepted and stripped)
+Flags:
+  --since ISO_DATETIME   Keep only threads whose latest comment is at or
+                         after the given datetime. ISO 8601 with timezone
+                         is required (e.g. 2026-04-29T14:30:00Z or
+                         2026-04-29T17:00:00+03:00). The script normalizes
+                         to UTC internally.
+  --unresolved           Keep only threads that are not yet resolved.
+  --repo OWNER/REPO      Override the current repo.
 
-Datetimes without a timezone are rejected. Any input is normalized to
-UTC Z form before use.
-
-Output is a single JSON array of thread objects on stdout.
+Output is a single JSON array of thread objects on stdout. Each thread
+includes is_resolved and is_outdated.
 EOF
 }
 
 # -------- datetime validation + normalization --------
 
-# Validate against a strict ISO 8601 grammar with required timezone.
-# Returns 0 if valid, 1 otherwise.
 validate_iso8601() {
   local s="$1"
   local re='^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:?[0-9]{2})$'
   [[ "$s" =~ $re ]]
 }
 
-# Normalize an ISO 8601 datetime to UTC with trailing Z.
-# Handles GNU date (Linux) and BSD date (macOS) by feature detection.
-# Echoes the normalized value on stdout, or an error to stderr and returns 1.
+# Normalize an ISO 8601 datetime to UTC with trailing Z. Handles GNU date
+# (Linux) and BSD date (macOS) by feature detection. Echoes the normalized
+# value on stdout, or an error to stderr and returns 1.
 normalize_to_utc_z() {
   local input="$1"
 
@@ -47,8 +45,6 @@ EOF
     return 1
   fi
 
-  # Strip fractional seconds. GitHub never emits them and BSD date's %S
-  # does not accept them. The validator already confirmed the structure.
   local stripped
   stripped=$(printf '%s' "$input" | sed -E 's/\.[0-9]+(Z|[+-])/\1/')
 
@@ -60,8 +56,7 @@ EOF
       return 1
     fi
   else
-    # BSD date (macOS). Strict: needs ±HHMM with no colon, and rejects Z.
-    # Rewrite Z -> +0000 and ±HH:MM -> ±HHMM.
+    # BSD date (macOS). Strict: needs ±HHMM with no colon, rejects Z.
     local bsd_in
     bsd_in=$(printf '%s' "$stripped" \
       | sed -E 's/Z$/+0000/; s/([+-][0-9]{2}):([0-9]{2})$/\1\2/')
@@ -79,13 +74,15 @@ EOF
 PR_NUMBER=""
 SINCE=""
 REPO=""
+ONLY_UNRESOLVED=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --since) SINCE="${2:?--since requires a value}"; shift 2 ;;
-    --repo)  REPO="${2:?--repo requires a value}";   shift 2 ;;
-    -h|--help) usage; exit 0 ;;
-    -*) echo "Unknown flag: $1" >&2; usage; exit 2 ;;
+    --since)      SINCE="${2:?--since requires a value}"; shift 2 ;;
+    --repo)       REPO="${2:?--repo requires a value}";   shift 2 ;;
+    --unresolved) ONLY_UNRESOLVED=1; shift ;;
+    -h|--help)    usage; exit 0 ;;
+    -*)           echo "Unknown flag: $1" >&2; usage; exit 2 ;;
     *)
       if [[ -z "$PR_NUMBER" ]]; then
         PR_NUMBER="$1"
@@ -114,64 +111,100 @@ if [[ -z "$REPO" ]]; then
   REPO="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
 fi
 
+OWNER="${REPO%%/*}"
+REPO_NAME="${REPO##*/}"
+
 # -------- fetch + transform --------
 
-# gh api --paginate may emit either one merged array or multiple
-# concatenated arrays depending on version. --slurp + add handles both:
-# single array  -> [[...]]      -> add -> [...]
-# multiple      -> [[..],[..]]  -> add -> [...]
-gh api --paginate \
-  -H "Accept: application/vnd.github+json" \
-  "/repos/${REPO}/pulls/${PR_NUMBER}/comments" \
-| jq --slurp --arg since "$SINCE" '
-    # Walk in_reply_to_id chain back to the thread root.
-    # Falls through to self.id if a parent is missing (orphaned reply).
-    def root_id_of(c; $by_id):
-      if c.in_reply_to_id == null then c.id
-      else
-        ($by_id[(c.in_reply_to_id|tostring)]) as $p
-        | if $p == null then c.id else root_id_of($p; $by_id) end
-      end;
+# GraphQL query. reviewThreads gives native threading + isResolved/isOutdated,
+# which the REST /pulls/{n}/comments endpoint does not expose.
+#
+# Pagination: gh api graphql --paginate uses pageInfo.{hasNextPage,endCursor}
+# and re-runs with $endCursor automatically. Inner comments are capped at
+# 100 per thread; we warn if that cap is hit (extremely rare).
+read -r -d '' GRAPHQL_QUERY <<'GQL' || true
+query($owner: String!, $repo: String!, $pr: Int!, $endCursor: String) {
+  repository(owner: $owner, name: $repo) {
+    pullRequest(number: $pr) {
+      reviewThreads(first: 100, after: $endCursor) {
+        nodes {
+          isResolved
+          isOutdated
+          path
+          line
+          originalLine
+          startLine
+          diffSide
+          comments(first: 100) {
+            nodes {
+              databaseId
+              author { login }
+              body
+              createdAt
+              updatedAt
+              url
+              diffHunk
+              commit { oid }
+            }
+            pageInfo { hasNextPage }
+          }
+        }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  }
+}
+GQL
 
-    # Merge all pages into a flat list of comments.
-    add as $all
+gh api graphql --paginate \
+  -F owner="$OWNER" \
+  -F repo="$REPO_NAME" \
+  -F pr="$PR_NUMBER" \
+  -f query="$GRAPHQL_QUERY" \
+| jq --slurp \
+     --arg since "$SINCE" \
+     --argjson onlyUnresolved "$ONLY_UNRESOLVED" '
+    # Flatten all pages into a single list of thread nodes.
+    [.[] | .data.repository.pullRequest.reviewThreads.nodes[]] as $threads
 
-    # Build id -> comment lookup table for the chain walk.
-    | (reduce $all[] as $c ({}; .[($c.id|tostring)] = $c)) as $by_id
+    # Surface a warning if any thread truncated its inner comments.
+    | ($threads | map(select(.comments.pageInfo.hasNextPage)) | length) as $truncated
+    | (if $truncated > 0 then
+        ("warning: \($truncated) thread(s) had > 100 comments; output is truncated" | debug)
+       else . end) as $_
 
-    # Tag each comment with its thread root id, group, and shape output.
-    | $all
-    | map(. + {_root: root_id_of(.; $by_id)})
-    | group_by(._root)
+    | $threads
     | map(
-        .[0]._root as $rid
-        # Pick the actual root comment for thread-level fields.
-        # Fallback to first in group if root is missing (defensive).
-        | ((map(select(.id == $rid))[0]) // .[0]) as $root
-        | (sort_by(.created_at)) as $sorted
+        # Skip empty threads defensively (should not happen).
+        select(.comments.nodes | length > 0)
+        | (.comments.nodes | sort_by(.createdAt)) as $sorted
+        | $sorted[0] as $root
         | {
-            # Thread-level fields: present once per thread.
-            thread_id:  $root.id,
-            path:       $root.path,
-            line:       ($root.line // $root.original_line),
-            side:       $root.side,
-            start_line: $root.start_line,
-            commit_id:  $root.commit_id,
-            diff_hunk:  $root.diff_hunk,
-            url:        $root.html_url,
-            latest_at:  ($sorted | map(.created_at) | max),
+            # Thread-level fields, present once per thread.
+            thread_id:   $root.databaseId,
+            path:        .path,
+            line:        (.line // .originalLine),
+            side:        .diffSide,
+            start_line:  .startLine,
+            is_resolved: .isResolved,
+            is_outdated: .isOutdated,
+            commit_id:   ($root.commit.oid // null),
+            diff_hunk:   $root.diffHunk,
+            url:         $root.url,
+            latest_at:   ($sorted | map(.createdAt) | max),
 
-            # Per-comment fields: only what differs between comments.
+            # Per-comment fields only.
             comments: ($sorted | map({
-              id,
-              user:       .user.login,
+              id:         .databaseId,
+              user:       (.author.login // "ghost"),
               body,
-              created_at,
-              updated_at,
-              html_url
+              created_at: .createdAt,
+              updated_at: .updatedAt,
+              html_url:   .url
             }))
           }
       )
-    | if $since != "" then map(select(.latest_at >= $since)) else . end
+    | if $onlyUnresolved == 1 then map(select(.is_resolved == false)) else . end
+    | if $since != ""           then map(select(.latest_at >= $since)) else . end
     | sort_by([.path // "", (.line // 0), .thread_id])
 '
