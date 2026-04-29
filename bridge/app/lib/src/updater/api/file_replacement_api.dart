@@ -71,6 +71,11 @@ class FileReplacementApi {
 
       _deleteIfExists(entity: backupBinary);
       _deleteIfExists(entity: backupLibDir);
+
+      if (Platform.isMacOS) {
+        await _stripMacOSAttributes(installRoot);
+      }
+
       return true;
     } on Object {
       _rollbackUnixReplacement(
@@ -186,6 +191,17 @@ class FileReplacementApi {
     ].join('\n');
     await File(scriptPath).writeAsString(script);
     return scriptPath;
+  }
+
+  Future<void> _stripMacOSAttributes(String path) async {
+    const List<String> attrs = ['com.apple.quarantine', 'com.apple.provenance'];
+    for (final String attr in attrs) {
+      try {
+        await _processRunner.run('xattr', ['-dr', attr, path]);
+      } on Object catch (error) {
+        stderr.writeln('Warning: failed to strip $attr from $path: $error');
+      }
+    }
   }
 
   String escapePowerShellSingleQuoted(String value) {

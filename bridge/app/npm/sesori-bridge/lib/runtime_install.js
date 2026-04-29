@@ -1,5 +1,6 @@
 "use strict";
 
+var child_process = require("child_process");
 var fs = require("fs");
 var os = require("os");
 var path = require("path");
@@ -174,6 +175,20 @@ function createManagedSymlink(installRoot) {
   }
 }
 
+function stripMacOSAttributes(installRoot) {
+  if (process.platform !== "darwin") {
+    return;
+  }
+  var attrs = ["com.apple.quarantine", "com.apple.provenance"];
+  attrs.forEach(function(attr) {
+    try {
+      child_process.execFileSync("xattr", ["-dr", attr, installRoot], { stdio: "pipe" });
+    } catch (error) {
+      console.warn("sesori-bridge: Failed to strip " + attr + " from " + installRoot + ": " + error.message);
+    }
+  });
+}
+
 function installManagedRuntime(payload, installRoot, options) {
   var parentRoot = path.dirname(installRoot);
   var stageRoot = path.join(parentRoot, ".sesori-stage-" + process.pid);
@@ -196,6 +211,7 @@ function installManagedRuntime(payload, installRoot, options) {
     }
     fs.renameSync(stageRoot, installRoot);
     removeRecursive(backupRoot);
+    stripMacOSAttributes(installRoot);
   } catch (error) {
     if (!exists(installRoot) && exists(backupRoot)) {
       fs.renameSync(backupRoot, installRoot);
