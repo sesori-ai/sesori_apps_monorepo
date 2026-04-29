@@ -73,8 +73,7 @@ class FileReplacementApi {
       _deleteIfExists(entity: backupLibDir);
 
       if (Platform.isMacOS) {
-        await _stripMacOSAttributes(targetBinary.path);
-        await _stripMacOSAttributes(targetLibDir.path);
+        await _stripMacOSAttributes(installRoot);
       }
 
       return true;

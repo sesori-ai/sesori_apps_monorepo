@@ -353,8 +353,8 @@ main() {
     printf '{"version":"%s"}\n' "${RESOLVED_RELEASE_TAG#bridge-v}" > "${MANAGED_MANIFEST}"
 
     if [ "${os}" = "macos" ]; then
-        xattr -dr com.apple.quarantine "${BINARY}" 2>/dev/null || true
-        xattr -dr com.apple.provenance "${BINARY}" 2>/dev/null || true
+        xattr -dr com.apple.quarantine "${INSTALL_DIR}" 2>/dev/null || true
+        xattr -dr com.apple.provenance "${INSTALL_DIR}" 2>/dev/null || true
     fi
 
     echo "[4/4] Creating symlink..."

@@ -179,19 +179,12 @@ function stripMacOSAttributes(installRoot) {
   if (process.platform !== "darwin") {
     return;
   }
-  var binaryPath = managedBinaryPath(installRoot);
-  var libPath = managedLibPath(installRoot);
   var attrs = ["com.apple.quarantine", "com.apple.provenance"];
   attrs.forEach(function(attr) {
     try {
-      child_process.execFileSync("xattr", ["-dr", attr, binaryPath], { stdio: "pipe" });
+      child_process.execFileSync("xattr", ["-dr", attr, installRoot], { stdio: "pipe" });
     } catch (error) {
-      console.warn("sesori-bridge: Failed to strip " + attr + " from " + binaryPath + ": " + error.message);
-    }
-    try {
-      child_process.execFileSync("xattr", ["-dr", attr, libPath], { stdio: "pipe" });
-    } catch (error) {
-      console.warn("sesori-bridge: Failed to strip " + attr + " from " + libPath + ": " + error.message);
+      console.warn("sesori-bridge: Failed to strip " + attr + " from " + installRoot + ": " + error.message);
     }
   });
 }
