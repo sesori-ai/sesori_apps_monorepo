@@ -105,6 +105,8 @@ Future<TokenData> ensureAuthenticated({required BridgeCliOptions options}) async
     provider = storedTokens.lastProvider;
   } on FileSystemException {
     provider = await promptForProvider();
+  } on FormatException {
+    provider = await promptForProvider();
   }
 
   return _loginAndPersist(
