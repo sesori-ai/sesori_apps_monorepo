@@ -185,13 +185,13 @@ function stripMacOSAttributes(installRoot) {
   attrs.forEach(function(attr) {
     try {
       child_process.execFileSync("xattr", ["-dr", attr, binaryPath], { stdio: "pipe" });
-    } catch (_) {
-      // Best-effort: ignore failures.
+    } catch (error) {
+      console.warn("sesori-bridge: Failed to strip " + attr + " from " + binaryPath + ": " + error.message);
     }
     try {
       child_process.execFileSync("xattr", ["-dr", attr, libPath], { stdio: "pipe" });
-    } catch (_) {
-      // Best-effort: ignore failures.
+    } catch (error) {
+      console.warn("sesori-bridge: Failed to strip " + attr + " from " + libPath + ": " + error.message);
     }
   });
 }

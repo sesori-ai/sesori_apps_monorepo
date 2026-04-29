@@ -199,8 +199,8 @@ class FileReplacementApi {
     for (final String attr in attrs) {
       try {
         await _processRunner.run('xattr', ['-dr', attr, path]);
-      } on Object {
-        // Best-effort: ignore failures.
+      } on Object catch (error) {
+        stderr.writeln('Warning: failed to strip $attr from $path: $error');
       }
     }
   }
