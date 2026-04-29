@@ -2,7 +2,7 @@
 library;
 
 // Re-exports from sesori_auth (move + re-export pattern)
-export "package:sesori_auth/sesori_auth.dart" show SecureStorage;
+export "package:sesori_auth/sesori_auth.dart" show AuthSession, OAuthFlowProvider, SecureStorage;
 export "package:sesori_auth/sesori_auth.dart"
     show
         ApiError,
@@ -15,6 +15,7 @@ export "package:sesori_auth/sesori_auth.dart"
 export "package:sesori_auth/sesori_auth.dart" show ApiResponse, ErrorResponse, SuccessResponse;
 export "package:sesori_auth/sesori_auth.dart" show HttpApiClient;
 export "package:sesori_auth/sesori_auth.dart" show HttpMethod, SafeApiClient;
+export "package:sesori_shared/sesori_shared.dart" show AuthProvider;
 
 // API
 export "src/api/client/relay_http_client.dart";

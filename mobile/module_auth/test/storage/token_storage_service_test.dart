@@ -1,10 +1,10 @@
 import "dart:convert";
 
 import "package:mocktail/mocktail.dart";
-import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_auth/sesori_auth.dart" show SecureStorage;
 import "package:sesori_auth/src/storage/oauth_storage_service.dart";
 import "package:sesori_auth/src/storage/token_storage_service.dart";
-import "package:sesori_shared/sesori_shared.dart" show parseJwtExpiry;
+import "package:sesori_shared/sesori_shared.dart" show AuthProvider, parseJwtExpiry;
 import "package:test/test.dart";
 
 class MockSecureStorage extends Mock implements SecureStorage {}
@@ -217,7 +217,7 @@ void main() {
   });
 
   group("OAuthStorageService", () {
-    test("saveOAuthProviderAndPkceVerifier writes provider and verifier", () async {
+    test("saveAuthProviderAndPkceVerifier writes provider and verifier", () async {
       // given
       when(() => mockStorage.write(key: "pkce_verifier", value: "test_pkce_verifier")).thenAnswer((_) async {
         return;
@@ -227,9 +227,9 @@ void main() {
       });
 
       // when
-      await oauthStorageService.saveOAuthProviderAndPkceVerifier(
+      await oauthStorageService.saveAuthProviderAndPkceVerifier(
         codeVerifier: "test_pkce_verifier",
-        provider: OAuthProvider.github,
+        provider: AuthProvider.github,
       );
 
       // then
@@ -262,38 +262,38 @@ void main() {
       verify(() => mockStorage.delete(key: "pkce_verifier")).called(1);
     });
 
-    test("getOAuthProvider returns enum for stored provider key", () async {
+    test("getAuthProvider returns enum for stored provider key", () async {
       // given
       when(() => mockStorage.read(key: "oauth_provider")).thenAnswer((_) async => "google");
 
       // when
-      final result = await oauthStorageService.getOAuthProvider();
+      final result = await oauthStorageService.getAuthProvider();
 
       // then
       verify(() => mockStorage.read(key: "oauth_provider")).called(1);
-      expect(result, OAuthProvider.google);
+      expect(result, AuthProvider.google);
     });
 
-    test("getOAuthProvider returns null for unknown provider key", () async {
+    test("getAuthProvider returns null for unknown provider key", () async {
       // given
       when(() => mockStorage.read(key: "oauth_provider")).thenAnswer((_) async => "unknown");
 
       // when
-      final result = await oauthStorageService.getOAuthProvider();
+      final result = await oauthStorageService.getAuthProvider();
 
       // then
       verify(() => mockStorage.read(key: "oauth_provider")).called(1);
       expect(result, isNull);
     });
 
-    test("clearOAuthProvider deletes with correct key", () async {
+    test("clearAuthProvider deletes with correct key", () async {
       // given
       when(() => mockStorage.delete(key: "oauth_provider")).thenAnswer((_) async {
         return;
       });
 
       // when
-      await oauthStorageService.clearOAuthProvider();
+      await oauthStorageService.clearAuthProvider();
 
       // then
       verify(() => mockStorage.delete(key: "oauth_provider")).called(1);

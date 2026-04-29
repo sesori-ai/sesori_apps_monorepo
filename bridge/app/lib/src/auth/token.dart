@@ -8,19 +8,31 @@ class TokenData {
   final String accessToken;
   final String refreshToken;
   final String? bridgeToken;
+  final AuthProvider lastProvider;
 
   TokenData({
     required this.accessToken,
     required this.refreshToken,
     this.bridgeToken,
+    required this.lastProvider,
   });
 
   /// Creates a TokenData instance from a JSON map.
   factory TokenData.fromJson(Map<String, dynamic> json) {
+    final providerName = json['lastProvider'] as String?;
+    if (providerName == null) {
+      throw const FormatException("lastProvider missing in token data");
+    }
+    final provider = AuthProvider.fromKey(providerName);
+    if (provider == null) {
+      throw FormatException("invalid lastProvider: $providerName");
+    }
+
     return TokenData(
       accessToken: json['accessToken'] as String,
       refreshToken: json['refreshToken'] as String,
       bridgeToken: json['bridgeToken'] as String?,
+      lastProvider: provider,
     );
   }
 
@@ -33,6 +45,7 @@ class TokenData {
     if (bridgeToken != null) {
       json['bridgeToken'] = bridgeToken;
     }
+    json['lastProvider'] = lastProvider.key;
     return json;
   }
 }

@@ -141,6 +141,38 @@ String toString() {
 /// @nodoc
 
 
+class LoginSuccess implements LoginState {
+  const LoginSuccess();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is LoginSuccess);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'LoginState.success()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+
+
 class LoginFailed implements LoginState {
   const LoginFailed({required this.error});
   

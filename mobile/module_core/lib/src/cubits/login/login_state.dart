@@ -10,5 +10,7 @@ sealed class LoginState with _$LoginState {
 
   const factory LoginState.awaitingCallback() = LoginAwaitingCallback;
 
+  const factory LoginState.success() = LoginSuccess;
+
   const factory LoginState.failed({required String error}) = LoginFailed;
 }

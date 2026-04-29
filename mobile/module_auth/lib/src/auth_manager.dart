@@ -65,7 +65,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
   Future<String> getAuthorizationUrl(OAuthProvider provider, String redirectUri) async {
     final (codeVerifier, codeChallenge) = await _generatePkce();
 
-    await _oAuthStorage.saveOAuthProviderAndPkceVerifier(
+    await _oAuthStorage.saveAuthProviderAndPkceVerifier(
       codeVerifier: codeVerifier,
       provider: provider,
     );
@@ -97,7 +97,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
       throw StateError("Missing PKCE verifier for OAuth code exchange");
     }
 
-    final provider = await _oAuthStorage.getOAuthProvider();
+    final provider = await _oAuthStorage.getAuthProvider();
     if (provider == null) {
       throw StateError("Missing OAuth provider for code exchange");
     }
@@ -115,7 +115,12 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     _ensureSuccess(response, context: "${provider.label} code exchange failed");
 
     final decodedBody = jsonDecodeMap(response.body);
-    final authResponse = AuthResponse.fromJson(decodedBody);
+    final AuthResponse authResponse;
+    try {
+      authResponse = AuthResponse.fromJson(decodedBody);
+    } on Object catch (e) {
+      throw Exception("Failed to parse auth response: $e");
+    }
 
     await _tokenStorage.saveTokens(
       accessToken: authResponse.accessToken,
@@ -124,7 +129,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
 
     await Future.wait([
       _oAuthStorage.clearPkceVerifier(),
-      _oAuthStorage.clearOAuthProvider(),
+      _oAuthStorage.clearAuthProvider(),
     ]);
 
     _authState.add(AuthState.authenticated(user: authResponse.user));
@@ -186,6 +191,43 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
   }
 
   @override
+  Future<AuthUser> loginWithEmail({required String email, required String password}) async {
+    final uri = Uri.parse("$authBaseUrl/auth/email");
+    final response = await _post(
+      uri,
+      body: {"email": email, "password": password},
+    );
+
+    if (response.statusCode == 401) {
+      throw Exception("Invalid email or password");
+    }
+    _ensureSuccess(response, context: "Email/password login failed");
+
+    final decodedBody = jsonDecodeMap(response.body);
+    final AuthResponse authResponse;
+    try {
+      authResponse = AuthResponse.fromJson(decodedBody);
+    } on Object catch (e) {
+      throw Exception("Failed to parse auth response: $e");
+    }
+
+    await _tokenStorage.saveTokens(
+      accessToken: authResponse.accessToken,
+      refreshToken: authResponse.refreshToken,
+    );
+
+    // Clear any stale OAuth temp state so a later deep-link callback
+    // cannot unexpectedly exchange using stale PKCE data.
+    await Future.wait([
+      _oAuthStorage.clearPkceVerifier(),
+      _oAuthStorage.clearAuthProvider(),
+    ]);
+
+    _authState.add(AuthState.authenticated(user: authResponse.user));
+    return authResponse.user;
+  }
+
+  @override
   Future<void> invalidateAllSessions() async {
     final accessToken = await getFreshAccessToken();
     if (accessToken != null) {
@@ -200,7 +242,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     await Future.wait([
       _tokenStorage.clearTokens(),
       _oAuthStorage.clearPkceVerifier(),
-      _oAuthStorage.clearOAuthProvider(),
+      _oAuthStorage.clearAuthProvider(),
     ]);
     _authState.add(const AuthState.unauthenticated());
   }
@@ -210,7 +252,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     await Future.wait([
       _tokenStorage.clearTokens(),
       _oAuthStorage.clearPkceVerifier(),
-      _oAuthStorage.clearOAuthProvider(),
+      _oAuthStorage.clearAuthProvider(),
     ]);
     _authState.add(const AuthState.unauthenticated());
   }
@@ -238,7 +280,12 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
       _ensureSuccess(response, context: "Token refresh failed");
 
       final decodedBody = jsonDecodeMap(response.body);
-      final authResponse = AuthResponse.fromJson(decodedBody);
+      final AuthResponse authResponse;
+      try {
+        authResponse = AuthResponse.fromJson(decodedBody);
+      } on Object catch (e) {
+        throw Exception("Failed to parse auth response: $e");
+      }
 
       await _tokenStorage.saveTokens(
         accessToken: authResponse.accessToken,

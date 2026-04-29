@@ -1,6 +1,8 @@
 /// Authentication package for Sesori — token lifecycle, OAuth flow, authenticated HTTP client.
 library;
 
+export "package:sesori_shared/sesori_shared.dart" show AuthProvider, AuthUser;
+
 export "src/auth_config.dart";
 export "src/client/api_error.dart";
 export "src/client/api_response.dart";

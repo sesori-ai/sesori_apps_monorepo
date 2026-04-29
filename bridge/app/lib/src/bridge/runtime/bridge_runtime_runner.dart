@@ -5,6 +5,9 @@ import "package:http/http.dart" as http;
 import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePluginApi, Log;
 
+import "../../auth/login_email_api.dart";
+import "../../auth/login_email_repository.dart";
+import "../../auth/login_oauth_api.dart";
 import "../../auth/token.dart";
 import "../../auth/token_manager.dart";
 import "../../server/process.dart";
@@ -71,6 +74,14 @@ class BridgeRuntimeRunner {
     );
     shutdownCoordinator.add(disposable: httpClient.close);
 
+    final runtimeAuthService = BridgeRuntimeAuthService(
+      loginEmailRepository: LoginEmailRepository(
+        emailAuthApi: LoginEmailApi(authBackendUrl: options.authBackendUrl),
+        promptForCredentials: promptForEmailCredentials,
+      ),
+      loginOAuthApi: LoginOAuthApi(authBackendUrl: options.authBackendUrl),
+    );
+
     try {
       final runtimeOwnershipError = unsupportedPackageRuntimeMessage(
         executablePath: Platform.resolvedExecutable,
@@ -88,8 +99,8 @@ class BridgeRuntimeRunner {
       );
       await updateService.checkAndApplyUpdate(cliArgs: options.cliArgs);
 
-      final authTokens = await ensureAuthenticated(options: options);
-      await logAuthenticatedUser(
+      final authTokens = await runtimeAuthService.ensureAuthenticated(options: options);
+      await runtimeAuthService.logAuthenticatedUser(
         authBackendUrl: options.authBackendUrl,
         accessToken: authTokens.accessToken,
       );
