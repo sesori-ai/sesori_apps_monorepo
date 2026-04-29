@@ -161,8 +161,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             model: preservedSelectedAgentModel,
           );
 
-          final refreshedChildSessions = [...snapshot.childSessions]
-            ..sort((a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0));
+          final refreshedChildSessions = [...snapshot.childSessions];
+          _sortChildrenByUpdatedDesc(refreshedChildSessions);
 
           emit(
             current.copyWith(
@@ -373,8 +373,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (current.children.any((c) => c.id == child.id)) return;
 
     if (isClosed) return;
-    final updated = [...current.children, child]
-      ..sort((a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0));
+    final updated = [...current.children, child];
+    _sortChildrenByUpdatedDesc(updated);
     emit(current.copyWith(children: updated));
   }
 
@@ -402,9 +402,9 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (index < 0) return;
 
     if (isClosed) return;
-    final updatedChildren = List<Session>.of(current.children);
-    updatedChildren[index] = updatedChild;
-    updatedChildren.sort((a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0));
+    final updatedChildren = List<Session>.of(current.children)
+      ..[index] = updatedChild;
+    _sortChildrenByUpdatedDesc(updatedChildren);
     emit(current.copyWith(children: updatedChildren));
   }
 
@@ -955,8 +955,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
   SessionDetailLoaded _buildLoadedState({required SessionDetailSnapshot snapshot}) {
     final latestAssistant = _latestAssistantMessage(snapshot.messages);
-    final childSessions = [...snapshot.childSessions]
-      ..sort((a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0));
+    final childSessions = [...snapshot.childSessions];
+    _sortChildrenByUpdatedDesc(childSessions);
     final childIds = childSessions.map((c) => c.id).toSet();
     final childStatuses = Map<String, SessionStatus>.fromEntries(
       snapshot.statuses.entries.where((e) => childIds.contains(e.key)),
@@ -1065,6 +1065,10 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           ),
         )
         .toList();
+  }
+
+  static void _sortChildrenByUpdatedDesc(List<Session> children) {
+    children.sort((a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0));
   }
 
   // ---------------------------------------------------------------------------

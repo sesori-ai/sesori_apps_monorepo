@@ -896,7 +896,7 @@ void main() {
           (_) async => ApiResponse.success(SessionListResponse(items: [oldChild, newChild])),
         );
 
-        globalEvents.add(SseEvent(data: SesoriSessionsUpdated(projectID: "project-1")));
+        globalEvents.add(SseEvent(data: const SesoriSessionsUpdated(projectID: "project-1")));
         await Future<void>.delayed(const Duration(milliseconds: 10));
       },
       expect: () => [
