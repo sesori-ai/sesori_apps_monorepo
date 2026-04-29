@@ -1,5 +1,21 @@
 # Changelog
 
+## [v0.6.0] - 2026-04-29
+
+### Added
+- Google OAuth and email/password login support with PKCE flow (#137)
+- `AuthProvider` enum to track last used authentication provider
+- Comprehensive auth test coverage for login, profile, token validation, and token management
+- Mobile login UI with provider selection buttons and email login form
+- Migrated install paths to `~/.local/share/sesori` for XDG compliance (#138)
+- Automatic symlink creation at `~/.local/bin/sesori-bridge` for immediate PATH access
+- Updated shell and PowerShell installers to use XDG-compliant directories
+
+### Changed
+- Config directory moved from `~/.config/sesori-bridge` to `~/.local/share/sesori`
+- Token persistence now includes `lastProvider` field for multi-provider auth tracking
+- Updated all documentation (README, INSTALL, RELEASING) with new install paths
+
 ## [v0.5.0] - 2026-04-27
 
 ### Added
