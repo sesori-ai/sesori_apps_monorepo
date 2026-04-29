@@ -69,31 +69,35 @@ class BridgeRuntimeAuthService {
 
     try {
       final storedTokens = await loadTokens();
-      final (validatedTokens, ok) = await validateToken(
-        authBackendURL: options.authBackendUrl,
-        accessToken: storedTokens.accessToken,
-        refreshToken: storedTokens.refreshToken,
-        lastProvider: storedTokens.lastProvider,
-      );
-      if (ok) {
-        final tokensToSave = TokenData(
-          accessToken: validatedTokens.accessToken,
-          refreshToken: validatedTokens.refreshToken,
-          bridgeToken: storedTokens.bridgeToken,
+      try {
+        final (validatedTokens, ok) = await validateToken(
+          authBackendURL: options.authBackendUrl,
+          accessToken: storedTokens.accessToken,
+          refreshToken: storedTokens.refreshToken,
           lastProvider: storedTokens.lastProvider,
         );
-        await saveTokens(tokensToSave);
-        return tokensToSave;
+        if (ok) {
+          final tokensToSave = TokenData(
+            accessToken: validatedTokens.accessToken,
+            refreshToken: validatedTokens.refreshToken,
+            bridgeToken: storedTokens.bridgeToken,
+            lastProvider: storedTokens.lastProvider,
+          );
+          await saveTokens(tokensToSave);
+          return tokensToSave;
+        }
+      } catch (error) {
+        throw Exception('validate stored tokens: $error');
       }
     } on FileSystemException catch (error) {
       if (error.osError?.errorCode != 2) {
         throw Exception('load stored tokens: $error');
       }
+      // Token file not found — fall through to login below
     } on FormatException {
       // Invalid token data (e.g., missing/invalid lastProvider) — treat as no valid tokens
       await clearTokens();
-    } catch (error) {
-      throw Exception('validate stored tokens: $error');
+      // Fall through to login below
     }
 
     AuthProvider provider;
