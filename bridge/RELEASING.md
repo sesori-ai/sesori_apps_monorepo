@@ -173,7 +173,7 @@ After the tagged workflow finishes, test the exact npm package version:
 npx @sesori/bridge@X.Y.Z
 
 # If PATH has not refreshed in this shell yet, open a new terminal
-# or run ~/.sesori/bin/sesori-bridge directly on macOS/Linux.
+# or run ~/.local/share/sesori/bin/sesori-bridge directly on macOS/Linux.
 sesori-bridge --version
 ```
 
@@ -185,7 +185,7 @@ After either install path, confirm uninstall behavior matches the contract:
 
 - `npm uninstall @sesori/bridge` removes only the npm package, not the managed install.
 - Full uninstall is manual directory deletion:
-  - macOS / Linux: `rm -rf ~/.sesori`
+  - macOS / Linux: `rm -rf ~/.local/share/sesori`
   - Windows: `Remove-Item -Recurse -Force "$env:LOCALAPPDATA\sesori"`
 
 ### D. Automatic update verification
@@ -222,7 +222,7 @@ bash install.sh
 sesori-bridge --version
 ```
 
-Managed installs from these installers are the supported long-lived runtime and the only binaries eligible for startup or periodic auto-update. The npm package stays bootstrap-only: users run `npx @sesori/bridge` to install or refresh the managed runtime, then run `sesori-bridge` from the managed launcher path. Direct execution of platform package binaries inside npm-owned locations is unsupported. `npm uninstall` does not remove the managed install, so release docs and support copy must keep pointing users to manual removal of `~/.sesori/` or `%LOCALAPPDATA%\sesori\` when they want a full uninstall.
+Managed installs from these installers are the supported long-lived runtime and the only binaries eligible for startup or periodic auto-update. The npm package stays bootstrap-only: users run `npx @sesori/bridge` to install or refresh the managed runtime, then run `sesori-bridge` from the managed launcher path. Direct execution of platform package binaries inside npm-owned locations is unsupported. `npm uninstall` does not remove the managed install, so release docs and support copy must keep pointing users to manual removal of `~/.local/share/sesori/` (and `~/.local/bin/sesori-bridge`) or `%LOCALAPPDATA%\sesori\` when they want a full uninstall.
 
 ## npm trusted publishing prerequisites
 

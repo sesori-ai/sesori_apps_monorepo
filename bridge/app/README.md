@@ -22,11 +22,11 @@ No Dart SDK? You can bootstrap the managed install with npm:
 npx @sesori/bridge
 
 # If PATH has not refreshed in this shell yet, open a new terminal
-# or run ~/.sesori/bin/sesori-bridge directly on macOS/Linux.
+# or run ~/.local/share/sesori/bin/sesori-bridge directly on macOS/Linux.
 sesori-bridge
 ```
 
-`npx @sesori/bridge` only installs or refreshes the managed runtime under `~/.sesori/` on macOS/Linux or `%LOCALAPPDATA%\sesori\` on Windows. It prefers the published platform payload when npm provides it, and otherwise falls back to the exact tagged GitHub Release asset for the wrapper version. `sesori-bridge` is the long-lived command you keep running after that bootstrap step. Shell installers are still supported if you prefer them. `npm uninstall @sesori/bridge` does not remove the managed install, so delete that Sesori directory manually if you want a full uninstall.
+`npx @sesori/bridge` only installs or refreshes the managed runtime under `~/.local/share/sesori/` on macOS/Linux or `%LOCALAPPDATA%\sesori\` on Windows. It prefers the published platform payload when npm provides it, and otherwise falls back to the exact tagged GitHub Release asset for the wrapper version. `sesori-bridge` is the long-lived command you keep running after that bootstrap step. Shell installers are still supported if you prefer them. `npm uninstall @sesori/bridge` does not remove the managed install, so delete that Sesori directory manually if you want a full uninstall.
 
 ## Install
 
@@ -38,11 +38,11 @@ Choose one supported packaged install path:
 npx @sesori/bridge
 
 # If PATH has not refreshed in this shell yet, open a new terminal
-# or run ~/.sesori/bin/sesori-bridge directly on macOS/Linux.
+# or run ~/.local/share/sesori/bin/sesori-bridge directly on macOS/Linux.
 sesori-bridge
 ```
 
-Use `npx @sesori/bridge` when you want npm to bootstrap or refresh the managed runtime, then keep running `sesori-bridge` from your PATH. The bootstrap path installs the same managed runtime that the GitHub release assets and shell installers publish, but it does not launch the service for you. On a first-time install, the PATH change is written for future terminals, so you may need to open a new terminal first.
+Use `npx @sesori/bridge` when you want npm to bootstrap or refresh the managed runtime, then keep running `sesori-bridge` from your PATH. The bootstrap path installs the same managed runtime that the GitHub release assets and shell installers publish, but it does not launch the service for you. On macOS/Linux, a symlink is created at `~/.local/bin/sesori-bridge`. If `~/.local/bin` is already in your PATH, the command is available immediately.
 
 ### Shell installer
 
@@ -52,7 +52,7 @@ macOS / Linux:
 curl -fsSL https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/main/install.sh | bash
 
 # If PATH has not refreshed in this shell yet, open a new terminal
-# or run ~/.sesori/bin/sesori-bridge directly.
+# or run ~/.local/share/sesori/bin/sesori-bridge directly.
 sesori-bridge --version
 ```
 
@@ -66,7 +66,7 @@ irm https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/main/instal
 sesori-bridge --version
 ```
 
-Both paths install the same managed runtime under `~/.sesori/` on macOS/Linux or `%LOCALAPPDATA%\sesori\` on Windows.
+Both paths install the same managed runtime under `~/.local/share/sesori/` on macOS/Linux or `%LOCALAPPDATA%\sesori\` on Windows.
 
 ## Update
 
@@ -82,8 +82,14 @@ Direct execution from npm-owned package payloads inside `node_modules` is unsupp
 
 Delete the managed install directory to fully remove the packaged bridge runtime:
 
-- macOS / Linux: `rm -rf ~/.sesori`
+- macOS / Linux: `rm -rf ~/.local/share/sesori`
 - Windows: `Remove-Item -Recurse -Force "$env:LOCALAPPDATA\sesori"`
+
+Also remove the symlink on macOS/Linux:
+
+```bash
+rm -f ~/.local/bin/sesori-bridge
+```
 
 If you used the npm bootstrap path, `npm uninstall @sesori/bridge` does not remove that managed install directory.
 

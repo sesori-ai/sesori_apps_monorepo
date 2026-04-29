@@ -4,8 +4,8 @@ var fs = require("fs");
 var path = require("path");
 var child_process = require("child_process");
 
-function unixManagedBinDir() { return "$HOME/.sesori/bin"; }
-function fishManagedBinDir() { return '"$HOME/.sesori/bin"'; }
+function unixManagedBinDir() { return "$HOME/.local/bin"; }
+function fishManagedBinDir() { return '"$HOME/.local/bin"'; }
 
 function sourceHint(filePath, shellName) {
   if (shellName === "fish") {
@@ -46,8 +46,30 @@ function ensureLine(filePath, line) {
   return true;
 }
 
+function isLocalBinInPath() {
+  var pathEnv = process.env.PATH || "";
+  var home = process.env.HOME || "";
+  var localBin = path.join(home, ".local", "bin");
+  var separator = process.platform === "win32" ? ";" : ":";
+  var entries = pathEnv.split(separator);
+  for (var i = 0; i < entries.length; i++) {
+    if (path.resolve(entries[i]) === path.resolve(localBin)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function ensureUnixPathEntry(homeDir, shellPath) {
   var shellName = path.basename(shellPath || "");
+
+  if (isLocalBinInPath()) {
+    return {
+      changed: false,
+      message: "PATH: ~/.local/bin is already in your PATH.",
+    };
+  }
+
   var changed = false;
   var messages = [];
 
@@ -55,7 +77,7 @@ function ensureUnixPathEntry(homeDir, shellPath) {
     var fishConfig = path.join(homeDir, ".config", "fish", "config.fish");
     if (ensureLine(fishConfig, "fish_add_path " + fishManagedBinDir())) {
       changed = true;
-      messages.push("Persisted ~/.sesori/bin in " + fishConfig + ". " + sourceHint(fishConfig, shellName));
+      messages.push("Persisted ~/.local/bin in " + fishConfig + ". " + sourceHint(fishConfig, shellName));
     }
   } else {
     var exportLine = 'export PATH="' + unixManagedBinDir() + ':$PATH"';
@@ -69,7 +91,7 @@ function ensureUnixPathEntry(homeDir, shellPath) {
     });
     if (updatedFiles.length > 0) {
       messages.push(
-        "Persisted ~/.sesori/bin in " + joinWithAnd(updatedFiles) + ". " + sourceHint(updatedFiles[0], shellName)
+        "Persisted ~/.local/bin in " + joinWithAnd(updatedFiles) + ". " + sourceHint(updatedFiles[0], shellName)
       );
     }
   }
@@ -120,4 +142,5 @@ function ensureManagedCommandPath(options) {
 
 module.exports = {
   ensureManagedCommandPath: ensureManagedCommandPath,
+  isLocalBinInPath: isLocalBinInPath,
 };
