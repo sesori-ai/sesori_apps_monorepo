@@ -1,5 +1,10 @@
 # Changelog
 
+## [v0.6.1] - 2026-04-29
+
+### Fixed
+- Remove hardened runtime from macOS signing and strip xattrs on all install paths (#141)
+
 ## [v0.6.0] - 2026-04-29
 
 ### Added
