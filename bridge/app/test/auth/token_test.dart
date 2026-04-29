@@ -46,13 +46,25 @@ void main() {
       expect(restored.lastProvider, equals(AuthProvider.google));
     });
 
-    test("fromJson defaults lastProvider to github when missing", () {
-      final restored = TokenData.fromJson(<String, dynamic>{
-        "accessToken": "access-token",
-        "refreshToken": "refresh-token",
-      });
+    test("fromJson throws when lastProvider is missing", () {
+      expect(
+        () => TokenData.fromJson(<String, dynamic>{
+          "accessToken": "access-token",
+          "refreshToken": "refresh-token",
+        }),
+        throwsA(isA<FormatException>()),
+      );
+    });
 
-      expect(restored.lastProvider, equals(AuthProvider.github));
+    test("fromJson throws when lastProvider is invalid", () {
+      expect(
+        () => TokenData.fromJson(<String, dynamic>{
+          "accessToken": "access-token",
+          "refreshToken": "refresh-token",
+          "lastProvider": "invalid_provider",
+        }),
+        throwsA(isA<FormatException>()),
+      );
     });
   });
 }

@@ -19,16 +19,22 @@ class TokenData {
 
   /// Creates a TokenData instance from a JSON map.
   factory TokenData.fromJson(Map<String, dynamic> json) {
+    final providerName = json['lastProvider'] as String?;
+    if (providerName == null) {
+      throw const FormatException("lastProvider missing in token data");
+    }
+    final provider = AuthProvider.values
+        .where((p) => p.name == providerName)
+        .firstOrNull;
+    if (provider == null) {
+      throw FormatException("invalid lastProvider: $providerName");
+    }
+
     return TokenData(
       accessToken: json['accessToken'] as String,
       refreshToken: json['refreshToken'] as String,
       bridgeToken: json['bridgeToken'] as String?,
-      lastProvider: json['lastProvider'] != null
-          ? AuthProvider.values
-                  .where((p) => p.name == json['lastProvider'])
-                  .firstOrNull ??
-              AuthProvider.github
-          : AuthProvider.github,
+      lastProvider: provider,
     );
   }
 

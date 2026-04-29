@@ -12,10 +12,10 @@ import "token.dart";
 /// - bool is `false` if both access and refresh failed (credentials may be revoked)
 ///
 /// Throws on network/parsing errors.
-Future<(TokenData, bool)> validateToken(
-  String authBackendURL,
-  String accessToken,
-  String refreshToken, {
+Future<(TokenData, bool)> validateToken({
+  required String authBackendURL,
+  required String accessToken,
+  required String refreshToken,
   required AuthProvider lastProvider,
 }) async {
   // Build /auth/me URL

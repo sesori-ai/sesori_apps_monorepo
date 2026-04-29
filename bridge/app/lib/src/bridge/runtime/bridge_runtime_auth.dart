@@ -69,9 +69,9 @@ Future<TokenData> ensureAuthenticated({required BridgeCliOptions options}) async
   try {
     final storedTokens = await loadTokens();
     final (validatedTokens, ok) = await validateToken(
-      options.authBackendUrl,
-      storedTokens.accessToken,
-      storedTokens.refreshToken,
+      authBackendURL: options.authBackendUrl,
+      accessToken: storedTokens.accessToken,
+      refreshToken: storedTokens.refreshToken,
       lastProvider: storedTokens.lastProvider,
     );
     if (ok) {
@@ -88,6 +88,8 @@ Future<TokenData> ensureAuthenticated({required BridgeCliOptions options}) async
     if (error.osError?.errorCode != 2) {
       throw Exception('load stored tokens: $error');
     }
+  } on FormatException {
+    // Invalid token data (e.g., missing/invalid lastProvider) — treat as no valid tokens
   } catch (error) {
     throw Exception('validate stored tokens: $error');
   }
