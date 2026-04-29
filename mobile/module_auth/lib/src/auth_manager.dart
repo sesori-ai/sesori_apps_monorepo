@@ -63,9 +63,9 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
 
   @override
   Future<String> getAuthorizationUrl(AuthProvider provider, String redirectUri) async {
-    if (provider == AuthProvider.email) {
+    if (provider == AuthProvider.email || provider == AuthProvider.apple) {
       throw ArgumentError(
-        'AuthProvider.email is not supported by getAuthorizationUrl. '
+        'AuthProvider.${provider.key} is not supported by getAuthorizationUrl. '
         'Use loginWithEmail for email-based authentication.',
       );
     }

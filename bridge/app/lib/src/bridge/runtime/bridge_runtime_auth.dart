@@ -86,7 +86,10 @@ class BridgeRuntimeAuthService {
     try {
       final storedTokens = await loadTokens();
       provider = storedTokens.lastProvider;
-    } on FileSystemException {
+    } on FileSystemException catch (error) {
+      if (error.osError?.errorCode != 2) {
+        throw Exception('load stored tokens: $error');
+      }
       provider = await promptForProvider();
     } on FormatException {
       provider = await promptForProvider();
