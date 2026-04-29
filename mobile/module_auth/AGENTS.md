@@ -21,7 +21,7 @@ Only these types are exported. Everything else is internal (`lib/src/`).
 ### Types
 
 - `AuthState` (freezed sealed class) — `unauthenticated`, `authenticating`, `authenticated`, `failed`
-- `AuthProvider` enum — `github`, `google`
+- `AuthProvider` enum — `github`, `google`, `email`
 - `SecureStorage` abstract interface — platform-agnostic key-value secure storage
 - `authBaseUrl` constant — auth server base URL
 

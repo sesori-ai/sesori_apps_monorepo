@@ -30,7 +30,10 @@ class _EmailLoginFormState extends State<EmailLoginForm> {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
-    await context.read<LoginCubit>().loginWithEmail(email, password);
+    await context.read<LoginCubit>().loginWithEmail(
+      email: email,
+      password: password,
+    );
   }
 
   @override

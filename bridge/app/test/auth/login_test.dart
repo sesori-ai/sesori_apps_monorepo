@@ -31,6 +31,7 @@ void main() {
       final loginFuture = performLogin(
         authServer.baseUrl,
         provider: AuthProvider.github,
+        browserLauncher: (_) async {},
       );
 
       await authCompleter.future.timeout(const Duration(seconds: 5));
@@ -41,9 +42,11 @@ void main() {
 
       authServer.respondToAuthRequest('/callback?code=test&state=${authServer.lastState}');
 
-      try {
-        await loginFuture.timeout(const Duration(seconds: 5));
-      } catch (_) {}
+      // Full flow can't complete without browser; verify it fails cleanly
+      await expectLater(
+        loginFuture.timeout(const Duration(seconds: 3)),
+        throwsA(isA<Exception>()),
+      );
     });
 
     test('state mismatch throws exception', () async {
@@ -58,6 +61,7 @@ void main() {
       final loginFuture = performLogin(
         authServer.baseUrl,
         provider: AuthProvider.github,
+        browserLauncher: (_) async {},
       );
 
       await authCompleter.future.timeout(const Duration(seconds: 5));
@@ -84,6 +88,7 @@ void main() {
       final loginFuture = performLogin(
         authServer.baseUrl,
         provider: AuthProvider.google,
+        browserLauncher: (_) async {},
       );
 
       await authCompleter.future.timeout(const Duration(seconds: 5));
@@ -94,9 +99,11 @@ void main() {
 
       authServer.respondToAuthRequest('/callback?code=test&state=${authServer.lastState}');
 
-      try {
-        await loginFuture.timeout(const Duration(seconds: 5));
-      } catch (_) {}
+      // Full flow can't complete without browser; verify it fails cleanly
+      await expectLater(
+        loginFuture.timeout(const Duration(seconds: 3)),
+        throwsA(isA<Exception>()),
+      );
     });
 
     test('state mismatch throws exception', () async {
@@ -111,6 +118,7 @@ void main() {
       final loginFuture = performLogin(
         authServer.baseUrl,
         provider: AuthProvider.google,
+        browserLauncher: (_) async {},
       );
 
       await authCompleter.future.timeout(const Duration(seconds: 5));
@@ -192,7 +200,7 @@ void main() {
 class _AuthTestServer {
   final HttpServer _server;
   final List<HttpRequest> _requests = [];
-  String _lastState = '';
+  String _lastState = 'test-state-${DateTime.now().millisecondsSinceEpoch}';
   void Function()? onAuthRequest;
   final _responseCompleter = Completer<String>();
 
@@ -232,7 +240,7 @@ class _AuthTestServer {
       if (request.uri.path.startsWith('/auth/github') ||
           request.uri.path.startsWith('/auth/google')) {
         final redirectUri = request.uri.queryParameters['redirect_uri'] ?? '';
-        _lastState = request.uri.queryParameters['state'] ?? '';
+        _lastState = request.uri.queryParameters['state'] ?? _lastState;
 
         onAuthRequest?.call();
 

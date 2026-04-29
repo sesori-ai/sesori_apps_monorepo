@@ -123,7 +123,10 @@ void main() {
                     providerUserId: "user123",
                     providerUsername: null,
                   ));
-          await cubit.loginWithEmail("test@example.com", "password123");
+          await cubit.loginWithEmail(
+            email: "test@example.com",
+            password: "password123",
+          );
         },
         expect: () => [
           isA<LoginAuthenticating>(),
@@ -146,7 +149,10 @@ void main() {
                     providerUserId: "user123",
                     providerUsername: null,
                   ));
-          await cubit.loginWithEmail("test@example.com", "password123");
+          await cubit.loginWithEmail(
+            email: "test@example.com",
+            password: "password123",
+          );
         },
         expect: () => [
           isA<LoginAuthenticating>(),
@@ -160,7 +166,10 @@ void main() {
         act: (cubit) async {
           when(() => mockAuthSession.loginWithEmail(any(), any()))
               .thenThrow(Exception("Invalid email or password"));
-          await cubit.loginWithEmail("test@example.com", "wrongpassword");
+          await cubit.loginWithEmail(
+            email: "test@example.com",
+            password: "wrongpassword",
+          );
         },
         expect: () => [
           isA<LoginAuthenticating>(),
@@ -172,7 +181,10 @@ void main() {
         "loginWithEmail shows validation error for empty email",
         build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
         act: (cubit) async {
-          await cubit.loginWithEmail("", "password123");
+          await cubit.loginWithEmail(
+            email: "",
+            password: "password123",
+          );
         },
         expect: () => [
           isA<LoginFailed>(),
@@ -186,7 +198,10 @@ void main() {
         "loginWithEmail shows validation error for empty password",
         build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
         act: (cubit) async {
-          await cubit.loginWithEmail("test@example.com", "");
+          await cubit.loginWithEmail(
+            email: "test@example.com",
+            password: "",
+          );
         },
         expect: () => [
           isA<LoginFailed>(),

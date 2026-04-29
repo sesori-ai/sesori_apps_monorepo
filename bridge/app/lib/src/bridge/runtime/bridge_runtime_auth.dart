@@ -16,6 +16,10 @@ Future<AuthProvider> promptForProvider() async {
     stdout.write('Enter choice (1-3): ');
     final input = stdin.readLineSync()?.trim();
 
+    if (input == null) {
+      throw Exception('EOF reached while reading login provider choice');
+    }
+
     switch (input) {
       case '1':
         return AuthProvider.github;
@@ -90,6 +94,7 @@ Future<TokenData> ensureAuthenticated({required BridgeCliOptions options}) async
     }
   } on FormatException {
     // Invalid token data (e.g., missing/invalid lastProvider) — treat as no valid tokens
+    await clearTokens();
   } catch (error) {
     throw Exception('validate stored tokens: $error');
   }

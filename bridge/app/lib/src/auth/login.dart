@@ -188,6 +188,7 @@ Future<(TokenData, String)> _exchangeCallback(
 Future<TokenData> performLogin(
   String authBackendURL, {
   AuthProvider provider = AuthProvider.github,
+  Future<void> Function(String url) browserLauncher = openBrowser,
 }) async {
   if (provider == AuthProvider.email) {
     throw ArgumentError(
@@ -269,7 +270,7 @@ Future<TokenData> performLogin(
 
     Log.i("Opening browser for ${provider.name} login...");
     try {
-      await openBrowser(initResp.authUrl);
+      await browserLauncher(initResp.authUrl);
     } catch (e) {
       Log.w("Could not open browser automatically: $e");
       Log.i("Open this URL manually:\n${initResp.authUrl}");
