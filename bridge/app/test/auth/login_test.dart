@@ -1,17 +1,21 @@
+// ignore_for_file: prefer_const_constructors
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:sesori_bridge/src/auth/login_email_api.dart';
+import 'package:sesori_bridge/src/auth/login_email_repository.dart';
 import 'package:sesori_bridge/src/auth/login_oauth_api.dart';
 import 'package:sesori_shared/sesori_shared.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('GitHub OAuth', () {
+  group('LoginOAuthApi', () {
     test('generatePKCE produces valid base64url strings', () {
-      final (verifier, challenge) = generatePKCE();
+      final api = LoginOAuthApi(authBackendUrl: 'http://test');
+      final (verifier, challenge) = api.generatePKCE();
 
       expect(verifier.contains('='), isFalse, reason: 'verifier should have no padding');
       expect(challenge.contains('='), isFalse, reason: 'challenge should have no padding');
@@ -20,121 +24,123 @@ void main() {
       expect(challenge.length, greaterThanOrEqualTo(43), reason: 'challenge length check');
     });
 
-    test('performLogin requests correct GitHub auth URL', () async {
-      final authServer = await _AuthTestServer.start();
-      addTearDown(authServer.close);
+    group('GitHub OAuth', () {
+      test('performOAuthLogin requests correct GitHub auth URL', () async {
+        final authServer = await _AuthTestServer.start();
+        addTearDown(authServer.close);
 
-      final authCompleter = Completer<void>();
-      authServer.onAuthRequest = () {
-        if (!authCompleter.isCompleted) authCompleter.complete();
-      };
+        final authCompleter = Completer<void>();
+        authServer.onAuthRequest = () {
+          if (!authCompleter.isCompleted) authCompleter.complete();
+        };
 
-      final loginFuture = performOAuthLogin(
-        authServer.baseUrl,
-        provider: AuthProvider.github,
-        browserLauncher: (_) async {},
-      );
+        final api = LoginOAuthApi(
+          authBackendUrl: authServer.baseUrl,
+          browserLauncher: (_) async {},
+        );
+        final loginFuture = api.performOAuthLogin(AuthProvider.github);
 
-      await authCompleter.future.timeout(const Duration(seconds: 5));
+        await authCompleter.future.timeout(const Duration(seconds: 5));
 
-      expect(authServer.requestedPath, contains('/auth/github'));
-      expect(authServer.hasQueryParam('redirect_uri'), isTrue);
-      expect(authServer.hasQueryParam('code_challenge'), isTrue);
+        expect(authServer.requestedPath, contains('/auth/github'));
+        expect(authServer.hasQueryParam('redirect_uri'), isTrue);
+        expect(authServer.hasQueryParam('code_challenge'), isTrue);
 
-      authServer.respondToAuthRequest('/callback?code=test&state=${authServer.lastState}');
+        authServer.respondToAuthRequest('/callback?code=test&state=${authServer.lastState}');
 
-      // Full flow can't complete without browser; verify it fails cleanly
-      await expectLater(
-        loginFuture.timeout(const Duration(seconds: 3)),
-        throwsA(isA<Exception>()),
-      );
+        // Full flow can't complete without browser; verify it fails cleanly
+        await expectLater(
+          loginFuture.timeout(const Duration(seconds: 3)),
+          throwsA(isA<Exception>()),
+        );
+      });
+
+      test('state mismatch throws exception', () async {
+        final authServer = await _AuthTestServer.start();
+        addTearDown(authServer.close);
+
+        final authCompleter = Completer<void>();
+        authServer.onAuthRequest = () {
+          if (!authCompleter.isCompleted) authCompleter.complete();
+        };
+
+        final api = LoginOAuthApi(
+          authBackendUrl: authServer.baseUrl,
+          browserLauncher: (_) async {},
+        );
+        final loginFuture = api.performOAuthLogin(AuthProvider.github);
+
+        await authCompleter.future.timeout(const Duration(seconds: 5));
+
+        authServer.respondToAuthRequest('/callback?code=test&state=wrong-state');
+
+        expect(
+          loginFuture.timeout(const Duration(seconds: 5)),
+          throwsA(isA<Exception>()),
+        );
+      });
     });
 
-    test('state mismatch throws exception', () async {
-      final authServer = await _AuthTestServer.start();
-      addTearDown(authServer.close);
+    group('Google OAuth', () {
+      test('performOAuthLogin requests correct Google auth URL', () async {
+        final authServer = await _AuthTestServer.start();
+        addTearDown(authServer.close);
 
-      final authCompleter = Completer<void>();
-      authServer.onAuthRequest = () {
-        if (!authCompleter.isCompleted) authCompleter.complete();
-      };
+        final authCompleter = Completer<void>();
+        authServer.onAuthRequest = () {
+          if (!authCompleter.isCompleted) authCompleter.complete();
+        };
 
-      final loginFuture = performOAuthLogin(
-        authServer.baseUrl,
-        provider: AuthProvider.github,
-        browserLauncher: (_) async {},
-      );
+        final api = LoginOAuthApi(
+          authBackendUrl: authServer.baseUrl,
+          browserLauncher: (_) async {},
+        );
+        final loginFuture = api.performOAuthLogin(AuthProvider.google);
 
-      await authCompleter.future.timeout(const Duration(seconds: 5));
+        await authCompleter.future.timeout(const Duration(seconds: 5));
 
-      authServer.respondToAuthRequest('/callback?code=test&state=wrong-state');
+        expect(authServer.requestedPath, contains('/auth/google'));
+        expect(authServer.hasQueryParam('redirect_uri'), isTrue);
+        expect(authServer.hasQueryParam('code_challenge'), isTrue);
 
-      expect(
-        loginFuture.timeout(const Duration(seconds: 5)),
-        throwsA(isA<Exception>()),
-      );
+        authServer.respondToAuthRequest('/callback?code=test&state=${authServer.lastState}');
+
+        // Full flow can't complete without browser; verify it fails cleanly
+        await expectLater(
+          loginFuture.timeout(const Duration(seconds: 3)),
+          throwsA(isA<Exception>()),
+        );
+      });
+
+      test('state mismatch throws exception', () async {
+        final authServer = await _AuthTestServer.start();
+        addTearDown(authServer.close);
+
+        final authCompleter = Completer<void>();
+        authServer.onAuthRequest = () {
+          if (!authCompleter.isCompleted) authCompleter.complete();
+        };
+
+        final api = LoginOAuthApi(
+          authBackendUrl: authServer.baseUrl,
+          browserLauncher: (_) async {},
+        );
+        final loginFuture = api.performOAuthLogin(AuthProvider.google);
+
+        await authCompleter.future.timeout(const Duration(seconds: 5));
+
+        authServer.respondToAuthRequest('/callback?code=test&state=wrong-state');
+
+        expect(
+          loginFuture.timeout(const Duration(seconds: 5)),
+          throwsA(isA<Exception>()),
+        );
+      });
     });
   });
 
-  group('Google OAuth', () {
-    test('performLogin requests correct Google auth URL', () async {
-      final authServer = await _AuthTestServer.start();
-      addTearDown(authServer.close);
-
-      final authCompleter = Completer<void>();
-      authServer.onAuthRequest = () {
-        if (!authCompleter.isCompleted) authCompleter.complete();
-      };
-
-      final loginFuture = performOAuthLogin(
-        authServer.baseUrl,
-        provider: AuthProvider.google,
-        browserLauncher: (_) async {},
-      );
-
-      await authCompleter.future.timeout(const Duration(seconds: 5));
-
-      expect(authServer.requestedPath, contains('/auth/google'));
-      expect(authServer.hasQueryParam('redirect_uri'), isTrue);
-      expect(authServer.hasQueryParam('code_challenge'), isTrue);
-
-      authServer.respondToAuthRequest('/callback?code=test&state=${authServer.lastState}');
-
-      // Full flow can't complete without browser; verify it fails cleanly
-      await expectLater(
-        loginFuture.timeout(const Duration(seconds: 3)),
-        throwsA(isA<Exception>()),
-      );
-    });
-
-    test('state mismatch throws exception', () async {
-      final authServer = await _AuthTestServer.start();
-      addTearDown(authServer.close);
-
-      final authCompleter = Completer<void>();
-      authServer.onAuthRequest = () {
-        if (!authCompleter.isCompleted) authCompleter.complete();
-      };
-
-      final loginFuture = performOAuthLogin(
-        authServer.baseUrl,
-        provider: AuthProvider.google,
-        browserLauncher: (_) async {},
-      );
-
-      await authCompleter.future.timeout(const Duration(seconds: 5));
-
-      authServer.respondToAuthRequest('/callback?code=test&state=wrong-state');
-
-      expect(
-        loginFuture.timeout(const Duration(seconds: 5)),
-        throwsA(isA<Exception>()),
-      );
-    });
-  });
-
-  group('Email Password Login', () {
-    test('performEmailLogin POSTs to /auth/email and returns tokens', () async {
+  group('LoginEmailApi', () {
+    test('loginWithEmail POSTs to /auth/email and returns tokens', () async {
       final authServer = await _PasswordLoginTestServer.start();
       authServer.onLoginRequest = (email, password) async {
         if (email == 'test@example.com' && password == 'correct-password') {
@@ -148,54 +154,181 @@ void main() {
       };
       addTearDown(authServer.close);
 
-      final (tokens, username) = await performEmailLogin(
-        authServer.baseUrl,
-        'test@example.com',
-        'correct-password',
+      final api = LoginEmailApi(authBackendUrl: authServer.baseUrl);
+      final authResponse = await api.loginWithEmail(
+        email: 'test@example.com',
+        password: 'correct-password',
       );
 
       expect(authServer.lastLoginRequest, isNotNull);
       expect(authServer.lastLoginRequest!['email'], equals('test@example.com'));
       expect(authServer.lastLoginRequest!['password'], equals('correct-password'));
-      expect(tokens.accessToken, equals('test-access-token'));
-      expect(tokens.refreshToken, equals('test-refresh-token'));
-      expect(username, equals('testuser'));
+      expect(authResponse.accessToken, equals('test-access-token'));
+      expect(authResponse.refreshToken, equals('test-refresh-token'));
+      expect(authResponse.user.providerUsername, equals('testuser'));
     });
 
-    test('performEmailLogin throws EmailLoginException on 401', () async {
+    test('loginWithEmail throws EmailAuthApiException on 401', () async {
       final authServer = await _PasswordLoginTestServer.start();
       authServer.onLoginRequest = (email, password) async {
         return _PasswordLoginResult.failure(401);
       };
       addTearDown(authServer.close);
 
+      final api = LoginEmailApi(authBackendUrl: authServer.baseUrl);
       expect(
-        () => performEmailLogin(
-          authServer.baseUrl,
-          'bad@example.com',
-          'wrong-password',
+        () => api.loginWithEmail(
+          email: 'bad@example.com',
+          password: 'wrong-password',
         ),
-        throwsA(isA<EmailLoginExceptionImpl>()),
+        throwsA(isA<EmailAuthApiException>()),
       );
     });
 
-    test('performEmailLogin throws RateLimitException on 429', () async {
+    test('loginWithEmail throws EmailAuthApiException on 429', () async {
       final authServer = await _PasswordLoginTestServer.start();
       authServer.onLoginRequest = (email, password) async {
         return _PasswordLoginResult.failure(429);
       };
       addTearDown(authServer.close);
 
+      final api = LoginEmailApi(authBackendUrl: authServer.baseUrl);
       expect(
-        () => performEmailLogin(
-          authServer.baseUrl,
-          'test@example.com',
-          'password',
+        () => api.loginWithEmail(
+          email: 'test@example.com',
+          password: 'password',
         ),
-        throwsA(isA<RateLimitException>()),
+        throwsA(isA<EmailAuthApiException>()),
       );
     });
   });
+
+  group('LoginEmailRepository', () {
+    ({String email, String password}) mockPrompt() {
+      return (email: 'test@example.com', password: 'password123');
+    }
+
+    test('successful login returns TokenData with email provider', () async {
+      final mockApi = _MockLoginEmailApi();
+      final repository = LoginEmailRepository(
+        emailAuthApi: mockApi,
+        promptForCredentials: mockPrompt,
+      );
+
+      final tokens = await repository.performEmailLogin();
+
+      expect(tokens.accessToken, equals('test-access-token'));
+      expect(tokens.refreshToken, equals('test-refresh-token'));
+      expect(tokens.lastProvider, equals(AuthProvider.email));
+    });
+
+    test('401 from API throws EmailLoginExceptionImpl', () async {
+      final mockApi = _MockLoginEmailApi.unauthorized();
+      final repository = LoginEmailRepository(
+        emailAuthApi: mockApi,
+        promptForCredentials: mockPrompt,
+      );
+
+      expect(
+        repository.performEmailLogin,
+        throwsA(isA<EmailLoginExceptionImpl>()),
+      );
+    });
+
+    test('429 from API throws RateLimitException', () async {
+      final mockApi = _MockLoginEmailApi.rateLimited();
+      final repository = LoginEmailRepository(
+        emailAuthApi: mockApi,
+        promptForCredentials: mockPrompt,
+      );
+
+      expect(
+        repository.performEmailLogin,
+        throwsA(isA<RateLimitException>()),
+      );
+    });
+
+    test('missing tokens throws EmailLoginExceptionImpl', () async {
+      final mockApi = _MockLoginEmailApi.emptyTokens();
+      final repository = LoginEmailRepository(
+        emailAuthApi: mockApi,
+        promptForCredentials: mockPrompt,
+      );
+
+      expect(
+        repository.performEmailLogin,
+        throwsA(isA<EmailLoginExceptionImpl>()),
+      );
+    });
+  });
+}
+
+class _MockLoginEmailApi implements LoginEmailApi {
+  @override
+  final String authBackendUrl = 'http://test';
+  final AuthResponse _response;
+  final int? _errorStatus;
+
+  factory _MockLoginEmailApi() {
+    return _MockLoginEmailApi._(
+      AuthResponse(
+        accessToken: 'test-access-token',
+        refreshToken: 'test-refresh-token',
+        user: AuthUser(
+          id: 'user-1',
+          provider: 'email',
+          providerUserId: 'user-1',
+          providerUsername: 'testuser',
+        ),
+      ),
+      null,
+    );
+  }
+
+  _MockLoginEmailApi._(this._response, this._errorStatus);
+
+  factory _MockLoginEmailApi.unauthorized() => _MockLoginEmailApi._(
+    AuthResponse(
+      accessToken: '',
+      refreshToken: '',
+      user: AuthUser(id: '', provider: '', providerUserId: '', providerUsername: null),
+    ),
+    401,
+  );
+
+  factory _MockLoginEmailApi.rateLimited() => _MockLoginEmailApi._(
+    AuthResponse(
+      accessToken: '',
+      refreshToken: '',
+      user: AuthUser(id: '', provider: '', providerUserId: '', providerUsername: null),
+    ),
+    429,
+  );
+
+  factory _MockLoginEmailApi.emptyTokens() => _MockLoginEmailApi._(
+    AuthResponse(
+      accessToken: '',
+      refreshToken: '',
+      user: AuthUser(
+        id: 'user-1',
+        provider: 'email',
+        providerUserId: 'user-1',
+        providerUsername: 'testuser',
+      ),
+    ),
+    null,
+  );
+
+  @override
+  Future<AuthResponse> loginWithEmail({required String email, required String password}) async {
+    if (_errorStatus == 401) {
+      throw EmailAuthApiException(statusCode: 401, body: 'Unauthorized');
+    }
+    if (_errorStatus == 429) {
+      throw EmailAuthApiException(statusCode: 429, body: 'Rate limited');
+    }
+    return _response;
+  }
 }
 
 class _AuthTestServer {

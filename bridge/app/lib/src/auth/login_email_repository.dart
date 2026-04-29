@@ -19,11 +19,15 @@ import 'token.dart';
 
 class LoginEmailRepository {
   final LoginEmailApi emailAuthApi;
+  final ({String email, String password}) Function() promptForCredentials;
 
-  LoginEmailRepository({required this.emailAuthApi});
+  LoginEmailRepository({
+    required this.emailAuthApi,
+    this.promptForCredentials = _promptForEmailCredentials,
+  });
 
   Future<TokenData> performEmailLogin() async {
-    final credentials = _promptForEmailCredentials();
+    final credentials = promptForCredentials();
 
     try {
       final (tokens, username) = await _performEmailLoginInternal(
