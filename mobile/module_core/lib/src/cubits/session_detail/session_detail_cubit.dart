@@ -161,6 +161,9 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             model: preservedSelectedAgentModel,
           );
 
+          final refreshedChildSessions = [...snapshot.childSessions]
+            ..sort((a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0));
+
           emit(
             current.copyWith(
               messages: snapshot.messages,
@@ -170,7 +173,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
               pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
               agent: latestAssistant?.agent,
               assistantAgentModel: assistantAgentModel,
-              children: snapshot.childSessions,
+              children: refreshedChildSessions,
               childStatuses: childStatuses,
               availableAgents: availableAgents,
               availableProviders: availableProviders,
@@ -401,6 +404,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (isClosed) return;
     final updatedChildren = List<Session>.of(current.children);
     updatedChildren[index] = updatedChild;
+    updatedChildren.sort((a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0));
     emit(current.copyWith(children: updatedChildren));
   }
 

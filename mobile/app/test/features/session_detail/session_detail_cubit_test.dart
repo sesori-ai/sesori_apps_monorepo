@@ -861,6 +861,114 @@ void main() {
     );
 
     blocTest<SessionDetailCubit, SessionDetailState>(
+      "silent refresh re-sorts children by updated descending",
+      build: () {
+        final oldChild = testSession(id: "child-old", parentID: sessionId, updatedAt: 1000);
+        final newChild = testSession(id: "child-new", parentID: sessionId, updatedAt: 3000);
+
+        // Initial load returns sorted newest-first.
+        when(
+          () => mockSessionService.getChildren(sessionId: sessionId),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(SessionListResponse(items: [newChild, oldChild])),
+        );
+
+        return SessionDetailCubit(
+          mockConnectionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
+          permissionRepository: mockPermissionRepository,
+          sessionId: sessionId,
+          projectId: "project-1",
+          notificationCanceller: mockNotificationCanceller,
+          failureReporter: mockFailureReporter,
+        );
+      },
+      act: (cubit) async {
+        await _awaitLoaded(cubit);
+
+        // Silent refresh returns children in oldest-first API order.
+        final oldChild = testSession(id: "child-old", parentID: sessionId, updatedAt: 1000);
+        final newChild = testSession(id: "child-new", parentID: sessionId, updatedAt: 3000);
+        when(
+          () => mockSessionService.getChildren(sessionId: sessionId),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(SessionListResponse(items: [oldChild, newChild])),
+        );
+
+        globalEvents.add(SseEvent(data: SesoriSessionsUpdated(projectID: "project-1")));
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      },
+      expect: () => [
+        // Initial load: newest first.
+        isA<SessionDetailLoaded>().having(
+          (state) => state.children.map((c) => c.id).toList(),
+          "children ids (DESC)",
+          ["child-new", "child-old"],
+        ),
+        // Refresh in progress.
+        isA<SessionDetailLoaded>().having(
+          (state) => state.isRefreshing,
+          "isRefreshing",
+          isTrue,
+        ),
+        // After silent refresh: still newest first.
+        isA<SessionDetailLoaded>().having(
+          (state) => state.children.map((c) => c.id).toList(),
+          "children ids after refresh (DESC)",
+          ["child-new", "child-old"],
+        ),
+      ],
+    );
+
+    blocTest<SessionDetailCubit, SessionDetailState>(
+      "session.updated SSE re-sorts children by updated descending",
+      build: () {
+        final oldChild = testSession(id: "child-old", parentID: sessionId, updatedAt: 1000);
+        final newChild = testSession(id: "child-new", parentID: sessionId, updatedAt: 3000);
+
+        when(
+          () => mockSessionService.getChildren(sessionId: sessionId),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(SessionListResponse(items: [newChild, oldChild])),
+        );
+
+        return SessionDetailCubit(
+          mockConnectionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
+          permissionRepository: mockPermissionRepository,
+          sessionId: sessionId,
+          projectId: "project-1",
+          notificationCanceller: mockNotificationCanceller,
+          failureReporter: mockFailureReporter,
+        );
+      },
+      act: (cubit) async {
+        await _awaitLoaded(cubit);
+
+        // Old child gets a newer updated timestamp.
+        final updatedOldChild = testSession(id: "child-old", parentID: sessionId, updatedAt: 5000);
+        globalEvents.add(SseEvent(data: SesoriSessionUpdated(info: updatedOldChild)));
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      },
+      expect: () => [
+        // Initial load: newest first.
+        isA<SessionDetailLoaded>().having(
+          (state) => state.children.map((c) => c.id).toList(),
+          "children ids (DESC)",
+          ["child-new", "child-old"],
+        ),
+        // After update: re-sorted so child-old (now 5000) comes first.
+        isA<SessionDetailLoaded>().having(
+          (state) => state.children.map((c) => c.id).toList(),
+          "children ids after update (DESC)",
+          ["child-old", "child-new"],
+        ),
+      ],
+    );
+
+    blocTest<SessionDetailCubit, SessionDetailState>(
       "close disposes event subscriptions",
       build: () => SessionDetailCubit(
         mockConnectionService,
