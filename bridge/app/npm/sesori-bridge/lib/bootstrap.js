@@ -79,6 +79,7 @@ function isManagedSymlinkReady(installRoot) {
 function printInstallSummary(options) {
   var commands = nextCommand(options.binaryPath, options.args);
   var pathConfigured = launcher.isLocalBinInPath();
+  var symlinkReady = isManagedSymlinkReady(options.installRoot);
   console.log("");
   console.log("Sesori Bridge install complete");
   console.log("============================");
@@ -88,13 +89,17 @@ function printInstallSummary(options) {
   console.log("");
   console.log("Next steps");
   console.log("----------");
-  if (pathConfigured) {
+  if (pathConfigured && symlinkReady) {
     console.log("Start the bridge:");
     console.log("   " + commands.pathCommand);
-  } else {
+  } else if (!pathConfigured) {
     console.log("1. Open a new terminal");
     console.log("2. Run the bridge:");
     console.log("   " + commands.pathCommand);
+  } else {
+    console.log("The symlink at ~/.local/bin/sesori-bridge is missing or blocked.");
+    console.log("Run the bridge directly:");
+    console.log("   " + commands.managed);
   }
 }
 
