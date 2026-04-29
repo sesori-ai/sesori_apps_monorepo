@@ -354,6 +354,7 @@ main() {
 
     if [ "${os}" = "macos" ]; then
         xattr -dr com.apple.quarantine "${BINARY}" 2>/dev/null || true
+        xattr -dr com.apple.provenance "${BINARY}" 2>/dev/null || true
     fi
 
     echo "[4/4] Creating symlink..."

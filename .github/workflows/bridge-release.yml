@@ -135,7 +135,6 @@ jobs:
           APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
         run: |
           codesign -s "Developer ID Application: DigitalBlock Labs LTD ($APPLE_TEAM_ID)" \
-            --options runtime \
             --timestamp \
             --force \
             --verbose \
