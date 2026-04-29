@@ -23,9 +23,7 @@ class TokenData {
     if (providerName == null) {
       throw const FormatException("lastProvider missing in token data");
     }
-    final provider = AuthProvider.values
-        .where((p) => p.name == providerName)
-        .firstOrNull;
+    final provider = AuthProvider.fromKey(providerName);
     if (provider == null) {
       throw FormatException("invalid lastProvider: $providerName");
     }
@@ -47,7 +45,7 @@ class TokenData {
     if (bridgeToken != null) {
       json['bridgeToken'] = bridgeToken;
     }
-    json['lastProvider'] = lastProvider.name;
+    json['lastProvider'] = lastProvider.key;
     return json;
   }
 }

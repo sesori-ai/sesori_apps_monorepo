@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 
 import 'package:sesori_shared/sesori_shared.dart';
+import '../../auth/email_auth_api.dart';
 import '../../auth/login.dart';
 import '../../auth/profile.dart';
 import '../../auth/token.dart';
@@ -131,15 +132,16 @@ Future<TokenData> _loginAndPersist({
   required String authBackendUrl,
   required AuthProvider provider,
 }) async {
-  final TokenData tokens;
-  if (provider == AuthProvider.email) {
-    final (emailTokens, _) = await promptForEmailCredentials(
-      authBackendUrl: authBackendUrl,
-    );
-    tokens = emailTokens;
-  } else {
-    tokens = await performLogin(authBackendUrl, provider: provider);
-  }
+  final TokenData tokens = await switch (provider) {
+    OAuthProvider() => performOAuthLogin(authBackendUrl, provider: provider),
+    EmailAuthProvider() => (() async {
+      final (emailTokens, _) = await promptForEmailCredentials(
+        authBackendUrl: authBackendUrl,
+      );
+      return emailTokens;
+    })(),
+  };
+
   final tokensToSave = TokenData(
     accessToken: tokens.accessToken,
     refreshToken: tokens.refreshToken,

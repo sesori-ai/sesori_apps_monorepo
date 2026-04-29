@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:sesori_bridge/src/auth/email_auth_api.dart';
 import 'package:sesori_bridge/src/auth/login.dart';
 import 'package:sesori_shared/sesori_shared.dart';
 import 'package:test/test.dart';
@@ -28,7 +29,7 @@ void main() {
         if (!authCompleter.isCompleted) authCompleter.complete();
       };
 
-      final loginFuture = performLogin(
+      final loginFuture = performOAuthLogin(
         authServer.baseUrl,
         provider: AuthProvider.github,
         browserLauncher: (_) async {},
@@ -58,7 +59,7 @@ void main() {
         if (!authCompleter.isCompleted) authCompleter.complete();
       };
 
-      final loginFuture = performLogin(
+      final loginFuture = performOAuthLogin(
         authServer.baseUrl,
         provider: AuthProvider.github,
         browserLauncher: (_) async {},
@@ -85,7 +86,7 @@ void main() {
         if (!authCompleter.isCompleted) authCompleter.complete();
       };
 
-      final loginFuture = performLogin(
+      final loginFuture = performOAuthLogin(
         authServer.baseUrl,
         provider: AuthProvider.google,
         browserLauncher: (_) async {},
@@ -115,7 +116,7 @@ void main() {
         if (!authCompleter.isCompleted) authCompleter.complete();
       };
 
-      final loginFuture = performLogin(
+      final loginFuture = performOAuthLogin(
         authServer.baseUrl,
         provider: AuthProvider.google,
         browserLauncher: (_) async {},
@@ -237,8 +238,7 @@ class _AuthTestServer {
     _server.listen((request) async {
       _requests.add(request);
 
-      if (request.uri.path.startsWith('/auth/github') ||
-          request.uri.path.startsWith('/auth/google')) {
+      if (request.uri.path.startsWith('/auth/github') || request.uri.path.startsWith('/auth/google')) {
         final redirectUri = request.uri.queryParameters['redirect_uri'] ?? '';
         _lastState = request.uri.queryParameters['state'] ?? _lastState;
 
@@ -251,10 +251,12 @@ class _AuthTestServer {
 
         request.response.statusCode = 200;
         request.response.headers.contentType = ContentType.json;
-        request.response.write(jsonEncode({
-          'authUrl': '$redirectUri$redirectPath',
-          'state': _lastState,
-        }));
+        request.response.write(
+          jsonEncode({
+            'authUrl': '$redirectUri$redirectPath',
+            'state': _lastState,
+          }),
+        );
         await request.response.close();
       } else if (request.uri.path == '/callback') {
         request.response.statusCode = 200;
@@ -340,24 +342,28 @@ class _PasswordLoginTestServer {
           final body = utf8.decode(Uint8List.fromList(content));
           _lastLoginRequest = jsonDecodeMap(body);
 
-          final result = await (onLoginRequest?.call(
-            _lastLoginRequest!['email'] as String,
-            _lastLoginRequest!['password'] as String,
-          ) ?? Future.value(_PasswordLoginResult.failure(500)));
+          final result =
+              await (onLoginRequest?.call(
+                    _lastLoginRequest!['email'] as String,
+                    _lastLoginRequest!['password'] as String,
+                  ) ??
+                  Future.value(_PasswordLoginResult.failure(500)));
 
           if (result.type == _PasswordLoginResultType.success) {
             request.response.statusCode = 200;
             request.response.headers.contentType = ContentType.json;
-            request.response.write(jsonEncode({
-              'accessToken': result.accessToken,
-              'refreshToken': result.refreshToken,
-              'user': {
-                'id': 'user-1',
-                'provider': 'email',
-                'providerUserId': 'user-1',
-                'providerUsername': result.username,
-              },
-            }));
+            request.response.write(
+              jsonEncode({
+                'accessToken': result.accessToken,
+                'refreshToken': result.refreshToken,
+                'user': {
+                  'id': 'user-1',
+                  'provider': 'email',
+                  'providerUserId': 'user-1',
+                  'providerUsername': result.username,
+                },
+              }),
+            );
           } else {
             request.response.statusCode = result.statusCode ?? 500;
           }

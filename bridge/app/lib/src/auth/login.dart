@@ -11,30 +11,6 @@ import "package:sesori_shared/sesori_shared.dart";
 import "email_auth_api.dart";
 import "token.dart";
 
-abstract class EmailLoginException implements Exception {
-  String get message;
-}
-
-class EmailLoginExceptionImpl implements EmailLoginException {
-  @override
-  final String message;
-
-  EmailLoginExceptionImpl(this.message);
-
-  @override
-  String toString() => "EmailLoginException: $message";
-}
-
-class RateLimitException implements EmailLoginException {
-  @override
-  final String message;
-
-  RateLimitException([this.message = "Rate limit exceeded. Please try again later."]);
-
-  @override
-  String toString() => "RateLimitException: $message";
-}
-
 const int _loginTimeoutSeconds = 120;
 
 class _CallbackData {
@@ -44,7 +20,7 @@ class _CallbackData {
   _CallbackData({required this.code, required this.state});
 }
 
-Uri _buildUri(String base, String path) {
+Uri _buildUri({required String base, required String path}) {
   final b = base.endsWith("/") ? base.substring(0, base.length - 1) : base;
   return Uri.parse("$b/$path");
 }
@@ -92,11 +68,7 @@ Future<AuthUrlResponse> _requestAuth(
   String redirectUri,
   String codeChallenge,
 ) async {
-  final endpoint = provider == AuthProvider.email
-      ? "auth/password/login"
-      : "auth/${provider.name}";
-
-  final uri = _buildUri(authBackendURL, endpoint).replace(
+  final uri = _buildUri(base: authBackendURL, path: provider.apiAuthPath).replace(
     queryParameters: {
       "redirect_uri": redirectUri,
       "code_challenge": codeChallenge,
@@ -108,7 +80,7 @@ Future<AuthUrlResponse> _requestAuth(
 
   if (response.statusCode != 200) {
     throw Exception(
-      "init ${provider.name} auth failed: status ${response.statusCode}: ${response.body.trim()}",
+      "init ${provider.label} auth failed: status ${response.statusCode}: ${response.body.trim()}",
     );
   }
 
@@ -123,17 +95,13 @@ Future<AuthUrlResponse> _requestAuth(
 
 Future<(TokenData, String)> _exchangeCallback(
   String authBackendURL,
-  AuthProvider provider,
+  OAuthProvider provider,
   String code,
   String state,
   String codeVerifier,
   String redirectUri,
 ) async {
-  final endpoint = provider == AuthProvider.email
-      ? "auth/password/callback"
-      : "auth/${provider.name}/callback";
-
-  final uri = _buildUri(authBackendURL, endpoint);
+  final uri = _buildUri(base: authBackendURL, path: provider.apiCallbackPath);
 
   final body = jsonEncode({
     "code": code,
@@ -184,18 +152,11 @@ Future<(TokenData, String)> _exchangeCallback(
 /// If the callback server fails to start, prints the URL for manual copy and
 /// throws an exception.
 ///
-Future<TokenData> performLogin(
+Future<TokenData> performOAuthLogin(
   String authBackendURL, {
-  required AuthProvider provider,
+  required OAuthProvider provider,
   Future<void> Function(String url) browserLauncher = openBrowser,
 }) async {
-  if (provider == AuthProvider.email) {
-    throw ArgumentError(
-      'AuthProvider.email is not supported by performLogin. '
-      'Use performEmailLogin instead.',
-    );
-  }
-
   final (codeVerifier, codeChallenge) = generatePKCE();
 
   HttpServer server;
@@ -267,7 +228,7 @@ Future<TokenData> performLogin(
       codeChallenge,
     );
 
-    Log.i("Opening browser for ${provider.name} login...");
+    Log.i("Opening browser for ${provider.label} login...");
     try {
       await browserLauncher(initResp.authUrl);
     } catch (e) {

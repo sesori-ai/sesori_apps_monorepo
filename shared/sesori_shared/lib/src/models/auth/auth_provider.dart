@@ -1,28 +1,96 @@
-/// Enumeration of supported authentication providers.
-///
-/// Used across both bridge and mobile workspaces for consistent
-/// provider identification in auth flows.
-enum AuthProvider {
-  /// GitHub OAuth provider
-  github("github", "GitHub"),
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-  /// Google OAuth provider
-  google("google", "Google"),
+sealed class AuthProvider {
+  static const github = GitHubAuthProvider._();
+  static const google = GoogleAuthProvider._();
+  static const apple = AppleAuthProvider._();
+  static const email = EmailAuthProvider._();
 
-  /// Email/password provider
-  email("email", "Email");
+  const AuthProvider._();
 
-  const AuthProvider(this.key, this.label);
+  static AuthProvider? fromKey(String? key) => switch (true) {
+    _ when github.key == key => github,
+    _ when google.key == key => google,
+    _ when apple.key == key => apple,
+    _ when email.key == key => email,
+    _ => null,
+  };
 
-  /// URL path segment used in auth backend endpoints (e.g. `/auth/github`).
-  final String key;
+  String get key => switch (this) {
+    GitHubAuthProvider() => "github",
+    GoogleAuthProvider() => "google",
+    AppleAuthProvider() => "apple",
+    EmailAuthProvider() => "email",
+  };
 
-  /// Human-readable name for logging and error messages.
-  final String label;
+  String get label => switch (this) {
+    GitHubAuthProvider() => "GitHub",
+    GoogleAuthProvider() => "Google",
+    AppleAuthProvider() => "Apple",
+    EmailAuthProvider() => "Email",
+  };
 
-  /// Creates the correct variant by its [key], or `null` if unknown.
-  static AuthProvider? fromKey(String? key) =>
-      key == null
-          ? null
-          : AuthProvider.values.where((e) => e.key == key).firstOrNull;
+  String get apiAuthPath => switch (this) {
+    GitHubAuthProvider() => "auth/github",
+    GoogleAuthProvider() => "auth/google",
+    AppleAuthProvider() => "auth/apple",
+    EmailAuthProvider() => "auth/email",
+  };
+}
+
+sealed class OAuthProvider extends AuthProvider {
+  const OAuthProvider._() : super._();
+  String get apiCallbackPath => "$apiAuthPath/callback";
+}
+
+@immutable
+final class GitHubAuthProvider extends OAuthProvider {
+  const GitHubAuthProvider._() : super._();
+
+  @override
+  bool operator ==(Object other) {
+    return other is GitHubAuthProvider;
+  }
+
+  @override
+  int get hashCode => key.hashCode;
+}
+
+@immutable
+final class GoogleAuthProvider extends OAuthProvider {
+  const GoogleAuthProvider._() : super._();
+
+  @override
+  bool operator ==(Object other) {
+    return other is GoogleAuthProvider;
+  }
+
+  @override
+  int get hashCode => key.hashCode;
+}
+
+@immutable
+final class AppleAuthProvider extends OAuthProvider {
+  const AppleAuthProvider._() : super._();
+
+  @override
+  bool operator ==(Object other) {
+    return other is AppleAuthProvider;
+  }
+
+  @override
+  int get hashCode => key.hashCode;
+}
+
+@immutable
+final class EmailAuthProvider extends AuthProvider {
+  const EmailAuthProvider._() : super._();
+
+  @override
+  bool operator ==(Object other) {
+    return other is EmailAuthProvider;
+  }
+
+  @override
+  int get hashCode => key.hashCode;
 }
