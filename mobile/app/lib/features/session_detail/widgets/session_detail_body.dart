@@ -63,7 +63,7 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
         sessionStatus: sessionStatus,
         childStatuses: childStatuses,
       ),
-      SessionDetailLoading() => true,
+      SessionDetailLoading() => false,
       SessionDetailFailed() => false,
     };
 
