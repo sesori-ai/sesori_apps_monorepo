@@ -1,4 +1,4 @@
-// ignore_for_file: no_slop_linter/avoid_dynamic_type
+// ignore_for_file: no_slop_linter/prefer_specific_type
 
 import "dart:async";
 import "dart:collection";

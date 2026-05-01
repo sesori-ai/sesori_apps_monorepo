@@ -43,6 +43,7 @@ class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
   List<DiffFileViewModel>? _viewModels;
   Set<int> _expandedFileIndices = <int>{};
   bool _isComputing = false;
+  // ignore: no_slop_linter/prefer_specific_type
   Object? _computeError;
   List<FileDiff>? _lastFiles;
   int _computeToken = 0;

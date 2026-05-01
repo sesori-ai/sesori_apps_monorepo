@@ -75,6 +75,7 @@ class ForegroundNotificationDispatcher {
     );
   }
 
+  // ignore: no_slop_linter/prefer_specific_type
   void _onForegroundMessageStreamError(Object error, StackTrace stackTrace) {
     loge("Foreground notification stream error", error, stackTrace);
   }

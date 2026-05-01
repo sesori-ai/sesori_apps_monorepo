@@ -35,12 +35,10 @@ class FlutterLocalNotificationClient implements LocalNotificationClient {
   bool _initialNotificationOpenConsumed = false;
   bool _initialized = false;
 
-  FlutterLocalNotificationClient({required FlutterLocalNotificationsPlugin plugin})
-    : _plugin = plugin;
+  FlutterLocalNotificationClient({required FlutterLocalNotificationsPlugin plugin}) : _plugin = plugin;
 
   @override
-  Stream<NotificationOpenRequest> get notificationOpenedStream =>
-      _notificationOpenedController.stream;
+  Stream<NotificationOpenRequest> get notificationOpenedStream => _notificationOpenedController.stream;
 
   @override
   Future<void> initialize() async {
@@ -51,16 +49,11 @@ class FlutterLocalNotificationClient implements LocalNotificationClient {
     _initialized = true;
     final launchDetails = await _plugin.getNotificationAppLaunchDetails();
     _initialNotificationOpen = _notificationOpenFromPayload(
-      payload: launchDetails?.didNotificationLaunchApp == true
-          ? launchDetails?.notificationResponse?.payload
-          : null,
+      payload: launchDetails?.didNotificationLaunchApp == true ? launchDetails?.notificationResponse?.payload : null,
     );
 
     if (Platform.isAndroid) {
-      final androidPlugin = _plugin
-          .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin
-          >();
+      final androidPlugin = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
       for (final channel in NotificationCategory.values.where((e) => e != .unknown)) {
         await androidPlugin?.createNotificationChannel(
           AndroidNotificationChannel(
@@ -94,8 +87,7 @@ class FlutterLocalNotificationClient implements LocalNotificationClient {
   }
 
   @visibleForTesting
-  void handleNotificationResponseForTesting(NotificationResponse response) =>
-      _onNotificationResponse(response);
+  void handleNotificationResponseForTesting(NotificationResponse response) => _onNotificationResponse(response);
 
   @visibleForTesting
   NotificationOpenRequest? notificationOpenFromPayloadForTesting({
@@ -110,12 +102,7 @@ class FlutterLocalNotificationClient implements LocalNotificationClient {
     }
 
     try {
-      final decoded = jsonDecode(payload);
-      if (decoded is! Map<String, dynamic>) {
-        return null;
-      }
-
-      final tapEvent = NotificationTapEvent.fromJson(decoded);
+      final tapEvent = NotificationTapEvent.fromJson(jsonDecodeMap(payload));
       final sessionId = tapEvent.sessionId;
       final projectId = tapEvent.projectId;
       if (sessionId == null || projectId == null) {
@@ -185,7 +172,10 @@ class FlutterLocalNotificationClient implements LocalNotificationClient {
   @override
   void cancelForSession({required String sessionId, required NotificationCategory category}) {
     unawaited(
-      cancel(computeNotificationId(sessionId: sessionId, category: category)).catchError((Object error, StackTrace stackTrace) {
+      cancel(computeNotificationId(sessionId: sessionId, category: category)).catchError((
+        Object error,
+        StackTrace stackTrace,
+      ) {
         logw("Failed to cancel notification for session", error, stackTrace);
       }),
     );

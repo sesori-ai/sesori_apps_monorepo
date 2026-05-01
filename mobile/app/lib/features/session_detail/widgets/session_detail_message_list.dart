@@ -208,13 +208,13 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
     return switch (message.info) {
       MessageUser() => UserMessageCard(message: message),
       MessageAssistant() => AssistantMessageCard(
-          projectId: widget.projectId,
-          message: message,
-          streamingText: streamingText,
-          children: children,
-          childStatuses: childStatuses,
-        ),
-      MessageError() => ErrorMessageCard(message: message.info as MessageError),
+        projectId: widget.projectId,
+        message: message,
+        streamingText: streamingText,
+        children: children,
+        childStatuses: childStatuses,
+      ),
+      final MessageError messageError => ErrorMessageCard(message: messageError),
     };
   }
 }

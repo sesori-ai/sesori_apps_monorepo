@@ -10,6 +10,7 @@ sealed class ApiError extends Error with _$ApiError {
 
   factory ApiError.jsonParsing(String jsonString) = JsonParsingError;
 
+  // ignore: no_slop_linter/prefer_specific_type
   factory ApiError.dartHttpClient(Object innerError) = DartHttpClientError;
 
   factory ApiError.generic() = GenericError;

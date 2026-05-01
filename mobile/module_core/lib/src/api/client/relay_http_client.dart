@@ -20,7 +20,7 @@ class RelayHttpApiClient {
   // ignore: no_slop_linter/prefer_required_named_parameters, optional HTTP parameters
   Future<ApiResponse<T>> get<T>(
     String path, {
-    // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing callback requires dynamic payload
+    // ignore: no_slop_linter/prefer_specific_type, JSON parsing callback requires dynamic payload
     required T Function(Map<String, dynamic> json) fromJson,
     Map<String, String>? queryParameters,
     Map<String, String>? headers,
@@ -44,7 +44,7 @@ class RelayHttpApiClient {
   // ignore: no_slop_linter/prefer_required_named_parameters, optional HTTP parameters
   Future<ApiResponse<T>> post<T>(
     String path, {
-    // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing callback requires dynamic payload
+    // ignore: no_slop_linter/prefer_specific_type, JSON parsing callback requires dynamic payload
     required T Function(Map<String, dynamic> json) fromJson,
     required Object? body,
     Map<String, String>? queryParameters,
@@ -70,7 +70,7 @@ class RelayHttpApiClient {
   // ignore: no_slop_linter/prefer_required_named_parameters, optional HTTP parameters
   Future<ApiResponse<T>> patch<T>(
     String path, {
-    // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing callback requires dynamic payload
+    // ignore: no_slop_linter/prefer_specific_type, JSON parsing callback requires dynamic payload
     required T Function(Map<String, dynamic> json) fromJson,
     required Object? body,
     Map<String, String>? queryParameters,
@@ -96,7 +96,7 @@ class RelayHttpApiClient {
   // ignore: no_slop_linter/prefer_required_named_parameters, optional HTTP parameters
   Future<ApiResponse<T>> delete<T>(
     String path, {
-    // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing callback requires dynamic payload
+    // ignore: no_slop_linter/prefer_specific_type, JSON parsing callback requires dynamic payload
     required T Function(Map<String, dynamic> json) fromJson,
     Object? body,
     Map<String, String>? queryParameters,
@@ -131,7 +131,7 @@ class RelayHttpApiClient {
     required RelayClient relayClient,
     required HttpMethod method,
     required String path,
-    // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing callback requires dynamic payload
+    // ignore: no_slop_linter/prefer_specific_type, JSON parsing callback requires dynamic payload
     required T Function(Map<String, dynamic> json) fromJson,
     Map<String, String>? queryParameters,
     Object? body,

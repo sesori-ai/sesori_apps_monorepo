@@ -4,7 +4,7 @@
 // - `avoid_bang_operator`: Prevents usage of the null assertion operator (`!`)
 // - `avoid_implicit_tostring`: Prevents implicit toString() in string interpolation
 // - `avoid_dynamic_return_type`: Prevents implicit/dynamic return types on functions
-// - `avoid_dynamic_type`: Forbids usage of `dynamic` type (except fromJson/toJson)
+// - `prefer_specific_type`: Forbids usage of `dynamic` type (except fromJson/toJson)
 // - `avoid_hardcoded_colors`: Forbids Color() and Colors.xxx, use theme colorScheme
 // - `avoid_hardcoded_text_styles`: Forbids TextStyle(), use theme textTheme
 // - `avoid_navigator_of`: Forbids Navigator.of(), use AutoRoute
@@ -33,7 +33,7 @@ import 'src/rules/avoid_as_cast_rule.dart';
 import 'src/rules/avoid_bang_operator_rule.dart';
 import 'src/rules/avoid_dartz_tuple_rule.dart';
 import 'src/rules/avoid_dynamic_return_type_rule.dart';
-import 'src/rules/avoid_dynamic_type_rule.dart';
+import 'src/rules/prefer_specific_type_rule.dart';
 import 'src/rules/avoid_hardcoded_colors_rule.dart';
 import 'src/rules/avoid_hardcoded_text_styles_rule.dart';
 import 'src/rules/avoid_implicit_tostring_rule.dart';
@@ -60,12 +60,12 @@ class _NoSlopLinterPlugin extends Plugin {
     registry.registerWarningRule(AvoidBangOperatorRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidDartzTupleRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidDynamicReturnTypeRule(ignoreTestFiles: true));
-    registry.registerWarningRule(AvoidDynamicTypeRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidImplicitTostringRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidMutableClassFieldsRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidNavigatorOfRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidRawGoRouterRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidStringLiteralsInWidgetsRule(ignoreTestFiles: true));
+    registry.registerWarningRule(PreferSpecificTypeRule(ignoreTestFiles: true));
     registry.registerWarningRule(PreferEdgeInsetsDirectionalRule(ignoreTestFiles: true));
     registry.registerWarningRule(PreferExhaustiveSwitchRule(ignoreTestFiles: true));
     registry.registerWarningRule(PreferRequiredNamedParametersRule(ignoreTestFiles: true));

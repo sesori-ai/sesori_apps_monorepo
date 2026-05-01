@@ -326,20 +326,20 @@ class ConnectionService {
     if (rawData.isEmpty) return;
 
     try {
-      // ignore: no_slop_linter/avoid_dynamic_type, JSON decode requires dynamic values
+      // ignore: no_slop_linter/prefer_specific_type, JSON decode requires dynamic values
       final decoded = jsonDecode(rawData);
-      // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+      // ignore: no_slop_linter/prefer_specific_type, JSON parsing requires dynamic
       if (decoded is! Map<String, dynamic>) return;
 
       final payloadValue = decoded["payload"];
-      // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+      // ignore: no_slop_linter/prefer_specific_type, JSON parsing requires dynamic
       if (payloadValue is! Map<String, dynamic>) return;
 
       final typeValue = payloadValue["type"];
       if (typeValue is! String) return;
 
       final propertiesValue = payloadValue["properties"];
-      // ignore: no_slop_linter/avoid_dynamic_type, JSON parsing requires dynamic
+      // ignore: no_slop_linter/prefer_specific_type, JSON parsing requires dynamic
       final properties = propertiesValue is Map<String, dynamic> ? propertiesValue : <String, dynamic>{};
       final merged = <String, Object?>{"type": typeValue, ...properties};
 

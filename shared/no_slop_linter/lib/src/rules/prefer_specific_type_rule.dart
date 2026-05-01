@@ -6,9 +6,9 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/error/error.dart';
 
-/// A lint rule that forbids usage of the `dynamic` type.
+/// A lint rule that forbids usage of the `Object` or `dynamic` type.
 ///
-/// Using `dynamic` defeats the purpose of Dart's type system and can hide bugs.
+/// Using `Object` or `dynamic` defeats the purpose of Dart's type system and can hide bugs.
 /// All variables, parameters, and return types should have explicit types.
 ///
 /// Exceptions for JSON serialization patterns:
@@ -29,16 +29,17 @@ import 'package:analyzer/error/error.dart';
 /// - `Map<String, dynamic> toJson()` - toJson method return type
 /// - `external dynamic foo();` - external declarations (JS interop)
 /// - `@override void foo(dynamic x)` - parameters in overridden methods
-class AvoidDynamicTypeRule extends NoSlopRule {
-  AvoidDynamicTypeRule({required super.ignoreTestFiles}) : super(
+class PreferSpecificTypeRule extends NoSlopRule {
+  PreferSpecificTypeRule({required super.ignoreTestFiles})
+    : super(
         name: code.lowerCaseName,
-        description: 'Forbids usage of the dynamic type.',
+        description: 'Forbids usage of the Object or dynamic type.',
       );
 
   static const code = LintCode(
-    'avoid_dynamic_type',
-    "Avoid using 'dynamic' type. Use explicit types instead.",
-    correctionMessage: 'Replace dynamic with a specific type.',
+    'prefer_specific_type',
+    "Avoid using 'Object' or 'dynamic' type. Use explicit types instead.",
+    correctionMessage: 'Replace Object or dynamic with a specific type.',
   );
 
   @override
@@ -55,7 +56,8 @@ class AvoidDynamicTypeRule extends NoSlopRule {
   /// Checks if this dynamic usage is allowed.
   bool _isAllowedDynamic(NamedType dynamicNode) {
     if (_isInExternalDeclaration(dynamicNode)) return true;
-    if (_isInOverriddenMethodParameter(dynamicNode)) return true;
+    if (_isInOverriddenMethod(dynamicNode)) return true;
+    if (_isInFunctionArgument(dynamicNode)) return true;
 
     final typeArgumentList = dynamicNode.parent;
     if (typeArgumentList is! TypeArgumentList) return false;
@@ -139,14 +141,41 @@ class AvoidDynamicTypeRule extends NoSlopRule {
     return false;
   }
 
-  bool _isInOverriddenMethodParameter(AstNode node) {
+  /// Any `Object` or `dynamic` inside a method that has `@override` is
+  /// acceptable — the signature is dictated by the base class/interface.
+  bool _isInOverriddenMethod(AstNode node) {
+    final method = _findAncestorOfType<MethodDeclaration>(node);
+    if (method != null) {
+      return _hasOverrideAnnotation(method);
+    }
+    return false;
+  }
+
+  /// Catch-all catch clauses (`on Object catch (e)`) need `Object` to catch
+  /// every possible thrown value. This is idiomatic and outside the developer's
+  /// control.
+  bool _isInCatchClause(NamedType node) {
+    return _findAncestorOfType<CatchClause>(node) != null;
+  }
+
+  /// When a function expression is passed as an argument (callback / lambda)
+  /// the developer does not control the expected signature, so `Object` or
+  /// `dynamic` in the callback's parameters should not be flagged.
+  bool _isInFunctionArgument(NamedType node) {
     final parameter = _findAncestorOfType<FormalParameter>(node);
     if (parameter == null) return false;
 
-    final method = _findAncestorOfType<MethodDeclaration>(node);
-    if (method == null) return false;
+    final functionExpression = _findAncestorOfType<FunctionExpression>(node);
+    if (functionExpression == null) return false;
 
-    return _hasOverrideAnnotation(method);
+    final parent = functionExpression.parent;
+    return parent is ArgumentList || parent is NamedExpression;
+  }
+
+  /// Generic bounds (`T extends Object?`) are outside the developer's control —
+  /// they describe the constraint, not a concrete type choice.
+  bool _isInGenericBound(NamedType node) {
+    return _findAncestorOfType<TypeParameter>(node) != null;
   }
 
   bool _hasOverrideAnnotation(MethodDeclaration method) {
@@ -171,7 +200,7 @@ class AvoidDynamicTypeRule extends NoSlopRule {
 class _Visitor extends SimpleAstVisitor<void> {
   _Visitor(this.rule);
 
-  final AvoidDynamicTypeRule rule;
+  final PreferSpecificTypeRule rule;
 
   @override
   void visitNamedType(NamedType node) {
@@ -182,7 +211,10 @@ class _Visitor extends SimpleAstVisitor<void> {
       rule.reportAtNode(node);
     } else if (name == 'Object') {
       if (rule._isInExternalDeclaration(node)) return;
-      if (rule._isInOverriddenMethodParameter(node)) return;
+      if (rule._isInOverriddenMethod(node)) return;
+      if (rule._isInCatchClause(node)) return;
+      if (rule._isInFunctionArgument(node)) return;
+      if (rule._isInGenericBound(node)) return;
       rule.reportAtNode(node);
     }
   }

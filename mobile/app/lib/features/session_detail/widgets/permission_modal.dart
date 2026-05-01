@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
+import "package:go_router/go_router.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../../core/widgets/app_modal_bottom_sheet.dart";
@@ -47,7 +48,7 @@ class PermissionModal extends StatelessWidget {
   }
 
   void _reply(BuildContext context, {required PermissionReply reply}) {
-    Navigator.of(context).pop();
+    context.pop();
     onReply(
       requestId: permission.requestID,
       sessionId: permission.sessionID,

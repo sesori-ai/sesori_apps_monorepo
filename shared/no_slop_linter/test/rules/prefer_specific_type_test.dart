@@ -1,19 +1,18 @@
 import 'package:analyzer_testing/analysis_rule/analysis_rule.dart';
-import 'package:no_slop_linter/src/utils/no_slop_rule.dart';
-import 'package:no_slop_linter/src/rules/avoid_dynamic_type_rule.dart';
+import 'package:no_slop_linter/src/rules/prefer_specific_type_rule.dart';
 import 'package:test_reflective_loader/test_reflective_loader.dart';
 
 void main() {
   defineReflectiveSuite(() {
-    defineReflectiveTests(AvoidDynamicTypeTest);
+    defineReflectiveTests(PreferSpecificTypeTest);
   });
 }
 
 @reflectiveTest
-class AvoidDynamicTypeTest extends AnalysisRuleTest {
+class PreferSpecificTypeTest extends AnalysisRuleTest {
   @override
   void setUp() {
-    rule = AvoidDynamicTypeRule(ignoreTestFiles: false);
+    rule = PreferSpecificTypeRule(ignoreTestFiles: false);
     super.setUp();
   }
 
@@ -252,5 +251,90 @@ class Child extends Base {
 ''',
       [lint(38, 7)],
     );
+  }
+
+  void test_noErrorForObjectInCatchClause() async {
+    await assertNoDiagnostics(r'''
+void foo() {
+  try {
+    bar();
+  } on Object catch (e) {
+    print(e);
+  }
+}
+void bar() {}
+''');
+  }
+
+  void test_noErrorForObjectInOnErrorCallback() async {
+    await assertNoDiagnostics(r'''
+void foo(Stream<int> stream) {
+  stream.listen(
+    (event) => print(event),
+    onError: (Object error, StackTrace stackTrace) {
+      print(error);
+    },
+  );
+}
+''');
+  }
+
+  void test_noErrorForObjectInFutureCatchError() async {
+    await assertNoDiagnostics(r'''
+void foo(Future<int> future) {
+  future.catchError((Object error, StackTrace stackTrace) {
+    return 0;
+  });
+}
+''');
+  }
+
+  void test_noErrorForObjectInCallbackArgument() async {
+    await assertNoDiagnostics(r'''
+void foo(Function callback) {
+  callback((Object arg) => print(arg));
+}
+''');
+  }
+
+  void test_noErrorForObjectInOverriddenMethodReturnType() async {
+    await assertDiagnostics(
+      r'''
+abstract class Base {
+  Object doSomething();
+}
+
+class Child extends Base {
+  @override
+  Object doSomething() => 'hello';
+}
+''',
+      [lint(24, 6)],
+    );
+  }
+
+  void test_reportForObjectInOwnFunctionParameter() async {
+    await assertDiagnostics(
+      r'''
+void doSomething({required Object arg}) {}
+''',
+      [lint(27, 6)],
+    );
+  }
+
+  void test_noErrorForDynamicInCallbackArgument() async {
+    await assertNoDiagnostics(r'''
+void foo(Function callback) {
+  callback((dynamic arg) => print(arg));
+}
+''');
+  }
+
+  void test_noErrorForObjectAsGenericBound() async {
+    await assertNoDiagnostics(r'''
+Future<T?> pushRoute<T extends Object?>(int route) {
+  return Future.value();
+}
+''');
   }
 }

@@ -17,7 +17,7 @@ class DartzTupleToRecordFixTest extends AnalysisRuleFixTest {
   @override
   void setUp() {
     rule = AvoidDartzTupleRule(ignoreTestFiles: false);
-    newPackage('dartz')..addFile('lib/dartz.dart', r'''
+    newPackage('dartz').addFile('lib/dartz.dart', r'''
 class Tuple2<A, B> {
   final A value1;
   final B value2;

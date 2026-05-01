@@ -1,5 +1,4 @@
 import 'package:analyzer_testing/analysis_rule/analysis_rule.dart';
-import 'package:no_slop_linter/src/utils/no_slop_rule.dart';
 import 'package:no_slop_linter/src/rules/prefer_exhaustive_switch_rule.dart';
 import 'package:test_reflective_loader/test_reflective_loader.dart';
 

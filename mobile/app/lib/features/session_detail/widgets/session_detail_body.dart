@@ -63,7 +63,8 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
         sessionStatus: sessionStatus,
         childStatuses: childStatuses,
       ),
-      _ => false,
+      SessionDetailLoading() => true,
+      SessionDetailFailed() => false,
     };
 
     return Scaffold(
