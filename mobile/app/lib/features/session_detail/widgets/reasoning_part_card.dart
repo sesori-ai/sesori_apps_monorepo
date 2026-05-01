@@ -27,17 +27,21 @@ class ReasoningPartCard extends StatefulWidget {
 
 class _ReasoningPartCardState extends State<ReasoningPartCard> {
   late String _previewText;
+  late String _cachedFirstLine;
 
   @override
   void initState() {
     super.initState();
+    _cachedFirstLine = _extractFirstLine(widget.text);
     _previewText = _firstLinePlainText(widget.text);
   }
 
   @override
   void didUpdateWidget(covariant ReasoningPartCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.text != oldWidget.text) {
+    final newFirstLine = _extractFirstLine(widget.text);
+    if (newFirstLine != _cachedFirstLine) {
+      _cachedFirstLine = newFirstLine;
       _previewText = _firstLinePlainText(widget.text);
     }
   }
@@ -163,12 +167,28 @@ class _ReasoningPartCardState extends State<ReasoningPartCard> {
     );
   }
 
+  /// Returns the first non-empty physical line of [text], or the empty
+  /// string if [text] contains no non-empty lines. Used to decide whether
+  /// the preview needs re-parsing — most streaming updates append to later
+  /// paragraphs, leaving the first line unchanged.
+  static String _extractFirstLine(String text) {
+    if (text.isEmpty) return '';
+    final lines = text.split('\n');
+    for (final line in lines) {
+      if (line.trim().isNotEmpty) return line;
+    }
+    return '';
+  }
+
   /// Extracts the first non-empty block from [markdown] and returns its
-  /// plain text by walking the markdown AST. This avoids regex fragility
-  /// (e.g. corrupting snake_case) and handles nested markdown correctly.
+  /// plain text by walking the markdown AST. Only the first physical line
+  /// is parsed, avoiding unnecessary work for long documents.
   static String _firstLinePlainText(String markdown) {
+    final firstLine = _extractFirstLine(markdown);
+    if (firstLine.isEmpty) return markdown.trim();
+
     final document = md.Document();
-    final nodes = document.parse(markdown);
+    final nodes = document.parse(firstLine);
 
     for (final node in nodes) {
       final buffer = StringBuffer();
@@ -179,7 +199,7 @@ class _ReasoningPartCardState extends State<ReasoningPartCard> {
       }
     }
 
-    return markdown.trim();
+    return firstLine.trim();
   }
 
   static void _extractText(md.Node node, {required StringBuffer buffer}) {
