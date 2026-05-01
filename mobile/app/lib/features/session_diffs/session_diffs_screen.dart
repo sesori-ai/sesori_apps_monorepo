@@ -4,6 +4,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../core/di/injection.dart";
+import "../../core/extensions/build_context_x.dart";
 import "models/diff_file_view_model.dart";
 import "models/diff_view_model_builder.dart";
 import "widgets/diff_file_header_delegate.dart";
@@ -43,7 +44,6 @@ class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
   List<DiffFileViewModel>? _viewModels;
   Set<int> _expandedFileIndices = <int>{};
   bool _isComputing = false;
-  // ignore: no_slop_linter/prefer_specific_type
   Object? _computeError;
   List<FileDiff>? _lastFiles;
   int _computeToken = 0;
@@ -60,10 +60,14 @@ class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("File Changes"),
+                Text(context.loc.diffFileChangesTitle),
                 if (fileCount > 0)
                   Text(
-                    "$fileCount file${fileCount == 1 ? '' : 's'} changed  +$additions -$deletions",
+                    context.loc.diffFilesChangedCount(
+                      fileCount,
+                      additions,
+                      deletions,
+                    ),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
               ],
@@ -78,8 +82,8 @@ class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
         builder: (context, state) => switch (state) {
           DiffStateLoading() => const Center(child: CircularProgressIndicator()),
           DiffStateFailed(:final error) => _buildErrorState(context: context, error: error),
-          DiffStateLoaded(:final files) when files.isEmpty => const Center(
-            child: Text("No file changes in this session"),
+          DiffStateLoaded(:final files) when files.isEmpty => Center(
+            child: Text(context.loc.diffNoFileChanges),
           ),
           DiffStateLoaded(:final files) => _buildLoadedState(context: context, files: files),
         },
@@ -191,8 +195,7 @@ class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
       final expanded = preserveExpansion
           ? Set<int>.from(_expandedFileIndices)
           : <int>{
-              for (var i = 0; i < viewModels.length; i++)
-                if (viewModels[i].isExpanded) i,
+              for (var i = 0; i < viewModels.length; i++) i,
             };
 
       setState(() {
@@ -238,17 +241,16 @@ class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
     );
   }
 
-  // ignore: no_slop_linter/prefer_specific_type
   Widget _buildErrorState({required BuildContext context, required Object error}) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text("Error: ${error.toString()}"),
+          Text(context.loc.diffErrorPrefix(error.toString())),
           const SizedBox(height: 16),
           TextButton(
             onPressed: () => context.read<DiffCubit>().refresh(),
-            child: const Text("Retry"),
+            child: Text(context.loc.diffRetry),
           ),
         ],
       ),

@@ -31,25 +31,26 @@ class DiffViewModelBuilder {
           final fileName = p.posix.basename(file);
           final fileResult = await compute(_computeFileDiff, (before, after));
           final language = detectLanguage(filePath: file);
-          final derivedStatus = status ?? _deriveStatus(before, after);
+          final derivedStatus = status ?? _deriveStatus(before: before, after: after);
 
           final hunks = fileResult.hunks
               .map(
                 (hunk) => DiffHunkViewModel(
                   hunk: hunk,
-                  lines: hunk.lines.map((line) => DiffLineViewModel(line: line)).toList(),
+                  lines: hunk.lines
+                      .map(
+                        (line) => DiffLineViewModel(
+                          line: line,
+                          highlightedSpan: DiffHighlighter.highlightLine(
+                            content: line.content,
+                            language: language,
+                          ),
+                        ),
+                      )
+                      .toList(),
                 ),
               )
               .toList();
-
-          for (final hunk in hunks) {
-            for (final lineViewModel in hunk.lines) {
-              lineViewModel.highlightedSpan = DiffHighlighter.highlightLine(
-                content: lineViewModel.line.content,
-                language: language,
-              );
-            }
-          }
 
           results.add(
             DiffFileViewModel(
@@ -89,7 +90,7 @@ class DiffViewModelBuilder {
   }
 
   /// Derives FileDiffStatus from before/after content when status is null.
-  static FileDiffStatus _deriveStatus(String before, String after) {
+  static FileDiffStatus _deriveStatus({required String before, required String after}) {
     if (before.isEmpty && after.isNotEmpty) return FileDiffStatus.added;
     if (before.isNotEmpty && after.isEmpty) return FileDiffStatus.deleted;
     return FileDiffStatus.modified;
