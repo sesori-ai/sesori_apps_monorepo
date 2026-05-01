@@ -11,6 +11,7 @@ abstract class NoSlopRule extends AnalysisRule {
     final currentPath = _context?.currentUnit?.file.path;
     if (currentPath == null) return false;
     if (currentPath.endsWith('_test.dart')) return true;
+    if (currentPath.contains('/test/')) return true;
     final libraryElement = _context?.libraryElement;
     if (libraryElement == null) return false;
     final isAnalyzed = libraryElement.session.analysisContext.contextRoot
@@ -46,6 +47,7 @@ abstract class NoSlopMultiRule extends MultiAnalysisRule {
     final currentPath = _context?.currentUnit?.file.path;
     if (currentPath == null) return false;
     if (currentPath.endsWith('_test.dart')) return true;
+    if (currentPath.contains('/test/')) return true;
     final libraryElement = _context?.libraryElement;
     if (libraryElement == null) return false;
     final isAnalyzed = libraryElement.session.analysisContext.contextRoot

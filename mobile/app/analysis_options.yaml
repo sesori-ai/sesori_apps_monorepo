@@ -1,4 +1,4 @@
-include: ./all_lint_rules.yaml
+include: ../analysis_options.yaml
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options
@@ -9,7 +9,6 @@ analyzer:
       build/**,
       docs/**,
       scripts/**,
-      modules/no_slop_linter/test/**,
       "**.freezed.dart",
       "**.config.dart",
       "**.g.dart",

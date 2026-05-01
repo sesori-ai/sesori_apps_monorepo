@@ -1,3 +1,5 @@
+include: app/all_lint_rules.yaml
+
 plugins:
   no_slop_linter:
     path: ../shared/no_slop_linter
