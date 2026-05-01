@@ -20,7 +20,7 @@ resolution: workspace
 version: 1.0.4+6
 
 environment:
-  sdk: ^3.11.1
+  sdk: ^3.11.5
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions

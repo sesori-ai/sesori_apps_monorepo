@@ -2,7 +2,7 @@ name: sesori_mobile_workspace
 publish_to: none
 
 environment:
-  sdk: ^3.11.1
+  sdk: ^3.11.5
 
 workspace:
   - app

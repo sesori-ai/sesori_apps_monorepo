@@ -5,7 +5,7 @@ version: 0.0.1
 publish_to: "none"
 
 environment:
-  sdk: ">=3.11.0 <4.0.0"
+  sdk: ">=3.11.5 <4.0.0"
 
 dependencies:
   analysis_server_plugin: ">=0.3.5 <0.4.0" # 0.3.5 works with analyzer 10.0.0
