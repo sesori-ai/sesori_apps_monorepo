@@ -30,8 +30,7 @@ import 'package:analyzer/error/error.dart';
 /// - `external dynamic foo();` - external declarations (JS interop)
 /// - `@override void foo(dynamic x)` - parameters in overridden methods
 class AvoidDynamicTypeRule extends NoSlopRule {
-  AvoidDynamicTypeRule()
-    : super(
+  AvoidDynamicTypeRule({required super.ignoreTestFiles}) : super(
         name: code.lowerCaseName,
         description: 'Forbids usage of the dynamic type.',
       );

@@ -59,3 +59,11 @@ jobs:
       - name: Run tests for mobile/app
         run: flutter test
         working-directory: mobile/app
+
+      - name: Get dependencies (no_slop_linter)
+        run: dart pub get
+        working-directory: shared/no_slop_linter
+
+      - name: Run tests for no_slop_linter
+        run: dart test
+        working-directory: shared/no_slop_linter

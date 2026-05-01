@@ -1,4 +1,5 @@
 import 'package:analyzer_testing/analysis_rule/analysis_rule.dart';
+import 'package:no_slop_linter/src/utils/no_slop_rule.dart';
 import 'package:no_slop_linter/src/rules/avoid_string_literals_in_widgets_rule.dart';
 import 'package:test_reflective_loader/test_reflective_loader.dart';
 
@@ -12,7 +13,7 @@ void main() {
 class AvoidStringLiteralsInWidgetsTest extends AnalysisRuleTest {
   @override
   void setUp() {
-    rule = AvoidStringLiteralsInWidgetsRule();
+    rule = AvoidStringLiteralsInWidgetsRule(ignoreTestFiles: false);
     super.setUp();
   }
 

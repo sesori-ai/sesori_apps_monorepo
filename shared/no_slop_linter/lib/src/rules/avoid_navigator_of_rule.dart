@@ -22,8 +22,7 @@ import 'package:analyzer/error/error.dart';
 /// - `context.goRoute(AppRoute.xxx())` - GoRouter custom extension
 /// - `context.pop()` - GoRouter pop (works for dialogs/sheets too)
 class AvoidNavigatorOfRule extends NoSlopRule {
-  AvoidNavigatorOfRule()
-    : super(
+  AvoidNavigatorOfRule({required super.ignoreTestFiles}) : super(
         name: code.lowerCaseName,
         description: 'Forbids direct Navigator usage.',
       );

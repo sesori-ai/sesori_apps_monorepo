@@ -23,7 +23,7 @@ import '../utils/no_slop_rule.dart';
 /// - `if (object is String) { ... }` - type check with smart cast
 /// - `switch (object) { case String s => ... }` - pattern matching
 class AvoidAsCastRule extends NoSlopRule {
-  AvoidAsCastRule() : super(name: code.lowerCaseName, description: 'Forbids type casting with as.');
+  AvoidAsCastRule({required super.ignoreTestFiles}) : super(name: code.lowerCaseName, description: 'Forbids type casting with as.');
 
   static const code = LintCode(
     'avoid_as_cast',

@@ -21,7 +21,7 @@ import 'package:analyzer/error/error.dart';
 /// - `"value: ${obj.toString()}"` - explicit toString()
 /// - `"value: ${obj.toStringShort()}"` - custom formatting method
 class AvoidImplicitTostringRule extends NoSlopRule {
-  AvoidImplicitTostringRule()
+  AvoidImplicitTostringRule({required super.ignoreTestFiles})
       : super(name: code.lowerCaseName, description: 'Detects implicit toString() calls in string interpolation.');
 
   static const code = LintCode(

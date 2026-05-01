@@ -16,7 +16,7 @@ void main() {
 class RequiredNamedParamsFixTest extends AnalysisRuleFixTest {
   @override
   void setUp() {
-    rule = PreferRequiredNamedParametersRule();
+    rule = PreferRequiredNamedParametersRule(ignoreTestFiles: false);
     super.setUp();
   }
 

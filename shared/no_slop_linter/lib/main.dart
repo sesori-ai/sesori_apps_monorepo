@@ -56,25 +56,25 @@ class _NoSlopLinterPlugin extends Plugin {
   @override
   void register(PluginRegistry registry) {
     // Warning rules (enabled by default)
-    registry.registerWarningRule(AvoidAsCastRule());
-    registry.registerWarningRule(AvoidBangOperatorRule());
-    registry.registerWarningRule(AvoidDartzTupleRule());
-    registry.registerWarningRule(AvoidDynamicReturnTypeRule());
-    registry.registerWarningRule(AvoidDynamicTypeRule());
-    registry.registerWarningRule(AvoidImplicitTostringRule());
-    registry.registerWarningRule(AvoidMutableClassFieldsRule());
-    registry.registerWarningRule(AvoidNavigatorOfRule());
-    registry.registerWarningRule(AvoidRawGoRouterRule());
-    registry.registerWarningRule(AvoidStringLiteralsInWidgetsRule());
-    registry.registerWarningRule(PreferEdgeInsetsDirectionalRule());
-    registry.registerWarningRule(PreferExhaustiveSwitchRule());
-    registry.registerWarningRule(PreferRequiredNamedParametersRule());
-    // registry.registerWarningRule(PreferSizeConstRule());
-    registry.registerWarningRule(PreferTextAlignDirectionalRule());
+    registry.registerWarningRule(AvoidAsCastRule(ignoreTestFiles: true));
+    registry.registerWarningRule(AvoidBangOperatorRule(ignoreTestFiles: true));
+    registry.registerWarningRule(AvoidDartzTupleRule(ignoreTestFiles: true));
+    registry.registerWarningRule(AvoidDynamicReturnTypeRule(ignoreTestFiles: true));
+    registry.registerWarningRule(AvoidDynamicTypeRule(ignoreTestFiles: true));
+    registry.registerWarningRule(AvoidImplicitTostringRule(ignoreTestFiles: true));
+    registry.registerWarningRule(AvoidMutableClassFieldsRule(ignoreTestFiles: true));
+    registry.registerWarningRule(AvoidNavigatorOfRule(ignoreTestFiles: true));
+    registry.registerWarningRule(AvoidRawGoRouterRule(ignoreTestFiles: true));
+    registry.registerWarningRule(AvoidStringLiteralsInWidgetsRule(ignoreTestFiles: true));
+    registry.registerWarningRule(PreferEdgeInsetsDirectionalRule(ignoreTestFiles: true));
+    registry.registerWarningRule(PreferExhaustiveSwitchRule(ignoreTestFiles: true));
+    registry.registerWarningRule(PreferRequiredNamedParametersRule(ignoreTestFiles: true));
+    // registry.registerWarningRule(PreferSizeConstRule(ignoreTestFiles: true));
+    registry.registerWarningRule(PreferTextAlignDirectionalRule(ignoreTestFiles: true));
 
     // Lint rules (disabled by default, must be enabled in analysis_options.yaml)
-    registry.registerLintRule(AvoidHardcodedColorsRule());
-    registry.registerLintRule(AvoidHardcodedTextStylesRule());
+    registry.registerLintRule(AvoidHardcodedColorsRule(ignoreTestFiles: true));
+    registry.registerLintRule(AvoidHardcodedTextStylesRule(ignoreTestFiles: true));
 
     // Fixes
     registry.registerFixForRule(

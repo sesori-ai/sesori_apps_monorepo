@@ -16,7 +16,7 @@ void main() {
 class ExhaustiveSwitchFixTest extends AnalysisRuleFixTest {
   @override
   void setUp() {
-    rule = PreferExhaustiveSwitchRule();
+    rule = PreferExhaustiveSwitchRule(ignoreTestFiles: false);
     super.setUp();
   }
 
