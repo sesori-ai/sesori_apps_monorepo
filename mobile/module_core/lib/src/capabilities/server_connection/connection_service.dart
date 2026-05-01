@@ -341,6 +341,7 @@ class ConnectionService {
       final propertiesValue = payloadValue["properties"];
       // ignore: no_slop_linter/prefer_specific_type, JSON parsing requires dynamic
       final properties = propertiesValue is Map<String, dynamic> ? propertiesValue : <String, dynamic>{};
+      // ignore: no_slop_linter/prefer_specific_type
       final merged = <String, Object?>{"type": typeValue, ...properties};
 
       final SesoriSseEvent eventData;

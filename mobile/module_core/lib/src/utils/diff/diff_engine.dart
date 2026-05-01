@@ -55,7 +55,7 @@ class DiffEngine {
     final chars2 = lineMode.chars2;
     final lineArray = lineMode.lineArray;
     final diffs = dmp.diff(chars1, chars2, checklines: false, timeout: 0);
-    _charsToLines(diffs, lineArray);
+    _charsToLines(diffs: diffs, lineArray: lineArray);
 
     final lines = <DiffLine>[];
     var oldLine = 1;
@@ -167,7 +167,7 @@ class DiffEngine {
     return chars.toString();
   }
 
-  static void _charsToLines(List<dmp.Diff> diffs, List<String> lineArray) {
+  static void _charsToLines({required List<dmp.Diff> diffs, required List<String> lineArray}) {
     for (final diff in diffs) {
       final text = StringBuffer();
       for (final rune in diff.text.runes) {

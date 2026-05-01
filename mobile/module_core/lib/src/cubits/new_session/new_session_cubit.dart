@@ -92,11 +92,11 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   /// Applies agent/model field updates to the current state.
   /// No-op when the cubit is closed or in `created`.
   void _emitAgentModelUpdate({
-    List<AgentInfo>? availableAgents,
-    List<ProviderInfo>? availableProviders,
-    List<CommandInfo>? availableCommands,
-    String? selectedAgent,
-    AgentModel? selectedAgentModel,
+    required List<AgentInfo>? availableAgents,
+    required List<ProviderInfo>? availableProviders,
+    required List<CommandInfo>? availableCommands,
+    required String? selectedAgent,
+    required AgentModel? selectedAgentModel,
   }) {
     if (isClosed) return;
     final current = state;
@@ -165,7 +165,13 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       NewSessionCreated() => null,
     };
     final agentModel = agentInfo?.model;
-    _emitAgentModelUpdate(selectedAgent: agent, selectedAgentModel: agentModel);
+    _emitAgentModelUpdate(
+      selectedAgent: agent,
+      selectedAgentModel: agentModel,
+      availableAgents: null, // no change
+      availableCommands: null, // no change
+      availableProviders: null, // no change
+    );
   }
 
   void selectVariant(SessionVariant? variant) {
@@ -247,6 +253,10 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             modelID: modelID,
             variant: variant,
           ),
+      selectedAgent: null, // no change
+      availableAgents: null, // no change
+      availableCommands: null, // no change
+      availableProviders: null, // no change
     );
   }
 
