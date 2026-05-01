@@ -199,6 +199,31 @@ void main() {
     expect(tester.widget<MarkdownBody>(find.byType(MarkdownBody)).data, "completed reasoning");
   });
 
+  testWidgets("markdown body is wrapped in SelectionArea for cross-paragraph selection", (tester) async {
+    whenListen(
+      mockCubit,
+      const Stream<SessionDetailState>.empty(),
+      initialState: _loadedState(
+        streamingText: {},
+        messages: [_messageWithPart(text: "paragraph one\n\nparagraph two")],
+      ),
+    );
+
+    await tester.pumpWidget(_buildApp(cubit: mockCubit));
+    await tester.pumpAndSettle();
+
+    final markdownFinder = find.byType(MarkdownBody);
+    expect(markdownFinder, findsOneWidget);
+
+    final selectionAreaFinder = find.ancestor(
+      of: markdownFinder,
+      matching: find.byType(SelectionArea),
+    );
+    expect(selectionAreaFinder, findsOneWidget);
+
+    expect(tester.widget<MarkdownBody>(markdownFinder).selectable, false);
+  });
+
   testWidgets("isStreaming drives header text", (tester) async {
     final controller = StreamController<SessionDetailState>.broadcast();
     addTearDown(controller.close);
@@ -228,7 +253,7 @@ void main() {
     expect(find.text("Thought"), findsOneWidget);
   });
 
-  testWidgets("small user drag detaches immediately and reattaches on settle while streaming", (
+  testWidgets("user drag detaches immediately and reattaches on settle while streaming", (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
@@ -248,8 +273,10 @@ void main() {
 
     expect(find.byKey(_followOutputKey), findsNothing);
 
+    // Use a larger drag (-100) because SelectionArea consumes small drags
+    // for text selection initiation; scrolling requires a larger gesture.
     final gesture = await tester.startGesture(tester.getCenter(find.byKey(_reasoningListViewKey)));
-    await gesture.moveBy(const Offset(0, -12));
+    await gesture.moveBy(const Offset(0, -100));
     await tester.pump();
 
     expect(find.byKey(_followOutputKey), findsOneWidget);

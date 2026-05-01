@@ -107,14 +107,16 @@ class _ReasoningModalState extends State<ReasoningModal> {
                 controller: _follow.scrollController,
                 padding: const EdgeInsets.all(16),
                 children: [
-                  MarkdownBody(
-                    data: data.text,
-                    selectable: true,
-                    onTapLink: handleMarkdownLinkTap,
-                    styleSheet: buildSessionMarkdownStyleSheet(
-                      theme,
-                      paragraphStyle: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+                  SelectionArea(
+                    child: MarkdownBody(
+                      data: data.text,
+                      selectable: false,
+                      onTapLink: handleMarkdownLinkTap,
+                      styleSheet: buildSessionMarkdownStyleSheet(
+                        theme,
+                        paragraphStyle: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
                   ),
