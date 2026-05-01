@@ -675,4 +675,41 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prConflicting => 'Has merge conflicts';
+
+  @override
+  String get diffPermissionRequestTitle => 'Permission Request';
+
+  @override
+  String get diffPermissionReject => 'Reject';
+
+  @override
+  String get diffPermissionOnce => 'Once';
+
+  @override
+  String get diffPermissionAlwaysAllow => 'Always Allow';
+
+  @override
+  String get diffFileChangesTitle => 'File Changes';
+
+  @override
+  String diffFilesChangedCount(int count, int additions, int deletions) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 's',
+      one: '',
+    );
+    return '$count file$_temp0 changed  +$additions -$deletions';
+  }
+
+  @override
+  String get diffNoFileChanges => 'No file changes in this session';
+
+  @override
+  String diffErrorPrefix(String message) {
+    return 'Error: $message';
+  }
+
+  @override
+  String get diffRetry => 'Retry';
 }

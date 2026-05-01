@@ -333,5 +333,26 @@
          "prChecksFailing": "Checks failing",
          "prChecksPending": "Checks pending",
          "prMergeable": "Ready to merge",
-         "prConflicting": "Has merge conflicts"
+          "prConflicting": "Has merge conflicts",
+          "diffPermissionRequestTitle": "Permission Request",
+          "diffPermissionReject": "Reject",
+          "diffPermissionOnce": "Once",
+          "diffPermissionAlwaysAllow": "Always Allow",
+          "diffFileChangesTitle": "File Changes",
+          "diffFilesChangedCount": "{count} file{count, plural, =1{} other{s}} changed  +{additions} -{deletions}",
+          "@diffFilesChangedCount": {
+            "placeholders": {
+              "count": {"type": "int"},
+              "additions": {"type": "int"},
+              "deletions": {"type": "int"}
+            }
+          },
+          "diffNoFileChanges": "No file changes in this session",
+          "diffErrorPrefix": "Error: {message}",
+          "@diffErrorPrefix": {
+            "placeholders": {
+              "message": {"type": "String"}
+            }
+          },
+          "diffRetry": "Retry"
 }
