@@ -125,14 +125,17 @@ class NotificationOpenDispatcher {
     );
   }
 
+  // ignore: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters
   void _onAuthStreamError(Object error, StackTrace stackTrace) {
     loge("Notification open auth state stream error", error, stackTrace);
   }
 
+  // ignore: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters
   void _onPushOpenError(Object error, StackTrace stackTrace) {
     loge("Push notification open stream error", error, stackTrace);
   }
 
+  // ignore: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters
   void _onLocalOpenError(Object error, StackTrace stackTrace) {
     loge("Local notification open stream error", error, stackTrace);
   }

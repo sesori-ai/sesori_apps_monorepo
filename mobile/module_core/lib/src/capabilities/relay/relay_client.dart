@@ -22,7 +22,7 @@ class RelayClient {
   final RoomKeyStorage _roomKeyStorage;
 
   WebSocketChannel? _channel;
-  StreamSubscription<Object?>? _channelSubscription;
+  StreamSubscription<void>? _channelSubscription;
   SessionEncryptor? _sessionEncryptor;
 
   final Map<String, Completer<RelayResponse>> _pendingRequests = {};
@@ -82,20 +82,20 @@ class RelayClient {
       );
       _firstBinaryMessage = Completer<Uint8List>();
 
-      _channelSubscription = channel.stream.listen(
-        (Object? message) {
-          unawaited(_onSocketMessage(message));
-        },
-        onError: (Object error, StackTrace stackTrace) {
-          loge("Relay socket stream error", error, stackTrace);
-          final firstBinaryMessage = _firstBinaryMessage;
-          if (firstBinaryMessage != null && !firstBinaryMessage.isCompleted) {
-            firstBinaryMessage.completeError(error, stackTrace);
-          }
-          _completeAllPendingWithError(StateError("Relay socket stream error: ${error.toString()}"));
-        },
-        onDone: _onSocketDone,
-      );
+      _channelSubscription = channel.stream
+          .asyncMap(_onSocketMessage)
+          .listen(
+            (data) {},
+            onError: (Object error, StackTrace stackTrace) {
+              loge("Relay socket stream error", error, stackTrace);
+              final firstBinaryMessage = _firstBinaryMessage;
+              if (firstBinaryMessage != null && !firstBinaryMessage.isCompleted) {
+                firstBinaryMessage.completeError(error, stackTrace);
+              }
+              _completeAllPendingWithError(StateError("Relay socket stream error: ${error.toString()}"));
+            },
+            onDone: _onSocketDone,
+          );
 
       // Auth token is sent before E2EE is established. This is intentional:
       // the relay requires a valid JWT to authenticate the WebSocket connection
@@ -332,6 +332,7 @@ class RelayClient {
     _connectionState = RelayClientConnectionState.disconnected;
   }
 
+  // ignore: no_slop_linter/prefer_specific_type
   Future<void> _onSocketMessage(Object? message) async {
     if (_disposed) {
       return;
@@ -463,6 +464,7 @@ class RelayClient {
     return RelayMessage.fromJson(decoded);
   }
 
+  // ignore: no_slop_linter/prefer_specific_type
   Uint8List? _toBytes(Object? message) {
     if (message is Uint8List) {
       return message;

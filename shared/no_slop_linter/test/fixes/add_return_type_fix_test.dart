@@ -16,7 +16,7 @@ void main() {
 class AddReturnTypeFixTest extends AnalysisRuleFixTest {
   @override
   void setUp() {
-    rule = AvoidDynamicReturnTypeRule();
+    rule = AvoidDynamicReturnTypeRule(ignoreTestFiles: false);
     super.setUp();
   }
 

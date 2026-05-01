@@ -34,17 +34,6 @@ void main() {
       expect(event.sessionId, equals("session-compacted-1"));
     });
 
-    test("extracts sessionId from SesoriSessionIdle", () {
-      final event = SseEvent(
-        // ignore: deprecated_member_use
-        data: const SesoriSessionIdle(
-          sessionID: "session-idle-1",
-        ),
-      );
-
-      expect(event.sessionId, equals("session-idle-1"));
-    });
-
     test("extracts sessionId from SesoriMessageRemoved", () {
       final event = SseEvent(
         data: const SesoriMessageRemoved(

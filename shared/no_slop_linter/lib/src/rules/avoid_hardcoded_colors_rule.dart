@@ -21,7 +21,7 @@ import 'package:analyzer/error/error.dart';
 /// - `Theme.of(context).colorScheme.surface`
 /// - `colorScheme.onBackground`
 class AvoidHardcodedColorsRule extends NoSlopRule {
-  AvoidHardcodedColorsRule() : super(name: code.lowerCaseName, description: 'Forbids hardcoded colors.');
+  AvoidHardcodedColorsRule({required super.ignoreTestFiles}) : super(name: code.lowerCaseName, description: 'Forbids hardcoded colors.');
 
   static const code = LintCode(
     'avoid_hardcoded_colors',

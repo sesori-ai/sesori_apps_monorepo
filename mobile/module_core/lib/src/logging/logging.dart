@@ -25,14 +25,14 @@ LogLevel get logLevel => _logLevel;
 /// of each isolate independently if you need non-default verbosity.
 void setLogLevel(LogLevel level) => _logLevel = level;
 
-// ignore: no_slop_linter/prefer_required_named_parameters, logging convenience API keeps optional positional context
+// ignore: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters, logging convenience API keeps optional positional context
 void logt(String message, [Object? error, StackTrace? stackTrace]) {
   if (_logLevel.index <= LogLevel.trace.index) {
     _printWithDetails(message, error, stackTrace);
   }
 }
 
-// ignore: no_slop_linter/prefer_required_named_parameters, logging convenience API keeps optional positional context
+// ignore: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters, logging convenience API keeps optional positional context
 void logd(String message, [Object? error, StackTrace? stackTrace]) {
   if (_logLevel.index <= LogLevel.debug.index) {
     // ignore: avoid_print, logging intentionally writes to stdout in pure Dart modules
@@ -40,28 +40,28 @@ void logd(String message, [Object? error, StackTrace? stackTrace]) {
   }
 }
 
-// ignore: no_slop_linter/prefer_required_named_parameters, logging convenience API keeps optional positional context
+// ignore: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters, logging convenience API keeps optional positional context
 void logi(String message, [Object? error, StackTrace? stackTrace]) {
   if (_logLevel.index <= LogLevel.info.index) {
     _printWithDetails(message, error, stackTrace);
   }
 }
 
-// ignore: no_slop_linter/prefer_required_named_parameters, logging convenience API keeps optional positional context
+// ignore: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters, logging convenience API keeps optional positional context
 void logw(String message, [Object? error, StackTrace? stackTrace]) {
   if (_logLevel.index <= LogLevel.warning.index) {
     _printWithDetails(message, error, stackTrace);
   }
 }
 
-// ignore: no_slop_linter/prefer_required_named_parameters, logging convenience API keeps optional positional context
+// ignore: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters, logging convenience API keeps optional positional context
 void loge(String message, [Object? error, StackTrace? stackTrace]) {
   if (_logLevel.index <= LogLevel.error.index) {
     _printWithDetails(message, error, stackTrace);
   }
 }
 
-// ignore: no_slop_linter/prefer_required_named_parameters, logging convenience API keeps optional positional context
+// ignore: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters, logging convenience API keeps optional positional context
 void logwf(String message, [Object? error, StackTrace? stackTrace]) {
   // fatal — always emitted unless suppressed to none
   if (_logLevel != LogLevel.none) {
@@ -69,7 +69,7 @@ void logwf(String message, [Object? error, StackTrace? stackTrace]) {
   }
 }
 
-// ignore: no_slop_linter/prefer_required_named_parameters, private logging helper keeps optional positional context
+// ignore: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters, private logging helper keeps optional positional context
 void _printWithDetails(String message, Object? error, StackTrace? stackTrace) {
   if (error != null) {
     // ignore: avoid_print, logging intentionally writes to stdout in pure Dart modules

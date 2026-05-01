@@ -25,7 +25,13 @@ class _EmailLoginFormState extends State<EmailLoginForm> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    final formState = _formKey.currentState;
+    if (formState == null) {
+      loge("FormState is null");
+      context.read<LoginCubit>().onMissingFormKey();
+      return;
+    }
+    if (!formState.validate()) return;
 
     final email = _emailController.text.trim();
     final password = _passwordController.text;

@@ -1308,6 +1308,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Has merge conflicts'**
   String get prConflicting;
+
+  /// No description provided for @diffPermissionRequestTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Permission Request'**
+  String get diffPermissionRequestTitle;
+
+  /// No description provided for @diffPermissionReject.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject'**
+  String get diffPermissionReject;
+
+  /// No description provided for @diffPermissionOnce.
+  ///
+  /// In en, this message translates to:
+  /// **'Once'**
+  String get diffPermissionOnce;
+
+  /// No description provided for @diffPermissionAlwaysAllow.
+  ///
+  /// In en, this message translates to:
+  /// **'Always Allow'**
+  String get diffPermissionAlwaysAllow;
+
+  /// No description provided for @diffFileChangesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'File Changes'**
+  String get diffFileChangesTitle;
+
+  /// No description provided for @diffFilesChangedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} file{count, plural, =1{} other{s}} changed  +{additions} -{deletions}'**
+  String diffFilesChangedCount(int count, int additions, int deletions);
+
+  /// No description provided for @diffNoFileChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'No file changes in this session'**
+  String get diffNoFileChanges;
+
+  /// No description provided for @diffErrorPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'Error: {message}'**
+  String diffErrorPrefix(String message);
+
+  /// No description provided for @diffRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get diffRetry;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -12,7 +12,7 @@ void main() {
 class AvoidImplicitTostringTest extends AnalysisRuleTest {
   @override
   void setUp() {
-    rule = AvoidImplicitTostringRule();
+    rule = AvoidImplicitTostringRule(ignoreTestFiles: false);
     super.setUp();
   }
 

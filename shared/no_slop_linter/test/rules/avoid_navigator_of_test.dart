@@ -12,7 +12,7 @@ void main() {
 class AvoidNavigatorOfTest extends AnalysisRuleTest {
   @override
   void setUp() {
-    rule = AvoidNavigatorOfRule();
+    rule = AvoidNavigatorOfRule(ignoreTestFiles: false);
     super.setUp();
   }
 

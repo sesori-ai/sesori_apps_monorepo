@@ -1,12 +1,13 @@
 include: package:lints/recommended.yaml
 
 analyzer:
+  errors:
+    non_constant_identifier_names: ignore
   exclude:
     [
       build/**,
       docs/**,
       scripts/**,
-      test/**,
       "**.freezed.dart",
       "**.config.dart",
       "**.g.dart",

@@ -12,7 +12,7 @@ void main() {
 class AvoidAsCastTest extends AnalysisRuleTest {
   @override
   void setUp() {
-    rule = AvoidAsCastRule();
+    rule = AvoidAsCastRule(ignoreTestFiles: false);
     super.setUp();
   }
 

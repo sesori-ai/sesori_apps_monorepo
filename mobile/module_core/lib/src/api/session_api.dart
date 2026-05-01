@@ -162,7 +162,7 @@ class SessionApi {
       } on SessionCleanupRejectedException {
         rethrow;
       } on Object catch (e) {
-        logw("Failed to parse 409 cleanup rejection body: $e");
+        logw("Failed to parse 409 cleanup rejection body: ${e.toString()}");
         return;
       }
     }

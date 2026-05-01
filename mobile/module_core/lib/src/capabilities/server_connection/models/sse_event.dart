@@ -18,8 +18,6 @@ class SseEvent {
     SesoriSessionError(:final sessionID) => sessionID,
     SesoriSessionCompacted(:final sessionID) => sessionID,
     SesoriSessionStatus(:final sessionID) => sessionID,
-    // ignore: deprecated_member_use, retained for backward-compatible SSE payloads
-    SesoriSessionIdle(:final sessionID) => sessionID,
     SesoriCommandExecuted(:final sessionID) => sessionID,
     SesoriMessageUpdated(:final info) => info.sessionID,
     SesoriMessageRemoved(:final sessionID) => sessionID,
@@ -31,7 +29,33 @@ class SseEvent {
     SesoriQuestionReplied(:final sessionID) => sessionID,
     SesoriQuestionRejected(:final sessionID) => sessionID,
     SesoriTodoUpdated(:final sessionID) => sessionID,
-    _ => null,
+    SesoriPermissionReplied(:final sessionID) => sessionID,
+    SesoriServerConnected() ||
+    SesoriServerHeartbeat() ||
+    SesoriServerInstanceDisposed() ||
+    SesoriGlobalDisposed() ||
+    SesoriPtyCreated() ||
+    SesoriPtyUpdated() ||
+    SesoriPtyExited() ||
+    SesoriPtyDeleted() ||
+    SesoriPermissionUpdated() ||
+    SesoriProjectsSummary() ||
+    SesoriProjectUpdated() ||
+    SesoriVcsBranchUpdated() ||
+    SesoriSessionsUpdated() ||
+    SesoriFileEdited() ||
+    SesoriFileWatcherUpdated() ||
+    SesoriLspUpdated() ||
+    SesoriLspClientDiagnostics() ||
+    SesoriMcpToolsChanged() ||
+    SesoriMcpBrowserOpenFailed() ||
+    SesoriInstallationUpdated() ||
+    SesoriInstallationUpdateAvailable() ||
+    SesoriWorkspaceReady() ||
+    SesoriWorkspaceFailed() ||
+    SesoriTuiToastShow() ||
+    SesoriWorktreeReady() ||
+    SesoriWorktreeFailed() => null,
   };
 
   SseEvent({required this.data, this.directory});

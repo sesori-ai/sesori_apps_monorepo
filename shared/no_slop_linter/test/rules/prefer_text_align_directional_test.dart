@@ -12,7 +12,7 @@ void main() {
 class PreferTextAlignDirectionalTest extends AnalysisRuleTest {
   @override
   void setUp() {
-    rule = PreferTextAlignDirectionalRule();
+    rule = PreferTextAlignDirectionalRule(ignoreTestFiles: false);
     super.setUp();
   }
 

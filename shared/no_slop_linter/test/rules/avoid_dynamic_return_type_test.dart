@@ -12,7 +12,7 @@ void main() {
 class AvoidDynamicReturnTypeTest extends AnalysisRuleTest {
   @override
   void setUp() {
-    rule = AvoidDynamicReturnTypeRule();
+    rule = AvoidDynamicReturnTypeRule(ignoreTestFiles: false);
     super.setUp();
   }
 

@@ -66,7 +66,7 @@ class DiffLineWidget extends StatelessWidget {
           Container(
             color: gutterBg,
             width: 16,
-            padding: const EdgeInsets.only(top: 1),
+            padding: const EdgeInsetsDirectional.only(top: 1),
             alignment: Alignment.center,
             child: Text(
               prefix,
@@ -77,16 +77,17 @@ class DiffLineWidget extends StatelessWidget {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-              child: viewModel.highlightedSpan != null
-                  ? Text.rich(
-                      viewModel.highlightedSpan!,
-                      softWrap: true,
-                    )
-                  : Text(
-                      line.content,
-                      style: _monoStyle.copyWith(color: theme.codeText),
-                      softWrap: true,
-                    ),
+              child: switch (viewModel.highlightedSpan) {
+                null => Text(
+                  line.content,
+                  style: _monoStyle.copyWith(color: theme.codeText),
+                  softWrap: true,
+                ),
+                final highlightedSpan => Text.rich(
+                  highlightedSpan,
+                  softWrap: true,
+                ),
+              },
             ),
           ),
         ],

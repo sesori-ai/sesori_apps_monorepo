@@ -12,7 +12,7 @@ void main() {
 class PreferRequiredNamedParametersTest extends AnalysisRuleTest {
   @override
   void setUp() {
-    rule = PreferRequiredNamedParametersRule();
+    rule = PreferRequiredNamedParametersRule(ignoreTestFiles: false);
     super.setUp();
   }
 

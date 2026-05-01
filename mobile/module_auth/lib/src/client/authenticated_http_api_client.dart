@@ -22,7 +22,7 @@ class AuthenticatedHttpApiClient implements SafeApiClient {
       _authManager = authManager;
 
   @override
-  // ignore: no_slop_linter/avoid_dynamic_type, json parsing callback
+  // ignore: no_slop_linter/prefer_specific_type, json parsing callback
   Future<ApiResponse<T>> get<T>(
     Uri url, {
     required T Function(dynamic json) fromJson,
@@ -42,7 +42,7 @@ class AuthenticatedHttpApiClient implements SafeApiClient {
   }
 
   @override
-  // ignore: no_slop_linter/avoid_dynamic_type, json parsing callback
+  // ignore: no_slop_linter/prefer_specific_type, json parsing callback
   Future<ApiResponse<T>> post<T>(
     Uri url, {
     required T Function(dynamic json) fromJson,
@@ -64,7 +64,7 @@ class AuthenticatedHttpApiClient implements SafeApiClient {
   }
 
   @override
-  // ignore: no_slop_linter/avoid_dynamic_type, json parsing callback
+  // ignore: no_slop_linter/prefer_specific_type, json parsing callback
   Future<ApiResponse<T>> patch<T>(
     Uri url, {
     required T Function(dynamic json) fromJson,
@@ -86,7 +86,7 @@ class AuthenticatedHttpApiClient implements SafeApiClient {
   }
 
   @override
-  // ignore: no_slop_linter/avoid_dynamic_type, json parsing callback
+  // ignore: no_slop_linter/prefer_specific_type, json parsing callback
   Future<ApiResponse<T>> delete<T>(
     Uri url, {
     required T Function(dynamic json) fromJson,
@@ -108,7 +108,7 @@ class AuthenticatedHttpApiClient implements SafeApiClient {
   // ignore: no_slop_linter/prefer_required_named_parameters, optional HTTP parameters
   Future<ApiResponse<T>> postMultipart<T>(
     Uri url, {
-    // ignore: no_slop_linter/avoid_dynamic_type, json parsing callback
+    // ignore: no_slop_linter/prefer_specific_type, json parsing callback
     required T Function(dynamic json) fromJson,
     required Future<List<http.MultipartFile>> Function() createFiles,
     Map<String, String>? headers,

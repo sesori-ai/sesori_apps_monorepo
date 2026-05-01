@@ -15,6 +15,7 @@ class GoRouterRouteDispatcher implements RouteDispatcher {
 
   GoRouterRouteDispatcher()
     : _goRoute = appRouter.go,
+      // ignore: no_slop_linter/avoid_raw_go_router
       _pushRoute = ((route) => appRouter.push<void>(route)),
       _routerReady = WidgetsBinding.instance.endOfFrame;
 

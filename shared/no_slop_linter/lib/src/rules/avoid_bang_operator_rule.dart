@@ -17,7 +17,7 @@ import 'package:analyzer/error/error.dart';
 /// - The `??` operator for default values
 /// - Pattern matching with `case` statements
 class AvoidBangOperatorRule extends NoSlopRule {
-  AvoidBangOperatorRule() : super(name: code.lowerCaseName, description: 'Detects usage of the bang operator.');
+  AvoidBangOperatorRule({required super.ignoreTestFiles}) : super(name: code.lowerCaseName, description: 'Detects usage of the bang operator.');
 
   static const code = LintCode(
     'avoid_bang_operator',

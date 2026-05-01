@@ -12,7 +12,7 @@ void main() {
 class AvoidBangOperatorTest extends AnalysisRuleTest {
   @override
   void setUp() {
-    rule = AvoidBangOperatorRule();
+    rule = AvoidBangOperatorRule(ignoreTestFiles: false);
     super.setUp();
   }
 

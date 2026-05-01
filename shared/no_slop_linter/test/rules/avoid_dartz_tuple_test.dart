@@ -12,7 +12,7 @@ void main() {
 class AvoidDartzTupleTest extends AnalysisRuleTest {
   @override
   void setUp() {
-    rule = AvoidDartzTupleRule();
+    rule = AvoidDartzTupleRule(ignoreTestFiles: false);
     super.setUp();
   }
 

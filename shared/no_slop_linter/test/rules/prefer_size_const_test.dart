@@ -12,7 +12,7 @@ void main() {
 class PreferSizeConstTest extends AnalysisRuleTest {
   @override
   void setUp() {
-    rule = PreferSizeConstRule();
+    rule = PreferSizeConstRule(ignoreTestFiles: false);
     super.setUp();
   }
 

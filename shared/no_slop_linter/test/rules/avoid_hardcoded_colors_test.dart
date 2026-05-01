@@ -12,7 +12,7 @@ void main() {
 class AvoidHardcodedColorsTest extends AnalysisRuleTest {
   @override
   void setUp() {
-    rule = AvoidHardcodedColorsRule();
+    rule = AvoidHardcodedColorsRule(ignoreTestFiles: false);
     super.setUp();
   }
 

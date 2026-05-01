@@ -1,4 +1,4 @@
-// ignore_for_file: no_slop_linter/avoid_as_cast, no_slop_linter/avoid_dynamic_type
+// ignore_for_file: no_slop_linter/avoid_as_cast, no_slop_linter/prefer_specific_type
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 

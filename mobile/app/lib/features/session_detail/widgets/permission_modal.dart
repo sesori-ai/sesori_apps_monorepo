@@ -1,7 +1,9 @@
 import "package:flutter/material.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
+import "package:go_router/go_router.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../../core/extensions/build_context_x.dart";
 import "../../../core/widgets/app_modal_bottom_sheet.dart";
 import "../../../core/widgets/markdown_styles.dart";
 
@@ -47,7 +49,7 @@ class PermissionModal extends StatelessWidget {
   }
 
   void _reply(BuildContext context, {required PermissionReply reply}) {
-    Navigator.of(context).pop();
+    context.pop();
     onReply(
       requestId: permission.requestID,
       sessionId: permission.sessionID,
@@ -95,7 +97,7 @@ class PermissionModal extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    "Permission Request",
+                    context.loc.diffPermissionRequestTitle,
                     style: theme.textTheme.titleMedium,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -173,21 +175,21 @@ class PermissionModal extends StatelessWidget {
                       side: BorderSide(color: theme.colorScheme.error),
                     ),
                     onPressed: () => _reply(context, reply: PermissionReply.reject),
-                    child: const Text("Reject"),
+                    child: Text(context.loc.diffPermissionReject),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => _reply(context, reply: PermissionReply.once),
-                    child: const Text("Once"),
+                    child: Text(context.loc.diffPermissionOnce),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: FilledButton(
                     onPressed: () => _reply(context, reply: PermissionReply.always),
-                    child: const Text("Always Allow"),
+                    child: Text(context.loc.diffPermissionAlwaysAllow),
                   ),
                 ),
               ],

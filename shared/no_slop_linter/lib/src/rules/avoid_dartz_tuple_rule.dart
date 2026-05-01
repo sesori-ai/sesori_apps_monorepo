@@ -21,7 +21,7 @@ import 'package:analyzer/error/error.dart';
 /// - `Tuple3<String, int, bool>` -> `(String, int, bool)`
 /// - `Tuple2('hello', 42)` -> `('hello', 42)`
 class AvoidDartzTupleRule extends NoSlopRule {
-  AvoidDartzTupleRule() : super(name: code.lowerCaseName, description: 'Forbids Tuple from dartz.');
+  AvoidDartzTupleRule({required super.ignoreTestFiles}) : super(name: code.lowerCaseName, description: 'Forbids Tuple from dartz.');
 
   static const code = LintCode(
     'avoid_dartz_tuple',

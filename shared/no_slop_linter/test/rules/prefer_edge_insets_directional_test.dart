@@ -12,7 +12,7 @@ void main() {
 class PreferEdgeInsetsDirectionalTest extends AnalysisRuleTest {
   @override
   void setUp() {
-    rule = PreferEdgeInsetsDirectionalRule();
+    rule = PreferEdgeInsetsDirectionalRule(ignoreTestFiles: false);
     super.setUp();
   }
 

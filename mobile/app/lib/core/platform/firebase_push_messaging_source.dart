@@ -52,12 +52,10 @@ class FirebasePushMessagingSource implements PushMessagingSource {
   }
 
   @override
-  Stream<PushNotificationMessage> get foregroundMessageStream =>
-      _foregroundMessageController.stream;
+  Stream<PushNotificationMessage> get foregroundMessageStream => _foregroundMessageController.stream;
 
   @override
-  Stream<NotificationOpenRequest> get notificationOpenedStream =>
-      _notificationOpenedController.stream;
+  Stream<NotificationOpenRequest> get notificationOpenedStream => _notificationOpenedController.stream;
 
   @override
   Stream<String> get tokenRefreshStream => _messaging.onTokenRefresh;
@@ -157,7 +155,7 @@ class FirebasePushMessagingSource implements PushMessagingSource {
     return PushNotificationMessage(
       title: message.notification?.title,
       body: message.notification?.body,
-      data: Map<String, dynamic>.from(message.data),
+      data: Map.of(message.data),
     );
   }
 

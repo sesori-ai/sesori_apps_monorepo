@@ -21,7 +21,7 @@ import 'package:analyzer/error/error.dart';
 /// - `SizeConst.h16` - using predefined SizedBox
 /// - `Gap(SizeConst.s8)` - using constant with Gap widget
 class PreferSizeConstRule extends NoSlopRule {
-  PreferSizeConstRule() : super(name: code.lowerCaseName, description: 'Enforces SizeConst for spacing values.');
+  PreferSizeConstRule({required super.ignoreTestFiles}) : super(name: code.lowerCaseName, description: 'Enforces SizeConst for spacing values.');
 
   static const code = LintCode(
     'prefer_size_const',

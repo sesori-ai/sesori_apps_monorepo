@@ -21,29 +21,29 @@ class ProjectRepository {
 
   Future<ProjectSessionContext?> findSessionContext({required String sessionId}) async {
     final projectsResponse = await _api.listProjects();
-    if (projectsResponse case ErrorResponse()) {
-      return null;
-    }
-
-    final projects = (projectsResponse as SuccessResponse<Projects>).data.data;
-
-    final sessionContexts = await Future.wait(
-      projects.map((project) async {
-        final sessionsResponse = await _api.listSessions(projectId: project.id);
-        final session = switch (sessionsResponse) {
-          SuccessResponse(:final data) => data.items.firstWhereOrNull((item) => item.id == sessionId),
-          ErrorResponse() => null,
-        };
-
-        if (session != null) {
-          return ProjectSessionContext(projectId: project.id, sessionTitle: session.title);
-        }
-
+    switch (projectsResponse) {
+      case ErrorResponse<Projects>():
         return null;
-      }),
-    );
+      case final SuccessResponse<Projects> success:
+        final projects = success.data.data;
+        final sessionContexts = await Future.wait(
+          projects.map((project) async {
+            final sessionsResponse = await _api.listSessions(projectId: project.id);
+            final session = switch (sessionsResponse) {
+              SuccessResponse(:final data) => data.items.firstWhereOrNull((item) => item.id == sessionId),
+              ErrorResponse() => null,
+            };
 
-    return sessionContexts.nonNulls.firstOrNull;
+            if (session != null) {
+              return ProjectSessionContext(projectId: project.id, sessionTitle: session.title);
+            }
+
+            return null;
+          }),
+        );
+
+        return sessionContexts.nonNulls.firstOrNull;
+    }
   }
 }
 

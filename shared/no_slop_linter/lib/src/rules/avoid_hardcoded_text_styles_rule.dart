@@ -21,8 +21,7 @@ import 'package:analyzer/error/error.dart';
 /// - `textTheme.titleSmall?.copyWith(color: colorScheme.primary)` - extending theme style
 /// - `defaultStyle.merge(TextStyle(fontWeight: FontWeight.bold))` - merging styles
 class AvoidHardcodedTextStylesRule extends NoSlopRule {
-  AvoidHardcodedTextStylesRule()
-      : super(name: code.lowerCaseName, description: 'Forbids hardcoded TextStyle.');
+  AvoidHardcodedTextStylesRule({required super.ignoreTestFiles}) : super(name: code.lowerCaseName, description: 'Forbids hardcoded TextStyle.');
 
   static const code = LintCode(
     'avoid_hardcoded_text_styles',

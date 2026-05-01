@@ -22,8 +22,7 @@ import 'package:analyzer/error/error.dart';
 /// - `TextAlign.justify` - symmetric, no RTL issue
 /// - Switch case patterns matching TextAlign values (exhaustive matching)
 class PreferTextAlignDirectionalRule extends NoSlopRule {
-  PreferTextAlignDirectionalRule()
-      : super(name: code.lowerCaseName, description: 'Enforces TextAlign.start/end for RTL support.');
+  PreferTextAlignDirectionalRule({required super.ignoreTestFiles}) : super(name: code.lowerCaseName, description: 'Enforces TextAlign.start/end for RTL support.');
 
   static const code = LintCode(
     'prefer_text_align_directional',

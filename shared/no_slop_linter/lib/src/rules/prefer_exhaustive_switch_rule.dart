@@ -28,8 +28,7 @@ import 'package:analyzer/error/error.dart';
 /// - switch (enumValue) { case A: ...; case B: ...; } - exhaustive enum
 /// - switch (stringValue) { case 'a': ...; default: ... } - default OK for String
 class PreferExhaustiveSwitchRule extends NoSlopRule {
-  PreferExhaustiveSwitchRule()
-      : super(name: code.lowerCaseName, description: 'Forbids default case in switch on enums and sealed classes.');
+  PreferExhaustiveSwitchRule({required super.ignoreTestFiles}) : super(name: code.lowerCaseName, description: 'Forbids default case in switch on enums and sealed classes.');
 
   static const code = LintCode(
     'prefer_exhaustive_switch',

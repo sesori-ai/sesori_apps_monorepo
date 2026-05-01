@@ -12,7 +12,7 @@ void main() {
 class AvoidStringLiteralsInWidgetsTest extends AnalysisRuleTest {
   @override
   void setUp() {
-    rule = AvoidStringLiteralsInWidgetsRule();
+    rule = AvoidStringLiteralsInWidgetsRule(ignoreTestFiles: false);
     super.setUp();
   }
 

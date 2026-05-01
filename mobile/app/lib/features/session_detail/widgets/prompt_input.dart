@@ -228,14 +228,14 @@ class _PromptInputState extends State<PromptInput> {
         mainAxisSize: .min,
         children: [
           ?widget.header,
-          if (widget.stagedCommand == null) ?widget.composerHeader,
-          if (widget.stagedCommand != null)
-            Padding(
+          ?switch (widget.stagedCommand) {
+            null => widget.composerHeader,
+            final commandInfo => Padding(
               padding: const EdgeInsetsDirectional.fromSTEB(12, 6, 12, 2),
               child: Align(
                 alignment: AlignmentDirectional.centerStart,
                 child: InputChip(
-                  label: Text("/${widget.stagedCommand!.name}"),
+                  label: Text("/${commandInfo.name}"),
                   avatar: CircleAvatar(
                     backgroundColor: theme.colorScheme.primaryContainer,
                     child: Text(
@@ -251,6 +251,8 @@ class _PromptInputState extends State<PromptInput> {
                 ),
               ),
             ),
+          },
+
           Padding(
             padding: EdgeInsetsDirectional.only(
               start: 12,

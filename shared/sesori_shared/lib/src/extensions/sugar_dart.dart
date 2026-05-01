@@ -10,7 +10,7 @@ import "package:rxdart/rxdart.dart";
 
 final _random = Random.secure();
 
-// ignore: no_slop_linter/avoid_dynamic_type, JSON decoding
+// ignore: no_slop_linter/prefer_specific_type, JSON decoding
 Map<String, dynamic> jsonDecodeMap(String source) {
   final result = jsonDecode(source);
 
@@ -23,7 +23,7 @@ Map<String, dynamic> jsonDecodeMap(String source) {
   }
 }
 
-// ignore: no_slop_linter/avoid_dynamic_type, JSON decoding
+// ignore: no_slop_linter/prefer_specific_type, JSON decoding
 List<Map<String, dynamic>> jsonDecodeListMap(String source) {
   final result = jsonDecode(source);
 
@@ -139,7 +139,7 @@ Stream<T> optionalValueStream<T>(FutureOr<T?> value) async* {
   }
 }
 
-// ignore: no_slop_linter/avoid_dynamic_type
+// ignore: no_slop_linter/prefer_specific_type
 Y tryCatch<Y>({required Y Function() t, required Y Function(Object error) c}) {
   try {
     return t();
@@ -150,7 +150,7 @@ Y tryCatch<Y>({required Y Function() t, required Y Function(Object error) c}) {
 
 Future<Y> tryCatchAsync<Y>({
   required FutureOr<Y> Function() t,
-  // ignore: no_slop_linter/avoid_dynamic_type
+  // ignore: no_slop_linter/prefer_specific_type
   required FutureOr<Y> Function(Object error) c,
 }) async {
   try {

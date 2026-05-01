@@ -16,8 +16,8 @@ void main() {
 
   group("DiffLineWidget", () {
     testWidgets("added line has green background", (tester) async {
-      final vm = DiffLineViewModel(
-        line: const DiffLine(
+      const vm = DiffLineViewModel(
+        line: DiffLine(
           type: DiffLineType.added,
           oldLineNumber: null,
           newLineNumber: 5,
@@ -36,8 +36,8 @@ void main() {
     });
 
     testWidgets("removed line has red background", (tester) async {
-      final vm = DiffLineViewModel(
-        line: const DiffLine(
+      const vm = DiffLineViewModel(
+        line: DiffLine(
           type: DiffLineType.removed,
           oldLineNumber: 3,
           newLineNumber: null,
@@ -54,8 +54,8 @@ void main() {
     });
 
     testWidgets("context line has transparent background", (tester) async {
-      final vm = DiffLineViewModel(
-        line: const DiffLine(
+      const vm = DiffLineViewModel(
+        line: DiffLine(
           type: DiffLineType.context,
           oldLineNumber: 10,
           newLineNumber: 12,
@@ -72,8 +72,8 @@ void main() {
     });
 
     testWidgets("renders single line number for context line", (tester) async {
-      final vm = DiffLineViewModel(
-        line: const DiffLine(
+      const vm = DiffLineViewModel(
+        line: DiffLine(
           type: DiffLineType.context,
           oldLineNumber: 42,
           newLineNumber: 55,
@@ -88,8 +88,8 @@ void main() {
     });
 
     testWidgets("added line shows only new line number", (tester) async {
-      final vm = DiffLineViewModel(
-        line: const DiffLine(
+      const vm = DiffLineViewModel(
+        line: DiffLine(
           type: DiffLineType.added,
           oldLineNumber: null,
           newLineNumber: 7,
@@ -103,8 +103,8 @@ void main() {
     });
 
     testWidgets("removed line shows only old line number", (tester) async {
-      final vm = DiffLineViewModel(
-        line: const DiffLine(
+      const vm = DiffLineViewModel(
+        line: DiffLine(
           type: DiffLineType.removed,
           oldLineNumber: 3,
           newLineNumber: null,
@@ -118,8 +118,8 @@ void main() {
     });
 
     testWidgets("shows + prefix for added line", (tester) async {
-      final vm = DiffLineViewModel(
-        line: const DiffLine(
+      const vm = DiffLineViewModel(
+        line: DiffLine(
           type: DiffLineType.added,
           oldLineNumber: null,
           newLineNumber: 1,
@@ -133,8 +133,8 @@ void main() {
     });
 
     testWidgets("shows - prefix for removed line", (tester) async {
-      final vm = DiffLineViewModel(
-        line: const DiffLine(
+      const vm = DiffLineViewModel(
+        line: DiffLine(
           type: DiffLineType.removed,
           oldLineNumber: 1,
           newLineNumber: null,
@@ -166,8 +166,8 @@ void main() {
     });
 
     testWidgets("renders line content text", (tester) async {
-      final vm = DiffLineViewModel(
-        line: const DiffLine(
+      const vm = DiffLineViewModel(
+        line: DiffLine(
           type: DiffLineType.context,
           oldLineNumber: 1,
           newLineNumber: 1,
@@ -181,14 +181,14 @@ void main() {
     });
 
     testWidgets("renders highlightedSpan when provided", (tester) async {
-      final vm = DiffLineViewModel(
-        line: const DiffLine(
+      const vm = DiffLineViewModel(
+        line: DiffLine(
           type: DiffLineType.added,
           oldLineNumber: null,
           newLineNumber: 1,
           content: "int x = 1;",
         ),
-        highlightedSpan: const TextSpan(
+        highlightedSpan: TextSpan(
           children: [
             TextSpan(
               text: "int",

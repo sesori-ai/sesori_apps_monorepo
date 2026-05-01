@@ -104,8 +104,6 @@ class SessionListCubit extends Cubit<SessionListState> {
             SesoriSessionError() ||
             SesoriSessionCompacted() ||
             SesoriSessionStatus() ||
-            // ignore: deprecated_member_use, legacy idle event is still emitted for backward compatibility
-            SesoriSessionIdle() ||
             SesoriMessageUpdated() ||
             SesoriMessageRemoved() ||
             SesoriMessagePartUpdated() ||

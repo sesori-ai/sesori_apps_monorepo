@@ -25,8 +25,7 @@ import 'package:analyzer/error/error.dart';
 /// - `context.pushRoute(AppRoute.xxx())` - Type-safe custom extension
 /// - `context.pop()` - No path involved, always safe
 class AvoidRawGoRouterRule extends NoSlopRule {
-  AvoidRawGoRouterRule()
-    : super(
+  AvoidRawGoRouterRule({required super.ignoreTestFiles}) : super(
         name: code.lowerCaseName,
         description:
             'Forbids raw GoRouter navigation and direct GoRouter access.',
@@ -88,6 +87,14 @@ class _Visitor extends SimpleAstVisitor<void> {
 
     // Only flag calls with a target (e.g., context.go(...), router.push(...)).
     if (target == null) return;
+
+    // When target is a MethodInvocation, only flag if it's a GoRouter accessor
+    // (e.g. GoRouter.of(context).go(...)). Skip unrelated chains like
+    // Uri.parse(...).replace(...) or String.replaceAll(...).
+    if (target is MethodInvocation) {
+      final targetMethod = target.methodName.name;
+      if (targetMethod != 'of' && targetMethod != 'maybeOf') return;
+    }
 
     rule.reportAtNode(node);
   }

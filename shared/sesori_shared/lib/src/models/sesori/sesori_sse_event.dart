@@ -91,15 +91,6 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
     required SessionStatus status,
   }) = SesoriSessionStatus;
 
-  /// Deprecated — server emits this alongside [sessionStatus] when idle.
-  // ignore: remove_deprecations_in_breaking_versions
-  @Deprecated("Use sessionStatus instead. Emitted for backward compatibility.")
-  @FreezedUnionValue("session.idle")
-  @Implements<SesoriSessionEvent>()
-  const factory SesoriSseEvent.sessionIdle({
-    required String sessionID,
-  }) = SesoriSessionIdle;
-
   @FreezedUnionValue("command.executed")
   @Implements<SesoriSessionEvent>()
   const factory SesoriSseEvent.commandExecuted({

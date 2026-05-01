@@ -17,7 +17,7 @@ import "../../logging/logging.dart";
 Future<T> _parseJson<T>(String json, ParseJsonTask<T> task) => isolatesPool.run<String, T>(task, json);
 
 class ParseJsonTask<T> implements IsolateTask<String, T> {
-  // ignore: no_slop_linter/avoid_dynamic_type, DTO fromJson signatures accept dynamic JSON maps
+  // ignore: no_slop_linter/prefer_specific_type, DTO fromJson signatures accept dynamic JSON maps
   final T Function(Map<String, dynamic> json) fromJson;
 
   const ParseJsonTask(this.fromJson);

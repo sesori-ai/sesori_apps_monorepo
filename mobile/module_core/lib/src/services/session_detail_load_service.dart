@@ -192,6 +192,7 @@ sealed class SessionDetailLoadResult {
   const factory SessionDetailLoadResult.waitingForConnection() = SessionDetailLoadResultWaitingForConnection;
 
   const factory SessionDetailLoadResult.failed({
+    // ignore: no_slop_linter/prefer_specific_type
     required Object error,
     required StackTrace? stackTrace,
   }) = SessionDetailLoadResultFailed;
@@ -209,6 +210,7 @@ final class SessionDetailLoadResultWaitingForConnection extends SessionDetailLoa
 }
 
 final class SessionDetailLoadResultFailed extends SessionDetailLoadResult {
+  // ignore: no_slop_linter/prefer_specific_type
   final Object error;
   final StackTrace? stackTrace;
 

@@ -50,12 +50,12 @@ class DiffEngine {
   static const int _contextLines = 3;
 
   static DiffFileResult computeDiff({required String before, required String after}) {
-    final lineMode = _linesToChars(before, after);
+    final lineMode = _linesToChars(before: before, after: after);
     final chars1 = lineMode.chars1;
     final chars2 = lineMode.chars2;
     final lineArray = lineMode.lineArray;
     final diffs = dmp.diff(chars1, chars2, checklines: false, timeout: 0);
-    _charsToLines(diffs, lineArray);
+    _charsToLines(diffs: diffs, lineArray: lineArray);
 
     final lines = <DiffLine>[];
     var oldLine = 1;
@@ -123,22 +123,22 @@ class DiffEngine {
     return parts;
   }
 
-  static ({String chars1, String chars2, List<String> lineArray}) _linesToChars(
-    String before,
-    String after,
-  ) {
+  static ({String chars1, String chars2, List<String> lineArray}) _linesToChars({
+    required String before,
+    required String after,
+  }) {
     final lineArray = <String>[""];
     final lineLookup = <String, int>{};
-    final chars1 = _encodeLines(before, lineArray, lineLookup);
-    final chars2 = _encodeLines(after, lineArray, lineLookup);
+    final chars1 = _encodeLines(text: before, lineArray: lineArray, lineLookup: lineLookup);
+    final chars2 = _encodeLines(text: after, lineArray: lineArray, lineLookup: lineLookup);
     return (chars1: chars1, chars2: chars2, lineArray: lineArray);
   }
 
-  static String _encodeLines(
-    String text,
-    List<String> lineArray,
-    Map<String, int> lineLookup,
-  ) {
+  static String _encodeLines({
+    required String text,
+    required List<String> lineArray,
+    required Map<String, int> lineLookup,
+  }) {
     var start = 0;
     var end = -1;
     final chars = StringBuffer();
@@ -167,7 +167,7 @@ class DiffEngine {
     return chars.toString();
   }
 
-  static void _charsToLines(List<dmp.Diff> diffs, List<String> lineArray) {
+  static void _charsToLines({required List<dmp.Diff> diffs, required List<String> lineArray}) {
     for (final diff in diffs) {
       final text = StringBuffer();
       for (final rune in diff.text.runes) {
@@ -215,14 +215,8 @@ class DiffEngine {
     final hunks = <DiffHunk>[];
     for (final range in ranges) {
       final hunkLines = allLines.sublist(range.start, range.end + 1);
-      final oldNumbers = hunkLines
-          .where((line) => line.oldLineNumber != null)
-          .map((line) => line.oldLineNumber!)
-          .toList();
-      final newNumbers = hunkLines
-          .where((line) => line.newLineNumber != null)
-          .map((line) => line.newLineNumber!)
-          .toList();
+      final oldNumbers = hunkLines.map((line) => line.oldLineNumber).nonNulls.toList();
+      final newNumbers = hunkLines.map((line) => line.newLineNumber).nonNulls.toList();
 
       final oldStart = oldNumbers.isNotEmpty ? oldNumbers.first : ((hunkLines.first.newLineNumber ?? 1) - 1);
       final newStart = newNumbers.isNotEmpty ? newNumbers.first : ((hunkLines.first.oldLineNumber ?? 1) - 1);

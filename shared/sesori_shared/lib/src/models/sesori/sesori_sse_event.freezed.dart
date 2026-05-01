@@ -59,10 +59,6 @@ SesoriSseEvent _$SesoriSseEventFromJson(
           return SesoriSessionStatus.fromJson(
             json
           );
-                case 'session.idle':
-          return SesoriSessionIdle.fromJson(
-            json
-          );
                 case 'command.executed':
           return SesoriCommandExecuted.fromJson(
             json
@@ -981,79 +977,6 @@ $SessionStatusCopyWith<$Res> get status {
     return _then(_self.copyWith(status: value));
   });
 }
-}
-
-/// @nodoc
-@JsonSerializable()
-@Deprecated("Use sessionStatus instead. Emitted for backward compatibility.")
-class SesoriSessionIdle implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriSessionIdle({required this.sessionID, final  String? $type}): $type = $type ?? 'session.idle';
-  factory SesoriSessionIdle.fromJson(Map<String, dynamic> json) => _$SesoriSessionIdleFromJson(json);
-
- final  String sessionID;
-
-@JsonKey(name: 'type')
-final String $type;
-
-
-/// Create a copy of SesoriSseEvent
-/// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-$SesoriSessionIdleCopyWith<SesoriSessionIdle> get copyWith => _$SesoriSessionIdleCopyWithImpl<SesoriSessionIdle>(this, _$identity);
-
-@override
-Map<String, dynamic> toJson() {
-  return _$SesoriSessionIdleToJson(this, );
-}
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionIdle&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID));
-}
-
-@JsonKey(includeFromJson: false, includeToJson: false)
-@override
-int get hashCode => Object.hash(runtimeType,sessionID);
-
-@override
-String toString() {
-  return 'SesoriSseEvent.sessionIdle(sessionID: $sessionID)';
-}
-
-
-}
-
-/// @nodoc
-abstract mixin class $SesoriSessionIdleCopyWith<$Res> implements $SesoriSseEventCopyWith<$Res> {
-  factory $SesoriSessionIdleCopyWith(SesoriSessionIdle value, $Res Function(SesoriSessionIdle) _then) = _$SesoriSessionIdleCopyWithImpl;
-@useResult
-$Res call({
- String sessionID
-});
-
-
-
-
-}
-/// @nodoc
-class _$SesoriSessionIdleCopyWithImpl<$Res>
-    implements $SesoriSessionIdleCopyWith<$Res> {
-  _$SesoriSessionIdleCopyWithImpl(this._self, this._then);
-
-  final SesoriSessionIdle _self;
-  final $Res Function(SesoriSessionIdle) _then;
-
-/// Create a copy of SesoriSseEvent
-/// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? sessionID = null,}) {
-  return _then(SesoriSessionIdle(
-sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
-as String,
-  ));
-}
-
-
 }
 
 /// @nodoc

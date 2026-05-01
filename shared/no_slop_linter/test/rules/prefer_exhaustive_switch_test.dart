@@ -12,7 +12,7 @@ void main() {
 class PreferExhaustiveSwitchTest extends AnalysisRuleTest {
   @override
   void setUp() {
-    rule = PreferExhaustiveSwitchRule();
+    rule = PreferExhaustiveSwitchRule(ignoreTestFiles: false);
     super.setUp();
   }
 

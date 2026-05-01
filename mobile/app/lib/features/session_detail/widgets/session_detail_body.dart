@@ -63,7 +63,8 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
         sessionStatus: sessionStatus,
         childStatuses: childStatuses,
       ),
-      _ => false,
+      SessionDetailLoading() => false,
+      SessionDetailFailed() => false,
     };
 
     return Scaffold(
@@ -160,9 +161,7 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
       providers: state.availableProviders,
       selectedProviderID: agentModel?.providerID ?? "",
       selectedModelID: agentModel?.modelID ?? "",
-      onModelChanged: (providerID, modelID) {
-        cubit.selectModel(providerID: providerID, modelID: modelID);
-      },
+      onModelChanged: cubit.selectModel,
     );
   }
 

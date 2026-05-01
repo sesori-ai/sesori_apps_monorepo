@@ -12,7 +12,7 @@ void main() {
 class AvoidMutableClassFieldsTest extends AnalysisRuleTest {
   @override
   void setUp() {
-    rule = AvoidMutableClassFieldsRule();
+    rule = AvoidMutableClassFieldsRule(ignoreTestFiles: false);
     super.setUp();
   }
 

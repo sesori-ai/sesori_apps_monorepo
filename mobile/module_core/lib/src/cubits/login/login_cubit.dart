@@ -51,6 +51,10 @@ class LoginCubit extends Cubit<LoginState> {
     }
   }
 
+  void onMissingFormKey() {
+    emit(const LoginState.failed(error: "Internal Error : Missing Form Key"));
+  }
+
   Future<bool> loginWithEmail({
     required String email,
     required String password,

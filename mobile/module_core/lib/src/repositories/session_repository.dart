@@ -94,8 +94,8 @@ class SessionRepository {
   }
 
   Future<ApiResponse<ProviderListResponse>> listProviders({required String projectId}) async {
-    if (_providerCache.containsKey(projectId)) {
-      return ApiResponse.success(_providerCache[projectId]!);
+    if (_providerCache[projectId] case final providersCache?) {
+      return ApiResponse.success(providersCache);
     }
 
     final response = await _api.listProviders(projectId: projectId);

@@ -33,8 +33,7 @@ import 'package:analyzer/error/error.dart';
 /// - Parameters with @QueryParam() annotation (route params) are OK
 /// - Functions with @pragma annotations (compiler hints) are skipped
 class PreferRequiredNamedParametersRule extends NoSlopMultiRule {
-  PreferRequiredNamedParametersRule()
-      : super(
+  PreferRequiredNamedParametersRule({required super.ignoreTestFiles}) : super(
           name: codePositionalParams.lowerCaseName,
           description: 'Enforces required named parameters for multi-argument functions.',
         );

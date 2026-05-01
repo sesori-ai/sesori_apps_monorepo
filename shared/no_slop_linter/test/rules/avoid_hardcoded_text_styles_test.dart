@@ -12,7 +12,7 @@ void main() {
 class AvoidHardcodedTextStylesTest extends AnalysisRuleTest {
   @override
   void setUp() {
-    rule = AvoidHardcodedTextStylesRule();
+    rule = AvoidHardcodedTextStylesRule(ignoreTestFiles: false);
     super.setUp();
   }
 
