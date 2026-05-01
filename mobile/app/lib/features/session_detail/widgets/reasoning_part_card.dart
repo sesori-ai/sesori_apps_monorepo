@@ -7,7 +7,7 @@ import "../../../core/extensions/build_context_x.dart";
 import "../../../core/widgets/app_modal_bottom_sheet.dart";
 import "reasoning_modal.dart";
 
-class ReasoningPartCard extends StatelessWidget {
+class ReasoningPartCard extends StatefulWidget {
   final String text;
   final bool isStreaming;
   final String partId;
@@ -22,8 +22,29 @@ class ReasoningPartCard extends StatelessWidget {
   });
 
   @override
+  State<ReasoningPartCard> createState() => _ReasoningPartCardState();
+}
+
+class _ReasoningPartCardState extends State<ReasoningPartCard> {
+  late String _previewText;
+
+  @override
+  void initState() {
+    super.initState();
+    _previewText = _firstLinePlainText(widget.text);
+  }
+
+  @override
+  void didUpdateWidget(covariant ReasoningPartCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.text != oldWidget.text) {
+      _previewText = _firstLinePlainText(widget.text);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (text.isEmpty && !isStreaming) {
+    if (widget.text.isEmpty && !widget.isStreaming) {
       return const SizedBox.shrink();
     }
 
@@ -60,7 +81,9 @@ class ReasoningPartCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        isStreaming ? loc.sessionDetailThinking : loc.sessionDetailThought,
+                        widget.isStreaming
+                            ? loc.sessionDetailThinking
+                            : loc.sessionDetailThought,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.outline,
                           fontStyle: FontStyle.italic,
@@ -75,7 +98,7 @@ class ReasoningPartCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (isStreaming && text.isNotEmpty)
+              if (widget.isStreaming && widget.text.isNotEmpty)
                 Padding(
                   padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 12, 10),
                   child: ShaderMask(
@@ -95,7 +118,7 @@ class ReasoningPartCard extends StatelessWidget {
                         alignment: Alignment.bottomLeft,
                         maxHeight: double.infinity,
                         child: Text(
-                          text,
+                          widget.text,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
@@ -104,11 +127,11 @@ class ReasoningPartCard extends StatelessWidget {
                     ),
                   ),
                 )
-              else if (!isStreaming && text.isNotEmpty)
+              else if (!widget.isStreaming && widget.text.isNotEmpty)
                 Padding(
                   padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 12, 10),
                   child: Text(
-                    _firstLinePlainText(text),
+                    _previewText,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall?.copyWith(
@@ -123,38 +146,6 @@ class ReasoningPartCard extends StatelessWidget {
     );
   }
 
-  /// Extracts the first non-empty block from [markdown] and returns its
-  /// plain text by walking the markdown AST. This avoids regex fragility
-  /// (e.g. corrupting snake_case) and handles nested markdown correctly.
-  static String _firstLinePlainText(String markdown) {
-    final document = md.Document();
-    final nodes = document.parse(markdown);
-
-    for (final node in nodes) {
-      final buffer = StringBuffer();
-      _extractText(node, buffer);
-      final text = buffer.toString().trim();
-      if (text.isNotEmpty) {
-        return text;
-      }
-    }
-
-    return markdown.trim();
-  }
-
-  static void _extractText(md.Node node, StringBuffer buffer) {
-    if (node is md.Text) {
-      buffer.write(node.text);
-    } else if (node is md.Element) {
-      // Skip images entirely — they have no text content to display.
-      if (node.tag == 'img') return;
-
-      for (final child in node.children ?? const <md.Node>[]) {
-        _extractText(child, buffer);
-      }
-    }
-  }
-
   void _showFullText({required BuildContext context}) {
     final cubit = context.read<SessionDetailCubit>();
 
@@ -165,10 +156,42 @@ class ReasoningPartCard extends StatelessWidget {
       builder: (_) => BlocProvider.value(
         value: cubit,
         child: ReasoningModal(
-          partId: partId,
-          messageId: messageId,
+          partId: widget.partId,
+          messageId: widget.messageId,
         ),
       ),
     );
+  }
+
+  /// Extracts the first non-empty block from [markdown] and returns its
+  /// plain text by walking the markdown AST. This avoids regex fragility
+  /// (e.g. corrupting snake_case) and handles nested markdown correctly.
+  static String _firstLinePlainText(String markdown) {
+    final document = md.Document();
+    final nodes = document.parse(markdown);
+
+    for (final node in nodes) {
+      final buffer = StringBuffer();
+      _extractText(node, buffer: buffer);
+      final text = buffer.toString().trim();
+      if (text.isNotEmpty) {
+        return text;
+      }
+    }
+
+    return markdown.trim();
+  }
+
+  static void _extractText(md.Node node, {required StringBuffer buffer}) {
+    if (node is md.Text) {
+      buffer.write(node.text);
+    } else if (node is md.Element) {
+      // Skip images entirely — they have no text content to display.
+      if (node.tag == 'img') return;
+
+      for (final child in node.children ?? const <md.Node>[]) {
+        _extractText(child, buffer: buffer);
+      }
+    }
   }
 }
