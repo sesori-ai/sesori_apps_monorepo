@@ -102,12 +102,96 @@ class ReasoningPartCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                )
+              else if (!isStreaming && text.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 12, 10),
+                  child: Text(
+                    _firstLinePlainText(text),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  /// Extracts the first non-empty line from [markdown] and strips common
+  /// markdown formatting so it renders as plain text in the preview.
+  static String _firstLinePlainText(String markdown) {
+    final firstLine = markdown.split('\n').firstWhere(
+          (line) => line.trim().isNotEmpty,
+          orElse: () => markdown,
+        );
+    var plain = firstLine.trim();
+
+    // Headings: # ## ### etc.
+    plain = plain.replaceAllMapped(
+      RegExp(r'^#{1,6}\s*'),
+      (_) => '',
+    );
+
+    // Bold / italic / strikethrough (must run before inline code)
+    plain = plain.replaceAllMapped(
+      RegExp(r'\*\*\*(.*?)\*\*\*'),
+      (m) => m.group(1)!,
+    );
+    plain = plain.replaceAllMapped(
+      RegExp('___(.*?)___'),
+      (m) => m.group(1)!,
+    );
+    plain = plain.replaceAllMapped(
+      RegExp(r'\*\*(.*?)\*\*'),
+      (m) => m.group(1)!,
+    );
+    plain = plain.replaceAllMapped(
+      RegExp('__(.*?)__'),
+      (m) => m.group(1)!,
+    );
+    plain = plain.replaceAllMapped(
+      RegExp(r'\*(.*?)\*'),
+      (m) => m.group(1)!,
+    );
+    plain = plain.replaceAllMapped(
+      RegExp('_(.*?)_'),
+      (m) => m.group(1)!,
+    );
+    plain = plain.replaceAllMapped(
+      RegExp('~~(.*?)~~'),
+      (m) => m.group(1)!,
+    );
+
+    // Inline code: `code`
+    plain = plain.replaceAllMapped(
+      RegExp('`([^`]+)`'),
+      (m) => m.group(1)!,
+    );
+
+    // Images: ![alt](url) → remove entirely (must run before link regex)
+    plain = plain.replaceAll(RegExp(r'!\[[^\]]*\]\([^)]+\)'), '');
+
+    // Links: [text](url)
+    plain = plain.replaceAllMapped(
+      RegExp(r'\[([^\]]+)\]\([^)]+\)'),
+      (m) => m.group(1)!,
+    );
+
+    // Blockquote: > text
+    plain = plain.replaceAllMapped(
+      RegExp(r'^>\s*'),
+      (_) => '',
+    );
+
+    // Collapse multiple spaces left behind by removed elements
+    plain = plain.replaceAll(RegExp(r'\s+'), ' ');
+
+    return plain.trim();
   }
 
   void _showFullText({required BuildContext context}) {
