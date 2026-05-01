@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
+import "package:markdown/markdown.dart" as md;
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../../../core/extensions/build_context_x.dart";
@@ -122,76 +123,36 @@ class ReasoningPartCard extends StatelessWidget {
     );
   }
 
-  /// Extracts the first non-empty line from [markdown] and strips common
-  /// markdown formatting so it renders as plain text in the preview.
+  /// Extracts the first non-empty block from [markdown] and returns its
+  /// plain text by walking the markdown AST. This avoids regex fragility
+  /// (e.g. corrupting snake_case) and handles nested markdown correctly.
   static String _firstLinePlainText(String markdown) {
-    final firstLine = markdown.split('\n').firstWhere(
-          (line) => line.trim().isNotEmpty,
-          orElse: () => markdown,
-        );
-    var plain = firstLine.trim();
+    final document = md.Document();
+    final nodes = document.parse(markdown);
 
-    // Headings: # ## ### etc.
-    plain = plain.replaceAllMapped(
-      RegExp(r'^#{1,6}\s*'),
-      (_) => '',
-    );
+    for (final node in nodes) {
+      final buffer = StringBuffer();
+      _extractText(node, buffer);
+      final text = buffer.toString().trim();
+      if (text.isNotEmpty) {
+        return text;
+      }
+    }
 
-    // Bold / italic / strikethrough (must run before inline code)
-    plain = plain.replaceAllMapped(
-      RegExp(r'\*\*\*(.*?)\*\*\*'),
-      (m) => m.group(1)!,
-    );
-    plain = plain.replaceAllMapped(
-      RegExp('___(.*?)___'),
-      (m) => m.group(1)!,
-    );
-    plain = plain.replaceAllMapped(
-      RegExp(r'\*\*(.*?)\*\*'),
-      (m) => m.group(1)!,
-    );
-    plain = plain.replaceAllMapped(
-      RegExp('__(.*?)__'),
-      (m) => m.group(1)!,
-    );
-    plain = plain.replaceAllMapped(
-      RegExp(r'\*(.*?)\*'),
-      (m) => m.group(1)!,
-    );
-    plain = plain.replaceAllMapped(
-      RegExp('_(.*?)_'),
-      (m) => m.group(1)!,
-    );
-    plain = plain.replaceAllMapped(
-      RegExp('~~(.*?)~~'),
-      (m) => m.group(1)!,
-    );
+    return markdown.trim();
+  }
 
-    // Inline code: `code`
-    plain = plain.replaceAllMapped(
-      RegExp('`([^`]+)`'),
-      (m) => m.group(1)!,
-    );
+  static void _extractText(md.Node node, StringBuffer buffer) {
+    if (node is md.Text) {
+      buffer.write(node.text);
+    } else if (node is md.Element) {
+      // Skip images entirely — they have no text content to display.
+      if (node.tag == 'img') return;
 
-    // Images: ![alt](url) → remove entirely (must run before link regex)
-    plain = plain.replaceAll(RegExp(r'!\[[^\]]*\]\([^)]+\)'), '');
-
-    // Links: [text](url)
-    plain = plain.replaceAllMapped(
-      RegExp(r'\[([^\]]+)\]\([^)]+\)'),
-      (m) => m.group(1)!,
-    );
-
-    // Blockquote: > text
-    plain = plain.replaceAllMapped(
-      RegExp(r'^>\s*'),
-      (_) => '',
-    );
-
-    // Collapse multiple spaces left behind by removed elements
-    plain = plain.replaceAll(RegExp(r'\s+'), ' ');
-
-    return plain.trim();
+      for (final child in node.children ?? const <md.Node>[]) {
+        _extractText(child, buffer);
+      }
+    }
   }
 
   void _showFullText({required BuildContext context}) {

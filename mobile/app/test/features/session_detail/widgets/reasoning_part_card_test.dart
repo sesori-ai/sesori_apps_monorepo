@@ -140,6 +140,18 @@ void main() {
 
       expect(find.text("First real line"), findsOneWidget);
     });
+
+    testWidgets("preserves snake_case identifiers", (tester) async {
+      await tester.pumpWidget(
+        buildApp(
+          text: "session_detail_cubit state management\n\nDetails here.",
+          isStreaming: false,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text("session_detail_cubit state management"), findsOneWidget);
+    });
   });
 
   group("streaming preview", () {
