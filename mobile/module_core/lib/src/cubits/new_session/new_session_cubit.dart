@@ -15,23 +15,27 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     required String projectId,
   }) : _sessionService = sessionService,
        _projectId = projectId,
-          super(
-           const NewSessionState.idle(
-             availableAgents: [],
-             availableProviders: [],
-             availableCommands: [],
-             selectedAgent: null,
-             selectedAgentModel: null,
-             stagedCommand: null,
-             availableVariants: [],
-           ),
-         ) {
-      _loadComposerData();
-    }
+       super(
+         const NewSessionState.idle(
+           availableAgents: [],
+           availableProviders: [],
+           availableCommands: [],
+           selectedAgent: null,
+           selectedAgentModel: null,
+           stagedCommand: null,
+           availableVariants: [],
+         ),
+       ) {
+    _loadComposerData();
+  }
 
   Future<void> _loadComposerData() async {
     try {
-      final (ApiResponse<Agents> agentsResponse, ApiResponse<ProviderListResponse> providersResponse, ApiResponse<CommandListResponse> commandsResponse) = await wait3(
+      final (
+        ApiResponse<Agents> agentsResponse,
+        ApiResponse<ProviderListResponse> providersResponse,
+        ApiResponse<CommandListResponse> commandsResponse,
+      ) = await wait3(
         _sessionService.listAgents(),
         _sessionService.listProviders(projectId: _projectId),
         _sessionService.listCommands(projectId: _projectId),
@@ -147,15 +151,9 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   }) {
     final providerID = model?.providerID;
     final modelID = model?.modelID;
-    final provider = providerID != null
-        ? providers.firstWhereOrNull((p) => p.id == providerID)
-        : null;
+    final provider = providerID != null ? providers.firstWhereOrNull((p) => p.id == providerID) : null;
     final m = provider?.models[modelID];
-    return m?.variants
-            .where((v) => v != "none")
-            .map((v) => SessionVariant(id: v))
-            .toList() ??
-        [];
+    return m?.variants.where((v) => v != "none").map((v) => SessionVariant(id: v)).toList() ?? [];
   }
 
   void selectAgent(String agent) {
@@ -218,7 +216,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     }
   }
 
-  void selectModel(String providerID, String modelID) {
+  void selectModel({required String providerID, required String modelID}) {
     final current = state.agentModelData;
     if (current == null) return;
 
@@ -242,11 +240,13 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     }
 
     _emitAgentModelUpdate(
-      selectedAgentModel: agentModel?.copyWith(variant: variant) ?? AgentModel(
-        providerID: providerID,
-        modelID: modelID,
-        variant: variant,
-      ),
+      selectedAgentModel:
+          agentModel?.copyWith(variant: variant) ??
+          AgentModel(
+            providerID: providerID,
+            modelID: modelID,
+            variant: variant,
+          ),
     );
   }
 
@@ -258,11 +258,12 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     final agent = agents.firstWhereOrNull(
       (a) => a.model?.providerID == providerID && a.model?.modelID == modelID,
     );
-    return agent?.model ?? AgentModel(
-      providerID: providerID,
-      modelID: modelID,
-      variant: null,
-    );
+    return agent?.model ??
+        AgentModel(
+          providerID: providerID,
+          modelID: modelID,
+          variant: null,
+        );
   }
 
   Future<void> createSession({

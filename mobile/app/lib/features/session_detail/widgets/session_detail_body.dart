@@ -161,9 +161,7 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
       providers: state.availableProviders,
       selectedProviderID: agentModel?.providerID ?? "",
       selectedModelID: agentModel?.modelID ?? "",
-      onModelChanged: (providerID, modelID) {
-        cubit.selectModel(providerID: providerID, modelID: modelID);
-      },
+      onModelChanged: cubit.selectModel,
     );
   }
 

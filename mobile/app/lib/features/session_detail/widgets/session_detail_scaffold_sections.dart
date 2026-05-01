@@ -15,12 +15,15 @@ class SessionDetailTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final subtitle = switch (state) {
-      SessionDetailLoaded(:final agent, :final assistantAgentModel) => [?agent, assistantAgentModel?.modelID].join(" · "),
-      _ => "",
+      SessionDetailLoaded(:final agent, :final assistantAgentModel) => [
+        ?agent,
+        assistantAgentModel?.modelID,
+      ].join(" · "),
+      SessionDetailLoading() || SessionDetailFailed() => "",
     };
     final title = switch (state) {
-      SessionDetailLoaded(:final sessionTitle) when sessionTitle != null => sessionTitle,
-      _ => fallbackTitle,
+      SessionDetailLoaded(:final sessionTitle) => sessionTitle ?? fallbackTitle,
+      SessionDetailLoading() || SessionDetailFailed() => fallbackTitle,
     };
 
     return Column(
@@ -123,7 +126,10 @@ class SessionDetailErrorView extends StatelessWidget {
             const SizedBox(height: 16),
             Text(loc.sessionDetailErrorTitle, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
-            Text(_describeError(loc: loc, error: error), textAlign: TextAlign.center),
+            Text(
+              _describeError(loc: loc, error: error),
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 24),
             FilledButton.icon(
               onPressed: onRetry,
@@ -138,9 +144,10 @@ class SessionDetailErrorView extends StatelessWidget {
 
   String _describeError({required AppLocalizations loc, required ApiError error}) => switch (error) {
     NotAuthenticatedError() => loc.apiErrorNotAuthenticated,
-    NonSuccessCodeError(:final errorCode, :final rawErrorString) => rawErrorString != null
-        ? loc.connectErrorNonSuccessCodeWithBody(errorCode, rawErrorString)
-        : loc.connectErrorNonSuccessCode(errorCode),
+    NonSuccessCodeError(:final errorCode, :final rawErrorString) =>
+      rawErrorString != null
+          ? loc.connectErrorNonSuccessCodeWithBody(errorCode, rawErrorString)
+          : loc.connectErrorNonSuccessCode(errorCode),
     DartHttpClientError(:final innerError) => loc.connectErrorConnectionFailed(innerError.toString()),
     JsonParsingError() => loc.connectErrorUnexpectedFormat,
     EmptyResponseError() => loc.connectErrorUnexpectedFormat,

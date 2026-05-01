@@ -145,6 +145,7 @@ class HttpApiClient implements SafeApiClient {
     // ignore: no_slop_linter/prefer_specific_type, json parsing callback
     required T Function(dynamic json) fromJson,
     Map<String, String>? headers,
+    // ignore: no_slop_linter/prefer_specific_type
     Object? body,
     ContentType? contentType,
   }) async {

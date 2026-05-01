@@ -153,7 +153,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
               providerID: providerID,
               modelID: modelID,
             ),
-            _ => null,
+            MessageUser() || null => null,
           };
 
           final availableVariants = _deriveAvailableVariants(
@@ -258,8 +258,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             SesoriSessionDiff() ||
             SesoriSessionError() ||
             SesoriSessionCompacted() ||
-            // ignore: deprecated_member_use, legacy idle event is still emitted for backward compatibility
-            SesoriSessionIdle() ||
             SesoriTodoUpdated():
           break;
       }
@@ -299,8 +297,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             SesoriServerHeartbeat() ||
             SesoriServerInstanceDisposed() ||
             SesoriGlobalDisposed() ||
-            // ignore: deprecated_member_use, legacy idle event is still emitted for backward compatibility
-            SesoriSessionIdle() ||
             SesoriMessageUpdated() ||
             SesoriMessageRemoved() ||
             SesoriMessagePartUpdated() ||
@@ -402,8 +398,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (index < 0) return;
 
     if (isClosed) return;
-    final updatedChildren = List<Session>.of(current.children)
-      ..[index] = updatedChild;
+    final updatedChildren = List<Session>.of(current.children)..[index] = updatedChild;
     _sortChildrenByUpdatedDesc(updatedChildren);
     emit(current.copyWith(children: updatedChildren));
   }
@@ -594,9 +589,10 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       text: trimmed,
       agent: current.selectedAgent,
       model: _agentModelToPromptModel(current.selectedAgentModel),
-      variant: current.selectedAgentModel?.variant == null
-          ? null
-          : SessionVariant(id: current.selectedAgentModel!.variant!),
+      variant: switch (current.selectedAgentModel?.variant) {
+        null => null,
+        final variant => SessionVariant(id: variant),
+      },
       command: normalizedCommand,
     );
 
@@ -643,9 +639,10 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         text: submission.text,
         agent: current.selectedAgent,
         model: _agentModelToPromptModel(current.selectedAgentModel),
-        variant: current.selectedAgentModel?.variant == null
-            ? null
-            : SessionVariant(id: current.selectedAgentModel!.variant!),
+        variant: switch (current.selectedAgentModel?.variant) {
+          null => null,
+          final variant => SessionVariant(id: variant),
+        },
         command: submission.command,
       );
 
@@ -997,7 +994,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         providerID: providerID,
         modelID: modelID,
       ),
-      _ => null,
+      MessageUser() || null => null,
     };
 
     final availableVariants = _deriveAvailableVariants(
@@ -1005,28 +1002,27 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       model: defaultAgentModel,
     );
 
-    return SessionDetailState.loaded(
-          messages: snapshot.messages,
-          streamingText: const {},
-          sessionStatus: snapshot.statuses[_sessionId] ?? const SessionStatus.idle(),
-          pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
-          pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
-          sessionTitle: snapshot.canonicalSessionTitle,
-          agent: latestAssistant?.agent,
-          assistantAgentModel: assistantAgentModel,
-          children: childSessions,
-          childStatuses: childStatuses,
-          queuedMessages: const [],
-          availableAgents: agents,
-          availableProviders: providers,
-          availableCommands: snapshot.commands,
-          selectedAgent: defaultAgent,
-          selectedAgentModel: defaultAgentModel,
-          stagedCommand: null,
-          isRefreshing: false,
-          availableVariants: availableVariants,
-        )
-        as SessionDetailLoaded;
+    return SessionDetailLoaded(
+      messages: snapshot.messages,
+      streamingText: const {},
+      sessionStatus: snapshot.statuses[_sessionId] ?? const SessionStatus.idle(),
+      pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
+      pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
+      sessionTitle: snapshot.canonicalSessionTitle,
+      agent: latestAssistant?.agent,
+      assistantAgentModel: assistantAgentModel,
+      children: childSessions,
+      childStatuses: childStatuses,
+      queuedMessages: const [],
+      availableAgents: agents,
+      availableProviders: providers,
+      availableCommands: snapshot.commands,
+      selectedAgent: defaultAgent,
+      selectedAgentModel: defaultAgentModel,
+      stagedCommand: null,
+      isRefreshing: false,
+      availableVariants: availableVariants,
+    );
   }
 
   List<SessionVariant> _deriveAvailableVariants({

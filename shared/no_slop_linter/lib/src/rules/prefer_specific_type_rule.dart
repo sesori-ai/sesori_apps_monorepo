@@ -178,6 +178,46 @@ class PreferSpecificTypeRule extends NoSlopRule {
     return _findAncestorOfType<TypeParameter>(node) != null;
   }
 
+  /// When the variable or parameter name contains "error" (case-insensitive),
+  /// `Object` is acceptable because error values are often truly opaque.
+  /// `dynamic` is NOT allowed here.
+  bool _isErrorNamed(NamedType node) {
+    AstNode? current = node.parent;
+    while (current != null) {
+      if (current is SimpleFormalParameter) {
+        return current.name?.lexeme.toLowerCase().contains('error') ?? false;
+      }
+
+      if (current is DefaultFormalParameter) {
+        final inner = current.parameter;
+        if (inner is SimpleFormalParameter) {
+          return inner.name?.lexeme.toLowerCase().contains('error') ?? false;
+        }
+        return false;
+      }
+
+      if (current is VariableDeclarationList) {
+        for (final variable in current.variables) {
+          if (variable.name.lexeme.toLowerCase().contains('error')) {
+            return true;
+          }
+        }
+        return false;
+      }
+
+      // Stop at declaration boundaries
+      if (current is MethodDeclaration ||
+          current is FunctionDeclaration ||
+          current is ConstructorDeclaration ||
+          current is ClassDeclaration) {
+        return false;
+      }
+
+      current = current.parent;
+    }
+    return false;
+  }
+
   bool _hasOverrideAnnotation(MethodDeclaration method) {
     for (final annotation in method.metadata) {
       if (annotation.name.name == 'override') {
@@ -215,6 +255,7 @@ class _Visitor extends SimpleAstVisitor<void> {
       if (rule._isInCatchClause(node)) return;
       if (rule._isInFunctionArgument(node)) return;
       if (rule._isInGenericBound(node)) return;
+      if (rule._isErrorNamed(node)) return;
       rule.reportAtNode(node);
     }
   }

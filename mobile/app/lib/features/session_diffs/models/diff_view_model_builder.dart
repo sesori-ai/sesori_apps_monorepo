@@ -45,8 +45,8 @@ class DiffViewModelBuilder {
           for (final hunk in hunks) {
             for (final lineViewModel in hunk.lines) {
               lineViewModel.highlightedSpan = DiffHighlighter.highlightLine(
-                lineViewModel.line.content,
-                language,
+                content: lineViewModel.line.content,
+                language: language,
               );
             }
           }

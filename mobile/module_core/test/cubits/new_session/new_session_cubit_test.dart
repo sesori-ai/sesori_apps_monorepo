@@ -208,8 +208,11 @@ void main() {
         );
       },
       expect: () => [
-        isA<NewSessionIdle>()
-            .having((state) => state.selectedAgentModel?.variant, "selectedAgentModel.variant", isNull),
+        isA<NewSessionIdle>().having(
+          (state) => state.selectedAgentModel?.variant,
+          "selectedAgentModel.variant",
+          isNull,
+        ),
         isA<NewSessionIdle>().having(
           (state) => state.selectedAgentModel?.variant,
           "selectedAgentModel.variant",
@@ -312,7 +315,7 @@ void main() {
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        cubit.selectModel("anthropic", "claude-3");
+        cubit.selectModel(providerID: "anthropic", modelID: "claude-3");
       },
       expect: () => [
         isA<NewSessionIdle>().having(
@@ -320,12 +323,11 @@ void main() {
           "initial selectedAgentModel",
           const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "fast"),
         ),
-        isA<NewSessionIdle>()
-            .having(
-              (state) => state.selectedAgentModel,
-              "selectedAgentModel",
-              const AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "deep"),
-            ),
+        isA<NewSessionIdle>().having(
+          (state) => state.selectedAgentModel,
+          "selectedAgentModel",
+          const AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "deep"),
+        ),
       ],
     );
 

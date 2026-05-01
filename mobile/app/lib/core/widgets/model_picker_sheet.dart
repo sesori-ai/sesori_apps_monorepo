@@ -11,7 +11,7 @@ class ModelPickerSheet extends StatefulWidget {
   final List<ProviderInfo> providers;
   final String selectedProviderID;
   final String selectedModelID;
-  final void Function(String providerID, String modelID) onModelChanged;
+  final void Function({required String providerID, required String modelID}) onModelChanged;
   const ModelPickerSheet({
     super.key,
     required this.providers,
@@ -26,7 +26,7 @@ class ModelPickerSheet extends StatefulWidget {
     required List<ProviderInfo> providers,
     required String selectedProviderID,
     required String selectedModelID,
-    required void Function(String providerID, String modelID) onModelChanged,
+    required void Function({required String providerID, required String modelID}) onModelChanged,
   }) {
     return showAppModalBottomSheet(
       context: context,
@@ -44,8 +44,8 @@ class ModelPickerSheet extends StatefulWidget {
             providers: providers,
             selectedProviderID: selectedProviderID,
             selectedModelID: selectedModelID,
-            onModelChanged: (providerID, modelID) {
-              onModelChanged(providerID, modelID);
+            onModelChanged: ({required String providerID, required String modelID}) {
+              onModelChanged(providerID: providerID, modelID: modelID);
               context.pop();
             },
           ),
@@ -210,7 +210,7 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
           name: model.name.replaceAll("(latest)", "").trim(),
           subtitle: model.family,
           isSelected: widget.selectedProviderID == provider.id && widget.selectedModelID == model.id,
-          onTap: () => widget.onModelChanged(provider.id, model.id),
+          onTap: () => widget.onModelChanged(providerID: provider.id, modelID: model.id),
         ),
     ];
   }

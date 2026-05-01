@@ -119,7 +119,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     try {
       authResponse = AuthResponse.fromJson(decodedBody);
     } on Object catch (e) {
-      throw Exception("Failed to parse auth response: $e");
+      throw Exception("Failed to parse auth response: ${e.toString()}");
     }
 
     await _tokenStorage.saveTokens(
@@ -208,7 +208,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     try {
       authResponse = AuthResponse.fromJson(decodedBody);
     } on Object catch (e) {
-      throw Exception("Failed to parse auth response: $e");
+      throw Exception("Failed to parse auth response: ${e.toString()}");
     }
 
     await _tokenStorage.saveTokens(
@@ -284,7 +284,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
       try {
         authResponse = AuthResponse.fromJson(decodedBody);
       } on Object catch (e) {
-        throw Exception("Failed to parse auth response: $e");
+        throw Exception("Failed to parse auth response: ${e.toString()}");
       }
 
       await _tokenStorage.saveTokens(
@@ -333,6 +333,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
   // ignore: no_slop_linter/prefer_required_named_parameters, optional HTTP parameters
   Future<http.Response> _post(
     Uri url, {
+    // ignore: no_slop_linter/prefer_specific_type
     Object? body,
     Map<String, String>? headers,
   }) {

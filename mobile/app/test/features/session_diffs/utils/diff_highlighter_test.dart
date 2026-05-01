@@ -8,12 +8,12 @@ void main() {
     // They must come first, before the setUpAll in the 'after initialization' group.
     test('highlightLine returns null before initialization', () {
       // Highlighter is not yet initialized at this point.
-      final span = DiffHighlighter.highlightLine('void main() {}', 'dart');
+      final span = DiffHighlighter.highlightLine(content: 'void main() {}', language: 'dart');
       expect(span, isNull);
     });
 
     test('highlightLine with null language returns null (always, regardless of init)', () {
-      expect(DiffHighlighter.highlightLine('some text', null), isNull);
+      expect(DiffHighlighter.highlightLine(content: 'some text', language: null), isNull);
     });
 
     group('after initialization', () {
@@ -29,18 +29,18 @@ void main() {
       });
 
       test('highlightLine with dart returns a non-null TextSpan', () {
-        final span = DiffHighlighter.highlightLine('void main() {}', 'dart');
+        final span = DiffHighlighter.highlightLine(content: 'void main() {}', language: 'dart');
         expect(span, isNotNull);
         expect(span, isA<TextSpan>());
       });
 
       test('highlightLine with null language returns null', () {
-        final span = DiffHighlighter.highlightLine('some text', null);
+        final span = DiffHighlighter.highlightLine(content: 'some text', language: null);
         expect(span, isNull);
       });
 
       test('highlightLine with unsupported language returns null (no crash)', () {
-        final span = DiffHighlighter.highlightLine('some text', 'unsupported-xyz');
+        final span = DiffHighlighter.highlightLine(content: 'some text', language: 'unsupported-xyz');
         expect(span, isNull);
       });
     });

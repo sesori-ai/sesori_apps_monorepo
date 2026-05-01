@@ -77,11 +77,11 @@ class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
             (prev is DiffStateLoaded && curr is DiffStateLoaded && !identical(prev.files, curr.files)),
         builder: (context, state) => switch (state) {
           DiffStateLoading() => const Center(child: CircularProgressIndicator()),
-          DiffStateFailed(:final error) => _buildErrorState(context, error),
+          DiffStateFailed(:final error) => _buildErrorState(context: context, error: error),
           DiffStateLoaded(:final files) when files.isEmpty => const Center(
             child: Text("No file changes in this session"),
           ),
-          DiffStateLoaded(:final files) => _buildLoadedState(context, files),
+          DiffStateLoaded(:final files) => _buildLoadedState(context: context, files: files),
         },
       ),
     );
@@ -100,15 +100,17 @@ class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
     return (state.files.length, adds, dels);
   }
 
-  Widget _buildLoadedState(BuildContext context, List<FileDiff> files) {
+  Widget _buildLoadedState({required BuildContext context, required List<FileDiff> files}) {
     _maybeComputeViewModels(files: files);
-    if (_computeError != null) {
-      return _buildErrorState(context, _computeError!);
+    if (_computeError case final computeError?) {
+      return _buildErrorState(context: context, error: computeError);
     }
-    if (_isComputing || _viewModels == null) {
+
+    final viewModels = _viewModels;
+    if (_isComputing || viewModels == null) {
       return const Center(child: CircularProgressIndicator());
     }
-    return CustomScrollView(slivers: _buildSlivers(viewModels: _viewModels!));
+    return CustomScrollView(slivers: _buildSlivers(viewModels: viewModels));
   }
 
   List<Widget> _buildSlivers({required List<DiffFileViewModel> viewModels}) {
@@ -134,8 +136,8 @@ class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
   }
 
   Widget _buildFileContentSliver(DiffFileViewModel vm) {
-    if (vm.skipReason != null) {
-      return SliverToBoxAdapter(child: _buildSkippedPlaceholder(vm.skipReason!));
+    if (vm.skipReason case final skipReason?) {
+      return SliverToBoxAdapter(child: _buildSkippedPlaceholder(skipReason));
     }
     final childCount = vm.hunks.fold<int>(0, (sum, h) => sum + 1 + h.lines.length);
     return SliverList.builder(
@@ -236,12 +238,13 @@ class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
     );
   }
 
-  Widget _buildErrorState(BuildContext context, Object error) {
+  // ignore: no_slop_linter/prefer_specific_type
+  Widget _buildErrorState({required BuildContext context, required Object error}) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text("Error: $error"),
+          Text("Error: ${error.toString()}"),
           const SizedBox(height: 16),
           TextButton(
             onPressed: () => context.read<DiffCubit>().refresh(),

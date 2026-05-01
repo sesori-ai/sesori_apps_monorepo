@@ -133,10 +133,12 @@ class NotificationRegistrationService {
     _currentRegisteredToken = newToken;
   }
 
+  // ignore: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters
   void _onAuthStreamError(Object error, StackTrace stackTrace) {
     loge("Notification registration auth state stream error", error, stackTrace);
   }
 
+  // ignore: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters
   void _onTokenRefreshStreamError(Object error, StackTrace stackTrace) {
     loge("Notification registration token refresh stream error", error, stackTrace);
   }

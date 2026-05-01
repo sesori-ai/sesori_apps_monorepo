@@ -337,4 +337,40 @@ Future<T?> pushRoute<T extends Object?>(int route) {
 }
 ''');
   }
+
+  void test_noErrorForObjectNamedError() async {
+    await assertNoDiagnostics(r'''
+void foo(Object error) {}
+''');
+  }
+
+  void test_noErrorForObjectNamedSomeError() async {
+    await assertNoDiagnostics(r'''
+void foo(Object someError) {}
+''');
+  }
+
+  void test_noErrorForNullableObjectNamedError() async {
+    await assertNoDiagnostics(r'''
+void foo(Object? error) {}
+''');
+  }
+
+  void test_reportForDynamicNamedError() async {
+    await assertDiagnostics(
+      r'''
+void foo(dynamic error) {}
+''',
+      [lint(9, 7)],
+    );
+  }
+
+  void test_reportForObjectNamedValue() async {
+    await assertDiagnostics(
+      r'''
+void foo(Object value) {}
+''',
+      [lint(9, 6)],
+    );
+  }
 }

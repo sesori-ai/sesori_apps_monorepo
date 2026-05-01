@@ -47,9 +47,10 @@ class DiffHighlighter {
   /// Call ONCE before any highlighting. Safe to call multiple times.
   static Future<void> initialize({Brightness brightness = Brightness.light}) async {
     if (_initialized) return;
-    _highlight = Highlight();
+    final highlight = Highlight();
+    _highlight = highlight;
     for (final entry in _languages.entries) {
-      _highlight!.registerLanguage(entry.key, entry.value);
+      highlight.registerLanguage(entry.key, entry.value);
     }
     _theme = brightness == Brightness.dark ? githubDarkTheme : githubTheme;
     _initialized = true;
@@ -59,11 +60,12 @@ class DiffHighlighter {
   /// not yet initialized.
   ///
   /// IMPORTANT: Call [initialize] first. Never call this inside an itemBuilder.
-  static TextSpan? highlightLine(String content, String? language) {
-    if (!_initialized || language == null || _highlight == null) return null;
+  static TextSpan? highlightLine({required String content, required String? language}) {
+    final highlight = _highlight;
+    if (!_initialized || language == null || highlight == null) return null;
     if (!_languages.containsKey(language)) return null;
     try {
-      final result = _highlight!.highlight(code: content, language: language);
+      final result = highlight.highlight(code: content, language: language);
       final renderer = TextSpanRenderer(_monoStyle, _theme);
       result.render(renderer);
       return renderer.span;
