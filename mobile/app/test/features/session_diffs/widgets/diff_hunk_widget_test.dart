@@ -18,8 +18,8 @@ void main() {
 
   group("DiffHunkWidget", () {
     testWidgets("shows hunk header with @@ text", (tester) async {
-      final vm = DiffHunkViewModel(
-        hunk: const DiffHunk(
+      const vm = DiffHunkViewModel(
+        hunk: DiffHunk(
           oldStart: 10,
           oldCount: 5,
           newStart: 12,
@@ -34,8 +34,8 @@ void main() {
     });
 
     testWidgets("hunk header has light blue background", (tester) async {
-      final vm = DiffHunkViewModel(
-        hunk: const DiffHunk(
+      const vm = DiffHunkViewModel(
+        hunk: DiffHunk(
           oldStart: 1,
           oldCount: 3,
           newStart: 1,
@@ -57,8 +57,8 @@ void main() {
     });
 
     testWidgets("header uses monospace font", (tester) async {
-      final vm = DiffHunkViewModel(
-        hunk: const DiffHunk(
+      const vm = DiffHunkViewModel(
+        hunk: DiffHunk(
           oldStart: 1,
           oldCount: 1,
           newStart: 1,
