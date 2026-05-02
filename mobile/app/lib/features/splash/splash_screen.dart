@@ -24,7 +24,6 @@ class _SplashScreenBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocListener<SplashCubit, SplashState>(
-      listenWhen: (previous, current) => previous is SplashInitializing && current is SplashReady,
       listener: (context, state) {
         if (state is SplashReady) {
           context.goRoute(state.route);

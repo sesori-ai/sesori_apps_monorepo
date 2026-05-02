@@ -19,11 +19,12 @@ class SplashCubit extends Cubit<SplashState> {
 
   final AuthSession _authSession;
 
-  // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
-  SplashCubit(AuthSession authSession)
-    : _authSession = authSession,
-      super(const SplashState.initializing()) {
-    unawaited(_resolveInitialRoute());
+  SplashCubit(AuthSession authSession) : _authSession = authSession, super(const SplashState.initializing()) {
+    _resolveInitialRoute().catchError((Object err) {
+      loge("Splash: session restore failed", err);
+      if (isClosed) return;
+      emit(const SplashState.ready(route: AppRoute.login()));
+    }).ignore();
   }
 
   Future<void> _resolveInitialRoute() async {
