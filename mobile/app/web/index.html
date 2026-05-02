@@ -29,6 +29,15 @@
 
   <title>mobile_ui</title>
   <link rel="manifest" href="manifest.json">
+  
+  
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
+  
+  
+  
+  
+  
+  
   <style id="splash-screen-style">
     html {
       height: 100%
@@ -38,7 +47,8 @@
       margin: 0;
       min-height: 100%;
       background-color: #673AB7;
-          background-size: 100% 100%;
+      background-image: url("splash/img/light-background.png");
+      background-size: 100% 100%;
     }
 
     .center {
@@ -90,7 +100,8 @@
     @media (prefers-color-scheme: dark) {
       body {
         background-color: #311B92;
-          }
+        background-image: url("splash/img/dark-background.png");
+      }
     }
   </style>
   <script id="splash-screen-script">
@@ -100,9 +111,9 @@
       document.body.style.background = "transparent";
     }
   </script>
-  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
 </head>
 <body>
+  
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader
