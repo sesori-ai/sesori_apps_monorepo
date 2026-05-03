@@ -5,7 +5,7 @@ publish_to: none
 resolution: workspace
 
 environment:
-  sdk: ^3.11.1
+  sdk: ^3.11.5
 
 dependencies:
   bloc: ^9.0.0
