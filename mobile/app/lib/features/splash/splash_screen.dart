@@ -39,48 +39,18 @@ class _SplashView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final loc = context.loc;
+    final orientation = MediaQuery.orientationOf(context);
+    final brightness = context.brightness;
+    final imageFile = switch ((orientation, brightness)) {
+      (.portrait, .light) => "assets/images/bkg_webp/light_mode_portrait_splash.webp",
+      (.landscape, .light) => "assets/images/bkg_webp/light_mode_landscape_splash.webp",
+      (.portrait, .dark) => "assets/images/bkg_webp/dark_mode_portrait_splash.webp",
+      (.landscape, .dark) => "assets/images/bkg_webp/dark_mode_landscape_splash.webp",
+    };
 
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 96,
-                height: 96,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer.withAlpha(102),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Icon(
-                  Icons.terminal_rounded,
-                  size: 56,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                loc.appTitle,
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: 28,
-                height: 28,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return Image.asset(
+      imageFile,
+      fit: .cover,
     );
   }
 }
