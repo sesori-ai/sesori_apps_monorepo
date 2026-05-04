@@ -64,7 +64,7 @@ Expected path example:
 
 At least one provider needs to be logged in for it to work.
 
-````bash
+```bash
 opencode auth login
 ```
 
