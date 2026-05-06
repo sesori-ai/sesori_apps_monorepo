@@ -1,7 +1,7 @@
 import "package:flutter/material.dart";
 
-import "../../utils/guaranteed_text_theme.dart";
-import "../zyra_theme.dart";
+import "../../utils/non_null_text_theme.dart";
+import "../primitives/zyra_colors.g.dart";
 
 enum _ZyraTextThemeVariant {
   dark,
