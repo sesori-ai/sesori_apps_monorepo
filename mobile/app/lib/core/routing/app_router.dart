@@ -8,7 +8,7 @@ import "../../features/project_list/project_list_screen.dart";
 import "../../features/session_detail/session_detail_screen.dart";
 import "../../features/session_diffs/session_diffs_screen.dart";
 import "../../features/session_list/session_list_screen.dart";
-import "../../features/settings/notification_settings_screen.dart";
+import "../../features/settings/settings_screen.dart";
 import "../../features/splash/splash_screen.dart";
 
 extension AppRouteToGoRoute on AppRouteDef {
@@ -28,7 +28,7 @@ extension AppRouteToGoRoute on AppRouteDef {
           AppRouteSplash() => const SplashScreen(),
           AppRouteLogin() => const LoginScreen(),
           AppRouteProjects() => const ProjectListScreen(),
-          AppRouteNotificationSettings() => const NotificationSettingsScreen(),
+          AppRouteSettings() => const SettingsScreen(),
           AppRouteSessions(:final projectId, :final projectName) => SessionListScreen(
             projectId: projectId,
             projectName: projectName,
