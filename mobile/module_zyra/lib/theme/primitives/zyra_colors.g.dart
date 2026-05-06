@@ -5,7 +5,7 @@
 
 import "package:flutter/material.dart";
 
-import "../../../../utils/lerp_utils.dart";
+import "../../utils/lerp_utils.dart";
 import "zyra_color_primitives.g.dart";
 
 /// Dark mode color tokens matching Figma specifications.
