@@ -111,9 +111,9 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
         title: Text(loc.projectListTitle),
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            tooltip: loc.notificationSettingsTitle,
-            onPressed: () => context.pushRoute(const AppRoute.notificationSettings()),
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: loc.settingsTitle,
+            onPressed: () => context.pushRoute(const AppRoute.settings()),
           ),
         ],
       ),
