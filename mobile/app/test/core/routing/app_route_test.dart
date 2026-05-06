@@ -9,6 +9,7 @@ import "package:sesori_mobile/features/login/login_screen.dart";
 import "package:sesori_mobile/features/project_list/project_list_screen.dart";
 import "package:sesori_mobile/features/session_detail/session_detail_screen.dart";
 import "package:sesori_mobile/features/session_list/session_list_screen.dart";
+import "package:sesori_mobile/features/settings/settings_screen.dart";
 
 void main() {
   group("AppRoute", () {
@@ -24,7 +25,7 @@ void main() {
     test("returns raw path for parameterless routes", () {
       expect(const AppRoute.login().buildPath(), "/login");
       expect(const AppRoute.projects().buildPath(), "/projects");
-      expect(const AppRoute.notificationSettings().buildPath(), "/settings/notifications");
+      expect(const AppRoute.settings().buildPath(), "/settings");
     });
 
     test("substitutes projectId for sessions", () {
@@ -124,6 +125,15 @@ void main() {
         _FakeGoRouterState(),
       );
       expect(widget, isA<ProjectListScreen>());
+    });
+
+    test("settings route builds SettingsScreen", () {
+      final goRoute = AppRouteDef.settings.toGoRoute();
+      final widget = goRoute.builder!(
+        _FakeBuildContext(),
+        _FakeGoRouterState(),
+      );
+      expect(widget, isA<SettingsScreen>());
     });
 
     test("sessions route builds SessionListScreen with path and query params", () {
