@@ -1270,7 +1270,7 @@ void main(List<String> args) {
     if (postOff != null) {
       try {
         glyphToName = _parsePost(data, postOff);
-        // ignore: avoid_catching_errors
+        // ignore: avoid_catching_errors, the parser intentionally traps non-Exception failures and continues with fallback glyph sources
       } on StateError catch (e) {
         stderr.writeln(
           'Warning: failed to parse post table in ${mapping.filename} ($e). Falling back to CFF names.',
