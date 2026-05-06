@@ -663,7 +663,7 @@ void _writeSemanticColorClass(
   buf.writeln("/// )");
   buf.writeln("/// ```");
   buf.writeln("@immutable");
-  buf.writeln("// ignore: use_enums");
+  buf.writeln("// ignore: use_enums, theme token containers need class semantics and static dark/light singletons");
   buf.writeln("final class ZyraColors {");
 
   // --- static const dark ---

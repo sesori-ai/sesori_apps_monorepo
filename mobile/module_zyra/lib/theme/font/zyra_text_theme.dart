@@ -218,7 +218,7 @@ class FontVariation {
       );
 
   /// Non-null [TextStyle.lerp] for interpolating between two non-null text styles.
-  // ignore: no_slop_linter/avoid_bang_operator, no_slop_linter/prefer_required_named_parameters
+  // ignore: no_slop_linter/avoid_bang_operator, no_slop_linter/prefer_required_named_parameters, private lerp helper mirrors TextStyle.lerp and only accepts non-null styles
   static TextStyle _lerpStyleNonNull(TextStyle a, TextStyle b, double t) => TextStyle.lerp(a, b, t)!;
 
   static TextStyle _createStyle({

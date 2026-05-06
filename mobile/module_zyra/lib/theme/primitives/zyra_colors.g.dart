@@ -1266,7 +1266,7 @@ abstract final class ZyraColorsLight {
 /// )
 /// ```
 @immutable
-// ignore: use_enums
+// ignore: use_enums, theme token containers need class semantics and static dark/light singletons
 final class ZyraColors {
   // ===========================================================================
   // Dark Mode - Figma: Color mode = Dark

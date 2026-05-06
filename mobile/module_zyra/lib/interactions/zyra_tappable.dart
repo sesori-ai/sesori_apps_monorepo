@@ -454,7 +454,7 @@ class _OvershootCurve extends Curve {
 
   @override
   double transformInternal(double t) {
-    // ignore: parameter_assignments
+    // ignore: parameter_assignments, mutating the local parameter keeps the easeOutBack formula close to its standard form
     t -= 1.0;
     return t * t * ((_s + 1) * t + _s) + 1.0;
   }
@@ -699,7 +699,7 @@ class _IosTappableState extends State<_IosTappable>
 
 /// Returns a [ShapeDecoration] or [BoxDecoration] depending on [useSuperellipse].
 ///
-/// ignore: no_slop_linter/prefer_required_named_parameters
+/// ignore: no_slop_linter/prefer_required_named_parameters, internal decoration helper stays positional for terse call sites
 Decoration _shapeDecoration({
   required BorderRadius borderRadius,
   required bool useSuperellipse,
@@ -725,7 +725,7 @@ Decoration _shapeDecoration({
 /// Used to align the overlay shape with the inner edge of the border when
 /// [ZyraTappable.overlayInset] is set.
 ///
-/// ignore: no_slop_linter/prefer_required_named_parameters
+/// ignore: no_slop_linter/prefer_required_named_parameters, internal radius helper stays positional for terse geometry math call sites
 BorderRadius _insetBorderRadius(BorderRadius original, double inset) {
   if (inset == 0) return original;
   return BorderRadius.only(
@@ -738,7 +738,7 @@ BorderRadius _insetBorderRadius(BorderRadius original, double inset) {
 
 /// Linearly scales [target] shadow properties by [t] (0 = invisible, 1 = full).
 ///
-/// ignore: no_slop_linter/prefer_required_named_parameters
+/// ignore: no_slop_linter/prefer_required_named_parameters, internal shadow helper stays positional for terse interpolation call sites
 List<BoxShadow> _scaledShadows(List<BoxShadow> target, double t) {
   if (t <= 0) return const [];
   return target

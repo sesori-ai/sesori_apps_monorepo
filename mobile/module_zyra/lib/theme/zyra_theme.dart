@@ -90,7 +90,7 @@ extension ZyraDesignExtension on BuildContext {
   ZyraDesignSystem get zyra {
     final design = Theme.of(this).extension<ZyraDesignSystem>();
     assert(design != null, "ZyraDesignSystem not found in ThemeData.extensions. Add it to your ThemeData.");
-    // ignore: no_slop_linter/avoid_bang_operator
+    // ignore: no_slop_linter/avoid_bang_operator, assert above guarantees the theme extension is present in debug builds
     return design!;
   }
 }

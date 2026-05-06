@@ -25,7 +25,7 @@ import "primitives/zyra_widths.g.dart";
 /// )
 /// ```
 @immutable
-// ignore: use_enums
+// ignore: use_enums, theme extension instances need class semantics and static light/dark singletons
 final class ZyraDesignSystem extends ThemeExtension<ZyraDesignSystem> {
   ZyraDesignSystem._({
     required this.colors,
