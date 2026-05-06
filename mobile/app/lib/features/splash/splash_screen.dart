@@ -3,6 +3,7 @@ import "package:flutter_bloc/flutter_bloc.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../../core/di/injection.dart";
+import "../../core/extensions/build_context_x.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/widgets/sesori_background_widget.dart";
 
@@ -57,11 +58,11 @@ class _SplashView extends StatelessWidget {
               // caused by the shadow
               const SizedBox(height: 13),
               Text(
-                "Welcome to",
+                context.loc.splashWelcomeTo,
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               Text(
-                "Sesori",
+                context.loc.splashTitle,
                 style: Theme.of(context).textTheme.titleLarge,
               ),
             ],

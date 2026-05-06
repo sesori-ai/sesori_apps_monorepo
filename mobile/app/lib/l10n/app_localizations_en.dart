@@ -712,4 +712,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get diffRetry => 'Retry';
+
+  @override
+  String get splashWelcomeTo => 'Welcome to';
+
+  @override
+  String get splashTitle => 'Sesori';
 }

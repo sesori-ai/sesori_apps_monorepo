@@ -354,5 +354,7 @@
               "message": {"type": "String"}
             }
           },
-          "diffRetry": "Retry"
+          "diffRetry": "Retry",
+   "splashWelcomeTo": "Welcome to",
+   "splashTitle": "Sesori"
 }
