@@ -65,7 +65,7 @@ class _EmailLoginFormState extends State<EmailLoginForm> {
               textInputAction: TextInputAction.next,
               autocorrect: false,
               enabled: !isLoading,
-              autofillHints: const [AutofillHints.email],
+              autofillHints: const [AutofillHints.email, AutofillHints.username],
               decoration: InputDecoration(
                 labelText: loc.emailLabel,
                 hintText: loc.emailHint,
