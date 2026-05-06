@@ -20,6 +20,9 @@ import "project_list_state.dart";
 @visibleForTesting
 const refreshThrottleDuration = Duration(seconds: 30);
 
+@visibleForTesting
+const initialProjectLoadConnectionWaitTimeout = Duration(seconds: 15);
+
 class ProjectListCubit extends Cubit<ProjectListState> {
   final ProjectService _projectService;
   final ConnectionService _connectionService;
@@ -35,11 +38,11 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     RouteSource routeSource, {
     required FailureReporter failureReporter,
   }) : _projectService = projectService,
-        _connectionService = connectionService,
-        _sseEventRepository = sseEventRepository,
-        _failureReporter = failureReporter,
-        super(const ProjectListState.loading()) {
-    loadProjects();
+       _connectionService = connectionService,
+       _sseEventRepository = sseEventRepository,
+       _failureReporter = failureReporter,
+       super(const ProjectListState.loading()) {
+    unawaited(_loadInitialProjects());
 
     // 1. Immediate activity badge updates (no API call).
     _subscriptions.add(
@@ -158,6 +161,35 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   Future<void> loadProjects() async {
     emit(const ProjectListState.loading());
     await _fetchProjects();
+  }
+
+  Future<void> _loadInitialProjects() async {
+    await _waitForInitialConnectionIfNeeded();
+    if (isClosed) return;
+    await _fetchProjects();
+  }
+
+  Future<void> _waitForInitialConnectionIfNeeded() async {
+    switch (_connectionService.currentStatus) {
+      case ConnectionConnected():
+      case ConnectionLost():
+      case ConnectionBridgeOffline():
+        return;
+      case ConnectionDisconnected():
+      case ConnectionReconnecting():
+        break;
+    }
+
+    try {
+      await _connectionService.status
+          .where(
+            (status) => status is ConnectionConnected || status is ConnectionLost || status is ConnectionBridgeOffline,
+          )
+          .first
+          .timeout(initialProjectLoadConnectionWaitTimeout);
+    } on TimeoutException catch (_) {
+      logw("Initial project load continuing before relay connection is ready");
+    }
   }
 
   /// Retries loading projects after a failure.

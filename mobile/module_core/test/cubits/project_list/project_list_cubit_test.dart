@@ -26,6 +26,16 @@ final projectA = testProject(id: "A", path: "/home/user/A");
 final projectB = testProject(id: "B", path: "/home/user/B");
 final projectC = testProject(id: "C", path: "/home/user/C");
 
+const _connectionConfig = ServerConnectionConfig(
+  relayHost: "relay.example.com",
+  authToken: "test-token",
+);
+const _connectionHealth = HealthResponse(healthy: true, version: "0.1.200");
+const _connectedStatus = ConnectionStatus.connected(
+  config: _connectionConfig,
+  health: _connectionHealth,
+);
+
 void main() {
   setUpAll(registerAllFallbackValues);
 
@@ -44,11 +54,12 @@ void main() {
       mockRouteSource = MockRouteSource();
       mockFailureReporter = MockFailureReporter();
       statusController = BehaviorSubject<ConnectionStatus>.seeded(
-        const ConnectionStatus.disconnected(),
+        _connectedStatus,
       );
 
       // Must be stubbed before any cubit is built — constructor subscribes immediately.
       when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
+      when(() => mockConnectionService.currentStatus).thenAnswer((_) => statusController.value);
       when(
         () => mockFailureReporter.recordFailure(
           error: any(named: "error"),
@@ -67,7 +78,7 @@ void main() {
 
     /// Creates a fresh [ProjectListCubit] with the route source seeded to
     /// null (auto-refresh inactive). All mock stubs MUST be configured before
-    /// calling this because the constructor immediately calls loadProjects.
+    /// calling this because the constructor immediately starts initial loading.
     ProjectListCubit buildCubit() => ProjectListCubit(
       mockProjectService,
       mockConnectionService,
@@ -95,6 +106,34 @@ void main() {
           [testProject()],
         ),
       ],
+    );
+
+    blocTest<ProjectListCubit, ProjectListState>(
+      "constructor waits for relay connection before initial project fetch",
+      build: () {
+        statusController.add(const ConnectionStatus.disconnected());
+        when(
+          () => mockProjectService.listProjects(),
+        ).thenAnswer((_) async => ApiResponse.success(Projects(data: [testProject()])));
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        verifyNever(() => mockProjectService.listProjects());
+
+        statusController.add(_connectedStatus);
+        await Future<void>.delayed(Duration.zero);
+      },
+      expect: () => [
+        isA<ProjectListLoaded>().having(
+          (s) => s.projects,
+          "projects",
+          [testProject()],
+        ),
+      ],
+      verify: (_) {
+        verify(() => mockProjectService.listProjects()).called(1);
+      },
     );
 
     // -------------------------------------------------------------------------
