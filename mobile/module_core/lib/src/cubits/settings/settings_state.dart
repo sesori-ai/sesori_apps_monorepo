@@ -6,5 +6,9 @@ part "settings_state.freezed.dart";
 sealed class SettingsState with _$SettingsState {
   const factory SettingsState.initial() = SettingsInitial;
 
+  const factory SettingsState.loggingOut() = SettingsLoggingOut;
+
   const factory SettingsState.loggedOut() = SettingsLoggedOut;
+
+  const factory SettingsState.logoutFailed() = SettingsLogoutFailed;
 }

@@ -77,6 +77,38 @@ String toString() {
 /// @nodoc
 
 
+class SettingsLoggingOut implements SettingsState {
+  const SettingsLoggingOut();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SettingsLoggingOut);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'SettingsState.loggingOut()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+
+
 class SettingsLoggedOut implements SettingsState {
   const SettingsLoggedOut();
   
@@ -98,6 +130,38 @@ int get hashCode => runtimeType.hashCode;
 @override
 String toString() {
   return 'SettingsState.loggedOut()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+
+
+class SettingsLogoutFailed implements SettingsState {
+  const SettingsLogoutFailed();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SettingsLogoutFailed);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'SettingsState.logoutFailed()';
 }
 
 
