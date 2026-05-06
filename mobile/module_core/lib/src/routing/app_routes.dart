@@ -9,7 +9,7 @@ enum AppRouteDef {
   splash("/splash"),
   login("/login"),
   projects("/projects"),
-  notificationSettings("/settings/notifications"),
+  settings("/settings"),
   sessions("/projects/:projectId/sessions"),
   newSession("/projects/:projectId/sessions/new"),
   sessionDetail("/projects/:projectId/sessions/:sessionId"),
@@ -49,7 +49,7 @@ sealed class AppRoute {
   const factory AppRoute.splash() = AppRouteSplash;
   const factory AppRoute.login() = AppRouteLogin;
   const factory AppRoute.projects() = AppRouteProjects;
-  const factory AppRoute.notificationSettings() = AppRouteNotificationSettings;
+  const factory AppRoute.settings() = AppRouteSettings;
   const factory AppRoute.sessions({
     required String projectId,
     required String? projectName,
@@ -79,7 +79,7 @@ sealed class AppRoute {
       AppRouteDef.splash => const AppRoute.splash(),
       AppRouteDef.login => const AppRoute.login(),
       AppRouteDef.projects => const AppRoute.projects(),
-      AppRouteDef.notificationSettings => const AppRoute.notificationSettings(),
+      AppRouteDef.settings => const AppRoute.settings(),
       AppRouteDef.sessions => AppRouteSessions.fromParams(pathParams: pathParams, queryParams: queryParams),
       AppRouteDef.newSession => AppRouteNewSession.fromParams(pathParams: pathParams, queryParams: queryParams),
       AppRouteDef.sessionDetail => AppRouteSessionDetail.fromParams(
@@ -124,11 +124,11 @@ class AppRouteProjects extends AppRoute {
   String buildPath() => def.path;
 }
 
-class AppRouteNotificationSettings extends AppRoute {
-  const AppRouteNotificationSettings();
+class AppRouteSettings extends AppRoute {
+  const AppRouteSettings();
 
   @override
-  AppRouteDef get def => AppRouteDef.notificationSettings;
+  AppRouteDef get def => AppRouteDef.settings;
 
   @override
   String buildPath() => def.path;
