@@ -3,8 +3,8 @@ import "package:flutter_bloc/flutter_bloc.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../../core/di/injection.dart";
-import "../../core/extensions/build_context_x.dart";
 import "../../core/routing/app_router.dart";
+import "../../core/widgets/sesori_background_widget.dart";
 
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
@@ -25,6 +25,7 @@ class _SplashScreenBody extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocListener<SplashCubit, SplashState>(
       listener: (context, state) {
+        // return;
         if (state is SplashReady) {
           context.goRoute(state.route);
         }
@@ -39,18 +40,34 @@ class _SplashView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final orientation = MediaQuery.orientationOf(context);
-    final brightness = context.brightness;
-    final imageFile = switch ((orientation, brightness)) {
-      (.portrait, .light) => "assets/images/bkg_webp/light_mode_portrait_splash.webp",
-      (.landscape, .light) => "assets/images/bkg_webp/light_mode_landscape_splash.webp",
-      (.portrait, .dark) => "assets/images/bkg_webp/dark_mode_portrait_splash.webp",
-      (.landscape, .dark) => "assets/images/bkg_webp/dark_mode_landscape_splash.webp",
-    };
-
-    return Image.asset(
-      imageFile,
-      fit: .cover,
+    return Stack(
+      clipBehavior: .none,
+      children: [
+        const Positioned.fill(child: SesoriBackgroundWidget()),
+        Align(
+          alignment: .center,
+          child: Column(
+            mainAxisSize: .min,
+            children: [
+              Image.asset(
+                "assets/images/sesori_icon_with_shadow.png",
+                fit: .none,
+              ),
+              // Image has some embedded "bottom padding"
+              // caused by the shadow
+              const SizedBox(height: 13),
+              Text(
+                "Welcome to",
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              Text(
+                "Sesori",
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

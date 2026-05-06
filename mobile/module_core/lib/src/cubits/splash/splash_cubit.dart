@@ -37,7 +37,7 @@ class SplashCubit extends Cubit<SplashState> {
         ),
       );
     } on TimeoutException catch (e, st) {
-      loge("Splash: session restore timed out after $_restoreTimeout", e, st);
+      loge("Splash: session restore timed out after ${_restoreTimeout.inSeconds}s", e, st);
       if (isClosed) return;
       emit(const SplashState.ready(route: AppRoute.login()));
     } catch (e, st) {

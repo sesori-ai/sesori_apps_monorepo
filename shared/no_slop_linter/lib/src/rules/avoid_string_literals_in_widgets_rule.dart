@@ -16,7 +16,7 @@ import 'package:analyzer/error/error.dart';
 /// - `Text("Welcome back!")` - hardcoded string
 ///
 /// Valid examples:
-/// - `Text(context.l10n.helloWorld)` - localized string
+/// - `Text(context.loc.helloWorld)` - localized string
 /// - `Text(AppStrings.welcomeBack)` - string constant
 /// - `Text(widget.title)` - dynamic string from parameter
 /// - `Text('$count items')` - interpolated (likely dynamic, allowed)
@@ -26,7 +26,7 @@ class AvoidStringLiteralsInWidgetsRule extends NoSlopRule {
   static const code = LintCode(
     'avoid_string_literals_in_widgets',
     'Avoid hardcoded strings in Text widgets. Use localization.',
-    correctionMessage: 'Use context.l10n.xxx or a string constant instead.',
+    correctionMessage: 'Use context.loc.xxx or a string constant instead.',
   );
 
   @override
