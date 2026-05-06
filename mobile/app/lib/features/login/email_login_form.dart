@@ -42,7 +42,7 @@ class _EmailLoginFormState extends State<EmailLoginForm> {
       password: password,
     );
 
-    if (success && mounted) {
+    if (success) {
       TextInput.finishAutofillContext();
     }
   }
