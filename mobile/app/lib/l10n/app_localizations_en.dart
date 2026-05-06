@@ -94,7 +94,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get bridgeOfflineMessage => 'Start sesori-bridge on your laptop';
 
   @override
-  String get notificationSettingsTitle => 'Notification Settings';
+  String get settingsTitle => 'Settings';
+
+  @override
+  String get settingsLogout => 'Log Out';
 
   @override
   String get notificationCategoryAiInteraction => 'AI Interactions';

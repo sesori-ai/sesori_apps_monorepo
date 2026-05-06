@@ -229,11 +229,17 @@ abstract class AppLocalizations {
   /// **'Start sesori-bridge on your laptop'**
   String get bridgeOfflineMessage;
 
-  /// No description provided for @notificationSettingsTitle.
+  /// No description provided for @settingsTitle.
   ///
   /// In en, this message translates to:
-  /// **'Notification Settings'**
-  String get notificationSettingsTitle;
+  /// **'Settings'**
+  String get settingsTitle;
+
+  /// No description provided for @settingsLogout.
+  ///
+  /// In en, this message translates to:
+  /// **'Log Out'**
+  String get settingsLogout;
 
   /// No description provided for @notificationCategoryAiInteraction.
   ///
