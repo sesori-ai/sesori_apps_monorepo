@@ -3,10 +3,10 @@
 import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 
-class GuaranteedTextThemeWrapper extends TextTheme {
+class NonNullTextTheme extends TextTheme {
   final TextTheme textTheme;
 
-  const GuaranteedTextThemeWrapper({required this.textTheme});
+  const NonNullTextTheme({required this.textTheme});
 
   @override
   TextTheme apply({
@@ -27,7 +27,7 @@ class GuaranteedTextThemeWrapper extends TextTheme {
     Color? decorationColor,
     TextDecorationStyle? decorationStyle,
   }) {
-    return GuaranteedTextThemeWrapper(
+    return NonNullTextTheme(
       textTheme: textTheme.apply(
         fontFamily: fontFamily,
         fontFamilyFallback: fontFamilyFallback,
@@ -71,7 +71,7 @@ class GuaranteedTextThemeWrapper extends TextTheme {
     TextStyle? labelMedium,
     TextStyle? labelSmall,
   }) {
-    return GuaranteedTextThemeWrapper(
+    return NonNullTextTheme(
       textTheme: textTheme.copyWith(
         displayLarge: displayLarge,
         displayMedium: displayMedium,
@@ -120,7 +120,7 @@ class GuaranteedTextThemeWrapper extends TextTheme {
   TextStyle get labelSmall => textTheme.labelSmall!;
 
   @override
-  TextTheme merge(TextTheme? other) => GuaranteedTextThemeWrapper(
+  TextTheme merge(TextTheme? other) => NonNullTextTheme(
     textTheme: textTheme.merge(other),
   );
 
