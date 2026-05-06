@@ -1,0 +1,79 @@
+name: theme_zyra
+description: Zyra theme
+version: 0.1.0
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.11.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+  meta: ^1.16.0
+  flutter_svg: ^2.2.4
+  universal_platform: ^1.1.0
+
+flutter:
+  assets:
+    - assets/svgs/hero_icons/
+  fonts:
+    - family: Satoshi Zyra
+      fonts:
+        - asset: assets/fonts/SatoshiZyra/SatoshiZyra-Light.otf
+          weight: 300
+        - asset: assets/fonts/SatoshiZyra/SatoshiZyra-LightItalic.otf
+          weight: 300
+          style: italic
+        - asset: assets/fonts/SatoshiZyra/SatoshiZyra-Regular.otf
+          weight: 400
+        - asset: assets/fonts/SatoshiZyra/SatoshiZyra-Italic.otf
+          weight: 400
+          style: italic
+        - asset: assets/fonts/SatoshiZyra/SatoshiZyra-Medium.otf
+          weight: 500
+        - asset: assets/fonts/SatoshiZyra/SatoshiZyra-MediumItalic.otf
+          weight: 500
+          style: italic
+        - asset: assets/fonts/SatoshiZyra/SatoshiZyra-Bold.otf
+          weight: 700
+        - asset: assets/fonts/SatoshiZyra/SatoshiZyra-BoldItalic.otf
+          weight: 700
+          style: italic
+        - asset: assets/fonts/SatoshiZyra/SatoshiZyra-Black.otf
+          weight: 900
+        - asset: assets/fonts/SatoshiZyra/SatoshiZyra-BlackItalic.otf
+          weight: 900
+          style: italic
+    - family: FA6Thin
+      fonts:
+        - asset: assets/fonts/FontAwesome6Pro/FA6Pro-Thin-100.otf
+    - family: FA6Light
+      fonts:
+        - asset: assets/fonts/FontAwesome6Pro/FA6Pro-Light-300.otf
+    - family: FA6Regular
+      fonts:
+        - asset: assets/fonts/FontAwesome6Pro/FA6Pro-Regular-400.otf
+    - family: FA6Solid
+      fonts:
+        - asset: assets/fonts/FontAwesome6Pro/FA6Pro-Solid-900.otf
+    - family: VESPRLight
+      fonts:
+        - asset: assets/fonts/VESPRIcons/VESPRIcons-Light.ttf
+          weight: 300
+    - family: VESPRRegular
+      fonts:
+        - asset: assets/fonts/VESPRIcons/VESPRIcons-Regular.ttf
+          weight: 400
+    - family: VESPRSolid
+      fonts:
+        - asset: assets/fonts/VESPRIcons/VESPRIcons-Solid.ttf
+          weight: 900
+
+dev_dependencies:
+  no_slop_linter:
+    path: "../../shared/no_slop_linter"
+  build_runner: any
+  mocktail: ^1.0.4
+  test: ^1.25.0
+  fake_async: ^1.3.3

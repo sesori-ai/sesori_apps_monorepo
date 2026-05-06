@@ -1,0 +1,5934 @@
+{
+  "Primitives": {
+    "modes": [
+      {
+        "name": "Mode 1",
+        "modeId": "75:0"
+      }
+    ],
+    "variables": [
+      {
+        "name": "Colors/Base/white",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Base/black",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Base/transparent",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0
+          }
+        }
+      },
+      {
+        "name": "Colors/Base/transparent black",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (light mode)/25",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.9901961088180542,
+            "g": 0.9901961088180542,
+            "b": 0.9901961088180542,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (light mode)/50",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.9801960587501526,
+            "g": 0.9803071618080139,
+            "b": 0.9805882573127747,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (light mode)/100",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.96039217710495,
+            "g": 0.9606797695159912,
+            "b": 0.9611764550209045,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (light mode)/200",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.9137254953384399,
+            "g": 0.9163398742675781,
+            "b": 0.9215686321258545,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (light mode)/300",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.8358039259910583,
+            "g": 0.8420000076293945,
+            "b": 0.8543921709060669,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (light mode)/400",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.6425098180770874,
+            "g": 0.656000018119812,
+            "b": 0.6829804182052612,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (light mode)/500",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.4431372582912445,
+            "g": 0.4627451002597809,
+            "b": 0.501960813999176,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (light mode)/600",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.3265098035335541,
+            "g": 0.3454379141330719,
+            "b": 0.38329413533210754,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (light mode)/700",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.2549019753932953,
+            "g": 0.27581700682640076,
+            "b": 0.3176470696926117,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (light mode)/800",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.15333333611488342,
+            "g": 0.17137254774570465,
+            "b": 0.2074509859085083,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (light mode)/900",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.09882353246212006,
+            "g": 0.11529411375522614,
+            "b": 0.14823530614376068,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (light mode)/950",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.04172549024224281,
+            "g": 0.05050980672240257,
+            "b": 0.0680784359574318,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (dark mode)/25",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.9495000243186951,
+            "g": 0.9498999714851379,
+            "b": 0.9505000114440918,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (dark mode)/50",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.8867000341415405,
+            "g": 0.8893397450447083,
+            "b": 0.8932999968528748,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (dark mode)/100",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.8104490041732788,
+            "g": 0.8180897831916809,
+            "b": 0.8295510411262512,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (dark mode)/200",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.7472652792930603,
+            "g": 0.7574530243873596,
+            "b": 0.7727347016334534,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (dark mode)/300",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.6840816736221313,
+            "g": 0.6968162655830383,
+            "b": 0.7159183621406555,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (dark mode)/400",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.5998367071151733,
+            "g": 0.615967333316803,
+            "b": 0.6401633024215698,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (dark mode)/500",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.4930841028690338,
+            "g": 0.514616847038269,
+            "b": 0.5469158887863159,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (dark mode)/600",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.39680981636047363,
+            "g": 0.4153619706630707,
+            "b": 0.44319018721580505,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (dark mode)/700",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.3028571307659149,
+            "g": 0.316571444272995,
+            "b": 0.33714285492897034,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (dark mode)/800",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.19016394019126892,
+            "g": 0.19803278148174286,
+            "b": 0.20983606576919556,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (dark mode)/900",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.09400000423192978,
+            "g": 0.09879999607801437,
+            "b": 0.10599999874830246,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (dark mode)/950",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.0117647061124444,
+            "g": 0.01568627543747425,
+            "b": 0.019607843831181526,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (dark mode alpha)/25",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.9800000190734863
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (dark mode alpha)/50",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.9599999785423279
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (dark mode alpha)/100",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.9399999976158142
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (dark mode alpha)/200",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.9200000166893005
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (dark mode alpha)/300",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.800000011920929
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (dark mode alpha)/400",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.5600000023841858
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (dark mode alpha)/500",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.5
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (dark mode alpha)/600",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.25
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (dark mode alpha)/700",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.1599999964237213
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (dark mode alpha)/800",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.07999999821186066
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (dark mode alpha)/900",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.03999999910593033
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (dark mode alpha)/950",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (light mode alpha)/25",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (light mode alpha)/50",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.03999999910593033
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (light mode alpha)/100",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.07999999821186066
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (light mode alpha)/200",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.1599999964237213
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (light mode alpha)/300",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.3499999940395355
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (light mode alpha)/400",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.5
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (light mode alpha)/500",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.5600000023841858
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (light mode alpha)/600",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.800000011920929
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (light mode alpha)/700",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.9200000166893005
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (light mode alpha)/800",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.9399999976158142
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (light mode alpha)/900",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.9599999785423279
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray (light mode alpha)/950",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.9800000190734863
+          }
+        }
+      },
+      {
+        "name": "Colors/Brand Blue/25",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.9200000166893005,
+            "g": 0.9538461565971375,
+            "b": 1,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Brand Blue/50",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.8799999952316284,
+            "g": 0.9280000329017639,
+            "b": 1,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Brand Blue/100",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.8199999928474426,
+            "g": 0.8920000791549683,
+            "b": 1,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Brand Blue/200",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.699999988079071,
+            "g": 0.8199999332427979,
+            "b": 1,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Brand Blue/300",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.5,
+            "g": 0.6999999284744263,
+            "b": 1,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Brand Blue/400",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.30000001192092896,
+            "g": 0.5799999237060547,
+            "b": 1,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Brand Blue/500",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.07999999821186066,
+            "g": 0.44799986481666565,
+            "b": 1,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Brand Blue/600",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0,
+            "g": 0.3599998652935028,
+            "b": 0.8999999761581421,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Brand Blue/700",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0,
+            "g": 0.27999991178512573,
+            "b": 0.699999988079071,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Brand Blue/800",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0,
+            "g": 0.19199994206428528,
+            "b": 0.47999998927116394,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Brand Blue/900",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0,
+            "g": 0.1199999675154686,
+            "b": 0.30000001192092896,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Brand Blue/950",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0,
+            "g": 0.03999998793005943,
+            "b": 0.10000000149011612,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Error/25",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.9987999796867371,
+            "g": 0.9823733568191528,
+            "b": 0.9812000393867493,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Error/50",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.996705949306488,
+            "g": 0.9516130089759827,
+            "b": 0.9483920931816101,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Error/100",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.9970588088035583,
+            "g": 0.8927451372146606,
+            "b": 0.8852941393852234,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Error/200",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.9978823065757751,
+            "g": 0.8041883111000061,
+            "b": 0.790353000164032,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Error/300",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.9919999837875366,
+            "g": 0.6336000561714172,
+            "b": 0.6080000400543213,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Error/400",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.9782999753952026,
+            "g": 0.4401400089263916,
+            "b": 0.4017000198364258,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Error/500",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.9412000775337219,
+            "g": 0.26695990562438965,
+            "b": 0.218799889087677,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Error/600",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.8526000380516052,
+            "g": 0.17574664950370789,
+            "b": 0.1273999810218811,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Error/700",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.7039999961853027,
+            "g": 0.13653334975242615,
+            "b": 0.09600001573562622,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Error/800",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.5676000118255615,
+            "g": 0.12408001720905304,
+            "b": 0.09240001440048218,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Error/900",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.47849997878074646,
+            "g": 0.15176667273044586,
+            "b": 0.101500004529953,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Error/950",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.33249998092651367,
+            "g": 0.08550000935792923,
+            "b": 0.047500014305114746,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Warning/25",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 1,
+            "g": 0.9893333315849304,
+            "b": 0.9600000381469727,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Warning/50",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 1,
+            "g": 0.9790849685668945,
+            "b": 0.9215686321258545,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Warning/100",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.9977647066116333,
+            "g": 0.9393490552902222,
+            "b": 0.7787059545516968,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Warning/200",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.9976666569709778,
+            "g": 0.8744666576385498,
+            "b": 0.5356666445732117,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Warning/300",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.9964509010314941,
+            "g": 0.7856391668319702,
+            "b": 0.29374516010284424,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Warning/400",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.9912549257278442,
+            "g": 0.6912980675697327,
+            "b": 0.13423526287078857,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Warning/500",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.9701176881790161,
+            "g": 0.5643817782402039,
+            "b": 0.03380393981933594,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Warning/600",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.8613921999931335,
+            "g": 0.4089790880680084,
+            "b": 0.013117611408233643,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Warning/700",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.7115294337272644,
+            "g": 0.2796705961227417,
+            "b": 0.02964705228805542,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Warning/800",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.5772548913955688,
+            "g": 0.21709805727005005,
+            "b": 0.05019611120223999,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Warning/900",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.47647058963775635,
+            "g": 0.18000002205371857,
+            "b": 0.052941203117370605,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Warning/950",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.3059999942779541,
+            "g": 0.11560001224279404,
+            "b": 0.034000009298324585,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Success/25",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.964400053024292,
+            "g": 0.9955999851226807,
+            "b": 0.9768800139427185,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Success/50",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.9267059564590454,
+            "g": 0.9909411668777466,
+            "b": 0.9524000287055969,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Success/100",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.8607999682426453,
+            "g": 0.9792000651359558,
+            "b": 0.902239978313446,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Success/200",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.6686275601387024,
+            "g": 0.9392156004905701,
+            "b": 0.776862621307373,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Success/300",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.4598628282546997,
+            "g": 0.877392053604126,
+            "b": 0.6547098159790039,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Success/400",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.27843138575553894,
+            "g": 0.8039215803146362,
+            "b": 0.5372549295425415,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Success/500",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.09064704179763794,
+            "g": 0.6975882649421692,
+            "b": 0.4143490195274353,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Success/600",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.02735292911529541,
+            "g": 0.580490231513977,
+            "b": 0.33157846331596375,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Success/700",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.021882325410842896,
+            "g": 0.46439218521118164,
+            "b": 0.2800130248069763,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Success/800",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.02970588207244873,
+            "g": 0.36637255549430847,
+            "b": 0.22609473764896393,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Success/900",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.02800002694129944,
+            "g": 0.3014117479324341,
+            "b": 0.19204704463481903,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Success/950",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.018700003623962402,
+            "g": 0.2012999951839447,
+            "b": 0.12825998663902283,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Purple/25",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.9803921580314636,
+            "g": 0.9607843160629272,
+            "b": 1,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Purple/50",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.9607843160629272,
+            "g": 0.9215686321258545,
+            "b": 1,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Purple/100",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.9490196108818054,
+            "g": 0.8980392217636108,
+            "b": 1,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Purple/200",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.9058823585510254,
+            "g": 0.8156862854957581,
+            "b": 1,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Purple/300",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.8352941274642944,
+            "g": 0.6745098233222961,
+            "b": 1,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Purple/400",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.7333333492279053,
+            "g": 0.4627451002597809,
+            "b": 1,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Purple/500",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.6313725709915161,
+            "g": 0.25882354378700256,
+            "b": 1,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Purple/600",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.5843137502670288,
+            "g": 0.1882352977991104,
+            "b": 1,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Purple/700",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.46666666865348816,
+            "g": 0.054901961237192154,
+            "b": 0.886274516582489,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Purple/800",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.4000000059604645,
+            "g": 0.07058823853731155,
+            "b": 0.7176470756530762,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Purple/900",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.3294117748737335,
+            "g": 0.062745101749897,
+            "b": 0.5764706134796143,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Purple/950",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.21960784494876862,
+            "g": 0,
+            "b": 0.43529412150382996,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Spacing/0 (0px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 0
+        }
+      },
+      {
+        "name": "Spacing/0․5 (2px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 2
+        }
+      },
+      {
+        "name": "Spacing/1 (4px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 4
+        }
+      },
+      {
+        "name": "Spacing/1․5 (6px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 6
+        }
+      },
+      {
+        "name": "Spacing/2 (8px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 8
+        }
+      },
+      {
+        "name": "Spacing/3 (12px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 12
+        }
+      },
+      {
+        "name": "Spacing/4 (16px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 16
+        }
+      },
+      {
+        "name": "Spacing/5 (20px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 20
+        }
+      },
+      {
+        "name": "Spacing/6 (24px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 24
+        }
+      },
+      {
+        "name": "Spacing/8 (32px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 32
+        }
+      },
+      {
+        "name": "Spacing/10 (40px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 40
+        }
+      },
+      {
+        "name": "Spacing/12 (48px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 48
+        }
+      },
+      {
+        "name": "Spacing/16 (64px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 64
+        }
+      },
+      {
+        "name": "Spacing/20 (80px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 80
+        }
+      },
+      {
+        "name": "Spacing/24 (96px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 96
+        }
+      },
+      {
+        "name": "Spacing/32 (128px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 128
+        }
+      },
+      {
+        "name": "Spacing/40 (160px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 160
+        }
+      },
+      {
+        "name": "Spacing/48 (192px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 192
+        }
+      },
+      {
+        "name": "Spacing/56 (224px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 224
+        }
+      },
+      {
+        "name": "Spacing/64 (256px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 256
+        }
+      },
+      {
+        "name": "Spacing/80 (320px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 320
+        }
+      },
+      {
+        "name": "Spacing/96 (384px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 384
+        }
+      },
+      {
+        "name": "Spacing/120 (480px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 480
+        }
+      },
+      {
+        "name": "Spacing/140 (560px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 560
+        }
+      },
+      {
+        "name": "Spacing/160 (640px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 640
+        }
+      },
+      {
+        "name": "Spacing/180 (720px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 720
+        }
+      },
+      {
+        "name": "Spacing/192 (768px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 768
+        }
+      },
+      {
+        "name": "Spacing/256 (1,024px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 1024
+        }
+      },
+      {
+        "name": "Spacing/320 (1,280px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 1280
+        }
+      },
+      {
+        "name": "Spacing/360 (1,440px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 1440
+        }
+      },
+      {
+        "name": "Spacing/400 (1,600px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 1600
+        }
+      },
+      {
+        "name": "Spacing/480 (1,920px)",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "75:0": 1920
+        }
+      }
+    ]
+  },
+  "Color modes": {
+    "modes": [
+      {
+        "name": "Light",
+        "modeId": "75:2"
+      },
+      {
+        "name": "Dark",
+        "modeId": "75:4"
+      }
+    ],
+    "variables": [
+      {
+        "name": "Colors/Text/text-primary (900)",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.04172549024224281,
+            "g": 0.05050980672240257,
+            "b": 0.0680784359574318,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/950"
+          },
+          "75:4": {
+            "r": 0.9495000243186951,
+            "g": 0.9498999714851379,
+            "b": 0.9505000114440918,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/25"
+          }
+        }
+      },
+      {
+        "name": "Colors/Text/text-primary_on-brand",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Base/white"
+          },
+          "75:4": {
+            "r": 0.8867000341415405,
+            "g": 0.8893397450447083,
+            "b": 0.8932999968528748,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/50"
+          }
+        }
+      },
+      {
+        "name": "Colors/Text/text-primary_on-white",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.03921568766236305,
+            "g": 0.04967320337891579,
+            "b": 0.07058823853731155,
+            "a": 1
+          },
+          "75:4": {
+            "r": 0.03921568766236305,
+            "g": 0.05098039284348488,
+            "b": 0.07058823853731155,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Text/text-secondary (600)",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.2549019753932953,
+            "g": 0.27581700682640076,
+            "b": 0.3176470696926117,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/700"
+          },
+          "75:4": {
+            "r": 0.5998367071151733,
+            "g": 0.615967333316803,
+            "b": 0.6401633024215698,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/400"
+          }
+        }
+      },
+      {
+        "name": "Colors/Text/text-secondary_hover",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.14509804546833038,
+            "g": 0.16862745583057404,
+            "b": 0.21568627655506134,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/800"
+          },
+          "75:4": {
+            "r": 0.7472652792930603,
+            "g": 0.7574530243873596,
+            "b": 0.7727347016334534,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/200"
+          }
+        }
+      },
+      {
+        "name": "Colors/Text/text-secondary_on-brand",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.30000001192092896,
+            "g": 0.5799999237060547,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/400"
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Base/white"
+          }
+        }
+      },
+      {
+        "name": "Colors/Text/text-tertiary (600)",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.3265098035335541,
+            "g": 0.3454379141330719,
+            "b": 0.38329413533210754,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/600"
+          },
+          "75:4": {
+            "r": 0.6425098180770874,
+            "g": 0.656000018119812,
+            "b": 0.6829804182052612,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/400"
+          }
+        }
+      },
+      {
+        "name": "Colors/Text/text-tertiary_hover",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.2549019753932953,
+            "g": 0.27581700682640076,
+            "b": 0.3176470696926117,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/700"
+          },
+          "75:4": {
+            "r": 0.6840816736221313,
+            "g": 0.6968162655830383,
+            "b": 0.7159183621406555,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/300"
+          }
+        }
+      },
+      {
+        "name": "Colors/Text/text-tertiary_on-brand",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.699999988079071,
+            "g": 0.8199999332427979,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/200"
+          },
+          "75:4": {
+            "r": 0.5998367071151733,
+            "g": 0.615967333316803,
+            "b": 0.6401633024215698,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/400"
+          }
+        }
+      },
+      {
+        "name": "Colors/Text/text-quaternary (500)",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.6425098180770874,
+            "g": 0.656000018119812,
+            "b": 0.6829804182052612,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/400"
+          },
+          "75:4": {
+            "r": 0.5998367071151733,
+            "g": 0.615967333316803,
+            "b": 0.6401633024215698,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/400"
+          }
+        }
+      },
+      {
+        "name": "Colors/Text/text-quaternary_on-brand",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.5,
+            "g": 0.6999999284744263,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/300"
+          },
+          "75:4": {
+            "r": 0.5998367071151733,
+            "g": 0.615967333316803,
+            "b": 0.6401633024215698,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/400"
+          }
+        }
+      },
+      {
+        "name": "Colors/Text/text-white",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Base/white"
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Base/white"
+          }
+        }
+      },
+      {
+        "name": "Colors/Text/text-disabled",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.4431372582912445,
+            "g": 0.4627451002597809,
+            "b": 0.501960813999176,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/500"
+          },
+          "75:4": {
+            "r": 0.4930841028690338,
+            "g": 0.514616847038269,
+            "b": 0.5469158887863159,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/500"
+          }
+        }
+      },
+      {
+        "name": "Colors/Text/text-placeholder",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.6425098180770874,
+            "g": 0.656000018119812,
+            "b": 0.6829804182052612,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/400"
+          },
+          "75:4": {
+            "r": 0.39680981636047363,
+            "g": 0.4153619706630707,
+            "b": 0.44319018721580505,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/600"
+          }
+        }
+      },
+      {
+        "name": "Colors/Text/text-placeholder_subtle",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.8358039259910583,
+            "g": 0.8420000076293945,
+            "b": 0.8543921709060669,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/300"
+          },
+          "75:4": {
+            "r": 0.3028571307659149,
+            "g": 0.316571444272995,
+            "b": 0.33714285492897034,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/700"
+          }
+        }
+      },
+      {
+        "name": "Colors/Text/text-brand-primary (900)",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0.1199999675154686,
+            "b": 0.30000001192092896,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/900"
+          },
+          "75:4": {
+            "r": 0.8867000341415405,
+            "g": 0.8893397450447083,
+            "b": 0.8932999968528748,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/50"
+          }
+        }
+      },
+      {
+        "name": "Colors/Text/text-brand-secondary (700)",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0.27999991178512573,
+            "b": 0.699999988079071,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/700"
+          },
+          "75:4": {
+            "r": 0.6840816736221313,
+            "g": 0.6968162655830383,
+            "b": 0.7159183621406555,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/300"
+          }
+        }
+      },
+      {
+        "name": "Colors/Text/text-brand-secondary_hover",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0.19199994206428528,
+            "b": 0.47999998927116394,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/800"
+          },
+          "75:4": {
+            "r": 0.7472652792930603,
+            "g": 0.7574530243873596,
+            "b": 0.7727347016334534,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/200"
+          }
+        }
+      },
+      {
+        "name": "Colors/Text/text-brand-tertiary (600)",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0.3599998652935028,
+            "b": 0.8999999761581421,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/600"
+          },
+          "75:4": {
+            "r": 0.5998367071151733,
+            "g": 0.615967333316803,
+            "b": 0.6401633024215698,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/400"
+          }
+        }
+      },
+      {
+        "name": "Colors/Text/text-brand-tertiary_alt",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0.3599998652935028,
+            "b": 0.8999999761581421,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/600"
+          },
+          "75:4": {
+            "r": 0.699999988079071,
+            "g": 0.8199999332427979,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/200"
+          }
+        }
+      },
+      {
+        "name": "Colors/Text/text-error-primary (600)",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.8526000380516052,
+            "g": 0.17574664950370789,
+            "b": 0.1273999810218811,
+            "a": 1,
+            "_alias": "Colors/Error/600"
+          },
+          "75:4": {
+            "r": 0.9782999753952026,
+            "g": 0.4401400089263916,
+            "b": 0.4017000198364258,
+            "a": 1,
+            "_alias": "Colors/Error/400"
+          }
+        }
+      },
+      {
+        "name": "Colors/Text/text-error-primary_hover",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.7039999961853027,
+            "g": 0.13653334975242615,
+            "b": 0.09600001573562622,
+            "a": 1,
+            "_alias": "Colors/Error/700"
+          },
+          "75:4": {
+            "r": 0.9919999837875366,
+            "g": 0.6336000561714172,
+            "b": 0.6080000400543213,
+            "a": 1,
+            "_alias": "Colors/Error/300"
+          }
+        }
+      },
+      {
+        "name": "Colors/Text/text-warning-primary (600)",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.8613921999931335,
+            "g": 0.4089790880680084,
+            "b": 0.013117611408233643,
+            "a": 1,
+            "_alias": "Colors/Warning/600"
+          },
+          "75:4": {
+            "r": 0.9912549257278442,
+            "g": 0.6912980675697327,
+            "b": 0.13423526287078857,
+            "a": 1,
+            "_alias": "Colors/Warning/400"
+          }
+        }
+      },
+      {
+        "name": "Colors/Text/text-success-primary (600)",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.02735292911529541,
+            "g": 0.580490231513977,
+            "b": 0.33157846331596375,
+            "a": 1,
+            "_alias": "Colors/Success/600"
+          },
+          "75:4": {
+            "r": 0.27843138575553894,
+            "g": 0.8039215803146362,
+            "b": 0.5372549295425415,
+            "a": 1,
+            "_alias": "Colors/Success/400"
+          }
+        }
+      },
+      {
+        "name": "Colors/Border/border-primary",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.8358039259910583,
+            "g": 0.8420000076293945,
+            "b": 0.8543921709060669,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/300"
+          },
+          "75:4": {
+            "r": 0.3028571307659149,
+            "g": 0.316571444272995,
+            "b": 0.33714285492897034,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/700"
+          }
+        }
+      },
+      {
+        "name": "Colors/Border/border-secondary",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9137254953384399,
+            "g": 0.9163398742675781,
+            "b": 0.9215686321258545,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/200"
+          },
+          "75:4": {
+            "r": 0.19016394019126892,
+            "g": 0.19803278148174286,
+            "b": 0.20983606576919556,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/800"
+          }
+        }
+      },
+      {
+        "name": "Colors/Border/border-secondary_alt",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.05000000074505806
+          },
+          "75:4": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1,
+            "_alias": "Colors/Base/black"
+          }
+        }
+      },
+      {
+        "name": "Colors/Border/border-tertiary",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.96039217710495,
+            "g": 0.9606797695159912,
+            "b": 0.9611764550209045,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/100"
+          },
+          "75:4": {
+            "r": 0.19016394019126892,
+            "g": 0.19803278148174286,
+            "b": 0.20983606576919556,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/800"
+          }
+        }
+      },
+      {
+        "name": "Colors/Border/border-disabled",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.8358039259910583,
+            "g": 0.8420000076293945,
+            "b": 0.8543921709060669,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/300"
+          },
+          "75:4": {
+            "r": 0.3028571307659149,
+            "g": 0.316571444272995,
+            "b": 0.33714285492897034,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/700"
+          }
+        }
+      },
+      {
+        "name": "Colors/Border/border-disabled_subtle",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9137254953384399,
+            "g": 0.9163398742675781,
+            "b": 0.9215686321258545,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/200"
+          },
+          "75:4": {
+            "r": 0.19016394019126892,
+            "g": 0.19803278148174286,
+            "b": 0.20983606576919556,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/800"
+          }
+        }
+      },
+      {
+        "name": "Colors/Border/border-reversed",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Base/white"
+          },
+          "75:4": {
+            "r": 0.19016394019126892,
+            "g": 0.19803278148174286,
+            "b": 0.20983606576919556,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/800"
+          }
+        }
+      },
+      {
+        "name": "Colors/Border/border-brand",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.07999999821186066,
+            "g": 0.44799986481666565,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/500"
+          },
+          "75:4": {
+            "r": 0.30000001192092896,
+            "g": 0.5799999237060547,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/400"
+          }
+        }
+      },
+      {
+        "name": "Colors/Border/border-brand_alt",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0.3599998652935028,
+            "b": 0.8999999761581421,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/600"
+          },
+          "75:4": {
+            "r": 0.3028571307659149,
+            "g": 0.316571444272995,
+            "b": 0.33714285492897034,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/700"
+          }
+        }
+      },
+      {
+        "name": "Colors/Border/border-error",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9412000775337219,
+            "g": 0.26695990562438965,
+            "b": 0.218799889087677,
+            "a": 1,
+            "_alias": "Colors/Error/500"
+          },
+          "75:4": {
+            "r": 0.9782999753952026,
+            "g": 0.4401400089263916,
+            "b": 0.4017000198364258,
+            "a": 1,
+            "_alias": "Colors/Error/400"
+          }
+        }
+      },
+      {
+        "name": "Colors/Border/border-error_subtle",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9919999837875366,
+            "g": 0.6336000561714172,
+            "b": 0.6080000400543213,
+            "a": 1,
+            "_alias": "Colors/Error/300"
+          },
+          "75:4": {
+            "r": 0.9412000775337219,
+            "g": 0.26695990562438965,
+            "b": 0.218799889087677,
+            "a": 1,
+            "_alias": "Colors/Error/500"
+          }
+        }
+      },
+      {
+        "name": "Colors/Border/border-inside-reversed-top",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0
+          },
+          "75:4": {
+            "r": 0.1882352977991104,
+            "g": 0.19607843458652496,
+            "b": 0.21176470816135406,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Border/border-inside-reversed-bottom",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.20000000298023224
+          },
+          "75:4": {
+            "r": 0.5529412031173706,
+            "g": 0.5764706134796143,
+            "b": 0.6117647290229797,
+            "a": 0
+          }
+        }
+      },
+      {
+        "name": "Colors/Foreground/fg-primary (900)",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.09882353246212006,
+            "g": 0.11529411375522614,
+            "b": 0.14823530614376068,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/900"
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Base/white"
+          }
+        }
+      },
+      {
+        "name": "Colors/Foreground/fg-secondary (700)",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.2549019753932953,
+            "g": 0.27581700682640076,
+            "b": 0.3176470696926117,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/700"
+          },
+          "75:4": {
+            "r": 0.6840816736221313,
+            "g": 0.6968162655830383,
+            "b": 0.7159183621406555,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/300"
+          }
+        }
+      },
+      {
+        "name": "Colors/Foreground/fg-secondary_hover",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.15333333611488342,
+            "g": 0.17137254774570465,
+            "b": 0.2074509859085083,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/800"
+          },
+          "75:4": {
+            "r": 0.7472652792930603,
+            "g": 0.7574530243873596,
+            "b": 0.7727347016334534,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/200"
+          }
+        }
+      },
+      {
+        "name": "Colors/Foreground/fg-tertiary (600)",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.3265098035335541,
+            "g": 0.3454379141330719,
+            "b": 0.38329413533210754,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/600"
+          },
+          "75:4": {
+            "r": 0.5998367071151733,
+            "g": 0.615967333316803,
+            "b": 0.6401633024215698,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/400"
+          }
+        }
+      },
+      {
+        "name": "Colors/Foreground/fg-tertiary_hover",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.2549019753932953,
+            "g": 0.27581700682640076,
+            "b": 0.3176470696926117,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/700"
+          },
+          "75:4": {
+            "r": 0.6840816736221313,
+            "g": 0.6968162655830383,
+            "b": 0.7159183621406555,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/300"
+          }
+        }
+      },
+      {
+        "name": "Colors/Foreground/fg-quaternary (400)",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.6425098180770874,
+            "g": 0.656000018119812,
+            "b": 0.6829804182052612,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/400"
+          },
+          "75:4": {
+            "r": 0.39680981636047363,
+            "g": 0.4153619706630707,
+            "b": 0.44319018721580505,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/600"
+          }
+        }
+      },
+      {
+        "name": "Colors/Foreground/fg-quaternary_hover",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.4431372582912445,
+            "g": 0.4627451002597809,
+            "b": 0.501960813999176,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/500"
+          },
+          "75:4": {
+            "r": 0.4930841028690338,
+            "g": 0.514616847038269,
+            "b": 0.5469158887863159,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/500"
+          }
+        }
+      },
+      {
+        "name": "Colors/Foreground/fg-white",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Base/white"
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Base/white"
+          }
+        }
+      },
+      {
+        "name": "Colors/Foreground/fg-disabled",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.6425098180770874,
+            "g": 0.656000018119812,
+            "b": 0.6829804182052612,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/400"
+          },
+          "75:4": {
+            "r": 0.4930841028690338,
+            "g": 0.514616847038269,
+            "b": 0.5469158887863159,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/500"
+          }
+        }
+      },
+      {
+        "name": "Colors/Foreground/fg-disabled_subtle",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.8358039259910583,
+            "g": 0.8420000076293945,
+            "b": 0.8543921709060669,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/300"
+          },
+          "75:4": {
+            "r": 0.39680981636047363,
+            "g": 0.4153619706630707,
+            "b": 0.44319018721580505,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/600"
+          }
+        }
+      },
+      {
+        "name": "Colors/Foreground/fg-brand-primary (600)",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0.3599998652935028,
+            "b": 0.8999999761581421,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/600"
+          },
+          "75:4": {
+            "r": 0.07999999821186066,
+            "g": 0.44799986481666565,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/500"
+          }
+        }
+      },
+      {
+        "name": "Colors/Foreground/fg-brand-primary_alt",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0.3599998652935028,
+            "b": 0.8999999761581421,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/600"
+          },
+          "75:4": {
+            "r": 0.6840816736221313,
+            "g": 0.6968162655830383,
+            "b": 0.7159183621406555,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/300"
+          }
+        }
+      },
+      {
+        "name": "Colors/Foreground/fg-brand-secondary (500)",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.07999999821186066,
+            "g": 0.44799986481666565,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/500"
+          },
+          "75:4": {
+            "r": 0.4930841028690338,
+            "g": 0.514616847038269,
+            "b": 0.5469158887863159,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/500"
+          }
+        }
+      },
+      {
+        "name": "Colors/Foreground/fg-brand-secondary_alt",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.07999999821186066,
+            "g": 0.44799986481666565,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/500"
+          },
+          "75:4": {
+            "r": 0.39680981636047363,
+            "g": 0.4153619706630707,
+            "b": 0.44319018721580505,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/600"
+          }
+        }
+      },
+      {
+        "name": "Colors/Foreground/fg-brand-secondary_hover",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.07999999821186066,
+            "g": 0.44799986481666565,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/500"
+          },
+          "75:4": {
+            "r": 0.4930841028690338,
+            "g": 0.514616847038269,
+            "b": 0.5469158887863159,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/500"
+          }
+        }
+      },
+      {
+        "name": "Colors/Foreground/fg-error-primary",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.8526000380516052,
+            "g": 0.17574664950370789,
+            "b": 0.1273999810218811,
+            "a": 1,
+            "_alias": "Colors/Error/600"
+          },
+          "75:4": {
+            "r": 0.9412000775337219,
+            "g": 0.26695990562438965,
+            "b": 0.218799889087677,
+            "a": 1,
+            "_alias": "Colors/Error/500"
+          }
+        }
+      },
+      {
+        "name": "Colors/Foreground/fg-error-secondary",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9412000775337219,
+            "g": 0.26695990562438965,
+            "b": 0.218799889087677,
+            "a": 1,
+            "_alias": "Colors/Error/500"
+          },
+          "75:4": {
+            "r": 0.9782999753952026,
+            "g": 0.4401400089263916,
+            "b": 0.4017000198364258,
+            "a": 1,
+            "_alias": "Colors/Error/400"
+          }
+        }
+      },
+      {
+        "name": "Colors/Foreground/fg-warning-primary",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.8613921999931335,
+            "g": 0.4089790880680084,
+            "b": 0.013117611408233643,
+            "a": 1,
+            "_alias": "Colors/Warning/600"
+          },
+          "75:4": {
+            "r": 0.9701176881790161,
+            "g": 0.5643817782402039,
+            "b": 0.03380393981933594,
+            "a": 1,
+            "_alias": "Colors/Warning/500"
+          }
+        }
+      },
+      {
+        "name": "Colors/Foreground/fg-warning-secondary",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9701176881790161,
+            "g": 0.5643817782402039,
+            "b": 0.03380393981933594,
+            "a": 1,
+            "_alias": "Colors/Warning/500"
+          },
+          "75:4": {
+            "r": 0.9912549257278442,
+            "g": 0.6912980675697327,
+            "b": 0.13423526287078857,
+            "a": 1,
+            "_alias": "Colors/Warning/400"
+          }
+        }
+      },
+      {
+        "name": "Colors/Foreground/fg-success-primary",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.02735292911529541,
+            "g": 0.580490231513977,
+            "b": 0.33157846331596375,
+            "a": 1,
+            "_alias": "Colors/Success/600"
+          },
+          "75:4": {
+            "r": 0.09064704179763794,
+            "g": 0.6975882649421692,
+            "b": 0.4143490195274353,
+            "a": 1,
+            "_alias": "Colors/Success/500"
+          }
+        }
+      },
+      {
+        "name": "Colors/Foreground/fg-success-secondary",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.09064704179763794,
+            "g": 0.6975882649421692,
+            "b": 0.4143490195274353,
+            "a": 1,
+            "_alias": "Colors/Success/500"
+          },
+          "75:4": {
+            "r": 0.27843138575553894,
+            "g": 0.8039215803146362,
+            "b": 0.5372549295425415,
+            "a": 1,
+            "_alias": "Colors/Success/400"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/Black-white-inversed (alpha)",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0,
+            "_alias": "Colors/Base/transparent"
+          },
+          "75:4": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0,
+            "_alias": "Colors/Base/transparent black"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-primary",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Base/white"
+          },
+          "75:4": {
+            "r": 0.0117647061124444,
+            "g": 0.01568627543747425,
+            "b": 0.019607843831181526,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/950"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-primary_alt",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Base/white"
+          },
+          "75:4": {
+            "r": 0.09400000423192978,
+            "g": 0.09879999607801437,
+            "b": 0.10599999874830246,
+            "a": 1,
+            "_alias": "Colors/Background/bg-secondary"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-brand_hover",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.1599999964237213,
+            "_alias": "Colors/Gray (light mode alpha)/200"
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.1599999964237213,
+            "_alias": "Colors/Gray (dark mode alpha)/700"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-brand_pressed",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.3499999940395355,
+            "_alias": "Colors/Gray (light mode alpha)/300"
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.5,
+            "_alias": "Colors/Gray (dark mode alpha)/500"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-gray_hover",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.03999999910593033,
+            "_alias": "Colors/Gray (light mode alpha)/50"
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.07999999821186066,
+            "_alias": "Colors/Gray (dark mode alpha)/800"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-gray_pressed",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.1599999964237213,
+            "_alias": "Colors/Gray (light mode alpha)/200"
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.25,
+            "_alias": "Colors/Gray (dark mode alpha)/600"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-destructive_hover",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.1599999964237213,
+            "_alias": "Colors/Gray (light mode alpha)/200"
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.03999999910593033,
+            "_alias": "Colors/Gray (dark mode alpha)/900"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-destructive_pressed",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.5,
+            "_alias": "Colors/Gray (light mode alpha)/400"
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.1599999964237213,
+            "_alias": "Colors/Gray (dark mode alpha)/700"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg_destructive_hover_alt",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.996705949306488,
+            "g": 0.9516130089759827,
+            "b": 0.9483920931816101,
+            "a": 1,
+            "_alias": "Colors/Error/50"
+          },
+          "75:4": {
+            "r": 0.33249998092651367,
+            "g": 0.08550000935792923,
+            "b": 0.047500014305114746,
+            "a": 1,
+            "_alias": "Colors/Error/950"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg_destructive_pressed_alt",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9978823065757751,
+            "g": 0.8041883111000061,
+            "b": 0.790353000164032,
+            "a": 1,
+            "_alias": "Colors/Error/200"
+          },
+          "75:4": {
+            "r": 0.5676000118255615,
+            "g": 0.12408001720905304,
+            "b": 0.09240001440048218,
+            "a": 1,
+            "_alias": "Colors/Error/800"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-primary-solid",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.04172549024224281,
+            "g": 0.05050980672240257,
+            "b": 0.0680784359574318,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/950"
+          },
+          "75:4": {
+            "r": 0.09400000423192978,
+            "g": 0.09879999607801437,
+            "b": 0.10599999874830246,
+            "a": 1,
+            "_alias": "Colors/Background/bg-secondary"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-secondary",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9801960587501526,
+            "g": 0.9803071618080139,
+            "b": 0.9805882573127747,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/50"
+          },
+          "75:4": {
+            "r": 0.09400000423192978,
+            "g": 0.09879999607801437,
+            "b": 0.10599999874830246,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/900"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-secondary_alt",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9801960587501526,
+            "g": 0.9803071618080139,
+            "b": 0.9805882573127747,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/50"
+          },
+          "75:4": {
+            "r": 0.0117647061124444,
+            "g": 0.01568627543747425,
+            "b": 0.019607843831181526,
+            "a": 1,
+            "_alias": "Colors/Background/bg-primary"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-secondary_hover",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.96039217710495,
+            "g": 0.9606797695159912,
+            "b": 0.9611764550209045,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/100"
+          },
+          "75:4": {
+            "r": 0.19016394019126892,
+            "g": 0.19803278148174286,
+            "b": 0.20983606576919556,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/800"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-secondary_subtle",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9901961088180542,
+            "g": 0.9901961088180542,
+            "b": 0.9901961088180542,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/25"
+          },
+          "75:4": {
+            "r": 0.09400000423192978,
+            "g": 0.09879999607801437,
+            "b": 0.10599999874830246,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/900"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-secondary-solid",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.3265098035335541,
+            "g": 0.3454379141330719,
+            "b": 0.38329413533210754,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/600"
+          },
+          "75:4": {
+            "r": 0.39680981636047363,
+            "g": 0.4153619706630707,
+            "b": 0.44319018721580505,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/600"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-tertiary",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.96039217710495,
+            "g": 0.9606797695159912,
+            "b": 0.9611764550209045,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/100"
+          },
+          "75:4": {
+            "r": 0.19016394019126892,
+            "g": 0.19803278148174286,
+            "b": 0.20983606576919556,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/800"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-quaternary",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9137254953384399,
+            "g": 0.9163398742675781,
+            "b": 0.9215686321258545,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/200"
+          },
+          "75:4": {
+            "r": 0.3028571307659149,
+            "g": 0.316571444272995,
+            "b": 0.33714285492897034,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/700"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-active",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9801960587501526,
+            "g": 0.9803071618080139,
+            "b": 0.9805882573127747,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/50"
+          },
+          "75:4": {
+            "r": 0.19016394019126892,
+            "g": 0.19803278148174286,
+            "b": 0.20983606576919556,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/800"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-disabled",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.96039217710495,
+            "g": 0.9606797695159912,
+            "b": 0.9611764550209045,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/100"
+          },
+          "75:4": {
+            "r": 0.19016394019126892,
+            "g": 0.19803278148174286,
+            "b": 0.20983606576919556,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/800"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-disabled_subtle",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9801960587501526,
+            "g": 0.9803071618080139,
+            "b": 0.9805882573127747,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/50"
+          },
+          "75:4": {
+            "r": 0.09400000423192978,
+            "g": 0.09879999607801437,
+            "b": 0.10599999874830246,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/900"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-overlay",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.04172549024224281,
+            "g": 0.05050980672240257,
+            "b": 0.0680784359574318,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/950"
+          },
+          "75:4": {
+            "r": 0.19016394019126892,
+            "g": 0.19803278148174286,
+            "b": 0.20983606576919556,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/800"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-brand-primary",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.8799999952316284,
+            "g": 0.9280000329017639,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/50"
+          },
+          "75:4": {
+            "r": 0.07999999821186066,
+            "g": 0.44799986481666565,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/500"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-brand-primary_alt",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.8799999952316284,
+            "g": 0.9280000329017639,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/50"
+          },
+          "75:4": {
+            "r": 0.09400000423192978,
+            "g": 0.09879999607801437,
+            "b": 0.10599999874830246,
+            "a": 1,
+            "_alias": "Colors/Background/bg-secondary"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-brand-secondary",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.8199999928474426,
+            "g": 0.8920000791549683,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/100"
+          },
+          "75:4": {
+            "r": 0,
+            "g": 0.3599998652935028,
+            "b": 0.8999999761581421,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/600"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-brand-solid",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0.3599998652935028,
+            "b": 0.8999999761581421,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/600"
+          },
+          "75:4": {
+            "r": 0,
+            "g": 0.3599998652935028,
+            "b": 0.8999999761581421,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/600"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-brand-solid_hover",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0.27999991178512573,
+            "b": 0.699999988079071,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/700"
+          },
+          "75:4": {
+            "r": 0.07999999821186066,
+            "g": 0.44799986481666565,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/500"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-brand-section",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0.19199994206428528,
+            "b": 0.47999998927116394,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/800"
+          },
+          "75:4": {
+            "r": 0.09400000423192978,
+            "g": 0.09879999607801437,
+            "b": 0.10599999874830246,
+            "a": 1,
+            "_alias": "Colors/Background/bg-secondary"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-brand-section_subtle",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.96039217710495,
+            "g": 0.9606797695159912,
+            "b": 0.9611764550209045,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/100"
+          },
+          "75:4": {
+            "r": 0.0117647061124444,
+            "g": 0.01568627543747425,
+            "b": 0.019607843831181526,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/950"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-error-primary",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.996705949306488,
+            "g": 0.9516130089759827,
+            "b": 0.9483920931816101,
+            "a": 1,
+            "_alias": "Colors/Error/50"
+          },
+          "75:4": {
+            "r": 0.33249998092651367,
+            "g": 0.08550000935792923,
+            "b": 0.047500014305114746,
+            "a": 1,
+            "_alias": "Colors/Error/950"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-error-secondary",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9970588088035583,
+            "g": 0.8927451372146606,
+            "b": 0.8852941393852234,
+            "a": 1,
+            "_alias": "Colors/Error/100"
+          },
+          "75:4": {
+            "r": 0.8526000380516052,
+            "g": 0.17574664950370789,
+            "b": 0.1273999810218811,
+            "a": 1,
+            "_alias": "Colors/Error/600"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-error-solid",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.8526000380516052,
+            "g": 0.17574664950370789,
+            "b": 0.1273999810218811,
+            "a": 1,
+            "_alias": "Colors/Error/600"
+          },
+          "75:4": {
+            "r": 0.8526000380516052,
+            "g": 0.17574664950370789,
+            "b": 0.1273999810218811,
+            "a": 1,
+            "_alias": "Colors/Error/600"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-error-solid_hover",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.7039999961853027,
+            "g": 0.13653334975242615,
+            "b": 0.09600001573562622,
+            "a": 1,
+            "_alias": "Colors/Error/700"
+          },
+          "75:4": {
+            "r": 0.9412000775337219,
+            "g": 0.26695990562438965,
+            "b": 0.218799889087677,
+            "a": 1,
+            "_alias": "Colors/Error/500"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-warning-primary",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 1,
+            "g": 0.9790849685668945,
+            "b": 0.9215686321258545,
+            "a": 1,
+            "_alias": "Colors/Warning/50"
+          },
+          "75:4": {
+            "r": 0.3059999942779541,
+            "g": 0.11560001224279404,
+            "b": 0.034000009298324585,
+            "a": 1,
+            "_alias": "Colors/Warning/950"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-warning-secondary",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9977647066116333,
+            "g": 0.9393490552902222,
+            "b": 0.7787059545516968,
+            "a": 1,
+            "_alias": "Colors/Warning/100"
+          },
+          "75:4": {
+            "r": 0.8613921999931335,
+            "g": 0.4089790880680084,
+            "b": 0.013117611408233643,
+            "a": 1,
+            "_alias": "Colors/Warning/600"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-warning-solid",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.8613921999931335,
+            "g": 0.4089790880680084,
+            "b": 0.013117611408233643,
+            "a": 1,
+            "_alias": "Colors/Warning/600"
+          },
+          "75:4": {
+            "r": 0.9701176881790161,
+            "g": 0.5643817782402039,
+            "b": 0.03380393981933594,
+            "a": 1,
+            "_alias": "Colors/Warning/500"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-success-primary",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9267059564590454,
+            "g": 0.9909411668777466,
+            "b": 0.9524000287055969,
+            "a": 1,
+            "_alias": "Colors/Success/50"
+          },
+          "75:4": {
+            "r": 0.018700003623962402,
+            "g": 0.2012999951839447,
+            "b": 0.12825998663902283,
+            "a": 1,
+            "_alias": "Colors/Success/950"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-success-secondary",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.8607999682426453,
+            "g": 0.9792000651359558,
+            "b": 0.902239978313446,
+            "a": 1,
+            "_alias": "Colors/Success/100"
+          },
+          "75:4": {
+            "r": 0.09064704179763794,
+            "g": 0.6975882649421692,
+            "b": 0.4143490195274353,
+            "a": 1,
+            "_alias": "Colors/Success/500"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-success-solid",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.02735292911529541,
+            "g": 0.580490231513977,
+            "b": 0.33157846331596375,
+            "a": 1,
+            "_alias": "Colors/Success/600"
+          },
+          "75:4": {
+            "r": 0.02735292911529541,
+            "g": 0.580490231513977,
+            "b": 0.33157846331596375,
+            "a": 1,
+            "_alias": "Colors/Success/600"
+          }
+        }
+      },
+      {
+        "name": "Colors/Effects/Focus rings/focus-ring",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.07999999821186066,
+            "g": 0.44799986481666565,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/500"
+          },
+          "75:4": {
+            "r": 0.07999999821186066,
+            "g": 0.44799986481666565,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/500"
+          }
+        }
+      },
+      {
+        "name": "Colors/Effects/Focus rings/focus-ring-error",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9412000775337219,
+            "g": 0.26695990562438965,
+            "b": 0.218799889087677,
+            "a": 1,
+            "_alias": "Colors/Error/500"
+          },
+          "75:4": {
+            "r": 0.9412000775337219,
+            "g": 0.26695990562438965,
+            "b": 0.218799889087677,
+            "a": 1,
+            "_alias": "Colors/Error/500"
+          }
+        }
+      },
+      {
+        "name": "Colors/Effects/Shadows/shadow-xs",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.03921568766236305,
+            "g": 0.04967320337891579,
+            "b": 0.07058823853731155,
+            "a": 0.05000000074505806
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0,
+            "_alias": "Colors/Base/transparent"
+          }
+        }
+      },
+      {
+        "name": "Colors/Effects/Shadows/shadow-sm_01",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.03921568766236305,
+            "g": 0.04967320337891579,
+            "b": 0.07058823853731155,
+            "a": 0.10000000149011612
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0,
+            "_alias": "Colors/Base/transparent"
+          }
+        }
+      },
+      {
+        "name": "Colors/Effects/Shadows/shadow-sm_02",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.03921568766236305,
+            "g": 0.04967320337891579,
+            "b": 0.07058823853731155,
+            "a": 0.10000000149011612
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0,
+            "_alias": "Colors/Base/transparent"
+          }
+        }
+      },
+      {
+        "name": "Colors/Effects/Shadows/shadow-md_01",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.03921568766236305,
+            "g": 0.04967320337891579,
+            "b": 0.07058823853731155,
+            "a": 0.10000000149011612
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0,
+            "_alias": "Colors/Base/transparent"
+          }
+        }
+      },
+      {
+        "name": "Colors/Effects/Shadows/shadow-md_02",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.03921568766236305,
+            "g": 0.04967320337891579,
+            "b": 0.07058823853731155,
+            "a": 0.05999999865889549
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0,
+            "_alias": "Colors/Base/transparent"
+          }
+        }
+      },
+      {
+        "name": "Colors/Effects/Shadows/shadow-lg_01",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.03921568766236305,
+            "g": 0.04967320337891579,
+            "b": 0.07058823853731155,
+            "a": 0.07999999821186066
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0,
+            "_alias": "Colors/Base/transparent"
+          }
+        }
+      },
+      {
+        "name": "Colors/Effects/Shadows/shadow-lg_02",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.03921568766236305,
+            "g": 0.04967320337891579,
+            "b": 0.07058823853731155,
+            "a": 0.029999999329447746
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0,
+            "_alias": "Colors/Base/transparent"
+          }
+        }
+      },
+      {
+        "name": "Colors/Effects/Shadows/shadow-lg_03",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.03921568766236305,
+            "g": 0.04967320337891579,
+            "b": 0.07058823853731155,
+            "a": 0.03999999910593033
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0,
+            "_alias": "Colors/Base/transparent"
+          }
+        }
+      },
+      {
+        "name": "Colors/Effects/Shadows/shadow-xl_01",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.03921568766236305,
+            "g": 0.04967320337891579,
+            "b": 0.07058823853731155,
+            "a": 0.07999999821186066
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0,
+            "_alias": "Colors/Base/transparent"
+          }
+        }
+      },
+      {
+        "name": "Colors/Effects/Shadows/shadow-xl_02",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.03921568766236305,
+            "g": 0.04967320337891579,
+            "b": 0.07058823853731155,
+            "a": 0.029999999329447746
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0,
+            "_alias": "Colors/Base/transparent"
+          }
+        }
+      },
+      {
+        "name": "Colors/Effects/Shadows/shadow-xl_03",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.03921568766236305,
+            "g": 0.04967320337891579,
+            "b": 0.07058823853731155,
+            "a": 0.03999999910593033
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0,
+            "_alias": "Colors/Base/transparent"
+          }
+        }
+      },
+      {
+        "name": "Colors/Effects/Shadows/shadow-2xl_01",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.03921568766236305,
+            "g": 0.04967320337891579,
+            "b": 0.07058823853731155,
+            "a": 0.18000000715255737
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0,
+            "_alias": "Colors/Base/transparent"
+          }
+        }
+      },
+      {
+        "name": "Colors/Effects/Shadows/shadow-2xl_02",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.03921568766236305,
+            "g": 0.04967320337891579,
+            "b": 0.07058823853731155,
+            "a": 0.03999999910593033
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0,
+            "_alias": "Colors/Base/transparent"
+          }
+        }
+      },
+      {
+        "name": "Colors/Effects/Shadows/shadow-3xl_01",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.03921568766236305,
+            "g": 0.04967320337891579,
+            "b": 0.07058823853731155,
+            "a": 0.14000000059604645
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0,
+            "_alias": "Colors/Base/transparent"
+          }
+        }
+      },
+      {
+        "name": "Colors/Effects/Shadows/shadow-3xl_02",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.03921568766236305,
+            "g": 0.04967320337891579,
+            "b": 0.07058823853731155,
+            "a": 0.03999999910593033
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0,
+            "_alias": "Colors/Base/transparent"
+          }
+        }
+      },
+      {
+        "name": "Colors/Effects/Shadows/shadow-inversed",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.03999999910593033
+          },
+          "75:4": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.1599999964237213,
+            "_alias": "Colors/Gray (light mode alpha)/200"
+          }
+        }
+      },
+      {
+        "name": "Colors/Effects/Shadows/shadow-skeumorphic",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.03921568766236305,
+            "g": 0.04967320337891579,
+            "b": 0.07058823853731155,
+            "a": 0.05000000074505806
+          },
+          "75:4": {
+            "r": 0.0470588244497776,
+            "g": 0.054901961237192154,
+            "b": 0.07058823853731155,
+            "a": 0.05000000074505806
+          }
+        }
+      },
+      {
+        "name": "Colors/Effects/Shadows/shadow-skeumorphic-inner-border",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.03921568766236305,
+            "g": 0.04967320337891579,
+            "b": 0.07058823853731155,
+            "a": 0.18000000715255737
+          },
+          "75:4": {
+            "r": 0.0470588244497776,
+            "g": 0.054901961237192154,
+            "b": 0.07058823853731155,
+            "a": 0.18000000715255737
+          }
+        }
+      },
+      {
+        "name": "Component colors/Alpha/alpha-white-10",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.10000000149011612
+          },
+          "75:4": {
+            "r": 0.0470588244497776,
+            "g": 0.054901961237192154,
+            "b": 0.07058823853731155,
+            "a": 0.10000000149011612
+          }
+        }
+      },
+      {
+        "name": "Component colors/Alpha/alpha-white-20",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.20000000298023224
+          },
+          "75:4": {
+            "r": 0.0470588244497776,
+            "g": 0.054901961237192154,
+            "b": 0.07058823853731155,
+            "a": 0.20000000298023224
+          }
+        }
+      },
+      {
+        "name": "Component colors/Alpha/alpha-white-30",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.30000001192092896
+          },
+          "75:4": {
+            "r": 0.0470588244497776,
+            "g": 0.054901961237192154,
+            "b": 0.07058823853731155,
+            "a": 0.30000001192092896
+          }
+        }
+      },
+      {
+        "name": "Component colors/Alpha/alpha-white-40",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.4000000059604645
+          },
+          "75:4": {
+            "r": 0.0470588244497776,
+            "g": 0.054901961237192154,
+            "b": 0.07058823853731155,
+            "a": 0.4000000059604645
+          }
+        }
+      },
+      {
+        "name": "Component colors/Alpha/alpha-white-50",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.5
+          },
+          "75:4": {
+            "r": 0.0470588244497776,
+            "g": 0.054901961237192154,
+            "b": 0.07058823853731155,
+            "a": 0.5
+          }
+        }
+      },
+      {
+        "name": "Component colors/Alpha/alpha-white-60",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.6000000238418579
+          },
+          "75:4": {
+            "r": 0.0470588244497776,
+            "g": 0.054901961237192154,
+            "b": 0.07058823853731155,
+            "a": 0.6000000238418579
+          }
+        }
+      },
+      {
+        "name": "Component colors/Alpha/alpha-white-70",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.699999988079071
+          },
+          "75:4": {
+            "r": 0.0470588244497776,
+            "g": 0.054901961237192154,
+            "b": 0.07058823853731155,
+            "a": 0.699999988079071
+          }
+        }
+      },
+      {
+        "name": "Component colors/Alpha/alpha-white-80",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.800000011920929
+          },
+          "75:4": {
+            "r": 0.0470588244497776,
+            "g": 0.054901961237192154,
+            "b": 0.07058823853731155,
+            "a": 0.800000011920929
+          }
+        }
+      },
+      {
+        "name": "Component colors/Alpha/alpha-white-90",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.8999999761581421
+          },
+          "75:4": {
+            "r": 0.0470588244497776,
+            "g": 0.054901961237192154,
+            "b": 0.07058823853731155,
+            "a": 0.8999999761581421
+          }
+        }
+      },
+      {
+        "name": "Component colors/Alpha/alpha-white-100",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "75:4": {
+            "r": 0.0117647061124444,
+            "g": 0.01568627543747425,
+            "b": 0.019607843831181526,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/950"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Alpha/alpha-black-10",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.10000000149011612
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.10000000149011612
+          }
+        }
+      },
+      {
+        "name": "Component colors/Alpha/alpha-black-20",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.20000000298023224
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.20000000298023224
+          }
+        }
+      },
+      {
+        "name": "Component colors/Alpha/alpha-black-30",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.30000001192092896
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.30000001192092896
+          }
+        }
+      },
+      {
+        "name": "Component colors/Alpha/alpha-black-40",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.4000000059604645
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.4000000059604645
+          }
+        }
+      },
+      {
+        "name": "Component colors/Alpha/alpha-black-50",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.5
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.5
+          }
+        }
+      },
+      {
+        "name": "Component colors/Alpha/alpha-black-60",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.6000000238418579
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.6000000238418579
+          }
+        }
+      },
+      {
+        "name": "Component colors/Alpha/alpha-black-70",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.699999988079071
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.699999988079071
+          }
+        }
+      },
+      {
+        "name": "Component colors/Alpha/alpha-black-80",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.800000011920929
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.800000011920929
+          }
+        }
+      },
+      {
+        "name": "Component colors/Alpha/alpha-black-90",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.8999999761581421
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.8999999761581421
+          }
+        }
+      },
+      {
+        "name": "Component colors/Alpha/alpha-black-100",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Error/utility-error-50",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.996705949306488,
+            "g": 0.9516130089759827,
+            "b": 0.9483920931816101,
+            "a": 1,
+            "_alias": "Colors/Error/50"
+          },
+          "75:4": {
+            "r": 0.33249998092651367,
+            "g": 0.08550000935792923,
+            "b": 0.047500014305114746,
+            "a": 1,
+            "_alias": "Colors/Error/950"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Error/utility-error-100",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9970588088035583,
+            "g": 0.8927451372146606,
+            "b": 0.8852941393852234,
+            "a": 1,
+            "_alias": "Colors/Error/100"
+          },
+          "75:4": {
+            "r": 0.47849997878074646,
+            "g": 0.15176667273044586,
+            "b": 0.101500004529953,
+            "a": 1,
+            "_alias": "Colors/Error/900"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Error/utility-error-200",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9978823065757751,
+            "g": 0.8041883111000061,
+            "b": 0.790353000164032,
+            "a": 1,
+            "_alias": "Colors/Error/200"
+          },
+          "75:4": {
+            "r": 0.5676000118255615,
+            "g": 0.12408001720905304,
+            "b": 0.09240001440048218,
+            "a": 1,
+            "_alias": "Colors/Error/800"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Error/utility-error-300",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9919999837875366,
+            "g": 0.6336000561714172,
+            "b": 0.6080000400543213,
+            "a": 1,
+            "_alias": "Colors/Error/300"
+          },
+          "75:4": {
+            "r": 0.7039999961853027,
+            "g": 0.13653334975242615,
+            "b": 0.09600001573562622,
+            "a": 1,
+            "_alias": "Colors/Error/700"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Error/utility-error-400",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9782999753952026,
+            "g": 0.4401400089263916,
+            "b": 0.4017000198364258,
+            "a": 1,
+            "_alias": "Colors/Error/400"
+          },
+          "75:4": {
+            "r": 0.8526000380516052,
+            "g": 0.17574664950370789,
+            "b": 0.1273999810218811,
+            "a": 1,
+            "_alias": "Colors/Error/600"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Error/utility-error-500",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9412000775337219,
+            "g": 0.26695990562438965,
+            "b": 0.218799889087677,
+            "a": 1,
+            "_alias": "Colors/Error/500"
+          },
+          "75:4": {
+            "r": 0.9412000775337219,
+            "g": 0.26695990562438965,
+            "b": 0.218799889087677,
+            "a": 1,
+            "_alias": "Colors/Error/500"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Error/utility-error-600",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.8526000380516052,
+            "g": 0.17574664950370789,
+            "b": 0.1273999810218811,
+            "a": 1,
+            "_alias": "Colors/Error/600"
+          },
+          "75:4": {
+            "r": 0.9782999753952026,
+            "g": 0.4401400089263916,
+            "b": 0.4017000198364258,
+            "a": 1,
+            "_alias": "Colors/Error/400"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Error/utility-error-700",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.7039999961853027,
+            "g": 0.13653334975242615,
+            "b": 0.09600001573562622,
+            "a": 1,
+            "_alias": "Colors/Error/700"
+          },
+          "75:4": {
+            "r": 0.9919999837875366,
+            "g": 0.6336000561714172,
+            "b": 0.6080000400543213,
+            "a": 1,
+            "_alias": "Colors/Error/300"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Warning/utility-warning-50",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 1,
+            "g": 0.9790849685668945,
+            "b": 0.9215686321258545,
+            "a": 1,
+            "_alias": "Colors/Warning/50"
+          },
+          "75:4": {
+            "r": 0.3059999942779541,
+            "g": 0.11560001224279404,
+            "b": 0.034000009298324585,
+            "a": 1,
+            "_alias": "Colors/Warning/950"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Warning/utility-warning-100",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9977647066116333,
+            "g": 0.9393490552902222,
+            "b": 0.7787059545516968,
+            "a": 1,
+            "_alias": "Colors/Warning/100"
+          },
+          "75:4": {
+            "r": 0.47647058963775635,
+            "g": 0.18000002205371857,
+            "b": 0.052941203117370605,
+            "a": 1,
+            "_alias": "Colors/Warning/900"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Warning/utility-warning-200",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9976666569709778,
+            "g": 0.8744666576385498,
+            "b": 0.5356666445732117,
+            "a": 1,
+            "_alias": "Colors/Warning/200"
+          },
+          "75:4": {
+            "r": 0.5772548913955688,
+            "g": 0.21709805727005005,
+            "b": 0.05019611120223999,
+            "a": 1,
+            "_alias": "Colors/Warning/800"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Warning/utility-warning-300",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9964509010314941,
+            "g": 0.7856391668319702,
+            "b": 0.29374516010284424,
+            "a": 1,
+            "_alias": "Colors/Warning/300"
+          },
+          "75:4": {
+            "r": 0.7115294337272644,
+            "g": 0.2796705961227417,
+            "b": 0.02964705228805542,
+            "a": 1,
+            "_alias": "Colors/Warning/700"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Warning/utility-warning-400",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9912549257278442,
+            "g": 0.6912980675697327,
+            "b": 0.13423526287078857,
+            "a": 1,
+            "_alias": "Colors/Warning/400"
+          },
+          "75:4": {
+            "r": 0.8613921999931335,
+            "g": 0.4089790880680084,
+            "b": 0.013117611408233643,
+            "a": 1,
+            "_alias": "Colors/Warning/600"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Warning/utility-warning-500",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9701176881790161,
+            "g": 0.5643817782402039,
+            "b": 0.03380393981933594,
+            "a": 1,
+            "_alias": "Colors/Warning/500"
+          },
+          "75:4": {
+            "r": 0.9701176881790161,
+            "g": 0.5643817782402039,
+            "b": 0.03380393981933594,
+            "a": 1,
+            "_alias": "Colors/Warning/500"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Warning/utility-warning-600",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.8613921999931335,
+            "g": 0.4089790880680084,
+            "b": 0.013117611408233643,
+            "a": 1,
+            "_alias": "Colors/Warning/600"
+          },
+          "75:4": {
+            "r": 0.9912549257278442,
+            "g": 0.6912980675697327,
+            "b": 0.13423526287078857,
+            "a": 1,
+            "_alias": "Colors/Warning/400"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Warning/utility-warning-700",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.7115294337272644,
+            "g": 0.2796705961227417,
+            "b": 0.02964705228805542,
+            "a": 1,
+            "_alias": "Colors/Warning/700"
+          },
+          "75:4": {
+            "r": 0.9964509010314941,
+            "g": 0.7856391668319702,
+            "b": 0.29374516010284424,
+            "a": 1,
+            "_alias": "Colors/Warning/300"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Success/utility-success-50",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9267059564590454,
+            "g": 0.9909411668777466,
+            "b": 0.9524000287055969,
+            "a": 1,
+            "_alias": "Colors/Success/50"
+          },
+          "75:4": {
+            "r": 0.018700003623962402,
+            "g": 0.2012999951839447,
+            "b": 0.12825998663902283,
+            "a": 1,
+            "_alias": "Colors/Success/950"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Success/utility-success-100",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.8607999682426453,
+            "g": 0.9792000651359558,
+            "b": 0.902239978313446,
+            "a": 1,
+            "_alias": "Colors/Success/100"
+          },
+          "75:4": {
+            "r": 0.02800002694129944,
+            "g": 0.3014117479324341,
+            "b": 0.19204704463481903,
+            "a": 1,
+            "_alias": "Colors/Success/900"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Success/utility-success-200",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.6686275601387024,
+            "g": 0.9392156004905701,
+            "b": 0.776862621307373,
+            "a": 1,
+            "_alias": "Colors/Success/200"
+          },
+          "75:4": {
+            "r": 0.02970588207244873,
+            "g": 0.36637255549430847,
+            "b": 0.22609473764896393,
+            "a": 1,
+            "_alias": "Colors/Success/800"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Success/utility-success-300",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.4598628282546997,
+            "g": 0.877392053604126,
+            "b": 0.6547098159790039,
+            "a": 1,
+            "_alias": "Colors/Success/300"
+          },
+          "75:4": {
+            "r": 0.021882325410842896,
+            "g": 0.46439218521118164,
+            "b": 0.2800130248069763,
+            "a": 1,
+            "_alias": "Colors/Success/700"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Success/utility-success-400",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.27843138575553894,
+            "g": 0.8039215803146362,
+            "b": 0.5372549295425415,
+            "a": 1,
+            "_alias": "Colors/Success/400"
+          },
+          "75:4": {
+            "r": 0.02735292911529541,
+            "g": 0.580490231513977,
+            "b": 0.33157846331596375,
+            "a": 1,
+            "_alias": "Colors/Success/600"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Success/utility-success-500",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.09064704179763794,
+            "g": 0.6975882649421692,
+            "b": 0.4143490195274353,
+            "a": 1,
+            "_alias": "Colors/Success/500"
+          },
+          "75:4": {
+            "r": 0.09064704179763794,
+            "g": 0.6975882649421692,
+            "b": 0.4143490195274353,
+            "a": 1,
+            "_alias": "Colors/Success/500"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Success/utility-success-600",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.02735292911529541,
+            "g": 0.580490231513977,
+            "b": 0.33157846331596375,
+            "a": 1,
+            "_alias": "Colors/Success/600"
+          },
+          "75:4": {
+            "r": 0.27843138575553894,
+            "g": 0.8039215803146362,
+            "b": 0.5372549295425415,
+            "a": 1,
+            "_alias": "Colors/Success/400"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Success/utility-success-700",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.021882325410842896,
+            "g": 0.46439218521118164,
+            "b": 0.2800130248069763,
+            "a": 1,
+            "_alias": "Colors/Success/700"
+          },
+          "75:4": {
+            "r": 0.4598628282546997,
+            "g": 0.877392053604126,
+            "b": 0.6547098159790039,
+            "a": 1,
+            "_alias": "Colors/Success/300"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Components/Avatars/avatar-styles-bg-neutral",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.8784313797950745,
+            "g": 0.8784313797950745,
+            "b": 0.8784313797950745,
+            "a": 1
+          },
+          "75:4": {
+            "r": 0.8784313797950745,
+            "g": 0.8784313797950745,
+            "b": 0.8784313797950745,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Component colors/Components/Buttons/button-primary-icon",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.5,
+            "g": 0.6999999284744263,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/300"
+          },
+          "75:4": {
+            "r": 0.5,
+            "g": 0.6999999284744263,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/300"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Components/Buttons/button-primary-icon_hover",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.699999988079071,
+            "g": 0.8199999332427979,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/200"
+          },
+          "75:4": {
+            "r": 0.699999988079071,
+            "g": 0.8199999332427979,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/200"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Components/Buttons/button-destructive-primary-icon",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9919999837875366,
+            "g": 0.6336000561714172,
+            "b": 0.6080000400543213,
+            "a": 1,
+            "_alias": "Colors/Error/300"
+          },
+          "75:4": {
+            "r": 0.9919999837875366,
+            "g": 0.6336000561714172,
+            "b": 0.6080000400543213,
+            "a": 1,
+            "_alias": "Colors/Error/300"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Components/Buttons/button-destructive-primary-icon_hover",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9978823065757751,
+            "g": 0.8041883111000061,
+            "b": 0.790353000164032,
+            "a": 1,
+            "_alias": "Colors/Error/200"
+          },
+          "75:4": {
+            "r": 0.9978823065757751,
+            "g": 0.8041883111000061,
+            "b": 0.790353000164032,
+            "a": 1,
+            "_alias": "Colors/Error/200"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Components/Buttons/button-glass- primary-background",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.03999999910593033,
+            "_alias": "Colors/Gray (light mode alpha)/50"
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.03999999910593033,
+            "_alias": "Colors/Gray (dark mode alpha)/900"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Components/Buttons/button-glass- primary-hover",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.07999999821186066,
+            "_alias": "Colors/Gray (light mode alpha)/100"
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.07999999821186066,
+            "_alias": "Colors/Gray (dark mode alpha)/800"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Components/Icons/Icons/icon-fg-brand",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0.3599998652935028,
+            "b": 0.8999999761581421,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/600"
+          },
+          "75:4": {
+            "r": 0.5998367071151733,
+            "g": 0.615967333316803,
+            "b": 0.6401633024215698,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/400"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Components/Icons/Icons/icon-fg-brand_on-brand",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.699999988079071,
+            "g": 0.8199999332427979,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/200"
+          },
+          "75:4": {
+            "r": 0.5998367071151733,
+            "g": 0.615967333316803,
+            "b": 0.6401633024215698,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/400"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Components/Icons/Featured icons/featured-icon-light-fg-brand",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0.3599998652935028,
+            "b": 0.8999999761581421,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/600"
+          },
+          "75:4": {
+            "r": 0.699999988079071,
+            "g": 0.8199999332427979,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/200"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Components/Icons/Featured icons/featured-icon-light-fg-gray",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.4431372582912445,
+            "g": 0.4627451002597809,
+            "b": 0.501960813999176,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/500"
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.9200000166893005,
+            "_alias": "Colors/Gray (dark mode alpha)/200"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Components/Icons/Featured icons/featured-icon-light-fg-error",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.8526000380516052,
+            "g": 0.17574664950370789,
+            "b": 0.1273999810218811,
+            "a": 1,
+            "_alias": "Colors/Error/600"
+          },
+          "75:4": {
+            "r": 0.9978823065757751,
+            "g": 0.8041883111000061,
+            "b": 0.790353000164032,
+            "a": 1,
+            "_alias": "Colors/Error/200"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Components/Icons/Featured icons/featured-icon-light-fg-warning",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.8613921999931335,
+            "g": 0.4089790880680084,
+            "b": 0.013117611408233643,
+            "a": 1,
+            "_alias": "Colors/Warning/600"
+          },
+          "75:4": {
+            "r": 0.9976666569709778,
+            "g": 0.8744666576385498,
+            "b": 0.5356666445732117,
+            "a": 1,
+            "_alias": "Colors/Warning/200"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Components/Icons/Featured icons/featured-icon-light-fg-success",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.02735292911529541,
+            "g": 0.580490231513977,
+            "b": 0.33157846331596375,
+            "a": 1,
+            "_alias": "Colors/Success/600"
+          },
+          "75:4": {
+            "r": 0.6686275601387024,
+            "g": 0.9392156004905701,
+            "b": 0.776862621307373,
+            "a": 1,
+            "_alias": "Colors/Success/200"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Components/Toggles/toggle-button-fg_disabled",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9801960587501526,
+            "g": 0.9803071618080139,
+            "b": 0.9805882573127747,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/50"
+          },
+          "75:4": {
+            "r": 0.39680981636047363,
+            "g": 0.4153619706630707,
+            "b": 0.44319018721580505,
+            "a": 1,
+            "_alias": "Colors/Gray (dark mode)/600"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Components/Toggles/toggle-border",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.8358039259910583,
+            "g": 0.8420000076293945,
+            "b": 0.8543921709060669,
+            "a": 1,
+            "_alias": "Colors/Gray (light mode)/300"
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0,
+            "_alias": "Colors/Base/transparent"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Components/Toggles/toggle-slim-border_pressed",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0.3599998652935028,
+            "b": 0.8999999761581421,
+            "a": 1,
+            "_alias": "Colors/Background/bg-brand-solid"
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0,
+            "_alias": "Colors/Base/transparent"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Components/Toggles/toggle-slim-border_pressed-hover",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0.27999991178512573,
+            "b": 0.699999988079071,
+            "a": 1,
+            "_alias": "Colors/Background/bg-brand-solid_hover"
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0,
+            "_alias": "Colors/Base/transparent"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Components/Icons/Main Avatar/gradient-top",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.30000001192092896,
+            "g": 0.5799999237060547,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/400"
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Base/white"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Components/Icons/Main Avatar/gradient-bottom",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0.27999991178512573,
+            "b": 0.699999988079071,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/700"
+          },
+          "75:4": {
+            "r": 0.5,
+            "g": 0.6999999284744263,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/300"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Blue/utility-blue-50",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.8799999952316284,
+            "g": 0.9280000329017639,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/50"
+          },
+          "75:4": {
+            "r": 0,
+            "g": 0.1199999675154686,
+            "b": 0.30000001192092896,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/900"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Blue/utility-blue-100",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.8199999928474426,
+            "g": 0.8920000791549683,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/100"
+          },
+          "75:4": {
+            "r": 0,
+            "g": 0.19199994206428528,
+            "b": 0.47999998927116394,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/800"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Blue/utility-blue-200",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.699999988079071,
+            "g": 0.8199999332427979,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/200"
+          },
+          "75:4": {
+            "r": 0,
+            "g": 0.27999991178512573,
+            "b": 0.699999988079071,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/700"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Blue/utility-blue-300",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.5,
+            "g": 0.6999999284744263,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/300"
+          },
+          "75:4": {
+            "r": 0,
+            "g": 0.3599998652935028,
+            "b": 0.8999999761581421,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/600"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Blue/utility-blue-400",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.30000001192092896,
+            "g": 0.5799999237060547,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/400"
+          },
+          "75:4": {
+            "r": 0.07999999821186066,
+            "g": 0.44799986481666565,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/500"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Blue/utility-blue-500",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.07999999821186066,
+            "g": 0.44799986481666565,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/500"
+          },
+          "75:4": {
+            "r": 0.30000001192092896,
+            "g": 0.5799999237060547,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/400"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Blue/utility-blue-600",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0.3599998652935028,
+            "b": 0.8999999761581421,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/600"
+          },
+          "75:4": {
+            "r": 0.5,
+            "g": 0.6999999284744263,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/300"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Utility/Blue/utility-blue-700",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0,
+            "g": 0.27999991178512573,
+            "b": 0.699999988079071,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/700"
+          },
+          "75:4": {
+            "r": 0.699999988079071,
+            "g": 0.8199999332427979,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Brand Blue/200"
+          }
+        }
+      }
+    ]
+  },
+  "Radius": {
+    "modes": [
+      {
+        "name": "Mode 1",
+        "modeId": "183:0"
+      }
+    ],
+    "variables": [
+      {
+        "name": "radius-none",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:0": 0
+        }
+      },
+      {
+        "name": "radius-xxs",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:0": 2
+        }
+      },
+      {
+        "name": "radius-xs",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:0": 4
+        }
+      },
+      {
+        "name": "radius-sm",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:0": 6
+        }
+      },
+      {
+        "name": "radius-md",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:0": 8
+        }
+      },
+      {
+        "name": "radius-lg",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:0": 10
+        }
+      },
+      {
+        "name": "radius-xl",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:0": 12
+        }
+      },
+      {
+        "name": "radius-2xl",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:0": 16
+        }
+      },
+      {
+        "name": "radius-3xl",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:0": 20
+        }
+      },
+      {
+        "name": "radius-4xl",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:0": 24
+        }
+      },
+      {
+        "name": "radius-5xl",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:0": 34
+        }
+      },
+      {
+        "name": "radius-full",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:0": 9999
+        }
+      }
+    ]
+  },
+  "Spacing": {
+    "modes": [
+      {
+        "name": "Mode 1",
+        "modeId": "183:1"
+      }
+    ],
+    "variables": [
+      {
+        "name": "spacing-none",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:1": {
+            "value": 0,
+            "_alias": "Spacing/0 (0px)"
+          }
+        }
+      },
+      {
+        "name": "spacing-xxs",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:1": {
+            "value": 2,
+            "_alias": "Spacing/0․5 (2px)"
+          }
+        }
+      },
+      {
+        "name": "spacing-xs",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:1": {
+            "value": 4,
+            "_alias": "Spacing/1 (4px)"
+          }
+        }
+      },
+      {
+        "name": "spacing-sm",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:1": {
+            "value": 6,
+            "_alias": "Spacing/1․5 (6px)"
+          }
+        }
+      },
+      {
+        "name": "spacing-md",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:1": {
+            "value": 8,
+            "_alias": "Spacing/2 (8px)"
+          }
+        }
+      },
+      {
+        "name": "spacing-lg",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:1": {
+            "value": 12,
+            "_alias": "Spacing/3 (12px)"
+          }
+        }
+      },
+      {
+        "name": "spacing-xl",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:1": {
+            "value": 16,
+            "_alias": "Spacing/4 (16px)"
+          }
+        }
+      },
+      {
+        "name": "spacing-2xl",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:1": {
+            "value": 20,
+            "_alias": "Spacing/5 (20px)"
+          }
+        }
+      },
+      {
+        "name": "spacing-3xl",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:1": {
+            "value": 24,
+            "_alias": "Spacing/6 (24px)"
+          }
+        }
+      },
+      {
+        "name": "spacing-4xl",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:1": {
+            "value": 32,
+            "_alias": "Spacing/8 (32px)"
+          }
+        }
+      },
+      {
+        "name": "spacing-5xl",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:1": {
+            "value": 40,
+            "_alias": "Spacing/10 (40px)"
+          }
+        }
+      },
+      {
+        "name": "spacing-6xl",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:1": {
+            "value": 48,
+            "_alias": "Spacing/12 (48px)"
+          }
+        }
+      },
+      {
+        "name": "spacing-7xl",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:1": {
+            "value": 64,
+            "_alias": "Spacing/16 (64px)"
+          }
+        }
+      },
+      {
+        "name": "spacing-8xl",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:1": {
+            "value": 80,
+            "_alias": "Spacing/20 (80px)"
+          }
+        }
+      },
+      {
+        "name": "spacing-9xl",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:1": {
+            "value": 96,
+            "_alias": "Spacing/24 (96px)"
+          }
+        }
+      },
+      {
+        "name": "spacing-10xl",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:1": {
+            "value": 128,
+            "_alias": "Spacing/32 (128px)"
+          }
+        }
+      },
+      {
+        "name": "spacing-11xl",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:1": {
+            "value": 160,
+            "_alias": "Spacing/40 (160px)"
+          }
+        }
+      }
+    ]
+  },
+  "Widths": {
+    "modes": [
+      {
+        "name": "Mode 1",
+        "modeId": "183:2"
+      }
+    ],
+    "variables": [
+      {
+        "name": "width-xxs",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:2": {
+            "value": 320,
+            "_alias": "Spacing/80 (320px)"
+          }
+        }
+      },
+      {
+        "name": "width-xs",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:2": {
+            "value": 384,
+            "_alias": "Spacing/96 (384px)"
+          }
+        }
+      },
+      {
+        "name": "width-sm",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:2": {
+            "value": 480,
+            "_alias": "Spacing/120 (480px)"
+          }
+        }
+      },
+      {
+        "name": "width-md",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:2": {
+            "value": 560,
+            "_alias": "Spacing/140 (560px)"
+          }
+        }
+      },
+      {
+        "name": "width-lg",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:2": {
+            "value": 640,
+            "_alias": "Spacing/160 (640px)"
+          }
+        }
+      },
+      {
+        "name": "width-xl",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:2": {
+            "value": 768,
+            "_alias": "Spacing/192 (768px)"
+          }
+        }
+      },
+      {
+        "name": "width-2xl",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:2": {
+            "value": 1024,
+            "_alias": "Spacing/256 (1,024px)"
+          }
+        }
+      },
+      {
+        "name": "width-3xl",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:2": {
+            "value": 1280,
+            "_alias": "Spacing/320 (1,280px)"
+          }
+        }
+      },
+      {
+        "name": "width-4xl",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:2": {
+            "value": 1440,
+            "_alias": "Spacing/360 (1,440px)"
+          }
+        }
+      },
+      {
+        "name": "width-5xl",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:2": {
+            "value": 1600,
+            "_alias": "Spacing/400 (1,600px)"
+          }
+        }
+      },
+      {
+        "name": "width-6xl",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:2": {
+            "value": 1920,
+            "_alias": "Spacing/480 (1,920px)"
+          }
+        }
+      },
+      {
+        "name": "paragraph-max-width",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:2": {
+            "value": 720,
+            "_alias": "Spacing/180 (720px)"
+          }
+        }
+      }
+    ]
+  },
+  "Containers": {
+    "modes": [
+      {
+        "name": "Mode 1",
+        "modeId": "183:3"
+      }
+    ],
+    "variables": [
+      {
+        "name": "container-padding-mobile",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:3": {
+            "value": 16,
+            "_alias": "Spacing/4 (16px)"
+          }
+        }
+      },
+      {
+        "name": "container-padding-desktop",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:3": {
+            "value": 32,
+            "_alias": "Spacing/8 (32px)"
+          }
+        }
+      },
+      {
+        "name": "container-max-width-desktop",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:3": {
+            "value": 1280,
+            "_alias": "Spacing/320 (1,280px)"
+          }
+        }
+      }
+    ]
+  },
+  "Typography": {
+    "modes": [
+      {
+        "name": "Mode 1",
+        "modeId": "183:4"
+      }
+    ],
+    "variables": [
+      {
+        "name": "Font size/text-xs",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:4": 12
+        }
+      },
+      {
+        "name": "Font size/text-sm",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:4": 14
+        }
+      },
+      {
+        "name": "Font size/text-md",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:4": 16
+        }
+      },
+      {
+        "name": "Font size/text-lg",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:4": 18
+        }
+      },
+      {
+        "name": "Font size/text-xl",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:4": 20
+        }
+      },
+      {
+        "name": "Font size/display-xs",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:4": 24
+        }
+      },
+      {
+        "name": "Font size/display-sm",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:4": 30
+        }
+      },
+      {
+        "name": "Font size/display-md",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:4": 36
+        }
+      },
+      {
+        "name": "Font size/display-lg",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:4": 48
+        }
+      },
+      {
+        "name": "Font size/display-xl",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:4": 60
+        }
+      },
+      {
+        "name": "Font size/display-2xl",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:4": 72
+        }
+      },
+      {
+        "name": "Line height/text-xs",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:4": 18
+        }
+      },
+      {
+        "name": "Line height/text-sm",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:4": 20
+        }
+      },
+      {
+        "name": "Line height/text-md",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:4": 24
+        }
+      },
+      {
+        "name": "Line height/text-lg",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:4": 28
+        }
+      },
+      {
+        "name": "Line height/text-xl",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:4": 30
+        }
+      },
+      {
+        "name": "Line height/display-xs",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:4": 32
+        }
+      },
+      {
+        "name": "Line height/display-sm",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:4": 38
+        }
+      },
+      {
+        "name": "Line height/display-md",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:4": 44
+        }
+      },
+      {
+        "name": "Line height/display-lg",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:4": 60
+        }
+      },
+      {
+        "name": "Line height/display-xl",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:4": 72
+        }
+      },
+      {
+        "name": "Line height/display-2xl",
+        "resolvedType": "FLOAT",
+        "valuesByMode": {
+          "183:4": 90
+        }
+      }
+    ]
+  }
+}
