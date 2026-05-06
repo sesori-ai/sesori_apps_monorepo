@@ -27,10 +27,27 @@ AgentInfo _testAgent({required String name, required String description, require
 
 Widget _buildApp() {
   final router = GoRouter(
+    initialLocation: "/new",
     routes: [
       GoRoute(
         path: "/",
-        builder: (context, state) => const NewSessionScreen(projectId: "project-1"),
+        builder: (context, state) => const SizedBox.shrink(),
+        routes: [
+          GoRoute(
+            path: "new",
+            builder: (context, state) => const NewSessionScreen(projectId: "project-1"),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: "/projects/:projectId/sessions/:sessionId",
+        builder: (context, state) {
+          return Material(
+            child: Text(
+              "session-detail:${state.pathParameters['sessionId']}",
+            ),
+          );
+        },
       ),
     ],
   );
@@ -213,5 +230,148 @@ void main() {
     // Changing the agent seeds the variant from the agent's default.
     // Reviewer has variant: null, so the button shows "Default".
     expect(find.widgetWithText(OutlinedButton, "Default"), findsOneWidget);
+  });
+
+  testWidgets("shows the loading overlay with accessible message during sending", (tester) async {
+    final createCompleter = Completer<ApiResponse<Session>>();
+    when(
+      () => sessionService.createSessionWithMessage(
+        projectId: any(named: "projectId"),
+        text: any(named: "text"),
+        agent: any(named: "agent"),
+        providerID: any(named: "providerID"),
+        modelID: any(named: "modelID"),
+        variant: any(named: "variant"),
+        command: any(named: "command"),
+        dedicatedWorktree: any(named: "dedicatedWorktree"),
+      ),
+    ).thenAnswer((_) => createCompleter.future);
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), "test message");
+    await tester.tap(find.byIcon(Icons.send), warnIfMissed: false);
+    await tester.pump();
+
+    expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
+    expect(find.byKey(const Key("new_session_loading_progress")), findsOneWidget);
+    expect(find.byKey(const Key("new_session_loading_message")), findsOneWidget);
+    expect(find.bySemanticsLabel("Creating session"), findsOneWidget);
+    expect(find.text("Warming up the engines…"), findsOneWidget);
+  });
+
+  testWidgets("blocks submit UI while a session is sending", (tester) async {
+    final createCompleter = Completer<ApiResponse<Session>>();
+    when(
+      () => sessionService.createSessionWithMessage(
+        projectId: any(named: "projectId"),
+        text: any(named: "text"),
+        agent: any(named: "agent"),
+        providerID: any(named: "providerID"),
+        modelID: any(named: "modelID"),
+        variant: any(named: "variant"),
+        command: any(named: "command"),
+        dedicatedWorktree: any(named: "dedicatedWorktree"),
+      ),
+    ).thenAnswer((_) => createCompleter.future);
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), "test message");
+    await tester.tap(find.byIcon(Icons.send), warnIfMissed: false);
+    await tester.pump();
+
+    final absorbingFinder = find.byWidgetPredicate(
+      (widget) => widget is AbsorbPointer && widget.absorbing,
+    );
+    expect(absorbingFinder, findsOneWidget);
+    expect(find.byIcon(Icons.stop_circle), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.send), warnIfMissed: false);
+    await tester.pump();
+
+    verify(
+      () => sessionService.createSessionWithMessage(
+        projectId: any(named: "projectId"),
+        text: any(named: "text"),
+        agent: any(named: "agent"),
+        providerID: any(named: "providerID"),
+        modelID: any(named: "modelID"),
+        variant: any(named: "variant"),
+        command: any(named: "command"),
+        dedicatedWorktree: any(named: "dedicatedWorktree"),
+      ),
+    ).called(1);
+  });
+
+  testWidgets("still navigates to session detail after creating a session", (tester) async {
+    final createCompleter = Completer<ApiResponse<Session>>();
+    when(
+      () => sessionService.createSessionWithMessage(
+        projectId: any(named: "projectId"),
+        text: any(named: "text"),
+        agent: any(named: "agent"),
+        providerID: any(named: "providerID"),
+        modelID: any(named: "modelID"),
+        variant: any(named: "variant"),
+        command: any(named: "command"),
+        dedicatedWorktree: any(named: "dedicatedWorktree"),
+      ),
+    ).thenAnswer((_) => createCompleter.future);
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), "test message");
+    await tester.tap(find.byIcon(Icons.send));
+    await tester.pump();
+
+    expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
+
+    createCompleter.complete(ApiResponse.success(testSession(id: "session-1", title: "Created session")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("session-detail:session-1"), findsOneWidget);
+    expect(find.byType(NewSessionScreen), findsNothing);
+  });
+
+  testWidgets("removes the loading overlay and keeps retry UI usable after an error", (tester) async {
+    final createCompleter = Completer<ApiResponse<Session>>();
+    when(
+      () => sessionService.createSessionWithMessage(
+        projectId: any(named: "projectId"),
+        text: any(named: "text"),
+        agent: any(named: "agent"),
+        providerID: any(named: "providerID"),
+        modelID: any(named: "modelID"),
+        variant: any(named: "variant"),
+        command: any(named: "command"),
+        dedicatedWorktree: any(named: "dedicatedWorktree"),
+      ),
+    ).thenAnswer((_) => createCompleter.future);
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), "test message");
+    await tester.tap(find.byIcon(Icons.send));
+    await tester.pump();
+
+    expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
+
+    createCompleter.complete(ApiResponse.error(ApiError.generic()));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key("new_session_loading_overlay")), findsNothing);
+    expect(find.text("Failed to create session."), findsOneWidget);
+    expect(find.byType(TextField), findsOneWidget);
+    expect(find.byIcon(Icons.send), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), "retry message");
+    await tester.pump();
+
+    expect(find.text("retry message"), findsOneWidget);
   });
 }

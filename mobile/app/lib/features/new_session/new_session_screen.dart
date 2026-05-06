@@ -12,6 +12,7 @@ import "../../core/widgets/agent_picker_sheet.dart";
 import "../../core/widgets/model_picker_sheet.dart";
 import "../../core/widgets/variant_picker_sheet.dart";
 import "../session_detail/widgets/prompt_input.dart";
+import "new_session_loading_overlay.dart";
 
 class NewSessionScreen extends StatelessWidget {
   final String projectId;
@@ -139,6 +140,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     final state = context.watch<NewSessionCubit>().state;
     final loc = context.loc;
     final zyra = context.zyra;
+    final isSending = state is NewSessionSending;
 
     return BlocListener<NewSessionCubit, NewSessionState>(
       listenWhen: (_, current) => current is NewSessionCreated,
@@ -155,49 +157,79 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
           );
         }
       },
-      child: Scaffold(
-        appBar: AppBar(title: Text(loc.sessionListNewSession)),
-        body: Column(
-          children: [
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: PopScope(
+        canPop: true,
+        onPopInvokedWithResult: (didPop, result) {
+          if (didPop && isSending) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(loc.newSessionLaunchingInBackground),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        },
+        child: Scaffold(
+          appBar: AppBar(title: Text(loc.sessionListNewSession)),
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              AbsorbPointer(
+                absorbing: isSending,
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SwitchListTile(
-                      title: Text(loc.newSessionDedicatedWorktree),
-                      subtitle: Text(
-                        loc.newSessionDedicatedWorktreeDescription,
-                        style: zyra.textTheme.textXs.regular.copyWith(
-                          color: zyra.colors.textSecondary,
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SwitchListTile(
+                              title: Text(loc.newSessionDedicatedWorktree),
+                              subtitle: Text(
+                                loc.newSessionDedicatedWorktreeDescription,
+                                style: zyra.textTheme.textXs.regular.copyWith(
+                                  color: zyra.colors.textSecondary,
+                                ),
+                              ),
+                              value: _dedicatedWorktree,
+                              onChanged: (value) => setState(() => _dedicatedWorktree = value),
+                            ),
+                          ],
                         ),
                       ),
-                      value: _dedicatedWorktree,
-                      onChanged: (value) => setState(() => _dedicatedWorktree = value),
+                    ),
+                    PromptInput(
+                      isBusy: state is NewSessionSending,
+                      onSend: (String text, String? command) {
+                        context.read<NewSessionCubit>().createSession(
+                          text: text,
+                          command: command,
+                          dedicatedWorktree: _dedicatedWorktree,
+                        );
+                      },
+                      onAbort: _dismissScreen,
+                      header: _buildErrorBanner(state),
+                      composerHeader: _buildComposerHeader(state),
+                      availableCommands: state.agentModelData?.commands ?? const [],
+                      stagedCommand: state.agentModelData?.stagedCommand,
+                      onCommandSelected: context.read<NewSessionCubit>().stageCommand,
+                      onCommandCleared: context.read<NewSessionCubit>().clearStagedCommand,
                     ),
                   ],
                 ),
               ),
-            ),
-            PromptInput(
-              isBusy: state is NewSessionSending,
-              onSend: (String text, String? command) {
-                context.read<NewSessionCubit>().createSession(
-                  text: text,
-                  command: command,
-                  dedicatedWorktree: _dedicatedWorktree,
-                );
-              },
-              onAbort: _dismissScreen,
-              header: _buildErrorBanner(state),
-              composerHeader: _buildComposerHeader(state),
-              availableCommands: state.agentModelData?.commands ?? const [],
-              stagedCommand: state.agentModelData?.stagedCommand,
-              onCommandSelected: context.read<NewSessionCubit>().stageCommand,
-              onCommandCleared: context.read<NewSessionCubit>().clearStagedCommand,
-            ),
-          ],
+              if (isSending)
+                NewSessionLoadingOverlay(
+                  semanticsLabel: loc.newSessionLoadingSemantics,
+                  messages: [
+                    loc.newSessionLoadingMessage1,
+                    loc.newSessionLoadingMessage2,
+                    loc.newSessionLoadingMessage3,
+                  ],
+                ),
+            ],
+          ),
         ),
       ),
     );
