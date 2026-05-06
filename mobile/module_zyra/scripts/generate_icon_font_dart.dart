@@ -7,6 +7,7 @@
 ///   dart run scripts/generate_icon_font_dart.dart \
 ///     --font-dir assets/fonts/FontAwesome6Pro \
 ///     --output lib/core/ui/icons/fa6_pro_icons.g.dart \
+///     --font-package theme_zyra \
 ///     --family-map "FA6Pro-Thin-100.otf:FA6Thin:FA6Thin" \
 ///     --family-map "FA6Pro-Light-300.otf:FA6Light:FA6Light" \
 ///     --family-map "FA6Pro-Regular-400.otf:FA6Regular:FA6Regular" \
@@ -1179,17 +1180,45 @@ class _FamilyMapping {
   _FamilyMapping(this.filename, this.dartClass, this.fontFamily);
 }
 
+String? _parseFontPackageArg(String arg) {
+  const prefix = '--font-package=';
+  if (!arg.startsWith(prefix)) {
+    return null;
+  }
+
+  final value = arg.substring(prefix.length);
+  if (value.isEmpty) {
+    stderr.writeln('Invalid --font-package value. Expected a non-empty package name.');
+    exit(1);
+  }
+
+  return value;
+}
+
 void main(List<String> args) {
   String? fontDir;
   String? output;
+  String? fontPackage;
   final familyMaps = <_FamilyMapping>[];
 
   for (var i = 0; i < args.length; i++) {
+    final fontPackageValue = _parseFontPackageArg(args[i]);
+    if (fontPackageValue != null) {
+      fontPackage = fontPackageValue;
+      continue;
+    }
+
     switch (args[i]) {
       case '--font-dir':
         fontDir = args[++i];
       case '--output':
         output = args[++i];
+      case '--font-package':
+        fontPackage = args[++i];
+        if (fontPackage == null || fontPackage.isEmpty) {
+          stderr.writeln('Invalid --font-package value. Expected a non-empty package name.');
+          exit(1);
+        }
       case '--family-map':
         final parts = args[++i].split(':');
         if (parts.length != 3) {
@@ -1205,7 +1234,9 @@ void main(List<String> args) {
 
   if (fontDir == null || output == null || familyMaps.isEmpty) {
     stderr.writeln(r'Usage: dart run scripts/generate_icon_font_dart.dart \');
-    stderr.writeln('  --font-dir <dir> --output <file> --family-map "file:Class:family" [...]');
+    stderr.writeln(
+      '  --font-dir <dir> --output <file> [--font-package <package> | --font-package=<package>] --family-map "file:Class:family" [...]',
+    );
     exit(1);
   }
 
@@ -1281,8 +1312,9 @@ void main(List<String> args) {
     for (final name in sortedNames) {
       final cp = icons[name];
       if (cp == null) continue;
+      final packageArg = fontPackage == null ? '' : ', fontPackage: "$fontPackage"';
       buf.writeln(
-        '  static const IconData $name = IconData(0x${cp.toRadixString(16).toUpperCase()}, fontFamily: "${mapping.fontFamily}");',
+        '  static const IconData $name = IconData(0x${cp.toRadixString(16).toUpperCase()}, fontFamily: "${mapping.fontFamily}"$packageArg);',
       );
     }
     buf.writeln('}');

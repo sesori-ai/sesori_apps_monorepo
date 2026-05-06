@@ -10,10 +10,10 @@ import "package:flutter/widgets.dart";
 class VESPRLight {
   VESPRLight._();
 
-  static const IconData face_id = IconData(0xE000, fontFamily: "VESPRLight");
-  static const IconData gear = IconData(0xE001, fontFamily: "VESPRLight");
-  static const IconData qr_scan = IconData(0xE002, fontFamily: "VESPRLight");
-  static const IconData wallet = IconData(0xE003, fontFamily: "VESPRLight");
+  static const IconData face_id = IconData(0xE000, fontFamily: "VESPRLight", fontPackage: "theme_zyra");
+  static const IconData gear = IconData(0xE001, fontFamily: "VESPRLight", fontPackage: "theme_zyra");
+  static const IconData qr_scan = IconData(0xE002, fontFamily: "VESPRLight", fontPackage: "theme_zyra");
+  static const IconData wallet = IconData(0xE003, fontFamily: "VESPRLight", fontPackage: "theme_zyra");
 }
 
 /// VESPRRegular icon font.
@@ -22,10 +22,10 @@ class VESPRLight {
 class VESPRRegular {
   VESPRRegular._();
 
-  static const IconData face_id = IconData(0xE000, fontFamily: "VESPRRegular");
-  static const IconData gear = IconData(0xE001, fontFamily: "VESPRRegular");
-  static const IconData qr_scan = IconData(0xE002, fontFamily: "VESPRRegular");
-  static const IconData wallet = IconData(0xE003, fontFamily: "VESPRRegular");
+  static const IconData face_id = IconData(0xE000, fontFamily: "VESPRRegular", fontPackage: "theme_zyra");
+  static const IconData gear = IconData(0xE001, fontFamily: "VESPRRegular", fontPackage: "theme_zyra");
+  static const IconData qr_scan = IconData(0xE002, fontFamily: "VESPRRegular", fontPackage: "theme_zyra");
+  static const IconData wallet = IconData(0xE003, fontFamily: "VESPRRegular", fontPackage: "theme_zyra");
 }
 
 /// VESPRSolid icon font.
@@ -34,8 +34,8 @@ class VESPRRegular {
 class VESPRSolid {
   VESPRSolid._();
 
-  static const IconData face_id = IconData(0xE000, fontFamily: "VESPRSolid");
-  static const IconData gear = IconData(0xE001, fontFamily: "VESPRSolid");
-  static const IconData qr_scan = IconData(0xE002, fontFamily: "VESPRSolid");
-  static const IconData wallet = IconData(0xE003, fontFamily: "VESPRSolid");
+  static const IconData face_id = IconData(0xE000, fontFamily: "VESPRSolid", fontPackage: "theme_zyra");
+  static const IconData gear = IconData(0xE001, fontFamily: "VESPRSolid", fontPackage: "theme_zyra");
+  static const IconData qr_scan = IconData(0xE002, fontFamily: "VESPRSolid", fontPackage: "theme_zyra");
+  static const IconData wallet = IconData(0xE003, fontFamily: "VESPRSolid", fontPackage: "theme_zyra");
 }
