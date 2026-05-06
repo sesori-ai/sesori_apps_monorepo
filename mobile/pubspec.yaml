@@ -3,8 +3,10 @@ publish_to: none
 
 environment:
   sdk: ^3.11.5
+  flutter: ">=3.41.7 <3.42.0"
 
 workspace:
   - app
   - module_core
   - module_auth
+  - module_zyra
