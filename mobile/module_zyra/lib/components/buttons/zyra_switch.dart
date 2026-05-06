@@ -118,53 +118,58 @@ class _ZyraSwitchState extends State<ZyraSwitch> with SingleTickerProviderStateM
     final thumbColor = isDisabled ? colors.toggleButtonFgDisabled : colors.fgWhite;
     final borderColor = colors.toggleBorder;
 
-    return GestureDetector(
+    return Semantics(
+      toggled: widget.value,
+      enabled: !isDisabled,
       onTap: isDisabled ? null : _handleTap,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedBuilder(
-        animation: _curvedAnimation,
-        builder: (context, child) {
-          final animationValue = _curvedAnimation.value;
-          final trackColor = lerpColorNonNull(trackColorOff, trackColorOn, animationValue);
+      child: GestureDetector(
+        onTap: isDisabled ? null : _handleTap,
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedBuilder(
+          animation: _curvedAnimation,
+          builder: (context, child) {
+            final animationValue = _curvedAnimation.value;
+            final trackColor = lerpColorNonNull(trackColorOff, trackColorOn, animationValue);
 
-          // Thumb slides from _thumbInset to (_trackWidth - _thumbSize - _thumbInset).
-          final thumbOffset = _thumbInset + animationValue * (_trackWidth - _thumbSize - _thumbInset * 2);
+            // Thumb slides from _thumbInset to (_trackWidth - _thumbSize - _thumbInset).
+            final thumbOffset = _thumbInset + animationValue * (_trackWidth - _thumbSize - _thumbInset * 2);
 
-          return SizedBox(
-            width: _trackWidth,
-            height: _trackHeight,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: trackColor,
-                borderRadius: BorderRadius.circular(ZyraRadius.full),
-                border: Border.all(color: borderColor, width: 1),
+            return SizedBox(
+              width: _trackWidth,
+              height: _trackHeight,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: trackColor,
+                  borderRadius: BorderRadius.circular(ZyraRadius.full),
+                  border: Border.all(color: borderColor, width: 1),
+                ),
+                child: Stack(
+                  children: [
+                    if (child case final thumbWidget?)
+                      PositionedDirectional(
+                        start: thumbOffset,
+                        top: _thumbInset,
+                        child: thumbWidget,
+                      ),
+                  ],
+                ),
               ),
-              child: Stack(
-                children: [
-                  if (child case final thumbWidget?)
-                    PositionedDirectional(
-                      start: thumbOffset,
-                      top: _thumbInset,
-                      child: thumbWidget,
-                    ),
-                ],
-              ),
+            );
+          },
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: thumbColor,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: colors.shadowXs,
+                  offset: const Offset(0, 1),
+                  blurRadius: 2,
+                ),
+              ],
             ),
-          );
-        },
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: thumbColor,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: colors.shadowXs,
-                offset: const Offset(0, 1),
-                blurRadius: 2,
-              ),
-            ],
+            child: const SizedBox.square(dimension: _thumbSize),
           ),
-          child: const SizedBox.square(dimension: _thumbSize),
         ),
       ),
     );

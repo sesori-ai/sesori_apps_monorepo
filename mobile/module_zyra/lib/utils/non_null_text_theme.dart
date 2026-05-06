@@ -40,6 +40,11 @@ class NonNullTextTheme extends TextTheme {
         wordSpacingDelta: wordSpacingDelta,
         heightFactor: heightFactor,
         heightDelta: heightDelta,
+        displayColor: displayColor,
+        bodyColor: bodyColor,
+        decoration: decoration,
+        decorationColor: decorationColor,
+        decorationStyle: decorationStyle,
       ),
     );
   }

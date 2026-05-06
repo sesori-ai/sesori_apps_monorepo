@@ -88,6 +88,7 @@ class ZyraHeroIcon extends StatelessWidget {
 
     return SvgPicture.asset(
       type.assetPath,
+      package: "theme_zyra",
       colorMapper: colorMapper,
       width: size,
       height: size,

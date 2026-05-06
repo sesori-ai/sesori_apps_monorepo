@@ -2,7 +2,7 @@ import "dart:math" as math;
 
 import "package:flutter/material.dart";
 
-import "../../../utils/color_extensions.dart";
+import "../utils/color_extensions.dart";
 
 /// Controls the direction characters roll when transitioning.
 enum ZyraRollingTextDirection {
