@@ -55,6 +55,8 @@ dependencies:
     path: ../module_auth
   sesori_dart_core:
     path: ../module_core
+  theme_zyra:
+    path: ../module_zyra
   cryptography: ^2.9.0
   cryptography_flutter: ^2.3.4
   web_socket_channel: ^3.0.3
