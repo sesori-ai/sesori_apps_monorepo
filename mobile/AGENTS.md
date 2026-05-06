@@ -99,6 +99,10 @@ There is ONE production implementation per interface. Do not add factories, alte
 - Do NOT instantiate cubits in DI. Construct them in `BlocProvider(create:)`.
 - Do NOT add state-management libraries other than BLoC/Cubit.
 
+## Git
+
+- Never use `git commit --amend` in the mobile workspace. If follow-up changes are needed after a commit, create a new commit instead.
+
 ## Definition of Done
 
 - `dart pub get` exits 0 from `mobile/`
