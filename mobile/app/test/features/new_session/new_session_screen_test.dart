@@ -258,7 +258,6 @@ void main() {
 
     expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
     expect(find.byKey(const Key("new_session_loading_progress")), findsOneWidget);
-    expect(find.byKey(const Key("new_session_loading_message")), findsOneWidget);
     expect(find.bySemanticsLabel(loc.newSessionLoadingSemantics), findsOneWidget);
     expect(find.text(loc.newSessionLoadingMessage1), findsOneWidget);
   });
@@ -306,6 +305,44 @@ void main() {
         dedicatedWorktree: any(named: "dedicatedWorktree"),
       ),
     ).called(1);
+  });
+
+  testWidgets("shows snackbar and allows navigation when aborting while sending", (tester) async {
+    final createCompleter = Completer<ApiResponse<Session>>();
+    when(
+      () => sessionService.createSessionWithMessage(
+        projectId: any(named: "projectId"),
+        text: any(named: "text"),
+        agent: any(named: "agent"),
+        providerID: any(named: "providerID"),
+        modelID: any(named: "modelID"),
+        variant: any(named: "variant"),
+        command: any(named: "command"),
+        dedicatedWorktree: any(named: "dedicatedWorktree"),
+      ),
+    ).thenAnswer((_) => createCompleter.future);
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+
+    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+
+    await tester.enterText(find.byType(TextField), "test message");
+    await tester.tap(find.byIcon(Icons.send), warnIfMissed: false);
+    await tester.pump();
+
+    expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
+
+    // Simulate system back navigation (which should be allowed while sending).
+    await tester.pageBack();
+    await tester.pump();
+
+    // Snackbar should appear before the screen pops.
+    expect(find.text(loc.newSessionLaunchingInBackground), findsOneWidget);
+
+    // The screen should have popped (no longer showing NewSessionScreen).
+    await tester.pumpAndSettle();
+    expect(find.byType(NewSessionScreen), findsNothing);
   });
 
   testWidgets("still navigates to session detail after creating a session", (tester) async {

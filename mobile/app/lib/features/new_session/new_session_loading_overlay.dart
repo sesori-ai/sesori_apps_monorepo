@@ -36,7 +36,7 @@ class _NewSessionLoadingOverlayState extends State<NewSessionLoadingOverlay> {
 
   void _startTimer() {
     if (_timer?.isActive ?? false) return;
-    _timer = Timer.periodic(const Duration(seconds: 2), (_) {
+    _timer = Timer.periodic(const Duration(seconds: 3, milliseconds: 500), (_) {
       if (mounted) {
         setState(() => _messageIndex = (_messageIndex + 1) % widget.messages.length);
       }
@@ -121,22 +121,32 @@ class _NewSessionLoadingOverlayState extends State<NewSessionLoadingOverlay> {
                       ),
                       textAlign: TextAlign.center,
                     )
-                  : Cue.onChange(
-                      value: message,
-                      motion: const CueMotion.smooth(),
-                      child: Actor(
-                        acts: const [
-                          Act.fadeIn(),
-                          Act.slideY(from: 0.1),
-                        ],
-                        child: Text(
-                          message,
-                          key: const Key("new_session_loading_message"),
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            color: theme.colorScheme.onSurface,
+                  : AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 500),
+                      transitionBuilder: (child, animation) {
+                        return FadeTransition(
+                          opacity: animation,
+                          child: SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(0, 0.4),
+                              end: Offset.zero,
+                            ).animate(
+                              CurvedAnimation(
+                                parent: animation,
+                                curve: Curves.easeOutCubic,
+                              ),
+                            ),
+                            child: child,
                           ),
-                          textAlign: TextAlign.center,
+                        );
+                      },
+                      child: Text(
+                        message,
+                        key: ValueKey<String>(message),
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: theme.colorScheme.onSurface,
                         ),
+                        textAlign: TextAlign.center,
                       ),
                     ),
             ],
