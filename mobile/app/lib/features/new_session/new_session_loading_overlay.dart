@@ -13,19 +13,18 @@ import "package:flutter/material.dart";
 class NewSessionLoadingOverlay extends StatefulWidget {
   const NewSessionLoadingOverlay({
     super.key = const Key("new_session_loading_overlay"),
+    required this.semanticsLabel,
+    required this.messages,
   });
+
+  final String semanticsLabel;
+  final List<String> messages;
 
   @override
   State<NewSessionLoadingOverlay> createState() => _NewSessionLoadingOverlayState();
 }
 
 class _NewSessionLoadingOverlayState extends State<NewSessionLoadingOverlay> {
-  static const _messages = [
-    "Warming up the engines…",
-    "Generating session telemetry…",
-    "Preparing for takeoff…",
-  ];
-
   int _messageIndex = 0;
   Timer? _timer;
 
@@ -39,7 +38,7 @@ class _NewSessionLoadingOverlayState extends State<NewSessionLoadingOverlay> {
     if (_timer?.isActive ?? false) return;
     _timer = Timer.periodic(const Duration(seconds: 2), (_) {
       if (mounted) {
-        setState(() => _messageIndex = (_messageIndex + 1) % _messages.length);
+        setState(() => _messageIndex = (_messageIndex + 1) % widget.messages.length);
       }
     });
   }
@@ -71,9 +70,9 @@ class _NewSessionLoadingOverlayState extends State<NewSessionLoadingOverlay> {
 
     return SizedBox.expand(
       child: Semantics(
-        label: "Creating session",
+        label: widget.semanticsLabel,
         child: ColoredBox(
-          color: Colors.black.withAlpha(160),
+          color: Theme.of(context).colorScheme.scrim.withAlpha(160),
           child: Center(
             child: reducedMotion
                 ? _buildContent(context, reducedMotion: true)
@@ -96,7 +95,7 @@ class _NewSessionLoadingOverlayState extends State<NewSessionLoadingOverlay> {
 
   Widget _buildContent(BuildContext context, {required bool reducedMotion}) {
     final theme = Theme.of(context);
-    final message = _messages[_messageIndex];
+    final message = widget.messages[_messageIndex];
 
     return Card(
       elevation: 8,

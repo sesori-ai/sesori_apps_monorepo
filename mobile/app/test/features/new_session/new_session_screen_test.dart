@@ -250,6 +250,8 @@ void main() {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
+    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+
     await tester.enterText(find.byType(TextField), "test message");
     await tester.tap(find.byIcon(Icons.send), warnIfMissed: false);
     await tester.pump();
@@ -257,8 +259,8 @@ void main() {
     expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
     expect(find.byKey(const Key("new_session_loading_progress")), findsOneWidget);
     expect(find.byKey(const Key("new_session_loading_message")), findsOneWidget);
-    expect(find.bySemanticsLabel("Creating session"), findsOneWidget);
-    expect(find.text("Warming up the engines…"), findsOneWidget);
+    expect(find.bySemanticsLabel(loc.newSessionLoadingSemantics), findsOneWidget);
+    expect(find.text(loc.newSessionLoadingMessage1), findsOneWidget);
   });
 
   testWidgets("blocks submit UI while a session is sending", (tester) async {
