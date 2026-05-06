@@ -164,9 +164,22 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   }
 
   Future<void> _loadInitialProjects() async {
-    await _waitForInitialConnectionIfNeeded();
+    await _prepareInitialConnection();
     if (isClosed) return;
     await _fetchProjects();
+  }
+
+  Future<void> _prepareInitialConnection() async {
+    switch (_connectionService.currentStatus) {
+      case ConnectionConnected():
+      case ConnectionLost():
+      case ConnectionBridgeOffline():
+        return;
+      case ConnectionDisconnected():
+        await _connectionService.connectWithFreshAuthToken();
+      case ConnectionReconnecting():
+        await _waitForInitialConnectionIfNeeded();
+    }
   }
 
   Future<void> _waitForInitialConnectionIfNeeded() async {

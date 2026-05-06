@@ -172,6 +172,9 @@ class FakeAuthSession implements AuthSession {
   Future<AuthUser?> getCurrentUser() async => null;
 
   @override
+  Future<bool> hasLocallyValidSession() async => false;
+
+  @override
   Future<void> invalidateAllSessions() async {}
 
   @override

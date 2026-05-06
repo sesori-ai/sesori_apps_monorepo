@@ -47,13 +47,20 @@ class TokenStorageService {
     final token = await _getAccessToken();
     if (token == null || token.isEmpty) return null;
 
-    final expiry = parseJwtExpiry(token);
-    if (expiry == null) return null;
-
-    final validityLeft = expiry.difference(DateTime.now().toUtc());
-    if (validityLeft.isNegative) return null; // Token is expired
+    final validityLeft = _validityLeft(token);
+    if (validityLeft == null || validityLeft.isNegative) return null;
 
     return (token: token, validityLeft: validityLeft);
+  }
+
+  Future<bool> hasLocallyValidSession() async {
+    final refreshToken = await getRefreshToken();
+    if (refreshToken == null || refreshToken.isEmpty) return false;
+
+    if (await getAccessToken() != null) return true;
+
+    final validityLeft = _validityLeft(refreshToken);
+    return validityLeft != null && !validityLeft.isNegative;
   }
 
   Future<String?> getRefreshToken() async {
@@ -85,5 +92,11 @@ class TokenStorageService {
       );
       rethrow;
     }
+  }
+
+  Duration? _validityLeft(String token) {
+    final expiry = parseJwtExpiry(token);
+    if (expiry == null) return null;
+    return expiry.difference(DateTime.now().toUtc());
   }
 }

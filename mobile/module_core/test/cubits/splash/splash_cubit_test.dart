@@ -1,5 +1,3 @@
-import "dart:async";
-
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/cubits/splash/splash_cubit.dart";
@@ -18,7 +16,7 @@ void main() {
     });
 
     test("initial state is SplashInitializing", () {
-      when(authSession.restoreSession).thenAnswer((_) async => false);
+      when(authSession.hasLocallyValidSession).thenAnswer((_) async => false);
 
       final cubit = SplashCubit(authSession);
       addTearDown(cubit.close);
@@ -26,8 +24,8 @@ void main() {
       expect(cubit.state, isA<SplashInitializing>());
     });
 
-    test("emits SplashReady(projects) when session restore succeeds", () async {
-      when(authSession.restoreSession).thenAnswer((_) async => true);
+    test("emits SplashReady(projects) when local session appears valid", () async {
+      when(authSession.hasLocallyValidSession).thenAnswer((_) async => true);
 
       final cubit = SplashCubit(authSession);
       addTearDown(cubit.close);
@@ -37,20 +35,22 @@ void main() {
 
       expect(state, isA<SplashReady>());
       expect((state as SplashReady).route, isA<AppRouteProjects>());
+      verifyNever(() => authSession.restoreSession());
     });
 
-    test("emits SplashReady(login) when session restore returns false", () async {
-      when(authSession.restoreSession).thenAnswer((_) async => false);
+    test("emits SplashReady(login) when no local session is available", () async {
+      when(authSession.hasLocallyValidSession).thenAnswer((_) async => false);
 
       final cubit = SplashCubit(authSession);
       addTearDown(cubit.close);
       final state = await cubit.stream.firstWhere((s) => s is SplashReady);
 
       expect((state as SplashReady).route, isA<AppRouteLogin>());
+      verifyNever(() => authSession.restoreSession());
     });
 
-    test("emits SplashReady(login) when session restore throws", () async {
-      when(authSession.restoreSession).thenThrow(StateError("restore failed"));
+    test("emits SplashReady(login) when local session check throws", () async {
+      when(authSession.hasLocallyValidSession).thenThrow(StateError("storage failed"));
 
       final cubit = SplashCubit(authSession);
       addTearDown(cubit.close);
@@ -59,20 +59,7 @@ void main() {
 
       expect(cubit.state, isA<SplashReady>());
       expect((cubit.state as SplashReady).route, isA<AppRouteLogin>());
+      verifyNever(() => authSession.restoreSession());
     });
-
-    test("emits SplashReady(login) when session restore hangs past timeout", () async {
-      final completer = Completer<bool>();
-      when(authSession.restoreSession).thenAnswer((_) => completer.future);
-
-      final cubit = SplashCubit(authSession);
-      addTearDown(cubit.close);
-
-      final state = await cubit.stream
-          .firstWhere((s) => s is SplashReady)
-          .timeout(const Duration(seconds: 7));
-
-      expect((state as SplashReady).route, isA<AppRouteLogin>());
-    }, timeout: const Timeout(Duration(seconds: 10)));
   });
 }

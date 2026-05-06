@@ -182,6 +182,11 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
   }
 
   @override
+  Future<bool> hasLocallyValidSession() {
+    return _tokenStorage.hasLocallyValidSession();
+  }
+
+  @override
   Future<bool> restoreSession() async {
     final user = await getCurrentUser();
     if (user == null) return false;

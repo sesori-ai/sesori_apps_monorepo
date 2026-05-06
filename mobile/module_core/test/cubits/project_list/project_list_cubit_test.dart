@@ -60,6 +60,7 @@ void main() {
       // Must be stubbed before any cubit is built — constructor subscribes immediately.
       when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
       when(() => mockConnectionService.currentStatus).thenAnswer((_) => statusController.value);
+      when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => true);
       when(
         () => mockFailureReporter.recordFailure(
           error: any(named: "error"),
@@ -108,20 +109,30 @@ void main() {
       ],
     );
 
+    late Completer<bool> initialConnectCompleter;
+
     blocTest<ProjectListCubit, ProjectListState>(
-      "constructor waits for relay connection before initial project fetch",
+      "constructor waits for relay connection attempt before initial project fetch",
       build: () {
         statusController.add(const ConnectionStatus.disconnected());
+        initialConnectCompleter = Completer<bool>();
+        when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) => initialConnectCompleter.future);
         when(
           () => mockProjectService.listProjects(),
         ).thenAnswer((_) async => ApiResponse.success(Projects(data: [testProject()])));
+        addTearDown(() {
+          if (!initialConnectCompleter.isCompleted) initialConnectCompleter.complete(false);
+        });
         return buildCubit();
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
         verifyNever(() => mockProjectService.listProjects());
 
-        statusController.add(_connectedStatus);
+        final captured = verify(() => mockConnectionService.connectWithFreshAuthToken());
+        captured.called(1);
+
+        initialConnectCompleter.complete(true);
         await Future<void>.delayed(Duration.zero);
       },
       expect: () => [

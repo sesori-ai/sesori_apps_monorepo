@@ -355,6 +355,28 @@ void main() {
   });
 
   group("AuthSession", () {
+    test("hasLocallyValidSession delegates to token storage without HTTP", () async {
+      when(mockTokenStorage.hasLocallyValidSession).thenAnswer((_) async => true);
+
+      final result = await authManager.hasLocallyValidSession();
+
+      expect(result, isTrue);
+      verify(mockTokenStorage.hasLocallyValidSession).called(1);
+      verifyNever(
+        () => mockHttpClient.get(
+          any(),
+          headers: any(named: "headers"),
+        ),
+      );
+      verifyNever(
+        () => mockHttpClient.post(
+          any(),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      );
+    });
+
     test("getCurrentUser returns user when authenticated", () async {
       when(() => mockTokenStorage.getAccessToken()).thenAnswer(
         (_) async => (token: "valid-access-token", validityLeft: const Duration(minutes: 3)),

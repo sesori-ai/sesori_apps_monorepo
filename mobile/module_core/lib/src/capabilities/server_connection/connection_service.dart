@@ -64,6 +64,7 @@ class ConnectionService {
   StreamSubscription<BridgeStatus>? _bridgeStatusSubscription;
   Timer? _reconnectTimer;
   Completer<void>? _reconnectDelayCompleter;
+  Future<bool>? _activeAuthConnect;
   int _requestCounter = 0;
   final Random _requestIdRandom = Random();
   int _authRetryCount = 0;
@@ -116,7 +117,7 @@ class ConnectionService {
       _authSession.authStateStream.listen((state) {
         switch (state) {
           case AuthAuthenticated():
-            unawaited(_autoConnectAfterAuth());
+            unawaited(connectWithFreshAuthToken());
           case AuthUnauthenticated():
             disconnect();
             unawaited(
@@ -133,21 +134,32 @@ class ConnectionService {
     );
   }
 
-  /// Connects to the relay when auth transitions to [AuthAuthenticated].
+  /// Connects to the relay using the best currently available auth token.
   ///
-  /// Symmetric counterpart to the [AuthUnauthenticated] branch that calls
-  /// [disconnect]. Fire-and-forget: errors are logged, never rethrown.
-  Future<void> _autoConnectAfterAuth() async {
+  /// Used after explicit auth success and by screens that were reached from a
+  /// local-only startup decision. Errors are logged and represented as `false`.
+  Future<bool> connectWithFreshAuthToken() {
+    return _activeAuthConnect ??= _connectWithFreshAuthToken().whenComplete(() {
+      _activeAuthConnect = null;
+    });
+  }
+
+  Future<bool> _connectWithFreshAuthToken() async {
     try {
+      if (_status.value is ConnectionConnected || _status.value is ConnectionBridgeOffline) {
+        return true;
+      }
       final token = await _authTokenProvider.getFreshAccessToken(minTtl: const Duration(minutes: 2));
       if (token == null) {
         logw("Auto-connect after auth skipped: no valid token");
-        return;
+        return false;
       }
       final config = ServerConnectionConfig(relayHost: relayHost, authToken: token);
-      await connect(config);
+      final result = await connect(config);
+      return result is SuccessResponse<HealthResponse>;
     } catch (error, stackTrace) {
       loge("Auto-connect after auth failed", error, stackTrace);
+      return false;
     }
   }
 
