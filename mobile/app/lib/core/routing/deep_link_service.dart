@@ -8,17 +8,17 @@ import "app_router.dart";
 /// Bridges [AppLinks] deep link events to the OAuth callback flow.
 ///
 /// Listens for incoming custom-scheme URLs (e.g. `com.sesori.app://auth/callback`)
-/// and delegates them to [AuthRedirectService] for token exchange, then navigates
+/// and delegates them to [OAuthCallbackDispatcher] for token exchange, then navigates
 /// via [appRouter].
 @lazySingleton
 class DeepLinkService {
-  final AuthRedirectService _authRedirectService;
+  final OAuthCallbackDispatcher _oAuthCallbackDispatcher;
   final DeepLinkSource _deepLinkSource;
   StreamSubscription<Uri>? _sub;
   bool _processing = false;
 
-  DeepLinkService(AuthRedirectService authRedirectService, DeepLinkSource deepLinkSource)
-    : _authRedirectService = authRedirectService,
+  DeepLinkService(OAuthCallbackDispatcher oAuthCallbackDispatcher, DeepLinkSource deepLinkSource)
+    : _oAuthCallbackDispatcher = oAuthCallbackDispatcher,
       _deepLinkSource = deepLinkSource;
 
   /// Start listening for deep links. Call once during app initialization.
@@ -49,7 +49,7 @@ class DeepLinkService {
     _processing = true;
 
     try {
-      final route = await _authRedirectService.handleOAuthCallback(uri);
+      final route = await _oAuthCallbackDispatcher.handleOAuthCallback(uri);
       if (route != null) {
         try {
           appRouter.goRoute(route);

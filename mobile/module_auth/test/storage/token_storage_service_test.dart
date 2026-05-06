@@ -146,6 +146,53 @@ void main() {
       expect(result, isNull);
     });
 
+    test("hasLocallyValidSession returns true when refresh token is not expired", () async {
+      final futureExp = DateTime.now().toUtc().add(const Duration(minutes: 10));
+      final refreshToken = buildJwt(exp: futureExp.millisecondsSinceEpoch ~/ 1000);
+      when(() => mockStorage.read(key: "access_token")).thenAnswer((_) async => null);
+      when(() => mockStorage.read(key: "refresh_token")).thenAnswer((_) async => refreshToken);
+
+      final result = await tokenStorageService.hasLocallyValidSession();
+
+      verify(() => mockStorage.read(key: "refresh_token")).called(1);
+      expect(result, isTrue);
+    });
+
+    test("hasLocallyValidSession returns true for valid access token with opaque refresh token", () async {
+      final futureExp = DateTime.now().toUtc().add(const Duration(minutes: 10));
+      final accessToken = buildJwt(exp: futureExp.millisecondsSinceEpoch ~/ 1000);
+      when(() => mockStorage.read(key: "access_token")).thenAnswer((_) async => accessToken);
+      when(() => mockStorage.read(key: "refresh_token")).thenAnswer((_) async => "opaque-refresh-token");
+
+      final result = await tokenStorageService.hasLocallyValidSession();
+
+      verify(() => mockStorage.read(key: "refresh_token")).called(1);
+      verify(() => mockStorage.read(key: "access_token")).called(1);
+      expect(result, isTrue);
+    });
+
+    test("hasLocallyValidSession returns false when refresh token is expired", () async {
+      final pastExp = DateTime.now().toUtc().subtract(const Duration(minutes: 2));
+      final refreshToken = buildJwt(exp: pastExp.millisecondsSinceEpoch ~/ 1000);
+      when(() => mockStorage.read(key: "access_token")).thenAnswer((_) async => null);
+      when(() => mockStorage.read(key: "refresh_token")).thenAnswer((_) async => refreshToken);
+
+      final result = await tokenStorageService.hasLocallyValidSession();
+
+      verify(() => mockStorage.read(key: "refresh_token")).called(1);
+      expect(result, isFalse);
+    });
+
+    test("hasLocallyValidSession returns false when refresh token cannot be parsed", () async {
+      when(() => mockStorage.read(key: "access_token")).thenAnswer((_) async => null);
+      when(() => mockStorage.read(key: "refresh_token")).thenAnswer((_) async => "opaque-token");
+
+      final result = await tokenStorageService.hasLocallyValidSession();
+
+      verify(() => mockStorage.read(key: "refresh_token")).called(1);
+      expect(result, isFalse);
+    });
+
     test("clearTokens deletes both access and refresh token keys", () async {
       // given
       when(() => mockStorage.delete(key: "access_token")).thenAnswer((_) async {

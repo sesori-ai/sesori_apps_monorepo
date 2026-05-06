@@ -1362,6 +1362,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Retry'**
   String get diffRetry;
+
+  /// No description provided for @splashWelcomeTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome to'**
+  String get splashWelcomeTo;
+
+  /// No description provided for @splashTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sesori'**
+  String get splashTitle;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

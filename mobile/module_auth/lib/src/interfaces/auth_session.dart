@@ -20,6 +20,10 @@ abstract interface class AuthSession {
   /// Returns `null` if not authenticated or on error.
   Future<AuthUser?> getCurrentUser();
 
+  /// Checks only local token storage to determine whether a session appears
+  /// usable. This never calls the auth server and does not emit auth state.
+  Future<bool> hasLocallyValidSession();
+
   /// Invalidates all sessions across all devices by calling the auth server.
   /// On success, clears local tokens and emits unauthenticated.
   /// On failure, throws — local tokens are NOT cleared (the server-side

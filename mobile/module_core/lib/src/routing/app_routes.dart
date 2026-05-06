@@ -6,6 +6,7 @@ const redirectUri = "$bundleId://auth/callback";
 /// [AppRouteDef.values] is compile-time complete, so every route is
 /// guaranteed to be registered — no manual list to keep in sync.
 enum AppRouteDef {
+  splash("/splash"),
   login("/login"),
   projects("/projects"),
   notificationSettings("/settings/notifications"),
@@ -45,6 +46,7 @@ sealed class AppRoute {
   /// are appended and encoded via [Uri].
   String buildPath();
 
+  const factory AppRoute.splash() = AppRouteSplash;
   const factory AppRoute.login() = AppRouteLogin;
   const factory AppRoute.projects() = AppRouteProjects;
   const factory AppRoute.notificationSettings() = AppRouteNotificationSettings;
@@ -74,6 +76,7 @@ sealed class AppRoute {
     required Map<String, String> queryParams,
   }) {
     return switch (def) {
+      AppRouteDef.splash => const AppRoute.splash(),
       AppRouteDef.login => const AppRoute.login(),
       AppRouteDef.projects => const AppRoute.projects(),
       AppRouteDef.notificationSettings => const AppRoute.notificationSettings(),
@@ -89,6 +92,16 @@ sealed class AppRoute {
       ),
     };
   }
+}
+
+class AppRouteSplash extends AppRoute {
+  const AppRouteSplash();
+
+  @override
+  AppRouteDef get def => AppRouteDef.splash;
+
+  @override
+  String buildPath() => def.path;
 }
 
 class AppRouteLogin extends AppRoute {

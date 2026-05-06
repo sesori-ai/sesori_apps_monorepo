@@ -12,6 +12,7 @@ import "../../capabilities/relay/room_key_storage.dart";
 import "../../logging/logging.dart";
 import "../../platform/lifecycle_source.dart";
 import "../relay/relay_client.dart";
+import "../relay/relay_config.dart";
 import "api_paths.dart";
 import "models/connection_status.dart";
 import "models/sse_event.dart";
@@ -63,6 +64,7 @@ class ConnectionService {
   StreamSubscription<BridgeStatus>? _bridgeStatusSubscription;
   Timer? _reconnectTimer;
   Completer<void>? _reconnectDelayCompleter;
+  Future<bool>? _activeAuthConnect;
   int _requestCounter = 0;
   final Random _requestIdRandom = Random();
   int _authRetryCount = 0;
@@ -113,15 +115,52 @@ class ConnectionService {
     );
     _compositeSubscription.add(
       _authSession.authStateStream.listen((state) {
-        if (state is! AuthUnauthenticated) return;
-        disconnect();
-        unawaited(
-          _roomKeyStorage.clearRoomKey().catchError((Object error, StackTrace stackTrace) {
-            loge("Failed to clear room key after logout", error, stackTrace);
-          }),
-        );
+        switch (state) {
+          case AuthAuthenticated():
+            unawaited(connectWithFreshAuthToken());
+          case AuthUnauthenticated():
+            disconnect();
+            unawaited(
+              _roomKeyStorage.clearRoomKey().catchError((Object error, StackTrace stackTrace) {
+                loge("Failed to clear room key after logout", error, stackTrace);
+              }),
+            );
+          case AuthInitial():
+          case AuthAuthenticating():
+          case AuthFailed():
+            break;
+        }
       }),
     );
+  }
+
+  /// Connects to the relay using the best currently available auth token.
+  ///
+  /// Used after explicit auth success and by screens that were reached from a
+  /// local-only startup decision. Errors are logged and represented as `false`.
+  Future<bool> connectWithFreshAuthToken() {
+    return _activeAuthConnect ??= _connectWithFreshAuthToken().whenComplete(() {
+      _activeAuthConnect = null;
+    });
+  }
+
+  Future<bool> _connectWithFreshAuthToken() async {
+    try {
+      if (_status.value is ConnectionConnected || _status.value is ConnectionBridgeOffline) {
+        return true;
+      }
+      final token = await _authTokenProvider.getFreshAccessToken(minTtl: const Duration(minutes: 2));
+      if (token == null) {
+        logw("Auto-connect after auth skipped: no valid token");
+        return false;
+      }
+      final config = ServerConnectionConfig(relayHost: relayHost, authToken: token);
+      final result = await connect(config);
+      return result is SuccessResponse<HealthResponse>;
+    } catch (error, stackTrace) {
+      loge("Auto-connect after auth failed", error, stackTrace);
+      return false;
+    }
   }
 
   /// Called by the platform layer when the app moves to the background.
