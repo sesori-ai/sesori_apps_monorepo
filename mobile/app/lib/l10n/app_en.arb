@@ -358,8 +358,9 @@
           "diffRetry": "Retry",
    "splashWelcomeTo": "Welcome to",
    "splashTitle": "Sesori",
-   "newSessionLoadingSemantics": "Creating session",
-   "newSessionLoadingMessage1": "Warming up the engines…",
-   "newSessionLoadingMessage2": "Generating session telemetry…",
-   "newSessionLoadingMessage3": "Preparing for takeoff…"
+    "newSessionLoadingSemantics": "Creating session",
+    "newSessionLoadingMessage1": "Warming up the engines…",
+    "newSessionLoadingMessage2": "Generating session telemetry…",
+    "newSessionLoadingMessage3": "Preparing for takeoff…",
+    "newSessionLaunchingInBackground": "Your new session will appear in the list once it's launched"
 }

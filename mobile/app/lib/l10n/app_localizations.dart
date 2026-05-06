@@ -1404,6 +1404,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Preparing for takeoff…'**
   String get newSessionLoadingMessage3;
+
+  /// No description provided for @newSessionLaunchingInBackground.
+  ///
+  /// In en, this message translates to:
+  /// **'Your new session will appear in the list once it\'s launched'**
+  String get newSessionLaunchingInBackground;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

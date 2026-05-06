@@ -733,4 +733,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get newSessionLoadingMessage3 => 'Preparing for takeoff…';
+
+  @override
+  String get newSessionLaunchingInBackground => "Your new session will appear in the list once it's launched";
 }
