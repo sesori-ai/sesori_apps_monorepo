@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_zyra/module_zyra.dart";
 
 import "../../core/extensions/build_context_x.dart";
 import "../../l10n/app_localizations.dart";
@@ -20,11 +21,10 @@ class PrStatusRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final loc = context.loc;
-    final stateColor = _stateColor(scheme: theme.colorScheme, state: pr.state);
+    final stateColor = _stateColor(colors: context.zyra.colors, state: pr.state);
     final mergeIcon = _mergeIcon(status: pr.mergeableStatus);
-    final mergeColor = _mergeColor(scheme: theme.colorScheme, status: pr.mergeableStatus) ?? stateColor;
+    final mergeColor = _mergeColor(colors: context.zyra.colors, status: pr.mergeableStatus) ?? stateColor;
 
     return Row(
       children: [
@@ -35,16 +35,16 @@ class PrStatusRow extends StatelessWidget {
         const SizedBox(width: 4),
         Text(
           loc.prLabel(pr.number),
-          style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500),
+          style: context.zyra.textTheme.textXs.medium,
         ),
         const SizedBox(width: 6),
         Text(
           _stateText(loc: loc, state: pr.state),
-          style: theme.textTheme.bodySmall?.copyWith(color: stateColor),
+          style: context.zyra.textTheme.textXs.regular.copyWith(color: stateColor),
         ),
         // Review/check indicators are only relevant for open PRs.
         if (pr.state == PrState.open) ...[
-          if (_reviewIndicator(scheme: theme.colorScheme, loc: loc, decision: pr.reviewDecision)
+          if (_reviewIndicator(colors: context.zyra.colors, loc: loc, decision: pr.reviewDecision)
               case (:final icon, :final color, :final tooltip)?) ...[
             const SizedBox(width: 8),
             Tooltip(
@@ -52,7 +52,7 @@ class PrStatusRow extends StatelessWidget {
               child: Icon(icon, size: 12, color: color),
             ),
           ],
-          if (_checkIndicator(scheme: theme.colorScheme, loc: loc, status: pr.checkStatus)
+          if (_checkIndicator(colors: context.zyra.colors, loc: loc, status: pr.checkStatus)
               case (:final icon, :final color, :final tooltip)?) ...[
             const SizedBox(width: 4),
             Tooltip(
@@ -70,11 +70,11 @@ class PrStatusRow extends StatelessWidget {
 // State helpers
 // ---------------------------------------------------------------------------
 
-Color _stateColor({required ColorScheme scheme, required PrState state}) => switch (state) {
+Color _stateColor({required ZyraColors colors, required PrState state}) => switch (state) {
   PrState.open => _kPrGreen,
   PrState.merged => _kPrPurple,
-  PrState.closed => scheme.outline,
-  PrState.unknown => scheme.outline,
+  PrState.closed => colors.borderPrimary,
+  PrState.unknown => colors.borderPrimary,
 };
 
 String _stateText({required AppLocalizations loc, required PrState state}) => switch (state) {
@@ -89,9 +89,9 @@ String _stateText({required AppLocalizations loc, required PrState state}) => sw
 // ---------------------------------------------------------------------------
 
 /// Returns a color for the merge icon, or null to fall back to the state color.
-Color? _mergeColor({required ColorScheme scheme, required PrMergeableStatus status}) => switch (status) {
+Color? _mergeColor({required ZyraColors colors, required PrMergeableStatus status}) => switch (status) {
   PrMergeableStatus.mergeable => _kPrGreen,
-  PrMergeableStatus.conflicting => scheme.error,
+  PrMergeableStatus.conflicting => colors.fgErrorPrimary,
   PrMergeableStatus.unknown => null,
 };
 
@@ -113,19 +113,19 @@ String _mergeTooltip({required AppLocalizations loc, required PrMergeableStatus 
 
 /// Returns icon, color, and tooltip for the review decision, or null to hide it.
 ({IconData icon, Color color, String tooltip})? _reviewIndicator({
-  required ColorScheme scheme,
+  required ZyraColors colors,
   required AppLocalizations loc,
   required PrReviewDecision decision,
 }) => switch (decision) {
   PrReviewDecision.approved => (icon: Icons.check_circle_outline, color: _kPrGreen, tooltip: loc.prReviewApproved),
   PrReviewDecision.changesRequested => (
     icon: Icons.cancel_outlined,
-    color: scheme.error,
+    color: colors.fgErrorPrimary,
     tooltip: loc.prReviewChangesRequested,
   ),
   PrReviewDecision.reviewRequired => (
     icon: Icons.pending_outlined,
-    color: scheme.outline,
+    color: colors.borderPrimary,
     tooltip: loc.prReviewRequired,
   ),
   PrReviewDecision.unknown => null,
@@ -137,12 +137,12 @@ String _mergeTooltip({required AppLocalizations loc, required PrMergeableStatus 
 
 /// Returns icon, color, and tooltip for the check status, or null to hide it.
 ({IconData icon, Color color, String tooltip})? _checkIndicator({
-  required ColorScheme scheme,
+  required ZyraColors colors,
   required AppLocalizations loc,
   required PrCheckStatus status,
 }) => switch (status) {
   PrCheckStatus.success => (icon: Icons.check_circle_outline, color: _kPrGreen, tooltip: loc.prChecksSuccess),
-  PrCheckStatus.failure => (icon: Icons.error_outline, color: scheme.error, tooltip: loc.prChecksFailing),
+  PrCheckStatus.failure => (icon: Icons.error_outline, color: colors.fgErrorPrimary, tooltip: loc.prChecksFailing),
   PrCheckStatus.pending => (icon: Icons.schedule, color: _kPrAmber, tooltip: loc.prChecksPending),
   PrCheckStatus.none => null,
   PrCheckStatus.unknown => null,

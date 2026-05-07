@@ -166,10 +166,19 @@ class SesoriApp extends StatelessWidget {
     return MaterialApp.router(
       onGenerateTitle: (context) => context.loc.appTitle,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ZyraColors.light.toFlutterColorScheme(),
+        textTheme: ZyraTextTheme.light.asFlutterTextTheme(),
+        fontFamily: ZyraTextTheme.fontFamily,
+        fontFamilyFallback: ZyraTextTheme.fontFamilyFallback,
         extensions: [ZyraDesignSystem.light],
       ),
-      darkTheme: ThemeData.dark().copyWith(extensions: [ZyraDesignSystem.dark]),
+      darkTheme: ThemeData(
+        colorScheme: ZyraColors.dark.toFlutterColorScheme(),
+        textTheme: ZyraTextTheme.dark.asFlutterTextTheme(),
+        fontFamily: ZyraTextTheme.fontFamily,
+        fontFamilyFallback: ZyraTextTheme.fontFamilyFallback,
+        extensions: [ZyraDesignSystem.dark],
+      ),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: appRouter,

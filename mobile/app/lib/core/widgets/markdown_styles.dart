@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:theme_zyra/module_zyra.dart";
 
 import "../di/injection.dart";
 
@@ -15,20 +16,20 @@ void handleMarkdownLinkTap(String text, String? href, String title) {
 }
 
 // ignore: no_slop_linter/prefer_required_named_parameters, paragraphStyle is an optional override
-MarkdownStyleSheet buildSessionMarkdownStyleSheet(
-  ThemeData theme, {
+MarkdownStyleSheet buildSessionMarkdownStyleSheet({
+  required ZyraDesignSystem zyra,
   TextStyle? paragraphStyle,
 }) {
-  return MarkdownStyleSheet.fromTheme(theme).copyWith(
-    p: paragraphStyle,
+  return MarkdownStyleSheet(
+    p: paragraphStyle ?? zyra.textTheme.textSm.regular,
     codeblockDecoration: BoxDecoration(
-      color: theme.colorScheme.surfaceContainerHighest,
+      color: zyra.colors.bgQuaternary,
       borderRadius: BorderRadius.circular(8),
     ),
     code: TextStyle(
       fontFamily: "monospace",
       fontSize: 13,
-      color: theme.colorScheme.onSurface,
+      color: zyra.colors.textPrimary,
     ),
   );
 }

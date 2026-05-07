@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_zyra/module_zyra.dart";
 
 import "../../core/constants.dart";
 import "../../core/extensions/build_context_x.dart";
@@ -101,7 +102,7 @@ class _RenameSessionDialogState extends State<_RenameSessionDialog> {
         children: [
           Align(
             alignment: Alignment.centerLeft,
-            child: Text(loc.renameSessionTitle, style: Theme.of(context).textTheme.titleMedium),
+            child: Text(loc.renameSessionTitle, style: context.zyra.textTheme.textMd.bold),
           ),
           const SizedBox(height: 16),
           TextField(

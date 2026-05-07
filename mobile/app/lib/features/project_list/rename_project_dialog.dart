@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_zyra/module_zyra.dart";
 
 import "../../core/constants.dart";
 import "../../core/extensions/build_context_x.dart";
@@ -97,6 +98,7 @@ class _RenameProjectDialogState extends State<RenameProjectDialog> {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
+    final zyra = context.zyra;
 
     return Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 16),
@@ -108,7 +110,7 @@ class _RenameProjectDialogState extends State<RenameProjectDialog> {
               width: 32,
               height: 4,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                color: zyra.colors.textSecondary.withValues(alpha: 0.4),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -116,7 +118,7 @@ class _RenameProjectDialogState extends State<RenameProjectDialog> {
           const SizedBox(height: 8),
           Align(
             alignment: Alignment.centerLeft,
-            child: Text(loc.renameProjectTitle, style: Theme.of(context).textTheme.titleMedium),
+            child: Text(loc.renameProjectTitle, style: zyra.textTheme.textMd.bold),
           ),
           const SizedBox(height: 16),
           TextField(

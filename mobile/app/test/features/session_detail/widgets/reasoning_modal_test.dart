@@ -10,6 +10,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/session_detail/widgets/reasoning_modal.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_zyra/module_zyra.dart";
 
 // ---------------------------------------------------------------------------
 // Mock
@@ -86,6 +87,8 @@ MessageWithParts _messageWithPart({
 
 Widget _buildApp({required SessionDetailCubit cubit}) {
   return MaterialApp(
+    theme: ThemeData(extensions: [ZyraDesignSystem.light]),
+    darkTheme: ThemeData(extensions: [ZyraDesignSystem.dark]),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     home: BlocProvider<SessionDetailCubit>.value(

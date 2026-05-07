@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:theme_zyra/module_zyra.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
@@ -41,6 +42,7 @@ class _SplashView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final zyra = context.zyra;
     return Stack(
       clipBehavior: .none,
       children: [
@@ -59,11 +61,11 @@ class _SplashView extends StatelessWidget {
               const SizedBox(height: 13),
               Text(
                 context.loc.splashWelcomeTo,
-                style: Theme.of(context).textTheme.bodyMedium,
+                style: zyra.textTheme.textSm.regular,
               ),
               Text(
                 context.loc.splashTitle,
-                style: Theme.of(context).textTheme.titleLarge,
+                style: zyra.textTheme.textMd.bold,
               ),
             ],
           ),

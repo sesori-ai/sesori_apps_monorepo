@@ -9,6 +9,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/session_list/session_list_screen.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_zyra/module_zyra.dart";
 
 import "../../helpers/test_helpers.dart";
 
@@ -32,6 +33,16 @@ class MockSessionListCubit extends MockCubit<SessionListState> implements Sessio
 
 Widget _buildApp({required SessionListCubit cubit}) {
   return MaterialApp(
+    theme: ThemeData(
+      colorScheme: ZyraColors.light.toFlutterColorScheme(),
+      textTheme: ZyraTextTheme.light.asFlutterTextTheme(),
+      extensions: [ZyraDesignSystem.light],
+    ),
+    darkTheme: ThemeData(
+      colorScheme: ZyraColors.dark.toFlutterColorScheme(),
+      textTheme: ZyraTextTheme.dark.asFlutterTextTheme(),
+      extensions: [ZyraDesignSystem.dark],
+    ),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     home: BlocProvider<SessionListCubit>.value(
@@ -43,6 +54,16 @@ Widget _buildApp({required SessionListCubit cubit}) {
 
 Widget _buildScreenApp({required Widget child}) {
   return MaterialApp(
+    theme: ThemeData(
+      colorScheme: ZyraColors.light.toFlutterColorScheme(),
+      textTheme: ZyraTextTheme.light.asFlutterTextTheme(),
+      extensions: [ZyraDesignSystem.light],
+    ),
+    darkTheme: ThemeData(
+      colorScheme: ZyraColors.dark.toFlutterColorScheme(),
+      textTheme: ZyraTextTheme.dark.asFlutterTextTheme(),
+      extensions: [ZyraDesignSystem.dark],
+    ),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     home: child,

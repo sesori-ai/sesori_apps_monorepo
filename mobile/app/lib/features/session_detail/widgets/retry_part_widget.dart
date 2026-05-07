@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:theme_zyra/module_zyra.dart";
 
 class RetryPartWidget extends StatelessWidget {
   final int? attempt;
@@ -12,7 +13,7 @@ class RetryPartWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final zyra = context.zyra;
     final label = StringBuffer("Retry");
     if (attempt != null) {
       label.write(" #$attempt");
@@ -28,14 +29,14 @@ class RetryPartWidget extends StatelessWidget {
           Icon(
             Icons.refresh,
             size: 14,
-            color: theme.colorScheme.tertiary,
+            color: zyra.colors.fgSuccessPrimary,
           ),
           const SizedBox(width: 6),
           Expanded(
             child: Text(
               label.toString(),
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.tertiary,
+              style: zyra.textTheme.textXs.medium.copyWith(
+                color: zyra.colors.fgSuccessPrimary,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,

@@ -11,6 +11,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/project_list/add_project_dialog.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_zyra/module_zyra.dart";
 
 import "../../helpers/test_helpers.dart";
 
@@ -54,6 +55,20 @@ Widget _buildApp({required ProjectListCubit cubit, required Widget child}) {
 
   return MaterialApp.router(
     routerConfig: router,
+    theme: ThemeData(
+      colorScheme: ZyraColors.light.toFlutterColorScheme(),
+      textTheme: ZyraTextTheme.light.asFlutterTextTheme(),
+      fontFamily: ZyraTextTheme.fontFamily,
+      fontFamilyFallback: ZyraTextTheme.fontFamilyFallback,
+      extensions: [ZyraDesignSystem.light],
+    ),
+    darkTheme: ThemeData(
+      colorScheme: ZyraColors.dark.toFlutterColorScheme(),
+      textTheme: ZyraTextTheme.dark.asFlutterTextTheme(),
+      fontFamily: ZyraTextTheme.fontFamily,
+      fontFamilyFallback: ZyraTextTheme.fontFamilyFallback,
+      extensions: [ZyraDesignSystem.dark],
+    ),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
   );

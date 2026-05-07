@@ -3,6 +3,7 @@ import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_zyra/module_zyra.dart";
 
 import "../../core/constants.dart";
 import "../../core/di/injection.dart";
@@ -94,10 +95,10 @@ class _SessionListBody extends StatelessWidget {
               },
             ),
             ListTile(
-              leading: Icon(Icons.delete_outlined, color: Theme.of(context).colorScheme.error),
+              leading: Icon(Icons.delete_outlined, color: context.zyra.colors.fgErrorPrimary),
               title: Text(
                 loc.sessionListDelete,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+                style: TextStyle(color: context.zyra.colors.fgErrorPrimary),
               ),
               onTap: () {
                 sheetContext.pop();
@@ -131,8 +132,8 @@ class _SessionListBody extends StatelessWidget {
             if (baseBranch != null)
               Text(
                 baseBranch,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                style: context.zyra.textTheme.textXs.regular.copyWith(
+                  color: context.zyra.colors.textSecondary,
                 ),
               ),
           ],

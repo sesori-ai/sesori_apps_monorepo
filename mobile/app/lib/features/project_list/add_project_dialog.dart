@@ -3,6 +3,7 @@ import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_zyra/module_zyra.dart";
 
 import "../../core/constants.dart";
 import "../../core/extensions/build_context_x.dart";
@@ -114,6 +115,7 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
   Widget build(BuildContext context) {
     final loc = context.loc;
     final screenHeight = MediaQuery.sizeOf(context).height;
+    final zyra = context.zyra;
 
     return SizedBox(
       height: screenHeight * 0.7,
@@ -127,7 +129,7 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
                 width: 32,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                  color: zyra.colors.textSecondary.withValues(alpha: 0.4),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -137,7 +139,7 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: Text(loc.addProject, style: Theme.of(context).textTheme.titleMedium),
+                child: Text(loc.addProject, style: zyra.textTheme.textMd.bold),
               ),
             ),
             const SizedBox(height: 8),
@@ -276,7 +278,7 @@ class _DirectoryBrowserState extends State<_DirectoryBrowser> {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    final theme = Theme.of(context);
+    final zyra = context.zyra;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -296,8 +298,8 @@ class _DirectoryBrowserState extends State<_DirectoryBrowser> {
                 Expanded(
                   child: Text(
                     _currentPath,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                    style: zyra.textTheme.textXs.regular.copyWith(
+                      color: zyra.colors.textSecondary,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -316,14 +318,14 @@ class _DirectoryBrowserState extends State<_DirectoryBrowser> {
                     padding: const EdgeInsets.symmetric(horizontal: 32),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
+                        children: [
+                        Icon(Icons.error_outline, size: 48, color: zyra.colors.fgErrorPrimary),
                         const SizedBox(height: 12),
                         Text(
                           loc.fetchDirectoryFailed,
                           textAlign: TextAlign.center,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.error,
+                          style: zyra.textTheme.textSm.regular.copyWith(
+                            color: zyra.colors.fgErrorPrimary,
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -345,11 +347,11 @@ class _DirectoryBrowserState extends State<_DirectoryBrowser> {
                   ),
                 )
               : _entries.isEmpty
-              ? Center(
+                ? Center(
                   child: Text(
                     loc.emptyDirectory,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.outline,
+                    style: zyra.textTheme.textSm.regular.copyWith(
+                      color: zyra.colors.borderPrimary,
                     ),
                   ),
                 )
@@ -377,11 +379,11 @@ class _DirectoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final loc = context.loc;
+    final zyra = context.zyra;
 
     return ListTile(
-      leading: Icon(Icons.folder, color: theme.colorScheme.primary),
+      leading: Icon(Icons.folder, color: zyra.colors.bgBrandSolid),
       title: Row(
         children: [
           Flexible(child: Text(entry.name, overflow: TextOverflow.ellipsis)),
@@ -390,13 +392,13 @@ class _DirectoryTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: theme.colorScheme.tertiaryContainer,
+                color: zyra.colors.bgPrimary,
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
                 loc.gitRepoBadge,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onTertiaryContainer,
+                style: zyra.textTheme.textXs.medium.copyWith(
+                  color: zyra.colors.textPrimary,
                 ),
               ),
             ),

@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:theme_zyra/module_zyra.dart";
 
 /// Floating pill overlay shown over a detached scrollable, inviting the
 /// user to jump back to the follow edge (top or bottom depending on
@@ -24,7 +25,7 @@ class JumpToEdgePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final zyra = context.zyra;
     return Positioned(
       bottom: 12,
       left: 0,
@@ -33,7 +34,7 @@ class JumpToEdgePill extends StatelessWidget {
         child: Material(
           elevation: 4,
           borderRadius: BorderRadius.circular(20),
-          color: theme.colorScheme.primaryContainer,
+          color: zyra.colors.bgBrandPrimary,
           child: InkWell(
             key: tapTargetKey,
             borderRadius: BorderRadius.circular(20),
@@ -43,12 +44,12 @@ class JumpToEdgePill extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.arrow_downward, size: 16, color: theme.colorScheme.onPrimaryContainer),
+                  Icon(Icons.arrow_downward, size: 16, color: zyra.colors.bgBrandPrimaryAlt),
                   const SizedBox(width: 6),
                   Text(
                     label,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: theme.colorScheme.onPrimaryContainer,
+                    style: zyra.textTheme.textSm.bold.copyWith(
+                      color: zyra.colors.bgBrandPrimaryAlt,
                     ),
                   ),
                 ],

@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:sesori_mobile/features/session_detail/widgets/reasoning_part_card.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
+import "package:theme_zyra/module_zyra.dart";
 
 void main() {
   Widget buildApp({
@@ -11,6 +12,8 @@ void main() {
     String messageId = "msg-1",
   }) {
     return MaterialApp(
+      theme: ThemeData(extensions: [ZyraDesignSystem.light]),
+      darkTheme: ThemeData(extensions: [ZyraDesignSystem.dark]),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(

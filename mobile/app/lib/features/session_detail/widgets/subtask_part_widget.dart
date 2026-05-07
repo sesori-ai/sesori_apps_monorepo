@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_zyra/module_zyra.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/routing/app_router.dart";
 
@@ -20,7 +21,7 @@ class SubtaskPartWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final zyra = context.zyra;
     final loc = context.loc;
     final description = part.description ?? part.prompt ?? loc.sessionDetailSubtaskUnnamed;
     final agent = part.agent;
@@ -34,7 +35,7 @@ class SubtaskPartWidget extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Material(
-        color: theme.colorScheme.surfaceContainerLow,
+        color: zyra.colors.bgSecondary,
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
           borderRadius: BorderRadius.circular(8),
@@ -53,12 +54,12 @@ class SubtaskPartWidget extends StatelessWidget {
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: theme.colorScheme.outlineVariant),
+              border: Border.all(color: zyra.colors.borderSecondary),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Row(
               children: [
-                _statusIcon(status: status, theme: theme),
+                _statusIcon(status: status, zyra: zyra),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -66,7 +67,7 @@ class SubtaskPartWidget extends StatelessWidget {
                     children: [
                       Text(
                         description,
-                        style: theme.textTheme.bodyMedium?.copyWith(
+                        style: zyra.textTheme.textSm.regular.copyWith(
                           fontWeight: FontWeight.w500,
                         ),
                         maxLines: 2,
@@ -75,8 +76,8 @@ class SubtaskPartWidget extends StatelessWidget {
                       if (agent != null)
                         Text(
                           agent,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
+                          style: zyra.textTheme.textXs.regular.copyWith(
+                            color: zyra.colors.textSecondary,
                           ),
                         ),
                     ],
@@ -86,7 +87,7 @@ class SubtaskPartWidget extends StatelessWidget {
                   Icon(
                     Icons.chevron_right,
                     size: 20,
-                    color: theme.colorScheme.onSurfaceVariant,
+                    color: zyra.colors.textSecondary,
                   ),
               ],
             ),
@@ -96,29 +97,29 @@ class SubtaskPartWidget extends StatelessWidget {
     );
   }
 
-  Widget _statusIcon({required SessionStatus? status, required ThemeData theme}) => switch (status) {
+  Widget _statusIcon({required SessionStatus? status, required ZyraDesignSystem zyra}) => switch (status) {
     SessionStatusBusy() => SizedBox(
       width: 16,
       height: 16,
       child: CircularProgressIndicator(
         strokeWidth: 2,
-        color: theme.colorScheme.primary,
+        color: zyra.colors.bgBrandSolid,
       ),
     ),
     SessionStatusRetry() => Icon(
       Icons.refresh,
       size: 16,
-      color: theme.colorScheme.tertiary,
+      color: zyra.colors.fgSuccessPrimary,
     ),
     SessionStatusIdle() => Icon(
       Icons.check_circle,
       size: 16,
-      color: theme.colorScheme.primary,
+      color: zyra.colors.bgBrandSolid,
     ),
     null => Icon(
       Icons.play_circle_outline,
       size: 16,
-      color: theme.colorScheme.outline,
+      color: zyra.colors.borderPrimary,
     ),
   };
 

@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_zyra/module_zyra.dart";
 
 import "../extensions/build_context_x.dart";
 import "app_modal_bottom_sheet.dart";
@@ -23,10 +24,11 @@ class CommandPickerSheet extends StatefulWidget {
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
         final height = MediaQuery.sizeOf(sheetContext).height * 0.7;
+        final zyra = sheetContext.zyra;
         return Container(
           height: height,
           decoration: BoxDecoration(
-            color: Theme.of(sheetContext).colorScheme.surface,
+            color: zyra.colors.bgPrimary,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
           ),
           child: CommandPickerSheet(commands: commands),
@@ -63,7 +65,7 @@ class _CommandPickerSheetState extends State<CommandPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final zyra = context.zyra;
     final loc = context.loc;
     final commands = _filteredCommands;
 
@@ -75,7 +77,7 @@ class _CommandPickerSheetState extends State<CommandPickerSheet> {
             width: 32,
             height: 4,
             decoration: BoxDecoration(
-              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+              color: zyra.colors.textSecondary.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -84,7 +86,7 @@ class _CommandPickerSheetState extends State<CommandPickerSheet> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Text(
             loc.sessionDetailCommandPickerTitle,
-            style: theme.textTheme.titleMedium,
+            style: zyra.textTheme.textMd.bold,
           ),
         ),
         Padding(
@@ -100,7 +102,7 @@ class _CommandPickerSheetState extends State<CommandPickerSheet> {
                 borderSide: BorderSide.none,
               ),
               filled: true,
-              fillColor: theme.colorScheme.surfaceContainerHighest,
+              fillColor: zyra.colors.bgPrimary,
             ),
             onChanged: (value) => setState(() => _query = value),
           ),
@@ -114,8 +116,8 @@ class _CommandPickerSheetState extends State<CommandPickerSheet> {
                 child: Text(
                   loc.sessionDetailNoCommands,
                   textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+                  style: zyra.textTheme.textSm.regular.copyWith(
+                    color: zyra.colors.textSecondary,
                   ),
                 ),
               ),
@@ -125,7 +127,7 @@ class _CommandPickerSheetState extends State<CommandPickerSheet> {
               itemCount: commands.length,
               separatorBuilder: (_, _) => Divider(
                 height: 1,
-                color: theme.colorScheme.outlineVariant,
+                color: zyra.colors.borderPrimary,
               ),
               itemBuilder: (context, index) {
                 final command = commands[index];
@@ -150,8 +152,8 @@ class _CommandPickerSheetState extends State<CommandPickerSheet> {
                             hints,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
+                            style: zyra.textTheme.textXs.regular.copyWith(
+                              color: zyra.colors.textSecondary,
                             ),
                           ),
                         ),
@@ -160,13 +162,13 @@ class _CommandPickerSheetState extends State<CommandPickerSheet> {
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.secondaryContainer,
+                      color: zyra.colors.bgBrandSolid,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       _sourceLabel(command.source),
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSecondaryContainer,
+                      style: zyra.textTheme.textXs.medium.copyWith(
+                        color: zyra.colors.bgPrimary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
