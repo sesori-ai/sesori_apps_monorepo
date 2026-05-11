@@ -6,7 +6,9 @@ import "../../../core/extensions/build_context_x.dart";
 class LoginProviderButtons extends StatelessWidget {
   final bool isLoading;
   final bool showEmailForm;
+  final bool showApple;
   final VoidCallback onGithubSelected;
+  final VoidCallback onAppleSelected;
   final VoidCallback onGoogleSelected;
   final VoidCallback onShowEmailForm;
 
@@ -14,7 +16,9 @@ class LoginProviderButtons extends StatelessWidget {
     super.key,
     required this.isLoading,
     required this.showEmailForm,
+    required this.showApple,
     required this.onGithubSelected,
+    required this.onAppleSelected,
     required this.onGoogleSelected,
     required this.onShowEmailForm,
   });
@@ -53,6 +57,35 @@ class LoginProviderButtons extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
+        if (showApple) ...[
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: FilledButton.icon(
+              onPressed: isLoading ? null : onAppleSelected,
+              icon: isLoading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.apple, size: 20),
+              label: Text(loc.loginWithApple),
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.black,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.black.withAlpha(153),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
         SizedBox(
           width: double.infinity,
           height: 52,

@@ -55,6 +55,29 @@ class LoginCubit extends Cubit<LoginState> {
     emit(const LoginState.failed(error: "Internal Error : Missing Form Key"));
   }
 
+  void onMissingAppleIdToken() {
+    emit(const LoginState.failed(error: "Apple Sign-In failed: missing ID token"));
+  }
+
+  Future<bool> loginWithApple({
+    required String idToken,
+    required String nonce,
+  }) async {
+    emit(const LoginState.authenticating());
+
+    try {
+      await _authSession.loginWithApple(idToken: idToken, nonce: nonce);
+      if (isClosed) return false;
+      emit(const LoginState.success());
+      return true;
+    } catch (e, st) {
+      loge("Apple login failed", e, st);
+      if (isClosed) return false;
+      emit(LoginState.failed(error: e.toString()));
+      return false;
+    }
+  }
+
   Future<bool> loginWithEmail({
     required String email,
     required String password,

@@ -506,4 +506,86 @@ void main() {
       expect(states.last, const AuthState.unauthenticated());
     });
   });
+
+  group("loginWithApple", () {
+    test("posts to /auth/apple/native and stores tokens on success", () async {
+      when(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/apple/native"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({
+            "accessToken": "apple-access-token",
+            "refreshToken": "apple-refresh-token",
+            "user": {
+              "id": user.id,
+              "provider": "apple",
+              "providerUserId": user.providerUserId,
+              "providerUsername": user.providerUsername,
+            },
+          }),
+          200,
+        ),
+      );
+      when(
+        () => mockTokenStorage.saveTokens(
+          accessToken: "apple-access-token",
+          refreshToken: "apple-refresh-token",
+        ),
+      ).thenAnswer((_) async {});
+      when(mockOAuthStorage.clearPkceVerifier).thenAnswer((_) async {});
+      when(mockOAuthStorage.clearAuthProvider).thenAnswer((_) async {});
+
+      final states = <AuthState>[];
+      final sub = authManager.authStateStream.listen(states.add);
+
+      final result = await authManager.loginWithApple(
+        idToken: "apple-id-token",
+        nonce: "raw-nonce",
+      );
+
+      await Future<void>.delayed(Duration.zero);
+      await sub.cancel();
+
+      expect(result, isA<AuthUser>());
+      expect(authManager.currentState, isA<AuthAuthenticated>());
+      expect(states.last, isA<AuthAuthenticated>());
+
+      final captured = verify(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/apple/native"),
+          headers: any(named: "headers"),
+          body: captureAny(named: "body"),
+        ),
+      );
+      final body = jsonDecode(captured.captured.first as String) as Map<String, dynamic>;
+      expect(body["idToken"], "apple-id-token");
+      expect(body["nonce"], "raw-nonce");
+
+      verify(
+        () => mockTokenStorage.saveTokens(
+          accessToken: "apple-access-token",
+          refreshToken: "apple-refresh-token",
+        ),
+      ).called(1);
+    });
+
+    test("throws when server returns non-2xx", () async {
+      when(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/apple/native"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) async => http.Response("{}", 401));
+
+      await expectLater(
+        () => authManager.loginWithApple(idToken: "token", nonce: "nonce"),
+        throwsA(isA<StateError>()),
+      );
+    });
+  });
 }

@@ -1,7 +1,13 @@
+import "dart:convert";
+import "dart:math";
+
+import "package:crypto/crypto.dart";
+import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:sign_in_with_apple/sign_in_with_apple.dart";
 import "package:theme_zyra/module_zyra.dart";
 
 import "../../core/di/injection.dart";
@@ -39,6 +45,41 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
 
   Future<void> _loginWithProvider(OAuthProvider provider) async {
     await context.read<LoginCubit>().loginWithProvider(provider);
+  }
+
+  Future<void> _loginWithApple() async {
+    final rawNonce = _generateNonce();
+    final hashedNonce = sha256.convert(utf8.encode(rawNonce)).toString();
+
+    final credential = await SignInWithApple.getAppleIDCredential(
+      scopes: [
+        AppleIDAuthorizationScopes.email,
+        AppleIDAuthorizationScopes.fullName,
+      ],
+      nonce: hashedNonce,
+    );
+
+    final idToken = credential.identityToken;
+    if (idToken == null) {
+      if (mounted) {
+        context.read<LoginCubit>().onMissingAppleIdToken();
+      }
+      return;
+    }
+
+    if (!mounted) return;
+
+    await context.read<LoginCubit>().loginWithApple(
+      idToken: idToken,
+      nonce: rawNonce,
+    );
+  }
+
+  String _generateNonce({int length = 32}) {
+    const charset =
+        '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+    final random = Random.secure();
+    return List.generate(length, (_) => charset[random.nextInt(charset.length)]).join();
   }
 
   void _showEmailLogin() {
@@ -101,7 +142,9 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                   LoginProviderButtons(
                     isLoading: isLoading,
                     showEmailForm: _showEmailForm,
+                    showApple: defaultTargetPlatform == TargetPlatform.iOS,
                     onGithubSelected: () => _loginWithProvider(AuthProvider.github),
+                    onAppleSelected: _loginWithApple,
                     onGoogleSelected: () => _loginWithProvider(AuthProvider.google),
                     onShowEmailForm: _showEmailLogin,
                   ),

@@ -117,5 +117,54 @@ void main() {
         isA<LoginFailed>(),
       ],
     );
+
+    blocTest<LoginCubit, LoginState>(
+      "loginWithApple emits authenticating then success on success",
+      build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
+      act: (cubit) async {
+        when(
+          () => mockAuthSession.loginWithApple(idToken: any(named: "idToken"), nonce: any(named: "nonce")),
+        ).thenAnswer((_) async => testAuthUser());
+
+        await cubit.loginWithApple(idToken: "apple-id-token", nonce: "nonce");
+      },
+      expect: () => [
+        isA<LoginAuthenticating>(),
+        isA<LoginSuccess>(),
+      ],
+    );
+
+    blocTest<LoginCubit, LoginState>(
+      "loginWithApple emits authenticating then failed on error",
+      build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
+      act: (cubit) async {
+        when(
+          () => mockAuthSession.loginWithApple(idToken: any(named: "idToken"), nonce: any(named: "nonce")),
+        ).thenThrow(Exception("Apple auth failed"));
+
+        await cubit.loginWithApple(idToken: "apple-id-token", nonce: "nonce");
+      },
+      expect: () => [
+        isA<LoginAuthenticating>(),
+        isA<LoginFailed>(),
+      ],
+    );
+
+    blocTest<LoginCubit, LoginState>(
+      "loginWithApple calls authSession with correct params",
+      build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
+      act: (cubit) async {
+        when(
+          () => mockAuthSession.loginWithApple(idToken: any(named: "idToken"), nonce: any(named: "nonce")),
+        ).thenAnswer((_) async => testAuthUser());
+
+        await cubit.loginWithApple(idToken: "apple-id-token", nonce: "raw-nonce");
+      },
+      verify: (cubit) {
+        verify(
+          () => mockAuthSession.loginWithApple(idToken: "apple-id-token", nonce: "raw-nonce"),
+        ).called(1);
+      },
+    );
   });
 }

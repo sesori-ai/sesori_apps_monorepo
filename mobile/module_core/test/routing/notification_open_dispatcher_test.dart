@@ -187,6 +187,11 @@ class FakeAuthSession implements AuthSession {
   Future<AuthUser> loginWithEmail({required String email, required String password}) async {
     throw UnimplementedError();
   }
+
+  @override
+  Future<AuthUser> loginWithApple({required String idToken, required String nonce}) async {
+    throw UnimplementedError();
+  }
 }
 
 class FakePushMessagingSource implements PushMessagingSource {
