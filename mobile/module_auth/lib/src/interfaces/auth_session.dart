@@ -41,6 +41,10 @@ abstract interface class AuthSession {
   /// Throws [Exception] on authentication failure (including 401).
   Future<AuthUser> loginWithEmail({required String email, required String password});
 
+  /// Authenticates using a native Apple Sign-In credential.
+  /// Throws [StateError] on authentication failure (including non-2xx responses).
+  Future<AuthUser> loginWithApple({required String idToken, required String nonce});
+
   /// Clears local tokens and emits unauthenticated.
   /// Does NOT call the auth server — other devices remain authenticated.
   /// Use for simple sign-out on this device.

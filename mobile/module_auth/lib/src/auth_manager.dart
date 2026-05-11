@@ -233,6 +233,40 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
   }
 
   @override
+  Future<AuthUser> loginWithApple({required String idToken, required String nonce}) async {
+    final uri = Uri.parse("$authBaseUrl/auth/apple/native");
+    final response = await _post(
+      uri,
+      body: {"idToken": idToken, "nonce": nonce},
+    );
+
+    _ensureSuccess(response, context: "Apple Sign-In failed");
+
+    final decodedBody = jsonDecodeMap(response.body);
+    final AuthResponse authResponse;
+    try {
+      authResponse = AuthResponse.fromJson(decodedBody);
+    } on Object catch (e) {
+      throw Exception("Failed to parse auth response: ${e.toString()}");
+    }
+
+    await _tokenStorage.saveTokens(
+      accessToken: authResponse.accessToken,
+      refreshToken: authResponse.refreshToken,
+    );
+
+    // Clear any stale OAuth temp state so a later deep-link callback
+    // cannot unexpectedly exchange using stale PKCE data.
+    await Future.wait([
+      _oAuthStorage.clearPkceVerifier(),
+      _oAuthStorage.clearAuthProvider(),
+    ]);
+
+    _authState.add(AuthState.authenticated(user: authResponse.user));
+    return authResponse.user;
+  }
+
+  @override
   Future<void> invalidateAllSessions() async {
     final accessToken = await getFreshAccessToken();
     if (accessToken != null) {

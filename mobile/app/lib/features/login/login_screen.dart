@@ -1,7 +1,13 @@
+import "dart:convert";
+import "dart:math";
+
+import "package:crypto/crypto.dart";
+import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:sign_in_with_apple/sign_in_with_apple.dart";
 import "package:theme_zyra/module_zyra.dart";
 
 import "../../core/di/injection.dart";
@@ -39,6 +45,55 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
 
   Future<void> _loginWithProvider(OAuthProvider provider) async {
     await context.read<LoginCubit>().loginWithProvider(provider);
+  }
+
+  Future<void> _loginWithApple() async {
+    final rawNonce = _generateNonce();
+    final hashedNonce = sha256.convert(utf8.encode(rawNonce)).toString();
+
+    try {
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+        nonce: hashedNonce,
+      );
+
+      final idToken = credential.identityToken;
+      if (idToken == null) {
+        if (mounted) {
+          context.read<LoginCubit>().onMissingAppleIdToken();
+        }
+        return;
+      }
+
+      if (!mounted) return;
+
+      await context.read<LoginCubit>().loginWithApple(
+        idToken: idToken,
+        nonce: rawNonce,
+      );
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) {
+        logd("Apple Sign-In cancelled by user");
+        return;
+      }
+      if (mounted) {
+        context.read<LoginCubit>().onAppleSignInError();
+      }
+    } on Exception catch (_) {
+      if (mounted) {
+        context.read<LoginCubit>().onAppleSignInError();
+      }
+    }
+  }
+
+  String _generateNonce({int length = 32}) {
+    const charset =
+        '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+    final random = Random.secure();
+    return List.generate(length, (_) => charset[random.nextInt(charset.length)]).join();
   }
 
   void _showEmailLogin() {
@@ -101,7 +156,9 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                   LoginProviderButtons(
                     isLoading: isLoading,
                     showEmailForm: _showEmailForm,
+                    showApple: !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS,
                     onGithubSelected: () => _loginWithProvider(AuthProvider.github),
+                    onAppleSelected: _loginWithApple,
                     onGoogleSelected: () => _loginWithProvider(AuthProvider.google),
                     onShowEmailForm: _showEmailLogin,
                   ),
@@ -137,7 +194,7 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                     LoginSuccess() => const SizedBox.shrink(),
                   },
                   switch (state) {
-                    LoginFailed(:final error) => Padding(
+                    LoginFailed(:final reason) => Padding(
                       padding: const EdgeInsetsDirectional.only(top: 24),
                       child: Card(
                         color: zyra.colors.bgErrorPrimary,
@@ -152,7 +209,7 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
-                                  _getErrorMessage(loc: loc, error: error),
+                                  _getErrorMessage(loc: loc, reason: reason),
                                   style: zyra.textTheme.textSm.regular.copyWith(
                                     color: zyra.colors.fgErrorPrimary,
                                   ),
@@ -178,10 +235,13 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
     );
   }
 
-  String _getErrorMessage({required AppLocalizations loc, required String error}) {
-    return switch (error) {
-      "loginBrowserOpenFailed" => loc.loginBrowserOpenFailed,
-      _ => loc.loginError,
+  String _getErrorMessage({required AppLocalizations loc, required LoginFailedReason reason}) {
+    return switch (reason) {
+      LoginFailedReason.browserOpenFailed => loc.loginBrowserOpenFailed,
+      LoginFailedReason.appleIdTokenMissing => loc.appleIdTokenMissing,
+      LoginFailedReason.emailRequired => loc.emailRequired,
+      LoginFailedReason.passwordRequired => loc.passwordRequired,
+      LoginFailedReason.unknown => loc.loginError,
     };
   }
 }

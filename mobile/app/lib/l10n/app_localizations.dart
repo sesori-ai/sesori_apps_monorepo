@@ -727,6 +727,18 @@ abstract class AppLocalizations {
   /// **'Sign in with GitHub'**
   String get loginWithGithub;
 
+  /// No description provided for @appleIdTokenMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Apple Sign-In failed. Please try again.'**
+  String get appleIdTokenMissing;
+
+  /// No description provided for @loginWithApple.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with Apple'**
+  String get loginWithApple;
+
   /// No description provided for @loginWithGoogle.
   ///
   /// In en, this message translates to:
