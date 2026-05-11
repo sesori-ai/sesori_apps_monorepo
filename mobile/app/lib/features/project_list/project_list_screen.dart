@@ -229,7 +229,7 @@ class _ProjectTile extends StatelessWidget {
         backgroundColor: zyra.colors.bgBrandSolid,
         child: Icon(
           Icons.folder_outlined,
-          color: zyra.colors.textPrimary,
+          color: zyra.colors.fgWhite,
         ),
       ),
       title: Text(displayName),
@@ -246,7 +246,7 @@ class _ProjectTile extends StatelessWidget {
             Text(
               loc.projectListUpdated(_formatTimestamp(updatedAt)),
               style: zyra.textTheme.textXs.regular.copyWith(
-                color: zyra.colors.borderPrimary,
+                color: zyra.colors.textSecondary,
               ),
             ),
           if (isActive)

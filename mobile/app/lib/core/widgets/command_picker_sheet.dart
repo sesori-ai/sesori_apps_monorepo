@@ -162,7 +162,7 @@ class _CommandPickerSheetState extends State<CommandPickerSheet> {
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: zyra.colors.bgBrandSolid,
+                      color: zyra.colors.bgBrandPrimary,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(

@@ -153,7 +153,7 @@ class _ReasoningModalState extends State<ReasoningModal> {
       padding: const EdgeInsetsDirectional.fromSTEB(16, 4, 16, 12),
       child: Row(
         children: [
-          Icon(Icons.psychology, size: 20, color: zyra.colors.borderPrimary),
+          Icon(Icons.psychology, size: 20, color: zyra.colors.textSecondary),
           const SizedBox(width: 8),
           Text(
             isStreaming ? loc.sessionDetailThinking : loc.sessionDetailThought,

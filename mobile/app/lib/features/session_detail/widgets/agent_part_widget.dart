@@ -18,13 +18,13 @@ class AgentPartWidget extends StatelessWidget {
           Icon(
             Icons.smart_toy_outlined,
             size: 14,
-            color: zyra.colors.borderPrimary,
+            color: zyra.colors.textSecondary,
           ),
           const SizedBox(width: 6),
           Text(
             label,
             style: zyra.textTheme.textXs.medium.copyWith(
-              color: zyra.colors.borderPrimary,
+              color: zyra.colors.textSecondary,
             ),
           ),
         ],

@@ -351,7 +351,7 @@ class _DirectoryBrowserState extends State<_DirectoryBrowser> {
                   child: Text(
                     loc.emptyDirectory,
                     style: zyra.textTheme.textSm.regular.copyWith(
-                      color: zyra.colors.borderPrimary,
+                      color: zyra.colors.textSecondary,
                     ),
                   ),
                 )

@@ -49,7 +49,7 @@ class ToolPartWidget extends StatelessWidget {
                   Text(
                     _statusLabel(loc: loc, status: status),
                     style: zyra.textTheme.textXs.medium.copyWith(
-                      color: zyra.colors.borderPrimary,
+                      color: zyra.colors.textSecondary,
                     ),
                   ),
                 ],
