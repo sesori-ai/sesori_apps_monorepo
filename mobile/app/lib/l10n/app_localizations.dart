@@ -1380,6 +1380,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sesori'**
   String get splashTitle;
+
+  /// No description provided for @newSessionLoadingSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Creating session'**
+  String get newSessionLoadingSemantics;
+
+  /// No description provided for @newSessionLoadingMessage1.
+  ///
+  /// In en, this message translates to:
+  /// **'Warming up the engines…'**
+  String get newSessionLoadingMessage1;
+
+  /// No description provided for @newSessionLoadingMessage2.
+  ///
+  /// In en, this message translates to:
+  /// **'Generating session telemetry…'**
+  String get newSessionLoadingMessage2;
+
+  /// No description provided for @newSessionLoadingMessage3.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing for takeoff…'**
+  String get newSessionLoadingMessage3;
+
+  /// No description provided for @newSessionLaunchingInBackground.
+  ///
+  /// In en, this message translates to:
+  /// **'Your new session will appear in the list once it\'s launched'**
+  String get newSessionLaunchingInBackground;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

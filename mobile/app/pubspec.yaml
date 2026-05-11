@@ -75,6 +75,7 @@ dependencies:
   firebase_messaging: ^16.1.3
   flutter_local_notifications: ^21.0.0
   flutter_svg: ^2.2.4
+  cue: ^0.2.1
 
 dev_dependencies:
   flutter_test:

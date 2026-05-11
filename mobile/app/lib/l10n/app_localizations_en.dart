@@ -721,4 +721,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get splashTitle => 'Sesori';
+
+  @override
+  String get newSessionLoadingSemantics => 'Creating session';
+
+  @override
+  String get newSessionLoadingMessage1 => 'Warming up the engines…';
+
+  @override
+  String get newSessionLoadingMessage2 => 'Generating session telemetry…';
+
+  @override
+  String get newSessionLoadingMessage3 => 'Preparing for takeoff…';
+
+  @override
+  String get newSessionLaunchingInBackground => 'Your new session will appear in the list once it\'s launched';
 }
