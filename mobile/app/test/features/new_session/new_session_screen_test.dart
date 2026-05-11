@@ -376,6 +376,40 @@ void main() {
     expect(find.byType(NewSessionScreen), findsNothing);
   });
 
+  testWidgets("does not show snackbar when auto-navigating after creating a session", (tester) async {
+    final createCompleter = Completer<ApiResponse<Session>>();
+    when(
+      () => sessionService.createSessionWithMessage(
+        projectId: any(named: "projectId"),
+        text: any(named: "text"),
+        agent: any(named: "agent"),
+        providerID: any(named: "providerID"),
+        modelID: any(named: "modelID"),
+        variant: any(named: "variant"),
+        command: any(named: "command"),
+        dedicatedWorktree: any(named: "dedicatedWorktree"),
+      ),
+    ).thenAnswer((_) => createCompleter.future);
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+
+    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+
+    await tester.enterText(find.byType(TextField), "test message");
+    await tester.tap(find.byIcon(Icons.send));
+    await tester.pump();
+
+    expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
+
+    createCompleter.complete(ApiResponse.success(testSession(id: "session-1", title: "Created session")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("session-detail:session-1"), findsOneWidget);
+    expect(find.byType(NewSessionScreen), findsNothing);
+    expect(find.text(loc.newSessionLaunchingInBackground), findsNothing);
+  });
+
   testWidgets("removes the loading overlay and keeps retry UI usable after an error", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
