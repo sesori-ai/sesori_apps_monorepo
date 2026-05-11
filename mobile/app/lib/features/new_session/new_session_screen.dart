@@ -45,6 +45,7 @@ class _NewSessionBody extends StatefulWidget {
 
 class _NewSessionBodyState extends State<_NewSessionBody> {
   bool _dedicatedWorktree = true;
+  bool _navigatingToCreatedSession = false;
 
   void _dismissScreen() {
     context.pop();
@@ -146,6 +147,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
       listenWhen: (_, current) => current is NewSessionCreated,
       listener: (context, state) {
         if (state case NewSessionCreated(:final session)) {
+          _navigatingToCreatedSession = true;
           _dismissScreen();
           context.pushRoute(
             AppRoute.sessionDetail(
@@ -160,7 +162,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
       child: PopScope(
         canPop: true,
         onPopInvokedWithResult: (didPop, result) {
-          if (didPop && isSending) {
+          if (didPop && isSending && !_navigatingToCreatedSession) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(loc.newSessionLaunchingInBackground),
