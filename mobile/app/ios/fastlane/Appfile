@@ -1,0 +1,8 @@
+# App identifier for the main release build
+app_identifier("com.sesori.app")
+
+# Apple Developer Portal team ID (provided via env)
+team_id(ENV["APPLE_TEAM_ID"])
+
+# App Store Connect team ID (defaults to APPLE_TEAM_ID when not set separately)
+itc_team_id(ENV["ITC_TEAM_ID"] || ENV["APPLE_TEAM_ID"])

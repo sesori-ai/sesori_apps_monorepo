@@ -1,0 +1,89 @@
+# frozen_string_literal: true
+
+default_platform(:android)
+
+platform :android do
+  private_lane :_get_all_version_codes do
+    tracks = %w[internal alpha beta production]
+    version_codes = []
+    failures = {}
+
+    tracks.each do |track|
+      begin
+        codes = google_play_track_version_codes(track: track)
+        version_codes.concat(codes) if codes
+      rescue StandardError => e
+        # A track legitimately may have no releases yet (404 from the Play API).
+        # Other failures (auth, network) must not be silently swallowed —
+        # otherwise we'd compute a stale next version code.
+        failures[track] = e
+        UI.important("Could not read version codes from track '#{track}': #{e.message}")
+      end
+    end
+
+    if failures.size == tracks.size
+      details = failures.map { |t, e| "  - #{t}: #{e.class}: #{e.message}" }.join("\n")
+      UI.user_error!(
+        "Failed to read version codes from any Play track. " \
+        "Refusing to fall back to 0 because that would collide with existing builds.\n#{details}"
+      )
+    end
+
+    version_codes
+  end
+
+  desc "Deploy a new build to Google Play Internal Testing track"
+  lane :deploy_internal do
+    # Get the highest version code from all tracks to ensure we don't conflict
+    version_codes = _get_all_version_codes
+
+    # Calculate new version code
+    current_build = version_codes.compact.max || 0
+    new_build_number = current_build + 1
+
+    UI.message("Current highest version code: #{current_build}")
+    UI.message("New version code: #{new_build_number}")
+
+    # Get version from pubspec.yaml
+    pubspec_path = File.join(Dir.pwd, "..", "..", "pubspec.yaml")
+    pubspec_content = File.read(pubspec_path)
+    version_match = pubspec_content.match(/version:\s*(\d+\.\d+\.\d+)/)
+    version_name = version_match ? version_match[1] : "1.0.0"
+
+    UI.message("Building version #{version_name} (#{new_build_number})")
+
+    # The actual Flutter build is done in CI before calling Fastlane
+    # This lane assumes the AAB is already built with the correct version code
+    aab_path = ENV["AAB_PATH"] || "../build/app/outputs/bundle/release/app-release.aab"
+
+    unless File.exist?(aab_path)
+      UI.user_error!("AAB not found at #{aab_path}. Build the app first with: flutter build appbundle --build-number=#{new_build_number}")
+    end
+
+    # Upload to Play Store internal track
+    upload_to_play_store(
+      track: "internal",
+      aab: aab_path,
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+      release_status: "draft",
+      version_name: version_name
+    )
+
+    UI.success("Successfully uploaded version #{version_name} (#{new_build_number}) to Google Play Internal track!")
+  end
+
+  desc "Get the next version code to use for building"
+  lane :next_version_code do
+    version_codes = _get_all_version_codes
+
+    current_build = version_codes.compact.max || 0
+    new_build_number = current_build + 1
+
+    UI.message("Next version code: #{new_build_number}")
+
+    # Output for CI to capture
+    new_build_number
+  end
+end

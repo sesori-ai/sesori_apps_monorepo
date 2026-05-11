@@ -1,0 +1,185 @@
+name: Release All Platforms
+
+# NOTE: Temporarily repurposed to test the iOS build path before wiring up
+# TestFlight uploads. Builds the iOS app via the chosen fastlane lane and
+# uploads the IPA as a workflow artifact — no App Store / TestFlight upload.
+# Android deploy is disabled below; restore it once the iOS build is validated.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ios_lane:
+        description: 'Fastlane lane to use for iOS build (artifact only)'
+        required: false
+        type: choice
+        options:
+          - flutter_build_ipa
+          - build_only
+        default: 'flutter_build_ipa'
+      ios_runner:
+        description: 'macOS runner for iOS build'
+        required: false
+        type: choice
+        options:
+          - macos-latest
+        default: 'macos-latest'
+      # deploy_android:
+      #   description: 'Deploy to Android Internal Track'
+      #   required: false
+      #   type: boolean
+      #   default: true
+
+concurrency:
+  group: release-all-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  XCODE_VERSION: '16.2'
+  COCOAPODS_VERSION: '1.16.2'
+
+jobs:
+  ios:
+    name: Build iOS IPA (no upload)
+    runs-on: ${{ inputs.ios_runner }}
+    timeout-minutes: 30
+
+    env:
+      APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+      APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+      APP_STORE_CONNECT_API_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
+      MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+      MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+      MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      ITC_TEAM_ID: ${{ secrets.ITC_TEAM_ID }}
+      CI: true
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Xcode ${{ env.XCODE_VERSION }}
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+
+      - name: Install specific CocoaPods version
+        run: |
+          gem install cocoapods -v ${{ env.COCOAPODS_VERSION }}
+          pod --version
+
+      - name: Read Flutter version from .tool-versions
+        shell: bash
+        run: |
+          FLUTTER_VERSION=$(awk '$1 == "flutter" { print $2 }' .tool-versions | sed 's/-stable$//')
+          if [ -z "$FLUTTER_VERSION" ]; then
+            echo "Unable to find a Flutter version in .tool-versions" >&2
+            exit 1
+          fi
+          echo "FLUTTER_VERSION=$FLUTTER_VERSION" >> "$GITHUB_ENV"
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+
+      - name: Get dependencies (workspace)
+        run: dart pub get
+        working-directory: mobile
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v5
+        with:
+          path: mobile/app/ios/Pods
+          key: ${{ runner.os }}-pods-${{ env.COCOAPODS_VERSION }}-${{ hashFiles('mobile/app/ios/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-${{ env.COCOAPODS_VERSION }}-
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+          working-directory: mobile/app/ios
+
+      - name: Generate iOS build config
+        run: flutter build ios --config-only --release --no-codesign
+        working-directory: mobile/app
+
+      - name: Run fastlane ${{ inputs.ios_lane }}
+        working-directory: mobile/app/ios
+        run: bundle exec fastlane ${{ inputs.ios_lane }}
+
+      - name: Locate IPA
+        id: ipa
+        shell: bash
+        run: |
+          if [ "${{ inputs.ios_lane }}" = "build_only" ]; then
+            IPA_PATH=$(ls mobile/app/ios/build/*.ipa 2>/dev/null | head -1)
+          else
+            IPA_PATH=$(ls mobile/app/build/ios/ipa/*.ipa 2>/dev/null | head -1)
+          fi
+
+          if [ -z "$IPA_PATH" ] || [ ! -f "$IPA_PATH" ]; then
+            echo "::error::No IPA produced by lane '${{ inputs.ios_lane }}'"
+            exit 1
+          fi
+
+          echo "ipa_path=$IPA_PATH" >> "$GITHUB_OUTPUT"
+          echo "Found IPA: $IPA_PATH ($(du -h "$IPA_PATH" | cut -f1))"
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Sesori-${{ inputs.ios_lane }}-${{ github.run_id }}
+          path: ${{ steps.ipa.outputs.ipa_path }}
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build-logs-${{ github.run_id }}
+          path: |
+            mobile/app/ios/build/Logs/
+            ~/Library/Logs/DiagnosticReports/
+          retention-days: 7
+
+  # Android Internal Track deployment — disabled while iOS build path is being validated.
+  # Re-enable by uncommenting this job, the input above, and the summary block below.
+  #
+  # android:
+  #   if: ${{ inputs.deploy_android }}
+  #   uses: ./.github/workflows/_reusable-android-internal.yml
+  #   secrets:
+  #     GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+  #     ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+  #     ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+  #     ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+  #     ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+  summary:
+    name: Release Summary
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    needs: [ios]
+    if: always()
+
+    steps:
+      - name: Generate Summary
+        run: |
+          echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Platform Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.ios.result }}" == "success" ]; then
+            echo "- **iOS (artifact)**: Built with lane \`${{ inputs.ios_lane }}\`" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.ios.result }}" == "failure" ]; then
+            echo "- **iOS (artifact)**: Failed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **iOS (artifact)**: ${{ needs.ios.result }}" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "- **Android Internal**: Disabled" >> $GITHUB_STEP_SUMMARY

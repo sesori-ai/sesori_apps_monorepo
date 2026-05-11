@@ -1,0 +1,235 @@
+# frozen_string_literal: true
+
+default_platform(:ios)
+
+platform :ios do
+  desc "Deploy a new build to TestFlight"
+  lane :deploy_testflight do
+    # Setup CI environment (creates temporary keychain)
+    setup_ci if ENV["CI"]
+
+    # Load App Store Connect API key
+    api_key = app_store_connect_api_key(
+      key_id: ENV["APP_STORE_CONNECT_API_KEY_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_API_ISSUER_ID"],
+      key_content: ENV["APP_STORE_CONNECT_API_KEY_CONTENT"],
+      is_key_content_base64: false
+    )
+
+    app_identifier = CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
+    team_id = CredentialsManager::AppfileConfig.try_fetch_value(:team_id)
+
+    # Get version from pubspec.yaml
+    pubspec_path = File.join(Dir.pwd, "..", "..", "pubspec.yaml")
+    pubspec_content = File.read(pubspec_path)
+    version_match = pubspec_content.match(/version:\s*(\d+\.\d+\.\d+)/)
+    version = version_match ? version_match[1] : "1.0.0"
+
+    # Get latest build number from TestFlight and increment
+    current_build = latest_testflight_build_number(
+      api_key: api_key,
+      version: version,
+      initial_build_number: 0
+    )
+    new_build_number = current_build + 1
+
+    UI.message("Building version #{version} (#{new_build_number})")
+
+    # Update build number in Xcode project
+    increment_build_number(
+      build_number: new_build_number,
+      xcodeproj: "Runner.xcodeproj"
+    )
+
+    # Update version number to match pubspec
+    increment_version_number(
+      version_number: version,
+      xcodeproj: "Runner.xcodeproj"
+    )
+
+    # Sync code signing with Match
+    match(
+      type: "appstore",
+      api_key: api_key,
+      readonly: ENV["CI"] == "true"
+    )
+
+    profile_name = ENV["sigh_#{app_identifier}_appstore_profile-name"]
+    UI.user_error!("Match did not set sigh_#{app_identifier}_appstore_profile-name env var") if profile_name.to_s.empty?
+
+    # Override automatic signing with match profile for CI
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path: "Runner.xcodeproj",
+      targets: ["Runner"],
+      team_id: team_id,
+      bundle_identifier: app_identifier,
+      profile_name: profile_name,
+      code_sign_identity: "Apple Distribution"
+    )
+
+    # Build the app
+    build_app(
+      workspace: "Runner.xcworkspace",
+      scheme: "Runner",
+      configuration: "Release",
+      export_method: "app-store",
+      export_options: {
+        provisioningProfiles: {
+          app_identifier => profile_name
+        }
+      },
+      output_directory: "./build",
+      output_name: "Runner.ipa"
+    )
+
+    # Upload to TestFlight
+    upload_to_testflight(
+      api_key: api_key,
+      skip_waiting_for_build_processing: true
+    )
+
+    # Write build info for CI summary
+    File.write("../build_info.env", "VERSION=#{version}\nBUILD_NUMBER=#{new_build_number}\n")
+
+    UI.success("Successfully uploaded version #{version} (#{new_build_number}) to TestFlight!")
+  end
+
+  desc "Build without uploading (for testing CI setup)"
+  lane :build_only do
+    setup_ci if ENV["CI"]
+
+    api_key = app_store_connect_api_key(
+      key_id: ENV["APP_STORE_CONNECT_API_KEY_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_API_ISSUER_ID"],
+      key_content: ENV["APP_STORE_CONNECT_API_KEY_CONTENT"],
+      is_key_content_base64: false
+    )
+
+    match(
+      type: "appstore",
+      api_key: api_key,
+      readonly: true
+    )
+
+    app_identifier = CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
+    team_id = CredentialsManager::AppfileConfig.try_fetch_value(:team_id)
+    profile_name = ENV["sigh_#{app_identifier}_appstore_profile-name"]
+    UI.user_error!("Match did not set sigh_#{app_identifier}_appstore_profile-name env var") if profile_name.to_s.empty?
+
+    # Override automatic signing with match profile for CI
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path: "Runner.xcodeproj",
+      targets: ["Runner"],
+      team_id: team_id,
+      bundle_identifier: app_identifier,
+      profile_name: profile_name,
+      code_sign_identity: "Apple Distribution"
+    )
+
+    build_app(
+      workspace: "Runner.xcworkspace",
+      scheme: "Runner",
+      configuration: "Release",
+      export_method: "app-store",
+      skip_archive: false,
+      output_directory: "./build"
+    )
+
+    UI.success("Build completed successfully!")
+  end
+
+  desc "Build IPA via `flutter build ipa` (alternative build path, no upload)"
+  lane :flutter_build_ipa do
+    setup_ci if ENV["CI"]
+
+    api_key = app_store_connect_api_key(
+      key_id: ENV["APP_STORE_CONNECT_API_KEY_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_API_ISSUER_ID"],
+      key_content: ENV["APP_STORE_CONNECT_API_KEY_CONTENT"],
+      is_key_content_base64: false
+    )
+
+    match(
+      type: "appstore",
+      api_key: api_key,
+      readonly: true
+    )
+
+    app_identifier = CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
+    team_id = CredentialsManager::AppfileConfig.try_fetch_value(:team_id)
+    profile_name = ENV["sigh_#{app_identifier}_appstore_profile-name"]
+
+    UI.user_error!("Match did not set sigh_*_profile-name env var") if profile_name.nil? || profile_name.empty?
+
+    # Flip Runner target only (not RunnerTests) to manual signing with the match profile
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path: "Runner.xcodeproj",
+      targets: ["Runner"],
+      team_id: team_id,
+      bundle_identifier: app_identifier,
+      profile_name: profile_name,
+      code_sign_identity: "Apple Distribution"
+    )
+
+    # Write ExportOptions.plist that points at the match profile
+    export_options_path = File.expand_path("../ExportOptions.plist", Dir.pwd)
+    File.write(export_options_path, <<~PLIST)
+      <?xml version="1.0" encoding="UTF-8"?>
+      <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+      <plist version="1.0">
+      <dict>
+        <key>method</key>
+        <string>app-store</string>
+        <key>teamID</key>
+        <string>#{team_id}</string>
+        <key>signingStyle</key>
+        <string>manual</string>
+        <key>provisioningProfiles</key>
+        <dict>
+          <key>#{app_identifier}</key>
+          <string>#{profile_name}</string>
+        </dict>
+      </dict>
+      </plist>
+    PLIST
+
+    # Run flutter build ipa from the Flutter project root (mobile/app)
+    Dir.chdir("../..") do
+      sh("flutter build ipa --release --export-options-plist=#{export_options_path}")
+    end
+
+    ipa_path = File.expand_path("../../build/ios/ipa", Dir.pwd)
+    UI.success("flutter build ipa completed. IPA(s) in: #{ipa_path}")
+  end
+
+  desc "Sync certificates and profiles without building"
+  lane :sync_signing do
+    api_key = app_store_connect_api_key(
+      key_id: ENV["APP_STORE_CONNECT_API_KEY_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_API_ISSUER_ID"],
+      key_content: ENV["APP_STORE_CONNECT_API_KEY_CONTENT"],
+      is_key_content_base64: false
+    )
+
+    match(
+      type: "appstore",
+      api_key: api_key,
+      readonly: ENV["CI"] == "true"
+    )
+
+    UI.success("Code signing synced successfully!")
+  end
+
+  desc "Initialize Match repository (run once to create certificates)"
+  lane :init_match do
+    match(
+      type: "appstore",
+      readonly: false
+    )
+
+    UI.success("Match initialized! Certificates and profiles stored in git repository.")
+  end
+end
