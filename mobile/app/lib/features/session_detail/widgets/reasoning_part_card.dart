@@ -81,7 +81,7 @@ class _ReasoningPartCardState extends State<ReasoningPartCard> {
                     Icon(
                       Icons.psychology,
                       size: 18,
-                      color: zyra.colors.borderPrimary,
+                      color: zyra.colors.textSecondary,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -90,7 +90,7 @@ class _ReasoningPartCardState extends State<ReasoningPartCard> {
                             ? loc.sessionDetailThinking
                             : loc.sessionDetailThought,
                         style: zyra.textTheme.textXs.regular.copyWith(
-                          color: zyra.colors.borderPrimary,
+                          color: zyra.colors.textSecondary,
                           fontStyle: FontStyle.italic,
                         ),
                       ),
@@ -98,7 +98,7 @@ class _ReasoningPartCardState extends State<ReasoningPartCard> {
                     Icon(
                       Icons.unfold_more,
                       size: 16,
-                      color: zyra.colors.borderPrimary,
+                      color: zyra.colors.textSecondary,
                     ),
                   ],
                 ),

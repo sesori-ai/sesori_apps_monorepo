@@ -52,7 +52,7 @@ class _SessionTile extends StatelessWidget {
           backgroundColor: context.zyra.colors.bgBrandSolid,
           child: Icon(
             Icons.chat_outlined,
-            color: context.zyra.colors.textPrimary,
+            color: context.zyra.colors.fgWhite,
           ),
         ),
         title: Text(session.title ?? loc.sessionListUntitled),
@@ -63,7 +63,7 @@ class _SessionTile extends StatelessWidget {
               Text(
                 loc.sessionListUpdated(_formatTimestamp(ms: updatedAt)),
                 style: context.zyra.textTheme.textXs.regular.copyWith(
-                  color: context.zyra.colors.borderPrimary,
+                  color: context.zyra.colors.textSecondary,
                 ),
               ),
             if (filesChanged > 0)
