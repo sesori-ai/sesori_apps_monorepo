@@ -4,15 +4,31 @@ default_platform(:android)
 
 platform :android do
   private_lane :_get_all_version_codes do
+    tracks = %w[internal alpha beta production]
     version_codes = []
-    %w[internal alpha beta production].each do |track|
+    failures = {}
+
+    tracks.each do |track|
       begin
         codes = google_play_track_version_codes(track: track)
         version_codes.concat(codes) if codes
       rescue StandardError => e
-        UI.verbose("Could not get version codes from track '#{track}': #{e.message}")
+        # A track legitimately may have no releases yet (404 from the Play API).
+        # Other failures (auth, network) must not be silently swallowed —
+        # otherwise we'd compute a stale next version code.
+        failures[track] = e
+        UI.important("Could not read version codes from track '#{track}': #{e.message}")
       end
     end
+
+    if failures.size == tracks.size
+      details = failures.map { |t, e| "  - #{t}: #{e.class}: #{e.message}" }.join("\n")
+      UI.user_error!(
+        "Failed to read version codes from any Play track. " \
+        "Refusing to fall back to 0 because that would collide with existing builds.\n#{details}"
+      )
+    end
+
     version_codes
   end
 

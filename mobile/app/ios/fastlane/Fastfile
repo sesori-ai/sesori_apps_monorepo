@@ -16,6 +16,9 @@ platform :ios do
       is_key_content_base64: false
     )
 
+    app_identifier = CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
+    team_id = CredentialsManager::AppfileConfig.try_fetch_value(:team_id)
+
     # Get version from pubspec.yaml
     pubspec_path = File.join(Dir.pwd, "..", "..", "pubspec.yaml")
     pubspec_content = File.read(pubspec_path)
@@ -51,14 +54,17 @@ platform :ios do
       readonly: ENV["CI"] == "true"
     )
 
+    profile_name = ENV["sigh_#{app_identifier}_appstore_profile-name"]
+    UI.user_error!("Match did not set sigh_#{app_identifier}_appstore_profile-name env var") if profile_name.to_s.empty?
+
     # Override automatic signing with match profile for CI
     update_code_signing_settings(
       use_automatic_signing: false,
       path: "Runner.xcodeproj",
       targets: ["Runner"],
-      team_id: CredentialsManager::AppfileConfig.try_fetch_value(:team_id),
-      bundle_identifier: CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier),
-      profile_name: ENV["sigh_com.sesori.app_appstore_profile-name"],
+      team_id: team_id,
+      bundle_identifier: app_identifier,
+      profile_name: profile_name,
       code_sign_identity: "Apple Distribution"
     )
 
@@ -70,7 +76,7 @@ platform :ios do
       export_method: "app-store",
       export_options: {
         provisioningProfiles: {
-          CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier) => ENV["sigh_com.sesori.app_appstore_profile-name"] || "match AppStore com.sesori.app"
+          app_identifier => profile_name
         }
       },
       output_directory: "./build",
@@ -106,14 +112,19 @@ platform :ios do
       readonly: true
     )
 
+    app_identifier = CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
+    team_id = CredentialsManager::AppfileConfig.try_fetch_value(:team_id)
+    profile_name = ENV["sigh_#{app_identifier}_appstore_profile-name"]
+    UI.user_error!("Match did not set sigh_#{app_identifier}_appstore_profile-name env var") if profile_name.to_s.empty?
+
     # Override automatic signing with match profile for CI
     update_code_signing_settings(
       use_automatic_signing: false,
       path: "Runner.xcodeproj",
       targets: ["Runner"],
-      team_id: CredentialsManager::AppfileConfig.try_fetch_value(:team_id),
-      bundle_identifier: CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier),
-      profile_name: ENV["sigh_com.sesori.app_appstore_profile-name"],
+      team_id: team_id,
+      bundle_identifier: app_identifier,
+      profile_name: profile_name,
       code_sign_identity: "Apple Distribution"
     )
 
