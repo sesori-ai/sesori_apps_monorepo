@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_zyra/module_zyra.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/widgets/app_modal_bottom_sheet.dart";
@@ -59,11 +60,11 @@ class PermissionModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final zyra = context.zyra;
 
     return Container(
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        color: zyra.colors.bgPrimary,
         borderRadius: const BorderRadius.vertical(
           top: Radius.circular(16),
         ),
@@ -78,7 +79,7 @@ class PermissionModal extends StatelessWidget {
               width: 32,
               height: 4,
               decoration: BoxDecoration(
-                color: theme.colorScheme.outlineVariant,
+                color: zyra.colors.borderSecondary,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -92,13 +93,13 @@ class PermissionModal extends StatelessWidget {
                 Icon(
                   Icons.shield_outlined,
                   size: 20,
-                  color: theme.colorScheme.primary,
+                  color: zyra.colors.bgBrandSolid,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     context.loc.diffPermissionRequestTitle,
-                    style: theme.textTheme.titleMedium,
+                    style: zyra.textTheme.textMd.bold,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -126,7 +127,7 @@ class PermissionModal extends StatelessWidget {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
+                    color: zyra.colors.bgQuaternary,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
@@ -134,12 +135,12 @@ class PermissionModal extends StatelessWidget {
                       Icon(
                         Icons.terminal,
                         size: 16,
-                        color: theme.colorScheme.onSurfaceVariant,
+                        color: zyra.colors.textSecondary,
                       ),
                       const SizedBox(width: 8),
                       Text(
                         permission.tool,
-                        style: theme.textTheme.titleSmall?.copyWith(
+                        style: zyra.textTheme.textSm.bold.copyWith(
                           fontWeight: FontWeight.bold,
                           fontFamily: "monospace",
                         ),
@@ -154,10 +155,10 @@ class PermissionModal extends StatelessWidget {
                   data: permission.description,
                   selectable: true,
                   onTapLink: handleMarkdownLinkTap,
-                  styleSheet: buildSessionMarkdownStyleSheet(
-                    theme,
-                    paragraphStyle: theme.textTheme.bodyMedium,
-                  ),
+                    styleSheet: buildSessionMarkdownStyleSheet(
+                      zyra: zyra,
+                      paragraphStyle: zyra.textTheme.textSm.regular,
+                    ),
                 ),
               ],
             ),
@@ -171,8 +172,8 @@ class PermissionModal extends StatelessWidget {
                 Expanded(
                   child: OutlinedButton(
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: theme.colorScheme.error,
-                      side: BorderSide(color: theme.colorScheme.error),
+                      foregroundColor: zyra.colors.fgErrorPrimary,
+                      side: BorderSide(color: zyra.colors.fgErrorPrimary),
                     ),
                     onPressed: () => _reply(context, reply: PermissionReply.reject),
                     child: Text(context.loc.diffPermissionReject),

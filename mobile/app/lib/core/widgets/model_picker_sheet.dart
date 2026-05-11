@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_zyra/module_zyra.dart";
 
 import "../extensions/build_context_x.dart";
 import "app_modal_bottom_sheet.dart";
@@ -34,10 +35,11 @@ class ModelPickerSheet extends StatefulWidget {
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
         final height = MediaQuery.sizeOf(sheetContext).height * 0.7;
+        final zyra = sheetContext.zyra;
         return Container(
           height: height,
           decoration: BoxDecoration(
-            color: Theme.of(sheetContext).colorScheme.surface,
+            color: zyra.colors.bgPrimary,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
           ),
           child: ModelPickerSheet(
@@ -111,7 +113,7 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final zyra = context.zyra;
     final loc = context.loc;
 
     return Column(
@@ -122,7 +124,7 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
             width: 32,
             height: 4,
             decoration: BoxDecoration(
-              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+              color: zyra.colors.textSecondary.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -131,7 +133,7 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Text(
             loc.sessionDetailSelectModel,
-            style: theme.textTheme.titleMedium,
+            style: zyra.textTheme.textMd.bold,
           ),
         ),
         Padding(
@@ -148,7 +150,7 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
                 borderSide: BorderSide.none,
               ),
               filled: true,
-              fillColor: theme.colorScheme.surfaceContainerHighest,
+              fillColor: zyra.colors.bgPrimary,
             ),
             onChanged: (value) => setState(() => _query = value.trim()),
           ),
@@ -158,7 +160,7 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
           child: ListView(
             padding: .zero,
             children: [
-              for (final provider in _sortedProviders) ..._buildProviderSection(provider: provider, theme: theme),
+              for (final provider in _sortedProviders) ..._buildProviderSection(provider: provider, context: context),
             ],
           ),
         ),
@@ -166,7 +168,8 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
     );
   }
 
-  List<Widget> _buildProviderSection({required ProviderInfo provider, required ThemeData theme}) {
+  List<Widget> _buildProviderSection({required ProviderInfo provider, required BuildContext context}) {
+    final zyra = context.zyra;
     final isSearching = _query.isNotEmpty;
     final visibleIds = isSearching ? null : _defaultVisibleIds(provider);
 
@@ -199,8 +202,8 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
         padding: const EdgeInsetsDirectional.fromSTEB(16, 16, 16, 4),
         child: Text(
           provider.name,
-          style: theme.textTheme.labelLarge?.copyWith(
-            color: theme.colorScheme.primary,
+          style: zyra.textTheme.textXs.medium.copyWith(
+            color: zyra.colors.bgBrandSolid,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -231,7 +234,7 @@ class _ModelTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final zyra = context.zyra;
 
     return ListTile(
       dense: true,
@@ -241,8 +244,8 @@ class _ModelTile extends StatelessWidget {
         null => null,
       },
       leading: isSelected
-          ? Icon(Icons.radio_button_checked, color: theme.colorScheme.primary)
-          : Icon(Icons.radio_button_unchecked, color: theme.colorScheme.outline),
+          ? Icon(Icons.radio_button_checked, color: zyra.colors.bgBrandSolid)
+          : Icon(Icons.radio_button_unchecked, color: zyra.colors.borderPrimary),
       onTap: onTap,
     );
   }

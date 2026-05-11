@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:theme_zyra/module_zyra.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
@@ -80,6 +81,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
   }
 
   Widget? _buildErrorBanner(NewSessionState state) {
+    final zyra = context.zyra;
     return switch (state) {
       NewSessionError(:final message) => Padding(
         padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 12, 4),
@@ -88,7 +90,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
             Expanded(
               child: Text(
                 message,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+                style: TextStyle(color: zyra.colors.fgErrorPrimary),
               ),
             ),
           ],
@@ -136,6 +138,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
   Widget build(BuildContext context) {
     final state = context.watch<NewSessionCubit>().state;
     final loc = context.loc;
+    final zyra = context.zyra;
 
     return BlocListener<NewSessionCubit, NewSessionState>(
       listenWhen: (_, current) => current is NewSessionCreated,
@@ -166,8 +169,8 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                       title: Text(loc.newSessionDedicatedWorktree),
                       subtitle: Text(
                         loc.newSessionDedicatedWorktreeDescription,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        style: zyra.textTheme.textXs.regular.copyWith(
+                          color: zyra.colors.textSecondary,
                         ),
                       ),
                       value: _dedicatedWorktree,

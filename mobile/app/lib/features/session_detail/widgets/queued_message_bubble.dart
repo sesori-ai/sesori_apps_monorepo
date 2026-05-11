@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:theme_zyra/module_zyra.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 
@@ -15,7 +16,7 @@ class QueuedMessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final zyra = context.zyra;
     final loc = context.loc;
 
     return Padding(
@@ -28,10 +29,10 @@ class QueuedMessageBubble extends StatelessWidget {
             flex: 3,
             child: Container(
               decoration: BoxDecoration(
-                color: theme.colorScheme.tertiaryContainer.withValues(alpha: 0.5),
+                color: zyra.colors.bgSuccessSecondary.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: theme.colorScheme.tertiary.withValues(alpha: 0.3),
+                  color: zyra.colors.fgSuccessPrimary.withValues(alpha: 0.3),
                   style: BorderStyle.solid,
                 ),
               ),
@@ -49,13 +50,13 @@ class QueuedMessageBubble extends StatelessWidget {
                             Icon(
                               submission.isCommand ? Icons.terminal : Icons.schedule,
                               size: 14,
-                              color: theme.colorScheme.onTertiaryContainer.withValues(alpha: 0.7),
+                              color: zyra.colors.fgSuccessPrimary.withValues(alpha: 0.7),
                             ),
                             const SizedBox(width: 4),
                             Text(
                               submission.isCommand ? loc.sessionDetailQueuedCommand : loc.sessionDetailQueuedMessage,
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: theme.colorScheme.onTertiaryContainer.withValues(alpha: 0.7),
+                              style: zyra.textTheme.textXs.medium.copyWith(
+                                color: zyra.colors.fgSuccessPrimary.withValues(alpha: 0.7),
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -64,9 +65,9 @@ class QueuedMessageBubble extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           submission.displayText,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onTertiaryContainer,
-                          ),
+                            style: zyra.textTheme.textSm.regular.copyWith(
+                              color: zyra.colors.fgSuccessPrimary,
+                            ),
                         ),
                       ],
                     ),
@@ -81,11 +82,11 @@ class QueuedMessageBubble extends StatelessWidget {
                           icon: const Icon(Icons.close, size: 14),
                           label: Text(loc.sessionDetailCancelQueued),
                           style: TextButton.styleFrom(
-                            foregroundColor: theme.colorScheme.outline,
+                            foregroundColor: zyra.colors.borderPrimary,
                             padding: const EdgeInsets.symmetric(horizontal: 8),
                             minimumSize: .zero,
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            textStyle: theme.textTheme.labelSmall,
+                            textStyle: zyra.textTheme.textXs.medium,
                           ),
                         ),
                       ],

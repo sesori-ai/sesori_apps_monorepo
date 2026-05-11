@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_zyra/module_zyra.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/routing/app_router.dart";
 import "../../../l10n/app_localizations.dart";
@@ -46,13 +47,13 @@ class _BackgroundTasksBarState extends State<BackgroundTasksBar> {
   Widget build(BuildContext context) {
     if (widget.children.isEmpty) return const SizedBox.shrink();
 
-    final theme = Theme.of(context);
+    final zyra = context.zyra;
     final running = _runningTasks;
     final completed = _completedTasks;
 
     return Material(
       elevation: 2,
-      color: theme.colorScheme.surfaceContainerHigh,
+      color: zyra.colors.bgTertiary,
       borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -97,7 +98,7 @@ class _CollapsedHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final zyra = context.zyra;
     final loc = context.loc;
     final hasRunning = runningCount > 0;
 
@@ -114,28 +115,28 @@ class _CollapsedHeader extends StatelessWidget {
                 height: 16,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: theme.colorScheme.primary,
+                  color: zyra.colors.bgBrandSolid,
                 ),
               )
             else
               Icon(
                 Icons.check_circle,
                 size: 16,
-                color: theme.colorScheme.primary,
+                color: zyra.colors.bgBrandSolid,
               ),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 hasRunning ? loc.backgroundTasksRunning(runningCount) : loc.backgroundTasksCompleted,
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: theme.colorScheme.onSurface,
+                style: zyra.textTheme.textMd.bold.copyWith(
+                  color: zyra.colors.textPrimary,
                 ),
               ),
             ),
             Icon(
               expanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_up,
               size: 20,
-              color: theme.colorScheme.onSurfaceVariant,
+              color: zyra.colors.textSecondary,
             ),
           ],
         ),
@@ -163,7 +164,7 @@ class _ExpandedTaskList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final zyra = context.zyra;
     final hasRunning = runningTasks.isNotEmpty;
     final hasCompleted = completedTasks.isNotEmpty;
 
@@ -178,7 +179,7 @@ class _ExpandedTaskList extends StatelessWidget {
       decoration: BoxDecoration(
         border: Border(
           top: BorderSide(
-            color: theme.colorScheme.outlineVariant,
+            color: zyra.colors.borderSecondary,
             width: 0.5,
           ),
         ),
@@ -190,7 +191,7 @@ class _ExpandedTaskList extends StatelessWidget {
         separatorBuilder: (_, __) => Divider(
           height: 1,
           indent: 42,
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+          color: zyra.colors.borderSecondary.withValues(alpha: 0.5),
         ),
         itemBuilder: (context, index) {
           // Toggle button goes after visible tasks.
@@ -227,7 +228,7 @@ class _CompletedToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final zyra = context.zyra;
     final loc = context.loc;
 
     return InkWell(
@@ -239,14 +240,14 @@ class _CompletedToggle extends StatelessWidget {
             Icon(
               showCompleted ? Icons.visibility_off_outlined : Icons.visibility_outlined,
               size: 16,
-              color: theme.colorScheme.primary,
+              color: zyra.colors.bgBrandSolid,
             ),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 showCompleted ? loc.backgroundTasksHideCompleted : loc.backgroundTasksShowCompleted(completedCount),
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: theme.colorScheme.primary,
+                style: zyra.textTheme.textSm.bold.copyWith(
+                  color: zyra.colors.bgBrandSolid,
                 ),
               ),
             ),
@@ -270,7 +271,7 @@ class _TaskRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final zyra = context.zyra;
     final loc = context.loc;
     final title = session.title ?? loc.sessionDetailSubtaskUnnamed;
 
@@ -289,7 +290,7 @@ class _TaskRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Row(
           children: [
-            _statusIcon(status: status, theme: theme),
+            _statusIcon(status: status, zyra: zyra),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -297,14 +298,14 @@ class _TaskRow extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: theme.textTheme.bodyMedium,
+                    style: zyra.textTheme.textSm.regular,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
                     _statusLabel(loc: loc, status: status),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                    style: zyra.textTheme.textXs.regular.copyWith(
+                      color: zyra.colors.textSecondary,
                     ),
                   ),
                 ],
@@ -313,7 +314,7 @@ class _TaskRow extends StatelessWidget {
             Icon(
               Icons.chevron_right,
               size: 20,
-              color: theme.colorScheme.onSurfaceVariant,
+              color: zyra.colors.textSecondary,
             ),
           ],
         ),
@@ -321,29 +322,29 @@ class _TaskRow extends StatelessWidget {
     );
   }
 
-  Widget _statusIcon({required SessionStatus? status, required ThemeData theme}) => switch (status) {
+  Widget _statusIcon({required SessionStatus? status, required ZyraDesignSystem zyra}) => switch (status) {
     SessionStatusBusy() => SizedBox(
       width: 16,
       height: 16,
       child: CircularProgressIndicator(
         strokeWidth: 2,
-        color: theme.colorScheme.primary,
+        color: zyra.colors.bgBrandSolid,
       ),
     ),
     SessionStatusRetry() => Icon(
       Icons.refresh,
       size: 16,
-      color: theme.colorScheme.tertiary,
+      color: zyra.colors.fgSuccessPrimary,
     ),
     SessionStatusIdle() => Icon(
       Icons.check_circle,
       size: 16,
-      color: theme.colorScheme.primary,
+      color: zyra.colors.bgBrandSolid,
     ),
     null => Icon(
       Icons.play_circle_outline,
       size: 16,
-      color: theme.colorScheme.outline,
+      color: zyra.colors.borderPrimary,
     ),
   };
   String _statusLabel({required AppLocalizations loc, required SessionStatus? status}) => switch (status) {

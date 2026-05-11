@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_zyra/module_zyra.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
@@ -32,6 +33,7 @@ class _SettingsBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
+    final zyra = context.zyra;
     final notificationState = context.watch<NotificationPreferencesCubit>().state;
     final settingsState = context.watch<SettingsCubit>().state;
     final isLoggingOut = settingsState is SettingsLoggingOut;
@@ -107,8 +109,8 @@ class _SettingsBody extends StatelessWidget {
             ListTile(
               leading: const Icon(Icons.logout),
               title: Text(loc.settingsLogout),
-              textColor: Theme.of(context).colorScheme.error,
-              iconColor: Theme.of(context).colorScheme.error,
+              textColor: zyra.colors.fgErrorPrimary,
+              iconColor: zyra.colors.fgErrorPrimary,
               trailing: isLoggingOut
                   ? const SizedBox(
                       width: 20,

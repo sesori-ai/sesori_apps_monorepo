@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_zyra/module_zyra.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../l10n/app_localizations.dart";
 
@@ -10,7 +11,7 @@ class ToolPartWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final zyra = context.zyra;
     final loc = context.loc;
     final state = part.state;
     final toolName = part.state?.title ?? part.tool ?? loc.sessionDetailToolUnknown;
@@ -22,9 +23,9 @@ class ToolPartWidget extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Container(
         decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerLow,
+          color: zyra.colors.bgSecondary,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: theme.colorScheme.outlineVariant),
+          border: Border.all(color: zyra.colors.borderSecondary),
         ),
         child: Column(
           crossAxisAlignment: .start,
@@ -33,12 +34,12 @@ class ToolPartWidget extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Row(
                 children: [
-                  _statusIcon(status: status, theme: theme),
+                  _statusIcon(status: status, zyra: zyra),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       toolName,
-                      style: theme.textTheme.bodyMedium?.copyWith(
+                      style: zyra.textTheme.textSm.regular.copyWith(
                         fontWeight: FontWeight.w500,
                       ),
                       maxLines: 1,
@@ -47,8 +48,8 @@ class ToolPartWidget extends StatelessWidget {
                   ),
                   Text(
                     _statusLabel(loc: loc, status: status),
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.outline,
+                    style: zyra.textTheme.textXs.medium.copyWith(
+                      color: zyra.colors.borderPrimary,
                     ),
                   ),
                 ],
@@ -61,12 +62,12 @@ class ToolPartWidget extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
+                    color: zyra.colors.bgQuaternary,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
                     _truncateOutput(output),
-                    style: theme.textTheme.bodySmall?.copyWith(
+                    style: zyra.textTheme.textXs.regular.copyWith(
                       fontFamily: "monospace",
                       fontSize: 11,
                     ),
@@ -80,8 +81,8 @@ class ToolPartWidget extends StatelessWidget {
                 padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 12, 8),
                 child: Text(
                   errorText,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.error,
+                    style: zyra.textTheme.textXs.regular.copyWith(
+                      color: zyra.colors.fgErrorPrimary,
                   ),
                   maxLines: 4,
                   overflow: .ellipsis,
@@ -93,25 +94,25 @@ class ToolPartWidget extends StatelessWidget {
     );
   }
 
-  Widget _statusIcon({required String status, required ThemeData theme}) => switch (status) {
+  Widget _statusIcon({required String status, required ZyraDesignSystem zyra}) => switch (status) {
     "pending" || "running" => SizedBox(
       width: 16,
       height: 16,
       child: CircularProgressIndicator(
         strokeWidth: 2,
-        color: theme.colorScheme.primary,
+        color: zyra.colors.bgBrandSolid,
       ),
     ),
     "completed" => Icon(
       Icons.check_circle,
       size: 16,
-      color: theme.colorScheme.primary,
+      color: zyra.colors.bgBrandSolid,
     ),
-    "error" => Icon(Icons.error, size: 16, color: theme.colorScheme.error),
+    "error" => Icon(Icons.error, size: 16, color: zyra.colors.fgErrorPrimary),
     _ => Icon(
       Icons.circle_outlined,
       size: 16,
-      color: theme.colorScheme.outline,
+      color: zyra.colors.borderPrimary,
     ),
   };
 

@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_zyra/module_zyra.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/widgets/app_modal_bottom_sheet.dart";
@@ -192,7 +193,7 @@ class _QuestionModalState extends State<QuestionModal> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final zyra = context.zyra;
     final loc = context.loc;
     final height = MediaQuery.sizeOf(context).height * 0.7;
     final info = _currentInfo;
@@ -200,7 +201,7 @@ class _QuestionModalState extends State<QuestionModal> {
     return Container(
       height: height,
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        color: zyra.colors.bgPrimary,
         borderRadius: const BorderRadius.vertical(
           top: Radius.circular(16),
         ),
@@ -214,7 +215,7 @@ class _QuestionModalState extends State<QuestionModal> {
               width: 32,
               height: 4,
               decoration: BoxDecoration(
-                color: theme.colorScheme.outlineVariant,
+                color: zyra.colors.borderSecondary,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -228,13 +229,13 @@ class _QuestionModalState extends State<QuestionModal> {
                 Icon(
                   Icons.help_outline,
                   size: 20,
-                  color: theme.colorScheme.primary,
+                  color: zyra.colors.bgBrandSolid,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     info.header.isNotEmpty ? info.header : loc.questionModalTitle,
-                    style: theme.textTheme.titleMedium,
+                    style: zyra.textTheme.textMd.bold,
                     maxLines: 1,
                     overflow: .ellipsis,
                   ),
@@ -258,8 +259,8 @@ class _QuestionModalState extends State<QuestionModal> {
                       _currentIndex + 1,
                       _totalQuestions,
                     ),
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                    style: zyra.textTheme.textSm.bold.copyWith(
+                      color: zyra.colors.textSecondary,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -269,8 +270,8 @@ class _QuestionModalState extends State<QuestionModal> {
                       child: LinearProgressIndicator(
                         value: (_currentIndex + 1) / _totalQuestions,
                         minHeight: 4,
-                        backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                        color: theme.colorScheme.primary,
+                        backgroundColor: zyra.colors.bgQuaternary,
+                        color: zyra.colors.bgBrandSolid,
                       ),
                     ),
                   ),
@@ -290,10 +291,10 @@ class _QuestionModalState extends State<QuestionModal> {
                   data: info.question,
                   selectable: true,
                   onTapLink: handleMarkdownLinkTap,
-                  styleSheet: buildSessionMarkdownStyleSheet(
-                    theme,
-                    paragraphStyle: theme.textTheme.bodyLarge,
-                  ),
+                    styleSheet: buildSessionMarkdownStyleSheet(
+                      zyra: zyra,
+                      paragraphStyle: zyra.textTheme.textSm.medium,
+                    ),
                 ),
                 const SizedBox(height: 16),
 
@@ -360,12 +361,12 @@ class _OptionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final zyra = context.zyra;
 
     return Padding(
       padding: const EdgeInsetsDirectional.only(bottom: 8),
       child: Material(
-        color: isSelected ? theme.colorScheme.primaryContainer : theme.colorScheme.surfaceContainerLow,
+        color: isSelected ? zyra.colors.bgBrandPrimary : zyra.colors.bgSecondary,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
@@ -378,7 +379,7 @@ class _OptionTile extends StatelessWidget {
                   isMultiple
                       ? (isSelected ? Icons.check_box : Icons.check_box_outline_blank)
                       : (isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked),
-                  color: isSelected ? theme.colorScheme.primary : theme.colorScheme.outline,
+                  color: isSelected ? zyra.colors.bgBrandSolid : zyra.colors.borderPrimary,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -387,7 +388,7 @@ class _OptionTile extends StatelessWidget {
                     children: [
                       Text(
                         option.label,
-                        style: theme.textTheme.titleSmall?.copyWith(
+                        style: zyra.textTheme.textSm.bold.copyWith(
                           fontWeight: .bold,
                         ),
                       ),
@@ -395,9 +396,9 @@ class _OptionTile extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           option.description,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
+                            style: zyra.textTheme.textXs.regular.copyWith(
+                              color: zyra.colors.textSecondary,
+                            ),
                         ),
                       ],
                     ],
@@ -433,13 +434,13 @@ class _CustomAnswerTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final zyra = context.zyra;
     final loc = context.loc;
 
     return Padding(
       padding: const EdgeInsetsDirectional.only(bottom: 8),
       child: Material(
-        color: isSelected ? theme.colorScheme.primaryContainer : theme.colorScheme.surfaceContainerLow,
+        color: isSelected ? zyra.colors.bgBrandPrimary : zyra.colors.bgSecondary,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
@@ -456,7 +457,7 @@ class _CustomAnswerTile extends StatelessWidget {
                     isMultiple
                         ? (isSelected ? Icons.check_box : Icons.check_box_outline_blank)
                         : (isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked),
-                    color: isSelected ? theme.colorScheme.primary : theme.colorScheme.outline,
+                    color: isSelected ? zyra.colors.bgBrandSolid : zyra.colors.borderPrimary,
                   ),
                 ),
                 const SizedBox(width: 12),

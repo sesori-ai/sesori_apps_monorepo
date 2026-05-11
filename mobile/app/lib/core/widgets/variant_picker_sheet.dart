@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_zyra/module_zyra.dart";
 
 import "../extensions/build_context_x.dart";
 import "app_modal_bottom_sheet.dart";
@@ -40,7 +41,7 @@ class VariantPickerSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final zyra = context.zyra;
     final loc = context.loc;
 
     return Column(
@@ -52,7 +53,7 @@ class VariantPickerSheet extends StatelessWidget {
             width: 32,
             height: 4,
             decoration: BoxDecoration(
-              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+              color: zyra.colors.textSecondary.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -61,7 +62,7 @@ class VariantPickerSheet extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Text(
             loc.sessionDetailPickerVariant,
-            style: theme.textTheme.titleMedium,
+            style: zyra.textTheme.textMd.bold,
           ),
         ),
         _VariantTile(
@@ -94,14 +95,14 @@ class _VariantTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final zyra = context.zyra;
 
     return ListTile(
       dense: true,
       title: Text(label),
       leading: isSelected
-          ? Icon(Icons.radio_button_checked, color: theme.colorScheme.primary)
-          : Icon(Icons.radio_button_unchecked, color: theme.colorScheme.outline),
+          ? Icon(Icons.radio_button_checked, color: zyra.colors.bgBrandSolid)
+          : Icon(Icons.radio_button_unchecked, color: zyra.colors.borderPrimary),
       onTap: onTap,
     );
   }

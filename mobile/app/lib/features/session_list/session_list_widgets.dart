@@ -23,7 +23,6 @@ class _SessionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final loc = context.loc;
     final updatedAt = session.time?.updated;
     final filesChanged = session.summary?.files ?? 0;
@@ -33,29 +32,27 @@ class _SessionTile extends StatelessWidget {
       direction: .startToEnd,
       confirmDismiss: (_) async {
         onSwipe();
-        // Return false — the cubit removes the item from the list, so we
-        // don't need Dismissible to animate the removal itself.
         return false;
       },
       background: ColoredBox(
-        color: theme.colorScheme.secondaryContainer,
+        color: context.zyra.colors.bgPrimary,
         child: Align(
           alignment: .centerLeft,
           child: Padding(
             padding: const EdgeInsetsDirectional.only(start: 24),
             child: Icon(
               isArchived ? Icons.unarchive_outlined : Icons.archive_outlined,
-              color: theme.colorScheme.onSecondaryContainer,
+              color: context.zyra.colors.textPrimary,
             ),
           ),
         ),
       ),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: theme.colorScheme.primaryContainer,
+          backgroundColor: context.zyra.colors.bgBrandSolid,
           child: Icon(
             Icons.chat_outlined,
-            color: theme.colorScheme.onPrimaryContainer,
+            color: context.zyra.colors.bgPrimary,
           ),
         ),
         title: Text(session.title ?? loc.sessionListUntitled),
@@ -65,19 +62,19 @@ class _SessionTile extends StatelessWidget {
             if (updatedAt != null)
               Text(
                 loc.sessionListUpdated(_formatTimestamp(ms: updatedAt)),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.outline,
+                style: context.zyra.textTheme.textXs.regular.copyWith(
+                  color: context.zyra.colors.borderPrimary,
                 ),
               ),
             if (filesChanged > 0)
               Text(
                 loc.sessionListFilesChanged(filesChanged),
-                style: theme.textTheme.bodySmall,
+                style: context.zyra.textTheme.textXs.regular,
               ),
             if (session.pullRequest case final pr?) PrStatusRow(pr: pr),
             if (isActive)
               _buildActivityRow(
-                theme: theme,
+                context: context,
                 loc: loc,
                 awaitingInput: awaitingInput,
                 backgroundTaskCount: backgroundTaskCount,
@@ -103,12 +100,12 @@ class _SessionTile extends StatelessWidget {
 }
 
 Widget _buildActivityRow({
-  required ThemeData theme,
+  required BuildContext context,
   required AppLocalizations loc,
   required bool awaitingInput,
   required int backgroundTaskCount,
 }) {
-  final color = awaitingInput ? kStatusAmber : theme.colorScheme.primary;
+  final color = awaitingInput ? kStatusAmber : context.zyra.colors.bgBrandSolid;
   final label = awaitingInput ? loc.sessionListAwaitingInput : loc.sessionListRunning;
 
   return Row(
@@ -117,10 +114,7 @@ Widget _buildActivityRow({
       const SizedBox(width: 4),
       Text(
         label,
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w500,
-        ),
+        style: context.zyra.textTheme.textXs.regular.copyWith(color: color),
       ),
       if (backgroundTaskCount > 0) ...[
         Padding(
@@ -129,10 +123,7 @@ Widget _buildActivityRow({
         ),
         Text(
           loc.sessionListBackgroundTasks(backgroundTaskCount),
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: color,
-            fontWeight: FontWeight.w500,
-          ),
+          style: context.zyra.textTheme.textXs.regular.copyWith(color: color),
         ),
       ],
     ],
@@ -169,12 +160,12 @@ class _StaleProjectView extends StatelessWidget {
             Icon(
               Icons.folder_off_outlined,
               size: 48,
-              color: Theme.of(context).colorScheme.error,
+              color: context.zyra.colors.fgErrorPrimary,
             ),
             const SizedBox(height: 16),
             Text(
               loc.sessionListStaleProjectTitle,
-              style: Theme.of(context).textTheme.titleMedium,
+              style: context.zyra.textTheme.textMd.bold,
             ),
             const SizedBox(height: 8),
             Text(loc.sessionListStaleProjectMessage, textAlign: .center),
@@ -210,12 +201,12 @@ class _ErrorView extends StatelessWidget {
             Icon(
               Icons.error_outline,
               size: 48,
-              color: Theme.of(context).colorScheme.error,
+              color: context.zyra.colors.fgErrorPrimary,
             ),
             const SizedBox(height: 16),
             Text(
               loc.sessionListErrorTitle,
-              style: Theme.of(context).textTheme.titleMedium,
+              style: context.zyra.textTheme.textMd.bold,
             ),
             const SizedBox(height: 8),
             Text(

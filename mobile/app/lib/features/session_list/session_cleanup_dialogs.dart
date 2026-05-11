@@ -21,7 +21,6 @@ class _DeleteSessionSheetState extends State<_DeleteSessionSheet> {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    final theme = Theme.of(context);
 
     return Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 16),
@@ -31,13 +30,13 @@ class _DeleteSessionSheetState extends State<_DeleteSessionSheet> {
         children: [
           Text(
             loc.sessionListDeleteConfirmTitle,
-            style: theme.textTheme.titleMedium,
+            style: context.zyra.textTheme.textMd.bold,
           ),
           const SizedBox(height: 8),
           Text(
             loc.sessionListDeleteConfirmMessage,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+            style: context.zyra.textTheme.textSm.regular.copyWith(
+              color: context.zyra.colors.textSecondary,
             ),
           ),
           const SizedBox(height: 12),
@@ -67,7 +66,7 @@ class _DeleteSessionSheetState extends State<_DeleteSessionSheet> {
               ),
               const SizedBox(width: 8),
               FilledButton(
-                style: FilledButton.styleFrom(backgroundColor: theme.colorScheme.error),
+                style: FilledButton.styleFrom(backgroundColor: context.zyra.colors.fgErrorPrimary),
                 onPressed: () {
                   context.pop();
                   widget.onConfirm(
@@ -106,7 +105,6 @@ class _ArchiveSessionSheetState extends State<_ArchiveSessionSheet> {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    final theme = Theme.of(context);
 
     return Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 16),
@@ -116,13 +114,13 @@ class _ArchiveSessionSheetState extends State<_ArchiveSessionSheet> {
         children: [
           Text(
             loc.sessionListArchiveConfirmTitle,
-            style: theme.textTheme.titleMedium,
+            style: context.zyra.textTheme.textMd.bold,
           ),
           const SizedBox(height: 8),
           Text(
             loc.sessionListArchiveConfirmMessage,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+            style: context.zyra.textTheme.textSm.regular.copyWith(
+              color: context.zyra.colors.textSecondary,
             ),
           ),
           const SizedBox(height: 12),

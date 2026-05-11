@@ -10,6 +10,7 @@ import "package:sesori_mobile/capabilities/voice/voice_transcription_service.dar
 import "package:sesori_mobile/features/new_session/new_session_screen.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_zyra/module_zyra.dart";
 
 import "../../helpers/test_helpers.dart";
 
@@ -36,6 +37,8 @@ Widget _buildApp() {
 
   return MaterialApp.router(
     routerConfig: router,
+    theme: ThemeData(extensions: [ZyraDesignSystem.light]),
+    darkTheme: ThemeData(extensions: [ZyraDesignSystem.dark]),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
   );

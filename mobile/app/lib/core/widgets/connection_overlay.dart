@@ -4,6 +4,7 @@ import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:theme_zyra/module_zyra.dart";
 
 import "../di/injection.dart";
 import "../extensions/build_context_x.dart";
@@ -37,6 +38,7 @@ class _ConnectionOverlayBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final zyra = context.zyra;
     final status = context.watch<ConnectionOverlayCubit>().state;
     final showOverlay = status is ConnectionLost;
     final isReconnecting = status is ConnectionReconnecting;
@@ -72,7 +74,7 @@ class _ConnectionOverlayBody extends StatelessWidget {
                     padding: const EdgeInsets.all(8),
                     child: Text(
                       context.loc.relayReconnecting,
-                      style: Theme.of(context).textTheme.labelSmall,
+                      style: zyra.textTheme.textXs.medium,
                     ),
                   ),
                 ],
@@ -110,7 +112,7 @@ class _BridgeOfflineBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final zyra = context.zyra;
     final loc = context.loc;
 
     return Material(
@@ -129,14 +131,14 @@ class _BridgeOfflineBanner extends StatelessWidget {
                 children: [
                   Text(
                     loc.bridgeOfflineTitle,
-                    style: theme.textTheme.labelMedium?.copyWith(
+                    style: zyra.textTheme.textXs.medium.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   Text(
                     loc.bridgeOfflineMessage,
-                    style: theme.textTheme.labelSmall?.copyWith(
+                    style: zyra.textTheme.textXs.regular.copyWith(
                       color: Colors.white70,
                     ),
                   ),
@@ -161,7 +163,7 @@ class _ConnectionLostCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final zyra = context.zyra;
     final loc = context.loc;
 
     return Card(
@@ -175,18 +177,18 @@ class _ConnectionLostCard extends StatelessWidget {
             Icon(
               Icons.cloud_off_rounded,
               size: 48,
-              color: theme.colorScheme.error,
+              color: zyra.colors.fgErrorPrimary,
             ),
             const SizedBox(height: 16),
             Text(
               loc.connectionLostTitle,
-              style: theme.textTheme.titleLarge,
+              style: zyra.textTheme.textMd.bold,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
               loc.relayConnectionLost,
-              style: theme.textTheme.bodyMedium,
+              style: zyra.textTheme.textSm.regular,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),

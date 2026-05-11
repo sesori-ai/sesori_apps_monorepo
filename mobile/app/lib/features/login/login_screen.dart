@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_zyra/module_zyra.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
@@ -48,7 +49,7 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final zyra = context.zyra;
     final loc = context.loc;
     final state = context.watch<LoginCubit>().state;
     final isLoading = state is LoginAuthenticating || state is LoginAwaitingCallback;
@@ -74,27 +75,25 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                     width: 96,
                     height: 96,
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.primaryContainer.withAlpha(102),
+                      color: zyra.colors.bgBrandSolid.withAlpha(102),
                       borderRadius: BorderRadius.circular(24),
                     ),
                     child: Icon(
                       Icons.terminal_rounded,
                       size: 56,
-                      color: theme.colorScheme.primary,
+                      color: zyra.colors.bgBrandSolid,
                     ),
                   ),
                   const SizedBox(height: 24),
                   Text(
                     loc.appTitle,
-                    style: theme.textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: zyra.textTheme.textXl.bold,
                   ),
                   const SizedBox(height: 8),
                   Text(
                     loc.loginSubtitle,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                    style: zyra.textTheme.textSm.regular.copyWith(
+                      color: zyra.colors.textSecondary,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -117,8 +116,8 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                       padding: const EdgeInsetsDirectional.only(top: 16),
                       child: Text(
                         loc.loginAuthenticating,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
+                        style: zyra.textTheme.textSm.regular.copyWith(
+                          color: zyra.colors.textSecondary,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -127,8 +126,8 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                       padding: const EdgeInsetsDirectional.only(top: 16),
                       child: Text(
                         loc.loginAwaitingCallback,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
+                        style: zyra.textTheme.textSm.regular.copyWith(
+                          color: zyra.colors.textSecondary,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -141,21 +140,21 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                     LoginFailed(:final error) => Padding(
                       padding: const EdgeInsetsDirectional.only(top: 24),
                       child: Card(
-                        color: theme.colorScheme.errorContainer,
+                        color: zyra.colors.bgErrorPrimary,
                         child: Padding(
                           padding: const EdgeInsets.all(16),
                           child: Row(
                             children: [
                               Icon(
                                 Icons.error_outline,
-                                color: theme.colorScheme.error,
+                                color: zyra.colors.fgErrorPrimary,
                               ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
                                   _getErrorMessage(loc: loc, error: error),
-                                  style: TextStyle(
-                                    color: theme.colorScheme.onErrorContainer,
+                                  style: zyra.textTheme.textSm.regular.copyWith(
+                                    color: zyra.colors.fgErrorPrimary,
                                   ),
                                 ),
                               ),

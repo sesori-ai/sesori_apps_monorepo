@@ -40,6 +40,44 @@ lib/
 - Localize all user-facing text in `lib/l10n/app_en.arb`, access via `context.loc.myResource`
 - English only for now
 
+## Theming
+
+The app uses the **Zyra design system** via `theme_zyra`. The theme is wired into `MaterialApp.router` in `main.dart` using `ZyraColors`, `ZyraTextTheme`, and `ZyraDesignSystem` for both light and dark modes.
+
+**ALWAYS access colors, text styles, spacing, radius, and shadows through `context.zyra`.** Never reach for `Theme.of(context).colorScheme` or `Theme.of(context).textTheme` when a Zyra token exists. This ensures every screen stays consistent with the Figma design system.
+
+### Correct usage
+
+```dart
+// Colors
+context.zyra.colors.textPrimary
+context.zyra.colors.bgBrandSolid
+context.zyra.colors.fgErrorPrimary
+
+// Text styles
+context.zyra.textTheme.textMd.bold
+context.zyra.textTheme.textSm.regular
+
+// Spacing / radius / shadows
+context.zyra.spacing.md
+context.zyra.radius.lg
+context.zyra.shadows.sm
+```
+
+### Incorrect usage
+
+```dart
+// Do NOT use Material colorScheme directly
+Theme.of(context).colorScheme.primary
+Theme.of(context).colorScheme.error
+
+// Do NOT use Material textTheme directly
+Theme.of(context).textTheme.titleMedium
+Theme.of(context).textTheme.bodySmall
+```
+
+The only exception is reading `Theme.of(context).brightness` for light/dark checks, which is still acceptable.
+
 ## Navigation
 
 - GoRouter for routing (`go_router`)

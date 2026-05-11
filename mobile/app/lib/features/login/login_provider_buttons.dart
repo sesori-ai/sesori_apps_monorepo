@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:theme_zyra/module_zyra.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 
@@ -20,7 +21,7 @@ class LoginProviderButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final zyra = context.zyra;
     final loc = context.loc;
 
     return Column(
@@ -63,21 +64,20 @@ class LoginProviderButtons extends StatelessWidget {
                     height: 18,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: theme.colorScheme.primary,
+                      color: zyra.colors.bgBrandSolid,
                     ),
                   )
                 : Text(
                     "G",
-                    style: TextStyle(
+                    style: zyra.textTheme.textMd.bold.copyWith(
                       fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.onSurface,
+                      color: zyra.colors.textPrimary,
                     ),
                   ),
             label: Text(loc.loginWithGoogle),
             style: OutlinedButton.styleFrom(
-              foregroundColor: theme.colorScheme.onSurface,
-              side: BorderSide(color: theme.colorScheme.outline),
+              foregroundColor: zyra.colors.textPrimary,
+              side: BorderSide(color: zyra.colors.borderPrimary),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -92,7 +92,7 @@ class LoginProviderButtons extends StatelessWidget {
             child: TextButton(
               onPressed: isLoading ? null : onShowEmailForm,
               style: TextButton.styleFrom(
-                foregroundColor: theme.colorScheme.primary,
+                foregroundColor: zyra.colors.bgBrandSolid,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),

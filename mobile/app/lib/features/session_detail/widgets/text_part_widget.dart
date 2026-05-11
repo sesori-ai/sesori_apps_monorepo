@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
+import "package:theme_zyra/module_zyra.dart";
 
 import "../../../core/widgets/markdown_styles.dart";
 
@@ -17,15 +18,13 @@ class TextPartWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     if (text.isEmpty) return const SizedBox.shrink();
 
-    final theme = Theme.of(context);
-
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: MarkdownBody(
         data: text,
         selectable: false,
         onTapLink: handleMarkdownLinkTap,
-        styleSheet: buildSessionMarkdownStyleSheet(theme),
+        styleSheet: buildSessionMarkdownStyleSheet(zyra: context.zyra),
       ),
     );
   }

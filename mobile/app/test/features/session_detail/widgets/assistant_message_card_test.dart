@@ -5,6 +5,7 @@ import "package:sesori_mobile/features/session_detail/widgets/assistant_message_
 import "package:sesori_mobile/features/session_detail/widgets/tool_part_widget.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_zyra/module_zyra.dart";
 
 class _AssistantMessageCardHarness extends StatefulWidget {
   final MessageWithParts message;
@@ -36,6 +37,8 @@ class _AssistantMessageCardHarnessState extends State<_AssistantMessageCardHarne
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      theme: ThemeData(extensions: [ZyraDesignSystem.light]),
+      darkTheme: ThemeData(extensions: [ZyraDesignSystem.dark]),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(

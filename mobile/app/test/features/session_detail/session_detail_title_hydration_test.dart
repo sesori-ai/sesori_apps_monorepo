@@ -10,6 +10,7 @@ import "package:sesori_mobile/capabilities/voice/voice_transcription_service.dar
 import "package:sesori_mobile/features/session_detail/session_detail_screen.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_zyra/module_zyra.dart";
 
 import "../../helpers/test_helpers.dart";
 
@@ -23,6 +24,8 @@ class MockVoiceTranscriptionService extends Mock implements VoiceTranscriptionSe
 
 Widget _buildApp({required String? sessionTitle}) {
   return MaterialApp(
+    theme: ThemeData(extensions: [ZyraDesignSystem.light]),
+    darkTheme: ThemeData(extensions: [ZyraDesignSystem.dark]),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     home: SessionDetailScreen(

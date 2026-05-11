@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:theme_zyra/module_zyra.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/widgets/markdown_styles.dart";
@@ -69,7 +70,7 @@ class _ReasoningModalState extends State<ReasoningModal> {
       ),
     );
 
-    final theme = Theme.of(context);
+    final zyra = context.zyra;
     final loc = context.loc;
     final height = MediaQuery.of(context).size.height * 0.7;
 
@@ -84,13 +85,13 @@ class _ReasoningModalState extends State<ReasoningModal> {
     return Container(
       height: height,
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        color: zyra.colors.bgPrimary,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
       ),
       child: Column(
         children: [
-          _buildDragHandle(theme: theme),
-          _buildHeader(theme: theme, isStreaming: data.isStreaming, loc: loc),
+          _buildDragHandle(zyra: zyra),
+          _buildHeader(zyra: zyra, isStreaming: data.isStreaming, loc: loc),
           const Divider(height: 1),
           Expanded(
             child: FollowDetachScrollable(
@@ -113,9 +114,9 @@ class _ReasoningModalState extends State<ReasoningModal> {
                       selectable: false,
                       onTapLink: handleMarkdownLinkTap,
                       styleSheet: buildSessionMarkdownStyleSheet(
-                        theme,
-                        paragraphStyle: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
+                        zyra: zyra,
+                        paragraphStyle: zyra.textTheme.textXs.regular.copyWith(
+                          color: zyra.colors.textSecondary,
                         ),
                       ),
                     ),
@@ -129,14 +130,14 @@ class _ReasoningModalState extends State<ReasoningModal> {
     );
   }
 
-  Widget _buildDragHandle({required ThemeData theme}) {
+  Widget _buildDragHandle({required ZyraDesignSystem zyra}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Container(
         width: 32,
         height: 4,
         decoration: BoxDecoration(
-          color: theme.colorScheme.outlineVariant,
+          color: zyra.colors.borderSecondary,
           borderRadius: BorderRadius.circular(2),
         ),
       ),
@@ -144,7 +145,7 @@ class _ReasoningModalState extends State<ReasoningModal> {
   }
 
   Widget _buildHeader({
-    required ThemeData theme,
+    required ZyraDesignSystem zyra,
     required bool isStreaming,
     required AppLocalizations loc,
   }) {
@@ -152,11 +153,11 @@ class _ReasoningModalState extends State<ReasoningModal> {
       padding: const EdgeInsetsDirectional.fromSTEB(16, 4, 16, 12),
       child: Row(
         children: [
-          Icon(Icons.psychology, size: 20, color: theme.colorScheme.outline),
+          Icon(Icons.psychology, size: 20, color: zyra.colors.borderPrimary),
           const SizedBox(width: 8),
           Text(
             isStreaming ? loc.sessionDetailThinking : loc.sessionDetailThought,
-            style: theme.textTheme.titleMedium?.copyWith(fontStyle: FontStyle.italic),
+            style: zyra.textTheme.textMd.bold.copyWith(fontStyle: FontStyle.italic),
           ),
         ],
       ),

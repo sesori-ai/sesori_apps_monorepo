@@ -5,6 +5,7 @@ import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_zyra/module_zyra.dart";
 import "../../core/constants.dart";
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
@@ -105,6 +106,7 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
   Widget build(BuildContext context) {
     final loc = context.loc;
     final state = context.watch<ProjectListCubit>().state;
+    final zyra = context.zyra;
 
     return Scaffold(
       appBar: AppBar(
@@ -153,15 +155,15 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
                                   Icon(
                                     Icons.folder_off_outlined,
                                     size: 48,
-                                    color: Theme.of(context).colorScheme.outline,
+                                    color: zyra.colors.borderPrimary,
                                   ),
                                   const SizedBox(height: 16),
-                                  Text(loc.noProjects, style: Theme.of(context).textTheme.titleMedium),
+                                  Text(loc.noProjects, style: zyra.textTheme.textMd.bold),
                                   const SizedBox(height: 8),
                                   Text(
                                     loc.addProjectPrompt,
-                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      color: Theme.of(context).colorScheme.outline,
+                                    style: zyra.textTheme.textSm.regular.copyWith(
+                                      color: zyra.colors.borderPrimary,
                                     ),
                                   ),
                                   const SizedBox(height: 24),
@@ -215,8 +217,8 @@ class _ProjectTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final loc = context.loc;
+    final zyra = context.zyra;
     final lastSegment = project.id.split("/").last;
     final displayName = project.name ?? (lastSegment.isNotEmpty ? lastSegment : loc.projectListDefaultName);
     final updatedAt = project.time?.updated;
@@ -224,10 +226,10 @@ class _ProjectTile extends StatelessWidget {
 
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: theme.colorScheme.primaryContainer,
+        backgroundColor: zyra.colors.bgBrandSolid,
         child: Icon(
           Icons.folder_outlined,
-          color: theme.colorScheme.onPrimaryContainer,
+          color: zyra.colors.textPrimary,
         ),
       ),
       title: Text(displayName),
@@ -236,26 +238,26 @@ class _ProjectTile extends StatelessWidget {
         children: [
           Text(
             project.id,
-            style: theme.textTheme.bodySmall,
+            style: zyra.textTheme.textXs.regular,
             maxLines: 1,
             overflow: .ellipsis,
           ),
           if (updatedAt != null)
             Text(
               loc.projectListUpdated(_formatTimestamp(updatedAt)),
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.outline,
+              style: zyra.textTheme.textXs.regular.copyWith(
+                color: zyra.colors.borderPrimary,
               ),
             ),
           if (isActive)
             Row(
               children: [
-                Icon(Icons.circle, size: 8, color: theme.colorScheme.primary),
+                Icon(Icons.circle, size: 8, color: zyra.colors.bgBrandSolid),
                 const SizedBox(width: 4),
                 Text(
                   loc.projectListActiveSessions(activeSessions),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.primary,
+                  style: zyra.textTheme.textXs.regular.copyWith(
+                    color: zyra.colors.bgBrandSolid,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -297,6 +299,7 @@ class _ErrorView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
+    final zyra = context.zyra;
 
     return Center(
       child: Padding(
@@ -307,12 +310,12 @@ class _ErrorView extends StatelessWidget {
             Icon(
               Icons.error_outline,
               size: 48,
-              color: Theme.of(context).colorScheme.error,
+              color: zyra.colors.fgErrorPrimary,
             ),
             const SizedBox(height: 16),
             Text(
               loc.projectListErrorTitle,
-              style: Theme.of(context).textTheme.titleMedium,
+              style: zyra.textTheme.textMd.bold,
             ),
             const SizedBox(height: 8),
             Text(

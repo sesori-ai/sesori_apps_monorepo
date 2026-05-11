@@ -35,7 +35,7 @@ void _showForceDialog({
                     Icon(
                       Icons.warning_amber_rounded,
                       size: 18,
-                      color: Theme.of(context).colorScheme.error,
+                      color: context.zyra.colors.fgErrorPrimary,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -76,7 +76,7 @@ void _showForceDialog({
             },
             child: Text(
               isDelete ? loc.sessionListForceDeleteAction : loc.sessionListForceArchiveAction,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
+              style: TextStyle(color: context.zyra.colors.fgErrorPrimary),
             ),
           ),
         ],
