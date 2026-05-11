@@ -75,9 +75,17 @@ class LoginProviderButtons extends StatelessWidget {
                   : const Icon(Icons.apple, size: 20),
               label: Text(loc.loginWithApple),
               style: FilledButton.styleFrom(
-                backgroundColor: Colors.black,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: Colors.black.withAlpha(153),
+                backgroundColor: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white
+                    : Colors.black,
+                foregroundColor: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.black
+                    : Colors.white,
+                disabledBackgroundColor:
+                    (Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : Colors.black)
+                        .withAlpha(153),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
