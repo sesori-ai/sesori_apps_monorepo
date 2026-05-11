@@ -30,7 +30,7 @@ class UserMessageCard extends StatelessWidget {
         child: SelectableText(
           text,
           style: zyra.textTheme.textSm.regular.copyWith(
-            color: zyra.colors.fgWhite,
+            color: zyra.colors.textBrandPrimary,
           ),
         ),
       ),
