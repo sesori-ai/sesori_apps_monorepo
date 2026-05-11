@@ -168,7 +168,7 @@ class _CommandPickerSheetState extends State<CommandPickerSheet> {
                     child: Text(
                       _sourceLabel(command.source),
                       style: zyra.textTheme.textXs.medium.copyWith(
-                        color: zyra.colors.bgPrimary,
+                        color: zyra.colors.textBrandPrimary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),

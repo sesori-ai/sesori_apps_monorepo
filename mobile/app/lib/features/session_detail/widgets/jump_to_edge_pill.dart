@@ -44,12 +44,12 @@ class JumpToEdgePill extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.arrow_downward, size: 16, color: zyra.colors.bgBrandPrimaryAlt),
+                  Icon(Icons.arrow_downward, size: 16, color: zyra.colors.textBrandPrimary),
                   const SizedBox(width: 6),
                   Text(
                     label,
                     style: zyra.textTheme.textSm.bold.copyWith(
-                      color: zyra.colors.bgBrandPrimaryAlt,
+                      color: zyra.colors.textBrandPrimary,
                     ),
                   ),
                 ],

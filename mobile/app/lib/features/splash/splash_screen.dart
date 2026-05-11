@@ -49,25 +49,28 @@ class _SplashView extends StatelessWidget {
         const Positioned.fill(child: SesoriBackgroundWidget()),
         Align(
           alignment: .center,
-          child: Column(
-            mainAxisSize: .min,
-            children: [
-              Image.asset(
-                "assets/images/sesori_icon_with_shadow.png",
-                fit: .none,
-              ),
-              // Image has some embedded "bottom padding"
-              // caused by the shadow
-              const SizedBox(height: 13),
-              Text(
-                context.loc.splashWelcomeTo,
-                style: zyra.textTheme.textSm.regular,
-              ),
-              Text(
-                context.loc.splashTitle,
-                style: zyra.textTheme.textMd.bold,
-              ),
-            ],
+          child: Material(
+            type: MaterialType.transparency,
+            child: Column(
+              mainAxisSize: .min,
+              children: [
+                Image.asset(
+                  "assets/images/sesori_icon_with_shadow.png",
+                  fit: .none,
+                ),
+                // Image has some embedded "bottom padding"
+                // caused by the shadow
+                const SizedBox(height: 13),
+                Text(
+                  context.loc.splashWelcomeTo,
+                  style: zyra.textTheme.textSm.regular,
+                ),
+                Text(
+                  context.loc.splashTitle,
+                  style: zyra.textTheme.textMd.bold,
+                ),
+              ],
+            ),
           ),
         ),
       ],

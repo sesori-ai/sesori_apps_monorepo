@@ -52,7 +52,7 @@ class _SessionTile extends StatelessWidget {
           backgroundColor: context.zyra.colors.bgBrandSolid,
           child: Icon(
             Icons.chat_outlined,
-            color: context.zyra.colors.bgPrimary,
+            color: context.zyra.colors.textPrimary,
           ),
         ),
         title: Text(session.title ?? loc.sessionListUntitled),

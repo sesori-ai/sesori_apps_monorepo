@@ -40,7 +40,7 @@ extension ZyraColorsX on ZyraColors {
     onSurface: textPrimary,
     onSurfaceVariant: brightness == .light ? textTertiary : textSecondary,
     outline: borderPrimary,
-    onInverseSurface: brightness == .light ? bgBrandPrimaryAlt : bgBrandPrimary,
+    onInverseSurface: brightness == .light ? bgBrandPrimaryAlt : fgWhite,
     inverseSurface: brightness == .light ? bgPrimarySolid : bgBrandPrimary,
     inversePrimary: brightness == .light ? bgBrandSecondary : bgBrandSectionSubtle,
     shadow: brightness == .light ? bgPrimarySolid : bgOverlay,

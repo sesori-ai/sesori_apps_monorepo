@@ -242,7 +242,7 @@ class _PromptInputState extends State<PromptInput> {
                     child: Text(
                       "/",
                       style: zyra.textTheme.textMd.bold.copyWith(
-                        color: zyra.colors.bgBrandPrimaryAlt,
+                        color: zyra.colors.textBrandPrimary,
                         fontWeight: FontWeight.w700,
                       ),
                     ),

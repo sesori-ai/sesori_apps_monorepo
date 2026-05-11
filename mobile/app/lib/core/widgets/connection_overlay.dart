@@ -66,18 +66,27 @@ class _ConnectionOverlayBody extends StatelessWidget {
             left: 0,
             right: 0,
             child: SafeArea(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const LinearProgressIndicator(),
-                  Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Text(
-                      context.loc.relayReconnecting,
-                      style: zyra.textTheme.textXs.medium,
+              child: Material(
+                elevation: 2,
+                color: Theme.of(context).colorScheme.surfaceContainer,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    LinearProgressIndicator(
+                      color: zyra.colors.bgBrandSolid,
+                      backgroundColor: zyra.colors.bgTertiary,
                     ),
-                  ),
-                ],
+                    Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Text(
+                        context.loc.relayReconnecting,
+                        style: zyra.textTheme.textXs.medium.copyWith(
+                          color: zyra.colors.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
