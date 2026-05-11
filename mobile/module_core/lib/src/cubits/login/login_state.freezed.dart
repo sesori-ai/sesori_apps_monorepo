@@ -174,10 +174,10 @@ String toString() {
 
 
 class LoginFailed implements LoginState {
-  const LoginFailed({required this.error});
+  const LoginFailed({required this.reason});
   
 
- final  String error;
+ final  LoginFailedReason reason;
 
 /// Create a copy of LoginState
 /// with the given fields replaced by the non-null parameter values.
@@ -189,16 +189,16 @@ $LoginFailedCopyWith<LoginFailed> get copyWith => _$LoginFailedCopyWithImpl<Logi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is LoginFailed&&(identical(other.error, error) || other.error == error));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is LoginFailed&&(identical(other.reason, reason) || other.reason == reason));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,error);
+int get hashCode => Object.hash(runtimeType,reason);
 
 @override
 String toString() {
-  return 'LoginState.failed(error: $error)';
+  return 'LoginState.failed(reason: $reason)';
 }
 
 
@@ -209,7 +209,7 @@ abstract mixin class $LoginFailedCopyWith<$Res> implements $LoginStateCopyWith<$
   factory $LoginFailedCopyWith(LoginFailed value, $Res Function(LoginFailed) _then) = _$LoginFailedCopyWithImpl;
 @useResult
 $Res call({
- String error
+ LoginFailedReason reason
 });
 
 
@@ -226,10 +226,10 @@ class _$LoginFailedCopyWithImpl<$Res>
 
 /// Create a copy of LoginState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? error = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? reason = null,}) {
   return _then(LoginFailed(
-error: null == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
-as String,
+reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
+as LoginFailedReason,
   ));
 }
 

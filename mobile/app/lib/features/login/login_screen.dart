@@ -80,11 +80,11 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
         return;
       }
       if (mounted) {
-        context.read<LoginCubit>().onAppleSignInError(e.code.name);
+        context.read<LoginCubit>().onAppleSignInError();
       }
-    } on Exception catch (e) {
+    } on Exception catch (_) {
       if (mounted) {
-        context.read<LoginCubit>().onAppleSignInError(e.toString());
+        context.read<LoginCubit>().onAppleSignInError();
       }
     }
   }
@@ -194,7 +194,7 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                     LoginSuccess() => const SizedBox.shrink(),
                   },
                   switch (state) {
-                    LoginFailed(:final error) => Padding(
+                    LoginFailed(:final reason) => Padding(
                       padding: const EdgeInsetsDirectional.only(top: 24),
                       child: Card(
                         color: zyra.colors.bgErrorPrimary,
@@ -209,7 +209,7 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
-                                  _getErrorMessage(loc: loc, error: error),
+                                  _getErrorMessage(loc: loc, reason: reason),
                                   style: zyra.textTheme.textSm.regular.copyWith(
                                     color: zyra.colors.fgErrorPrimary,
                                   ),
@@ -235,11 +235,13 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
     );
   }
 
-  String _getErrorMessage({required AppLocalizations loc, required String error}) {
-    return switch (error) {
-      "loginBrowserOpenFailed" => loc.loginBrowserOpenFailed,
-      "appleIdTokenMissing" => loc.appleIdTokenMissing,
-      _ => loc.loginError,
+  String _getErrorMessage({required AppLocalizations loc, required LoginFailedReason reason}) {
+    return switch (reason) {
+      LoginFailedReason.browserOpenFailed => loc.loginBrowserOpenFailed,
+      LoginFailedReason.appleIdTokenMissing => loc.appleIdTokenMissing,
+      LoginFailedReason.emailRequired => loc.emailRequired,
+      LoginFailedReason.passwordRequired => loc.passwordRequired,
+      LoginFailedReason.unknown => loc.loginError,
     };
   }
 }

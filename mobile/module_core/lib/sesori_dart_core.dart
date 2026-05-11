@@ -39,6 +39,7 @@ export "src/capabilities/voice/voice_api.dart";
 // Cubits
 export "src/cubits/connection_overlay/connection_overlay_cubit.dart";
 export "src/cubits/login/login_cubit.dart";
+export "src/cubits/login/login_failed_reason.dart";
 export "src/cubits/login/login_state.dart";
 export "src/cubits/new_session/new_session_cubit.dart";
 export "src/cubits/new_session/new_session_state.dart";
