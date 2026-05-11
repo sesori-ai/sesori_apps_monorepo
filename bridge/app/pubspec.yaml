@@ -24,6 +24,8 @@ dependencies:
     path: ../sesori_plugin_interface
   opencode_plugin:
     path: ../sesori_plugin_opencode
+  codex_plugin:
+    path: ../sesori_plugin_codex
   meta: ^1.17.0
   drift: ^2.32.1
   sqlite3: ^3.2.0
