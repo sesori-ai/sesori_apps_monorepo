@@ -1,6 +1,6 @@
 # Sesori Bridge (Dart)
 
-Dart CLI compiled to native binary. Runs on laptop, authenticates via OAuth PKCE, connects to relay, routes E2E-encrypted traffic between phones and local server. Plugin-based architecture supports multiple backends (OpenCode, Codex, etc.). Manages process lifecycle (SIGTERM on shutdown).
+Dart CLI compiled to native binary. Runs on laptop, authenticates via OAuth PKCE, connects to relay, routes E2E-encrypted traffic between phones and the selected backend. Plugin-based architecture currently ships two backends — **OpenCode** (HTTP+SSE) and **Codex** (`codex app-server`, JSON-RPC over WebSocket) — selected at launch via `--backend opencode|codex` (default `opencode`). Both plugins are compiled in side-by-side. Manages process lifecycle (SIGTERM on shutdown).
 
 ## STRUCTURE
 
@@ -26,16 +26,23 @@ lib/src/
 │   └── debug_server.dart      Debug HTTP server for local testing
 ├── server/                    OpenCode process management (start/stop/health check)
 modules/
-├── sesori_plugin_interface/   Plugin contract — BridgePlugin, RequestHandler, SseConfig
-└── opencode_plugin/           OpenCode implementation
-    ├── handlers/              Request handlers (project list, session list, messages)
-    ├── models/                Freezed models (project, session, message, SSE events, etc.)
-    ├── opencode_plugin_impl.dart  BridgePlugin implementation
-    ├── opencode_service.dart      Business logic coordinator
-    ├── opencode_repository.dart   Data access (project/session merging, virtual projects)
-    ├── opencode_api.dart          Raw HTTP client for OpenCode REST API
-    ├── active_session_tracker.dart  Tracks active sessions via SSE events
-    └── sse_event_parser.dart      Parses raw SSE JSON into typed events
+├── sesori_plugin_interface/   Plugin contract — BridgePluginApi, RequestHandler, SseConfig
+├── opencode_plugin/           OpenCode implementation (HTTP+SSE)
+│   ├── handlers/              Request handlers (project list, session list, messages)
+│   ├── models/                Freezed models (project, session, message, SSE events, etc.)
+│   ├── opencode_plugin_impl.dart  BridgePluginApi implementation
+│   ├── opencode_service.dart      Business logic coordinator
+│   ├── opencode_repository.dart   Data access (project/session merging, virtual projects)
+│   ├── opencode_api.dart          Raw HTTP client for OpenCode REST API
+│   ├── active_session_tracker.dart  Tracks active sessions via SSE events
+│   └── sse_event_parser.dart      Parses raw SSE JSON into typed events
+└── codex_plugin/              Codex implementation (codex app-server, JSON-RPC/WS)
+    ├── codex_plugin_impl.dart      BridgePluginApi implementation
+    ├── codex_app_server_client.dart  JSON-RPC 2.0 client over WebSocket
+    ├── codex_event_mapper.dart       ServerNotification → BridgeSseEvent
+    ├── approval_registry.dart        Routes codex approval requests as permission/question events
+    ├── session_rollout_reader.dart   Reads ~/.codex/session_index.jsonl + rollout files
+    └── codex_skill_reader.dart       Enumerates ~/.codex/skills/ for getCommands
 ```
 
 ## WHERE TO LOOK
@@ -47,9 +54,12 @@ modules/
 | Relay connection | `lib/src/bridge/relay_client.dart` | WebSocket + auth handshake + reconnection               |
 | Key exchange     | `lib/src/bridge/key_exchange.dart` | X25519 → HKDF → room key delivery                       |
 | Request routing  | `lib/src/bridge/routing/`          | Intercept-first handlers with proxy fallback            |
-| Plugin interface | `modules/sesori_plugin_interface/` | BridgePlugin contract for all backends                  |
+| Plugin interface | `modules/sesori_plugin_interface/` | BridgePluginApi contract for all backends               |
 | OpenCode plugin  | `modules/opencode_plugin/`         | OpenCode backend implementation + models + tests        |
-| Process mgmt     | `lib/src/server/`                  | Spawns OpenCode, health poll, SIGTERM cleanup         |
+| Codex plugin     | `modules/codex_plugin/`            | Codex CLI backend (WS JSON-RPC, rollout reader, approvals) |
+| Backend selection| `bin/bridge.dart`                  | `--backend opencode\|codex`, factory dispatch              |
+| Codex binary     | `lib/src/server/codex_binary_resolver.dart` | Pinned version + SHA-256 manifest + cache + PATH fallback |
+| Process mgmt     | `lib/src/server/`                  | Spawns OpenCode / codex app-server, readiness probe, SIGTERM cleanup |
 
 ## CONVENTIONS
 

@@ -222,10 +222,13 @@ BridgeCliOptions _options({
   return BridgeCliOptions(
     cliArgs: const <String>["bridge"],
     relayUrl: "wss://relay.sesori.com",
+    backend: BridgeBackend.opencode,
     port: port,
     noAutoStart: noAutoStart,
     password: password,
     opencodeBin: "opencode",
+    codexBin: "codex",
+    codexPort: 0,
     authBackendUrl: "https://api.sesori.com",
     forceLogin: false,
     debugPort: null,

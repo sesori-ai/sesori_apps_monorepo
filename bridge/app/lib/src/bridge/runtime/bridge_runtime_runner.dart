@@ -21,6 +21,7 @@ import "../../server/foundation/process_identity.dart";
 import "../../server/foundation/process_user.dart";
 import "../../server/foundation/server_clock.dart";
 import "../../server/models/open_code_ownership_record.dart";
+import "../../server/process.dart";
 import "../../server/repositories/bridge_instance_repository.dart";
 import "../../server/repositories/open_code_ownership_repository.dart";
 import "../../server/repositories/open_code_process_repository.dart";
@@ -173,7 +174,9 @@ class BridgeRuntimeRunner {
         authBackendUrl: options.authBackendUrl,
         accessToken: authTokens.accessToken,
       );
-      _optimizeOpenCodeDbIfNeeded(environment: environment);
+      if (options.backend == BridgeBackend.opencode) {
+        _optimizeOpenCodeDbIfNeeded(environment: environment);
+      }
 
       final currentBridgeIdentity =
           await processRepository.inspectProcess(pid: io.pid) ??
@@ -220,6 +223,10 @@ class BridgeRuntimeRunner {
         stopOwnedOpenCode: (record) {
           return openCodeServerService.stopOwnedServer(record: record);
         },
+      );
+      registerCodexShutdown(
+        shutdownCoordinator: shutdownCoordinator,
+        serverRuntime: serverRuntime,
       );
 
       final tokenManager = TokenManager(
@@ -364,5 +371,25 @@ void registerOwnedOpenCodeShutdown({
     disposable: () {
       return stopOwnedOpenCode(ownedOpenCodeRecord);
     },
+  );
+}
+
+/// Registers a shutdown hook that terminates the codex `app-server` process
+/// when [serverRuntime] was started for the codex backend.
+///
+/// The opencode backend reclaims its process via [registerOwnedOpenCodeShutdown]
+/// and an on-disk ownership record; codex has no such record, so its [Process]
+/// handle is signalled directly.
+void registerCodexShutdown({
+  required BridgeShutdownCoordinator shutdownCoordinator,
+  required BridgeServerRuntime serverRuntime,
+}) {
+  if (serverRuntime.backend != BridgeBackend.codex) {
+    return;
+  }
+
+  final process = serverRuntime.process;
+  shutdownCoordinator.add(
+    disposable: () => stopCodexAppServer(process),
   );
 }

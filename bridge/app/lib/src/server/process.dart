@@ -149,3 +149,126 @@ Future<void> stopServer(Process? process) async {
     }
   }
 }
+
+/// Outcome of [startCodexAppServer]: the process handle and the bound WS URL.
+class CodexProcessStartup {
+  const CodexProcessStartup({required this.process, required this.serverUrl});
+
+  final Process process;
+
+  /// The WebSocket URL discovered from codex's startup output, e.g.
+  /// `ws://127.0.0.1:54321`.
+  final String serverUrl;
+}
+
+/// Starts `codex app-server` on a loopback WebSocket and waits for it to
+/// announce its bound port.
+///
+/// [binaryPath]: Resolved codex binary (see [CodexBinaryResolver]).
+/// [requestedPort]: 0 → ephemeral, codex picks the port.
+///
+/// Returns once codex has printed its listening URL on stdout, or throws
+/// [TimeoutException] after [startupTimeout].
+Future<CodexProcessStartup> startCodexAppServer({
+  required String binaryPath,
+  int requestedPort = 0,
+  Duration startupTimeout = _serverStartupWait,
+}) async {
+  final args = [
+    'app-server',
+    '--listen',
+    'ws://127.0.0.1:$requestedPort',
+  ];
+
+  final process = await Process.start(
+    binaryPath,
+    args,
+    runInShell: Platform.isWindows,
+  );
+
+  final urlCompleter = Completer<String>();
+
+  // Codex prints the listening URL at startup as a line containing
+  // "ws://127.0.0.1:<port>". Match exactly that shape from stdout/stderr.
+  final urlPattern = RegExp(r'(ws://[0-9.]+:\d+)');
+
+  void scan(String line) {
+    Log.d('[codex] $line');
+    final match = urlPattern.firstMatch(line);
+    if (match != null && !urlCompleter.isCompleted) {
+      urlCompleter.complete(match.group(1)!);
+    }
+  }
+
+  process.stdout
+      .transform(utf8.decoder)
+      .transform(const LineSplitter())
+      .listen(scan);
+  process.stderr
+      .transform(utf8.decoder)
+      .transform(const LineSplitter())
+      .listen(scan);
+
+  // If the process exits before printing its URL, fail the wait with a
+  // useful error instead of hanging until the timeout.
+  unawaited(
+    process.exitCode.then((int exitCode) {
+      if (!urlCompleter.isCompleted) {
+        urlCompleter.completeError(
+          Exception(
+            'codex app-server exited with code $exitCode before announcing its listen URL',
+          ),
+        );
+      } else {
+        Log.e('codex app-server exited unexpectedly with code: $exitCode');
+      }
+    }),
+  );
+
+  try {
+    final url = await urlCompleter.future.timeout(startupTimeout);
+    return CodexProcessStartup(process: process, serverUrl: url);
+  } on TimeoutException {
+    process.kill(ProcessSignal.sigkill);
+    throw TimeoutException(
+      'codex app-server did not announce a listen URL within ${startupTimeout.inSeconds}s',
+    );
+  }
+}
+
+/// Stops the codex app-server process gracefully.
+///
+/// Same shutdown semantics as [stopServer] but logs under the "codex" tag
+/// so operators can tell the two backends apart.
+Future<void> stopCodexAppServer(Process? process) async {
+  if (process == null) return;
+
+  Log.i('Stopping codex app-server...');
+  try {
+    if (Platform.isWindows) {
+      process.kill(ProcessSignal.sigkill);
+    } else {
+      process.kill(ProcessSignal.sigterm);
+    }
+  } catch (e) {
+    Log.e('Failed to signal codex process: $e');
+    try {
+      process.kill(ProcessSignal.sigkill);
+    } catch (_) {
+      // Already dead.
+    }
+    return;
+  }
+
+  try {
+    await process.exitCode.timeout(_gracefulShutdownTimeout);
+    Log.i('codex app-server stopped gracefully');
+  } on TimeoutException {
+    Log.w('codex app-server did not stop within 5s, killing...');
+    try {
+      process.kill(ProcessSignal.sigkill);
+    } catch (_) {
+      // Already dead.
+    }
+  }
+}

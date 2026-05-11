@@ -4,8 +4,10 @@ import 'package:args/args.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 import 'package:sesori_shared/sesori_shared.dart';
 
+import '../../server/codex_binary_resolver.dart';
 import '../../server/foundation/process_identity.dart';
 import '../../server/models/open_code_ownership_record.dart';
+import '../../server/process.dart';
 import '../../server/repositories/open_code_ownership_repository.dart';
 import '../../server/repositories/startup_mutex_repository.dart';
 import '../../server/services/bridge_instance_service.dart';
@@ -14,6 +16,18 @@ import 'bridge_cli_options.dart';
 
 const String defaultTargetHost = 'http://127.0.0.1';
 
+/// Resolves the backend server runtime according to [BridgeCliOptions.backend].
+///
+/// Both backends run inside the bridge startup mutex and single-live-bridge
+/// enforcement — those guard the *bridge* process itself and are
+/// backend-agnostic.
+///
+/// For `opencode`: starts (or validates) `opencode serve` and returns its
+/// HTTP URL + Basic-auth password.
+///
+/// For `codex`: resolves the codex binary, spawns `codex app-server` on a
+/// loopback WebSocket, and returns the discovered `ws://` URL. Loopback codex
+/// needs no auth (`--ws-auth` is only required for non-loopback listeners).
 Future<BridgeServerRuntime> resolveServer({
   required BridgeCliOptions options,
   required ProcessIdentity currentBridgeIdentity,
@@ -38,6 +52,9 @@ Future<BridgeServerRuntime> resolveServer({
       );
       switch (resolution.status) {
         case BridgeInstanceResolutionStatus.allowed:
+          if (options.backend == BridgeBackend.codex) {
+            return _resolveCodexServer(options);
+          }
           if (options.noAutoStart) {
             try {
               final runtime = await openCodeServerService.validateExistingServer(
@@ -103,6 +120,36 @@ Future<BridgeServerRuntime> resolveServer({
   );
 }
 
+/// Resolves the codex binary, spawns `codex app-server` on a loopback
+/// WebSocket and returns the discovered `ws://` URL.
+Future<BridgeServerRuntime> _resolveCodexServer(BridgeCliOptions options) async {
+  if (options.noAutoStart) {
+    throw const BridgeRuntimeServerException(
+      'codex backend does not support --no-auto-start; '
+      'remove the flag or use --backend opencode.',
+    );
+  }
+
+  final resolver = CodexBinaryResolver(codexBinFlag: options.codexBin);
+  final binaryPath = await resolver.resolve();
+
+  final startup = await startCodexAppServer(
+    binaryPath: binaryPath,
+    requestedPort: options.codexPort,
+  );
+
+  Log.i('codex app-server started at ${startup.serverUrl}');
+  return BridgeServerRuntime(
+    serverUrl: startup.serverUrl,
+    // Loopback codex requires no auth; non-loopback would be future scope.
+    serverPassword: null,
+    process: startup.process,
+    ownedOpenCodeRecord: null,
+    port: Uri.parse(startup.serverUrl).port,
+    backend: BridgeBackend.codex,
+  );
+}
+
 class BridgeServerRuntime {
   const BridgeServerRuntime({
     required this.serverUrl,
@@ -110,6 +157,7 @@ class BridgeServerRuntime {
     required this.process,
     required this.ownedOpenCodeRecord,
     required this.port,
+    this.backend = BridgeBackend.opencode,
   });
 
   factory BridgeServerRuntime.fromOpenCodeRuntime({
@@ -130,6 +178,9 @@ class BridgeServerRuntime {
   final Process? process;
   final OpenCodeOwnershipRecord? ownedOpenCodeRecord;
   final int port;
+
+  /// Which backend produced this runtime — drives backend-specific shutdown.
+  final BridgeBackend backend;
 }
 
 class BridgeRuntimeServerException implements Exception {

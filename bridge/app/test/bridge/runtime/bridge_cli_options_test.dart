@@ -33,10 +33,13 @@ void main() {
 BridgeCliOptions _parseOptions({required List<String> args}) {
   final parser = ArgParser()
     ..addOption("relay", defaultsTo: "wss://relay.sesori.com")
+    ..addOption("backend", defaultsTo: "opencode", allowed: ["opencode", "codex"])
     ..addOption("port")
     ..addFlag("no-auto-start", defaultsTo: false)
     ..addOption("password", defaultsTo: "")
     ..addOption("opencode-bin", defaultsTo: "opencode")
+    ..addOption("codex-bin", defaultsTo: "codex")
+    ..addOption("codex-port", defaultsTo: "0")
     ..addOption("auth-backend", defaultsTo: "")
     ..addFlag("login", defaultsTo: false)
     ..addOption("debug-port", defaultsTo: "")
