@@ -1,12 +1,33 @@
 import "package:args/args.dart";
 
+/// Which coding-agent backend this bridge instance drives.
+///
+/// One backend per bridge process. The opencode plugin and codex plugin
+/// ship side-by-side as compiled-in modules; this flag selects which one
+/// `runBridgeApp` instantiates.
+enum BridgeBackend {
+  opencode,
+  codex;
+
+  static BridgeBackend parse(String raw) {
+    return switch (raw) {
+      "opencode" => BridgeBackend.opencode,
+      "codex" => BridgeBackend.codex,
+      _ => throw ArgumentError.value(raw, "backend", "unsupported backend"),
+    };
+  }
+}
+
 class BridgeCliOptions {
   final List<String> cliArgs;
   final String relayUrl;
+  final BridgeBackend backend;
   final int port;
   final bool noAutoStart;
   final String password;
   final String opencodeBin;
+  final String codexBin;
+  final int codexPort;
   final String authBackendUrl;
   final bool forceLogin;
   final int? debugPort;
@@ -15,10 +36,13 @@ class BridgeCliOptions {
   const BridgeCliOptions({
     required this.cliArgs,
     required this.relayUrl,
+    required this.backend,
     required this.port,
     required this.noAutoStart,
     required this.password,
     required this.opencodeBin,
+    required this.codexBin,
+    required this.codexPort,
     required this.authBackendUrl,
     required this.forceLogin,
     required this.debugPort,
@@ -42,10 +66,13 @@ class BridgeCliOptions {
     return BridgeCliOptions(
       cliArgs: cliArgs,
       relayUrl: results["relay"] as String,
+      backend: BridgeBackend.parse(results["backend"] as String),
       port: int.parse(results["port"] as String),
       noAutoStart: results["no-auto-start"] as bool,
       password: results["password"] as String,
       opencodeBin: results["opencode-bin"] as String,
+      codexBin: results["codex-bin"] as String,
+      codexPort: int.parse(results["codex-port"] as String),
       authBackendUrl: authBackendUrl,
       forceLogin: results["login"] as bool,
       debugPort: debugPortRaw.isNotEmpty ? int.tryParse(debugPortRaw) : null,

@@ -104,10 +104,17 @@ class BridgeRuntimeRunner {
         authBackendUrl: options.authBackendUrl,
         accessToken: authTokens.accessToken,
       );
-      _optimizeOpenCodeDbIfNeeded(environment: Platform.environment);
+      if (options.backend == BridgeBackend.opencode) {
+        _optimizeOpenCodeDbIfNeeded(environment: Platform.environment);
+      }
 
       final serverRuntime = await resolveServer(options: options);
-      shutdownCoordinator.add(disposable: () async => stopServer(serverRuntime.process));
+      shutdownCoordinator.add(
+        disposable: () async => switch (serverRuntime.backend) {
+          BridgeBackend.opencode => stopServer(serverRuntime.process),
+          BridgeBackend.codex => stopCodexAppServer(serverRuntime.process),
+        },
+      );
 
       final tokenManager = TokenManager(
         initialToken: authTokens.accessToken,

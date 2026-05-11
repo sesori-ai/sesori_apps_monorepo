@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:codex_plugin/codex_plugin.dart';
 import 'package:opencode_plugin/opencode_plugin.dart';
 import 'package:sesori_bridge/src/api/bridge_settings_api.dart';
 import 'package:sesori_bridge/src/api/default_editor_api.dart';
@@ -15,7 +16,7 @@ import 'package:sesori_bridge/src/repositories/wake_lock_repository.dart';
 import 'package:sesori_bridge/src/services/bridge_config_service.dart';
 import 'package:sesori_bridge/src/services/sleep_prevention_service.dart';
 import 'package:sesori_bridge/src/version.dart';
-import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log, LogLevel;
+import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show BridgePluginApi, Log, LogLevel;
 
 const String _defaultRelayURL = 'wss://relay.sesori.com';
 const String _defaultAuthURL = 'https://api.sesori.com';
@@ -25,6 +26,21 @@ OpenCodePlugin _createOpenCodePlugin({
   required String? serverPassword,
 }) {
   return OpenCodePlugin(serverUrl: serverUrl, password: serverPassword);
+}
+
+CodexPlugin _createCodexPlugin({
+  required String serverUrl,
+  required String? serverPassword,
+}) {
+  return CodexPlugin(serverUrl: serverUrl, capabilityToken: serverPassword);
+}
+
+BridgePluginApi Function({required String serverUrl, required String? serverPassword})
+    _pluginFactoryFor(BridgeBackend backend) {
+  return switch (backend) {
+    BridgeBackend.opencode => _createOpenCodePlugin,
+    BridgeBackend.codex => _createCodexPlugin,
+  };
 }
 
 Future<void> main(List<String> args) async {
@@ -59,6 +75,12 @@ Future<void> main(List<String> args) async {
     )
     ..addOption('relay', defaultsTo: _defaultRelayURL, help: 'Relay server URL')
     ..addOption(
+      'backend',
+      defaultsTo: 'opencode',
+      allowed: ['opencode', 'codex'],
+      help: 'Coding-agent backend to drive (opencode | codex)',
+    )
+    ..addOption(
       'port',
       defaultsTo: '4096',
       help: 'Port for opencode server to listen on',
@@ -77,6 +99,16 @@ Future<void> main(List<String> args) async {
       'opencode-bin',
       defaultsTo: 'opencode',
       help: 'Path to opencode binary',
+    )
+    ..addOption(
+      'codex-bin',
+      defaultsTo: 'codex',
+      help: 'Path to codex binary (Phase 2 may auto-download if blank)',
+    )
+    ..addOption(
+      'codex-port',
+      defaultsTo: '0',
+      help: 'Port for codex app-server (0 = ephemeral, auto-discovered)',
     )
     ..addOption('auth-backend', defaultsTo: '', help: 'Auth backend URL')
     ..addFlag(
@@ -150,7 +182,7 @@ Future<void> main(List<String> args) async {
 
   final exitCode = await runBridgeApp(
     options: options,
-    pluginFactory: _createOpenCodePlugin,
+    pluginFactory: _pluginFactoryFor(options.backend),
   );
   await sleepPreventionService.dispose();
   exit(exitCode);
