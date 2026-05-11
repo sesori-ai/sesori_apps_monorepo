@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:cue/cue.dart";
 import "package:flutter/material.dart";
+import "package:theme_zyra/module_zyra.dart";
 
 /// A full-screen loading overlay shown while a new session is being created.
 ///
@@ -72,7 +73,7 @@ class _NewSessionLoadingOverlayState extends State<NewSessionLoadingOverlay> {
       child: Semantics(
         label: widget.semanticsLabel,
         child: ColoredBox(
-          color: Theme.of(context).colorScheme.scrim.withAlpha(160),
+          color: Colors.black.withAlpha(160),
           child: Center(
             child: reducedMotion
                 ? _buildContent(context, reducedMotion: true)
@@ -94,7 +95,7 @@ class _NewSessionLoadingOverlayState extends State<NewSessionLoadingOverlay> {
   }
 
   Widget _buildContent(BuildContext context, {required bool reducedMotion}) {
-    final theme = Theme.of(context);
+    final zyra = context.zyra;
     final message = widget.messages[_messageIndex];
 
     return Card(
@@ -109,15 +110,15 @@ class _NewSessionLoadingOverlayState extends State<NewSessionLoadingOverlay> {
             children: [
               CircularProgressIndicator(
                 key: const Key("new_session_loading_progress"),
-                color: theme.colorScheme.primary,
+                color: zyra.colors.bgBrandSolid,
               ),
               const SizedBox(height: 24),
               reducedMotion
                   ? Text(
                       message,
                       key: const Key("new_session_loading_message"),
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        color: theme.colorScheme.onSurface,
+                      style: zyra.textTheme.textSm.regular.copyWith(
+                        color: zyra.colors.textPrimary,
                       ),
                       textAlign: TextAlign.center,
                     )
@@ -143,8 +144,8 @@ class _NewSessionLoadingOverlayState extends State<NewSessionLoadingOverlay> {
                       child: Text(
                         message,
                         key: ValueKey<String>(message),
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          color: theme.colorScheme.onSurface,
+                        style: zyra.textTheme.textSm.regular.copyWith(
+                          color: zyra.colors.textPrimary,
                         ),
                         textAlign: TextAlign.center,
                       ),
