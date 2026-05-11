@@ -240,7 +240,9 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
       body: {"idToken": idToken, "nonce": nonce},
     );
 
-    _ensureSuccess(response, context: "Apple Sign-In failed");
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception("Apple Sign-In failed (HTTP ${response.statusCode})");
+    }
 
     final decodedBody = jsonDecodeMap(response.body);
     final AuthResponse authResponse;

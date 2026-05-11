@@ -56,7 +56,11 @@ class LoginCubit extends Cubit<LoginState> {
   }
 
   void onMissingAppleIdToken() {
-    emit(const LoginState.failed(error: "Apple Sign-In failed: missing ID token"));
+    emit(const LoginState.failed(error: "appleIdTokenMissing"));
+  }
+
+  void onAppleSignInError(String error) {
+    emit(LoginState.failed(error: error));
   }
 
   Future<bool> loginWithApple({

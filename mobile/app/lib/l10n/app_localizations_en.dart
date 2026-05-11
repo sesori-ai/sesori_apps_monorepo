@@ -371,6 +371,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginWithGithub => 'Sign in with GitHub';
 
   @override
+  String get appleIdTokenMissing => 'Apple Sign-In failed. Please try again.';
+
+  @override
   String get loginWithApple => 'Sign in with Apple';
 
   @override

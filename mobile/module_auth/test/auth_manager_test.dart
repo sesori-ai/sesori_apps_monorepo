@@ -584,7 +584,7 @@ void main() {
 
       await expectLater(
         () => authManager.loginWithApple(idToken: "token", nonce: "nonce"),
-        throwsA(isA<StateError>()),
+        throwsA(isA<Exception>()),
       );
     });
   });

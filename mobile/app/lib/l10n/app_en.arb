@@ -199,6 +199,7 @@
   "loginTitle": "Sign In",
   "loginSubtitle": "Sign in to connect to your server",
     "loginWithGithub": "Sign in with GitHub",
+    "appleIdTokenMissing": "Apple Sign-In failed. Please try again.",
     "loginWithApple": "Sign in with Apple",
     "loginWithGoogle": "Sign in with Google",
     "continueWithEmail": "Continue with Email",

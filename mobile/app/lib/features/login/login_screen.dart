@@ -51,28 +51,42 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
     final rawNonce = _generateNonce();
     final hashedNonce = sha256.convert(utf8.encode(rawNonce)).toString();
 
-    final credential = await SignInWithApple.getAppleIDCredential(
-      scopes: [
-        AppleIDAuthorizationScopes.email,
-        AppleIDAuthorizationScopes.fullName,
-      ],
-      nonce: hashedNonce,
-    );
+    try {
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+        nonce: hashedNonce,
+      );
 
-    final idToken = credential.identityToken;
-    if (idToken == null) {
-      if (mounted) {
-        context.read<LoginCubit>().onMissingAppleIdToken();
+      final idToken = credential.identityToken;
+      if (idToken == null) {
+        if (mounted) {
+          context.read<LoginCubit>().onMissingAppleIdToken();
+        }
+        return;
       }
-      return;
+
+      if (!mounted) return;
+
+      await context.read<LoginCubit>().loginWithApple(
+        idToken: idToken,
+        nonce: rawNonce,
+      );
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) {
+        logd("Apple Sign-In cancelled by user");
+        return;
+      }
+      if (mounted) {
+        context.read<LoginCubit>().onAppleSignInError(e.code.name);
+      }
+    } on Exception catch (e) {
+      if (mounted) {
+        context.read<LoginCubit>().onAppleSignInError(e.toString());
+      }
     }
-
-    if (!mounted) return;
-
-    await context.read<LoginCubit>().loginWithApple(
-      idToken: idToken,
-      nonce: rawNonce,
-    );
   }
 
   String _generateNonce({int length = 32}) {
@@ -142,7 +156,7 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                   LoginProviderButtons(
                     isLoading: isLoading,
                     showEmailForm: _showEmailForm,
-                    showApple: defaultTargetPlatform == TargetPlatform.iOS,
+                    showApple: !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS,
                     onGithubSelected: () => _loginWithProvider(AuthProvider.github),
                     onAppleSelected: _loginWithApple,
                     onGoogleSelected: () => _loginWithProvider(AuthProvider.google),
@@ -224,6 +238,7 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
   String _getErrorMessage({required AppLocalizations loc, required String error}) {
     return switch (error) {
       "loginBrowserOpenFailed" => loc.loginBrowserOpenFailed,
+      "appleIdTokenMissing" => loc.appleIdTokenMissing,
       _ => loc.loginError,
     };
   }
