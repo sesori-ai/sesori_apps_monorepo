@@ -32,3 +32,14 @@ Runner/GeneratedPluginRegistrant.*
 !default.mode2v3
 !default.pbxuser
 !default.perspectivev3
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/README.md
+fastlane/screenshots/**/*.png
+fastlane/test_output
+build/
+ExportOptions.plist
+.env
+.env.*

@@ -1,0 +1,27 @@
+# Match configuration for code signing
+# See: https://docs.fastlane.tools/actions/match/
+
+# Git repository for storing certificates and profiles
+git_url(ENV["MATCH_GIT_URL"])
+
+# Storage mode
+storage_mode("git")
+
+# Default certificate type (can be overridden in Fastfile)
+type("appstore")
+
+# App identifiers to manage from Appfile
+app_identifier([CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)])
+
+# Apple ID for App Store Connect
+# Will use APP_STORE_CONNECT_API_KEY if available
+username(ENV["FASTLANE_USER"])
+
+# Clone using HTTPS with token (works better with CI)
+git_basic_authorization(ENV["MATCH_GIT_BASIC_AUTHORIZATION"])
+
+# Team ID from Appfile
+team_id(CredentialsManager::AppfileConfig.try_fetch_value(:team_id))
+
+# Don't create new certificates/profiles on CI (readonly mode)
+readonly(ENV["CI"] == "true")

@@ -1,0 +1,6 @@
+# Android app package name
+package_name("com.sesori.app")
+
+# Path to Google Play service account JSON key
+# This file should NOT be committed to git — it's provided via CI secrets
+json_key_file(ENV["GOOGLE_PLAY_JSON_KEY_PATH"] || "fastlane/service-account.json")
