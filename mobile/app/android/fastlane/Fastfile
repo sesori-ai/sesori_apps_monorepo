@@ -38,7 +38,7 @@ platform :android do
 
     # The actual Flutter build is done in CI before calling Fastlane
     # This lane assumes the AAB is already built with the correct version code
-    aab_path = ENV["AAB_PATH"] || "../../build/app/outputs/bundle/release/app-release.aab"
+    aab_path = ENV["AAB_PATH"] || "../build/app/outputs/bundle/release/app-release.aab"
 
     unless File.exist?(aab_path)
       UI.user_error!("AAB not found at #{aab_path}. Build the app first with: flutter build appbundle --build-number=#{new_build_number}")
