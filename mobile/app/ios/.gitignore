@@ -39,6 +39,7 @@ fastlane/Preview.html
 fastlane/README.md
 fastlane/screenshots/**/*.png
 fastlane/test_output
+fastlane/FastlaneRunner
 build/
 ExportOptions.plist
 .env

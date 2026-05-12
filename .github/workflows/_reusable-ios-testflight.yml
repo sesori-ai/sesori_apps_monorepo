@@ -28,7 +28,7 @@ on:
 
 # Xcode and CocoaPods versions — update these when upgrading
 env:
-  XCODE_VERSION: '16.2'
+  XCODE_VERSION: '26.3.0'
   COCOAPODS_VERSION: '1.16.2'
 
 jobs:
@@ -47,6 +47,12 @@ jobs:
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       ITC_TEAM_ID: ${{ secrets.ITC_TEAM_ID }}
       CI: true
+      # gym retries `xcodebuild -showBuildSettings` 4 times with 3/6/12/24s timeouts.
+      # On cold CI runners with heavy SPM graphs (Firebase + plugins) those defaults
+      # aren't enough and gym bails, which downstream surfaces as a fastlane Swift
+      # socket JSON parse error. Give each attempt more time.
+      FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: '180'
+      FASTLANE_XCODEBUILD_SETTINGS_RETRIES: '4'
 
     steps:
       - name: Checkout repository
@@ -62,25 +68,10 @@ jobs:
           gem install cocoapods -v ${{ env.COCOAPODS_VERSION }}
           pod --version
 
-      - name: Read Flutter version from .tool-versions
-        shell: bash
-        run: |
-          FLUTTER_VERSION=$(awk '$1 == "flutter" { print $2 }' .tool-versions | sed 's/-stable$//')
-          if [ -z "$FLUTTER_VERSION" ]; then
-            echo "Unable to find a Flutter version in .tool-versions" >&2
-            exit 1
-          fi
-          echo "FLUTTER_VERSION=$FLUTTER_VERSION" >> "$GITHUB_ENV"
-
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: ./.github/actions/setup-flutter
         with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
-
-      - name: Get dependencies (workspace)
-        run: dart pub get
-        working-directory: mobile
+          include-submodules: 'false'
 
       - name: Cache CocoaPods
         uses: actions/cache@v5
@@ -93,7 +84,7 @@ jobs:
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.2'
+          ruby-version: '3.3'
           bundler-cache: true
           working-directory: mobile/app/ios
 
@@ -101,9 +92,30 @@ jobs:
         run: flutter build ios --config-only --release --no-codesign
         working-directory: mobile/app
 
+      # Cache the global SwiftPM checkouts so subsequent runs don't re-clone
+      # Firebase / Google SDKs / etc. — the slow phase that pushes
+      # `xcodebuild -showBuildSettings` past gym's retry budget.
+      - name: Cache SwiftPM checkouts
+        uses: actions/cache@v5
+        with:
+          path: ~/Library/Caches/org.swift.swiftpm
+          key: ${{ runner.os }}-spm-${{ hashFiles('mobile/app/ios/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      # Pre-resolve packages outside fastlane so the workspace is warm by the
+      # time gym calls `xcodebuild -showBuildSettings`.
+      - name: Resolve SPM packages
+        working-directory: mobile/app/ios
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release
+
       - name: Deploy to TestFlight
         working-directory: mobile/app/ios
-        run: bundle exec fastlane deploy_testflight
+        run: bundle exec fastlane buildOnlyLane
 
       - name: Upload build artifacts on failure
         if: failure()
