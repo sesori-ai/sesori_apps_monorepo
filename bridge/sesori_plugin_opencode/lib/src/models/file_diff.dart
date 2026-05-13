@@ -8,7 +8,7 @@ part "file_diff.g.dart";
 sealed class FileDiff with _$FileDiff {
   const factory FileDiff({
     required String file,
-    required String patch,
+    required String? patch,
     required int additions,
     required int deletions,
     FileDiffStatus? status,
