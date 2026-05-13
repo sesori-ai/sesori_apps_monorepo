@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$FileDiff {
 
- String get file; String get patch; int get additions; int get deletions; FileDiffStatus? get status;
+ String get file; String? get patch; int get additions; int get deletions; FileDiffStatus? get status;
 /// Create a copy of FileDiff
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -48,7 +48,7 @@ abstract mixin class $FileDiffCopyWith<$Res>  {
   factory $FileDiffCopyWith(FileDiff value, $Res Function(FileDiff) _then) = _$FileDiffCopyWithImpl;
 @useResult
 $Res call({
- String file, String patch, int additions, int deletions, FileDiffStatus? status
+ String file, String? patch, int additions, int deletions, FileDiffStatus? status
 });
 
 
@@ -65,11 +65,11 @@ class _$FileDiffCopyWithImpl<$Res>
 
 /// Create a copy of FileDiff
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? file = null,Object? patch = null,Object? additions = null,Object? deletions = null,Object? status = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? file = null,Object? patch = freezed,Object? additions = null,Object? deletions = null,Object? status = freezed,}) {
   return _then(_self.copyWith(
 file: null == file ? _self.file : file // ignore: cast_nullable_to_non_nullable
-as String,patch: null == patch ? _self.patch : patch // ignore: cast_nullable_to_non_nullable
-as String,additions: null == additions ? _self.additions : additions // ignore: cast_nullable_to_non_nullable
+as String,patch: freezed == patch ? _self.patch : patch // ignore: cast_nullable_to_non_nullable
+as String?,additions: null == additions ? _self.additions : additions // ignore: cast_nullable_to_non_nullable
 as int,deletions: null == deletions ? _self.deletions : deletions // ignore: cast_nullable_to_non_nullable
 as int,status: freezed == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as FileDiffStatus?,
@@ -84,11 +84,11 @@ as FileDiffStatus?,
 @JsonSerializable()
 
 class _FileDiff implements FileDiff {
-  const _FileDiff({required this.file, required this.patch, required this.additions, required this.deletions, this.status});
+  const _FileDiff({required this.file, this.patch, required this.additions, required this.deletions, this.status});
   factory _FileDiff.fromJson(Map<String, dynamic> json) => _$FileDiffFromJson(json);
 
 @override final  String file;
-@override final  String patch;
+@override final  String? patch;
 @override final  int additions;
 @override final  int deletions;
 @override final  FileDiffStatus? status;
@@ -126,7 +126,7 @@ abstract mixin class _$FileDiffCopyWith<$Res> implements $FileDiffCopyWith<$Res>
   factory _$FileDiffCopyWith(_FileDiff value, $Res Function(_FileDiff) _then) = __$FileDiffCopyWithImpl;
 @override @useResult
 $Res call({
- String file, String patch, int additions, int deletions, FileDiffStatus? status
+ String file, String? patch, int additions, int deletions, FileDiffStatus? status
 });
 
 
@@ -143,11 +143,11 @@ class __$FileDiffCopyWithImpl<$Res>
 
 /// Create a copy of FileDiff
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? file = null,Object? patch = null,Object? additions = null,Object? deletions = null,Object? status = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? file = null,Object? patch = freezed,Object? additions = null,Object? deletions = null,Object? status = freezed,}) {
   return _then(_FileDiff(
 file: null == file ? _self.file : file // ignore: cast_nullable_to_non_nullable
-as String,patch: null == patch ? _self.patch : patch // ignore: cast_nullable_to_non_nullable
-as String,additions: null == additions ? _self.additions : additions // ignore: cast_nullable_to_non_nullable
+as String,patch: freezed == patch ? _self.patch : patch // ignore: cast_nullable_to_non_nullable
+as String?,additions: null == additions ? _self.additions : additions // ignore: cast_nullable_to_non_nullable
 as int,deletions: null == deletions ? _self.deletions : deletions // ignore: cast_nullable_to_non_nullable
 as int,status: freezed == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as FileDiffStatus?,

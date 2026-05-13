@@ -8,7 +8,7 @@ part of 'file_diff.dart';
 
 _FileDiff _$FileDiffFromJson(Map json) => _FileDiff(
   file: json['file'] as String,
-  patch: json['patch'] as String,
+  patch: json['patch'] as String?,
   additions: (json['additions'] as num).toInt(),
   deletions: (json['deletions'] as num).toInt(),
   status: $enumDecodeNullable(_$FileDiffStatusEnumMap, json['status']),

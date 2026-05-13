@@ -191,4 +191,39 @@ const Set<String> _knownEventTypes = {
   "worktree.failed",
 };
 
-const Set<String> _ignoredEventTypes = {"sync"};
+const Set<String> _ignoredEventTypes = {
+  "sync",
+  // session.next.* — internal lifecycle events, not useful for mobile UI
+  "session.next.agent.switched",
+  "session.next.model.switched",
+  "session.next.prompted",
+  "session.next.synthetic",
+  "session.next.shell.started",
+  "session.next.shell.ended",
+  "session.next.step.started",
+  "session.next.step.ended",
+  "session.next.step.failed",
+  "session.next.text.started",
+  "session.next.text.delta",
+  "session.next.text.ended",
+  "session.next.reasoning.started",
+  "session.next.reasoning.delta",
+  "session.next.reasoning.ended",
+  "session.next.tool.input.started",
+  "session.next.tool.input.delta",
+  "session.next.tool.input.ended",
+  "session.next.tool.called",
+  "session.next.tool.progress",
+  "session.next.tool.success",
+  "session.next.tool.failed",
+  "session.next.retried",
+  "session.next.compaction.started",
+  "session.next.compaction.delta",
+  "session.next.compaction.ended",
+  // TUI events — only relevant for terminal UI
+  "tui.prompt.append",
+  "tui.command.execute",
+  "tui.session.select",
+  // workspace status — already handled by workspace.ready / workspace.failed
+  "workspace.status",
+};
