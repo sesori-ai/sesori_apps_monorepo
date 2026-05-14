@@ -213,7 +213,17 @@
    "backToLogin": "Back to login",
     "loginError": "Sign in failed. Please try again.",
    "loginAuthenticating": "Signing in...",
-   "loginAwaitingCallback": "Waiting for authorization...",
+    "loginAwaitingCallback": "Waiting for authorization...",
+    "loginAwaitingConfirmation": "Confirm this code on the login page: {userCode}",
+    "@loginAwaitingConfirmation": {
+      "placeholders": {
+        "userCode": {
+          "type": "String"
+        }
+      }
+    },
+    "loginPolling": "Confirming authorization...",
+    "loginTimeout": "Authorization timed out. Please try again.",
    "loginBrowserOpenFailed": "Could not open browser",
    "loginCallbackTimeout": "Authorization timed out. Please try again.",
    "loginCallbackMissingParams": "Invalid authorization callback. Please try again.",

@@ -107,7 +107,7 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
     final zyra = context.zyra;
     final loc = context.loc;
     final state = context.watch<LoginCubit>().state;
-    final isLoading = state is LoginAuthenticating || state is LoginAwaitingCallback;
+    final isLoading = state is LoginAuthenticating || state is LoginAwaitingConfirmation || state is LoginPolling;
 
     return Scaffold(
       body: BlocListener<LoginCubit, LoginState>(
@@ -179,10 +179,52 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                         textAlign: TextAlign.center,
                       ),
                     ),
-                    LoginAwaitingCallback() => Padding(
+                    LoginAwaitingConfirmation(:final userCode) => Padding(
+                      padding: const EdgeInsetsDirectional.only(top: 16),
+                      child: Column(
+                        children: [
+                          Text(
+                            loc.loginAwaitingConfirmation(userCode),
+                            style: zyra.textTheme.textSm.regular.copyWith(
+                              color: zyra.colors.textSecondary,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: zyra.colors.bgBrandSolid.withAlpha(26),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: zyra.colors.bgBrandSolid.withAlpha(77),
+                              ),
+                            ),
+                            child: Text(
+                              userCode,
+                              style: zyra.textTheme.textXl.bold.copyWith(
+                                color: zyra.colors.bgBrandSolid,
+                                letterSpacing: 4,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    LoginPolling() => Padding(
                       padding: const EdgeInsetsDirectional.only(top: 16),
                       child: Text(
-                        loc.loginAwaitingCallback,
+                        loc.loginPolling,
+                        style: zyra.textTheme.textSm.regular.copyWith(
+                          color: zyra.colors.textSecondary,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    LoginTimeout() => Padding(
+                      padding: const EdgeInsetsDirectional.only(top: 16),
+                      child: Text(
+                        loc.loginTimeout,
                         style: zyra.textTheme.textSm.regular.copyWith(
                           color: zyra.colors.textSecondary,
                         ),
@@ -220,9 +262,36 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                         ),
                       ),
                     ),
+                    LoginTimeout() => Padding(
+                      padding: const EdgeInsetsDirectional.only(top: 24),
+                      child: Card(
+                        color: zyra.colors.bgErrorPrimary,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.error_outline,
+                                color: zyra.colors.fgErrorPrimary,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  loc.loginTimeout,
+                                  style: zyra.textTheme.textSm.regular.copyWith(
+                                    color: zyra.colors.fgErrorPrimary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                     LoginIdle() => const SizedBox.shrink(),
                     LoginAuthenticating() => const SizedBox.shrink(),
-                    LoginAwaitingCallback() => const SizedBox.shrink(),
+                    LoginAwaitingConfirmation() => const SizedBox.shrink(),
+                    LoginPolling() => const SizedBox.shrink(),
                     LoginSuccess() => const SizedBox.shrink(),
                   },
                   const SizedBox(height: 48),
