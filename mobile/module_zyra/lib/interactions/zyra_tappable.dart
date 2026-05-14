@@ -412,6 +412,7 @@ class _WebTappableState extends State<_WebTappable> {
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       child: GestureDetector(
+        behavior: .opaque,
         onTapDown: (_) => _handleTapDown(),
         onTapUp: (_) => _handleTapUp(),
         onTapCancel: _handleTapCancel,
