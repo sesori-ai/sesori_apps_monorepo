@@ -1,21 +1,14 @@
 import "package:sesori_shared/sesori_shared.dart";
 
-/// Drives the OAuth authorization flow (PKCE + code exchange).
+/// Drives the OAuth authorization flow through the auth-server session flow.
 ///
-/// PKCE verifier generation, storage, and retrieval are fully
-/// encapsulated — callers never touch cryptographic details.
+/// The auth server owns provider redirects and PKCE. Callers open the returned
+/// [AuthInitResponse.authUrl], display [AuthInitResponse.userCode], then wait
+/// for [pollForResult] to complete after the browser confirmation step.
 abstract interface class OAuthFlowProvider {
-  /// Generates a PKCE verifier, stores it along with [provider],
-  /// and returns the authorization URL to open in a browser.
-  // ignore: no_slop_linter/prefer_required_named_parameters, public interface
-  Future<String> getAuthorizationUrl(OAuthProvider provider, String redirectUri);
+  /// Starts an auth-server backed OAuth session for [provider].
+  Future<AuthInitResponse> startOAuthFlow({required OAuthProvider provider});
 
-  /// Completes the OAuth flow: reads the stored PKCE verifier and
-  /// provider, exchanges [code] for tokens, persists them, and
-  /// returns the authenticated user.
-  Future<AuthUser> exchangeCode({
-    required String code,
-    required String state,
-    required String redirectUri,
-  });
+  /// Polls the auth server until the pending OAuth session reaches a terminal result.
+  Future<AuthUser> pollForResult();
 }
