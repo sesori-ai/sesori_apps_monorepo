@@ -35,7 +35,7 @@ concurrency:
 
 jobs:
   ios:
-    name: Build iOS IPA (no upload)
+    name: Build iOS app
     uses: ./.github/workflows/_reusable-ios-testflight.yml
     with:
       runner: ${{ inputs.ios_runner }}

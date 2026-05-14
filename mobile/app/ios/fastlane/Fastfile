@@ -2,6 +2,44 @@
 
 default_platform(:ios)
 
+# Returns the highest build number among the 10 most recently uploaded builds
+# across all versions on App Store Connect (TestFlight + App Store).
+#
+# Why not Fastlane's `latest_testflight_build_number`? Without `version:`, that
+# action queries `limit: 1, sort: -uploadedDate` and returns the MOST RECENT
+# upload's build number — not the maximum. If a fresh marketing version was
+# uploaded with build 2 after an older version's build 461, it returns 2.
+# We need the numeric max, so we enumerate recent builds and reduce locally.
+RECENT_BUILDS_LOOKBACK = 10
+
+def highest_build_number_across_all_versions(api_key:)
+  require "spaceship"
+
+  Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.create(
+    key_id: api_key[:key_id],
+    issuer_id: api_key[:issuer_id],
+    key: api_key[:key]
+  )
+
+  app_identifier = CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
+  app = Spaceship::ConnectAPI::App.find(app_identifier)
+  UI.user_error!("App not found on App Store Connect: #{app_identifier}") if app.nil?
+
+  # Fetch the N most recently uploaded builds and compute the numeric max
+  # client-side. ASC stores build numbers as strings, so server-side sort
+  # is lexicographic and unusable. We only look at the recent window because
+  # in practice the latest builds always hold the highest numbers.
+  recent_builds = Spaceship::ConnectAPI::Build.all(
+    app_id: app.id,
+    sort: "-uploadedDate",
+    limit: RECENT_BUILDS_LOOKBACK
+  ).first(RECENT_BUILDS_LOOKBACK)
+
+  highest = recent_builds.map { |b| b.version.to_i }.max || 0
+  UI.message("Scanned #{recent_builds.size} most recent builds; highest build number: #{highest}")
+  highest
+end
+
 platform :ios do
   desc "Deploy a new build to TestFlight"
   lane :deploy_testflight do
@@ -16,22 +54,15 @@ platform :ios do
       is_key_content_base64: false
     )
 
-    app_identifier = CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
-    team_id = CredentialsManager::AppfileConfig.try_fetch_value(:team_id)
-
     # Get version from pubspec.yaml
     pubspec_path = File.join(Dir.pwd, "..", "..", "pubspec.yaml")
     pubspec_content = File.read(pubspec_path)
     version_match = pubspec_content.match(/version:\s*(\d+\.\d+\.\d+)/)
     version = version_match ? version_match[1] : "1.0.0"
 
-    # Get latest build number from TestFlight and increment
-    current_build = latest_testflight_build_number(
-      api_key: api_key,
-      version: version,
-      initial_build_number: 0
-    )
-    new_build_number = current_build + 1
+    # Compute the next build number as (max across all builds ever uploaded) + 1.
+    # See helper above for why we can't use `latest_testflight_build_number`.
+    new_build_number = highest_build_number_across_all_versions(api_key: api_key) + 1
 
     UI.message("Building version #{version} (#{new_build_number})")
 
@@ -54,16 +85,15 @@ platform :ios do
       readonly: ENV["CI"] == "true"
     )
 
+
     profile_name = ENV["sigh_#{app_identifier}_appstore_profile-name"]
-    UI.user_error!("Match did not set sigh_#{app_identifier}_appstore_profile-name env var") if profile_name.to_s.empty?
 
     # Override automatic signing with match profile for CI
     update_code_signing_settings(
       use_automatic_signing: false,
       path: "Runner.xcodeproj",
-      targets: ["Runner"],
-      team_id: team_id,
-      bundle_identifier: app_identifier,
+      team_id: CredentialsManager::AppfileConfig.try_fetch_value(:team_id),
+      bundle_identifier: CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier),
       profile_name: profile_name,
       code_sign_identity: "Apple Distribution"
     )
@@ -76,7 +106,7 @@ platform :ios do
       export_method: "app-store",
       export_options: {
         provisioningProfiles: {
-          app_identifier => profile_name
+          CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier) => profile_name
         }
       },
       output_directory: "./build",
@@ -112,18 +142,14 @@ platform :ios do
       readonly: true
     )
 
-    app_identifier = CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
-    team_id = CredentialsManager::AppfileConfig.try_fetch_value(:team_id)
     profile_name = ENV["sigh_#{app_identifier}_appstore_profile-name"]
-    UI.user_error!("Match did not set sigh_#{app_identifier}_appstore_profile-name env var") if profile_name.to_s.empty?
 
     # Override automatic signing with match profile for CI
     update_code_signing_settings(
       use_automatic_signing: false,
       path: "Runner.xcodeproj",
-      targets: ["Runner"],
-      team_id: team_id,
-      bundle_identifier: app_identifier,
+      team_id: CredentialsManager::AppfileConfig.try_fetch_value(:team_id),
+      bundle_identifier: CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier),
       profile_name: profile_name,
       code_sign_identity: "Apple Distribution"
     )
@@ -138,71 +164,6 @@ platform :ios do
     )
 
     UI.success("Build completed successfully!")
-  end
-
-  desc "Build IPA via `flutter build ipa` (alternative build path, no upload)"
-  lane :flutter_build_ipa do
-    setup_ci if ENV["CI"]
-
-    api_key = app_store_connect_api_key(
-      key_id: ENV["APP_STORE_CONNECT_API_KEY_ID"],
-      issuer_id: ENV["APP_STORE_CONNECT_API_ISSUER_ID"],
-      key_content: ENV["APP_STORE_CONNECT_API_KEY_CONTENT"],
-      is_key_content_base64: false
-    )
-
-    match(
-      type: "appstore",
-      api_key: api_key,
-      readonly: true
-    )
-
-    app_identifier = CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
-    team_id = CredentialsManager::AppfileConfig.try_fetch_value(:team_id)
-    profile_name = ENV["sigh_#{app_identifier}_appstore_profile-name"]
-
-    UI.user_error!("Match did not set sigh_*_profile-name env var") if profile_name.nil? || profile_name.empty?
-
-    # Flip Runner target only (not RunnerTests) to manual signing with the match profile
-    update_code_signing_settings(
-      use_automatic_signing: false,
-      path: "Runner.xcodeproj",
-      targets: ["Runner"],
-      team_id: team_id,
-      bundle_identifier: app_identifier,
-      profile_name: profile_name,
-      code_sign_identity: "Apple Distribution"
-    )
-
-    # Write ExportOptions.plist that points at the match profile
-    export_options_path = File.expand_path("../ExportOptions.plist", Dir.pwd)
-    File.write(export_options_path, <<~PLIST)
-      <?xml version="1.0" encoding="UTF-8"?>
-      <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-      <plist version="1.0">
-      <dict>
-        <key>method</key>
-        <string>app-store</string>
-        <key>teamID</key>
-        <string>#{team_id}</string>
-        <key>signingStyle</key>
-        <string>manual</string>
-        <key>provisioningProfiles</key>
-        <dict>
-          <key>#{app_identifier}</key>
-          <string>#{profile_name}</string>
-        </dict>
-      </dict>
-      </plist>
-    PLIST
-
-    # Run flutter build ipa from the Flutter project root (mobile/app)
-    Dir.chdir("../..") do
-      sh("flutter build ipa --release --export-options-plist=#{export_options_path}")
-    end
-
-    ipa_path = File.expand_path("../../build/ios/ipa", Dir.pwd)
-    UI.success("flutter build ipa completed. IPA(s) in: #{ipa_path}")
   end
 
   desc "Sync certificates and profiles without building"
