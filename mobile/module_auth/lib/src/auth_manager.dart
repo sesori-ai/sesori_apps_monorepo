@@ -3,9 +3,9 @@ import "dart:convert";
 import "dart:developer" as developer;
 import "dart:math";
 
-import "package:cryptography/cryptography.dart";
 import "package:http/http.dart" as http;
 import "package:injectable/injectable.dart";
+import "package:meta/meta.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -19,19 +19,34 @@ import "storage/token_storage_service.dart";
 
 @lazySingleton
 class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
+  static const _sessionTokenHeader = "X-Sesori-Session-Token";
+  static const _mobileClientType = "app";
+  static const _defaultPollInterval = Duration(milliseconds: 250);
+  static const _defaultPollTimeout = Duration(minutes: 5);
+
   final http.Client _client;
   final TokenStorageService _tokenStorage;
   final OAuthStorageService _oAuthStorage;
   final BehaviorSubject<AuthState> _authState;
+  final Duration _pollInterval;
+  final Duration _pollTimeout;
+  final Future<void> Function(Duration duration) _delay;
+  String? _oAuthSessionToken;
 
   AuthManager(
     http.Client client,
     TokenStorageService tokenStorage,
-    OAuthStorageService oAuthStorage,
-  ) : _client = client,
-      _tokenStorage = tokenStorage,
-      _oAuthStorage = oAuthStorage,
-      _authState = BehaviorSubject.seeded(const AuthState.initial());
+    OAuthStorageService oAuthStorage, {
+    @visibleForTesting Duration pollInterval = _defaultPollInterval,
+    @visibleForTesting Duration pollTimeout = _defaultPollTimeout,
+    @visibleForTesting Future<void> Function(Duration duration)? delay,
+  }) : _client = client,
+       _tokenStorage = tokenStorage,
+       _oAuthStorage = oAuthStorage,
+       _pollInterval = pollInterval,
+       _pollTimeout = pollTimeout,
+       _delay = delay ?? Future<void>.delayed,
+       _authState = BehaviorSubject.seeded(const AuthState.initial());
 
   @override
   ValueStream<AuthState> get authStateStream => _authState.stream;
@@ -62,69 +77,85 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
   }
 
   @override
-  Future<String> getAuthorizationUrl(OAuthProvider provider, String redirectUri) async {
-    final (codeVerifier, codeChallenge) = await _generatePkce();
+  Future<AuthInitResponse> startOAuthFlow({required OAuthProvider provider}) async {
+    final sessionToken = _generateSessionToken();
+    _oAuthSessionToken = sessionToken;
 
-    await _oAuthStorage.saveAuthProviderAndPkceVerifier(
-      codeVerifier: codeVerifier,
-      provider: provider,
-    );
+    try {
+      final uri = Uri.parse("$authBaseUrl/auth/${provider.key}/init");
+      final response = await _post(
+        uri,
+        body: const AuthInitRequest(clientType: _mobileClientType).toJson(),
+        headers: {_sessionTokenHeader: sessionToken},
+      );
+      _ensureSuccess(response, context: "Failed to start ${provider.label} auth flow");
 
-    final uri = Uri.parse("$authBaseUrl/auth/${provider.key}").replace(
-      queryParameters: {
-        "redirect_uri": redirectUri,
-        "code_challenge": codeChallenge,
-        "code_challenge_method": "S256",
-      },
-    );
-
-    final response = await _get(uri);
-    _ensureSuccess(response, context: "Failed to get ${provider.label} auth URL");
-
-    final decodedBody = jsonDecodeMap(response.body);
-    final authUrlResponse = AuthUrlResponse.fromJson(decodedBody);
-    return authUrlResponse.authUrl;
+      return AuthInitResponse.fromJson(jsonDecodeMap(response.body));
+    } catch (_) {
+      _oAuthSessionToken = null;
+      rethrow;
+    }
   }
 
   @override
-  Future<AuthUser> exchangeCode({
-    required String code,
-    required String state,
-    required String redirectUri,
-  }) async {
-    final codeVerifier = await _oAuthStorage.getPkceVerifier();
-    if (codeVerifier == null || codeVerifier.isEmpty) {
-      throw StateError("Missing PKCE verifier for OAuth code exchange");
+  Future<AuthUser> pollForResult() async {
+    final sessionToken = _oAuthSessionToken;
+    if (sessionToken == null || sessionToken.isEmpty) {
+      throw StateError("No OAuth flow is active");
     }
 
-    final provider = await _oAuthStorage.getAuthProvider();
-    if (provider == null) {
-      throw StateError("Missing OAuth provider for code exchange");
-    }
-
-    final uri = Uri.parse("$authBaseUrl/auth/${provider.key}/callback");
-    final response = await _post(
-      uri,
-      body: {
-        "code": code,
-        "codeVerifier": codeVerifier,
-        "state": state,
-        "redirectUri": redirectUri,
-      },
-    );
-    _ensureSuccess(response, context: "${provider.label} code exchange failed");
-
-    final decodedBody = jsonDecodeMap(response.body);
-    final AuthResponse authResponse;
+    final stopwatch = Stopwatch()..start();
     try {
-      authResponse = AuthResponse.fromJson(decodedBody);
-    } on Object catch (e) {
-      throw Exception("Failed to parse auth response: ${e.toString()}");
-    }
+      while (stopwatch.elapsed < _pollTimeout) {
+        final uri = Uri.parse("$authBaseUrl/auth/session/status");
+        final response = await _get(
+          uri,
+          headers: {_sessionTokenHeader: sessionToken},
+        ).timeout(_pollTimeout - stopwatch.elapsed);
 
+        final status = _parseSessionStatus(response);
+        switch (status) {
+          case AuthSessionStatusResponsePending():
+            final remaining = _pollTimeout - stopwatch.elapsed;
+            final delay = _pollInterval < remaining ? _pollInterval : remaining;
+            if (delay > Duration.zero) {
+              await _delay(delay);
+            }
+          case AuthSessionStatusResponseComplete(
+            accessToken: final accessToken,
+            refreshToken: final refreshToken,
+            user: final user,
+          ):
+            await _persistOAuthCompletion(
+              accessToken: accessToken,
+              refreshToken: refreshToken,
+              user: user,
+            );
+            return user;
+          case AuthSessionStatusResponseDenied():
+            throw StateError("OAuth authorization was denied");
+          case AuthSessionStatusResponseExpired():
+            throw StateError("OAuth authorization expired");
+          case AuthSessionStatusResponseError():
+            throw StateError("OAuth authorization failed");
+        }
+      }
+
+      throw TimeoutException("OAuth authorization timed out", _pollTimeout);
+    } finally {
+      stopwatch.stop();
+      _oAuthSessionToken = null;
+    }
+  }
+
+  Future<void> _persistOAuthCompletion({
+    required String accessToken,
+    required String refreshToken,
+    required AuthUser user,
+  }) async {
     await _tokenStorage.saveTokens(
-      accessToken: authResponse.accessToken,
-      refreshToken: authResponse.refreshToken,
+      accessToken: accessToken,
+      refreshToken: refreshToken,
     );
 
     await Future.wait([
@@ -132,8 +163,22 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
       _oAuthStorage.clearAuthProvider(),
     ]);
 
-    _authState.add(AuthState.authenticated(user: authResponse.user));
-    return authResponse.user;
+    _authState.add(AuthState.authenticated(user: user));
+  }
+
+  AuthSessionStatusResponse _parseSessionStatus(http.Response response) {
+    if (response.body.isNotEmpty) {
+      try {
+        return AuthSessionStatusResponse.fromJson(jsonDecodeMap(response.body));
+      } on Object catch (e) {
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          throw Exception("Failed to parse auth session status response: ${e.toString()}");
+        }
+      }
+    }
+
+    _ensureSuccess(response, context: "OAuth session polling failed");
+    throw StateError("OAuth session polling failed");
   }
 
   @override
@@ -343,16 +388,10 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     }
   }
 
-  Future<(String codeVerifier, String codeChallenge)> _generatePkce() async {
+  String _generateSessionToken() {
     final random = Random.secure();
-    final verifierBytes = List<int>.generate(32, (_) => random.nextInt(256));
-    final codeVerifier = base64Url.encode(verifierBytes).replaceAll("=", "");
-
-    final hashAlgo = Sha256();
-    final hash = await hashAlgo.hash(utf8.encode(codeVerifier));
-    final codeChallenge = base64Url.encode(hash.bytes).replaceAll("=", "");
-
-    return (codeVerifier, codeChallenge);
+    final bytes = List<int>.generate(32, (_) => random.nextInt(256));
+    return bytes.map((byte) => byte.toRadixString(16).padLeft(2, "0")).join();
   }
 
   // ignore: no_slop_linter/prefer_required_named_parameters, optional HTTP parameters

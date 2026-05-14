@@ -248,65 +248,90 @@ void main() {
   });
 
   group("OAuth flow", () {
-    test("getAuthorizationUrl generates PKCE, stores verifier, and fetches auth URL", () async {
-      when(
-        () => mockOAuthStorage.saveAuthProviderAndPkceVerifier(
-          codeVerifier: any(named: "codeVerifier"),
-          provider: any(named: "provider"),
-        ),
-      ).thenAnswer((_) async {});
-
+    test("startOAuthFlow creates header-only session token and returns user code details", () async {
       const authUrl = "https://github.com/login/oauth/authorize?client_id=abc";
       when(
-        () => mockHttpClient.get(
-          any(),
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/github/init"),
           headers: any(named: "headers"),
+          body: any(named: "body"),
         ),
       ).thenAnswer(
         (_) async => http.Response(
-          jsonEncode({"authUrl": authUrl, "state": "state-1"}),
+          jsonEncode({"authUrl": authUrl, "state": "state-1", "userCode": "A1B2", "expiresIn": 300}),
           200,
         ),
       );
 
-      final result = await authManager.getAuthorizationUrl(AuthProvider.github, "myapp://oauth/callback");
+      final result = await authManager.startOAuthFlow(provider: AuthProvider.github);
 
-      expect(result, authUrl);
+      expect(result.authUrl, authUrl);
+      expect(result.state, "state-1");
+      expect(result.userCode, "A1B2");
+      expect(result.expiresIn, 300);
 
-      final capturedSaveCall = verify(
+      final capturedPostCall = verify(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/github/init"),
+          headers: captureAny(named: "headers"),
+          body: captureAny(named: "body"),
+        ),
+      );
+      final headers = capturedPostCall.captured[0] as Map<String, String>;
+      final body = jsonDecode(capturedPostCall.captured[1] as String) as Map<String, dynamic>;
+      final sessionToken = headers["X-Sesori-Session-Token"];
+      expect(sessionToken, matches(RegExp(r"^[0-9a-f]{64}$")));
+      expect(headers["Content-Type"], "application/json");
+      expect(body, {"clientType": "app"});
+      expect(body.values, isNot(contains(sessionToken)));
+      verifyNever(
         () => mockOAuthStorage.saveAuthProviderAndPkceVerifier(
-          codeVerifier: captureAny(named: "codeVerifier"),
-          provider: captureAny(named: "provider"),
+          codeVerifier: any(named: "codeVerifier"),
+          provider: any(named: "provider"),
         ),
       );
-      expect(capturedSaveCall.captured[0] as String, isNotEmpty);
-      expect(capturedSaveCall.captured[1], AuthProvider.github);
-
-      final capturedGetCall = verify(
-        () => mockHttpClient.get(
-          captureAny(),
-          headers: any(named: "headers"),
-        ),
-      );
-      final uri = capturedGetCall.captured.first as Uri;
-      expect(uri.path, "/auth/github");
-      expect(uri.queryParameters["redirect_uri"], "myapp://oauth/callback");
-      expect(uri.queryParameters["code_challenge_method"], "S256");
-      expect(uri.queryParameters["code_challenge"], isNotEmpty);
     });
 
-    test("exchangeCode stores tokens, clears oauth temp data, and emits authenticated", () async {
-      when(() => mockOAuthStorage.getPkceVerifier()).thenAnswer((_) async => "pkce-verifier");
-      when(() => mockOAuthStorage.getAuthProvider()).thenAnswer((_) async => AuthProvider.github);
+    test("pollForResult retries pending then stores complete tokens and emits authenticated", () async {
+      authManager = AuthManager(
+        mockHttpClient,
+        mockTokenStorage,
+        mockOAuthStorage,
+        pollInterval: Duration.zero,
+        delay: (_) async {},
+      );
+
       when(
         () => mockHttpClient.post(
-          Uri.parse("$authBaseUrl/auth/github/callback"),
+          Uri.parse("$authBaseUrl/auth/google/init"),
           headers: any(named: "headers"),
           body: any(named: "body"),
         ),
       ).thenAnswer(
         (_) async => http.Response(
           jsonEncode({
+            "authUrl": "https://accounts.google.com/o/oauth2/v2/auth",
+            "state": "state-2",
+            "userCode": "Z9Y8",
+            "expiresIn": 300,
+          }),
+          200,
+        ),
+      );
+      var statusCalls = 0;
+      when(
+        () => mockHttpClient.get(
+          Uri.parse("$authBaseUrl/auth/session/status"),
+          headers: any(named: "headers"),
+        ),
+      ).thenAnswer((_) async {
+        statusCalls += 1;
+        if (statusCalls == 1) {
+          return http.Response(jsonEncode({"status": "pending"}), 200);
+        }
+        return http.Response(
+          jsonEncode({
+            "status": "complete",
             "accessToken": "oauth-access-token",
             "refreshToken": "oauth-refresh-token",
             "user": {
@@ -317,8 +342,8 @@ void main() {
             },
           }),
           200,
-        ),
-      );
+        );
+      });
       when(
         () => mockTokenStorage.saveTokens(
           accessToken: "oauth-access-token",
@@ -331,11 +356,8 @@ void main() {
       final states = <AuthState>[];
       final sub = authManager.authStateStream.listen(states.add);
 
-      final exchangedUser = await authManager.exchangeCode(
-        code: "oauth-code-123",
-        state: "state-xyz",
-        redirectUri: "myapp://oauth/callback",
-      );
+      await authManager.startOAuthFlow(provider: AuthProvider.google);
+      final exchangedUser = await authManager.pollForResult();
 
       await Future<void>.delayed(Duration.zero);
       await sub.cancel();
@@ -351,6 +373,120 @@ void main() {
       ).called(1);
       verify(mockOAuthStorage.clearPkceVerifier).called(1);
       verify(mockOAuthStorage.clearAuthProvider).called(1);
+      verify(
+        () => mockHttpClient.get(
+          Uri.parse("$authBaseUrl/auth/session/status"),
+          headers: any(named: "headers"),
+        ),
+      ).called(2);
+      await expectLater(authManager.pollForResult(), throwsA(isA<StateError>()));
+    });
+
+    test("pollForResult sends the same session token only in status headers", () async {
+      when(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/github/init"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({
+            "authUrl": "https://github.com/login/oauth/authorize",
+            "state": "state-3",
+            "userCode": "C3D4",
+            "expiresIn": 300,
+          }),
+          200,
+        ),
+      );
+      when(
+        () => mockHttpClient.get(
+          Uri.parse("$authBaseUrl/auth/session/status"),
+          headers: any(named: "headers"),
+        ),
+      ).thenAnswer((_) async => http.Response(jsonEncode({"status": "denied"}), 200));
+
+      await authManager.startOAuthFlow(provider: AuthProvider.github);
+      await expectLater(authManager.pollForResult(), throwsA(isA<StateError>()));
+
+      final initCall = verify(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/github/init"),
+          headers: captureAny(named: "headers"),
+          body: any(named: "body"),
+        ),
+      );
+      final pollCall = verify(
+        () => mockHttpClient.get(
+          Uri.parse("$authBaseUrl/auth/session/status"),
+          headers: captureAny(named: "headers"),
+        ),
+      );
+      final initHeaders = initCall.captured.first as Map<String, String>;
+      final pollHeaders = pollCall.captured.first as Map<String, String>;
+      expect(pollHeaders["X-Sesori-Session-Token"], initHeaders["X-Sesori-Session-Token"]);
+      expect(pollHeaders["X-Sesori-Session-Token"], matches(RegExp(r"^[0-9a-f]{64}$")));
+    });
+
+    test("pollForResult clears active session on denied, expired, error, and timeout", () async {
+      Future<void> arrangeStartedFlow({required http.Response statusResponse}) async {
+        when(
+          () => mockHttpClient.post(
+            Uri.parse("$authBaseUrl/auth/github/init"),
+            headers: any(named: "headers"),
+            body: any(named: "body"),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            jsonEncode({
+              "authUrl": "https://github.com/login/oauth/authorize",
+              "state": "state-4",
+              "userCode": "E5F6",
+              "expiresIn": 300,
+            }),
+            200,
+          ),
+        );
+        when(
+          () => mockHttpClient.get(
+            Uri.parse("$authBaseUrl/auth/session/status"),
+            headers: any(named: "headers"),
+          ),
+        ).thenAnswer((_) async => statusResponse);
+        await authManager.startOAuthFlow(provider: AuthProvider.github);
+      }
+
+      for (final statusResponse in [
+        http.Response(jsonEncode({"status": "denied"}), 200),
+        http.Response(jsonEncode({"status": "expired"}), 410),
+        http.Response(jsonEncode({"status": "error", "message": "provider failed"}), 200),
+      ]) {
+        mockHttpClient = MockHttpClient();
+        mockTokenStorage = MockTokenStorageService();
+        mockOAuthStorage = MockOAuthStorageService();
+        authManager = AuthManager(mockHttpClient, mockTokenStorage, mockOAuthStorage);
+        await arrangeStartedFlow(statusResponse: statusResponse);
+
+        await expectLater(authManager.pollForResult(), throwsA(isA<StateError>()));
+        await expectLater(authManager.pollForResult(), throwsA(isA<StateError>()));
+      }
+
+      mockHttpClient = MockHttpClient();
+      mockTokenStorage = MockTokenStorageService();
+      mockOAuthStorage = MockOAuthStorageService();
+      authManager = AuthManager(
+        mockHttpClient,
+        mockTokenStorage,
+        mockOAuthStorage,
+        pollInterval: Duration.zero,
+        pollTimeout: Duration.zero,
+        delay: (_) async {},
+      );
+      await arrangeStartedFlow(statusResponse: http.Response(jsonEncode({"status": "pending"}), 200));
+
+      await expectLater(authManager.pollForResult(), throwsA(isA<TimeoutException>()));
+      await expectLater(authManager.pollForResult(), throwsA(isA<StateError>()));
     });
   });
 
