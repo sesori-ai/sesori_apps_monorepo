@@ -52,6 +52,18 @@ platform :android do
     new_build_number
   end
 
+  # Runs `flutter build appbundle` from the Flutter project root (mobile/app/),
+  # not from the fastlane folder. Output lands at
+  # mobile/app/build/app/outputs/bundle/release/app-release.aab thanks to the
+  # build dir redirect in mobile/app/android/build.gradle.kts.
+  private_lane :_flutter_build_appbundle do |options|
+    build_number = options[:build_number]
+    flutter_root = File.expand_path(File.join("..", ".."), Dir.pwd)
+    Dir.chdir(flutter_root) do
+      sh "flutter build appbundle --release --build-number=#{build_number}"
+    end
+  end
+
   desc "Deploy a new build to Google Play Internal Testing track"
   lane :deploy_internal do
     # Prefer a version code injected by the upstream "next version code" CI step.
@@ -66,11 +78,15 @@ platform :android do
     end
 
     version_name = _read_version_name
-    UI.message("Deploying version #{version_name} (#{new_build_number})")
+    UI.message("Building version #{version_name} (#{new_build_number})")
 
-    # The Flutter build runs in CI before this lane and bakes the version code
-    # into the AAB. This lane only uploads.
-    #
+    # Build the AAB unless the caller pre-built one and pointed AAB_PATH at it.
+    if ENV["AAB_PATH"].to_s.strip.empty?
+      _flutter_build_appbundle(build_number: new_build_number)
+    else
+      UI.message("Skipping build, using pre-built AAB from AAB_PATH=#{ENV['AAB_PATH']}")
+    end
+
     # Path note: Dir.pwd inside a lane is `mobile/app/android/fastlane/`, and
     # Flutter outputs the AAB to `mobile/app/build/...` (the Android
     # build.gradle.kts redirects rootProject build dir up two levels — the
@@ -78,7 +94,7 @@ platform :android do
     aab_path = ENV["AAB_PATH"] || "../../build/app/outputs/bundle/release/app-release.aab"
 
     unless File.exist?(aab_path)
-      UI.user_error!("AAB not found at #{aab_path}. Build the app first with: flutter build appbundle --build-number=#{new_build_number}")
+      UI.user_error!("AAB not found at #{aab_path} after build.")
     end
 
     upload_to_play_store(
