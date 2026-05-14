@@ -3,23 +3,19 @@ import "dart:async";
 import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
-import "app_router.dart";
-
-/// Bridges [AppLinks] deep link events to the OAuth callback flow.
+/// Bridges [AppLinks] deep link events to app routing.
 ///
-/// Listens for incoming custom-scheme URLs (e.g. `com.sesori.app://auth/callback`)
-/// and delegates them to [OAuthCallbackDispatcher] for token exchange, then navigates
-/// via [appRouter].
+/// Legacy OAuth deep-link callbacks are no longer used — the browser completes
+/// against the auth server directly, while [OAuthFlowProvider.pollForResult]
+/// updates auth state from [LoginCubit]. This service logs and ignores any
+/// remaining OAuth callback deep links.
 @lazySingleton
 class DeepLinkService {
-  final OAuthCallbackDispatcher _oAuthCallbackDispatcher;
   final DeepLinkSource _deepLinkSource;
   StreamSubscription<Uri>? _sub;
   bool _processing = false;
 
-  DeepLinkService(OAuthCallbackDispatcher oAuthCallbackDispatcher, DeepLinkSource deepLinkSource)
-    : _oAuthCallbackDispatcher = oAuthCallbackDispatcher,
-      _deepLinkSource = deepLinkSource;
+  DeepLinkService(DeepLinkSource deepLinkSource) : _deepLinkSource = deepLinkSource;
 
   /// Start listening for deep links. Call once during app initialization.
   ///
@@ -38,28 +34,28 @@ class DeepLinkService {
   }
 
   Future<void> _handleUri(Uri uri) async {
-    if (uri.scheme != bundleId || uri.host != "auth" || uri.path != "/callback") return;
+    // OAuth callbacks are no longer handled via deep links — the auth server
+    // handles browser completion directly and clients poll for results.
+    if (uri.scheme == bundleId && uri.host == "auth" && uri.path == "/callback") {
+      if (_processing) {
+        logw("Deep link callback already being processed; ignoring duplicate event");
+        return;
+      }
 
-    if (_processing) {
-      logw("Deep link callback already being processed; ignoring duplicate event");
+      logd("Ignoring legacy OAuth deep link: $uri");
+      _processing = true;
+
+      try {
+        // No-op: OAuth now completes through auth-server polling
+      } finally {
+        _processing = false;
+      }
+
       return;
     }
 
-    logd("Deep link received: $uri");
-    _processing = true;
-
-    try {
-      final route = await _oAuthCallbackDispatcher.handleOAuthCallback(uri);
-      if (route != null) {
-        try {
-          appRouter.goRoute(route);
-        } catch (e, st) {
-          loge("Failed to navigate after OAuth callback", e, st);
-        }
-      }
-    } finally {
-      _processing = false;
-    }
+    // Future non-OAuth deep links can be handled here
+    logd("Unhandled deep link: $uri");
   }
 
   @disposeMethod
