@@ -82,11 +82,7 @@ jobs:
           keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
           EOF
 
-      - name: Build Android AAB
-        working-directory: mobile/app
-        run: flutter build appbundle --release --build-number=${{ inputs.build_number }}
-
-      - name: Deploy to Internal Track
+      - name: Build and Deploy to Internal Track
         working-directory: mobile/app/android
         run: bundle exec fastlane deploy_internal
 
