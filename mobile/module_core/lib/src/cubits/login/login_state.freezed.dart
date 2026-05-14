@@ -109,8 +109,74 @@ String toString() {
 /// @nodoc
 
 
-class LoginAwaitingCallback implements LoginState {
-  const LoginAwaitingCallback();
+class LoginAwaitingConfirmation implements LoginState {
+  const LoginAwaitingConfirmation({required this.userCode});
+  
+
+ final  String userCode;
+
+/// Create a copy of LoginState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$LoginAwaitingConfirmationCopyWith<LoginAwaitingConfirmation> get copyWith => _$LoginAwaitingConfirmationCopyWithImpl<LoginAwaitingConfirmation>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is LoginAwaitingConfirmation&&(identical(other.userCode, userCode) || other.userCode == userCode));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,userCode);
+
+@override
+String toString() {
+  return 'LoginState.awaitingConfirmation(userCode: $userCode)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $LoginAwaitingConfirmationCopyWith<$Res> implements $LoginStateCopyWith<$Res> {
+  factory $LoginAwaitingConfirmationCopyWith(LoginAwaitingConfirmation value, $Res Function(LoginAwaitingConfirmation) _then) = _$LoginAwaitingConfirmationCopyWithImpl;
+@useResult
+$Res call({
+ String userCode
+});
+
+
+
+
+}
+/// @nodoc
+class _$LoginAwaitingConfirmationCopyWithImpl<$Res>
+    implements $LoginAwaitingConfirmationCopyWith<$Res> {
+  _$LoginAwaitingConfirmationCopyWithImpl(this._self, this._then);
+
+  final LoginAwaitingConfirmation _self;
+  final $Res Function(LoginAwaitingConfirmation) _then;
+
+/// Create a copy of LoginState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? userCode = null,}) {
+  return _then(LoginAwaitingConfirmation(
+userCode: null == userCode ? _self.userCode : userCode // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
+class LoginPolling implements LoginState {
+  const LoginPolling();
   
 
 
@@ -120,7 +186,7 @@ class LoginAwaitingCallback implements LoginState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is LoginAwaitingCallback);
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is LoginPolling);
 }
 
 
@@ -129,7 +195,39 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'LoginState.awaitingCallback()';
+  return 'LoginState.polling()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+
+
+class LoginTimeout implements LoginState {
+  const LoginTimeout();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is LoginTimeout);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'LoginState.timeout()';
 }
 
 
