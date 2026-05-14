@@ -70,7 +70,12 @@ platform :android do
 
     # The Flutter build runs in CI before this lane and bakes the version code
     # into the AAB. This lane only uploads.
-    aab_path = ENV["AAB_PATH"] || "../build/app/outputs/bundle/release/app-release.aab"
+    #
+    # Path note: Dir.pwd inside a lane is `mobile/app/android/fastlane/`, and
+    # Flutter outputs the AAB to `mobile/app/build/...` (the Android
+    # build.gradle.kts redirects rootProject build dir up two levels — the
+    # standard Flutter pattern). So we need TWO `..` segments, not one.
+    aab_path = ENV["AAB_PATH"] || "../../build/app/outputs/bundle/release/app-release.aab"
 
     unless File.exist?(aab_path)
       UI.user_error!("AAB not found at #{aab_path}. Build the app first with: flutter build appbundle --build-number=#{new_build_number}")
