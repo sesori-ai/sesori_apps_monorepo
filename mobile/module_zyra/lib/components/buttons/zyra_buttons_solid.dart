@@ -90,6 +90,7 @@ class ZyraButtonsSolid extends StatefulWidget {
     this.trailingIcon,
     this.isLoading = false,
     this.destructive = false,
+    this.fullWidth = false,
   }) : assert(
          hierarchy != ZyraButtonsSolidHierarchy.primaryAlt || !destructive,
          'destructive=true is not supported for primaryAlt — Figma does not define this variant.',
@@ -110,6 +111,7 @@ class ZyraButtonsSolid extends StatefulWidget {
          'destructive=true is not supported for primaryAlt — Figma does not define this variant.',
        ),
        iconOnly = true,
+       fullWidth = false,
        label = null,
        trailingIcon = null;
 
@@ -143,6 +145,13 @@ class ZyraButtonsSolid extends StatefulWidget {
 
   /// Whether the button renders in icon-only mode (square, no label).
   final bool iconOnly;
+
+  /// When `true`, the button expands to fill its parent's width and centres
+  /// the icon + label horizontally. Requires the parent to provide bounded
+  /// width constraints (e.g. via [SizedBox], [Expanded], or a [Column] with
+  /// `crossAxisAlignment: CrossAxisAlignment.stretch`). Ignored when
+  /// [iconOnly] is `true`.
+  final bool fullWidth;
 
   @override
   State<ZyraButtonsSolid> createState() => _ZyraButtonsSolidState();
@@ -276,7 +285,10 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
     return Padding(
       padding: padding,
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        // [fullWidth] stretches the Row to fill the parent so the centered
+        // alignment below actually has spare space to centre into. The default
+        // min-size collapses the Row to its content (existing behaviour).
+        mainAxisSize: widget.fullWidth ? MainAxisSize.max : MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: children,
