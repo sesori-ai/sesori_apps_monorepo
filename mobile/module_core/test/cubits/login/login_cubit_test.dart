@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:bloc_test/bloc_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart" show AuthSession, OAuthFlowProvider;
@@ -14,18 +16,25 @@ class MockUrlLauncher extends Mock implements UrlLauncher {}
 
 class MockAuthSession extends Mock implements AuthSession {}
 
+const testAuthInitResponse = AuthInitResponse(
+  authUrl: "https://accounts.google.com/o/oauth2/auth",
+  state: "oauth-state",
+  userCode: "ABCD",
+  expiresIn: 300,
+);
+
+const testAuthUser = AuthUser(
+  id: "id",
+  provider: "google",
+  providerUserId: "user123",
+  providerUsername: null,
+);
+
 void main() {
   setUpAll(() {
     registerFallbackValue(AuthProvider.google);
     registerFallbackValue(Uri.parse(redirectUri));
-    registerFallbackValue(
-      const AuthUser(
-        id: "id",
-        provider: "google",
-        providerUserId: "user123",
-        providerUsername: null,
-      ),
-    );
+    registerFallbackValue(testAuthUser);
   });
 
   group("LoginCubit", () {
@@ -38,6 +47,10 @@ void main() {
       mockUrlLauncher = MockUrlLauncher();
       mockAuthSession = MockAuthSession();
       when(() => mockUrlLauncher.launch(any())).thenAnswer((_) async => true);
+      when(
+        () => mockOAuthFlowProvider.startOAuthFlow(provider: any(named: "provider")),
+      ).thenAnswer((_) async => testAuthInitResponse);
+      when(() => mockOAuthFlowProvider.pollForResult()).thenAnswer((_) async => testAuthUser);
     });
 
     test("initial state is LoginState.idle", () {
@@ -47,46 +60,56 @@ void main() {
 
     group("Google OAuth", () {
       blocTest<LoginCubit, LoginState>(
-        "loginWithProvider(AuthProvider.google) calls getAuthorizationUrl with AuthProvider.google",
+        "loginWithProvider(AuthProvider.google) starts OAuth flow with AuthProvider.google",
         build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
-        act: (cubit) async {
-          when(
-            () => mockOAuthFlowProvider.getAuthorizationUrl(any(), any()),
-          ).thenAnswer((_) async => "https://accounts.google.com/o/oauth2/auth");
-          await cubit.loginWithProvider(AuthProvider.google);
-        },
+        act: (cubit) async => cubit.loginWithProvider(AuthProvider.google),
         expect: () => [
           isA<LoginAuthenticating>(),
-          isA<LoginAwaitingCallback>(),
+          isA<LoginAwaitingConfirmation>().having((state) => state.userCode, "userCode", "ABCD"),
+          isA<LoginPolling>(),
+          isA<LoginSuccess>(),
         ],
         verify: (_) {
           verify(
-            () => mockOAuthFlowProvider.getAuthorizationUrl(AuthProvider.google, redirectUri),
+            () => mockOAuthFlowProvider.startOAuthFlow(provider: AuthProvider.google),
           ).called(1);
+          verify(() => mockOAuthFlowProvider.pollForResult()).called(1);
         },
       );
 
       blocTest<LoginCubit, LoginState>(
-        "loginWithProvider(AuthProvider.google) emits authenticating then awaitingCallback on success",
+        "loginWithProvider(AuthProvider.google) emits user code before polling then success",
         build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
-        act: (cubit) async {
-          when(
-            () => mockOAuthFlowProvider.getAuthorizationUrl(any(), any()),
-          ).thenAnswer((_) async => "https://accounts.google.com/o/oauth2/auth");
-          await cubit.loginWithProvider(AuthProvider.google);
-        },
+        act: (cubit) async => cubit.loginWithProvider(AuthProvider.google),
         expect: () => [
           isA<LoginAuthenticating>(),
-          isA<LoginAwaitingCallback>(),
+          isA<LoginAwaitingConfirmation>().having((state) => state.userCode, "userCode", "ABCD"),
+          isA<LoginPolling>(),
+          isA<LoginSuccess>(),
+        ],
+        verify: (_) {
+          verify(() => mockUrlLauncher.launch(Uri.parse(testAuthInitResponse.authUrl))).called(1);
+        },
+      );
+
+      blocTest<LoginCubit, LoginState>(
+        "loginWithProvider(AuthProvider.google) emits the polling OAuth sequence without legacy callback state",
+        build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
+        act: (cubit) async => cubit.loginWithProvider(AuthProvider.google),
+        expect: () => [
+          isA<LoginAuthenticating>(),
+          isA<LoginAwaitingConfirmation>(),
+          isA<LoginPolling>(),
+          isA<LoginSuccess>(),
         ],
       );
 
       blocTest<LoginCubit, LoginState>(
-        "loginWithProvider(AuthProvider.google) emits failed when getAuthorizationUrl throws",
+        "loginWithProvider(AuthProvider.google) emits failed when startOAuthFlow throws",
         build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
         act: (cubit) async {
           when(
-            () => mockOAuthFlowProvider.getAuthorizationUrl(any(), any()),
+            () => mockOAuthFlowProvider.startOAuthFlow(provider: any(named: "provider")),
           ).thenThrow(Exception("network error"));
           await cubit.loginWithProvider(AuthProvider.google);
         },
@@ -100,15 +123,31 @@ void main() {
         "loginWithProvider(AuthProvider.google) emits failed when browser launch returns false",
         build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
         act: (cubit) async {
-          when(
-            () => mockOAuthFlowProvider.getAuthorizationUrl(any(), any()),
-          ).thenAnswer((_) async => "https://accounts.google.com/o/oauth2/auth");
           when(() => mockUrlLauncher.launch(any())).thenAnswer((_) async => false);
           await cubit.loginWithProvider(AuthProvider.google);
         },
         expect: () => [
           isA<LoginAuthenticating>(),
+          isA<LoginAwaitingConfirmation>(),
           isA<LoginFailed>(),
+        ],
+        verify: (_) {
+          verifyNever(() => mockOAuthFlowProvider.pollForResult());
+        },
+      );
+
+      blocTest<LoginCubit, LoginState>(
+        "loginWithProvider(AuthProvider.google) emits timeout when polling times out",
+        build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
+        act: (cubit) async {
+          when(() => mockOAuthFlowProvider.pollForResult()).thenThrow(TimeoutException("poll timeout"));
+          await cubit.loginWithProvider(AuthProvider.google);
+        },
+        expect: () => [
+          isA<LoginAuthenticating>(),
+          isA<LoginAwaitingConfirmation>(),
+          isA<LoginPolling>(),
+          isA<LoginTimeout>(),
         ],
       );
     });
@@ -119,12 +158,7 @@ void main() {
         build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
         act: (cubit) async {
           when(() => mockAuthSession.loginWithEmail(email: "test@example.com", password: "password123")).thenAnswer(
-            (_) async => const AuthUser(
-              id: "id",
-              provider: "google",
-              providerUserId: "user123",
-              providerUsername: null,
-            ),
+            (_) async => testAuthUser,
           );
           await cubit.loginWithEmail(
             email: "test@example.com",
@@ -145,12 +179,7 @@ void main() {
         build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
         act: (cubit) async {
           when(() => mockAuthSession.loginWithEmail(email: any(named: "email"), password: any(named: "password"))).thenAnswer(
-            (_) async => const AuthUser(
-              id: "id",
-              provider: "google",
-              providerUserId: "user123",
-              providerUsername: null,
-            ),
+            (_) async => testAuthUser,
           );
           await cubit.loginWithEmail(
             email: "test@example.com",
