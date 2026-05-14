@@ -115,11 +115,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final current = state;
     if (current is! SessionDetailLoaded) return;
 
-    final preservedSelectedAgent = current.selectedAgent;
-    final preservedSelectedAgentModel = current.selectedAgentModel;
-    final preservedStagedCommand = current.stagedCommand;
-
-    emit(current.copyWith(isRefreshing: true));
+    emit(current.copyWith(isRefreshing: true, queuedMessages: _promptQueue.items));
 
     try {
       final result = await _loadService.reload(sessionId: _sessionId, projectId: _projectId);
@@ -156,16 +152,21 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             MessageUser() || null => null,
           };
 
+          final refreshedChildSessions = [...snapshot.childSessions];
+          _sortChildrenByUpdatedDesc(refreshedChildSessions);
+
+          final latest = state;
+          if (latest is! SessionDetailLoaded) return;
+          final preservedSelectedAgent = latest.selectedAgent;
+          final preservedSelectedAgentModel = latest.selectedAgentModel;
+          final preservedStagedCommand = latest.stagedCommand;
           final availableVariants = _deriveAvailableVariants(
             providers: availableProviders,
             model: preservedSelectedAgentModel,
           );
 
-          final refreshedChildSessions = [...snapshot.childSessions];
-          _sortChildrenByUpdatedDesc(refreshedChildSessions);
-
           emit(
-            current.copyWith(
+            latest.copyWith(
               messages: snapshot.messages,
               streamingText: streamingText,
               sessionStatus: snapshot.statuses[_sessionId] ?? const SessionStatus.idle(),
@@ -178,28 +179,38 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
               availableAgents: availableAgents,
               availableProviders: availableProviders,
               availableCommands: snapshot.commands,
-              sessionTitle: snapshot.canonicalSessionTitle ?? current.sessionTitle,
+              sessionTitle: snapshot.canonicalSessionTitle ?? latest.sessionTitle,
               selectedAgent: preservedSelectedAgent,
               selectedAgentModel: preservedSelectedAgentModel,
               stagedCommand: _resolveStagedCommand(
                 availableCommands: snapshot.commands,
                 stagedCommand: preservedStagedCommand,
               ),
+              queuedMessages: _promptQueue.items,
               isRefreshing: false,
               availableVariants: availableVariants,
             ),
           );
         case SessionDetailLoadResultWaitingForConnection():
           _waitingForConnection = true;
-          emit(current.copyWith(isRefreshing: false));
+          final latest = state;
+          if (latest is SessionDetailLoaded) {
+            emit(latest.copyWith(isRefreshing: false, queuedMessages: _promptQueue.items));
+          }
         case SessionDetailLoadResultFailed(:final error):
           logw("Silent refresh failed: ${error.toString()}");
-          emit(current.copyWith(isRefreshing: false));
+          final latest = state;
+          if (latest is SessionDetailLoaded) {
+            emit(latest.copyWith(isRefreshing: false, queuedMessages: _promptQueue.items));
+          }
       }
     } catch (error) {
       logw("Silent refresh failed: ${error.toString()}");
       if (isClosed) return;
-      emit(current.copyWith(isRefreshing: false));
+      final latest = state;
+      if (latest is SessionDetailLoaded) {
+        emit(latest.copyWith(isRefreshing: false, queuedMessages: _promptQueue.items));
+      }
     }
   }
 
@@ -1013,7 +1024,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       assistantAgentModel: assistantAgentModel,
       children: childSessions,
       childStatuses: childStatuses,
-      queuedMessages: const [],
+      queuedMessages: _promptQueue.items,
       availableAgents: agents,
       availableProviders: providers,
       availableCommands: snapshot.commands,

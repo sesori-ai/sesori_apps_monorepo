@@ -347,12 +347,11 @@ void main() {
       },
       expect: () => [
         isA<SessionDetailLoaded>(),
-        isA<SessionDetailLoaded>()
-            .having(
-              (state) => state.selectedAgentModel,
-              "selectedAgentModel",
-              const AgentModel(providerID: "openai", modelID: "gpt-4.1", variant: null),
-            ),
+        isA<SessionDetailLoaded>().having(
+          (state) => state.selectedAgentModel,
+          "selectedAgentModel",
+          const AgentModel(providerID: "openai", modelID: "gpt-4.1", variant: null),
+        ),
       ],
     );
 
@@ -921,6 +920,58 @@ void main() {
       ],
     );
 
+    test("slow silent refresh preserves model selection changed while refresh is in flight", () async {
+      var getMessagesCallCount = 0;
+      final slowRefreshStarted = Completer<void>();
+      final completeSlowRefresh = Completer<void>();
+
+      when(
+        () => mockSessionRepository.getMessages(sessionId: any(named: "sessionId")),
+      ).thenAnswer((_) {
+        getMessagesCallCount += 1;
+        if (getMessagesCallCount == 2) {
+          slowRefreshStarted.complete();
+          return completeSlowRefresh.future.then(
+            (_) => ApiResponse.success(MessageWithPartsResponse(messages: [testMessageWithParts()])),
+          );
+        }
+
+        return Future<ApiResponse<MessageWithPartsResponse>>.value(
+          ApiResponse.success(MessageWithPartsResponse(messages: [testMessageWithParts()])),
+        );
+      });
+
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: mockFailureReporter,
+      );
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+
+      globalEvents.add(SseEvent(data: const SesoriSessionsUpdated(projectID: "project-1")));
+      await slowRefreshStarted.future;
+
+      cubit.selectModel(providerID: "openai", modelID: "gpt-4.1");
+      expect(
+        (cubit.state as SessionDetailLoaded).selectedAgentModel,
+        const AgentModel(providerID: "openai", modelID: "gpt-4.1", variant: null),
+      );
+
+      completeSlowRefresh.complete();
+      await _awaitNotRefreshing(cubit);
+
+      expect(
+        (cubit.state as SessionDetailLoaded).selectedAgentModel,
+        const AgentModel(providerID: "openai", modelID: "gpt-4.1", variant: null),
+      );
+    });
+
     blocTest<SessionDetailCubit, SessionDetailState>(
       "session.updated SSE re-sorts children by updated descending",
       build: () {
@@ -1337,6 +1388,84 @@ void main() {
       ).called(1);
     });
 
+    test("slow silent refresh does not restore a queued command after it drains", () async {
+      var getMessagesCallCount = 0;
+      final slowRefreshStarted = Completer<void>();
+      final completeSlowRefresh = Completer<void>();
+
+      when(
+        () => mockSessionRepository.getMessages(sessionId: any(named: "sessionId")),
+      ).thenAnswer((_) {
+        getMessagesCallCount += 1;
+        if (getMessagesCallCount == 2) {
+          slowRefreshStarted.complete();
+          return completeSlowRefresh.future.then(
+            (_) => ApiResponse.success(MessageWithPartsResponse(messages: [testMessageWithParts()])),
+          );
+        }
+
+        return Future<ApiResponse<MessageWithPartsResponse>>.value(
+          ApiResponse.success(MessageWithPartsResponse(messages: [testMessageWithParts()])),
+        );
+      });
+
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: mockFailureReporter,
+      );
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+
+      final connected = ConnectionStatus.connected(
+        config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+        health: testHealthResponse(),
+      );
+      connectionStatus.add(connected);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      when(() => mockConnectionService.currentStatus).thenReturn(
+        const ConnectionStatus.connectionLost(
+          config: ServerConnectionConfig(relayHost: "fake.example.com"),
+        ),
+      );
+      await cubit.sendMessage(text: "lib/main.dart", command: "review");
+      expect(
+        (cubit.state as SessionDetailLoaded).queuedMessages.map((message) => message.displayText).toList(),
+        equals(["/review lib/main.dart"]),
+      );
+
+      when(() => mockConnectionService.currentStatus).thenReturn(connected);
+      globalEvents.add(
+        SseEvent(data: const SesoriSessionsUpdated(projectID: "project-1")),
+      );
+      await slowRefreshStarted.future;
+
+      connectionStatus.add(connected);
+      await _awaitQueuedMessages(cubit, isEmpty);
+
+      completeSlowRefresh.complete();
+      await _awaitNotRefreshing(cubit);
+
+      expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
+      verify(
+        () => mockSessionService.sendMessage(
+          sessionId: sessionId,
+          text: "lib/main.dart",
+          agent: "coder",
+          providerID: "anthropic",
+          modelID: "claude-3-5-sonnet",
+          variant: null,
+          command: "review",
+        ),
+      ).called(1);
+    });
+
     test("connected send while queued drain is in flight stays queued until earlier work finishes", () async {
       final firstSendStarted = Completer<void>();
       final allowFirstSendToComplete = Completer<void>();
@@ -1578,6 +1707,22 @@ void main() {
 Future<void> _awaitLoaded(SessionDetailCubit cubit) async {
   for (var i = 0; i < 50; i++) {
     if (cubit.state is SessionDetailLoaded) return;
+    await Future<void>.delayed(const Duration(milliseconds: 1));
+  }
+}
+
+Future<void> _awaitQueuedMessages(SessionDetailCubit cubit, Matcher matcher) async {
+  for (var i = 0; i < 50; i++) {
+    final state = cubit.state;
+    if (state is SessionDetailLoaded && matcher.matches(state.queuedMessages, <Object, Object>{})) return;
+    await Future<void>.delayed(const Duration(milliseconds: 1));
+  }
+}
+
+Future<void> _awaitNotRefreshing(SessionDetailCubit cubit) async {
+  for (var i = 0; i < 50; i++) {
+    final state = cubit.state;
+    if (state is SessionDetailLoaded && !state.isRefreshing) return;
     await Future<void>.delayed(const Duration(milliseconds: 1));
   }
 }
