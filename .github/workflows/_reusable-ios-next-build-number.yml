@@ -46,9 +46,6 @@ jobs:
         with:
           ruby-version: '3.3'
 
-      - name: Install fastlane
-        run: gem install fastlane -v "${{ env.FASTLANE_VERSION }}" --no-document
-
       - name: Compute next build number
         id: compute
         working-directory: mobile/app/ios
