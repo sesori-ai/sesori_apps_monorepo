@@ -817,6 +817,24 @@ abstract class AppLocalizations {
   /// **'Waiting for authorization...'**
   String get loginAwaitingCallback;
 
+  /// No description provided for @loginAwaitingConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm this code on the login page: {userCode}'**
+  String loginAwaitingConfirmation(String userCode);
+
+  /// No description provided for @loginPolling.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirming authorization...'**
+  String get loginPolling;
+
+  /// No description provided for @loginTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Authorization timed out. Please try again.'**
+  String get loginTimeout;
+
   /// No description provided for @loginBrowserOpenFailed.
   ///
   /// In en, this message translates to:
