@@ -112,10 +112,7 @@ extension GetItInjectableX on _i174.GetIt {
       dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i901.DeepLinkService>(
-      () => _i901.DeepLinkService(
-        gh<_i948.OAuthCallbackDispatcher>(),
-        gh<_i948.DeepLinkSource>(),
-      ),
+      () => _i901.DeepLinkService(gh<_i948.DeepLinkSource>()),
       dispose: (i) => i.dispose(),
     );
     return this;
