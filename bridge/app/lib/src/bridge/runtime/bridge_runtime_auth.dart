@@ -4,7 +4,7 @@ import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 
 import 'package:sesori_shared/sesori_shared.dart';
 import '../../auth/login_email_repository.dart';
-import '../../auth/login_oauth_api.dart';
+import '../../auth/login_oauth_service.dart';
 import '../../auth/profile.dart';
 import '../../auth/token.dart';
 import '../../auth/validate.dart';
@@ -26,13 +26,13 @@ import 'terminal_password_reader.dart';
 
 class BridgeRuntimeAuthService {
   final LoginEmailRepository _loginEmailRepository;
-  final LoginOAuthApi _loginOAuthApi;
+  final LoginOAuthService _loginOAuthService;
 
   const BridgeRuntimeAuthService({
     required LoginEmailRepository loginEmailRepository,
-    required LoginOAuthApi loginOAuthApi,
+    required LoginOAuthService loginOAuthService,
   }) : _loginEmailRepository = loginEmailRepository,
-       _loginOAuthApi = loginOAuthApi;
+       _loginOAuthService = loginOAuthService;
 
   Future<AuthProvider> promptForProvider() async {
     while (true) {
@@ -136,7 +136,7 @@ class BridgeRuntimeAuthService {
     required AuthProvider provider,
   }) async {
     final TokenData tokens = await switch (provider) {
-      OAuthProvider() => _loginOAuthApi.performOAuthLogin(provider),
+      OAuthProvider() => _loginOAuthService.performOAuthLogin(provider),
       EmailAuthProvider() => _loginEmailRepository.performEmailLogin(),
     };
 
