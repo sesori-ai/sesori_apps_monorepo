@@ -2,6 +2,11 @@ name: Android Internal Deploy
 
 on:
   workflow_call:
+    inputs:
+      build_number:
+        description: 'Pre-computed aligned build number / version code'
+        required: true
+        type: string
     secrets:
       GOOGLE_PLAY_SERVICE_ACCOUNT_JSON:
         required: true
@@ -22,6 +27,7 @@ jobs:
 
     env:
       CI: true
+      VERSION_CODE: ${{ inputs.build_number }}
 
     steps:
       - name: Checkout repository
@@ -76,17 +82,9 @@ jobs:
           keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
           EOF
 
-      - name: Get next version code
-        id: version
-        working-directory: mobile/app/android
-        run: |
-          VERSION_CODE=$(bundle exec fastlane next_version_code 2>&1 | grep -oE 'Next version code: [0-9]+' | grep -oE '[0-9]+')
-          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
-          echo "Building with version code: $VERSION_CODE"
-
       - name: Build Android AAB
         working-directory: mobile/app
-        run: flutter build appbundle --release --build-number=${{ steps.version.outputs.version_code }}
+        run: flutter build appbundle --release --build-number=${{ inputs.build_number }}
 
       - name: Deploy to Internal Track
         working-directory: mobile/app/android
@@ -112,7 +110,8 @@ jobs:
       - name: Summary
         if: success()
         run: |
+          source mobile/app/android/build_info.env
           echo "## Android Internal Deploy Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Version Code**: ${{ steps.version.outputs.version_code }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${VERSION} (${VERSION_CODE})" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY

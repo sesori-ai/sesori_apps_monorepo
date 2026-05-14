@@ -1,0 +1,127 @@
+name: Next Build Number (aligned)
+
+# Lightweight Linux job that asks App Store Connect AND Google Play for the
+# current highest build numbers, computes (max + 1) on each side, and outputs
+# the LARGER of the two. That single number gets fed to both the iOS TestFlight
+# and Android Internal deploys so a single commit produces identical build
+# numbers on both stores. Running on a cheap Linux runner ahead of the macOS
+# build keeps the expensive runner free of pure HTTP lookups.
+
+on:
+  workflow_call:
+    secrets:
+      APP_STORE_CONNECT_API_KEY_ID:
+        required: true
+      APP_STORE_CONNECT_API_ISSUER_ID:
+        required: true
+      APP_STORE_CONNECT_API_KEY_CONTENT:
+        required: true
+      GOOGLE_PLAY_SERVICE_ACCOUNT_JSON:
+        required: true
+    outputs:
+      build_number:
+        description: 'Aligned build number — max(next iOS build, next Android version code)'
+        value: ${{ jobs.compute.outputs.build_number }}
+      ios_next:
+        description: 'Next iOS build number (App Store Connect max + 1)'
+        value: ${{ jobs.compute.outputs.ios_next }}
+      android_next:
+        description: 'Next Android version code (Google Play max + 1)'
+        value: ${{ jobs.compute.outputs.android_next }}
+
+jobs:
+  compute:
+    name: Compute aligned next build number
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    outputs:
+      build_number: ${{ steps.combine.outputs.build_number }}
+      ios_next: ${{ steps.ios.outputs.next }}
+      android_next: ${{ steps.android.outputs.next }}
+
+    env:
+      APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+      APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+      APP_STORE_CONNECT_API_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Compute next iOS build number
+        id: ios
+        working-directory: mobile/app/ios
+        run: |
+          set -euo pipefail
+          output=$(fastlane next_build_number 2>&1)
+          echo "$output"
+          n=$(printf '%s\n' "$output" | grep -oE 'NEXT_BUILD_NUMBER=[0-9]+' | tail -n1 | cut -d= -f2)
+          if [ -z "${n:-}" ]; then
+            echo "::error::Failed to parse NEXT_BUILD_NUMBER from iOS fastlane output"
+            exit 1
+          fi
+          echo "next=${n}" >> "$GITHUB_OUTPUT"
+          echo "iOS next build number: ${n}"
+
+      - name: Setup Google Play credentials
+        working-directory: mobile/app/android
+        run: |
+          echo '${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}' > fastlane/service-account.json
+
+      - name: Compute next Android version code
+        id: android
+        working-directory: mobile/app/android
+        run: |
+          set -euo pipefail
+          output=$(fastlane next_version_code 2>&1)
+          echo "$output"
+          n=$(printf '%s\n' "$output" | grep -oE 'NEXT_VERSION_CODE=[0-9]+' | tail -n1 | cut -d= -f2)
+          if [ -z "${n:-}" ]; then
+            echo "::error::Failed to parse NEXT_VERSION_CODE from Android fastlane output"
+            exit 1
+          fi
+          echo "next=${n}" >> "$GITHUB_OUTPUT"
+          echo "Android next version code: ${n}"
+
+      - name: Cleanup credentials
+        if: always()
+        run: rm -f mobile/app/android/fastlane/service-account.json
+
+      - name: Pick the maximum
+        id: combine
+        env:
+          IOS_NEXT: ${{ steps.ios.outputs.next }}
+          ANDROID_NEXT: ${{ steps.android.outputs.next }}
+        run: |
+          set -euo pipefail
+          if [ "$IOS_NEXT" -ge "$ANDROID_NEXT" ]; then
+            chosen="$IOS_NEXT"
+          else
+            chosen="$ANDROID_NEXT"
+          fi
+          echo "iOS would have used:     $IOS_NEXT"
+          echo "Android would have used: $ANDROID_NEXT"
+          echo "Aligned build number:    $chosen"
+          echo "build_number=${chosen}" >> "$GITHUB_OUTPUT"
+
+      - name: Summary
+        if: success()
+        env:
+          IOS_NEXT: ${{ steps.ios.outputs.next }}
+          ANDROID_NEXT: ${{ steps.android.outputs.next }}
+          CHOSEN: ${{ steps.combine.outputs.build_number }}
+        run: |
+          {
+            echo "## Aligned Next Build Number"
+            echo ""
+            echo "- **iOS (App Store Connect)**: ${IOS_NEXT}"
+            echo "- **Android (Google Play)**: ${ANDROID_NEXT}"
+            echo "- **Aligned (max)**: ${CHOSEN}"
+            echo "- **Commit**: \`${{ github.sha }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

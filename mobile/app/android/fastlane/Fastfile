@@ -32,35 +32,50 @@ platform :android do
     version_codes
   end
 
-  desc "Deploy a new build to Google Play Internal Testing track"
-  lane :deploy_internal do
-    # Get the highest version code from all tracks to ensure we don't conflict
-    version_codes = _get_all_version_codes
-
-    # Calculate new version code
-    current_build = version_codes.compact.max || 0
-    new_build_number = current_build + 1
-
-    UI.message("Current highest version code: #{current_build}")
-    UI.message("New version code: #{new_build_number}")
-
-    # Get version from pubspec.yaml
+  # Reads the marketing version (e.g. "1.0.6") from pubspec.yaml two dirs up.
+  # The build-number suffix after `+` is intentionally ignored — Play decides
+  # the version code, pubspec only owns the version name.
+  private_lane :_read_version_name do
     pubspec_path = File.join(Dir.pwd, "..", "..", "pubspec.yaml")
     pubspec_content = File.read(pubspec_path)
     version_match = pubspec_content.match(/version:\s*(\d+\.\d+\.\d+)/)
-    version_name = version_match ? version_match[1] : "1.0.0"
+    version_match ? version_match[1] : "1.0.0"
+  end
 
-    UI.message("Building version #{version_name} (#{new_build_number})")
+  desc "Print the next Google Play version code without building or uploading"
+  lane :next_version_code do
+    version_codes = _get_all_version_codes
+    new_build_number = (version_codes.compact.max || 0) + 1
 
-    # The actual Flutter build is done in CI before calling Fastlane
-    # This lane assumes the AAB is already built with the correct version code
+    # Stable marker line parsed by CI. Keep the `NEXT_VERSION_CODE=<n>` format.
+    UI.message("NEXT_VERSION_CODE=#{new_build_number}")
+    new_build_number
+  end
+
+  desc "Deploy a new build to Google Play Internal Testing track"
+  lane :deploy_internal do
+    # Prefer a version code injected by the upstream "next version code" CI step.
+    # Fall back to querying Play ourselves so standalone invocations of this
+    # lane still work.
+    injected = ENV["VERSION_CODE"].to_s.strip
+    new_build_number = if injected.empty?
+      (_get_all_version_codes.compact.max || 0) + 1
+    else
+      UI.message("Using injected version code: #{injected}")
+      Integer(injected)
+    end
+
+    version_name = _read_version_name
+    UI.message("Deploying version #{version_name} (#{new_build_number})")
+
+    # The Flutter build runs in CI before this lane and bakes the version code
+    # into the AAB. This lane only uploads.
     aab_path = ENV["AAB_PATH"] || "../build/app/outputs/bundle/release/app-release.aab"
 
     unless File.exist?(aab_path)
       UI.user_error!("AAB not found at #{aab_path}. Build the app first with: flutter build appbundle --build-number=#{new_build_number}")
     end
 
-    # Upload to Play Store internal track
     upload_to_play_store(
       track: "internal",
       aab: aab_path,
@@ -71,19 +86,9 @@ platform :android do
       version_name: version_name
     )
 
+    # Write build info for CI summary
+    File.write("../build_info.env", "VERSION=#{version_name}\nVERSION_CODE=#{new_build_number}\n")
+
     UI.success("Successfully uploaded version #{version_name} (#{new_build_number}) to Google Play Internal track!")
-  end
-
-  desc "Get the next version code to use for building"
-  lane :next_version_code do
-    version_codes = _get_all_version_codes
-
-    current_build = version_codes.compact.max || 0
-    new_build_number = current_build + 1
-
-    UI.message("Next version code: #{new_build_number}")
-
-    # Output for CI to capture
-    new_build_number
   end
 end
