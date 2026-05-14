@@ -26,11 +26,21 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  ios-next-build-number:
+    name: Resolve next iOS build number
+    uses: ./.github/workflows/_reusable-ios-next-build-number.yml
+    secrets:
+      APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+      APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+      APP_STORE_CONNECT_API_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
+
   ios:
     name: Build iOS app
+    needs: ios-next-build-number
     uses: ./.github/workflows/_reusable-ios-testflight.yml
     with:
       runner: ${{ inputs.ios_runner }}
+      build_number: ${{ needs.ios-next-build-number.outputs.build_number }}
     secrets:
       APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
       APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
@@ -57,7 +67,7 @@ jobs:
   summary:
     name: Release Summary
     runs-on: ubuntu-latest #blacksmith-2vcpu-ubuntu-2404
-    needs: [ios]
+    needs: [ios-next-build-number, ios]
     if: always()
 
     steps:
@@ -67,6 +77,12 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Platform Status" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.ios-next-build-number.result }}" == "success" ]; then
+            echo "- **iOS build number**: ${{ needs.ios-next-build-number.outputs.build_number }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **iOS build number**: ${{ needs.ios-next-build-number.result }}" >> $GITHUB_STEP_SUMMARY
+          fi
 
           if [ "${{ needs.ios.result }}" == "success" ]; then
             echo "- **iOS (artifact)**: Built" >> $GITHUB_STEP_SUMMARY
