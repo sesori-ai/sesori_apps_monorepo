@@ -36,6 +36,7 @@ jobs:
 
   ios:
     name: Build iOS app
+    if: false
     needs: ios-next-build-number
     uses: ./.github/workflows/_reusable-ios-testflight.yml
     with:
