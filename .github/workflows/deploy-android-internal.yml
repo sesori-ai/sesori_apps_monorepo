@@ -8,8 +8,20 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  next-build-number:
+    name: Resolve aligned build number
+    uses: ./.github/workflows/_reusable-next-build-number.yml
+    secrets:
+      APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+      APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+      APP_STORE_CONNECT_API_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
+      GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+
   deploy:
+    needs: next-build-number
     uses: ./.github/workflows/_reusable-android-internal.yml
+    with:
+      build_number: ${{ needs.next-build-number.outputs.build_number }}
     secrets:
       GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
       ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}

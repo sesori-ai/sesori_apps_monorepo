@@ -19,3 +19,4 @@ release.properties
 fastlane/report.xml
 fastlane/README.md
 fastlane/service-account.json
+build_info.env
