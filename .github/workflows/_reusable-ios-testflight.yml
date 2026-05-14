@@ -8,6 +8,11 @@ on:
         required: false
         type: string
         default: 'macos-latest'
+      build_number:
+        description: 'Pre-computed TestFlight build number. When empty, the lane queries ASC itself.'
+        required: false
+        type: string
+        default: ''
     secrets:
       APP_STORE_CONNECT_API_KEY_ID:
         required: true
@@ -46,6 +51,7 @@ jobs:
       MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       ITC_TEAM_ID: ${{ secrets.ITC_TEAM_ID }}
+      BUILD_NUMBER: ${{ inputs.build_number }}
       CI: true
 
     steps:

@@ -8,8 +8,19 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  next-build-number:
+    name: Resolve next build number
+    uses: ./.github/workflows/_reusable-ios-next-build-number.yml
+    secrets:
+      APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+      APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+      APP_STORE_CONNECT_API_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
+
   deploy:
+    needs: next-build-number
     uses: ./.github/workflows/_reusable-ios-testflight.yml
+    with:
+      build_number: ${{ needs.next-build-number.outputs.build_number }}
     secrets:
       APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
       APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
