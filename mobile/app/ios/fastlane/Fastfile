@@ -85,7 +85,7 @@ platform :ios do
       readonly: ENV["CI"] == "true"
     )
 
-
+    app_identifier = CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
     profile_name = ENV["sigh_#{app_identifier}_appstore_profile-name"]
 
     # Override automatic signing with match profile for CI
@@ -142,6 +142,7 @@ platform :ios do
       readonly: true
     )
 
+    app_identifier = CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
     profile_name = ENV["sigh_#{app_identifier}_appstore_profile-name"]
 
     # Override automatic signing with match profile for CI
