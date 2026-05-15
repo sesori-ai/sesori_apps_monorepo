@@ -3,7 +3,8 @@ name: Release All Platforms
 # NOTE: Temporarily repurposed to test the iOS build path before wiring up
 # TestFlight uploads. Builds the iOS app via the chosen fastlane lane and
 # uploads the IPA as a workflow artifact — no App Store / TestFlight upload.
-# Android deploy is disabled below; restore it once the iOS build is validated.
+# Android Internal Track deploy is enabled and gated by the `deploy_android`
+# workflow input.
 
 on:
   workflow_dispatch:
@@ -15,11 +16,11 @@ on:
         options:
           - macos-latest
         default: 'macos-latest'
-      # deploy_android:
-      #   description: 'Deploy to Android Internal Track'
-      #   required: false
-      #   type: boolean
-      #   default: true
+      deploy_android:
+        description: 'Deploy to Android Internal Track'
+        required: false
+        type: boolean
+        default: true
 
 concurrency:
   group: release-all-${{ github.ref }}
@@ -53,24 +54,22 @@ jobs:
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       ITC_TEAM_ID: ${{ secrets.ITC_TEAM_ID }}
 
-  # Android Internal Track deployment — disabled while iOS build path is being validated.
-  # Re-enable by uncommenting this job, the input above, and the summary block below.
-  #
-  # android:
-  #   if: ${{ inputs.deploy_android }}
-  #   needs: next-build-number
-  #   uses: ./.github/workflows/_reusable-android-internal.yml
-  #   with:
-  #     build_number: ${{ needs.next-build-number.outputs.build_number }}
-  #   secrets:
-  #     GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
-  #     ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-  #     ANDROID_PROPERTIES: ${{ secrets.ANDROID_PROPERTIES }}
+  android:
+    name: Deploy Android to Internal Track
+    if: ${{ inputs.deploy_android }}
+    needs: next-build-number
+    uses: ./.github/workflows/_reusable-android-internal.yml
+    with:
+      build_number: ${{ needs.next-build-number.outputs.build_number }}
+    secrets:
+      GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_PROPERTIES: ${{ secrets.ANDROID_PROPERTIES }}
 
   summary:
     name: Release Summary
     runs-on: ubuntu-latest #blacksmith-2vcpu-ubuntu-2404
-    needs: [next-build-number, ios]
+    needs: [next-build-number, ios, android]
     if: always()
 
     steps:
@@ -95,4 +94,10 @@ jobs:
             echo "- **iOS (artifact)**: ${{ needs.ios.result }}" >> $GITHUB_STEP_SUMMARY
           fi
 
-          echo "- **Android Internal**: Disabled" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.android.result }}" == "success" ]; then
+            echo "- **Android Internal**: Deployed" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.android.result }}" == "failure" ]; then
+            echo "- **Android Internal**: Failed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Android Internal**: ${{ needs.android.result }}" >> $GITHUB_STEP_SUMMARY
+          fi
