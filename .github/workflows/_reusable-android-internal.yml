@@ -12,11 +12,7 @@ on:
         required: true
       ANDROID_KEYSTORE_BASE64:
         required: true
-      ANDROID_KEYSTORE_PASSWORD:
-        required: true
-      ANDROID_KEY_ALIAS:
-        required: true
-      ANDROID_KEY_PASSWORD:
+      ANDROID_PROPERTIES:
         required: true
 
 jobs:
@@ -67,30 +63,19 @@ jobs:
           bundler-cache: true
           working-directory: mobile/app/android
 
-      - name: Setup Google Play credentials
-        working-directory: mobile/app/android
-        run: |
-          echo '${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}' > fastlane/service-account.json
-
-      - name: Setup Android signing
-        run: |
-          echo '${{ secrets.ANDROID_KEYSTORE_BASE64 }}' | base64 --decode > mobile/app/android/app/upload-keystore.jks
-          cat > mobile/app/android/release.properties << EOF
-          storeFile=upload-keystore.jks
-          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
-          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
-          EOF
-
       - name: Build and Deploy to Internal Track
         working-directory: mobile/app/android
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_PROPERTIES: ${{ secrets.ANDROID_PROPERTIES }}
         run: bundle exec fastlane deploy_internal
 
       - name: Cleanup credentials
         if: always()
         run: |
           rm -f mobile/app/android/fastlane/service-account.json
-          rm -f mobile/app/android/app/upload-keystore.jks
+          rm -f mobile/app/android/keystore/release.keystore
           rm -f mobile/app/android/release.properties
 
       - name: Upload build artifacts on failure

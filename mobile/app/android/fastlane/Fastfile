@@ -1,8 +1,60 @@
 # frozen_string_literal: true
 
+require "base64"
+require "fileutils"
+
 default_platform(:android)
 
 platform :android do
+  # Materializes signing/credential files from environment variables so the
+  # same lane works locally (where files are usually already on disk) and on
+  # CI (where they're injected via secrets). Existing on-disk files are not
+  # overwritten unless the corresponding env var is set.
+  private_lane :_materialize_secret_files do
+    android_root = File.expand_path("..", Dir.pwd) # mobile/app/android/
+
+    keystore_b64 = ENV["ANDROID_KEYSTORE_BASE64"].to_s.strip
+    unless keystore_b64.empty?
+      keystore_path = File.join(android_root, "keystore", "release.keystore")
+      FileUtils.mkdir_p(File.dirname(keystore_path))
+      File.binwrite(keystore_path, Base64.decode64(keystore_b64))
+      UI.message("Wrote release keystore to #{keystore_path}")
+    end
+
+    properties = ENV["ANDROID_PROPERTIES"].to_s
+    unless properties.strip.empty?
+      props_path = File.join(android_root, "release.properties")
+      File.write(props_path, properties)
+      UI.message("Wrote signing properties to #{props_path}")
+    end
+
+    service_account = ENV["GOOGLE_PLAY_SERVICE_ACCOUNT_JSON"].to_s
+    unless service_account.strip.empty?
+      sa_path = File.join(Dir.pwd, "service-account.json")
+      File.write(sa_path, service_account)
+      UI.message("Wrote Google Play service account to #{sa_path}")
+    end
+  end
+
+  # Removes any files materialized by _materialize_secret_files. Only runs on
+  # CI — locally these files are expected to persist between builds.
+  private_lane :_cleanup_secret_files do
+    unless ENV["CI"].to_s.strip.empty?
+      android_root = File.expand_path("..", Dir.pwd)
+      paths = [
+        File.join(android_root, "keystore", "release.keystore"),
+        File.join(android_root, "release.properties"),
+        File.join(Dir.pwd, "service-account.json"),
+      ]
+      paths.each do |path|
+        if File.exist?(path)
+          FileUtils.rm_f(path)
+          UI.message("Removed #{path}")
+        end
+      end
+    end
+  end
+
   private_lane :_get_all_version_codes do
     tracks = %w[internal alpha beta production]
     version_codes = []
@@ -66,50 +118,58 @@ platform :android do
 
   desc "Deploy a new build to Google Play Internal Testing track"
   lane :deploy_internal do
-    # Prefer a version code injected by the upstream "next version code" CI step.
-    # Fall back to querying Play ourselves so standalone invocations of this
-    # lane still work.
-    injected = ENV["VERSION_CODE"].to_s.strip
-    new_build_number = if injected.empty?
-      (_get_all_version_codes.compact.max || 0) + 1
-    else
-      UI.message("Using injected version code: #{injected}")
-      Integer(injected)
+    # Stage any secrets that arrived as env vars (CI path). Locally this is a
+    # no-op when the files already exist on disk.
+    _materialize_secret_files
+
+    begin
+      # Prefer a version code injected by the upstream "next version code" CI step.
+      # Fall back to querying Play ourselves so standalone invocations of this
+      # lane still work.
+      injected = ENV["VERSION_CODE"].to_s.strip
+      new_build_number = if injected.empty?
+        (_get_all_version_codes.compact.max || 0) + 1
+      else
+        UI.message("Using injected version code: #{injected}")
+        Integer(injected)
+      end
+
+      version_name = _read_version_name
+      UI.message("Building version #{version_name} (#{new_build_number})")
+
+      # Build the AAB unless the caller pre-built one and pointed AAB_PATH at it.
+      if ENV["AAB_PATH"].to_s.strip.empty?
+        _flutter_build_appbundle(build_number: new_build_number)
+      else
+        UI.message("Skipping build, using pre-built AAB from AAB_PATH=#{ENV['AAB_PATH']}")
+      end
+
+      # Path note: Dir.pwd inside a lane is `mobile/app/android/fastlane/`, and
+      # Flutter outputs the AAB to `mobile/app/build/...` (the Android
+      # build.gradle.kts redirects rootProject build dir up two levels — the
+      # standard Flutter pattern). So we need TWO `..` segments, not one.
+      aab_path = ENV["AAB_PATH"] || "../../build/app/outputs/bundle/release/app-release.aab"
+
+      unless File.exist?(aab_path)
+        UI.user_error!("AAB not found at #{aab_path} after build.")
+      end
+
+      upload_to_play_store(
+        track: "internal",
+        aab: aab_path,
+        skip_upload_metadata: true,
+        skip_upload_images: true,
+        skip_upload_screenshots: true,
+        release_status: "draft",
+        version_name: version_name
+      )
+
+      # Write build info for CI summary
+      File.write("../build_info.env", "VERSION=#{version_name}\nVERSION_CODE=#{new_build_number}\n")
+
+      UI.success("Successfully uploaded version #{version_name} (#{new_build_number}) to Google Play Internal track!")
+    ensure
+      _cleanup_secret_files
     end
-
-    version_name = _read_version_name
-    UI.message("Building version #{version_name} (#{new_build_number})")
-
-    # Build the AAB unless the caller pre-built one and pointed AAB_PATH at it.
-    if ENV["AAB_PATH"].to_s.strip.empty?
-      _flutter_build_appbundle(build_number: new_build_number)
-    else
-      UI.message("Skipping build, using pre-built AAB from AAB_PATH=#{ENV['AAB_PATH']}")
-    end
-
-    # Path note: Dir.pwd inside a lane is `mobile/app/android/fastlane/`, and
-    # Flutter outputs the AAB to `mobile/app/build/...` (the Android
-    # build.gradle.kts redirects rootProject build dir up two levels — the
-    # standard Flutter pattern). So we need TWO `..` segments, not one.
-    aab_path = ENV["AAB_PATH"] || "../../build/app/outputs/bundle/release/app-release.aab"
-
-    unless File.exist?(aab_path)
-      UI.user_error!("AAB not found at #{aab_path} after build.")
-    end
-
-    upload_to_play_store(
-      track: "internal",
-      aab: aab_path,
-      skip_upload_metadata: true,
-      skip_upload_images: true,
-      skip_upload_screenshots: true,
-      release_status: "draft",
-      version_name: version_name
-    )
-
-    # Write build info for CI summary
-    File.write("../build_info.env", "VERSION=#{version_name}\nVERSION_CODE=#{new_build_number}\n")
-
-    UI.success("Successfully uploaded version #{version_name} (#{new_build_number}) to Google Play Internal track!")
   end
 end
