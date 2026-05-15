@@ -144,11 +144,15 @@ platform :android do
         UI.message("Skipping build, using pre-built AAB from AAB_PATH=#{ENV['AAB_PATH']}")
       end
 
-      # Path note: Dir.pwd inside a lane is `mobile/app/android/fastlane/`, and
-      # Flutter outputs the AAB to `mobile/app/build/...` (the Android
-      # build.gradle.kts redirects rootProject build dir up two levels — the
-      # standard Flutter pattern). So we need TWO `..` segments, not one.
-      aab_path = ENV["AAB_PATH"] || "../../build/app/outputs/bundle/release/app-release.aab"
+      # Flutter outputs the AAB to `mobile/app/build/app/outputs/bundle/release/`
+      # because the Android root build.gradle.kts redirects rootProject build
+      # dir up two levels (standard Flutter pattern). Anchor to __dir__ (the
+      # fastlane folder) so the absolute path is correct regardless of which
+      # cwd fastlane actions resolve relative paths against.
+      default_aab = File.expand_path(
+        "../../build/app/outputs/bundle/release/app-release.aab", __dir__,
+      )
+      aab_path = ENV["AAB_PATH"].to_s.strip.empty? ? default_aab : File.expand_path(ENV["AAB_PATH"])
 
       unless File.exist?(aab_path)
         UI.user_error!("AAB not found at #{aab_path} after build.")
