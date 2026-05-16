@@ -14,8 +14,22 @@ class TerminalPromptApi {
     return _stdin.hasTerminal && _stdout.hasTerminal;
   }
 
-  String? readLine({required String message}) {
+  String? readLine({
+    required String message,
+    bool disableEcho = false, // disable it for passwords
+  }) {
     _stdout.write(message);
-    return _stdin.readLineSync();
+
+    if (disableEcho) {
+      final previousEchoMode = _stdin.echoMode;
+      try {
+        _stdin.echoMode = false;
+        return _stdin.readLineSync();
+      } finally {
+        _stdin.echoMode = previousEchoMode;
+      }
+    } else {
+      return _stdin.readLineSync();
+    }
   }
 }

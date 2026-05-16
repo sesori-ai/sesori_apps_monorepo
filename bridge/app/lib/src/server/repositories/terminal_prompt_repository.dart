@@ -20,4 +20,21 @@ class TerminalPromptRepository {
     }
     return TerminalPromptDecision.decline;
   }
+
+  ({String email, String password}) promptForEmailCredentials() {
+    final email = _api.readLine(message: "Email: ");
+    if (email == null) {
+      throw Exception('EOF reached while reading email');
+    }
+
+    final password = _api.readLine(
+      message: "Password: ",
+      disableEcho: true, // to not print the pwd to console as user is writing
+    );
+    if (password == null) {
+      throw Exception('EOF reached while reading password');
+    }
+
+    return (email: email, password: password);
+  }
 }

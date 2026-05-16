@@ -9,8 +9,7 @@ enum StartupMutexAcquireResult {
 class StartupMutexRepository {
   final RuntimeFileApi _runtimeFileApi;
 
-  StartupMutexRepository({required RuntimeFileApi runtimeFileApi})
-    : _runtimeFileApi = runtimeFileApi;
+  StartupMutexRepository({required RuntimeFileApi runtimeFileApi}) : _runtimeFileApi = runtimeFileApi;
 
   Future<T> withLock<T>({
     required int bridgePid,

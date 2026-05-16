@@ -52,7 +52,7 @@ class _FakeTerminalPromptApi implements TerminalPromptApi {
   bool get isInteractive => isInteractiveValue;
 
   @override
-  String? readLine({required String message}) {
+  String? readLine({required String message, bool disableEcho = false}) {
     readCount += 1;
     messages.add(message);
     return answer;

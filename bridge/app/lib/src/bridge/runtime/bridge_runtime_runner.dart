@@ -1,4 +1,4 @@
-import "dart:io";
+import "dart:io" as io;
 
 import "package:clock/clock.dart";
 import "package:http/http.dart" as http;
@@ -87,7 +87,7 @@ class BridgeRuntimeRunner {
     final httpClient = http.Client();
     final processRunner = ProcessRunner();
     const serverClock = ServerClock();
-    final environment = Platform.environment;
+    final environment = io.Platform.environment;
     final currentUser = _resolveCurrentUser(environment: environment);
     final managedRuntimePaths = const ManagedRuntimePathService().currentPaths(
       environment: environment,
@@ -98,8 +98,8 @@ class BridgeRuntimeRunner {
     final systemProcessApi = SystemProcessApi(
       processRunner: processRunner,
       clock: serverClock,
-      isWindows: Platform.isWindows,
-      platform: Platform.operatingSystem,
+      isWindows: io.Platform.isWindows,
+      platform: io.Platform.operatingSystem,
     );
     final processRepository = ProcessRepository(
       api: systemProcessApi,
@@ -109,15 +109,22 @@ class BridgeRuntimeRunner {
       runtimeFileApi: runtimeFileApi,
       clock: const Clock(),
     );
-    final startupMutexRepository = StartupMutexRepository(runtimeFileApi: runtimeFileApi);
+    final startupMutexRepository = StartupMutexRepository(
+      runtimeFileApi: runtimeFileApi,
+    );
+    final terminalPromptApi = TerminalPromptApi(
+      stdin: io.stdin,
+      stdout: io.stdout,
+    );
+    final terminalPromptRepository = TerminalPromptRepository(
+      api: terminalPromptApi,
+    );
     final bridgeInstanceService = BridgeInstanceService(
       bridgeInstanceRepository: BridgeInstanceRepository(
         api: systemProcessApi,
         currentUser: currentUser,
       ),
-      terminalPromptRepository: TerminalPromptRepository(
-        api: TerminalPromptApi(stdin: stdin, stdout: stdout),
-      ),
+      terminalPromptRepository: terminalPromptRepository,
       processRepository: processRepository,
       clock: serverClock,
     );
@@ -126,14 +133,14 @@ class BridgeRuntimeRunner {
     final runtimeAuthService = BridgeRuntimeAuthService(
       loginEmailRepository: LoginEmailRepository(
         emailAuthApi: LoginEmailApi(authBackendUrl: options.authBackendUrl),
-        promptForCredentials: promptForEmailCredentials,
+        promptForCredentials: terminalPromptRepository.promptForEmailCredentials,
       ),
       loginOAuthApi: LoginOAuthApi(authBackendUrl: options.authBackendUrl),
     );
 
     try {
       final runtimeOwnershipError = unsupportedPackageRuntimeMessage(
-        executablePath: Platform.resolvedExecutable,
+        executablePath: io.Platform.resolvedExecutable,
         managedExecutablePath: managedRuntimePaths.binaryPath,
       );
       if (runtimeOwnershipError != null) {
@@ -156,7 +163,7 @@ class BridgeRuntimeRunner {
       _optimizeOpenCodeDbIfNeeded(environment: environment);
 
       final currentBridgeIdentity =
-          await processRepository.inspectProcess(pid: pid) ??
+          await processRepository.inspectProcess(pid: io.pid) ??
           _fallbackCurrentBridgeIdentity(
             currentUser: currentUser,
             serverClock: serverClock,
@@ -166,13 +173,13 @@ class BridgeRuntimeRunner {
       final openCodeServerService = OpenCodeServerService(
         openCodeProcessRepository: OpenCodeProcessRepository(
           api: OpenCodeProcessApi(
-            processStarter: Process.start,
+            processStarter: io.Process.start,
             httpClient: httpClient,
             clock: serverClock,
             environment: environment,
             currentUser: currentUser,
-            isWindows: Platform.isWindows,
-            platform: Platform.operatingSystem,
+            isWindows: io.Platform.isWindows,
+            platform: io.Platform.operatingSystem,
           ),
         ),
         processRepository: processRepository,
@@ -283,12 +290,12 @@ class BridgeRuntimeRunner {
         installedFileRepository: installedFileRepository,
       ),
       installedFileRepository: installedFileRepository,
-      updateLock: UpdateLock(currentPid: pid, processRunner: processRunner),
+      updateLock: UpdateLock(currentPid: io.pid, processRunner: processRunner),
       updateRelaunchClient: UpdateRelaunchClient(),
       installRoot: managedRuntimePaths.installRoot,
-      executablePath: Platform.resolvedExecutable,
+      executablePath: io.Platform.resolvedExecutable,
       managedExecutablePath: managedRuntimePaths.binaryPath,
-      environment: Platform.environment,
+      environment: io.Platform.environment,
     );
   }
 
@@ -315,12 +322,12 @@ class BridgeRuntimeRunner {
     required List<String> cliArgs,
   }) {
     return ProcessIdentity(
-      pid: pid,
+      pid: io.pid,
       startMarker: null,
-      executablePath: Platform.resolvedExecutable,
+      executablePath: io.Platform.resolvedExecutable,
       commandLine: cliArgs.join(" "),
       ownerUser: currentUser,
-      platform: Platform.operatingSystem,
+      platform: io.Platform.operatingSystem,
       capturedAt: serverClock.now(),
     );
   }

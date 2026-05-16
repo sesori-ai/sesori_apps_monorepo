@@ -13,40 +13,26 @@ class BridgeInstanceRepository {
   final SystemProcessApi _api;
   final String? _currentUser;
 
-  Future<List<ProcessIdentity>> listLiveBridgeCandidates({required int currentPid}) async {
-    final facts = await _api.listProcesses();
-    final candidates = <ProcessIdentity>[];
-    for (final fact in facts) {
-      if (fact.pid == currentPid || !_isLiveBridgeFact(fact: fact)) {
-        continue;
-      }
-      candidates.add(
-        ProcessIdentity(
-          pid: fact.pid,
-          startMarker: fact.startMarker,
-          executablePath: fact.executablePath,
-          commandLine: fact.commandLine,
-          ownerUser: fact.ownerUser,
-          platform: fact.platform,
-          capturedAt: fact.capturedAt,
-        ),
-      );
-    }
-    return candidates;
-  }
+  Future<List<ProcessIdentity>> listLiveBridgeCandidates({required int currentPid}) async =>
+      (await _api.listProcesses()) //
+          .where((p) => p.pid != currentPid && _isLiveBridge(process: p))
+          .toList();
 
-  bool _isLiveBridgeFact({required ProcessIdentity fact}) {
-    if (_currentUser != null && fact.ownerUser != null && fact.ownerUser != _currentUser) {
+  bool _isLiveBridge({required ProcessIdentity process}) {
+    if (_currentUser != null && process.ownerUser != null && process.ownerUser != _currentUser) {
       return false;
     }
 
-    final executableBasename = fact.executablePath == null ? null : path.basename(fact.executablePath!).toLowerCase();
-    final commandLine = fact.commandLine.toLowerCase();
+    final executableBasename = process.executablePath == null
+        ? null
+        : path.basename(process.executablePath!).toLowerCase();
+    final commandLine = process.commandLine.toLowerCase();
 
     if (executableBasename == 'sesori-bridge' || executableBasename == 'sesori-bridge.exe') {
       return true;
     }
 
+    // test for bridge started as dart (dev mode)
     if (!commandLine.contains('bridge/app/bin/bridge.dart')) {
       return false;
     }

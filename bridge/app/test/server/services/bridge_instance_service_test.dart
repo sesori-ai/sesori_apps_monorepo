@@ -183,6 +183,7 @@ class _FakeBridgeInstanceRepository implements BridgeInstanceRepository {
 class _FakeTerminalPromptRepository implements TerminalPromptRepository {
   TerminalPromptDecision decision = TerminalPromptDecision.replace;
   int askCount = 0;
+  int emailPromptCount = 0;
   final List<int> bridgeCounts = <int>[];
 
   @override
@@ -190,6 +191,15 @@ class _FakeTerminalPromptRepository implements TerminalPromptRepository {
     askCount += 1;
     bridgeCounts.add(bridgeCount);
     return decision;
+  }
+
+  @override
+  ({String email, String password}) promptForEmailCredentials() {
+    final newCount = emailPromptCount++;
+    return (
+      email: "email-$newCount",
+      password: "pwd-$newCount",
+    );
   }
 }
 

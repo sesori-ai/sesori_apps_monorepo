@@ -46,7 +46,8 @@ class OpenCodeServerService {
   final String _ownerSessionId;
   final List<int>? _candidatePorts;
   final Random _random;
-  final Map<String, _CurrentOwnedOpenCodeProcess> _currentOwnedProcessesBySessionId = <String, _CurrentOwnedOpenCodeProcess>{};
+  final Map<String, _CurrentOwnedOpenCodeProcess> _currentOwnedProcessesBySessionId =
+      <String, _CurrentOwnedOpenCodeProcess>{};
 
   Future<OpenCodeServerRuntime> start({
     required String executablePath,
@@ -58,7 +59,9 @@ class OpenCodeServerService {
       terminatedBridgeIdentities: terminatedBridgeIdentities,
     );
 
-    final serverPassword = password == null || password.isEmpty ? _openCodeProcessRepository.generatePassword() : password;
+    final serverPassword = password == null || password.isEmpty
+        ? _openCodeProcessRepository.generatePassword()
+        : password;
     if (requestedPort != null) {
       return _startOnExplicitPort(
         executablePath: executablePath,
@@ -102,6 +105,7 @@ class OpenCodeServerService {
   }) async {
     final serverPassword = password == null || password.isEmpty ? "" : password;
     final serverUri = Uri.parse("http://$loopbackPortHost:$port");
+    // TODO: decide here what to do. This shouldn't stop sesori from starting
     final probe = await _openCodeProcessRepository.probeHealth(
       serverUri: serverUri,
       password: serverPassword,
@@ -264,7 +268,8 @@ class OpenCodeServerService {
 
   Future<ProcessIdentity> _resolveSpawnedIdentity({required ProcessIdentity startIdentity}) async {
     final inspectedIdentity = await _processRepository.inspectProcess(pid: startIdentity.pid);
-    if (inspectedIdentity != null && _matchesSpawnedIdentity(startIdentity: startIdentity, inspectedIdentity: inspectedIdentity)) {
+    if (inspectedIdentity != null &&
+        _matchesSpawnedIdentity(startIdentity: startIdentity, inspectedIdentity: inspectedIdentity)) {
       return inspectedIdentity;
     }
     return startIdentity;
@@ -287,7 +292,8 @@ class OpenCodeServerService {
   }) async {
     final currentOwnedProcess = _currentOwnedProcessFor(record: record);
     final initialIdentity = await _processRepository.inspectProcess(pid: record.openCodePid);
-    final matchesInitialIdentity = initialIdentity != null && _matchesOpenCodeRecord(identity: initialIdentity, record: record);
+    final matchesInitialIdentity =
+        initialIdentity != null && _matchesOpenCodeRecord(identity: initialIdentity, record: record);
     if (!matchesInitialIdentity && currentOwnedProcess == null) {
       if (removeOwnership) {
         await _ownershipRepository.deleteByOwnerSessionId(ownerSessionId: record.ownerSessionId);
@@ -309,15 +315,18 @@ class OpenCodeServerService {
     await _processRepository.sendGracefulSignal(pid: record.openCodePid);
     await _clock.delay(duration: openCodeGracefulShutdownWait);
 
-    final currentOwnedStillRunningAfterGraceful = currentOwnedProcess != null && await _isCurrentOwnedProcessRunning(process: currentOwnedProcess);
+    final currentOwnedStillRunningAfterGraceful =
+        currentOwnedProcess != null && await _isCurrentOwnedProcessRunning(process: currentOwnedProcess);
     final remainingIdentity = await _processRepository.inspectProcess(pid: record.openCodePid);
-    final matchesRemainingIdentity = remainingIdentity != null && _matchesOpenCodeRecord(identity: remainingIdentity, record: record);
+    final matchesRemainingIdentity =
+        remainingIdentity != null && _matchesOpenCodeRecord(identity: remainingIdentity, record: record);
     if (currentOwnedStillRunningAfterGraceful || matchesRemainingIdentity) {
       await _processRepository.sendForceSignal(pid: record.openCodePid);
     }
 
     final finalIdentity = await _processRepository.inspectProcess(pid: record.openCodePid);
-    final currentOwnedStillRunningAfterForce = currentOwnedProcess != null && await _isCurrentOwnedProcessRunning(process: currentOwnedProcess);
+    final currentOwnedStillRunningAfterForce =
+        currentOwnedProcess != null && await _isCurrentOwnedProcessRunning(process: currentOwnedProcess);
     if (!currentOwnedStillRunningAfterForce) {
       _currentOwnedProcessesBySessionId.remove(record.ownerSessionId);
     }
@@ -351,10 +360,12 @@ class OpenCodeServerService {
   }
 
   Future<bool> _isCurrentOwnedProcessRunning({required _CurrentOwnedOpenCodeProcess process}) async {
-    final exitCode = await process.process.exitCode.then<int?>((int code) => code).timeout(
-      Duration.zero,
-      onTimeout: () => null,
-    );
+    final exitCode = await process.process.exitCode
+        .then<int?>((int code) => code)
+        .timeout(
+          Duration.zero,
+          onTimeout: () => null,
+        );
     return exitCode == null;
   }
 
