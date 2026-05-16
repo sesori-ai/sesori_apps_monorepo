@@ -165,11 +165,19 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             model: preservedSelectedAgentModel,
           );
 
+          final refreshedSessionStatus = snapshot.statuses[_sessionId] ?? const SessionStatus.idle();
+          final retryMessage = switch (refreshedSessionStatus) {
+            SessionStatusRetry(:final message) => message,
+            SessionStatusIdle() => null,
+            SessionStatusBusy() => null,
+          };
+
           emit(
             latest.copyWith(
               messages: snapshot.messages,
               streamingText: streamingText,
-              sessionStatus: snapshot.statuses[_sessionId] ?? const SessionStatus.idle(),
+              sessionStatus: refreshedSessionStatus,
+              retryErrorMessage: retryMessage,
               pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
               pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
               agent: latestAssistant?.agent,
@@ -464,7 +472,12 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (current is! SessionDetailLoaded) return;
 
     if (isClosed) return;
-    emit(current.copyWith(sessionStatus: status));
+    final retryMessage = switch (status) {
+      SessionStatusRetry(:final message) => message,
+      SessionStatusIdle() => null,
+      SessionStatusBusy() => null,
+    };
+    emit(current.copyWith(sessionStatus: status, retryErrorMessage: retryMessage));
   }
 
   // ---------------------------------------------------------------------------
@@ -1033,6 +1046,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       stagedCommand: null,
       isRefreshing: false,
       availableVariants: availableVariants,
+      retryErrorMessage: null,
     );
   }
 

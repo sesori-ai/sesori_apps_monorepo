@@ -25,6 +25,7 @@ void main() {
       selectedAgentModel: null,
       stagedCommand: null,
       isRefreshing: false,
+      retryErrorMessage: null,
     );
     expect((state as SessionDetailLoaded).isRefreshing, isFalse);
   });

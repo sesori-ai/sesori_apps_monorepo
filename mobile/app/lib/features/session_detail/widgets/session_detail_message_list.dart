@@ -6,6 +6,7 @@ import "assistant_message_card.dart";
 import "error_message_card.dart";
 import "follow_detach_scrollable.dart";
 import "jump_to_edge_pill.dart";
+import "retry_error_message_card.dart";
 import "scroll_follow_tracker.dart";
 import "user_message_card.dart";
 
@@ -40,6 +41,7 @@ class SessionDetailMessageList extends StatefulWidget {
   final Map<String, String> streamingText;
   final List<Session> children;
   final Map<String, SessionStatus> childStatuses;
+  final String? retryErrorMessage;
 
   const SessionDetailMessageList({
     super.key,
@@ -48,6 +50,7 @@ class SessionDetailMessageList extends StatefulWidget {
     required this.streamingText,
     required this.children,
     required this.childStatuses,
+    this.retryErrorMessage,
   });
 
   @override
@@ -62,6 +65,7 @@ typedef _DetachedSnapshot = ({
   Map<String, String> streamingText,
   List<Session> children,
   Map<String, SessionStatus> childStatuses,
+  String? retryErrorMessage,
 });
 
 class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
@@ -112,6 +116,7 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
           streamingText: Map<String, String>.unmodifiable(widget.streamingText),
           children: List<Session>.unmodifiable(widget.children),
           childStatuses: Map<String, SessionStatus>.unmodifiable(widget.childStatuses),
+          retryErrorMessage: widget.retryErrorMessage,
         );
       }
     });
@@ -125,6 +130,7 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
     final streamingText = snap?.streamingText ?? widget.streamingText;
     final children = snap?.children ?? widget.children;
     final childStatuses = snap?.childStatuses ?? widget.childStatuses;
+    final retryErrorMessage = snap?.retryErrorMessage ?? widget.retryErrorMessage;
 
     // Map message id → data-source index. Consulted by
     // `findChildIndexCallback` so the reversed builder keeps stable
@@ -147,30 +153,35 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
         label: loc.sessionDetailJumpToLatest,
         onTap: () => _follow.animateToEdge(),
       ),
-      child: ListView.builder(
-        key: _kListViewKey,
-        controller: _follow.scrollController,
-        reverse: true,
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        itemCount: messages.length,
-        findChildIndexCallback: (key) => _findChildIndex(
-          key: key,
-          indexById: indexById,
-          totalCount: messages.length,
+        child: ListView.builder(
+          key: _kListViewKey,
+          controller: _follow.scrollController,
+          reverse: true,
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          itemCount: messages.length + (retryErrorMessage != null ? 1 : 0),
+          findChildIndexCallback: (key) => _findChildIndex(
+            key: key,
+            indexById: indexById,
+            totalCount: messages.length,
+            hasRetryError: retryErrorMessage != null,
+          ),
+          itemBuilder: (context, index) {
+            if (retryErrorMessage != null && index == 0) {
+              return RetryErrorMessageCard(message: retryErrorMessage);
+            }
+            final messageIndex = retryErrorMessage != null ? index - 1 : index;
+            final message = messages[messages.length - 1 - messageIndex];
+            return KeyedSubtree(
+              key: ValueKey(message.info.id),
+              child: _buildCard(
+                message: message,
+                streamingText: streamingText,
+                children: children,
+                childStatuses: childStatuses,
+              ),
+            );
+          },
         ),
-        itemBuilder: (context, index) {
-          final message = messages[messages.length - 1 - index];
-          return KeyedSubtree(
-            key: ValueKey(message.info.id),
-            child: _buildCard(
-              message: message,
-              streamingText: streamingText,
-              children: children,
-              childStatuses: childStatuses,
-            ),
-          );
-        },
-      ),
     );
   }
 
@@ -192,11 +203,13 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
     required Key key,
     required Map<String, int> indexById,
     required int totalCount,
+    required bool hasRetryError,
   }) {
     if (key is! ValueKey<String>) return null;
     final sourceIndex = indexById[key.value];
     if (sourceIndex == null) return null;
-    return totalCount - 1 - sourceIndex;
+    final builderIndex = totalCount - 1 - sourceIndex;
+    return hasRetryError ? builderIndex + 1 : builderIndex;
   }
 
   Widget _buildCard({
