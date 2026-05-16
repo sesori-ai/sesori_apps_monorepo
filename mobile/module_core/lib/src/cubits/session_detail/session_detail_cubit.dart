@@ -1026,10 +1026,18 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       model: defaultAgentModel,
     );
 
+    final initialSessionStatus = snapshot.statuses[_sessionId] ?? const SessionStatus.idle();
+    final initialRetryMessage = switch (initialSessionStatus) {
+      SessionStatusRetry(:final message) => message,
+      SessionStatusIdle() => null,
+      SessionStatusBusy() => null,
+    };
+
     return SessionDetailLoaded(
       messages: snapshot.messages,
       streamingText: const {},
-      sessionStatus: snapshot.statuses[_sessionId] ?? const SessionStatus.idle(),
+      sessionStatus: initialSessionStatus,
+      retryErrorMessage: initialRetryMessage,
       pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
       pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
       sessionTitle: snapshot.canonicalSessionTitle,
@@ -1046,7 +1054,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       stagedCommand: null,
       isRefreshing: false,
       availableVariants: availableVariants,
-      retryErrorMessage: null,
     );
   }
 
