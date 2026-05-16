@@ -82,11 +82,28 @@ class StartupMutexRepository {
     }
 
     final match = await _processRepository.inspectProcessMatch(pid: lock.bridgePid);
-    if (match == null || match.kind != ProcessMatchKind.sesoriBridge || !match.isCurrentUserProcess) {
+    if (match == null ||
+        match.kind != ProcessMatchKind.sesoriBridge ||
+        !match.isCurrentUserProcess ||
+        !_lockMatchesProcess(lock: lock, match: match)) {
       await _runtimeFileApi.releaseStartupLock();
       return true;
     }
 
     return false;
+  }
+
+  bool _lockMatchesProcess({
+    required BridgeStartupLock lock,
+    required ProcessMatch match,
+  }) {
+    final identity = match.identity;
+    if (identity.startMarker != null || lock.bridgeStartMarker != null) {
+      return identity.startMarker == lock.bridgeStartMarker;
+    }
+    // Both markers are null (e.g. Windows). We cannot distinguish a recycled
+    // PID from the original owner without additional heuristics, so we
+    // conservatively treat the lock as active.
+    return true;
   }
 }

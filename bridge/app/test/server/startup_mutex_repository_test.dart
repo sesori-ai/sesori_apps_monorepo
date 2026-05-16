@@ -78,7 +78,7 @@ void main() {
       processRepository.matchResults[123] = ProcessMatch(
         identity: ProcessIdentity(
           pid: 123,
-          startMarker: 'live-bridge',
+          startMarker: 'bridge-start-marker',
           executablePath: '/usr/local/bin/sesori-bridge',
           commandLine: 'sesori-bridge',
           ownerUser: 'user',
@@ -183,9 +183,12 @@ void main() {
       expect(File(runtimeFileApi.startupLockFilePath).existsSync(), isFalse);
     });
 
-    test('withLock rejects when lock held by live bridge on another PID', () async {
+    test('withLock rejects when lock held by live bridge with matching start marker', () async {
       await runtimeFileApi.acquireStartupLock(
-        contents: jsonEncode(<String, dynamic>{'bridgePid': 456}),
+        contents: jsonEncode(<String, dynamic>{
+          'bridgePid': 456,
+          'bridgeStartMarker': 'live-bridge',
+        }),
       );
 
       processRepository.matchResults[456] = ProcessMatch(
@@ -213,6 +216,39 @@ void main() {
       );
 
       expect(result, equals(-1));
+    });
+
+    test('withLock steals stale lock when PID was recycled to a different bridge', () async {
+      await runtimeFileApi.acquireStartupLock(
+        contents: jsonEncode(<String, dynamic>{
+          'bridgePid': 456,
+          'bridgeStartMarker': 'original-start',
+        }),
+      );
+
+      processRepository.matchResults[456] = ProcessMatch(
+        identity: ProcessIdentity(
+          pid: 456,
+          startMarker: 'recycled-start',
+          executablePath: '/usr/local/bin/sesori-bridge',
+          commandLine: 'sesori-bridge',
+          ownerUser: 'user',
+          platform: 'macos',
+          capturedAt: DateTime.utc(2026, 5, 15),
+        ),
+        kind: ProcessMatchKind.sesoriBridge,
+        isCurrentUserProcess: true,
+      );
+
+      final result = await repository.withLock<int>(
+        bridgePid: 123,
+        bridgeStartMarker: 'bridge-start-marker',
+        onLockAcquired: () async => 42,
+        onLockRejected: (_) async => -1,
+      );
+
+      expect(result, equals(42));
+      expect(File(runtimeFileApi.startupLockFilePath).existsSync(), isFalse);
     });
   });
 }
