@@ -74,8 +74,104 @@ void main() {
       expect(ownershipRepository.records.values.single.port, equals(49153));
     });
 
-    test("dynamic discovery stops after twenty five candidates", () async {
-      for (var port = 49152; port < 49182; port += 1) {
+    test("dynamic port retries health probe and succeeds on later attempt", () async {
+      portRepository.availabilityByPort[49152] = true;
+      openCodeRepository.startResults.add(_startResult(pid: 101, port: 49152));
+      openCodeRepository.healthResults.addAll(<OpenCodeHealthProbeResult>[
+        _health(port: 49152, healthy: false, error: "not ready"),
+        _health(port: 49152, healthy: false, error: "not ready"),
+        _health(port: 49152, healthy: true),
+      ]);
+      final service = _service(
+        openCodeRepository: openCodeRepository,
+        processRepository: processRepository,
+        portRepository: portRepository,
+        ownershipRepository: ownershipRepository,
+        clock: clock,
+        bridgeIdentity: bridgeIdentity,
+        candidatePorts: <int>[49152],
+      );
+
+      final runtime = await service.start(
+        executablePath: "/usr/local/bin/opencode",
+        requestedPort: null,
+        password: null,
+        terminatedBridgeIdentities: const <ProcessIdentity>[],
+      );
+
+      expect(runtime.port, equals(49152));
+      expect(openCodeRepository.healthProbePorts, equals(<int>[49152, 49152, 49152]));
+      expect(clock.delays, equals(<Duration>[
+        const Duration(milliseconds: 500),
+        const Duration(milliseconds: 500),
+        const Duration(milliseconds: 500),
+      ]));
+      expect(ownershipRepository.upsertedStatuses.last, equals(OpenCodeOwnershipStatus.ready));
+    });
+
+    test("dynamic port exhausts all health retries and moves to next port", () async {
+      portRepository.availabilityByPort.addAll(<int, bool>{
+        49152: true,
+        49153: true,
+      });
+      openCodeRepository.startResults.addAll(<Object>[
+        _startResult(pid: 101, port: 49152),
+        _startResult(pid: 102, port: 49153),
+      ]);
+      openCodeRepository.healthResults.addAll(<OpenCodeHealthProbeResult>[
+        _health(port: 49152, healthy: false, error: "not ready"),
+        _health(port: 49152, healthy: false, error: "not ready"),
+        _health(port: 49152, healthy: false, error: "not ready"),
+        _health(port: 49152, healthy: false, error: "not ready"),
+        _health(port: 49152, healthy: false, error: "not ready"),
+        _health(port: 49153, healthy: true),
+      ]);
+      processRepository.inspectResults[101] = <ProcessIdentity?>[
+        _identity(
+          pid: 101,
+          startMarker: "open-start-101",
+          executablePath: "/usr/local/bin/opencode",
+          commandLine: "/usr/local/bin/opencode serve --port 49152 --hostname 127.0.0.1",
+        ),
+        null,
+      ];
+      final service = _service(
+        openCodeRepository: openCodeRepository,
+        processRepository: processRepository,
+        portRepository: portRepository,
+        ownershipRepository: ownershipRepository,
+        clock: clock,
+        bridgeIdentity: bridgeIdentity,
+        candidatePorts: <int>[49152, 49153],
+      );
+
+      final runtime = await service.start(
+        executablePath: "/usr/local/bin/opencode",
+        requestedPort: null,
+        password: null,
+        terminatedBridgeIdentities: const <ProcessIdentity>[],
+      );
+
+      expect(runtime.port, equals(49153));
+      expect(openCodeRepository.startedPorts, equals(<int>[49152, 49153]));
+      expect(openCodeRepository.healthProbePorts, equals(<int>[
+        49152, 49152, 49152, 49152, 49152,
+        49153,
+      ]));
+      expect(clock.delays, equals(<Duration>[
+        const Duration(milliseconds: 500),
+        const Duration(milliseconds: 500),
+        const Duration(milliseconds: 500),
+        const Duration(milliseconds: 500),
+        const Duration(milliseconds: 500),
+        const Duration(milliseconds: 500),
+      ]));
+      expect(ownershipRepository.records.values.single.status, equals(OpenCodeOwnershipStatus.ready));
+      expect(ownershipRepository.records.values.single.port, equals(49153));
+    });
+
+    test("dynamic discovery stops after five candidates", () async {
+      for (var port = 49152; port < 49162; port += 1) {
         portRepository.availabilityByPort[port] = false;
       }
       final service = _service(
@@ -85,7 +181,7 @@ void main() {
         ownershipRepository: ownershipRepository,
         clock: clock,
         bridgeIdentity: bridgeIdentity,
-        candidatePorts: List<int>.generate(30, (index) => 49152 + index),
+        candidatePorts: List<int>.generate(10, (index) => 49152 + index),
       );
 
       await expectLater(
@@ -98,7 +194,7 @@ void main() {
         throwsA(isA<OpenCodeServerStartException>()),
       );
 
-      expect(portRepository.probedPorts, hasLength(25));
+      expect(portRepository.probedPorts, hasLength(5));
       expect(openCodeRepository.startedPorts, isEmpty);
       expect(processRepository.signalRequests, isEmpty);
     });

@@ -111,6 +111,7 @@ class OpenCodeServerService {
     final serverPassword = password == null || password.isEmpty ? "" : password;
     final serverUri = Uri.parse("http://$loopbackPortHost:$port");
     final probe = await _openCodeProcessRepository.probeHealth(
+      // TODO: decide here what to do. This shouldn't stop sesori from starting
       serverUri: serverUri,
       password: serverPassword,
     );
