@@ -111,6 +111,7 @@ class BridgeRuntimeRunner {
     );
     final startupMutexRepository = StartupMutexRepository(
       runtimeFileApi: runtimeFileApi,
+      processRepository: processRepository,
     );
     final terminalPromptApi = TerminalPromptApi(
       stdin: io.stdin,

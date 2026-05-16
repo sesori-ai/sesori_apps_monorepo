@@ -31,6 +31,7 @@ Future<BridgeServerRuntime> resolveServer({
     bridgePid: currentBridgeIdentity.pid,
     bridgeStartMarker: currentBridgeIdentity.startMarker,
     onLockAcquired: () async {
+      Log.d("acquired startup lock");
       final resolution = await bridgeInstanceService.enforceSingleLiveBridge(
         currentPid: currentBridgeIdentity.pid,
       );
@@ -47,6 +48,8 @@ Future<BridgeServerRuntime> resolveServer({
               ownedOpenCodeRecord: null,
             );
           }
+
+          Log.d("Starting new opencode instance");
 
           final runtime = await openCodeServerService.start(
             executablePath: options.opencodeBin,

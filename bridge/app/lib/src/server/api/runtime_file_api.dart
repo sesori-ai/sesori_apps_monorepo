@@ -84,6 +84,22 @@ class RuntimeFileApi {
     }
   }
 
+  Future<String?> readStartupLock() async {
+    final lockFile = File(startupLockFilePath);
+    if (!lockFile.existsSync()) {
+      return null;
+    }
+
+    try {
+      return await lockFile.readAsString();
+    } on FileSystemException catch (error) {
+      if (_isFileMissing(error: error) || !lockFile.existsSync()) {
+        return null;
+      }
+      rethrow;
+    }
+  }
+
   Future<void> _ensureRuntimeDirectory() async {
     final directory = Directory(runtimeDirectory);
     if (directory.existsSync()) {
