@@ -136,28 +136,13 @@ class OpenCodeServerService {
     required int port,
     required String password,
   }) async {
-    final startResult = await _openCodeProcessRepository.startProcess(
-      executablePath: executablePath,
-      port: port,
-      password: password,
-    );
-    final identity = await _resolveSpawnedIdentity(startIdentity: startResult.identity);
-    final record = await _writeStartingRecord(
-      port: port,
-      startResult: startResult,
-      identity: identity,
-    );
-
     try {
-      return await _confirmHealthyRuntime(
+      return await _startAndConfirmHealthy(
+        executablePath: executablePath,
         port: port,
         password: password,
-        startResult: startResult,
-        identity: identity,
-        record: record,
       );
     } on Object {
-      await _cleanupFailedStart(record: record);
       rethrow;
     }
   }
@@ -180,46 +165,16 @@ class OpenCodeServerService {
         continue;
       }
 
-      OpenCodeOwnershipRecord? record;
       try {
         Log.d("[OPENCODE] Found available port $port. Attempting to start");
-        final startResult = await _openCodeProcessRepository.startProcess(
+        return await _startAndConfirmHealthy(
           executablePath: executablePath,
           port: port,
           password: password,
         );
-        final identity = await _resolveSpawnedIdentity(startIdentity: startResult.identity);
-        record = await _writeStartingRecord(
-          port: port,
-          startResult: startResult,
-          identity: identity,
-        );
-
-        Log.d("[OPENCODE] Started on port $port. Preparing alive check");
-        const maxAttempts = 5;
-        for (int i = 1; i <= maxAttempts; i++) {
-          await _clock.delay(duration: const Duration(milliseconds: 500));
-          try {
-            return await _confirmHealthyRuntime(
-              port: port,
-              password: password,
-              startResult: startResult,
-              identity: identity,
-              record: record,
-            );
-          } catch (err) {
-            // no-op
-          }
-
-          Log.d("[OPENCODE] Alive check attempt $i/$maxAttempts FAILED.${i < maxAttempts ? " Retrying..." : ""}");
-        }
-        throw Exception("[OPENCODE] All attempts failed");
       } on Object catch (error) {
         Log.e("[OPENCODE] Failed to start on port $port. $error");
         lastError = error;
-        if (record != null) {
-          await _cleanupFailedStart(record: record);
-        }
       }
     }
 
@@ -227,6 +182,52 @@ class OpenCodeServerService {
       "Unable to start opencode on an available dynamic port after $attempts attempts.",
       cause: lastError,
     );
+  }
+
+  Future<OpenCodeServerRuntime> _startAndConfirmHealthy({
+    required String executablePath,
+    required int port,
+    required String password,
+  }) async {
+    final startResult = await _openCodeProcessRepository.startProcess(
+      executablePath: executablePath,
+      port: port,
+      password: password,
+    );
+    final identity = await _resolveSpawnedIdentity(startIdentity: startResult.identity);
+    final record = await _writeStartingRecord(
+      port: port,
+      startResult: startResult,
+      identity: identity,
+    );
+
+    try {
+      Log.d("[OPENCODE] Started on port $port. Preparing alive check");
+      const maxAttempts = 5;
+      for (int i = 1; i <= maxAttempts; i++) {
+        await _clock.delay(duration: const Duration(milliseconds: 500));
+        try {
+          return await _confirmHealthyRuntime(
+            port: port,
+            password: password,
+            startResult: startResult,
+            identity: identity,
+            record: record,
+          );
+        } catch (err) {
+          // no-op
+        }
+
+        Log.d("[OPENCODE] Alive check attempt $i/$maxAttempts FAILED.${i < maxAttempts ? " Retrying..." : ""}");
+        }
+        throw OpenCodeServerStartException(
+          "opencode health check failed on port $port after $maxAttempts attempts.",
+          cause: null,
+        );
+    } on Object {
+      await _cleanupFailedStart(record: record);
+      rethrow;
+    }
   }
 
   Future<OpenCodeOwnershipRecord> _writeStartingRecord({
@@ -393,10 +394,6 @@ class OpenCodeServerService {
     required OpenCodeOwnershipRecord record,
     required Iterable<ProcessIdentity> terminatedBridgeIdentities,
   }) async {
-    if (record.openCodeStartMarker == null) {
-      return false;
-    }
-
     final openCodeIdentity = await _processRepository.inspectProcess(pid: record.openCodePid);
     if (openCodeIdentity == null || !_matchesOpenCodeRecord(identity: openCodeIdentity, record: record)) {
       await _ownershipRepository.deleteByOwnerSessionId(ownerSessionId: record.ownerSessionId);
@@ -427,10 +424,15 @@ class OpenCodeServerService {
     required ProcessIdentity identity,
     required OpenCodeOwnershipRecord record,
   }) {
-    return identity.pid == record.openCodePid &&
-        identity.startMarker != null &&
-        identity.startMarker == record.openCodeStartMarker &&
-        _samePath(identity.executablePath, record.openCodeExecutablePath) &&
+    if (identity.pid != record.openCodePid) {
+      return false;
+    }
+    if (record.openCodeStartMarker != null || identity.startMarker != null) {
+      return identity.startMarker == record.openCodeStartMarker &&
+          _samePath(identity.executablePath, record.openCodeExecutablePath) &&
+          identity.commandLine == [record.openCodeCommand, ...record.openCodeArgs].join(" ");
+    }
+    return _samePath(identity.executablePath, record.openCodeExecutablePath) &&
         identity.commandLine == [record.openCodeCommand, ...record.openCodeArgs].join(" ");
   }
 

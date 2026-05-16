@@ -236,7 +236,7 @@ void main() {
 
       expect(portRepository.probedPorts, isEmpty);
       expect(openCodeRepository.startedPorts, equals(<int>[4096]));
-      expect(openCodeRepository.healthProbePorts, equals(<int>[4096]));
+      expect(openCodeRepository.healthProbePorts, equals(<int>[4096, 4096, 4096, 4096, 4096]));
       expect(processRepository.signalRequests, equals(<String>["graceful:201"]));
       expect(ownershipRepository.records, isEmpty);
     });
@@ -368,7 +368,14 @@ void main() {
 
       expect(processRepository.signalRequests, equals(<String>["graceful:212", "force:212"]));
       expect(ownershipRepository.records, isEmpty);
-      expect(clock.delays, equals(<Duration>[openCodeGracefulShutdownWait]));
+      expect(clock.delays, equals(<Duration>[
+        const Duration(milliseconds: 500),
+        const Duration(milliseconds: 500),
+        const Duration(milliseconds: 500),
+        const Duration(milliseconds: 500),
+        const Duration(milliseconds: 500),
+        openCodeGracefulShutdownWait,
+      ]));
       expect(spawnedProcess.killSignals, isEmpty);
     });
 
@@ -665,10 +672,10 @@ void main() {
       );
 
       expect(processRepository.signalRequests, isEmpty);
-      expect(ownershipRepository.records.keys, containsAll(<String>["live-owner", "missing-marker"]));
+      expect(ownershipRepository.records.keys, contains("live-owner"));
     });
 
-    test("stale cleanup never kill-authorizes persisted records missing a start marker", () async {
+    test("stale cleanup kill-authorizes persisted records missing a start marker when bridge is dead", () async {
       final missingMarkerRecord = _record(
         ownerSessionId: "missing-marker",
         openCodePid: 503,
@@ -684,6 +691,13 @@ void main() {
           executablePath: "/usr/local/bin/opencode",
           commandLine: "/usr/local/bin/opencode serve --port 50123 --hostname 127.0.0.1",
         ),
+        _identity(
+          pid: 503,
+          startMarker: null,
+          executablePath: "/usr/local/bin/opencode",
+          commandLine: "/usr/local/bin/opencode serve --port 50123 --hostname 127.0.0.1",
+        ),
+        null,
       ];
       processRepository.matchResults[903] = <ProcessMatch?>[null];
       final service = _service(
@@ -700,9 +714,8 @@ void main() {
         terminatedBridgeIdentities: const <ProcessIdentity>[],
       );
 
-      expect(processRepository.signalRequests, isEmpty);
-      expect(ownershipRepository.records.keys, contains("missing-marker"));
-      expect(clock.delays, isEmpty);
+      expect(processRepository.signalRequests, equals(<String>["graceful:503"]));
+      expect(ownershipRepository.records, isEmpty);
     });
 
     test("replacement bridge identity authorizes stale OpenCode cleanup", () async {
@@ -840,7 +853,10 @@ void main() {
       expect(processRepository.signalRequests, equals(<String>["graceful:702", "force:702"]));
       expect(ownershipRepository.records.keys, contains("current-owner"));
       expect(ownershipRepository.records.values.single.status, equals(OpenCodeOwnershipStatus.stopping));
-      expect(clock.delays, equals(<Duration>[openCodeGracefulShutdownWait]));
+      expect(clock.delays, equals(<Duration>[
+        const Duration(milliseconds: 500),
+        openCodeGracefulShutdownWait,
+      ]));
       expect(spawnedProcess.killSignals, isEmpty);
     });
 
@@ -886,7 +902,7 @@ void main() {
 
       expect(processRepository.signalRequests, isEmpty);
       expect(ownershipRepository.records, isEmpty);
-      expect(clock.delays, isEmpty);
+      expect(clock.delays, equals(<Duration>[const Duration(milliseconds: 500)]));
       expect(spawnedProcess.killSignals, isEmpty);
     });
   });

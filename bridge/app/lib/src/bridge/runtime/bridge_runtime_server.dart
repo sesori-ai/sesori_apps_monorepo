@@ -38,15 +38,26 @@ Future<BridgeServerRuntime> resolveServer({
       switch (resolution.status) {
         case BridgeInstanceResolutionStatus.allowed:
           if (options.noAutoStart) {
-            final runtime = await openCodeServerService.validateExistingServer(
-              port: requestedPort!,
-              password: _normalizePassword(password: options.password),
-            );
-            Log.i('Using existing server at ${runtime.serverUri} (auto-start disabled)');
-            return BridgeServerRuntime.fromOpenCodeRuntime(
-              runtime: runtime,
-              ownedOpenCodeRecord: null,
-            );
+            try {
+              final runtime = await openCodeServerService.validateExistingServer(
+                port: requestedPort!,
+                password: _normalizePassword(password: options.password),
+              );
+              Log.i('Using existing server at ${runtime.serverUri} (auto-start disabled)');
+              return BridgeServerRuntime.fromOpenCodeRuntime(
+                runtime: runtime,
+                ownedOpenCodeRecord: null,
+              );
+            } on OpenCodeServerStartException catch (error) {
+              Log.w('Cannot reach OpenCode at port $requestedPort (auto-start disabled): $error. Bridge will start anyway; start OpenCode manually to enable proxying.');
+              return BridgeServerRuntime(
+                serverUrl: '$defaultTargetHost:$requestedPort',
+                serverPassword: _normalizePassword(password: options.password),
+                process: null,
+                ownedOpenCodeRecord: null,
+                port: requestedPort!,
+              );
+            }
           }
 
           Log.d("[OPENCODE] Starting new instance");

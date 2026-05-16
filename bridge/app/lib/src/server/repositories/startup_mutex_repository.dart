@@ -67,10 +67,11 @@ class StartupMutexRepository {
     }
 
     if (lockContents.isEmpty) {
-      return false;
+      await _runtimeFileApi.releaseStartupLock();
+      return true;
     }
 
-    final BridgeStartupLock? lock;
+    final BridgeStartupLock lock;
     try {
       lock = BridgeStartupLock.fromJson(
         jsonDecodeMap(lockContents),

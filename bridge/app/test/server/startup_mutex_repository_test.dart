@@ -168,8 +168,8 @@ void main() {
     });
 
     test('withLock releases lock when callback throws', () async {
-      expect(
-        () => repository.withLock<void>(
+      await expectLater(
+        repository.withLock<void>(
           bridgePid: 123,
           bridgeStartMarker: 'bridge-start-marker',
           onLockAcquired: () async {
