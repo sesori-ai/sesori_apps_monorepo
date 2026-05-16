@@ -1,6 +1,8 @@
 import "dart:io";
 import "dart:math";
 
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+
 import "../foundation/process_identity.dart";
 import "../foundation/process_match.dart";
 import "../foundation/server_clock.dart";
@@ -13,7 +15,7 @@ import "../repositories/process_repository.dart";
 const int openCodeDefaultPort = 4096;
 const int dynamicOpenCodePortMin = 49152;
 const int dynamicOpenCodePortMax = 65535;
-const int dynamicOpenCodeMaxAttempts = 25;
+const int dynamicOpenCodeMaxAttempts = 5;
 const Duration openCodeGracefulShutdownWait = Duration(seconds: 5);
 
 class OpenCodeServerService {
@@ -63,17 +65,20 @@ class OpenCodeServerService {
         ? _openCodeProcessRepository.generatePassword()
         : password;
     if (requestedPort != null) {
+      Log.d("[OPENCODE] Starting on port $requestedPort");
+
       return _startOnExplicitPort(
         executablePath: executablePath,
         port: requestedPort,
         password: serverPassword,
       );
+    } else {
+      Log.d("[OPENCODE] Starting on dynamic port");
+      return _startOnDynamicPort(
+        executablePath: executablePath,
+        password: serverPassword,
+      );
     }
-
-    return _startOnDynamicPort(
-      executablePath: executablePath,
-      password: serverPassword,
-    );
   }
 
   Future<void> cleanupStaleOwnedServers({
@@ -105,7 +110,6 @@ class OpenCodeServerService {
   }) async {
     final serverPassword = password == null || password.isEmpty ? "" : password;
     final serverUri = Uri.parse("http://$loopbackPortHost:$port");
-    // TODO: decide here what to do. This shouldn't stop sesori from starting
     final probe = await _openCodeProcessRepository.probeHealth(
       serverUri: serverUri,
       password: serverPassword,
@@ -177,6 +181,7 @@ class OpenCodeServerService {
 
       OpenCodeOwnershipRecord? record;
       try {
+        Log.d("[OPENCODE] Found available port $port. Attempting to start");
         final startResult = await _openCodeProcessRepository.startProcess(
           executablePath: executablePath,
           port: port,
@@ -188,14 +193,28 @@ class OpenCodeServerService {
           startResult: startResult,
           identity: identity,
         );
-        return await _confirmHealthyRuntime(
-          port: port,
-          password: password,
-          startResult: startResult,
-          identity: identity,
-          record: record,
-        );
+
+        Log.d("[OPENCODE] Started on port $port. Preparing alive check");
+        const maxAttempts = 5;
+        for (int i = 1; i <= maxAttempts; i++) {
+          await _clock.delay(duration: const Duration(milliseconds: 500));
+          try {
+            return await _confirmHealthyRuntime(
+              port: port,
+              password: password,
+              startResult: startResult,
+              identity: identity,
+              record: record,
+            );
+          } catch (err) {
+            // no-op
+          }
+
+          Log.d("[OPENCODE] Alive check attempt $i/$maxAttempts FAILED.${i < maxAttempts ? " Retrying..." : ""}");
+        }
+        throw Exception("[OPENCODE] All attempts failed");
       } on Object catch (error) {
+        Log.e("[OPENCODE] Failed to start on port $port. $error");
         lastError = error;
         if (record != null) {
           await _cleanupFailedStart(record: record);

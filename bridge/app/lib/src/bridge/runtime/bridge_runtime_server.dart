@@ -49,18 +49,19 @@ Future<BridgeServerRuntime> resolveServer({
             );
           }
 
-          Log.d("Starting new opencode instance");
-
+          Log.d("[OPENCODE] Starting new instance");
           final runtime = await openCodeServerService.start(
             executablePath: options.opencodeBin,
             requestedPort: requestedPort,
             password: _normalizePassword(password: options.password),
             terminatedBridgeIdentities: resolution.terminatedBridges,
           );
+
+          Log.d("[OPENCODE] Started on port ${runtime.port}");
           final ownedOpenCodeRecord = await ownershipRepository.readByOwnerSessionId(
             ownerSessionId: ownerSessionId,
           );
-          Log.i('opencode server started on port ${runtime.port}');
+
           return BridgeServerRuntime.fromOpenCodeRuntime(
             runtime: runtime,
             ownedOpenCodeRecord: ownedOpenCodeRecord?.status == OpenCodeOwnershipStatus.ready
