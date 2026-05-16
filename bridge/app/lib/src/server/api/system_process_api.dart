@@ -2,6 +2,7 @@ import "dart:convert";
 import "dart:io";
 
 import "../../bridge/foundation/process_runner.dart";
+import "../foundation/process_identity.dart";
 import "../foundation/server_clock.dart";
 import "../foundation/shutdown_result.dart";
 
@@ -21,11 +22,11 @@ class SystemProcessApi {
   final bool _isWindows;
   final String _platform;
 
-  Future<List<SystemProcessFact>> listProcesses() async {
+  Future<List<ProcessIdentity>> listProcesses() async {
     return _isWindows ? _listWindowsProcesses() : _listPosixProcesses();
   }
 
-  Future<SystemProcessFact?> inspectProcess({required int pid}) async {
+  Future<ProcessIdentity?> inspectProcess({required int pid}) async {
     final processes = await listProcesses();
     for (final process in processes) {
       if (process.pid == pid) {
@@ -35,32 +36,24 @@ class SystemProcessApi {
     return null;
   }
 
-  Future<ShutdownResult> sendGracefulSignal({required int pid}) async {
-    final signal = _isWindows ? ProcessSignal.sigkill : ProcessSignal.sigterm;
-    return _sendSignal(
-      pid: pid,
-      requestedSignal: ShutdownSignal.graceful,
-      deliveredSignal: signal.signalName,
-      signal: signal,
-    );
-  }
+  Future<ShutdownResult> sendGracefulSignal({required int pid}) => _sendSignal(
+    pid: pid,
+    requestedSignal: .graceful,
+    deliveredSignal: _isWindows ? .sigkill : .sigterm,
+  );
 
-  Future<ShutdownResult> sendForceSignal({required int pid}) async {
-    return _sendSignal(
-      pid: pid,
-      requestedSignal: ShutdownSignal.force,
-      deliveredSignal: ProcessSignal.sigkill.signalName,
-      signal: ProcessSignal.sigkill,
-    );
-  }
+  Future<ShutdownResult> sendForceSignal({required int pid}) => _sendSignal(
+    pid: pid,
+    requestedSignal: .force,
+    deliveredSignal: .sigkill,
+  );
 
   Future<ShutdownResult> _sendSignal({
     required int pid,
     required ShutdownSignal requestedSignal,
-    required String deliveredSignal,
-    required ProcessSignal signal,
+    required ProcessSignal deliveredSignal,
   }) async {
-    final wasRequested = pid > 0 && Process.killPid(pid, signal);
+    final wasRequested = pid > 0 && Process.killPid(pid, deliveredSignal);
     return ShutdownResult(
       pid: pid,
       requestedSignal: requestedSignal,
@@ -70,14 +63,20 @@ class SystemProcessApi {
     );
   }
 
-  Future<List<SystemProcessFact>> _listPosixProcesses() async {
-    final result = await _processRunner.run("ps", <String>["-axo", "pid=,user=,lstart=,command="]);
+  Future<List<ProcessIdentity>> _listPosixProcesses() async {
+    final (command, args) = ("ps", <String>["-axwwo", "pid=,user=,lstart=,command="]);
+    final result = await _processRunner.run(command, args);
     if (result.exitCode != 0) {
-      throw ProcessException("ps", <String>["-axo", "pid=,user=,lstart=,command="], result.stderr.toString(), result.exitCode);
+      throw ProcessException(
+        command,
+        args,
+        result.stderr.toString(),
+        result.exitCode,
+      );
     }
 
     final capturedAt = _clock.now();
-    final processes = <SystemProcessFact>[];
+    final processes = <ProcessIdentity>[];
     for (final line in const LineSplitter().convert(result.stdout.toString())) {
       final trimmed = line.trim();
       if (trimmed.isEmpty) {
@@ -88,15 +87,21 @@ class SystemProcessApi {
       if (match == null) {
         continue;
       }
+      final pidString = match.group(1);
+      if (pidString == null) {
+        throw Exception("Failed to extract PID for posix process: ${match.toString()}");
+      }
 
-      final commandLine = match.group(4) ?? "";
+      final owner = match.group(2);
+      final startMaker = (match.group(3) ?? "").trim();
+      final commandLine = (match.group(4) ?? "").trim();
       processes.add(
-        SystemProcessFact(
-          pid: int.parse(match.group(1)!),
-          startMarker: (match.group(3) ?? "").trim(),
+        ProcessIdentity(
+          pid: int.parse(pidString),
+          startMarker: startMaker,
           executablePath: _executableFromCommandLine(commandLine: commandLine),
           commandLine: commandLine,
-          ownerUser: match.group(2),
+          ownerUser: owner,
           platform: _platform,
           capturedAt: capturedAt,
         ),
@@ -105,14 +110,20 @@ class SystemProcessApi {
     return processes;
   }
 
-  Future<List<SystemProcessFact>> _listWindowsProcesses() async {
-    final result = await _processRunner.run("tasklist", <String>["/V", "/FO", "CSV", "/NH"]);
+  Future<List<ProcessIdentity>> _listWindowsProcesses() async {
+    final (command, args) = ("tasklist", <String>["/V", "/FO", "CSV", "/NH"]);
+    final result = await _processRunner.run(command, args);
     if (result.exitCode != 0) {
-      throw ProcessException("tasklist", <String>["/V", "/FO", "CSV", "/NH"], result.stderr.toString(), result.exitCode);
+      throw ProcessException(
+        command,
+        args,
+        result.stderr.toString(),
+        result.exitCode,
+      );
     }
 
     final capturedAt = _clock.now();
-    final processes = <SystemProcessFact>[];
+    final processes = <ProcessIdentity>[];
     for (final line in const LineSplitter().convert(result.stdout.toString())) {
       final trimmed = line.trim();
       if (trimmed.isEmpty) {
@@ -131,7 +142,7 @@ class SystemProcessApi {
 
       final executablePath = row[0];
       processes.add(
-        SystemProcessFact(
+        ProcessIdentity(
           pid: pid,
           startMarker: null,
           executablePath: executablePath,
@@ -191,37 +202,5 @@ class SystemProcessApi {
 
     values.add(buffer.toString());
     return values;
-  }
-}
-
-class SystemProcessFact {
-  const SystemProcessFact({
-    required this.pid,
-    required this.startMarker,
-    required this.executablePath,
-    required this.commandLine,
-    required this.ownerUser,
-    required this.platform,
-    required this.capturedAt,
-  });
-
-  final int pid;
-  final String? startMarker;
-  final String? executablePath;
-  final String commandLine;
-  final String? ownerUser;
-  final String platform;
-  final DateTime capturedAt;
-}
-
-extension on ProcessSignal {
-  String get signalName {
-    if (this == ProcessSignal.sigterm) {
-      return "sigterm";
-    }
-    if (this == ProcessSignal.sigkill) {
-      return "sigkill";
-    }
-    return toString();
   }
 }

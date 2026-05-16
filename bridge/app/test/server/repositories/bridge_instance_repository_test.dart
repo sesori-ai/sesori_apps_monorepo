@@ -1,4 +1,5 @@
 import 'package:sesori_bridge/src/server/api/system_process_api.dart';
+import 'package:sesori_bridge/src/server/foundation/process_identity.dart';
 import 'package:sesori_bridge/src/server/foundation/shutdown_result.dart';
 import 'package:sesori_bridge/src/server/repositories/bridge_instance_repository.dart';
 import 'package:test/test.dart';
@@ -14,7 +15,7 @@ void main() {
     });
 
     test('excludes current pid and returns multiple current-user bridge binaries', () async {
-      api.facts = <SystemProcessFact>[
+      api.facts = <ProcessIdentity>[
         _fact(
           pid: 10,
           executablePath: '/Users/alex/.local/bin/sesori-bridge',
@@ -39,7 +40,7 @@ void main() {
     });
 
     test('accepts source-run dart bridge command', () async {
-      api.facts = <SystemProcessFact>[
+      api.facts = <ProcessIdentity>[
         _fact(
           pid: 20,
           executablePath: '/opt/homebrew/bin/dart',
@@ -53,7 +54,7 @@ void main() {
     });
 
     test('filters false positives and other-user bridge commands', () async {
-      api.facts = <SystemProcessFact>[
+      api.facts = <ProcessIdentity>[
         _fact(
           pid: 30,
           executablePath: '/usr/bin/python3',
@@ -84,7 +85,7 @@ void main() {
 
     test('keeps bridge candidates when current or process owner is unknown', () async {
       repository = BridgeInstanceRepository(api: api, currentUser: null);
-      api.facts = <SystemProcessFact>[
+      api.facts = <ProcessIdentity>[
         _fact(
           pid: 40,
           executablePath: '/Users/alex/.local/bin/sesori-bridge',
@@ -105,7 +106,7 @@ void main() {
     });
 
     test('keeps unknown-owner bridge candidate when current user is known', () async {
-      api.facts = <SystemProcessFact>[
+      api.facts = <ProcessIdentity>[
         _fact(
           pid: 42,
           executablePath: '/Users/alex/.local/bin/sesori-bridge',
@@ -120,7 +121,7 @@ void main() {
     });
 
     test('ignores stale JSON or lock state because it only uses process facts', () async {
-      api.facts = <SystemProcessFact>[];
+      api.facts = <ProcessIdentity>[];
 
       final candidates = await repository.listLiveBridgeCandidates(currentPid: 999);
 
@@ -130,13 +131,13 @@ void main() {
   });
 }
 
-SystemProcessFact _fact({
+ProcessIdentity _fact({
   required int pid,
   required String? executablePath,
   required String commandLine,
   String? ownerUser = 'alex',
 }) {
-  return SystemProcessFact(
+  return ProcessIdentity(
     pid: pid,
     startMarker: 'Fri May 15 12:00:00 2026',
     executablePath: executablePath,
@@ -148,16 +149,16 @@ SystemProcessFact _fact({
 }
 
 class _FakeSystemProcessApi implements SystemProcessApi {
-  List<SystemProcessFact> facts = <SystemProcessFact>[];
+  List<ProcessIdentity> facts = <ProcessIdentity>[];
   int listCallCount = 0;
 
   @override
-  Future<SystemProcessFact?> inspectProcess({required int pid}) async {
+  Future<ProcessIdentity?> inspectProcess({required int pid}) async {
     return facts.where((fact) => fact.pid == pid).firstOrNull;
   }
 
   @override
-  Future<List<SystemProcessFact>> listProcesses() async {
+  Future<List<ProcessIdentity>> listProcesses() async {
     listCallCount += 1;
     return facts;
   }

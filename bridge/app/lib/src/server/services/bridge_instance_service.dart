@@ -1,4 +1,3 @@
-import '../foundation/bridge_instance_candidate.dart';
 import '../foundation/process_identity.dart';
 import '../foundation/server_clock.dart';
 import '../foundation/terminal_prompt_decision.dart';
@@ -18,7 +17,7 @@ class BridgeInstanceResolution {
   });
 
   final BridgeInstanceResolutionStatus status;
-  final List<BridgeInstanceCandidate> existingBridges;
+  final List<ProcessIdentity> existingBridges;
   final List<ProcessIdentity> terminatedBridges;
 }
 
@@ -42,9 +41,9 @@ class BridgeInstanceService {
     final existingBridges = await _bridgeInstanceRepository.listLiveBridgeCandidates(currentPid: currentPid);
     if (existingBridges.isEmpty) {
       return const BridgeInstanceResolution(
-          status: BridgeInstanceResolutionStatus.allowed,
-          existingBridges: <BridgeInstanceCandidate>[],
-          terminatedBridges: <ProcessIdentity>[],
+        status: BridgeInstanceResolutionStatus.allowed,
+        existingBridges: <ProcessIdentity>[],
+        terminatedBridges: <ProcessIdentity>[],
       );
     }
 
@@ -77,7 +76,7 @@ class BridgeInstanceService {
 
   Future<List<ProcessIdentity>> _terminateExistingBridges({
     required int currentPid,
-    required List<BridgeInstanceCandidate> existingBridges,
+    required List<ProcessIdentity> existingBridges,
   }) async {
     final terminatedBridges = <ProcessIdentity>[];
     for (final bridge in existingBridges) {
@@ -91,29 +90,29 @@ class BridgeInstanceService {
       }
 
       if (!_containsPid(candidates: liveBridges, pid: bridge.pid)) {
-        terminatedBridges.add(_toIdentity(candidate: bridge));
+        terminatedBridges.add(bridge);
       }
     }
     return terminatedBridges;
   }
 
   bool _containsSameIdentity({
-    required List<BridgeInstanceCandidate> candidates,
-    required BridgeInstanceCandidate bridge,
+    required List<ProcessIdentity> candidates,
+    required ProcessIdentity bridge,
   }) {
     return candidates.any((candidate) => _isSameIdentity(candidate: candidate, bridge: bridge));
   }
 
   bool _containsPid({
-    required List<BridgeInstanceCandidate> candidates,
+    required List<ProcessIdentity> candidates,
     required int pid,
   }) {
     return candidates.any((candidate) => candidate.pid == pid);
   }
 
   bool _isSameIdentity({
-    required BridgeInstanceCandidate candidate,
-    required BridgeInstanceCandidate bridge,
+    required ProcessIdentity candidate,
+    required ProcessIdentity bridge,
   }) {
     if (candidate.pid != bridge.pid) {
       return false;
@@ -122,17 +121,5 @@ class BridgeInstanceService {
       return candidate.startMarker == bridge.startMarker;
     }
     return candidate.commandLine == bridge.commandLine && candidate.executablePath == bridge.executablePath;
-  }
-
-  ProcessIdentity _toIdentity({required BridgeInstanceCandidate candidate}) {
-    return ProcessIdentity(
-      pid: candidate.pid,
-      startMarker: candidate.startMarker,
-      executablePath: candidate.executablePath,
-      commandLine: candidate.commandLine,
-      ownerUser: candidate.ownerUser,
-      platform: candidate.platform,
-      capturedAt: candidate.capturedAt,
-    );
   }
 }

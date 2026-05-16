@@ -973,7 +973,7 @@ class _FakeProcessRepository implements ProcessRepository {
     return ShutdownResult(
       pid: pid,
       requestedSignal: signal,
-      deliveredSignal: signal == ShutdownSignal.graceful ? "sigterm" : "sigkill",
+      deliveredSignal: signal == .graceful ? .sigterm : .sigkill,
       wasRequested: true,
       attemptedAt: DateTime.utc(2026, 5, 15, 12),
     );

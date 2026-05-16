@@ -1,7 +1,7 @@
 import 'package:path/path.dart' as path;
 
 import '../api/system_process_api.dart';
-import '../foundation/bridge_instance_candidate.dart';
+import '../foundation/process_identity.dart';
 
 class BridgeInstanceRepository {
   BridgeInstanceRepository({
@@ -13,15 +13,15 @@ class BridgeInstanceRepository {
   final SystemProcessApi _api;
   final String? _currentUser;
 
-  Future<List<BridgeInstanceCandidate>> listLiveBridgeCandidates({required int currentPid}) async {
+  Future<List<ProcessIdentity>> listLiveBridgeCandidates({required int currentPid}) async {
     final facts = await _api.listProcesses();
-    final candidates = <BridgeInstanceCandidate>[];
+    final candidates = <ProcessIdentity>[];
     for (final fact in facts) {
       if (fact.pid == currentPid || !_isLiveBridgeFact(fact: fact)) {
         continue;
       }
       candidates.add(
-        BridgeInstanceCandidate(
+        ProcessIdentity(
           pid: fact.pid,
           startMarker: fact.startMarker,
           executablePath: fact.executablePath,
@@ -35,7 +35,7 @@ class BridgeInstanceRepository {
     return candidates;
   }
 
-  bool _isLiveBridgeFact({required SystemProcessFact fact}) {
+  bool _isLiveBridgeFact({required ProcessIdentity fact}) {
     if (_currentUser != null && fact.ownerUser != null && fact.ownerUser != _currentUser) {
       return false;
     }

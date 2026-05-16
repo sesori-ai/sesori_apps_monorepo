@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:sesori_bridge/src/server/api/system_process_api.dart";
+import "package:sesori_bridge/src/server/foundation/process_identity.dart";
 import "package:sesori_bridge/src/server/foundation/process_match.dart";
 import "package:sesori_bridge/src/server/foundation/shutdown_result.dart";
 import "package:sesori_bridge/src/server/repositories/process_repository.dart";
@@ -18,7 +19,7 @@ void main() {
 
     test("process inspection returns typed identity", () async {
       final capturedAt = DateTime.utc(2026, 5, 15, 11, 30);
-      api.inspectFact = SystemProcessFact(
+      api.inspectFact = ProcessIdentity(
         pid: 321,
         startMarker: "Fri May 15 11:30:00 2026",
         executablePath: "/usr/local/bin/opencode",
@@ -42,8 +43,8 @@ void main() {
     });
 
     test("process inspection classifies bridge, OpenCode, and unknown matches", () async {
-      api.listFacts = <SystemProcessFact>[
-        SystemProcessFact(
+      api.listFacts = <ProcessIdentity>[
+        ProcessIdentity(
           pid: 10,
           startMarker: null,
           executablePath: "/Users/alex/.local/bin/sesori-bridge",
@@ -52,7 +53,7 @@ void main() {
           platform: "macos",
           capturedAt: DateTime.utc(2026, 5, 15, 12),
         ),
-        SystemProcessFact(
+        ProcessIdentity(
           pid: 11,
           startMarker: null,
           executablePath: "/usr/local/bin/opencode",
@@ -61,7 +62,7 @@ void main() {
           platform: "macos",
           capturedAt: DateTime.utc(2026, 5, 15, 12, 1),
         ),
-        SystemProcessFact(
+        ProcessIdentity(
           pid: 12,
           startMarker: null,
           executablePath: "/usr/bin/python3",
@@ -87,14 +88,14 @@ void main() {
       api.gracefulResult = ShutdownResult(
         pid: 44,
         requestedSignal: ShutdownSignal.graceful,
-        deliveredSignal: "sigterm",
+        deliveredSignal: .sigterm,
         wasRequested: true,
         attemptedAt: DateTime.utc(2026, 5, 15, 12, 30),
       );
       api.forceResult = ShutdownResult(
         pid: 44,
         requestedSignal: ShutdownSignal.force,
-        deliveredSignal: "sigkill",
+        deliveredSignal: .sigkill,
         wasRequested: true,
         attemptedAt: DateTime.utc(2026, 5, 15, 12, 30, 1),
       );
@@ -112,8 +113,8 @@ void main() {
 }
 
 class _FakeSystemProcessApi implements SystemProcessApi {
-  SystemProcessFact? inspectFact;
-  List<SystemProcessFact> listFacts = <SystemProcessFact>[];
+  ProcessIdentity? inspectFact;
+  List<ProcessIdentity> listFacts = <ProcessIdentity>[];
   ShutdownResult? gracefulResult;
   ShutdownResult? forceResult;
   int? inspectPid;
@@ -121,13 +122,13 @@ class _FakeSystemProcessApi implements SystemProcessApi {
   final List<String> signalRequests = <String>[];
 
   @override
-  Future<SystemProcessFact?> inspectProcess({required int pid}) async {
+  Future<ProcessIdentity?> inspectProcess({required int pid}) async {
     inspectPid = pid;
     return inspectFact;
   }
 
   @override
-  Future<List<SystemProcessFact>> listProcesses() async {
+  Future<List<ProcessIdentity>> listProcesses() async {
     listCallCount += 1;
     return listFacts;
   }

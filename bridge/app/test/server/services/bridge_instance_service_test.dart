@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:sesori_bridge/src/server/foundation/bridge_instance_candidate.dart';
 import 'package:sesori_bridge/src/server/foundation/process_identity.dart';
 import 'package:sesori_bridge/src/server/foundation/process_match.dart';
 import 'package:sesori_bridge/src/server/foundation/server_clock.dart';
@@ -34,7 +33,7 @@ void main() {
     });
 
     test('allows startup without prompt when no live bridge exists', () async {
-      bridgeInstanceRepository.snapshots = <List<BridgeInstanceCandidate>>[<BridgeInstanceCandidate>[]];
+      bridgeInstanceRepository.snapshots = <List<ProcessIdentity>>[<ProcessIdentity>[]];
 
       final result = await service.enforceSingleLiveBridge(currentPid: 100);
 
@@ -45,8 +44,8 @@ void main() {
     });
 
     test('interactive decline aborts without killing existing bridge', () async {
-      bridgeInstanceRepository.snapshots = <List<BridgeInstanceCandidate>>[
-        <BridgeInstanceCandidate>[_candidate(pid: 200)],
+      bridgeInstanceRepository.snapshots = <List<ProcessIdentity>>[
+        <ProcessIdentity>[_candidate(pid: 200)],
       ];
       terminalPromptRepository.decision = TerminalPromptDecision.decline;
 
@@ -61,8 +60,8 @@ void main() {
     });
 
     test('non-interactive conflict fails without prompt hang or kill', () async {
-      bridgeInstanceRepository.snapshots = <List<BridgeInstanceCandidate>>[
-        <BridgeInstanceCandidate>[_candidate(pid: 201)],
+      bridgeInstanceRepository.snapshots = <List<ProcessIdentity>>[
+        <ProcessIdentity>[_candidate(pid: 201)],
       ];
       terminalPromptRepository.decision = TerminalPromptDecision.nonInteractive;
 
@@ -76,9 +75,9 @@ void main() {
 
     test('interactive replace returns bridge terminated after graceful shutdown', () async {
       final existing = _candidate(pid: 202);
-      bridgeInstanceRepository.snapshots = <List<BridgeInstanceCandidate>>[
-        <BridgeInstanceCandidate>[existing],
-        <BridgeInstanceCandidate>[],
+      bridgeInstanceRepository.snapshots = <List<ProcessIdentity>>[
+        <ProcessIdentity>[existing],
+        <ProcessIdentity>[],
       ];
       terminalPromptRepository.decision = TerminalPromptDecision.replace;
 
@@ -93,10 +92,10 @@ void main() {
 
     test('interactive replace force kills bridge that remains after graceful wait', () async {
       final existing = _candidate(pid: 203);
-      bridgeInstanceRepository.snapshots = <List<BridgeInstanceCandidate>>[
-        <BridgeInstanceCandidate>[existing],
-        <BridgeInstanceCandidate>[existing],
-        <BridgeInstanceCandidate>[],
+      bridgeInstanceRepository.snapshots = <List<ProcessIdentity>>[
+        <ProcessIdentity>[existing],
+        <ProcessIdentity>[existing],
+        <ProcessIdentity>[],
       ];
       terminalPromptRepository.decision = TerminalPromptDecision.replace;
 
@@ -108,9 +107,9 @@ void main() {
     test('interactive replace does not force kill or report terminated when pid identity changes', () async {
       final existing = _candidate(pid: 206, startMarker: 'original-start');
       final reusedPid = _candidate(pid: 206, startMarker: 'different-start');
-      bridgeInstanceRepository.snapshots = <List<BridgeInstanceCandidate>>[
-        <BridgeInstanceCandidate>[existing],
-        <BridgeInstanceCandidate>[reusedPid],
+      bridgeInstanceRepository.snapshots = <List<ProcessIdentity>>[
+        <ProcessIdentity>[existing],
+        <ProcessIdentity>[reusedPid],
       ];
       terminalPromptRepository.decision = TerminalPromptDecision.replace;
 
@@ -125,10 +124,10 @@ void main() {
     test('interactive replace handles multiple bridges independently', () async {
       final first = _candidate(pid: 204);
       final second = _candidate(pid: 205);
-      bridgeInstanceRepository.snapshots = <List<BridgeInstanceCandidate>>[
-        <BridgeInstanceCandidate>[first, second],
-        <BridgeInstanceCandidate>[second],
-        <BridgeInstanceCandidate>[],
+      bridgeInstanceRepository.snapshots = <List<ProcessIdentity>>[
+        <ProcessIdentity>[first, second],
+        <ProcessIdentity>[second],
+        <ProcessIdentity>[],
       ];
       terminalPromptRepository.decision = TerminalPromptDecision.replace;
 
@@ -141,8 +140,9 @@ void main() {
 
     test('service does not reference OpenCodeServerService', () async {
       final serviceFile = File('app/lib/src/server/services/bridge_instance_service.dart');
-      final resolvedServiceFile =
-          serviceFile.existsSync() ? serviceFile : File('lib/src/server/services/bridge_instance_service.dart');
+      final resolvedServiceFile = serviceFile.existsSync()
+          ? serviceFile
+          : File('lib/src/server/services/bridge_instance_service.dart');
       final contents = await resolvedServiceFile.readAsString();
 
       expect(contents, isNot(contains('OpenCodeServerService')));
@@ -151,11 +151,11 @@ void main() {
   });
 }
 
-BridgeInstanceCandidate _candidate({
+ProcessIdentity _candidate({
   required int pid,
   String? startMarker,
 }) {
-  return BridgeInstanceCandidate(
+  return ProcessIdentity(
     pid: pid,
     startMarker: startMarker ?? 'Fri May 15 12:00:00 2026',
     executablePath: '/Users/alex/.local/bin/sesori-bridge',
@@ -167,14 +167,14 @@ BridgeInstanceCandidate _candidate({
 }
 
 class _FakeBridgeInstanceRepository implements BridgeInstanceRepository {
-  List<List<BridgeInstanceCandidate>> snapshots = <List<BridgeInstanceCandidate>>[];
+  List<List<ProcessIdentity>> snapshots = <List<ProcessIdentity>>[];
   final List<int> currentPids = <int>[];
 
   @override
-  Future<List<BridgeInstanceCandidate>> listLiveBridgeCandidates({required int currentPid}) async {
+  Future<List<ProcessIdentity>> listLiveBridgeCandidates({required int currentPid}) async {
     currentPids.add(currentPid);
     if (snapshots.isEmpty) {
-      return <BridgeInstanceCandidate>[];
+      return <ProcessIdentity>[];
     }
     return snapshots.removeAt(0);
   }
@@ -222,7 +222,7 @@ class _FakeProcessRepository implements ProcessRepository {
     return ShutdownResult(
       pid: pid,
       requestedSignal: ShutdownSignal.graceful,
-      deliveredSignal: 'sigterm',
+      deliveredSignal: .sigterm,
       wasRequested: true,
       attemptedAt: DateTime.utc(2026, 5, 15, 12),
     );
@@ -234,7 +234,7 @@ class _FakeProcessRepository implements ProcessRepository {
     return ShutdownResult(
       pid: pid,
       requestedSignal: ShutdownSignal.force,
-      deliveredSignal: 'sigkill',
+      deliveredSignal: .sigkill,
       wasRequested: true,
       attemptedAt: DateTime.utc(2026, 5, 15, 12, 0, 1),
     );

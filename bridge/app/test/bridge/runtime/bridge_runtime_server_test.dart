@@ -1,7 +1,6 @@
 import "package:args/args.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_cli_options.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_runtime_server.dart";
-import "package:sesori_bridge/src/server/foundation/bridge_instance_candidate.dart";
 import "package:sesori_bridge/src/server/foundation/process_identity.dart";
 import "package:sesori_bridge/src/server/repositories/open_code_ownership_record.dart";
 import "package:sesori_bridge/src/server/repositories/open_code_ownership_repository.dart";
@@ -51,7 +50,7 @@ void main() {
       final terminatedBridge = _identity(pid: 200, startMarker: "old-bridge-start");
       bridgeInstanceService.resolution = BridgeInstanceResolution(
         status: BridgeInstanceResolutionStatus.allowed,
-        existingBridges: const <BridgeInstanceCandidate>[],
+        existingBridges: const <ProcessIdentity>[],
         terminatedBridges: <ProcessIdentity>[terminatedBridge],
       );
       openCodeServerService.startRuntime = OpenCodeServerRuntime(
@@ -98,7 +97,7 @@ void main() {
     test("singleton decline aborts before any OpenCode lifecycle decision", () async {
       bridgeInstanceService.resolution = const BridgeInstanceResolution(
         status: BridgeInstanceResolutionStatus.declined,
-        existingBridges: <BridgeInstanceCandidate>[],
+        existingBridges: <ProcessIdentity>[],
         terminatedBridges: <ProcessIdentity>[],
       );
 
@@ -128,7 +127,7 @@ void main() {
     test("non-interactive singleton conflict aborts before OpenCode lifecycle", () async {
       bridgeInstanceService.resolution = const BridgeInstanceResolution(
         status: BridgeInstanceResolutionStatus.nonInteractive,
-        existingBridges: <BridgeInstanceCandidate>[],
+        existingBridges: <ProcessIdentity>[],
         terminatedBridges: <ProcessIdentity>[],
       );
 
@@ -185,7 +184,7 @@ void main() {
     test("no-auto-start explicit port validates existing server and creates no ownership", () async {
       bridgeInstanceService.resolution = const BridgeInstanceResolution(
         status: BridgeInstanceResolutionStatus.allowed,
-        existingBridges: <BridgeInstanceCandidate>[],
+        existingBridges: <ProcessIdentity>[],
         terminatedBridges: <ProcessIdentity>[],
       );
       openCodeServerService.validateRuntime = OpenCodeServerRuntime(
@@ -309,7 +308,7 @@ class _FakeOwnershipRepository implements OpenCodeOwnershipRepository {
 class _FakeBridgeInstanceService implements BridgeInstanceService {
   BridgeInstanceResolution resolution = const BridgeInstanceResolution(
     status: BridgeInstanceResolutionStatus.allowed,
-    existingBridges: <BridgeInstanceCandidate>[],
+    existingBridges: <ProcessIdentity>[],
     terminatedBridges: <ProcessIdentity>[],
   );
   final List<int> currentPids = <int>[];
@@ -326,8 +325,18 @@ class _FakeBridgeInstanceService implements BridgeInstanceService {
 class _FakeOpenCodeServerService implements OpenCodeServerService {
   OpenCodeServerRuntime? startRuntime;
   OpenCodeServerRuntime? validateRuntime;
-  final List<({String executablePath, int? requestedPort, String? password, List<ProcessIdentity> terminatedBridgeIdentities})>
-  startCalls = <({String executablePath, int? requestedPort, String? password, List<ProcessIdentity> terminatedBridgeIdentities})>[];
+  final List<
+    ({String executablePath, int? requestedPort, String? password, List<ProcessIdentity> terminatedBridgeIdentities})
+  >
+  startCalls =
+      <
+        ({
+          String executablePath,
+          int? requestedPort,
+          String? password,
+          List<ProcessIdentity> terminatedBridgeIdentities,
+        })
+      >[];
   final List<({int port, String? password})> validateCalls = <({int port, String? password})>[];
   final List<String> operations = <String>[];
 

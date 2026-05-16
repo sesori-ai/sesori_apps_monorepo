@@ -16,11 +16,11 @@ class ProcessRepository {
   final String? _currentUser;
 
   Future<ProcessIdentity?> inspectProcess({required int pid}) async {
-    final fact = await _api.inspectProcess(pid: pid);
-    if (fact == null) {
+    final identity = await _api.inspectProcess(pid: pid);
+    if (identity == null) {
       return null;
     }
-    return _mapIdentity(fact: fact);
+    return identity;
   }
 
   Future<ProcessMatch?> inspectProcessMatch({required int pid}) async {
@@ -32,13 +32,13 @@ class ProcessRepository {
   }
 
   Future<List<ProcessIdentity>> listProcessIdentities({required int? excludePid}) async {
-    final facts = await _api.listProcesses();
+    final processes = await _api.listProcesses();
     final identities = <ProcessIdentity>[];
-    for (final fact in facts) {
-      if (excludePid != null && fact.pid == excludePid) {
+    for (final identity in processes) {
+      if (excludePid != null && identity.pid == excludePid) {
         continue;
       }
-      identities.add(_mapIdentity(fact: fact));
+      identities.add(identity);
     }
     return identities;
   }
@@ -56,18 +56,6 @@ class ProcessRepository {
     return _api.sendForceSignal(pid: pid);
   }
 
-  ProcessIdentity _mapIdentity({required SystemProcessFact fact}) {
-    return ProcessIdentity(
-      pid: fact.pid,
-      startMarker: fact.startMarker,
-      executablePath: fact.executablePath,
-      commandLine: fact.commandLine,
-      ownerUser: fact.ownerUser,
-      platform: fact.platform,
-      capturedAt: fact.capturedAt,
-    );
-  }
-
   ProcessMatch _toMatch({required ProcessIdentity identity}) {
     return ProcessMatch(
       identity: identity,
@@ -77,22 +65,20 @@ class ProcessRepository {
   }
 
   ProcessMatchKind _resolveKind({required ProcessIdentity identity}) {
-    final executableBasename = identity.executablePath == null ? null : path.basename(identity.executablePath!).toLowerCase();
+    final executableBasename = identity.executablePath == null
+        ? null
+        : path.basename(identity.executablePath!).toLowerCase();
     final commandLine = identity.commandLine.toLowerCase();
 
-    if (
-      executableBasename == "sesori-bridge" ||
-      executableBasename == "sesori-bridge.exe" ||
-      commandLine.contains("bridge/app/bin/bridge.dart")
-    ) {
+    if (executableBasename == "sesori-bridge" ||
+        executableBasename == "sesori-bridge.exe" ||
+        commandLine.contains("bridge/app/bin/bridge.dart")) {
       return ProcessMatchKind.sesoriBridge;
     }
 
-    if (
-      executableBasename == "opencode" ||
-      executableBasename == "opencode.exe" ||
-      commandLine.contains("opencode serve")
-    ) {
+    if (executableBasename == "opencode" ||
+        executableBasename == "opencode.exe" ||
+        commandLine.contains("opencode serve")) {
       return ProcessMatchKind.openCodeServe;
     }
 

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 enum ShutdownSignal { graceful, force }
 
 class ShutdownResult {
@@ -11,7 +13,7 @@ class ShutdownResult {
 
   final int pid;
   final ShutdownSignal requestedSignal;
-  final String deliveredSignal;
+  final ProcessSignal deliveredSignal;
   final bool wasRequested;
   final DateTime attemptedAt;
 }
