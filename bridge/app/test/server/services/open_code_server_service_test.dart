@@ -6,7 +6,7 @@ import "package:sesori_bridge/src/server/foundation/process_identity.dart";
 import "package:sesori_bridge/src/server/foundation/process_match.dart";
 import "package:sesori_bridge/src/server/foundation/server_clock.dart";
 import "package:sesori_bridge/src/server/foundation/shutdown_result.dart";
-import "package:sesori_bridge/src/server/repositories/open_code_ownership_record.dart";
+import "package:sesori_bridge/src/server/models/open_code_ownership_record.dart";
 import "package:sesori_bridge/src/server/repositories/open_code_ownership_repository.dart";
 import "package:sesori_bridge/src/server/repositories/open_code_process_repository.dart";
 import "package:sesori_bridge/src/server/repositories/port_repository.dart";

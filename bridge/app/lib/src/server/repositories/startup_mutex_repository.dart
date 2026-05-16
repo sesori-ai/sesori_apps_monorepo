@@ -1,7 +1,10 @@
 import 'dart:convert';
 
+import 'package:sesori_shared/sesori_shared.dart';
+
 import '../api/runtime_file_api.dart';
 import '../foundation/process_match.dart';
+import '../models/bridge_startup_lock.dart';
 import 'process_repository.dart';
 
 enum StartupMutexAcquireResult {
@@ -12,8 +15,8 @@ class StartupMutexRepository {
   StartupMutexRepository({
     required RuntimeFileApi runtimeFileApi,
     required ProcessRepository processRepository,
-  })  : _runtimeFileApi = runtimeFileApi,
-        _processRepository = processRepository;
+  }) : _runtimeFileApi = runtimeFileApi,
+       _processRepository = processRepository;
 
   final RuntimeFileApi _runtimeFileApi;
   final ProcessRepository _processRepository;
@@ -24,13 +27,13 @@ class StartupMutexRepository {
     required Future<T> Function() onLockAcquired,
     required Future<T> Function(StartupMutexAcquireResult result) onLockRejected,
   }) async {
+    final lock = BridgeStartupLock(
+      bridgePid: bridgePid,
+      bridgeStartMarker: bridgeStartMarker,
+    );
+
     final acquired = await _runtimeFileApi.acquireStartupLock(
-      contents: jsonEncode(
-        <String, dynamic>{
-          'bridgePid': bridgePid,
-          'bridgeStartMarker': bridgeStartMarker,
-        },
-      ),
+      contents: jsonEncode(lock.toJson()),
     );
     if (acquired) {
       try {
@@ -43,12 +46,7 @@ class StartupMutexRepository {
     final staleLockCleared = await _clearStaleLockIfAny();
     if (staleLockCleared) {
       final retryAcquired = await _runtimeFileApi.acquireStartupLock(
-        contents: jsonEncode(
-          <String, dynamic>{
-            'bridgePid': bridgePid,
-            'bridgeStartMarker': bridgeStartMarker,
-          },
-        ),
+        contents: jsonEncode(lock.toJson()),
       );
       if (retryAcquired) {
         try {
@@ -72,24 +70,18 @@ class StartupMutexRepository {
       return false;
     }
 
-    final int? lockPid;
+    final BridgeStartupLock? lock;
     try {
-      final json = jsonDecode(lockContents) as Map<String, dynamic>;
-      lockPid = json['bridgePid'] as int?;
+      lock = BridgeStartupLock.fromJson(
+        jsonDecodeMap(lockContents),
+      );
     } on Object {
       await _runtimeFileApi.releaseStartupLock();
       return true;
     }
 
-    if (lockPid == null) {
-      await _runtimeFileApi.releaseStartupLock();
-      return true;
-    }
-
-    final match = await _processRepository.inspectProcessMatch(pid: lockPid);
-    if (match == null ||
-        match.kind != ProcessMatchKind.sesoriBridge ||
-        !match.isCurrentUserProcess) {
+    final match = await _processRepository.inspectProcessMatch(pid: lock.bridgePid);
+    if (match == null || match.kind != ProcessMatchKind.sesoriBridge || !match.isCurrentUserProcess) {
       await _runtimeFileApi.releaseStartupLock();
       return true;
     }

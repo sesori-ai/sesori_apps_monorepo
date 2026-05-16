@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:clock/clock.dart';
 import 'package:path/path.dart' as p;
 import 'package:sesori_bridge/src/server/api/runtime_file_api.dart';
-import 'package:sesori_bridge/src/server/repositories/open_code_ownership_record.dart';
+import 'package:sesori_bridge/src/server/models/open_code_ownership_record.dart';
 import 'package:sesori_bridge/src/server/repositories/open_code_ownership_repository.dart';
 import 'package:test/test.dart';
 

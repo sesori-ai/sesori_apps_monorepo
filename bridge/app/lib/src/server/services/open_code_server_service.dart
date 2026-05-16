@@ -4,7 +4,7 @@ import "dart:math";
 import "../foundation/process_identity.dart";
 import "../foundation/process_match.dart";
 import "../foundation/server_clock.dart";
-import "../repositories/open_code_ownership_record.dart";
+import "../models/open_code_ownership_record.dart";
 import "../repositories/open_code_ownership_repository.dart";
 import "../repositories/open_code_process_repository.dart";
 import "../repositories/port_repository.dart";

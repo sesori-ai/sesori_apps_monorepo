@@ -1,7 +1,7 @@
 import "package:sesori_bridge/src/bridge/runtime/bridge_runtime_runner.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_runtime_server.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_shutdown_coordinator.dart";
-import "package:sesori_bridge/src/server/repositories/open_code_ownership_record.dart";
+import "package:sesori_bridge/src/server/models/open_code_ownership_record.dart";
 import "package:test/test.dart";
 
 void main() {

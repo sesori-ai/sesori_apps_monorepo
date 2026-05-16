@@ -5,18 +5,17 @@ import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 import 'package:sesori_shared/sesori_shared.dart';
 
 import '../api/runtime_file_api.dart';
-import 'open_code_ownership_record.dart';
-import 'open_code_ownership_record_json.dart';
+import '../models/open_code_ownership_record.dart';
 
 class OpenCodeOwnershipRepository {
-  final RuntimeFileApi _runtimeFileApi;
-  final Clock _clock;
-
   OpenCodeOwnershipRepository({
     required RuntimeFileApi runtimeFileApi,
     required Clock clock,
-  }) : _runtimeFileApi = runtimeFileApi,
-       _clock = clock;
+  })  : _runtimeFileApi = runtimeFileApi,
+        _clock = clock;
+
+  final RuntimeFileApi _runtimeFileApi;
+  final Clock _clock;
 
   Future<List<OpenCodeOwnershipRecord>> readAll() async {
     final records = await _loadRecords();
@@ -67,7 +66,12 @@ class OpenCodeOwnershipRepository {
 
     try {
       final Map<String, dynamic> rootJson = jsonDecodeMap(contents);
-      return OpenCodeOwnershipFileJson.fromJson(rootJson).toRecords();
+      return <String, OpenCodeOwnershipRecord>{
+        for (final MapEntry<String, dynamic> entry in rootJson.entries)
+          entry.key: OpenCodeOwnershipRecord.fromJson(
+            Map<String, dynamic>.from(entry.value as Map),
+          ),
+      };
     } on Object catch (error) {
       await _handleInvalidRuntimeFile(
         reason: 'invalid OpenCode ownership runtime file',
@@ -78,7 +82,10 @@ class OpenCodeOwnershipRepository {
   }
 
   Future<void> _writeRecords({required Map<String, OpenCodeOwnershipRecord> records}) async {
-    final payload = OpenCodeOwnershipFileJson.fromRecords(records).toJson();
+    final payload = <String, dynamic>{
+      for (final MapEntry<String, OpenCodeOwnershipRecord> entry in records.entries)
+        entry.key: entry.value.toJson(),
+    };
     await _runtimeFileApi.writeOwnershipFile(contents: jsonEncode(payload));
   }
 

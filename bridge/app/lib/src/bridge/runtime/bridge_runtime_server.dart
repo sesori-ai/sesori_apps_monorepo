@@ -4,7 +4,7 @@ import 'package:args/args.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 
 import '../../server/foundation/process_identity.dart';
-import '../../server/repositories/open_code_ownership_record.dart';
+import '../../server/models/open_code_ownership_record.dart';
 import '../../server/repositories/open_code_ownership_repository.dart';
 import '../../server/repositories/startup_mutex_repository.dart';
 import '../../server/services/bridge_instance_service.dart';
