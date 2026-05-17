@@ -1,16 +1,6 @@
 name: 'Setup Flutter'
 description: 'Cache and install asdf tools + Flutter pub dependencies'
 
-inputs:
-  include-submodules:
-    description: 'Run pub get for submodules'
-    required: false
-    default: 'true'
-  include-no-slop-linter:
-    description: 'Also run pub get for no_slop_linter module'
-    required: false
-    default: 'false'
-
 runs:
   using: 'composite'
   steps:
