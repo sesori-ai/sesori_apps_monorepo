@@ -8,6 +8,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Bridg
 import "../../auth/login_email_api.dart";
 import "../../auth/login_email_repository.dart";
 import "../../auth/login_oauth_api.dart";
+import "../../auth/login_oauth_service.dart";
 import "../../auth/token.dart";
 import "../../auth/token_manager.dart";
 import "../../server/process.dart";
@@ -79,7 +80,13 @@ class BridgeRuntimeRunner {
         emailAuthApi: LoginEmailApi(authBackendUrl: options.authBackendUrl),
         promptForCredentials: promptForEmailCredentials,
       ),
-      loginOAuthApi: LoginOAuthApi(authBackendUrl: options.authBackendUrl),
+      loginOAuthService: LoginOAuthService(
+        api: LoginOAuthApi(
+          authBackendUrl: options.authBackendUrl,
+          client: httpClient,
+        ),
+        browserLauncher: openOAuthBrowser,
+      ),
     );
 
     try {

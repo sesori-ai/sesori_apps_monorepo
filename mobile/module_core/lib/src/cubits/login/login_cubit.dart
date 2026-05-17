@@ -1,10 +1,11 @@
+import "dart:async";
+
 import "package:bloc/bloc.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../logging/logging.dart";
 import "../../platform/url_launcher.dart";
-import "../../routing/app_routes.dart";
 import "login_failed_reason.dart";
 import "login_state.dart";
 
@@ -27,12 +28,14 @@ class LoginCubit extends Cubit<LoginState> {
     emit(const LoginState.authenticating());
 
     try {
-      final authUrl = await _oAuthFlowProvider.getAuthorizationUrl(provider, redirectUri);
+      final initResponse = await _oAuthFlowProvider.startOAuthFlow(provider: provider);
       if (isClosed) return false;
+
+      emit(LoginState.awaitingConfirmation(userCode: initResponse.userCode));
 
       logd("Opening ${provider.label} auth URL in browser");
 
-      final launched = await _urlLauncher.launch(Uri.parse(authUrl));
+      final launched = await _urlLauncher.launch(Uri.parse(initResponse.authUrl));
 
       if (isClosed) return false;
 
@@ -41,9 +44,17 @@ class LoginCubit extends Cubit<LoginState> {
         return false;
       }
 
-      // Browser opened — OAuth callback will be handled by GoRouter redirect
-      emit(const LoginState.awaitingCallback());
-      return false; // Don't navigate — GoRouter handles it on callback
+      emit(const LoginState.polling());
+      await _oAuthFlowProvider.pollForResult();
+
+      if (isClosed) return false;
+      emit(const LoginState.success());
+      return true;
+    } on TimeoutException catch (e, st) {
+      loge("${provider.label} login timed out", e, st);
+      if (isClosed) return false;
+      emit(const LoginState.timeout());
+      return false;
     } catch (e, st) {
       loge("${provider.label} login failed", e, st);
       if (isClosed) return false;
