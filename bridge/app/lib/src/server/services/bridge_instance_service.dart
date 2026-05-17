@@ -1,3 +1,5 @@
+import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
+
 import '../foundation/process_identity.dart';
 import '../foundation/server_clock.dart';
 import '../foundation/terminal_prompt_decision.dart';
@@ -78,48 +80,72 @@ class BridgeInstanceService {
     required int currentPid,
     required List<ProcessIdentity> existingBridges,
   }) async {
+    if (existingBridges.isEmpty) {
+      // early exit ; nothing to stop
+      return existingBridges;
+    }
+
     final terminatedBridges = <ProcessIdentity>[];
-    for (final bridge in existingBridges) {
-      await _processRepository.sendGracefulSignal(pid: bridge.pid);
+
+    // send graceful termination for all bridges
+    try {
+      await Future.wait(
+        existingBridges.map((bridge) => _processRepository.sendGracefulSignal(pid: bridge.pid)),
+      ).timeout(_bridgeShutdownWait);
+
       await _clock.delay(duration: _bridgeShutdownWait);
+    } catch (err, st) {
+      Log.w("Failed to gracefully stop existing bridge(s)", err, st);
+    }
+    final bridgesThatSurvivedGracefulShutdown = await _bridgeInstanceRepository.listLiveBridgeCandidates(
+      currentPid: currentPid,
+    );
 
-      var liveBridges = await _bridgeInstanceRepository.listLiveBridgeCandidates(currentPid: currentPid);
-      if (_containsSameIdentity(candidates: liveBridges, bridge: bridge)) {
-        await _processRepository.sendForceSignal(pid: bridge.pid);
-        liveBridges = await _bridgeInstanceRepository.listLiveBridgeCandidates(currentPid: currentPid);
-      }
+    if (bridgesThatSurvivedGracefulShutdown.isEmpty) {
+      // All bridges shutdown
+      return existingBridges;
+    }
 
-      if (!_containsPid(candidates: liveBridges, pid: bridge.pid)) {
-        terminatedBridges.add(bridge);
+    // some bridges did not gracefully terminate so we need to force kill them
+    for (final bridge in existingBridges) {
+      if (_containsSameIdentity(candidates: bridgesThatSurvivedGracefulShutdown, bridge: bridge)) {
+        try {
+          await _processRepository.sendForceSignal(pid: bridge.pid).timeout(_bridgeShutdownWait);
+        } catch (err, st) {
+          Log.w("Failed to force kill existing bridge", err, st);
+        }
       }
     }
+
+    final bridgesThatSurvivedForcedShutdown = await _bridgeInstanceRepository.listLiveBridgeCandidates(
+      currentPid: currentPid,
+    );
+
+    final List<ProcessIdentity> bridgesThatSurvivedAllKillAttempts = [];
+    for (final bridge in existingBridges) {
+      if (!_containsPid(candidates: bridgesThatSurvivedForcedShutdown, pid: bridge.pid)) {
+        terminatedBridges.add(bridge);
+      } else {
+        bridgesThatSurvivedAllKillAttempts.add(bridge);
+      }
+    }
+
+    if (bridgesThatSurvivedAllKillAttempts.isNotEmpty) {
+      Log.e("Failed to kill ${bridgesThatSurvivedAllKillAttempts.length} running bridges");
+    }
+
     return terminatedBridges;
   }
 
   bool _containsSameIdentity({
     required List<ProcessIdentity> candidates,
     required ProcessIdentity bridge,
-  }) {
-    return candidates.any((candidate) => _isSameIdentity(candidate: candidate, bridge: bridge));
-  }
+  }) => candidates.any(bridge.hasSameIdentityAs);
 
   bool _containsPid({
     required List<ProcessIdentity> candidates,
     required int pid,
   }) {
     return candidates.any((candidate) => candidate.pid == pid);
-  }
-
-  bool _isSameIdentity({
-    required ProcessIdentity candidate,
-    required ProcessIdentity bridge,
-  }) {
-    if (candidate.pid != bridge.pid) {
-      return false;
-    }
-    if (bridge.startMarker != null || candidate.startMarker != null) {
-      return candidate.startMarker == bridge.startMarker;
-    }
-    return candidate.commandLine == bridge.commandLine && candidate.executablePath == bridge.executablePath;
   }
 }
