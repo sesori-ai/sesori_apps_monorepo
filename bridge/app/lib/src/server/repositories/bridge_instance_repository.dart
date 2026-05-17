@@ -19,7 +19,9 @@ class BridgeInstanceRepository {
           .toList();
 
   bool _isLiveBridge({required ProcessIdentity process}) {
-    if (_currentUser != null && process.ownerUser != null && process.ownerUser != _currentUser) {
+    if (_currentUser != null &&
+        process.ownerUser != null &&
+        _normalizeUser(process.ownerUser) != _normalizeUser(_currentUser)) {
       return false;
     }
 
@@ -38,5 +40,14 @@ class BridgeInstanceRepository {
     }
 
     return executableBasename == 'dart' || executableBasename == 'dart.exe' || executableBasename == 'bridge.dart';
+  }
+
+  static String? _normalizeUser(String? user) {
+    if (user == null) return null;
+    final backslashIndex = user.lastIndexOf(r'\');
+    if (backslashIndex >= 0) {
+      return user.substring(backslashIndex + 1);
+    }
+    return user;
   }
 }

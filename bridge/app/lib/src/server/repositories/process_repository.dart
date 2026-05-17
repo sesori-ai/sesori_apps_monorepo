@@ -60,7 +60,8 @@ class ProcessRepository {
     return ProcessMatch(
       identity: identity,
       kind: _resolveKind(identity: identity),
-      isCurrentUserProcess: identity.ownerUser != null && identity.ownerUser == _currentUser,
+      isCurrentUserProcess: identity.ownerUser != null &&
+          _normalizeUser(identity.ownerUser) == _normalizeUser(_currentUser),
     );
   }
 
@@ -83,5 +84,14 @@ class ProcessRepository {
     }
 
     return ProcessMatchKind.unknown;
+  }
+
+  static String? _normalizeUser(String? user) {
+    if (user == null) return null;
+    final backslashIndex = user.lastIndexOf(r'\');
+    if (backslashIndex >= 0) {
+      return user.substring(backslashIndex + 1);
+    }
+    return user;
   }
 }

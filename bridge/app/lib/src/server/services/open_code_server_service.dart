@@ -433,9 +433,16 @@ class OpenCodeServerService {
     required ProcessIdentity identity,
     required OpenCodeOwnershipRecord record,
   }) {
-    return identity.pid == record.bridgePid &&
-        record.bridgeStartMarker != null &&
-        identity.startMarker == record.bridgeStartMarker;
+    if (identity.pid != record.bridgePid) {
+      return false;
+    }
+    if (record.bridgeStartMarker != null || identity.startMarker != null) {
+      return identity.startMarker == record.bridgeStartMarker;
+    }
+    // Both markers are null (e.g. Windows). We can't distinguish a recycled
+    // PID from the original owner without additional heuristics, so we
+    // conservatively treat the match as valid.
+    return true;
   }
 
   bool _samePath(String? actual, String expected) {

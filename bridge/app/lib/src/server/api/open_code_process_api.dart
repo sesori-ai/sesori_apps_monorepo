@@ -61,6 +61,8 @@ class OpenCodeProcessApi {
       environment: environment,
       runInShell: _isWindows,
     );
+    process.stdout.drain<void>().ignore();
+    process.stderr.drain<void>().ignore();
 
     return OpenCodeStartFact(
       process: process,
