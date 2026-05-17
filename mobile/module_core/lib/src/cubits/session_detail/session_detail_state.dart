@@ -37,6 +37,8 @@ sealed class SessionDetailState with _$SessionDetailState {
     required CommandInfo? stagedCommand,
     required bool isRefreshing,
     @Default([]) List<SessionVariant> availableVariants,
+    // Transient retry error message from the AI provider (e.g. "Provider is overloaded").
+    required String? retryErrorMessage,
   }) = SessionDetailLoaded;
 
   const factory SessionDetailState.failed({required ApiError error}) = SessionDetailFailed;

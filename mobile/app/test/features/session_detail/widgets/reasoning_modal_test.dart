@@ -49,6 +49,7 @@ SessionDetailState _loadedState({
     ),
     stagedCommand: null,
     isRefreshing: false,
+    retryErrorMessage: null,
   );
 }
 
