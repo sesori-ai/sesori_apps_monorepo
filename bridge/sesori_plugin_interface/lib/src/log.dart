@@ -77,7 +77,12 @@ class Log {
   }
 
   static String _getCallerClassName() {
+    const vallerLineIndex = 4;
     final trace = StackTrace.current.toString().split('\n');
+
+    if (trace.length < vallerLineIndex + 1) {
+      return "Unknown0";
+    }
 
     // Example trace:
     // ...
@@ -88,7 +93,7 @@ class Log {
     final match = RegExp(r'#\d+\s+(.+?)\.').firstMatch(line);
 
     if (match != null) {
-      return match.group(1) ?? "UnknownGroup";
+      return match.group(1) ?? "Unknown1";
     }
 
     return 'Unknown';

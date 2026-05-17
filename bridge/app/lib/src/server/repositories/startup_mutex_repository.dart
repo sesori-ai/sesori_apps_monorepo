@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
 import 'package:sesori_shared/sesori_shared.dart';
 
 import '../api/runtime_file_api.dart';
@@ -76,7 +77,8 @@ class StartupMutexRepository {
       lock = BridgeStartupLock.fromJson(
         jsonDecodeMap(lockContents),
       );
-    } on Object {
+    } catch (err, st) {
+      Log.w("Failed to parse lockfile to `BridgeStartupLock`", err, st);
       await _runtimeFileApi.releaseStartupLock();
       return true;
     }

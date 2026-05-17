@@ -90,6 +90,10 @@ class BridgeRuntimeRunner {
     const serverClock = ServerClock();
     final environment = io.Platform.environment;
     final currentUser = _resolveCurrentUser(environment: environment);
+    if (currentUser == null) {
+      Log.w("Failed to determine current user from environment");
+    }
+
     final managedRuntimePaths = const ManagedRuntimePathService().currentPaths(
       environment: environment,
     );
