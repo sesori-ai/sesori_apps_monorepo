@@ -211,6 +211,11 @@ extension IterableSugar<T> on Iterable<T> {
 }
 
 extension StringExtensions on String {
+  String? normalize() {
+    final trimmed = trim();
+    return trimmed.isEmpty ? null : trimmed;
+  }
+
   String substringAfter(String substr) {
     final index = indexOf(substr);
     return index < 0 ? this : substring(index + substr.length);

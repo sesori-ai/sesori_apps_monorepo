@@ -3,7 +3,7 @@ import "package:args/args.dart";
 class BridgeCliOptions {
   final List<String> cliArgs;
   final String relayUrl;
-  final int port;
+  final int? port;
   final bool noAutoStart;
   final String password;
   final String opencodeBin;
@@ -38,12 +38,20 @@ class BridgeCliOptions {
       defaultAuthUrl: defaultAuthUrl,
     );
     final debugPortRaw = results["debug-port"] as String;
+    final portRaw = results["port"] as String?;
+    final noAutoStart = results["no-auto-start"] as bool;
+
+    if (noAutoStart && (portRaw == null || portRaw.isEmpty)) {
+      throw ArgParserException(
+        'The --no-auto-start flag requires --port to be set.',
+      );
+    }
 
     return BridgeCliOptions(
       cliArgs: cliArgs,
       relayUrl: results["relay"] as String,
-      port: int.parse(results["port"] as String),
-      noAutoStart: results["no-auto-start"] as bool,
+      port: portRaw == null || portRaw.isEmpty ? null : int.parse(portRaw),
+      noAutoStart: noAutoStart,
       password: results["password"] as String,
       opencodeBin: results["opencode-bin"] as String,
       authBackendUrl: authBackendUrl,

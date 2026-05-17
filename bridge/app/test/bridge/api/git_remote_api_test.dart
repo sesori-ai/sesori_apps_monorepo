@@ -147,6 +147,7 @@ void main() {
       final mockRunner = FakeProcessRunner((
         String executable,
         List<String> arguments, {
+        Map<String, String>? environment,
         String? workingDirectory,
         Duration timeout = const Duration(seconds: 15),
       }) async {
@@ -201,6 +202,7 @@ void main() {
       final mockRunner = FakeProcessRunner((
         String executable,
         List<String> arguments, {
+        Map<String, String>? environment,
         String? workingDirectory,
         Duration timeout = const Duration(seconds: 15),
       }) async {
@@ -253,6 +255,7 @@ class FakeProcessRunner implements ProcessRunner {
   final Future<ProcessResult> Function(
     String executable,
     List<String> arguments, {
+    Map<String, String>? environment,
     String? workingDirectory,
     Duration timeout,
   })
@@ -266,6 +269,7 @@ class FakeProcessRunner implements ProcessRunner {
     return FakeProcessRunner((
       String executable,
       List<String> arguments, {
+      Map<String, String>? environment,
       String? workingDirectory,
       Duration timeout = const Duration(seconds: 15),
     }) async {
@@ -277,6 +281,7 @@ class FakeProcessRunner implements ProcessRunner {
   Future<ProcessResult> run(
     String executable,
     List<String> arguments, {
+    Map<String, String>? environment,
     String? workingDirectory,
     Duration timeout = const Duration(seconds: 15),
   }) async {
@@ -290,6 +295,7 @@ class FakeProcessRunner implements ProcessRunner {
     return _runImpl(
       executable,
       arguments,
+      environment: environment,
       workingDirectory: workingDirectory,
       timeout: timeout,
     );

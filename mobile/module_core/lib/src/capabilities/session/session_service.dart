@@ -91,7 +91,7 @@ class SessionService {
   }
 
   Future<ApiResponse<CommandListResponse>> listCommands({required String? projectId}) {
-    final normalizedProjectId = _normalizeOptionalText(projectId);
+    final normalizedProjectId = projectId?.normalize();
     if (normalizedProjectId == null) {
       return Future.value(ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])));
     }
@@ -108,18 +108,15 @@ class SessionService {
     required SessionVariant? variant,
     required String? command,
     required bool dedicatedWorktree,
-  }) {
-    final normalizedCommand = _normalizeOptionalText(command);
-    return _repository.createSessionWithMessage(
-      projectId: projectId,
-      text: text,
-      agent: agent,
-      model: _resolveModel(providerID: providerID, modelID: modelID),
-      variant: variant,
-      command: normalizedCommand,
-      dedicatedWorktree: dedicatedWorktree,
-    );
-  }
+  }) => _repository.createSessionWithMessage(
+    projectId: projectId,
+    text: text,
+    agent: agent,
+    model: _resolveModel(providerID: providerID, modelID: modelID),
+    variant: variant,
+    command: command?.normalize(),
+    dedicatedWorktree: dedicatedWorktree,
+  );
 
   Future<ApiResponse<void>> sendMessage({
     required String sessionId,
@@ -129,30 +126,19 @@ class SessionService {
     required String? modelID,
     required SessionVariant? variant,
     required String? command,
-  }) {
-    final normalizedCommand = _normalizeOptionalText(command);
-    return _repository.sendMessage(
-      sessionId: sessionId,
-      text: text,
-      agent: agent,
-      model: _resolveModel(providerID: providerID, modelID: modelID),
-      variant: variant,
-      command: normalizedCommand,
-    );
-  }
+  }) => _repository.sendMessage(
+    sessionId: sessionId,
+    text: text,
+    agent: agent,
+    model: _resolveModel(providerID: providerID, modelID: modelID),
+    variant: variant,
+    command: command?.normalize(),
+  );
 
   PromptModel? _resolveModel({required String? providerID, required String? modelID}) {
-    final normalizedProviderID = _normalizeOptionalText(providerID);
-    final normalizedModelID = _normalizeOptionalText(modelID);
+    final normalizedProviderID = providerID?.normalize();
+    final normalizedModelID = modelID?.normalize();
     if (normalizedProviderID == null || normalizedModelID == null) return null;
     return PromptModel(providerID: normalizedProviderID, modelID: normalizedModelID);
   }
-}
-
-String? _normalizeOptionalText(String? value) {
-  final normalized = value?.trim();
-  if (normalized == null || normalized.isEmpty) {
-    return null;
-  }
-  return normalized;
 }

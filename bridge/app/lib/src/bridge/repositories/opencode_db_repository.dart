@@ -19,7 +19,7 @@ class OpenCodeDbRepository {
   /// file does not exist or cannot be read.
   int? getAutoVacuumMode({required String dbPath}) {
     if (!File(dbPath).existsSync()) {
-      Log.d("[DbMaintenance] OpenCode database not found — skipping");
+      Log.d("OpenCode database not found — skipping");
       return null;
     }
 
@@ -50,7 +50,7 @@ class OpenCodeDbRepository {
       _logError(error: e);
       return null;
     } on Object catch (e) {
-      Log.w("[DbMaintenance] Database optimization failed: $e");
+      Log.w("Database optimization failed: $e");
       return null;
     }
   }
@@ -58,11 +58,11 @@ class OpenCodeDbRepository {
   void _logError({required SqliteException error}) {
     if (error.resultCode == 5 /* SQLITE_BUSY */ ) {
       Log.d(
-        "[DbMaintenance] OpenCode database is in use — "
+        "OpenCode database is in use — "
         "will retry next startup",
       );
     } else {
-      Log.w("[DbMaintenance] Database optimization failed: $error");
+      Log.w("Database optimization failed: $error");
     }
   }
 }

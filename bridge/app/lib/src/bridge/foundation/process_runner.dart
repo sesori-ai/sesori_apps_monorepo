@@ -11,9 +11,15 @@ class ProcessRunner {
     String executable,
     List<String> arguments, {
     String? workingDirectory,
+    Map<String, String>? environment,
     Duration timeout = const Duration(seconds: 15),
   }) async {
-    final process = await Process.start(executable, arguments, workingDirectory: workingDirectory);
+    final process = await Process.start(
+      executable,
+      arguments,
+      workingDirectory: workingDirectory,
+      environment: environment,
+    );
     final stdout = StringBuffer();
     final stderr = StringBuffer();
     process.stdout.transform(const SystemEncoding().decoder).listen(stdout.write);

@@ -7,7 +7,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginProvidersResult,
         PluginSession,
         PluginSessionVariant;
-import "package:sesori_shared/sesori_shared.dart" show wait2;
+import "package:sesori_shared/sesori_shared.dart" show StringExtensions, wait2;
 
 import "models/command.dart";
 import "models/pending_permission.dart";
@@ -60,7 +60,7 @@ class OpenCodeRepository {
   OpenCodeApi get api => _api;
 
   Future<List<PluginCommand>> getCommands({required String? projectId}) async {
-    final commands = await _api.listCommands(directory: _normalizeDirectory(projectId));
+    final commands = await _api.listCommands(directory: projectId?.normalize());
     return commands.map<PluginCommand>(_mapCommand).toList();
   }
 
@@ -86,7 +86,7 @@ class OpenCodeRepository {
   }) {
     return _api.sendPrompt(
       sessionId: sessionId,
-      directory: _normalizeDirectory(directory),
+      directory: directory?.normalize(),
       body: SendPromptBody(
         parts: parts,
         agent: agent,
@@ -107,7 +107,7 @@ class OpenCodeRepository {
   }) {
     return _api.sendCommand(
       sessionId: sessionId,
-      directory: _normalizeDirectory(directory),
+      directory: directory?.normalize(),
       body: SendCommandBody(
         command: command,
         arguments: arguments,
@@ -124,16 +124,8 @@ class OpenCodeRepository {
   }) {
     return _api.deleteSession(
       sessionId: sessionId,
-      directory: _normalizeDirectory(directory),
+      directory: directory?.normalize(),
     );
-  }
-
-  String? _normalizeDirectory(String? directory) {
-    final normalizedDirectory = directory?.trim();
-    if (normalizedDirectory == null || normalizedDirectory.isEmpty) {
-      return null;
-    }
-    return normalizedDirectory;
   }
 
   Future<List<Project>> getProjects() async {
@@ -252,7 +244,7 @@ class OpenCodeRepository {
     required String? directory,
   }) async {
     final response = await _api.listConfigProviders(
-      directory: _normalizeDirectory(directory),
+      directory: directory?.normalize(),
     );
     return mapProviderResponse(response: response);
   }

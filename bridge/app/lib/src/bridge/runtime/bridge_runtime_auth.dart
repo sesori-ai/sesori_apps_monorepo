@@ -9,20 +9,6 @@ import '../../auth/profile.dart';
 import '../../auth/token.dart';
 import '../../auth/validate.dart';
 import 'bridge_cli_options.dart';
-import 'terminal_password_reader.dart';
-
-({String email, String password}) promptForEmailCredentials() {
-  stdout.write('Email: ');
-  final email = stdin.readLineSync();
-  if (email == null) {
-    throw Exception('EOF reached while reading email');
-  }
-
-  stdout.write('Password: ');
-  final password = TerminalPasswordReader(stdin: stdin).read();
-
-  return (email: email, password: password);
-}
 
 class BridgeRuntimeAuthService {
   final LoginEmailRepository _loginEmailRepository;
