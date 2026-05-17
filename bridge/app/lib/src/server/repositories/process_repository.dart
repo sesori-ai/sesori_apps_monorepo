@@ -89,9 +89,9 @@ class ProcessRepository {
   static String? _normalizeUser(String? user) {
     if (user == null) return null;
     final backslashIndex = user.lastIndexOf(r'\');
-    if (backslashIndex >= 0) {
-      return user.substring(backslashIndex + 1);
-    }
-    return user;
+    final normalized = backslashIndex >= 0
+        ? user.substring(backslashIndex + 1)
+        : user;
+    return normalized.toLowerCase();
   }
 }
