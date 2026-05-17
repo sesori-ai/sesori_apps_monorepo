@@ -2,7 +2,7 @@
 
 default_platform(:ios)
 
-# Returns the highest build number among the 10 most recently uploaded builds
+# Returns the highest build number among the 25 most recently uploaded builds
 # across all versions on App Store Connect (TestFlight + App Store).
 #
 # Why not Fastlane's `latest_testflight_build_number`? Without `version:`, that
@@ -10,7 +10,7 @@ default_platform(:ios)
 # upload's build number — not the maximum. If a fresh marketing version was
 # uploaded with build 2 after an older version's build 461, it returns 2.
 # We need the numeric max, so we enumerate recent builds and reduce locally.
-RECENT_BUILDS_LOOKBACK = 10
+RECENT_BUILDS_LOOKBACK = 25
 
 def highest_build_number_across_all_versions(api_key:)
   require "spaceship"

@@ -3,7 +3,7 @@ description: 'Cache and install asdf tools + Flutter pub dependencies'
 
 inputs:
   include-submodules:
-    description: 'Run pub get for submodules (core, critical, pre_models, models)'
+    description: 'Run pub get for submodules'
     required: false
     default: 'true'
   include-no-slop-linter:

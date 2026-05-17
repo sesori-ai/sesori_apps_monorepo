@@ -1,11 +1,5 @@
 name: Release All Platforms
 
-# NOTE: Temporarily repurposed to test the iOS build path before wiring up
-# TestFlight uploads. Builds the iOS app via the chosen fastlane lane and
-# uploads the IPA as a workflow artifact — no App Store / TestFlight upload.
-# Android Internal Track deploy is enabled and gated by the `deploy_android`
-# workflow input.
-
 on:
   workflow_dispatch:
 
