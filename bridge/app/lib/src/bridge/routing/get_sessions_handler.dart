@@ -15,14 +15,17 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
   final SessionRepository _sessionRepository;
   final PrSyncService _prSyncService;
   final SessionPersistenceService _sessionPersistenceService;
+  final Duration _prRefreshTimeout;
 
   GetSessionsHandler({
     required SessionRepository sessionRepository,
     required PrSyncService prSyncService,
     required SessionPersistenceService sessionPersistenceService,
+    Duration prRefreshTimeout = const Duration(seconds: 5),
   }) : _sessionRepository = sessionRepository,
        _prSyncService = prSyncService,
        _sessionPersistenceService = sessionPersistenceService,
+       _prRefreshTimeout = prRefreshTimeout,
        super(
          HttpMethod.post,
          "/sessions",
@@ -66,10 +69,24 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
       Log.w("GetSessionsHandler: persistSessionsForProject failed for projectId=$projectId: $e\n$st");
     }
 
-    final response = SessionListResponse(items: sessions);
-
-    unawaited(_triggerPrRefresh(projectId: projectId, sessions: sessions));
-    return response;
+    try {
+      await _triggerPrRefresh(projectId: projectId, sessions: sessions).timeout(_prRefreshTimeout);
+      // Refresh succeeded within timeout — enrich the already-fetched sessions
+      // with updated PR/CI metadata from the database (no extra plugin round-trip).
+      final enrichedSessions = await _sessionRepository.enrichSessions(
+        sessions: sessions,
+      );
+      return SessionListResponse(items: enrichedSessions);
+    } catch (err, st) {
+      Log.w(
+        "[GetSessionsHandler] PR refresh timed out after "
+        "${_prRefreshTimeout.inSeconds}s for $projectId — "
+        "returning current data; SSE will deliver updates when ready",
+        err,
+        st,
+      );
+      return SessionListResponse(items: sessions);
+    }
   }
 
   Future<void> _triggerPrRefresh({
@@ -79,7 +96,7 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
     try {
       final projectPath = await _sessionRepository.getProjectPath(projectId: projectId);
       if (projectPath != null) {
-        unawaited(_prSyncService.triggerRefresh(projectId: projectId, projectPath: projectPath));
+        await _prSyncService.triggerRefresh(projectId: projectId, projectPath: projectPath);
         return;
       }
 
@@ -87,7 +104,7 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
       if (fallbackDirectory == null || fallbackDirectory.isEmpty) {
         return;
       }
-      unawaited(_prSyncService.triggerRefresh(projectId: projectId, projectPath: fallbackDirectory));
+      await _prSyncService.triggerRefresh(projectId: projectId, projectPath: fallbackDirectory);
     } on Object catch (e, st) {
       Log.w("[GetSessionsHandler] PR refresh trigger failed for $projectId: $e\n$st");
     }

@@ -801,7 +801,6 @@ void main() {
         fragment: null,
       );
 
-      await Future<void>.delayed(const Duration(milliseconds: 10));
       expect(prSyncService.calls, hasLength(1));
       expect(prSyncService.calls.single, equals((projectId: "project-1", projectPath: "/tmp/project")));
     });
@@ -828,9 +827,91 @@ void main() {
         fragment: null,
       );
 
-      await Future<void>.delayed(const Duration(milliseconds: 10));
       expect(prSyncService.calls, hasLength(1));
       expect(prSyncService.calls.single, equals((projectId: "project-1", projectPath: "/tmp/fallback-project")));
+    });
+
+    test("returns original sessions when PR refresh times out", () async {
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "p1",
+          directory: "/tmp",
+          parentID: null,
+          title: "session one",
+          time: null,
+          summary: null,
+        ),
+      ];
+      final slowPrSyncService = FakePrSyncService(delay: const Duration(seconds: 10));
+      final timeoutHandler = GetSessionsHandler(
+        sessionRepository: sessionRepository,
+        prSyncService: slowPrSyncService,
+        sessionPersistenceService: sessionPersistenceService,
+        prRefreshTimeout: const Duration(milliseconds: 50),
+      );
+
+      final result = await timeoutHandler.handle(
+        makeRequest("POST", "/sessions"),
+        body: const SessionListRequest(projectId: "p1", start: null, limit: null),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.items, hasLength(1));
+      expect(result.items.single.title, equals("session one"));
+      expect(sessionRepository.getSessionsCallCount, equals(1));
+    });
+
+    test("enriches sessions when PR refresh succeeds within timeout", () async {
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "p1",
+          directory: "/tmp",
+          parentID: null,
+          title: "session one",
+          time: null,
+          summary: null,
+        ),
+      ];
+      pullRequestRepository.setPr(
+        sessionId: "s1",
+        pullRequest: const PullRequestDto(
+          projectId: "p1",
+          prNumber: 99,
+          branchName: "feature/enriched",
+          url: "https://github.com/org/repo/pull/99",
+          title: "Enriched PR",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.mergeable,
+          reviewDecision: PrReviewDecision.approved,
+          checkStatus: PrCheckStatus.success,
+          lastCheckedAt: 1,
+          createdAt: 1,
+        ),
+      );
+      final fastPrSyncService = FakePrSyncService();
+      final enrichedHandler = GetSessionsHandler(
+        sessionRepository: sessionRepository,
+        prSyncService: fastPrSyncService,
+        sessionPersistenceService: sessionPersistenceService,
+      );
+
+      final result = await enrichedHandler.handle(
+        makeRequest("POST", "/sessions"),
+        body: const SessionListRequest(projectId: "p1", start: null, limit: null),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.items, hasLength(1));
+      expect(result.items.single.title, equals("session one"));
+      expect(result.items.single.pullRequest?.number, equals(99));
+      expect(result.items.single.pullRequest?.mergeableStatus, equals(PrMergeableStatus.mergeable));
+      expect(sessionRepository.getSessionsCallCount, equals(1));
     });
   });
 }

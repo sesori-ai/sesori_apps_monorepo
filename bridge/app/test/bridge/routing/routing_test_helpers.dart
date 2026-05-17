@@ -525,8 +525,10 @@ class FakePullRequestRepository implements PullRequestRepository {
 
 class FakePrSyncService extends PrSyncService {
   final List<({String projectId, String projectPath})> calls = <({String projectId, String projectPath})>[];
+  final Duration? delay;
 
   FakePrSyncService({
+    this.delay,
     PrSourceRepository? prSource,
     PullRequestRepository? pullRequestRepository,
     SessionRepository? sessionRepository,
@@ -539,6 +541,9 @@ class FakePrSyncService extends PrSyncService {
   @override
   Future<void> triggerRefresh({required String projectId, required String projectPath}) async {
     calls.add((projectId: projectId, projectPath: projectPath));
+    if (delay != null) {
+      await Future<void>.delayed(delay!);
+    }
   }
 }
 
