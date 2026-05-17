@@ -2,6 +2,11 @@ name: Release All Platforms
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'mobile/**'
+      - 'shared/**'
 
 concurrency:
   group: release-all-${{ github.ref }}
@@ -48,7 +53,7 @@ jobs:
 
   summary:
     name: Release Summary
-    runs-on: ubuntu-latest #blacksmith-2vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     needs: [next-build-number, ios, android]
     if: always()
 
