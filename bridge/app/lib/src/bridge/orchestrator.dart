@@ -661,7 +661,7 @@ class OrchestratorSession {
   }) async {
     final respJson = jsonEncode(message.toJson());
     final jsonBytes = utf8.encode(respJson);
-    Log.d("[response] sending ${jsonBytes.length} bytes to connID=$connID");
+    Log.v("[response] sending ${jsonBytes.length} bytes to connID=$connID");
     _bytesSentController.add(jsonBytes.length);
     final cryptoService = RelayCryptoService();
     final encryptionKey = SecretKey(List<int>.from(_roomKey));

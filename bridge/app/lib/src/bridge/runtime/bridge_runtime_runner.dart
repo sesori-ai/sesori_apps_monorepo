@@ -1,7 +1,8 @@
-import "dart:io";
+import "dart:io" as io;
 
 import "package:clock/clock.dart";
 import "package:http/http.dart" as http;
+import "package:path/path.dart" as path;
 import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePluginApi, Log;
 
@@ -10,7 +11,23 @@ import "../../auth/login_email_repository.dart";
 import "../../auth/login_oauth_api.dart";
 import "../../auth/token.dart";
 import "../../auth/token_manager.dart";
-import "../../server/process.dart";
+import "../../server/api/loopback_port_api.dart";
+import "../../server/api/open_code_process_api.dart";
+import "../../server/api/runtime_file_api.dart";
+import "../../server/api/system_process_api.dart";
+import "../../server/api/terminal_prompt_api.dart";
+import "../../server/foundation/process_identity.dart";
+import "../../server/foundation/server_clock.dart";
+import "../../server/models/open_code_ownership_record.dart";
+import "../../server/repositories/bridge_instance_repository.dart";
+import "../../server/repositories/open_code_ownership_repository.dart";
+import "../../server/repositories/open_code_process_repository.dart";
+import "../../server/repositories/port_repository.dart";
+import "../../server/repositories/process_repository.dart";
+import "../../server/repositories/startup_mutex_repository.dart";
+import "../../server/repositories/terminal_prompt_repository.dart";
+import "../../server/services/bridge_instance_service.dart";
+import "../../server/services/open_code_server_service.dart";
 import "../../updater/api/archive_extractor_api.dart";
 import "../../updater/api/checksum_manifest_api.dart";
 import "../../updater/api/checksum_verifier_api.dart";
@@ -69,22 +86,62 @@ class BridgeRuntimeRunner {
     shutdownCoordinator.add(disposable: subscriptions.cancel);
     final httpClient = http.Client();
     final processRunner = ProcessRunner();
+    const serverClock = ServerClock();
+    final environment = io.Platform.environment;
+    final currentUser = _resolveCurrentUser(environment: environment);
     final managedRuntimePaths = const ManagedRuntimePathService().currentPaths(
-      environment: Platform.environment,
+      environment: environment,
+    );
+    final runtimeFileApi = RuntimeFileApi(
+      runtimeDirectory: path.join(managedRuntimePaths.cacheDirectory, "runtime"),
+    );
+    final systemProcessApi = SystemProcessApi(
+      processRunner: processRunner,
+      clock: serverClock,
+      isWindows: io.Platform.isWindows,
+      platform: io.Platform.operatingSystem,
+    );
+    final processRepository = ProcessRepository(
+      api: systemProcessApi,
+      currentUser: currentUser,
+    );
+    final ownershipRepository = OpenCodeOwnershipRepository(
+      runtimeFileApi: runtimeFileApi,
+      clock: const Clock(),
+    );
+    final startupMutexRepository = StartupMutexRepository(
+      runtimeFileApi: runtimeFileApi,
+      processRepository: processRepository,
+    );
+    final terminalPromptApi = TerminalPromptApi(
+      stdin: io.stdin,
+      stdout: io.stdout,
+    );
+    final terminalPromptRepository = TerminalPromptRepository(
+      api: terminalPromptApi,
+    );
+    final bridgeInstanceService = BridgeInstanceService(
+      bridgeInstanceRepository: BridgeInstanceRepository(
+        api: systemProcessApi,
+        currentUser: currentUser,
+      ),
+      terminalPromptRepository: terminalPromptRepository,
+      processRepository: processRepository,
+      clock: serverClock,
     );
     shutdownCoordinator.add(disposable: httpClient.close);
 
     final runtimeAuthService = BridgeRuntimeAuthService(
       loginEmailRepository: LoginEmailRepository(
         emailAuthApi: LoginEmailApi(authBackendUrl: options.authBackendUrl),
-        promptForCredentials: promptForEmailCredentials,
+        promptForCredentials: terminalPromptRepository.promptForEmailCredentials,
       ),
       loginOAuthApi: LoginOAuthApi(authBackendUrl: options.authBackendUrl),
     );
 
     try {
       final runtimeOwnershipError = unsupportedPackageRuntimeMessage(
-        executablePath: Platform.resolvedExecutable,
+        executablePath: io.Platform.resolvedExecutable,
         managedExecutablePath: managedRuntimePaths.binaryPath,
       );
       if (runtimeOwnershipError != null) {
@@ -104,10 +161,54 @@ class BridgeRuntimeRunner {
         authBackendUrl: options.authBackendUrl,
         accessToken: authTokens.accessToken,
       );
-      _optimizeOpenCodeDbIfNeeded(environment: Platform.environment);
+      _optimizeOpenCodeDbIfNeeded(environment: environment);
 
-      final serverRuntime = await resolveServer(options: options);
-      shutdownCoordinator.add(disposable: () async => stopServer(serverRuntime.process));
+      final currentBridgeIdentity =
+          await processRepository.inspectProcess(pid: io.pid) ??
+          _fallbackCurrentBridgeIdentity(
+            currentUser: currentUser,
+            serverClock: serverClock,
+            cliArgs: options.cliArgs,
+          );
+      final ownerSessionId = _buildOwnerSessionId(currentBridgeIdentity: currentBridgeIdentity);
+      final openCodeServerService = OpenCodeServerService(
+        openCodeProcessRepository: OpenCodeProcessRepository(
+          api: OpenCodeProcessApi(
+            processStarter: io.Process.start,
+            httpClient: httpClient,
+            clock: serverClock,
+            environment: environment,
+            currentUser: currentUser,
+            isWindows: io.Platform.isWindows,
+            platform: io.Platform.operatingSystem,
+          ),
+        ),
+        processRepository: processRepository,
+        portRepository: const PortRepository(loopbackPortApi: LoopbackPortApi()),
+        ownershipRepository: ownershipRepository,
+        clock: serverClock,
+        currentBridgeIdentity: currentBridgeIdentity,
+        ownerSessionId: ownerSessionId,
+        candidatePorts: null,
+        random: null,
+      );
+
+      final serverRuntime = await resolveServer(
+        options: options,
+        currentBridgeIdentity: currentBridgeIdentity,
+        ownerSessionId: ownerSessionId,
+        startupMutexRepository: startupMutexRepository,
+        ownershipRepository: ownershipRepository,
+        bridgeInstanceService: bridgeInstanceService,
+        openCodeServerService: openCodeServerService,
+      );
+      registerOwnedOpenCodeShutdown(
+        shutdownCoordinator: shutdownCoordinator,
+        serverRuntime: serverRuntime,
+        stopOwnedOpenCode: (record) {
+          return openCodeServerService.stopOwnedServer(record: record);
+        },
+      );
 
       final tokenManager = TokenManager(
         initialToken: authTokens.accessToken,
@@ -190,12 +291,12 @@ class BridgeRuntimeRunner {
         installedFileRepository: installedFileRepository,
       ),
       installedFileRepository: installedFileRepository,
-      updateLock: UpdateLock(currentPid: pid, processRunner: processRunner),
+      updateLock: UpdateLock(currentPid: io.pid, processRunner: processRunner),
       updateRelaunchClient: UpdateRelaunchClient(),
       installRoot: managedRuntimePaths.installRoot,
-      executablePath: Platform.resolvedExecutable,
+      executablePath: io.Platform.resolvedExecutable,
       managedExecutablePath: managedRuntimePaths.binaryPath,
-      environment: Platform.environment,
+      environment: io.Platform.environment,
     );
   }
 
@@ -211,4 +312,45 @@ class BridgeRuntimeRunner {
       dbPath: '${environment["XDG_DATA_HOME"] ?? "$homeDir/.local/share"}/opencode/opencode.db',
     );
   }
+
+  static String? _resolveCurrentUser({required Map<String, String> environment}) {
+    return environment["USER"] ?? environment["USERNAME"];
+  }
+
+  static ProcessIdentity _fallbackCurrentBridgeIdentity({
+    required String? currentUser,
+    required ServerClock serverClock,
+    required List<String> cliArgs,
+  }) {
+    return ProcessIdentity(
+      pid: io.pid,
+      startMarker: null,
+      executablePath: io.Platform.resolvedExecutable,
+      commandLine: cliArgs.join(" "),
+      ownerUser: currentUser,
+      platform: io.Platform.operatingSystem,
+      capturedAt: serverClock.now(),
+    );
+  }
+
+  static String _buildOwnerSessionId({required ProcessIdentity currentBridgeIdentity}) {
+    return '${currentBridgeIdentity.pid}:${currentBridgeIdentity.startMarker ?? currentBridgeIdentity.capturedAt.toIso8601String()}';
+  }
+}
+
+void registerOwnedOpenCodeShutdown({
+  required BridgeShutdownCoordinator shutdownCoordinator,
+  required BridgeServerRuntime serverRuntime,
+  required Future<void> Function(OpenCodeOwnershipRecord record) stopOwnedOpenCode,
+}) {
+  final ownedOpenCodeRecord = serverRuntime.ownedOpenCodeRecord;
+  if (ownedOpenCodeRecord == null) {
+    return;
+  }
+
+  shutdownCoordinator.add(
+    disposable: () {
+      return stopOwnedOpenCode(ownedOpenCodeRecord);
+    },
+  );
 }

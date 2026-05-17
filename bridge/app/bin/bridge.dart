@@ -60,7 +60,6 @@ Future<void> main(List<String> args) async {
     ..addOption('relay', defaultsTo: _defaultRelayURL, help: 'Relay server URL')
     ..addOption(
       'port',
-      defaultsTo: '4096',
       help: 'Port for opencode server to listen on',
     )
     ..addFlag(
@@ -121,12 +120,19 @@ Future<void> main(List<String> args) async {
     exit(0);
   }
 
-  final options = BridgeCliOptions.fromArgResults(
-    cliArgs: args,
-    results: results,
-    environment: Platform.environment,
-    defaultAuthUrl: _defaultAuthURL,
-  );
+  final BridgeCliOptions options;
+  try {
+    options = BridgeCliOptions.fromArgResults(
+      cliArgs: args,
+      results: results,
+      environment: Platform.environment,
+      defaultAuthUrl: _defaultAuthURL,
+    );
+  } on ArgParserException catch (e) {
+    Log.e('Error: ${e.message}');
+    Log.e(parser.usage);
+    exit(1);
+  }
   Log.level = LogLevel.values.byName(options.logLevelName);
 
   final settingsRepository = BridgeSettingsRepository(api: BridgeSettingsApi());
