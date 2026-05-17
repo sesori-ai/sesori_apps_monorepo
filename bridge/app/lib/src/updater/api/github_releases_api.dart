@@ -8,7 +8,7 @@ import '../models/github_release_dto.dart';
 
 const _kGithubApiBaseUrl = 'https://api.github.com/repos/sesori-ai/sesori_apps_monorepo/releases';
 const _kGithubReleasesPerPage = 100;
-const _kGithubReleasesMaxPages = 10;
+const _kGithubReleasesMaxPages = 1;
 
 class GitHubReleasesApi {
   final http.Client _httpClient;

@@ -196,7 +196,7 @@ void main() {
         expect(result.assetUrl, endsWith('/sesori-bridge-macos-arm64.tar.gz'));
       });
 
-      test('paginates release discovery until later pages to find the highest eligible stable release', () async {
+      test('only fetches one page of releases', () async {
         final requestedPages = <int>[];
         final firstPage = List.generate(100, (index) {
           return _releaseJson(
@@ -210,9 +210,6 @@ void main() {
           if (page == 1) {
             return http.Response(jsonEncode(firstPage), 200);
           }
-          if (page == 2) {
-            return http.Response(jsonEncode([_releaseJson(version: '0.4.0')]), 200);
-          }
           return http.Response(jsonEncode(<Map<String, dynamic>>[]), 200);
         });
 
@@ -223,9 +220,8 @@ void main() {
 
         final result = await repository.checkForNewerRelease();
 
-        expect(result, isNotNull);
-        expect(result!.version, equals('0.4.0'));
-        expect(requestedPages, equals([1, 2]));
+        expect(result, isNull);
+        expect(requestedPages, equals([1]));
       });
     });
 
