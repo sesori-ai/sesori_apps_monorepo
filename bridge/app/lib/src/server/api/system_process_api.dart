@@ -65,7 +65,11 @@ class SystemProcessApi {
 
   Future<List<ProcessIdentity>> _listPosixProcesses() async {
     final (command, args) = ("ps", <String>["-axwwo", "pid=,user=,lstart=,command="]);
-    final result = await _processRunner.run(command, args);
+    final result = await _processRunner.run(
+      command,
+      args,
+      environment: {"LC_ALL": "C"},
+    );
     if (result.exitCode != 0) {
       throw ProcessException(
         command,

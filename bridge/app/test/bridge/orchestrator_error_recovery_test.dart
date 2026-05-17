@@ -91,6 +91,7 @@ void main() {
             processRunner: FakeProcessRunner((
               String executable,
               List<String> arguments, {
+              Map<String, String>? environment,
               String? workingDirectory,
               Duration timeout = const Duration(seconds: 15),
             }) async {
@@ -223,6 +224,7 @@ class _TestHarness {
           processRunner: FakeProcessRunner((
             String executable,
             List<String> arguments, {
+            Map<String, String>? environment,
             String? workingDirectory,
             Duration timeout = const Duration(seconds: 15),
           }) async {

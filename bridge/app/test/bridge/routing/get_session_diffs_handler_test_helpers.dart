@@ -22,6 +22,7 @@ class FakeProcessRunner implements ProcessRunner {
   Future<ProcessResult> run(
     String executable,
     List<String> arguments, {
+    Map<String, String>? environment,
     String? workingDirectory,
     Duration timeout = const Duration(seconds: 15),
   }) async {
