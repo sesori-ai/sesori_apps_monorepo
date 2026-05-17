@@ -25,7 +25,7 @@ class ReleaseRepository {
        _target = target;
 
   Future<ReleaseInfo?> checkForNewerRelease() async {
-    final cached = await _cache.read(ttl: const Duration(hours: 24));
+    final cached = await _cache.read(ttl: const Duration(minutes: 10));
     if (cached != null) {
       if (cached.assetName == _target.assetName) {
         return _evaluateCached(cached: cached);
