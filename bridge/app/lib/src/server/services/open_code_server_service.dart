@@ -289,7 +289,15 @@ class OpenCodeServerService {
     required ProcessIdentity startIdentity,
     required ProcessIdentity inspectedIdentity,
   }) {
-    return inspectedIdentity.pid == startIdentity.pid && inspectedIdentity.commandLine == startIdentity.commandLine;
+    if (inspectedIdentity.pid != startIdentity.pid) {
+      return false;
+    }
+
+    if (Platform.isWindows && _isWindowsImageNameOnlyCommandLine(inspectedIdentity.commandLine)) {
+      return _samePath(inspectedIdentity.executablePath, startIdentity.executablePath ?? "");
+    }
+
+    return inspectedIdentity.commandLine == startIdentity.commandLine;
   }
 
   Future<void> _cleanupFailedStart({required OpenCodeOwnershipRecord record}) async {
@@ -446,7 +454,38 @@ class OpenCodeServerService {
   }
 
   bool _samePath(String? actual, String expected) {
-    return actual != null && actual == expected;
+    if (actual == null) {
+      return false;
+    }
+
+    if (Platform.isWindows) {
+      final normalizedActual = _normalizeWindowsPath(actual);
+      final normalizedExpected = _normalizeWindowsPath(expected);
+      if (normalizedActual == normalizedExpected) {
+        return true;
+      }
+
+      return _windowsPathBasename(normalizedActual) == _windowsPathBasename(normalizedExpected);
+    }
+
+    return actual == expected;
+  }
+
+  bool _isWindowsImageNameOnlyCommandLine(String commandLine) {
+    return commandLine.isNotEmpty && !commandLine.contains(" ") && !commandLine.contains("\t");
+  }
+
+  String _normalizeWindowsPath(String path) {
+    var normalized = path.replaceAll("/", String.fromCharCode(92));
+    if (normalized.toLowerCase().endsWith(".exe")) {
+      normalized = normalized.substring(0, normalized.length - 4);
+    }
+    return normalized.toLowerCase();
+  }
+
+  String _windowsPathBasename(String path) {
+    final segments = path.split(RegExp(r"[\\/]+"));
+    return segments.isEmpty ? path : segments.last;
   }
 
   Iterable<int> _dynamicCandidates() sync* {
