@@ -188,15 +188,17 @@ void main() {
       );
       addTearDown(service.dispose);
 
-      await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
+      // Start first refresh without awaiting so we can test concurrent behavior.
+      final firstRefresh = service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
       await _waitFor(() => prSource.listOpenPrsCallCount == 1);
+
+      // Second refresh should be skipped because first is still active.
       await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
 
-      await Future<void>.delayed(const Duration(milliseconds: 30));
       expect(prSource.listOpenPrsCallCount, equals(1));
 
       block.complete();
-      await Future<void>.delayed(const Duration(milliseconds: 30));
+      await firstRefresh;
     });
   });
 }

@@ -65,7 +65,7 @@ class PrSyncService {
     }
 
     _activeRefreshes.add(projectId);
-    unawaited(_refresh(projectId: projectId, projectPath: projectPath));
+    await _refresh(projectId: projectId, projectPath: projectPath);
   }
 
   Future<void> _refresh({required String projectId, required String projectPath}) async {
