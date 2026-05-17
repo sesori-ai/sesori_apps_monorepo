@@ -22,32 +22,17 @@ jobs:
     timeout-minutes: 45
 
     env:
-      CI: true
       VERSION_CODE: ${{ inputs.build_number }}
+      CI: true
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Read Flutter version from .tool-versions
-        shell: bash
-        run: |
-          FLUTTER_VERSION=$(awk '$1 == "flutter" { print $2 }' .tool-versions | sed 's/-stable$//')
-          if [ -z "$FLUTTER_VERSION" ]; then
-            echo "Unable to find a Flutter version in .tool-versions" >&2
-            exit 1
-          fi
-          echo "FLUTTER_VERSION=$FLUTTER_VERSION" >> "$GITHUB_ENV"
-
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: ./.github/actions/setup-flutter
         with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
-
-      - name: Get dependencies (workspace)
-        run: dart pub get
-        working-directory: mobile
+          include-submodules: 'false'
 
       - name: Setup Java
         uses: actions/setup-java@v4
