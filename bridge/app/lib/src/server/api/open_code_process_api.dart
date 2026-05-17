@@ -85,6 +85,7 @@ class OpenCodeProcessApi {
 
     try {
       final response = await _httpClient.send(request);
+      await response.stream.drain<void>();
       return OpenCodeHealthProbeFact(
         uri: healthUri,
         statusCode: response.statusCode,

@@ -34,7 +34,17 @@ class RuntimeFileApi {
     final tmpFile = File('$ownershipFilePath.tmp');
     await tmpFile.writeAsString(contents, flush: true);
 
-    await tmpFile.rename(targetFile.path);
+    try {
+      await tmpFile.rename(targetFile.path);
+    } on FileSystemException {
+      // On Windows rename over an existing file fails. Delete target and retry.
+      if (targetFile.existsSync()) {
+        await targetFile.delete();
+        await tmpFile.rename(targetFile.path);
+      } else {
+        rethrow;
+      }
+    }
   }
 
   Future<void> deleteOwnershipFile() async {
@@ -65,10 +75,20 @@ class RuntimeFileApi {
     final lockFile = File(startupLockFilePath);
     try {
       await lockFile.create(exclusive: true);
-      await lockFile.writeAsString(contents, flush: true);
-      return true;
     } on PathExistsException {
       return false;
+    }
+
+    try {
+      await lockFile.writeAsString(contents, flush: true);
+      return true;
+    } on Object {
+      try {
+        await lockFile.delete();
+      } on Object {
+        // Best-effort cleanup of partial lock.
+      }
+      rethrow;
     }
   }
 

@@ -195,13 +195,28 @@ class OpenCodeServerService {
       password: password,
     );
     final identity = await _resolveSpawnedIdentity(startIdentity: startResult.identity);
-    final record = await _writeStartingRecord(
+
+    final record = OpenCodeOwnershipRecord(
+      ownerSessionId: _ownerSessionId,
+      openCodePid: identity.pid,
+      openCodeStartMarker: identity.startMarker,
+      openCodeExecutablePath: identity.executablePath ?? "",
+      openCodeCommand: identity.executablePath ?? "opencode",
+      openCodeArgs: <String>["serve", "--port", "$port", "--hostname", loopbackPortHost],
       port: port,
-      startResult: startResult,
+      bridgePid: _currentBridgeIdentity.pid,
+      bridgeStartMarker: _currentBridgeIdentity.startMarker,
+      startedAt: _clock.now(),
+      status: OpenCodeOwnershipStatus.starting,
+    );
+    _currentOwnedProcessesBySessionId[record.ownerSessionId] = _CurrentOwnedOpenCodeProcess(
+      process: startResult.process,
       identity: identity,
     );
 
     try {
+      await _ownershipRepository.upsert(record: record);
+
       Log.d("[OPENCODE] Started on port $port. Preparing alive check");
       const maxAttempts = 5;
       for (int i = 1; i <= maxAttempts; i++) {
@@ -219,41 +234,15 @@ class OpenCodeServerService {
         }
 
         Log.d("[OPENCODE] Alive check attempt $i/$maxAttempts FAILED.${i < maxAttempts ? " Retrying..." : ""}");
-        }
-        throw OpenCodeServerStartException(
-          "opencode health check failed on port $port after $maxAttempts attempts.",
-          cause: null,
-        );
+      }
+      throw OpenCodeServerStartException(
+        "opencode health check failed on port $port after $maxAttempts attempts.",
+        cause: null,
+      );
     } on Object {
       await _cleanupFailedStart(record: record);
       rethrow;
     }
-  }
-
-  Future<OpenCodeOwnershipRecord> _writeStartingRecord({
-    required int port,
-    required OpenCodeStartResult startResult,
-    required ProcessIdentity identity,
-  }) async {
-    final record = OpenCodeOwnershipRecord(
-      ownerSessionId: _ownerSessionId,
-      openCodePid: identity.pid,
-      openCodeStartMarker: identity.startMarker,
-      openCodeExecutablePath: identity.executablePath ?? "",
-      openCodeCommand: identity.executablePath ?? "opencode",
-      openCodeArgs: <String>["serve", "--port", "$port", "--hostname", loopbackPortHost],
-      port: port,
-      bridgePid: _currentBridgeIdentity.pid,
-      bridgeStartMarker: _currentBridgeIdentity.startMarker,
-      startedAt: _clock.now(),
-      status: OpenCodeOwnershipStatus.starting,
-    );
-    await _ownershipRepository.upsert(record: record);
-    _currentOwnedProcessesBySessionId[record.ownerSessionId] = _CurrentOwnedOpenCodeProcess(
-      process: startResult.process,
-      identity: identity,
-    );
-    return record;
   }
 
   Future<OpenCodeServerRuntime> _confirmHealthyRuntime({
