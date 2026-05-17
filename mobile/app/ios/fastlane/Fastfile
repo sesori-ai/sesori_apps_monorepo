@@ -116,7 +116,7 @@ platform :ios do
       use_automatic_signing: false,
       path: "Runner.xcodeproj",
       team_id: CredentialsManager::AppfileConfig.try_fetch_value(:team_id),
-      bundle_identifier: CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier),
+      bundle_identifier: app_identifier,
       profile_name: profile_name,
       code_sign_identity: "Apple Distribution"
     )
@@ -129,7 +129,7 @@ platform :ios do
       export_method: "app-store",
       export_options: {
         provisioningProfiles: {
-          CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier) => profile_name
+          app_identifier => profile_name
         }
       },
       output_directory: "./build",
@@ -173,7 +173,7 @@ platform :ios do
       use_automatic_signing: false,
       path: "Runner.xcodeproj",
       team_id: CredentialsManager::AppfileConfig.try_fetch_value(:team_id),
-      bundle_identifier: CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier),
+      bundle_identifier: app_identifier,
       profile_name: profile_name,
       code_sign_identity: "Apple Distribution"
     )

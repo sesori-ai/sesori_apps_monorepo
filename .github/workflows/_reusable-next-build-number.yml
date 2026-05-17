@@ -59,7 +59,7 @@ jobs:
         working-directory: mobile/app/ios
         run: |
           set -euo pipefail
-          output=$(fastlane next_build_number 2>&1)
+          output=$(bundle exec fastlane next_build_number 2>&1)
           echo "$output"
           n=$(printf '%s\n' "$output" | grep -oE 'NEXT_BUILD_NUMBER=[0-9]+' | tail -n1 | cut -d= -f2)
           if [ -z "${n:-}" ]; then
@@ -79,7 +79,7 @@ jobs:
         working-directory: mobile/app/android
         run: |
           set -euo pipefail
-          output=$(fastlane next_version_code 2>&1)
+          output=$(bundle exec fastlane next_version_code 2>&1)
           echo "$output"
           n=$(printf '%s\n' "$output" | grep -oE 'NEXT_VERSION_CODE=[0-9]+' | tail -n1 | cut -d= -f2)
           if [ -z "${n:-}" ]; then
