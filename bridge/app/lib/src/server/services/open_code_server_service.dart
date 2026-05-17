@@ -432,8 +432,12 @@ class OpenCodeServerService {
           _samePath(identity.executablePath, record.openCodeExecutablePath) &&
           identity.commandLine == [record.openCodeCommand, ...record.openCodeArgs].join(" ");
     }
-    return _samePath(identity.executablePath, record.openCodeExecutablePath) &&
-        identity.commandLine == [record.openCodeCommand, ...record.openCodeArgs].join(" ");
+    // Both markers are null (e.g. Windows via tasklist). We can't reliably
+    // compare full command lines because tasklist only returns the image name.
+    // Fall back to executablePath match only; this accepts a small risk of
+    // false positives on PID reuse, but it's the best we can do without
+    // process start markers or full argv access on Windows.
+    return _samePath(identity.executablePath, record.openCodeExecutablePath);
   }
 
   bool _matchesBridgeRecord({
