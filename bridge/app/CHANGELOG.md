@@ -1,5 +1,14 @@
 # Changelog
 
+## [v0.7.0] - 2026-05-17
+
+### Fixed
+- Manage OpenCode and Bridge lifecycle conflicts with robust process identity tracking, singleton enforcement, and graceful shutdown coordination (#162)
+- Handle OpenCode v1.14.48 schema changes and missing SSE event types (#159)
+
+### Changed
+- Update Flutter to 3.41.9 (#143)
+
 ## [v0.6.1] - 2026-04-29
 
 ### Fixed
