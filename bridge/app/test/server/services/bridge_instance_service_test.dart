@@ -111,6 +111,7 @@ void main() {
       bridgeInstanceRepository.snapshots = <List<ProcessIdentity>>[
         <ProcessIdentity>[existing],
         <ProcessIdentity>[reusedPid],
+        <ProcessIdentity>[reusedPid],
       ];
       terminalPromptRepository.decision = TerminalPromptDecision.replace;
 
@@ -135,8 +136,8 @@ void main() {
       final result = await service.enforceSingleLiveBridge(currentPid: 100);
 
       expect(result.terminatedBridges.map((bridge) => bridge.pid), equals(<int>[204, 205]));
-      expect(processRepository.signalRequests, equals(<String>['graceful:204', 'graceful:205']));
-      expect(clock.delays, equals(<Duration>[const Duration(seconds: 5), const Duration(seconds: 5)]));
+      expect(processRepository.signalRequests, equals(<String>['graceful:204', 'graceful:205', 'force:205']));
+      expect(clock.delays, equals(<Duration>[const Duration(seconds: 5)]));
     });
 
     test('service does not reference OpenCodeServerService', () async {
