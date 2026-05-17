@@ -8,19 +8,6 @@ name: Release All Platforms
 
 on:
   workflow_dispatch:
-    inputs:
-      ios_runner:
-        description: 'macOS runner for iOS build'
-        required: false
-        type: choice
-        options:
-          - macos-latest
-        default: 'macos-latest'
-      deploy_android:
-        description: 'Deploy to Android Internal Track'
-        required: false
-        type: boolean
-        default: true
 
 concurrency:
   group: release-all-${{ github.ref }}
@@ -37,12 +24,11 @@ jobs:
       GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
 
   ios:
-    name: Build iOS app
-    if: false
+    name: Deploy iOS to TestFlight
     needs: next-build-number
     uses: ./.github/workflows/_reusable-ios-testflight.yml
     with:
-      runner: ${{ inputs.ios_runner }}
+      runner: macos-latest
       build_number: ${{ needs.next-build-number.outputs.build_number }}
     secrets:
       APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
@@ -56,10 +42,10 @@ jobs:
 
   android:
     name: Deploy Android to Internal Track
-    if: ${{ inputs.deploy_android }}
     needs: next-build-number
     uses: ./.github/workflows/_reusable-android-internal.yml
     with:
+      runner: ubuntu-latest
       build_number: ${{ needs.next-build-number.outputs.build_number }}
     secrets:
       GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}

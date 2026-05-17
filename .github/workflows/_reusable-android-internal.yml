@@ -3,6 +3,11 @@ name: Android Internal Deploy
 on:
   workflow_call:
     inputs:
+      runner:
+        description: 'Linux runner to use for the build'
+        required: false
+        type: string
+        default: 'ubuntu-latest'
       build_number:
         description: 'Pre-computed aligned build number / version code'
         required: true
@@ -18,8 +23,8 @@ on:
 jobs:
   deploy:
     name: Build and Deploy to Internal Track
-    runs-on: blacksmith-4vcpu-ubuntu-2404
-    timeout-minutes: 45
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 30
 
     env:
       VERSION_CODE: ${{ inputs.build_number }}
