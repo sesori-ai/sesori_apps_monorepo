@@ -85,6 +85,9 @@ class OpenCodeServerService {
     required Iterable<ProcessIdentity> terminatedBridgeIdentities,
   }) async {
     final records = await _ownershipRepository.readAll();
+
+    // Phase 1: Authorize and pre-check records.
+    final recordsToTerminate = <OpenCodeOwnershipRecord>[];
     for (final record in records) {
       if (!await _isStaleKillAuthorized(
         record: record,
@@ -93,7 +96,69 @@ class OpenCodeServerService {
         continue;
       }
 
-      await _stopRecord(record: record, removeOwnership: true);
+      final shouldTerminate = await _shouldTerminateRecord(record: record);
+      if (shouldTerminate) {
+        recordsToTerminate.add(record);
+      }
+    }
+
+    if (recordsToTerminate.isEmpty) {
+      return;
+    }
+
+    // Phase 2: Send all graceful signals in parallel.
+    try {
+      await Future.wait(
+        recordsToTerminate.map((record) => _processRepository.sendGracefulSignal(pid: record.openCodePid)),
+      ).timeout(openCodeGracefulShutdownWait);
+    } catch (err, st) {
+      Log.w("Failed to gracefully stop some opencode instance(s)", err, st);
+    }
+
+    // Always wait, even if some signals failed.
+    await _clock.delay(duration: openCodeGracefulShutdownWait);
+
+    // Phase 3: Check which records survived graceful shutdown.
+    final survivors = <OpenCodeOwnershipRecord>[];
+    for (final record in recordsToTerminate) {
+      final currentOwned = _currentOwnedProcessFor(record: record);
+      final currentOwnedStillRunning = currentOwned != null && await _isCurrentOwnedProcessRunning(process: currentOwned);
+      final remainingIdentity = await _processRepository.inspectProcess(pid: record.openCodePid);
+      final matchesRemaining = remainingIdentity != null && _matchesOpenCodeRecord(identity: remainingIdentity, record: record);
+
+      if (currentOwnedStillRunning || matchesRemaining) {
+        survivors.add(record);
+      } else {
+        _currentOwnedProcessesBySessionId.remove(record.ownerSessionId);
+      }
+    }
+
+    // Phase 4: Send force signals to survivors.
+    try {
+      await Future.wait(
+        survivors.map((record) => _processRepository.sendForceSignal(pid: record.openCodePid)),
+      ).timeout(openCodeGracefulShutdownWait);
+    } catch (err, st) {
+      Log.w("Failed to force kill some opencode instance(s)", err, st);
+    }
+
+    // Phase 5: Final cleanup for all terminated records.
+    for (final record in recordsToTerminate) {
+      final currentOwned = _currentOwnedProcessFor(record: record);
+      final currentOwnedStillRunning = currentOwned != null && await _isCurrentOwnedProcessRunning(process: currentOwned);
+
+      if (!currentOwnedStillRunning) {
+        _currentOwnedProcessesBySessionId.remove(record.ownerSessionId);
+      }
+
+      if (currentOwnedStillRunning) {
+        continue;
+      }
+
+      final finalIdentity = await _processRepository.inspectProcess(pid: record.openCodePid);
+      if (finalIdentity == null || !_matchesOpenCodeRecord(identity: finalIdentity, record: record)) {
+        await _ownershipRepository.deleteByOwnerSessionId(ownerSessionId: record.ownerSessionId);
+      }
     }
   }
 
@@ -357,6 +422,29 @@ class OpenCodeServerService {
         await _ownershipRepository.deleteByOwnerSessionId(ownerSessionId: record.ownerSessionId);
       }
     }
+  }
+
+  Future<bool> _shouldTerminateRecord({required OpenCodeOwnershipRecord record}) async {
+    final currentOwnedProcess = _currentOwnedProcessFor(record: record);
+    final initialIdentity = await _processRepository.inspectProcess(pid: record.openCodePid);
+    final matchesInitialIdentity =
+        initialIdentity != null && _matchesOpenCodeRecord(identity: initialIdentity, record: record);
+
+    if (!matchesInitialIdentity && currentOwnedProcess == null) {
+      await _ownershipRepository.deleteByOwnerSessionId(ownerSessionId: record.ownerSessionId);
+      return false;
+    }
+
+    if (!matchesInitialIdentity && currentOwnedProcess != null) {
+      final currentOwnedStillRunningBeforeGraceful = await _isCurrentOwnedProcessRunning(process: currentOwnedProcess);
+      if (!currentOwnedStillRunningBeforeGraceful) {
+        _currentOwnedProcessesBySessionId.remove(record.ownerSessionId);
+        await _ownershipRepository.deleteByOwnerSessionId(ownerSessionId: record.ownerSessionId);
+        return false;
+      }
+    }
+
+    return true;
   }
 
   _CurrentOwnedOpenCodeProcess? _currentOwnedProcessFor({required OpenCodeOwnershipRecord record}) {
