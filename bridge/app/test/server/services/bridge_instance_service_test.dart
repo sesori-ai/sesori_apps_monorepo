@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:sesori_bridge/src/server/foundation/process_identity.dart';
 import 'package:sesori_bridge/src/server/foundation/process_match.dart';
+import 'package:sesori_bridge/src/server/foundation/process_user.dart';
 import 'package:sesori_bridge/src/server/foundation/server_clock.dart';
 import 'package:sesori_bridge/src/server/foundation/shutdown_result.dart';
 import 'package:sesori_bridge/src/server/foundation/terminal_prompt_decision.dart';
@@ -160,7 +161,7 @@ ProcessIdentity _candidate({
     startMarker: startMarker ?? 'Fri May 15 12:00:00 2026',
     executablePath: '/Users/alex/.local/bin/sesori-bridge',
     commandLine: '/Users/alex/.local/bin/sesori-bridge',
-    ownerUser: 'alex',
+    ownerUser: ProcessUser.fromRawUser("alex"),
     platform: 'macos',
     capturedAt: DateTime.utc(2026, 5, 15, 12),
   );

@@ -17,6 +17,7 @@ import "../../server/api/runtime_file_api.dart";
 import "../../server/api/system_process_api.dart";
 import "../../server/api/terminal_prompt_api.dart";
 import "../../server/foundation/process_identity.dart";
+import "../../server/foundation/process_user.dart";
 import "../../server/foundation/server_clock.dart";
 import "../../server/models/open_code_ownership_record.dart";
 import "../../server/repositories/bridge_instance_repository.dart";
@@ -313,12 +314,12 @@ class BridgeRuntimeRunner {
     );
   }
 
-  static String? _resolveCurrentUser({required Map<String, String> environment}) {
-    return environment["USER"] ?? environment["USERNAME"];
-  }
+  static ProcessUser? _resolveCurrentUser({required Map<String, String> environment}) => ProcessUser.fromRawUser(
+    environment["USER"] ?? environment["USERNAME"],
+  );
 
   static ProcessIdentity _fallbackCurrentBridgeIdentity({
-    required String? currentUser,
+    required ProcessUser? currentUser,
     required ServerClock serverClock,
     required List<String> cliArgs,
   }) {

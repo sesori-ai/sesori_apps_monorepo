@@ -251,9 +251,9 @@ class OrchestratorSession {
     final activePhones = <int, bool>{};
 
     try {
-      Log.d("[dbg] connecting to relay...");
+      Log.d("connecting to relay...");
       await _client.connect();
-      Log.d("[dbg] relay connected");
+      Log.d("relay connected");
 
       _sessionAbortService.abortStartedSessions
           .listen(_completionListener.markSessionAbortPending)
@@ -268,7 +268,7 @@ class OrchestratorSession {
         _completionListener.handleSseEvent(startupSummary);
       }
 
-      Log.d("[dbg] subscribing to plugin event stream...");
+      Log.d("subscribing to plugin event stream...");
       _plugin.events
           .asyncMap<BridgeSseEvent>(_sessionEventEnrichmentService.enrich)
           .listen(
@@ -276,7 +276,7 @@ class OrchestratorSession {
               unawaited(_processPluginEvent(event));
             },
             onError: (Object e, StackTrace st) {
-              Log.w("[dbg] plugin event stream error: $e");
+              Log.w("plugin event stream error: $e");
               unawaited(
                 _failureReporter.recordFailure(
                   error: e,
@@ -289,11 +289,11 @@ class OrchestratorSession {
               );
             },
             onDone: () {
-              Log.w("[dbg] plugin event stream closed");
+              Log.w("plugin event stream closed");
             },
           )
           .addTo(_subscriptions);
-      Log.d("[dbg] plugin event stream subscribed");
+      Log.d("plugin event stream subscribed");
       _prSyncService.prChanges
           .listen((String projectId) {
             _sseManager.enqueueEvent(SesoriSseEvent.sessionsUpdated(projectID: projectId));
@@ -353,20 +353,20 @@ class OrchestratorSession {
       await _completionListener.dispose();
       _maintenanceListener.dispose();
       _prSyncService.dispose();
-      Log.d("[dbg] disposing plugin...");
+      Log.d("disposing plugin...");
       await _plugin.dispose();
-      Log.d("[dbg] plugin disposed");
-      Log.d("[dbg] stopping sse manager...");
+      Log.d("plugin disposed");
+      Log.d("stopping sse manager...");
       _sseManager.stop();
-      Log.d("[dbg] sse manager stopped");
-      Log.d("[dbg] disposing push notification service...");
+      Log.d("sse manager stopped");
+      Log.d("disposing push notification service...");
       await _pushDispatcher.dispose();
-      Log.d("[dbg] push notification service disposed");
+      Log.d("push notification service disposed");
       await _bytesSentController.close();
       try {
-        Log.d("[dbg] closing relay client...");
+        Log.d("closing relay client...");
         await _client.close();
-        Log.d("[dbg] relay client closed");
+        Log.d("relay client closed");
       } catch (e) {
         Log.e("error closing relay connection: $e");
       }
@@ -427,7 +427,7 @@ class OrchestratorSession {
         return;
       }
 
-      Log.v("[dbg] relay msg: isText=${msg.isText} len=${msg.data.length}");
+      Log.v("relay msg: isText=${msg.isText} len=${msg.data.length}");
 
       if (msg.isText) {
         Map<String, dynamic> control;
@@ -440,22 +440,22 @@ class OrchestratorSession {
 
         final type = control["type"] as String?;
         final connID = control["connId"] as int?;
-        Log.v("[dbg] control: type=$type connID=$connID");
+        Log.v("control: type=$type connID=$connID");
         if (type == null || connID == null) {
-          Log.v("[dbg] dropping control: null type or connID");
+          Log.v("dropping control: null type or connID");
           continue;
         }
 
         switch (type) {
           case "phone_connected":
-            Log.v("[dbg] phone_connected connID=$connID");
+            Log.v("phone_connected connID=$connID");
             try {
               kxManager.startExchange(connID);
             } catch (e) {
               Log.e("failed to start exchange for connId $connID: $e");
             }
           case "phone_disconnected":
-            Log.v("[dbg] phone_disconnected connID=$connID");
+            Log.v("phone_disconnected connID=$connID");
             kxManager.removeExchange(connID);
             activePhones.remove(connID);
             _sseManager.removeSubscriber(connID);
@@ -464,42 +464,42 @@ class OrchestratorSession {
       }
 
       if (msg.data.length < 2) {
-        Log.v("[dbg] binary too short: ${msg.data.length}");
+        Log.v("binary too short: ${msg.data.length}");
         continue;
       }
 
       final connID = ByteData.sublistView(msg.data).getUint16(0, Endian.big);
       final payload = msg.data.sublist(2);
       if (payload.isEmpty) {
-        Log.v("[dbg] empty payload for connID=$connID");
+        Log.v("empty payload for connID=$connID");
         continue;
       }
 
-      Log.v("[dbg] binary: connID=$connID payloadLen=${payload.length} firstByte=0x${payload[0].toRadixString(16)}");
+      Log.v("binary: connID=$connID payloadLen=${payload.length} firstByte=0x${payload[0].toRadixString(16)}");
 
       if (payload[0] == RelayProtocol.jsonStartByte) {
-        Log.v("[dbg] JSON message (key exchange?)");
+        Log.v("JSON message (key exchange?)");
         RelayMessage relayMessage;
         try {
           relayMessage = RelayMessage.fromJson(
             jsonDecodeMap(utf8.decode(payload)),
           );
         } catch (e) {
-          Log.v("[dbg] failed to parse relay JSON: $e");
+          Log.v("failed to parse relay JSON: $e");
           continue;
         }
 
-        Log.v("[dbg] parsed: ${relayMessage.runtimeType}");
+        Log.v("parsed: ${relayMessage.runtimeType}");
 
         if (relayMessage is! RelayKeyExchange) {
-          Log.v("[dbg] not a key exchange, skipping");
+          Log.v("not a key exchange, skipping");
           continue;
         }
 
         List<int> encrypted;
         try {
           encrypted = await kxManager.handleKeyExchange(connID, relayMessage);
-          Log.d("[dbg] key exchange OK, sending ready to connID=$connID");
+          Log.d("key exchange OK, sending ready to connID=$connID");
         } catch (e) {
           Log.e("failed key exchange for connId $connID: $e");
           continue;
@@ -507,7 +507,7 @@ class OrchestratorSession {
 
         try {
           _client.send(connID, encrypted);
-          Log.d("[dbg] ready sent to connID=$connID");
+          Log.d("ready sent to connID=$connID");
         } catch (e) {
           if (_cancelled) {
             throw StateError("cancelled");
@@ -516,12 +516,12 @@ class OrchestratorSession {
         }
 
         activePhones[connID] = true;
-        Log.d("[dbg] phone $connID is now active");
+        Log.d("phone $connID is now active");
         continue;
       }
 
       Log.v(
-        "[dbg] checking protocolVersion: payload[0]=0x${payload[0].toRadixString(16)} expected=0x${protocolVersion.toRadixString(16)}",
+        "checking protocolVersion: payload[0]=0x${payload[0].toRadixString(16)} expected=0x${protocolVersion.toRadixString(16)}",
       );
       if (payload[0] == protocolVersion) {
         final encryptor = RelayCryptoService().createSessionEncryptor(
@@ -539,18 +539,18 @@ class OrchestratorSession {
         if (activePhones[connID] == true) {
           if (decryptError != null || decrypted == null) {
             Log.v(
-              "[dbg] failed to decrypt from connId $connID: $decryptError",
+              "failed to decrypt from connId $connID: $decryptError",
             );
             continue;
           }
-          Log.v("[dbg] decrypted OK from connID=$connID, handling...");
+          Log.v("decrypted OK from connID=$connID, handling...");
           await _handleDecryptedMessage(connID, decrypted);
-          Log.v("[dbg] handled message from connID=$connID");
+          Log.v("handled message from connID=$connID");
           continue;
         }
 
         if (decryptError != null || decrypted == null) {
-          Log.v("[dbg] not active, decrypt failed for connID=$connID: $decryptError — sending rekeyRequired");
+          Log.v("not active, decrypt failed for connID=$connID: $decryptError — sending rekeyRequired");
           final rekeyRequired = jsonEncode(
             const RelayMessage.rekeyRequired().toJson(),
           );
@@ -608,25 +608,25 @@ class OrchestratorSession {
         jsonDecodeMap(utf8.decode(decrypted)),
       );
     } catch (e) {
-      Log.v("[dbg] failed to parse decrypted msg from connID=$connID: $e");
+      Log.v("failed to parse decrypted msg from connID=$connID: $e");
       return;
     }
 
-    Log.v("[dbg] decrypted msg type: ${msg.runtimeType}");
+    Log.v("decrypted msg type: ${msg.runtimeType}");
 
     switch (msg) {
       case final RelayRequest req:
-        Log.v("[dbg] RelayRequest: ${req.method} ${req.path}");
+        Log.v("RelayRequest: ${req.method} ${req.path}");
         try {
           final response = await _router.route(req);
-          Log.v("[dbg] response: status=${response.status}");
+          Log.v("response: status=${response.status}");
           await _encryptAndSend(connID: connID, message: response);
-          Log.v("[dbg] response sent to connID=$connID");
+          Log.v("response sent to connID=$connID");
         } catch (e) {
           Log.e("request routing failed for connId $connID: $e");
         }
       case final RelaySseSubscribe subscribe:
-        Log.v("[dbg] SseSubscribe: path=${subscribe.path}");
+        Log.v("SseSubscribe: path=${subscribe.path}");
         try {
           _sseManager.subscribePath(connID, subscribe.path, _client);
           final projSummary = _mapper.buildProjectsSummaryEvent();
@@ -634,15 +634,15 @@ class OrchestratorSession {
             _sseManager.enqueueEvent(projSummary);
             _completionListener.handleSseEvent(projSummary);
           }
-          Log.v("[dbg] initial projectsSummary enqueued");
+          Log.v("initial projectsSummary enqueued");
         } catch (e) {
           Log.e("sse subscribe failed for connId $connID: $e");
         }
       case RelaySseUnsubscribe():
-        Log.v("[dbg] SseUnsubscribe connID=$connID");
+        Log.v("SseUnsubscribe connID=$connID");
         _sseManager.unsubscribe(connID);
       default:
-        Log.v("[dbg] unhandled msg type: ${msg.runtimeType}");
+        Log.v("unhandled msg type: ${msg.runtimeType}");
     }
   }
 

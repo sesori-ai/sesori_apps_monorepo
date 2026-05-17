@@ -15,7 +15,7 @@ class BridgeDiagnostics {
       final (hasFileSystemAccess, hasGitAvailable) = await (checkFilesystemAccess(), checkGitAvailable()).wait;
       return hasFileSystemAccess && hasGitAvailable;
     } on Object catch (error, stackTrace) {
-      Log.w("[diagnostics] Unexpected error during diagnostics: $error\n$stackTrace");
+      Log.w("Unexpected error during diagnostics: $error\n$stackTrace");
       return false;
     }
   }
@@ -24,13 +24,13 @@ class BridgeDiagnostics {
     try {
       final result = await Process.run("git", ["--version"]);
       if (result.exitCode != 0) {
-        Log.w("[diagnostics] git is not available - worktree creation will be skipped.");
+        Log.w("git is not available - worktree creation will be skipped.");
         return false;
       }
-      Log.d("[diagnostics] Git available: ${result.stdout.toString().trim()}");
+      Log.d("Git available: ${result.stdout.toString().trim()}");
       return true;
     } on Object {
-      Log.w("[diagnostics] git is not installed - worktree creation will be skipped.");
+      Log.w("git is not installed - worktree creation will be skipped.");
       return false;
     }
   }
@@ -43,7 +43,7 @@ class BridgeDiagnostics {
   Future<bool> checkFilesystemAccess() async {
     final homeDir = Platform.environment["HOME"] ?? Platform.environment["USERPROFILE"];
     if (homeDir == null) {
-      Log.w("[diagnostics] Could not determine home directory — filesystem suggestions may not work.");
+      Log.w("Could not determine home directory — filesystem suggestions may not work.");
       return false;
     }
 
@@ -64,7 +64,7 @@ class BridgeDiagnostics {
         dir.listSync(followLinks: false);
       } on FileSystemException {
         Log.w(
-          "[diagnostics] Cannot list $path — the terminal may need Full Disk Access "
+          "Cannot list $path — the terminal may need Full Disk Access "
           "(System Settings → Privacy & Security → Full Disk Access).",
         );
         allAccessible = false;
@@ -72,7 +72,7 @@ class BridgeDiagnostics {
     }
 
     if (allAccessible) {
-      Log.d("[diagnostics] Filesystem access check passed.");
+      Log.d("Filesystem access check passed.");
     }
 
     return allAccessible;

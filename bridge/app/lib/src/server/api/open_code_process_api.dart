@@ -4,14 +4,16 @@ import "dart:math";
 
 import "package:http/http.dart" as http;
 
+import "../foundation/process_user.dart";
 import "../foundation/server_clock.dart";
 
-typedef OpenCodeProcessStarter = Future<Process> Function(
-  String executable,
-  List<String> arguments, {
-  Map<String, String>? environment,
-  bool runInShell,
-});
+typedef OpenCodeProcessStarter =
+    Future<Process> Function(
+      String executable,
+      List<String> arguments, {
+      Map<String, String>? environment,
+      bool runInShell,
+    });
 
 class OpenCodeProcessApi {
   OpenCodeProcessApi({
@@ -19,7 +21,7 @@ class OpenCodeProcessApi {
     required http.Client httpClient,
     required ServerClock clock,
     required Map<String, String> environment,
-    required String? currentUser,
+    required ProcessUser? currentUser,
     required bool isWindows,
     required String platform,
   }) : _processStarter = processStarter,
@@ -36,7 +38,7 @@ class OpenCodeProcessApi {
   final http.Client _httpClient;
   final ServerClock _clock;
   final Map<String, String> _environment;
-  final String? _currentUser;
+  final ProcessUser? _currentUser;
   final bool _isWindows;
   final String _platform;
 
@@ -123,7 +125,7 @@ class OpenCodeStartFact {
   final String? startMarker;
   final String executablePath;
   final String commandLine;
-  final String? ownerUser;
+  final ProcessUser? ownerUser;
   final String platform;
   final DateTime capturedAt;
   final String password;

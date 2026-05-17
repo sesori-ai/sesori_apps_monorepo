@@ -1,5 +1,6 @@
 import 'package:sesori_bridge/src/server/api/system_process_api.dart';
 import 'package:sesori_bridge/src/server/foundation/process_identity.dart';
+import 'package:sesori_bridge/src/server/foundation/process_user.dart';
 import 'package:sesori_bridge/src/server/foundation/shutdown_result.dart';
 import 'package:sesori_bridge/src/server/repositories/bridge_instance_repository.dart';
 import 'package:test/test.dart';
@@ -11,7 +12,7 @@ void main() {
 
     setUp(() {
       api = _FakeSystemProcessApi();
-      repository = BridgeInstanceRepository(api: api, currentUser: 'alex');
+      repository = BridgeInstanceRepository(api: api, currentUser: ProcessUser.fromRawUser("alex"));
     });
 
     test('excludes current pid and returns multiple current-user bridge binaries', () async {
@@ -142,7 +143,7 @@ ProcessIdentity _fact({
     startMarker: 'Fri May 15 12:00:00 2026',
     executablePath: executablePath,
     commandLine: commandLine,
-    ownerUser: ownerUser,
+    ownerUser: ProcessUser.fromRawUser(ownerUser),
     platform: 'macos',
     capturedAt: DateTime.utc(2026, 5, 15, 12),
   );

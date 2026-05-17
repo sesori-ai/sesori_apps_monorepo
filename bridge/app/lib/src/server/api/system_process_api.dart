@@ -3,6 +3,7 @@ import "dart:io";
 
 import "../../bridge/foundation/process_runner.dart";
 import "../foundation/process_identity.dart";
+import "../foundation/process_user.dart";
 import "../foundation/server_clock.dart";
 import "../foundation/shutdown_result.dart";
 
@@ -96,7 +97,7 @@ class SystemProcessApi {
         throw Exception("Failed to extract PID for posix process: ${match.toString()}");
       }
 
-      final owner = match.group(2);
+      final owner = ProcessUser.fromRawUser(match.group(2));
       final startMaker = (match.group(3) ?? "").trim();
       final commandLine = (match.group(4) ?? "").trim();
       processes.add(
@@ -151,7 +152,7 @@ class SystemProcessApi {
           startMarker: null,
           executablePath: executablePath,
           commandLine: executablePath,
-          ownerUser: row[6].isEmpty ? null : row[6],
+          ownerUser: ProcessUser.fromRawUser(row[6].isEmpty ? null : row[6]),
           platform: _platform,
           capturedAt: capturedAt,
         ),

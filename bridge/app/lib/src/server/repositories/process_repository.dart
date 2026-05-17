@@ -3,17 +3,18 @@ import "package:path/path.dart" as path;
 import "../api/system_process_api.dart";
 import "../foundation/process_identity.dart";
 import "../foundation/process_match.dart";
+import "../foundation/process_user.dart";
 import "../foundation/shutdown_result.dart";
 
 class ProcessRepository {
   ProcessRepository({
     required SystemProcessApi api,
-    required String? currentUser,
+    required ProcessUser? currentUser,
   }) : _api = api,
        _currentUser = currentUser;
 
   final SystemProcessApi _api;
-  final String? _currentUser;
+  final ProcessUser? _currentUser;
 
   Future<ProcessIdentity?> inspectProcess({required int pid}) async {
     final identity = await _api.inspectProcess(pid: pid);
@@ -60,8 +61,7 @@ class ProcessRepository {
     return ProcessMatch(
       identity: identity,
       kind: _resolveKind(identity: identity),
-      isCurrentUserProcess: identity.ownerUser != null &&
-          _normalizeUser(identity.ownerUser) == _normalizeUser(_currentUser),
+      isCurrentUserProcess: identity.ownerUser != null && identity.ownerUser == _currentUser,
     );
   }
 
@@ -84,14 +84,5 @@ class ProcessRepository {
     }
 
     return ProcessMatchKind.unknown;
-  }
-
-  static String? _normalizeUser(String? user) {
-    if (user == null) return null;
-    final backslashIndex = user.lastIndexOf(r'\');
-    final normalized = backslashIndex >= 0
-        ? user.substring(backslashIndex + 1)
-        : user;
-    return normalized.toLowerCase();
   }
 }

@@ -4,6 +4,7 @@ import "dart:io";
 
 import "package:sesori_bridge/src/server/foundation/process_identity.dart";
 import "package:sesori_bridge/src/server/foundation/process_match.dart";
+import "package:sesori_bridge/src/server/foundation/process_user.dart";
 import "package:sesori_bridge/src/server/foundation/server_clock.dart";
 import "package:sesori_bridge/src/server/foundation/shutdown_result.dart";
 import "package:sesori_bridge/src/server/models/open_code_ownership_record.dart";
@@ -101,11 +102,14 @@ void main() {
 
       expect(runtime.port, equals(49152));
       expect(openCodeRepository.healthProbePorts, equals(<int>[49152, 49152, 49152]));
-      expect(clock.delays, equals(<Duration>[
-        const Duration(milliseconds: 500),
-        const Duration(milliseconds: 500),
-        const Duration(milliseconds: 500),
-      ]));
+      expect(
+        clock.delays,
+        equals(<Duration>[
+          const Duration(milliseconds: 500),
+          const Duration(milliseconds: 500),
+          const Duration(milliseconds: 500),
+        ]),
+      );
       expect(ownershipRepository.upsertedStatuses.last, equals(OpenCodeOwnershipStatus.ready));
     });
 
@@ -154,18 +158,28 @@ void main() {
 
       expect(runtime.port, equals(49153));
       expect(openCodeRepository.startedPorts, equals(<int>[49152, 49153]));
-      expect(openCodeRepository.healthProbePorts, equals(<int>[
-        49152, 49152, 49152, 49152, 49152,
-        49153,
-      ]));
-      expect(clock.delays, equals(<Duration>[
-        const Duration(milliseconds: 500),
-        const Duration(milliseconds: 500),
-        const Duration(milliseconds: 500),
-        const Duration(milliseconds: 500),
-        const Duration(milliseconds: 500),
-        const Duration(milliseconds: 500),
-      ]));
+      expect(
+        openCodeRepository.healthProbePorts,
+        equals(<int>[
+          49152,
+          49152,
+          49152,
+          49152,
+          49152,
+          49153,
+        ]),
+      );
+      expect(
+        clock.delays,
+        equals(<Duration>[
+          const Duration(milliseconds: 500),
+          const Duration(milliseconds: 500),
+          const Duration(milliseconds: 500),
+          const Duration(milliseconds: 500),
+          const Duration(milliseconds: 500),
+          const Duration(milliseconds: 500),
+        ]),
+      );
       expect(ownershipRepository.records.values.single.status, equals(OpenCodeOwnershipStatus.ready));
       expect(ownershipRepository.records.values.single.port, equals(49153));
     });
@@ -368,14 +382,17 @@ void main() {
 
       expect(processRepository.signalRequests, equals(<String>["graceful:212", "force:212"]));
       expect(ownershipRepository.records, isEmpty);
-      expect(clock.delays, equals(<Duration>[
-        const Duration(milliseconds: 500),
-        const Duration(milliseconds: 500),
-        const Duration(milliseconds: 500),
-        const Duration(milliseconds: 500),
-        const Duration(milliseconds: 500),
-        openCodeGracefulShutdownWait,
-      ]));
+      expect(
+        clock.delays,
+        equals(<Duration>[
+          const Duration(milliseconds: 500),
+          const Duration(milliseconds: 500),
+          const Duration(milliseconds: 500),
+          const Duration(milliseconds: 500),
+          const Duration(milliseconds: 500),
+          openCodeGracefulShutdownWait,
+        ]),
+      );
       expect(spawnedProcess.killSignals, isEmpty);
     });
 
@@ -853,10 +870,13 @@ void main() {
       expect(processRepository.signalRequests, equals(<String>["graceful:702", "force:702"]));
       expect(ownershipRepository.records.keys, contains("current-owner"));
       expect(ownershipRepository.records.values.single.status, equals(OpenCodeOwnershipStatus.stopping));
-      expect(clock.delays, equals(<Duration>[
-        const Duration(milliseconds: 500),
-        openCodeGracefulShutdownWait,
-      ]));
+      expect(
+        clock.delays,
+        equals(<Duration>[
+          const Duration(milliseconds: 500),
+          openCodeGracefulShutdownWait,
+        ]),
+      );
       expect(spawnedProcess.killSignals, isEmpty);
     });
 
@@ -994,7 +1014,7 @@ ProcessIdentity _identity({
     startMarker: startMarker,
     executablePath: executablePath,
     commandLine: commandLine,
-    ownerUser: "alex",
+    ownerUser: ProcessUser.fromRawUser("alex"),
     platform: "macos",
     capturedAt: DateTime.utc(2026, 5, 15, 12),
   );

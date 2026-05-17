@@ -35,7 +35,7 @@ class BandwidthTracker {
     final last1h = _sumSince(now.subtract(const Duration(hours: 1)));
 
     Log.d(
-      "[bandwidth] last 1m: ${formatBytes(last1m)} "
+      "last 1m: ${formatBytes(last1m)} "
       "| last 10m: ${formatBytes(last10m)} "
       "| last 1h: ${formatBytes(last1h)}",
     );

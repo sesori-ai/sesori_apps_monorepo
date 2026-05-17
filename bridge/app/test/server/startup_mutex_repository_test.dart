@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:sesori_bridge/src/server/api/runtime_file_api.dart';
 import 'package:sesori_bridge/src/server/foundation/process_identity.dart';
 import 'package:sesori_bridge/src/server/foundation/process_match.dart';
+import 'package:sesori_bridge/src/server/foundation/process_user.dart';
 import 'package:sesori_bridge/src/server/foundation/shutdown_result.dart';
 import 'package:sesori_bridge/src/server/repositories/process_repository.dart';
 import 'package:sesori_bridge/src/server/repositories/startup_mutex_repository.dart';
@@ -81,7 +82,7 @@ void main() {
           startMarker: 'bridge-start-marker',
           executablePath: '/usr/local/bin/sesori-bridge',
           commandLine: 'sesori-bridge',
-          ownerUser: 'user',
+          ownerUser: ProcessUser.fromRawUser("user"),
           platform: 'macos',
           capturedAt: DateTime.utc(2026, 5, 15),
         ),
@@ -134,7 +135,7 @@ void main() {
           startMarker: 'other-start',
           executablePath: '/usr/local/bin/something-else',
           commandLine: 'something-else',
-          ownerUser: 'user',
+          ownerUser: ProcessUser.fromRawUser("user  "),
           platform: 'macos',
           capturedAt: DateTime.utc(2026, 5, 15),
         ),
@@ -197,7 +198,7 @@ void main() {
           startMarker: 'live-bridge',
           executablePath: '/usr/local/bin/sesori-bridge',
           commandLine: 'sesori-bridge',
-          ownerUser: 'user',
+          ownerUser: ProcessUser.fromRawUser(" USER"),
           platform: 'macos',
           capturedAt: DateTime.utc(2026, 5, 15),
         ),
@@ -232,7 +233,7 @@ void main() {
           startMarker: 'recycled-start',
           executablePath: '/usr/local/bin/sesori-bridge',
           commandLine: 'sesori-bridge',
-          ownerUser: 'user',
+          ownerUser: ProcessUser.fromRawUser(" USer"),
           platform: 'macos',
           capturedAt: DateTime.utc(2026, 5, 15),
         ),

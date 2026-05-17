@@ -1,3 +1,5 @@
+import 'process_user.dart';
+
 class ProcessIdentity {
   const ProcessIdentity({
     required this.pid,
@@ -13,7 +15,7 @@ class ProcessIdentity {
   final String? startMarker;
   final String? executablePath;
   final String commandLine;
-  final String? ownerUser;
+  final ProcessUser? ownerUser;
   final String platform;
   final DateTime capturedAt;
 }

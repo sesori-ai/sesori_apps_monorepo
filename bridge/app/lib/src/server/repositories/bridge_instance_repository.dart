@@ -2,16 +2,17 @@ import 'package:path/path.dart' as path;
 
 import '../api/system_process_api.dart';
 import '../foundation/process_identity.dart';
+import '../foundation/process_user.dart';
 
 class BridgeInstanceRepository {
   BridgeInstanceRepository({
     required SystemProcessApi api,
-    required String? currentUser,
+    required ProcessUser? currentUser,
   }) : _api = api,
        _currentUser = currentUser;
 
   final SystemProcessApi _api;
-  final String? _currentUser;
+  final ProcessUser? _currentUser;
 
   Future<List<ProcessIdentity>> listLiveBridgeCandidates({required int currentPid}) async =>
       (await _api.listProcesses()) //
@@ -19,9 +20,7 @@ class BridgeInstanceRepository {
           .toList();
 
   bool _isLiveBridge({required ProcessIdentity process}) {
-    if (_currentUser != null &&
-        process.ownerUser != null &&
-        _normalizeUser(process.ownerUser) != _normalizeUser(_currentUser)) {
+    if (_currentUser != null && process.ownerUser != null && process.ownerUser != _currentUser) {
       return false;
     }
 
@@ -40,14 +39,5 @@ class BridgeInstanceRepository {
     }
 
     return executableBasename == 'dart' || executableBasename == 'dart.exe' || executableBasename == 'bridge.dart';
-  }
-
-  static String? _normalizeUser(String? user) {
-    if (user == null) return null;
-    final backslashIndex = user.lastIndexOf(r'\');
-    final normalized = backslashIndex >= 0
-        ? user.substring(backslashIndex + 1)
-        : user;
-    return normalized.toLowerCase();
   }
 }

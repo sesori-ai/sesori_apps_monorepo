@@ -3,6 +3,7 @@ import "dart:convert";
 import "dart:io";
 
 import "package:sesori_bridge/src/server/api/open_code_process_api.dart";
+import "package:sesori_bridge/src/server/foundation/process_user.dart";
 import "package:sesori_bridge/src/server/repositories/open_code_process_repository.dart";
 import "package:test/test.dart";
 
@@ -26,7 +27,7 @@ void main() {
         startMarker: "Fri May 15 10:00:00 2026",
         executablePath: "/usr/local/bin/opencode",
         commandLine: "/usr/local/bin/opencode serve --port 43123 --hostname 127.0.0.1",
-        ownerUser: "alex",
+        ownerUser: ProcessUser.fromRawUser("alex"),
         platform: "macos",
         capturedAt: capturedAt,
         password: "secret",
@@ -57,7 +58,7 @@ void main() {
       expect(startResult.identity.startMarker, equals("Fri May 15 10:00:00 2026"));
       expect(startResult.identity.executablePath, equals("/usr/local/bin/opencode"));
       expect(startResult.identity.commandLine, contains("opencode serve"));
-      expect(startResult.identity.ownerUser, equals("alex"));
+      expect(startResult.identity.ownerUser, equals(ProcessUser.fromRawUser("alex")));
       expect(startResult.identity.platform, equals("macos"));
       expect(startResult.identity.capturedAt, equals(capturedAt));
 

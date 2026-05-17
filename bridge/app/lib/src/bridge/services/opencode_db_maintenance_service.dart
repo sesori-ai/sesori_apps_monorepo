@@ -26,7 +26,7 @@ class OpenCodeDbMaintenanceService {
     if (mode == null) return;
     if (mode != 0) {
       Log.d(
-        "[DbMaintenance] auto_vacuum already enabled (mode=$mode) — skipping",
+        "auto_vacuum already enabled (mode=$mode) — skipping",
       );
       return;
     }
@@ -36,7 +36,7 @@ class OpenCodeDbMaintenanceService {
     final estimatedSeconds = (sizeMB / _estimatedVacuumMbPerSecond).ceil().clamp(1, 600);
 
     Log.i(
-      "[DbMaintenance] OpenCode database found "
+      "OpenCode database found "
       "(${sizeMB.toStringAsFixed(0)} MB). "
       "Enabling auto-vacuum — estimated duration: "
       "~${_formatDuration(estimatedSeconds)}",
@@ -49,7 +49,7 @@ class OpenCodeDbMaintenanceService {
     final savedMB = (sizeBefore - sizeAfter) / (1024 * 1024);
 
     Log.i(
-      "[DbMaintenance] Auto-vacuum enabled successfully. "
+      "Auto-vacuum enabled successfully. "
       "Reclaimed ${savedMB.toStringAsFixed(0)} MB "
       "(${(sizeAfter / (1024 * 1024)).toStringAsFixed(0)} MB remaining)",
     );

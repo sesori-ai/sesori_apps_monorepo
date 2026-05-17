@@ -2,6 +2,7 @@ import "package:args/args.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_cli_options.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_runtime_server.dart";
 import "package:sesori_bridge/src/server/foundation/process_identity.dart";
+import "package:sesori_bridge/src/server/foundation/process_user.dart";
 import "package:sesori_bridge/src/server/models/open_code_ownership_record.dart";
 import "package:sesori_bridge/src/server/repositories/open_code_ownership_repository.dart";
 import "package:sesori_bridge/src/server/repositories/startup_mutex_repository.dart";
@@ -238,7 +239,7 @@ ProcessIdentity _identity({required int pid, required String? startMarker}) {
     startMarker: startMarker,
     executablePath: "/usr/local/bin/sesori-bridge",
     commandLine: "/usr/local/bin/sesori-bridge",
-    ownerUser: "alex",
+    ownerUser: ProcessUser.fromRawUser("alex"),
     platform: "macos",
     capturedAt: DateTime.utc(2026, 5, 15, 12),
   );

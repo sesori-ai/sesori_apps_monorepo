@@ -3,6 +3,7 @@ import "dart:async";
 import "package:sesori_bridge/src/server/api/system_process_api.dart";
 import "package:sesori_bridge/src/server/foundation/process_identity.dart";
 import "package:sesori_bridge/src/server/foundation/process_match.dart";
+import "package:sesori_bridge/src/server/foundation/process_user.dart";
 import "package:sesori_bridge/src/server/foundation/shutdown_result.dart";
 import "package:sesori_bridge/src/server/repositories/process_repository.dart";
 import "package:test/test.dart";
@@ -14,7 +15,10 @@ void main() {
 
     setUp(() {
       api = _FakeSystemProcessApi();
-      repository = ProcessRepository(api: api, currentUser: "alex");
+      repository = ProcessRepository(
+        api: api,
+        currentUser: ProcessUser.fromRawUser("alex"),
+      );
     });
 
     test("process inspection returns typed identity", () async {
@@ -24,7 +28,7 @@ void main() {
         startMarker: "Fri May 15 11:30:00 2026",
         executablePath: "/usr/local/bin/opencode",
         commandLine: "/usr/local/bin/opencode serve --port 53111",
-        ownerUser: "alex",
+        ownerUser: ProcessUser.fromRawUser("alex"),
         platform: "macos",
         capturedAt: capturedAt,
       );
@@ -37,7 +41,7 @@ void main() {
       expect(identity.startMarker, equals("Fri May 15 11:30:00 2026"));
       expect(identity.executablePath, equals("/usr/local/bin/opencode"));
       expect(identity.commandLine, contains("opencode serve"));
-      expect(identity.ownerUser, equals("alex"));
+      expect(identity.ownerUser, equals(ProcessUser.fromRawUser("alex")));
       expect(identity.platform, equals("macos"));
       expect(identity.capturedAt, equals(capturedAt));
     });
@@ -49,7 +53,7 @@ void main() {
           startMarker: null,
           executablePath: "/Users/alex/.local/bin/sesori-bridge",
           commandLine: "/Users/alex/.local/bin/sesori-bridge --relay wss://relay.sesori.com",
-          ownerUser: "alex",
+          ownerUser: ProcessUser.fromRawUser("alex"),
           platform: "macos",
           capturedAt: DateTime.utc(2026, 5, 15, 12),
         ),
@@ -58,7 +62,7 @@ void main() {
           startMarker: null,
           executablePath: "/usr/local/bin/opencode",
           commandLine: "/usr/local/bin/opencode serve --port 45111",
-          ownerUser: "alex",
+          ownerUser: ProcessUser.fromRawUser("alex"),
           platform: "macos",
           capturedAt: DateTime.utc(2026, 5, 15, 12, 1),
         ),
@@ -67,7 +71,7 @@ void main() {
           startMarker: null,
           executablePath: "/usr/bin/python3",
           commandLine: "python3 worker.py",
-          ownerUser: "other",
+          ownerUser: ProcessUser.fromRawUser("other"),
           platform: "macos",
           capturedAt: DateTime.utc(2026, 5, 15, 12, 2),
         ),
