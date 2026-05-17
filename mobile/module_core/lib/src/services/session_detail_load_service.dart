@@ -39,7 +39,7 @@ class SessionDetailLoadService {
     }
 
     try {
-      final routeProjectId = _normalizeOptionalText(projectId);
+      final routeProjectId = projectId.normalize();
       final projectContextFuture = _loadProjectSessionContext(sessionId: sessionId);
       final commandsFuture = routeProjectId == null ? null : _listCommands(projectId: routeProjectId);
       final (
@@ -127,7 +127,7 @@ class SessionDetailLoadService {
   }
 
   Future<ApiResponse<CommandListResponse>> _listCommands({required String? projectId}) {
-    final normalizedProjectId = _normalizeOptionalText(projectId);
+    final normalizedProjectId = projectId?.normalize();
     if (normalizedProjectId == null) {
       return Future<ApiResponse<CommandListResponse>>.value(
         ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
@@ -144,14 +144,6 @@ class SessionDetailLoadService {
       logw("Failed to load project session context: ${error.toString()}", error, stackTrace);
       return null;
     }
-  }
-
-  String? _normalizeOptionalText(String? value) {
-    final normalized = value?.trim();
-    if (normalized == null || normalized.isEmpty) {
-      return null;
-    }
-    return normalized;
   }
 }
 

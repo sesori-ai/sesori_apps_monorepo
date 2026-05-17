@@ -582,7 +582,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   Future<void> sendMessage({required String text, required String? command}) async {
     final current = state;
     final trimmed = text.trim();
-    final normalizedCommand = _normalizeOptionalText(command);
+    final normalizedCommand = command?.normalize();
     if (trimmed.isEmpty && normalizedCommand == null) return;
 
     final submission = QueuedSessionSubmission(text: trimmed, command: normalizedCommand);
@@ -679,14 +679,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   SessionDetailLoaded? _latestLoadedState() {
     final current = state;
     return current is SessionDetailLoaded ? current : null;
-  }
-
-  String? _normalizeOptionalText(String? value) {
-    final normalized = value?.trim();
-    if (normalized == null || normalized.isEmpty) {
-      return null;
-    }
-    return normalized;
   }
 
   PromptModel? _agentModelToPromptModel(AgentModel? agentModel) {

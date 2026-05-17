@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
+import 'package:sesori_shared/sesori_shared.dart';
 
 import '../../server/foundation/process_identity.dart';
 import '../../server/models/open_code_ownership_record.dart';
@@ -41,7 +42,7 @@ Future<BridgeServerRuntime> resolveServer({
             try {
               final runtime = await openCodeServerService.validateExistingServer(
                 port: requestedPort!,
-                password: _normalizePassword(password: options.password),
+                password: options.password.normalize(),
               );
               Log.i('Using existing server at ${runtime.serverUri} (auto-start disabled)');
               return BridgeServerRuntime.fromOpenCodeRuntime(
@@ -49,10 +50,12 @@ Future<BridgeServerRuntime> resolveServer({
                 ownedOpenCodeRecord: null,
               );
             } on OpenCodeServerStartException catch (error) {
-              Log.w('Cannot reach OpenCode at port $requestedPort (auto-start disabled): $error. Bridge will start anyway; start OpenCode manually to enable proxying.');
+              Log.w(
+                'Cannot reach OpenCode at port $requestedPort (auto-start disabled): $error. Bridge will start anyway; start OpenCode manually to enable proxying.',
+              );
               return BridgeServerRuntime(
                 serverUrl: '$defaultTargetHost:$requestedPort',
-                serverPassword: _normalizePassword(password: options.password),
+                serverPassword: options.password.normalize(),
                 process: null,
                 ownedOpenCodeRecord: null,
                 port: requestedPort!,
@@ -64,7 +67,7 @@ Future<BridgeServerRuntime> resolveServer({
           final runtime = await openCodeServerService.start(
             executablePath: options.opencodeBin,
             requestedPort: requestedPort,
-            password: _normalizePassword(password: options.password),
+            password: options.password.normalize(),
             terminatedBridgeIdentities: resolution.terminatedBridges,
           );
 
@@ -98,10 +101,6 @@ Future<BridgeServerRuntime> resolveServer({
       }
     },
   );
-}
-
-String? _normalizePassword({required String password}) {
-  return password.isEmpty ? null : password;
 }
 
 class BridgeServerRuntime {
