@@ -111,7 +111,6 @@ void main() {
       bridgeInstanceRepository.snapshots = <List<ProcessIdentity>>[
         <ProcessIdentity>[existing],
         <ProcessIdentity>[reusedPid],
-        <ProcessIdentity>[reusedPid],
       ];
       terminalPromptRepository.decision = TerminalPromptDecision.replace;
 

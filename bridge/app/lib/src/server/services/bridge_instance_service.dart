@@ -92,11 +92,13 @@ class BridgeInstanceService {
       await Future.wait(
         existingBridges.map((bridge) => _processRepository.sendGracefulSignal(pid: bridge.pid)),
       ).timeout(_bridgeShutdownWait);
-
-      await _clock.delay(duration: _bridgeShutdownWait);
     } catch (err, st) {
       Log.w("Failed to gracefully stop existing bridge(s)", err, st);
     }
+
+    // Always wait for graceful shutdown, even if some signals failed.
+    await _clock.delay(duration: _bridgeShutdownWait);
+
     final bridgesThatSurvivedGracefulShutdown = await _bridgeInstanceRepository.listLiveBridgeCandidates(
       currentPid: currentPid,
     );
@@ -107,8 +109,10 @@ class BridgeInstanceService {
     }
 
     // some bridges did not gracefully terminate so we need to force kill them
+    var forceSignalsSent = false;
     for (final bridge in existingBridges) {
       if (_containsSameIdentity(candidates: bridgesThatSurvivedGracefulShutdown, bridge: bridge)) {
+        forceSignalsSent = true;
         try {
           await _processRepository.sendForceSignal(pid: bridge.pid).timeout(_bridgeShutdownWait);
         } catch (err, st) {
@@ -117,9 +121,9 @@ class BridgeInstanceService {
       }
     }
 
-    final bridgesThatSurvivedForcedShutdown = await _bridgeInstanceRepository.listLiveBridgeCandidates(
-      currentPid: currentPid,
-    );
+    final bridgesThatSurvivedForcedShutdown = forceSignalsSent
+        ? await _bridgeInstanceRepository.listLiveBridgeCandidates(currentPid: currentPid)
+        : bridgesThatSurvivedGracefulShutdown;
 
     final List<ProcessIdentity> bridgesThatSurvivedAllKillAttempts = [];
     for (final bridge in existingBridges) {
