@@ -362,10 +362,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListDeleteConfirmCancel => 'Cancel';
 
   @override
-  String get loginTitle => 'Sign In';
+  String get loginTitle => 'Welcome to';
 
   @override
-  String get loginSubtitle => 'Sign in to connect to your server';
+  String get loginSubtitle => 'Sesori';
+
+  @override
+  String get loginAgreementText => 'By signing, in you accept our Terms of use and Privacy policy.';
 
   @override
   String get loginWithGithub => 'Sign in with GitHub';
@@ -732,9 +735,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get diffRetry => 'Retry';
-
-  @override
-  String get splashWelcomeTo => 'Welcome to';
 
   @override
   String get splashTitle => 'Sesori';

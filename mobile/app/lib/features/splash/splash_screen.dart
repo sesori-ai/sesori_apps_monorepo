@@ -62,10 +62,6 @@ class _SplashView extends StatelessWidget {
                 // caused by the shadow
                 const SizedBox(height: 13),
                 Text(
-                  context.loc.splashWelcomeTo,
-                  style: zyra.textTheme.textSm.regular,
-                ),
-                Text(
                   context.loc.splashTitle,
                   style: zyra.textTheme.textMd.bold,
                 ),

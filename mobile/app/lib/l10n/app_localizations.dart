@@ -712,14 +712,20 @@ abstract class AppLocalizations {
   /// No description provided for @loginTitle.
   ///
   /// In en, this message translates to:
-  /// **'Sign In'**
+  /// **'Welcome to'**
   String get loginTitle;
 
   /// No description provided for @loginSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Sign in to connect to your server'**
+  /// **'Sesori'**
   String get loginSubtitle;
+
+  /// No description provided for @loginAgreementText.
+  ///
+  /// In en, this message translates to:
+  /// **'By signing, in you accept our Terms of use and Privacy policy.'**
+  String get loginAgreementText;
 
   /// No description provided for @loginWithGithub.
   ///
@@ -1398,12 +1404,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Retry'**
   String get diffRetry;
-
-  /// No description provided for @splashWelcomeTo.
-  ///
-  /// In en, this message translates to:
-  /// **'Welcome to'**
-  String get splashWelcomeTo;
 
   /// No description provided for @splashTitle.
   ///
