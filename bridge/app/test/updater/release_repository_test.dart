@@ -53,7 +53,7 @@ Map<String, dynamic> _releaseJson({
   String? tagName,
   String? publishedAt = '2024-06-01T00:00:00Z',
 }) => {
-  'tag_name': tagName ?? 'bridge-v$version',
+  'tag_name': tagName ?? 'v$version',
   'published_at': publishedAt,
   'draft': draft,
   'prerelease': prerelease,
@@ -305,12 +305,12 @@ void main() {
         );
       });
 
-      test('tag_name without bridge-v prefix → returns null', () async {
+      test('bridge-v prefix → returns null', () async {
         final client = MockClient(
           (_) async => http.Response(
             jsonEncode([
               {
-                'tag_name': 'v0.3.0',
+                'tag_name': 'bridge-v0.3.0',
                 'published_at': '2024-06-01T00:00:00Z',
                 'draft': false,
                 'prerelease': false,

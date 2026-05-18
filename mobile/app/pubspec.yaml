@@ -18,7 +18,6 @@ resolution: workspace
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
 version: 1.0.7+1
-
 environment:
   sdk: ^3.11.5
 

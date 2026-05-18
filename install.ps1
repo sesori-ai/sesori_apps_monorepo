@@ -69,14 +69,14 @@ function Resolve-BridgeRelease {
     $eligible = @()
     foreach ($release in $releases) {
         $tagName = [string]$release.tag_name
-        if (-not $tagName.StartsWith('bridge-v')) {
+        if (-not $tagName.StartsWith('v')) {
             continue
         }
         if ($release.draft -or $release.prerelease) {
             continue
         }
 
-        $versionText = $tagName.Substring(8)
+        $versionText = $tagName.Substring(1)
         $parsedVersion = $null
         if (-not [version]::TryParse($versionText, [ref]$parsedVersion)) {
             continue
@@ -171,7 +171,7 @@ try {
         exit 1
     }
 
-    $managedManifestJson = @{ version = $Release.TagName.Substring(8) } | ConvertTo-Json -Compress
+    $managedManifestJson = @{ version = $Release.TagName.Substring(1) } | ConvertTo-Json -Compress
     [System.IO.File]::WriteAllText(
         $ManagedManifest,
         $managedManifestJson,

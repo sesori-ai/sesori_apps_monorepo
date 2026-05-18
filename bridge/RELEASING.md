@@ -4,20 +4,20 @@
 
 - **Enabled by default:** GitHub Releases
 - **Enabled by default:** npm publish via npm trusted publishing
-- **Bridge release selector:** installers and updater only consider stable GitHub releases tagged `bridge-v*`
+- **Release selector:** installers and updater only consider stable GitHub releases tagged `v*`. GitHub Actions trigger migration to shared tags is deferred.
 
 ## Release tag
 
 Use tags in this format:
 
 ```bash
-bridge-vX.Y.Z
+vX.Y.Z
 ```
 
 Example:
 
 ```bash
-bridge-v0.3.1
+v0.3.1
 ```
 
 ## Before release
@@ -83,11 +83,10 @@ And the following repository variable:
 ### 1. Bump version
 
 ```bash
-cd bridge/app
-dart run tool/bump_version.dart 0.3.1
+make bump-version TYPE=patch
 ```
 
-That bump step is the source of truth for the release version. It must keep `bridge/app/pubspec.yaml`, `bridge/app/lib/src/version.dart`, and all six npm package manifests in `bridge/app/npm/` aligned to the same `X.Y.Z` release before you tag.
+That bump step is the source of truth for the release version. It must keep `bridge/app/pubspec.yaml`, `bridge/app/lib/src/version.dart`, all six npm package manifests in `bridge/app/npm/`, and `mobile/app/pubspec.yaml` aligned to the same `X.Y.Z` semantic release before you tag. For an explicit version, run `make bump-version VERSION=X.Y.Z`.
 
 ### 2. Commit and push
 
@@ -100,8 +99,8 @@ git push
 ### 3. Tag and push
 
 ```bash
-git tag bridge-v0.3.1
-git push origin bridge-v0.3.1
+git tag v0.3.1
+git push origin v0.3.1
 ```
 
 ## What the workflow does on tag push
@@ -130,13 +129,13 @@ Use this sequence when you want to test the real packaged distribution flow end 
 
 ### A. Test a GitHub Release for the shell installers
 
-1. Bump the bridge version.
+1. Bump the shared App + Bridge version with `make bump-version TYPE=<type>` or `make bump-version VERSION=X.Y.Z`.
 2. Commit and push the branch.
 3. Create and push a stable release tag:
 
 ```bash
-git tag bridge-vX.Y.Z
-git push origin bridge-vX.Y.Z
+git tag vX.Y.Z
+git push origin vX.Y.Z
 ```
 
 4. Wait for `bridge-release.yml` to publish the GitHub Release assets and `checksums.txt`.
@@ -152,14 +151,14 @@ sesori-bridge --version
 Or with the hosted installer from that exact tag:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/bridge-vX.Y.Z/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/vX.Y.Z/install.sh | bash
 sesori-bridge --version
 ```
 
 Windows:
 
 ```powershell
-irm https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/bridge-vX.Y.Z/install.ps1 | iex
+irm https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/vX.Y.Z/install.ps1 | iex
 sesori-bridge --version
 ```
 
@@ -177,7 +176,7 @@ npx @sesori/bridge@X.Y.Z
 sesori-bridge --version
 ```
 
-The expected result is that `npx` installs or refreshes the managed runtime, then exits with a clear next-step message. The long-lived command is still `sesori-bridge`, not a binary inside `node_modules`. If npm does not materialize the platform package in the exec tree, the wrapper must fall back to the exact tagged GitHub Release asset for `bridge-vX.Y.Z` and still install the same managed runtime.
+The expected result is that `npx` installs or refreshes the managed runtime, then exits with a clear next-step message. The long-lived command is still `sesori-bridge`, not a binary inside `node_modules`. If npm does not materialize the platform package in the exec tree, the wrapper must fall back to the exact tagged GitHub Release asset for `vX.Y.Z` and still install the same managed runtime.
 
 ### C. Manual uninstall verification
 
