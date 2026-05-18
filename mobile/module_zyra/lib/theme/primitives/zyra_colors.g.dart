@@ -5,7 +5,7 @@
 
 import "package:flutter/material.dart";
 
-import "../../utils/lerp_utils.dart";
+import "../../../../utils/lerp_utils.dart";
 import "zyra_color_primitives.g.dart";
 
 /// Dark mode color tokens matching Figma specifications.
@@ -54,8 +54,8 @@ abstract final class ZyraColorsDark {
   /// Figma: Colors/Text/text-primary_on-brand → Gray (dark mode)/50
   static const Color textPrimaryOnBrand = ZyraColorPrimitives.grayDark50;
 
-  /// Figma: Colors/Text/text-primary_on-white
-  static const Color textPrimaryOnWhite = Color(0xFF0A0D12);
+  /// Figma: Colors/Text/text-primary_on-white → Base/black
+  static const Color textPrimaryOnWhite = ZyraColorPrimitives.baseBlack;
 
   /// Figma: Colors/Text/text-quaternary (500) → Gray (dark mode)/400
   static const Color textQuaternary = ZyraColorPrimitives.grayDark400;
@@ -595,6 +595,12 @@ abstract final class ZyraColorsDark {
   /// Figma: Component colors/Components/Avatars/avatar-styles-bg-neutral
   static const Color avatarStylesBgNeutral = Color(0xFFE0E0E0);
 
+  /// Figma: Component colors/Components/Icons/Hero Avatar/brand-gradient-bottom → Brand Blue/300
+  static const Color brandGradientBottom = ZyraColorPrimitives.brandBlue300;
+
+  /// Figma: Component colors/Components/Icons/Hero Avatar/brand-gradient-top → Base/white
+  static const Color brandGradientTop = ZyraColorPrimitives.baseWhite;
+
   /// Figma: Component colors/Components/Icons/Featured icons/featured-icon-light-fg-brand → Brand Blue/200
   static const Color featuredIconLightFgBrand = ZyraColorPrimitives.brandBlue200;
 
@@ -610,11 +616,23 @@ abstract final class ZyraColorsDark {
   /// Figma: Component colors/Components/Icons/Featured icons/featured-icon-light-fg-warning → Warning/200
   static const Color featuredIconLightFgWarning = ZyraColorPrimitives.warning200;
 
-  /// Figma: Component colors/Components/Icons/Main Avatar/gradient-bottom → Brand Blue/300
-  static const Color gradientBottom = ZyraColorPrimitives.brandBlue300;
+  /// Figma: Component colors/Components/Icons/Hero Avatar/green-gradient-bottom → Success/200
+  static const Color greenGradientBottom = ZyraColorPrimitives.success200;
 
-  /// Figma: Component colors/Components/Icons/Main Avatar/gradient-top → Base/white
-  static const Color gradientTop = ZyraColorPrimitives.baseWhite;
+  /// Figma: Component colors/Components/Icons/Hero Avatar/green-gradient-top 2 → Base/white
+  static const Color greenGradientTop2 = ZyraColorPrimitives.baseWhite;
+
+  /// Figma: Component colors/Components/Icons/Hero Avatar/orange-gradient-bottom → Error/300
+  static const Color orangeGradientBottom = ZyraColorPrimitives.error300;
+
+  /// Figma: Component colors/Components/Icons/Hero Avatar/orange-gradient-top → Base/white
+  static const Color orangeGradientTop = ZyraColorPrimitives.baseWhite;
+
+  /// Figma: Component colors/Components/Icons/Hero Avatar/purple-gradient-bottom → Purple/300
+  static const Color purpleGradientBottom = ZyraColorPrimitives.purple300;
+
+  /// Figma: Component colors/Components/Icons/Hero Avatar/purple-gradient-top → Base/white
+  static const Color purpleGradientTop = ZyraColorPrimitives.baseWhite;
 
   /// Figma: Component colors/Components/Toggles/toggle-border → Base/transparent
   static const Color toggleBorder = ZyraColorPrimitives.baseTransparent;
@@ -675,8 +693,8 @@ abstract final class ZyraColorsLight {
   /// Figma: Colors/Text/text-primary_on-brand → Base/white
   static const Color textPrimaryOnBrand = ZyraColorPrimitives.baseWhite;
 
-  /// Figma: Colors/Text/text-primary_on-white
-  static const Color textPrimaryOnWhite = Color(0xFF0A0D12);
+  /// Figma: Colors/Text/text-primary_on-white → Base/white
+  static const Color textPrimaryOnWhite = ZyraColorPrimitives.baseWhite;
 
   /// Figma: Colors/Text/text-quaternary (500) → Gray (light mode)/400
   static const Color textQuaternary = ZyraColorPrimitives.grayLight400;
@@ -785,8 +803,8 @@ abstract final class ZyraColorsLight {
   /// Figma: Colors/Foreground/fg-error-secondary → Error/500
   static const Color fgErrorSecondary = ZyraColorPrimitives.error500;
 
-  /// Figma: Colors/Foreground/fg-primary (900) → Gray (light mode)/900
-  static const Color fgPrimary = ZyraColorPrimitives.grayLight900;
+  /// Figma: Colors/Foreground/fg-primary (900) → Gray (dark mode)/900
+  static const Color fgPrimary = ZyraColorPrimitives.grayDark900;
 
   /// Figma: Colors/Foreground/fg-quaternary (400) → Gray (light mode)/400
   static const Color fgQuaternary = ZyraColorPrimitives.grayLight400;
@@ -897,8 +915,8 @@ abstract final class ZyraColorsLight {
   /// Figma: Colors/Background/bg-primary-solid → Gray (light mode)/950
   static const Color bgPrimarySolid = ZyraColorPrimitives.grayLight950;
 
-  /// Figma: Colors/Background/bg-primary_alt → Base/white
-  static const Color bgPrimaryAlt = ZyraColorPrimitives.baseWhite;
+  /// Figma: Colors/Background/bg-primary_alt → Gray (light mode)/25
+  static const Color bgPrimaryAlt = ZyraColorPrimitives.grayLight25;
 
   /// Figma: Colors/Background/bg-quaternary → Gray (light mode)/200
   static const Color bgQuaternary = ZyraColorPrimitives.grayLight200;
@@ -1216,6 +1234,12 @@ abstract final class ZyraColorsLight {
   /// Figma: Component colors/Components/Avatars/avatar-styles-bg-neutral
   static const Color avatarStylesBgNeutral = Color(0xFFE0E0E0);
 
+  /// Figma: Component colors/Components/Icons/Hero Avatar/brand-gradient-bottom → Brand Blue/700
+  static const Color brandGradientBottom = ZyraColorPrimitives.brandBlue700;
+
+  /// Figma: Component colors/Components/Icons/Hero Avatar/brand-gradient-top → Brand Blue/400
+  static const Color brandGradientTop = ZyraColorPrimitives.brandBlue400;
+
   /// Figma: Component colors/Components/Icons/Featured icons/featured-icon-light-fg-brand → Brand Blue/600
   static const Color featuredIconLightFgBrand = ZyraColorPrimitives.brandBlue600;
 
@@ -1231,11 +1255,23 @@ abstract final class ZyraColorsLight {
   /// Figma: Component colors/Components/Icons/Featured icons/featured-icon-light-fg-warning → Warning/600
   static const Color featuredIconLightFgWarning = ZyraColorPrimitives.warning600;
 
-  /// Figma: Component colors/Components/Icons/Main Avatar/gradient-bottom → Brand Blue/700
-  static const Color gradientBottom = ZyraColorPrimitives.brandBlue700;
+  /// Figma: Component colors/Components/Icons/Hero Avatar/green-gradient-bottom → Success/900
+  static const Color greenGradientBottom = ZyraColorPrimitives.success900;
 
-  /// Figma: Component colors/Components/Icons/Main Avatar/gradient-top → Brand Blue/400
-  static const Color gradientTop = ZyraColorPrimitives.brandBlue400;
+  /// Figma: Component colors/Components/Icons/Hero Avatar/green-gradient-top 2 → Success/300
+  static const Color greenGradientTop2 = ZyraColorPrimitives.success300;
+
+  /// Figma: Component colors/Components/Icons/Hero Avatar/orange-gradient-bottom → Error/600
+  static const Color orangeGradientBottom = ZyraColorPrimitives.error600;
+
+  /// Figma: Component colors/Components/Icons/Hero Avatar/orange-gradient-top → Warning/600
+  static const Color orangeGradientTop = ZyraColorPrimitives.warning600;
+
+  /// Figma: Component colors/Components/Icons/Hero Avatar/purple-gradient-bottom → Purple/900
+  static const Color purpleGradientBottom = ZyraColorPrimitives.purple900;
+
+  /// Figma: Component colors/Components/Icons/Hero Avatar/purple-gradient-top → Purple/300
+  static const Color purpleGradientTop = ZyraColorPrimitives.purple300;
 
   /// Figma: Component colors/Components/Toggles/toggle-border → Gray (light mode)/300
   static const Color toggleBorder = ZyraColorPrimitives.grayLight300;
@@ -1266,7 +1302,7 @@ abstract final class ZyraColorsLight {
 /// )
 /// ```
 @immutable
-// ignore: use_enums, theme token containers need class semantics and static dark/light singletons
+// ignore: use_enums
 final class ZyraColors {
   // ===========================================================================
   // Dark Mode - Figma: Color mode = Dark
@@ -1464,13 +1500,19 @@ final class ZyraColors {
     utilityWarning700: ZyraColorsDark.utilityWarning700,
     // Other
     avatarStylesBgNeutral: ZyraColorsDark.avatarStylesBgNeutral,
+    brandGradientBottom: ZyraColorsDark.brandGradientBottom,
+    brandGradientTop: ZyraColorsDark.brandGradientTop,
     featuredIconLightFgBrand: ZyraColorsDark.featuredIconLightFgBrand,
     featuredIconLightFgError: ZyraColorsDark.featuredIconLightFgError,
     featuredIconLightFgGray: ZyraColorsDark.featuredIconLightFgGray,
     featuredIconLightFgSuccess: ZyraColorsDark.featuredIconLightFgSuccess,
     featuredIconLightFgWarning: ZyraColorsDark.featuredIconLightFgWarning,
-    gradientBottom: ZyraColorsDark.gradientBottom,
-    gradientTop: ZyraColorsDark.gradientTop,
+    greenGradientBottom: ZyraColorsDark.greenGradientBottom,
+    greenGradientTop2: ZyraColorsDark.greenGradientTop2,
+    orangeGradientBottom: ZyraColorsDark.orangeGradientBottom,
+    orangeGradientTop: ZyraColorsDark.orangeGradientTop,
+    purpleGradientBottom: ZyraColorsDark.purpleGradientBottom,
+    purpleGradientTop: ZyraColorsDark.purpleGradientTop,
     toggleBorder: ZyraColorsDark.toggleBorder,
     toggleButtonFgDisabled: ZyraColorsDark.toggleButtonFgDisabled,
     toggleSlimBorderPressed: ZyraColorsDark.toggleSlimBorderPressed,
@@ -1669,13 +1711,19 @@ final class ZyraColors {
     required this.utilityWarning700,
     // Other
     required this.avatarStylesBgNeutral,
+    required this.brandGradientBottom,
+    required this.brandGradientTop,
     required this.featuredIconLightFgBrand,
     required this.featuredIconLightFgError,
     required this.featuredIconLightFgGray,
     required this.featuredIconLightFgSuccess,
     required this.featuredIconLightFgWarning,
-    required this.gradientBottom,
-    required this.gradientTop,
+    required this.greenGradientBottom,
+    required this.greenGradientTop2,
+    required this.orangeGradientBottom,
+    required this.orangeGradientTop,
+    required this.purpleGradientBottom,
+    required this.purpleGradientTop,
     required this.toggleBorder,
     required this.toggleButtonFgDisabled,
     required this.toggleSlimBorderPressed,
@@ -2266,6 +2314,12 @@ final class ZyraColors {
   /// Figma: Component colors/Components/Avatars/avatar-styles-bg-neutral
   final Color avatarStylesBgNeutral;
 
+  /// Figma: Component colors/Components/Icons/Hero Avatar/brand-gradient-bottom
+  final Color brandGradientBottom;
+
+  /// Figma: Component colors/Components/Icons/Hero Avatar/brand-gradient-top
+  final Color brandGradientTop;
+
   /// Figma: Component colors/Components/Icons/Featured icons/featured-icon-light-fg-brand
   final Color featuredIconLightFgBrand;
 
@@ -2281,11 +2335,23 @@ final class ZyraColors {
   /// Figma: Component colors/Components/Icons/Featured icons/featured-icon-light-fg-warning
   final Color featuredIconLightFgWarning;
 
-  /// Figma: Component colors/Components/Icons/Main Avatar/gradient-bottom
-  final Color gradientBottom;
+  /// Figma: Component colors/Components/Icons/Hero Avatar/green-gradient-bottom
+  final Color greenGradientBottom;
 
-  /// Figma: Component colors/Components/Icons/Main Avatar/gradient-top
-  final Color gradientTop;
+  /// Figma: Component colors/Components/Icons/Hero Avatar/green-gradient-top 2
+  final Color greenGradientTop2;
+
+  /// Figma: Component colors/Components/Icons/Hero Avatar/orange-gradient-bottom
+  final Color orangeGradientBottom;
+
+  /// Figma: Component colors/Components/Icons/Hero Avatar/orange-gradient-top
+  final Color orangeGradientTop;
+
+  /// Figma: Component colors/Components/Icons/Hero Avatar/purple-gradient-bottom
+  final Color purpleGradientBottom;
+
+  /// Figma: Component colors/Components/Icons/Hero Avatar/purple-gradient-top
+  final Color purpleGradientTop;
 
   /// Figma: Component colors/Components/Toggles/toggle-border
   final Color toggleBorder;
@@ -2495,13 +2561,19 @@ final class ZyraColors {
     utilityWarning700: ZyraColorsLight.utilityWarning700,
     // Other
     avatarStylesBgNeutral: ZyraColorsLight.avatarStylesBgNeutral,
+    brandGradientBottom: ZyraColorsLight.brandGradientBottom,
+    brandGradientTop: ZyraColorsLight.brandGradientTop,
     featuredIconLightFgBrand: ZyraColorsLight.featuredIconLightFgBrand,
     featuredIconLightFgError: ZyraColorsLight.featuredIconLightFgError,
     featuredIconLightFgGray: ZyraColorsLight.featuredIconLightFgGray,
     featuredIconLightFgSuccess: ZyraColorsLight.featuredIconLightFgSuccess,
     featuredIconLightFgWarning: ZyraColorsLight.featuredIconLightFgWarning,
-    gradientBottom: ZyraColorsLight.gradientBottom,
-    gradientTop: ZyraColorsLight.gradientTop,
+    greenGradientBottom: ZyraColorsLight.greenGradientBottom,
+    greenGradientTop2: ZyraColorsLight.greenGradientTop2,
+    orangeGradientBottom: ZyraColorsLight.orangeGradientBottom,
+    orangeGradientTop: ZyraColorsLight.orangeGradientTop,
+    purpleGradientBottom: ZyraColorsLight.purpleGradientBottom,
+    purpleGradientTop: ZyraColorsLight.purpleGradientTop,
     toggleBorder: ZyraColorsLight.toggleBorder,
     toggleButtonFgDisabled: ZyraColorsLight.toggleButtonFgDisabled,
     toggleSlimBorderPressed: ZyraColorsLight.toggleSlimBorderPressed,
@@ -2700,13 +2772,19 @@ final class ZyraColors {
     utilityWarning700: lerpColorNonNull(a.utilityWarning700, b.utilityWarning700, t),
     // Other
     avatarStylesBgNeutral: lerpColorNonNull(a.avatarStylesBgNeutral, b.avatarStylesBgNeutral, t),
+    brandGradientBottom: lerpColorNonNull(a.brandGradientBottom, b.brandGradientBottom, t),
+    brandGradientTop: lerpColorNonNull(a.brandGradientTop, b.brandGradientTop, t),
     featuredIconLightFgBrand: lerpColorNonNull(a.featuredIconLightFgBrand, b.featuredIconLightFgBrand, t),
     featuredIconLightFgError: lerpColorNonNull(a.featuredIconLightFgError, b.featuredIconLightFgError, t),
     featuredIconLightFgGray: lerpColorNonNull(a.featuredIconLightFgGray, b.featuredIconLightFgGray, t),
     featuredIconLightFgSuccess: lerpColorNonNull(a.featuredIconLightFgSuccess, b.featuredIconLightFgSuccess, t),
     featuredIconLightFgWarning: lerpColorNonNull(a.featuredIconLightFgWarning, b.featuredIconLightFgWarning, t),
-    gradientBottom: lerpColorNonNull(a.gradientBottom, b.gradientBottom, t),
-    gradientTop: lerpColorNonNull(a.gradientTop, b.gradientTop, t),
+    greenGradientBottom: lerpColorNonNull(a.greenGradientBottom, b.greenGradientBottom, t),
+    greenGradientTop2: lerpColorNonNull(a.greenGradientTop2, b.greenGradientTop2, t),
+    orangeGradientBottom: lerpColorNonNull(a.orangeGradientBottom, b.orangeGradientBottom, t),
+    orangeGradientTop: lerpColorNonNull(a.orangeGradientTop, b.orangeGradientTop, t),
+    purpleGradientBottom: lerpColorNonNull(a.purpleGradientBottom, b.purpleGradientBottom, t),
+    purpleGradientTop: lerpColorNonNull(a.purpleGradientTop, b.purpleGradientTop, t),
     toggleBorder: lerpColorNonNull(a.toggleBorder, b.toggleBorder, t),
     toggleButtonFgDisabled: lerpColorNonNull(a.toggleButtonFgDisabled, b.toggleButtonFgDisabled, t),
     toggleSlimBorderPressed: lerpColorNonNull(a.toggleSlimBorderPressed, b.toggleSlimBorderPressed, t),
