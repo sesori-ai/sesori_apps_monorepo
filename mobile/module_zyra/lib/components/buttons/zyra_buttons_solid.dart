@@ -31,9 +31,11 @@ enum ZyraButtonsSolidHierarchy {
   /// Filled brand-blue background with white text. Skeuomorphic border + shadow.
   primary,
 
-  /// Filled brand-tinted background (brand-50 in light, bg-secondary in dark) with
-  /// dark text. Shares the skeuomorphic border + shadow treatment as [primary].
-  /// Figma does not expose a destructive variant for this hierarchy.
+  /// Filled with `fg-primary (900)` — the contrast-inverted foreground token
+  /// (dark fill in light mode, light fill in dark mode) — with text and icon
+  /// in `text-primary_on-white`. Shares the skeuomorphic border + shadow
+  /// treatment as [primary]. Figma does not expose a destructive variant for
+  /// this hierarchy.
   primaryAlt,
 
   /// Outlined button with secondary border and secondary text.
@@ -129,7 +131,7 @@ class ZyraButtonsSolid extends StatefulWidget {
   final VoidCallback? onPressed;
 
   /// Optional icon placed before the label.
-  final IconData? leadingIcon;
+  final Widget? leadingIcon;
 
   /// Optional icon placed after the label. Ignored when [iconOnly] is `true`.
   final IconData? trailingIcon;
@@ -272,7 +274,7 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
       children.add(labelWidget);
     } else {
       if (widget.leadingIcon != null) {
-        children.add(Icon(widget.leadingIcon, size: _resolveIconSize(), color: iconColor));
+        children.add(SizedBox(width: _resolveIconSize(), height: _resolveIconSize(), child: widget.leadingIcon));
         children.add(SizedBox(width: gap));
       }
       children.add(labelWidget);
@@ -305,7 +307,7 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
     if (widget.isLoading) {
       iconWidget = _LoadingSpinner(color: iconColor, size: _resolveIconSize());
     } else {
-      iconWidget = Icon(widget.leadingIcon, size: _resolveIconSize(), color: iconColor);
+      iconWidget = SizedBox(width: _resolveIconSize(), height: _resolveIconSize(), child: widget.leadingIcon);
     }
 
     return Padding(
@@ -424,9 +426,11 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
     // Disabled: bg-disabled (matches primary's disabled treatment).
     if (!isEnabled) return colors.bgDisabled;
     // Enabled / hover / pressed / loading all share the same base bg.
-    // Hover/press tinting is handled by the alphaWhite10/20 overlays in
-    // ZyraTappable rather than a bg colour swap.
-    return colors.bgBrandPrimaryAlt;
+    // Figma uses `Colors/Foreground/fg-primary (900)` as the background fill
+    // for this hierarchy — the contrast-inverted foreground token, not a
+    // brand-tinted bg. Hover/press tinting is handled by the alphaWhite10/20
+    // overlays in ZyraTappable rather than a bg colour swap.
+    return colors.fgPrimary;
   }
 
   Color _secondaryBgColor({
