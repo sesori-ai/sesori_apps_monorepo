@@ -380,7 +380,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginWithGoogle => 'Sign in with Google';
 
   @override
-  String get continueWithEmail => 'Continue with Email';
+  String get signInWithEmail => 'Sign in with Email';
 
   @override
   String get emailLabel => 'Email';

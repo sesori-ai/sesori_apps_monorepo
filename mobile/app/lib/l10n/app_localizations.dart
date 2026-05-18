@@ -745,11 +745,11 @@ abstract class AppLocalizations {
   /// **'Sign in with Google'**
   String get loginWithGoogle;
 
-  /// No description provided for @continueWithEmail.
+  /// No description provided for @signInWithEmail.
   ///
   /// In en, this message translates to:
-  /// **'Continue with Email'**
-  String get continueWithEmail;
+  /// **'Sign in with Email'**
+  String get signInWithEmail;
 
   /// No description provided for @emailLabel.
   ///
