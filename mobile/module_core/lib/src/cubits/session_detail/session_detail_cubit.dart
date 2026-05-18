@@ -39,6 +39,16 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   bool _needsStaleRefresh = false;
   bool _waitingForConnection = false;
 
+  /// Pending session-scoped SSE events that arrived while the cubit was in
+  /// [SessionDetailLoading] or [SessionDetailFailed] state. Replayed once the
+  /// state transitions to [SessionDetailLoaded].
+  final List<SesoriSessionEvent> _pendingSessionEvents = [];
+
+  /// Pending global SSE events that arrived while the cubit was in
+  /// [SessionDetailLoading] or [SessionDetailFailed] state. Replayed once the
+  /// state transitions to [SessionDetailLoaded].
+  final List<SseEvent> _pendingGlobalEvents = [];
+
   /// Fires the [SesoriQuestionAsked] whenever a new question arrives, so the
   /// screen can auto-open the question modal.
   final StreamController<SesoriQuestionAsked> _questionStream = StreamController.broadcast();
@@ -91,6 +101,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       case SessionDetailLoadResultLoaded(:final snapshot):
         _waitingForConnection = false;
         emit(_buildLoadedState(snapshot: snapshot));
+        _drainPendingEvents();
         _tryDrainQueue();
       case SessionDetailLoadResultWaitingForConnection():
         _waitingForConnection = true;
@@ -100,6 +111,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         }
       case SessionDetailLoadResultFailed(:final error):
         _waitingForConnection = false;
+        _pendingSessionEvents.clear();
+        _pendingGlobalEvents.clear();
         emit(SessionDetailState.failed(error: error is ApiError ? error : ApiError.generic()));
     }
   }
@@ -199,6 +212,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
               availableVariants: availableVariants,
             ),
           );
+          _drainPendingEvents();
         case SessionDetailLoadResultWaitingForConnection():
           _waitingForConnection = true;
           final latest = state;
@@ -244,6 +258,14 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   // ---------------------------------------------------------------------------
 
   void _handleEvent(SesoriSessionEvent event) {
+    if (state is SessionDetailLoading) {
+      _pendingSessionEvents.add(event);
+      return;
+    }
+    _processSessionEvent(event);
+  }
+
+  void _processSessionEvent(SesoriSessionEvent event) {
     try {
       switch (event) {
         case SesoriMessageUpdated(:final info):
@@ -298,6 +320,90 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   }
 
   void _handleGlobalEvent(SseEvent event) {
+    if (state is SessionDetailLoading) {
+      if (_isRelevantGlobalEvent(event)) {
+        _pendingGlobalEvents.add(event);
+      }
+      return;
+    }
+    _processGlobalEvent(event);
+  }
+
+  /// Returns whether a global SSE event could affect this session's state.
+  /// Used to avoid buffering high-volume irrelevant events (PTY, file watcher,
+  /// LSP, etc.) from the global stream while the cubit is loading.
+  ///
+  /// Conservative: if we can't tell at buffer time whether an event is
+  /// relevant (e.g. [SesoriSessionStatus] or [SesoriSessionUpdated] may be
+  /// for one of our child sessions), we queue it and let the replay handler
+  /// decide.
+  ///
+  /// [SesoriSessionsUpdated] is intentionally excluded: it triggers a silent
+  /// refresh, but during loading we are already fetching the latest snapshot,
+  /// so replaying it would cause a redundant refresh immediately after load.
+  bool _isRelevantGlobalEvent(SseEvent event) {
+    return switch (event.data) {
+      // Child session created for this session — definitely relevant.
+      SesoriSessionCreated(:final info) => info.parentID == _sessionId,
+      // May be a status update for one of our children. We don't know our
+      // children during loading, so queue conservatively and let replay handler
+      // filter by checking current.children.
+      SesoriSessionStatus() => true,
+      // Only queue updates for our direct children (info.parentID tells us
+      // this at buffer time). Updates for unrelated sessions are dropped
+      // immediately to avoid accumulating irrelevant backlog.
+      SesoriSessionUpdated(:final info) => info.parentID == _sessionId,
+      // Definitively irrelevant high-volume events.
+      SesoriServerConnected() ||
+      SesoriServerHeartbeat() ||
+      SesoriServerInstanceDisposed() ||
+      SesoriGlobalDisposed() ||
+      SesoriSessionDeleted() ||
+      SesoriSessionDiff() ||
+      SesoriSessionError() ||
+      SesoriSessionCompacted() ||
+      SesoriCommandExecuted() ||
+      SesoriMessageUpdated() ||
+      SesoriMessageRemoved() ||
+      SesoriMessagePartUpdated() ||
+      SesoriMessagePartDelta() ||
+      SesoriMessagePartRemoved() ||
+      SesoriPtyCreated() ||
+      SesoriPtyUpdated() ||
+      SesoriPtyExited() ||
+      SesoriPtyDeleted() ||
+      SesoriPermissionAsked() ||
+      SesoriPermissionReplied() ||
+      SesoriPermissionUpdated() ||
+      SesoriQuestionAsked() ||
+      SesoriQuestionReplied() ||
+      SesoriQuestionRejected() ||
+      SesoriTodoUpdated() ||
+      SesoriProjectsSummary() ||
+      SesoriProjectUpdated() ||
+      SesoriVcsBranchUpdated() ||
+      SesoriFileEdited() ||
+      SesoriFileWatcherUpdated() ||
+      SesoriLspUpdated() ||
+      SesoriLspClientDiagnostics() ||
+      SesoriMcpToolsChanged() ||
+      SesoriMcpBrowserOpenFailed() ||
+      SesoriInstallationUpdated() ||
+      SesoriInstallationUpdateAvailable() ||
+      SesoriWorkspaceReady() ||
+      SesoriWorkspaceFailed() ||
+      SesoriTuiToastShow() ||
+      SesoriWorktreeReady() ||
+      SesoriWorktreeFailed() ||
+      // Intentionally excluded: triggers a silent refresh, but during loading
+      // we are already fetching the latest snapshot, so replaying it would
+      // cause a redundant refresh immediately after load.
+      SesoriSessionsUpdated() =>
+        false,
+    };
+  }
+
+  void _processGlobalEvent(SseEvent event) {
     final data = event.data;
     try {
       switch (data) {
@@ -370,6 +476,18 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             .catchError((_) {}),
       );
     }
+  }
+
+  /// Replays any SSE events that were buffered while the cubit was not in
+  /// [SessionDetailLoaded] state. Called after a successful load/refresh.
+  void _drainPendingEvents() {
+    if (state is! SessionDetailLoaded) return;
+    final sessionEvents = List<SesoriSessionEvent>.of(_pendingSessionEvents);
+    _pendingSessionEvents.clear();
+    sessionEvents.forEach(_processSessionEvent);
+    final globalEvents = List<SseEvent>.of(_pendingGlobalEvents);
+    _pendingGlobalEvents.clear();
+    globalEvents.forEach(_processGlobalEvent);
   }
 
   void _onSessionUpdated(Session session) {
@@ -1097,6 +1215,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
   @override
   Future<void> close() {
+    _pendingSessionEvents.clear();
+    _pendingGlobalEvents.clear();
     _eventSubscription.cancel();
     _globalEventSubscription.cancel();
     _connectionStatusSubscription.cancel();
