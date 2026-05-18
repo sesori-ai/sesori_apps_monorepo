@@ -1,0 +1,38 @@
+name: 'Setup Flutter'
+description: 'Cache and install asdf tools + Flutter pub dependencies'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup asdf
+      uses: asdf-vm/actions/setup@v4
+
+    - name: Cache asdf tools
+      id: asdf-cache
+      uses: actions/cache@v5
+      with:
+        path: ${{ env.HOME }}/.asdf
+        key: ${{ runner.os }}-asdf-${{ hashFiles('.tool-versions') }}
+
+    - name: Install asdf tools
+      if: steps.asdf-cache.outputs.cache-hit != 'true'
+      uses: asdf-vm/actions/install@v4
+
+    - name: Reshim asdf tools
+      if: steps.asdf-cache.outputs.cache-hit == 'true'
+      shell: bash
+      run: asdf reshim
+
+    - name: Cache pub dependencies
+      uses: actions/cache@v5
+      with:
+        path: |
+          ~/.pub-cache
+        key: ${{ runner.os }}-pub-${{ hashFiles('.tool-versions') }}-${{ hashFiles('**/pubspec.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-pub-${{ hashFiles('.tool-versions') }}-
+
+    - name: Get dependencies (workspace)
+      shell: bash
+      run: dart pub get
+      working-directory: mobile

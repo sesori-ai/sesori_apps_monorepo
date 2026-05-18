@@ -8,6 +8,11 @@ on:
         required: false
         type: string
         default: 'macos-latest'
+      build_number:
+        description: 'Pre-computed TestFlight build number. When empty, the lane queries ASC itself.'
+        required: false
+        type: string
+        default: ''
     secrets:
       APP_STORE_CONNECT_API_KEY_ID:
         required: true
@@ -28,7 +33,7 @@ on:
 
 # Xcode and CocoaPods versions — update these when upgrading
 env:
-  XCODE_VERSION: '16.2'
+  XCODE_VERSION: '26.3.0'
   COCOAPODS_VERSION: '1.16.2'
 
 jobs:
@@ -46,6 +51,7 @@ jobs:
       MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       ITC_TEAM_ID: ${{ secrets.ITC_TEAM_ID }}
+      BUILD_NUMBER: ${{ inputs.build_number }}
       CI: true
 
     steps:
@@ -62,25 +68,10 @@ jobs:
           gem install cocoapods -v ${{ env.COCOAPODS_VERSION }}
           pod --version
 
-      - name: Read Flutter version from .tool-versions
-        shell: bash
-        run: |
-          FLUTTER_VERSION=$(awk '$1 == "flutter" { print $2 }' .tool-versions | sed 's/-stable$//')
-          if [ -z "$FLUTTER_VERSION" ]; then
-            echo "Unable to find a Flutter version in .tool-versions" >&2
-            exit 1
-          fi
-          echo "FLUTTER_VERSION=$FLUTTER_VERSION" >> "$GITHUB_ENV"
-
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: ./.github/actions/setup-flutter
         with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
-
-      - name: Get dependencies (workspace)
-        run: dart pub get
-        working-directory: mobile
+          include-submodules: 'false'
 
       - name: Cache CocoaPods
         uses: actions/cache@v5
@@ -93,7 +84,7 @@ jobs:
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.2'
+          ruby-version: '3.3'
           bundler-cache: true
           working-directory: mobile/app/ios
 
@@ -102,8 +93,8 @@ jobs:
         working-directory: mobile/app
 
       - name: Deploy to TestFlight
-        working-directory: mobile/app/ios
         run: bundle exec fastlane deploy_testflight
+        working-directory: mobile/app/ios
 
       - name: Upload build artifacts on failure
         if: failure()
