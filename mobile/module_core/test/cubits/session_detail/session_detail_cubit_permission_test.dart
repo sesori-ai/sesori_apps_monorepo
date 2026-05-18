@@ -281,7 +281,7 @@ void main() {
       verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).called(1);
     });
 
-    test("non-loaded state ignores permission events", () async {
+    test("non-loaded state buffers permission events and replays after loaded", () async {
       final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
       when(() => mockSessionService.getMessages(sessionId: sessionId)).thenAnswer((_) => messagesCompleter.future);
 
@@ -297,14 +297,13 @@ void main() {
       );
       addTearDown(cubit.close);
 
-      sessionEvents.add(
-        const SesoriPermissionAsked(
-          requestID: "perm-123",
-          sessionID: sessionId,
-          tool: "fs_write",
-          description: "Allow writing file",
-        ),
+      const permission = SesoriPermissionAsked(
+        requestID: "perm-123",
+        sessionID: sessionId,
+        tool: "fs_write",
+        description: "Allow writing file",
       );
+      sessionEvents.add(permission);
       await Future<void>.delayed(const Duration(milliseconds: 20));
 
       expect(cubit.state, const SessionDetailState.loading());
@@ -312,7 +311,8 @@ void main() {
       messagesCompleter.complete(ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()])));
       await _awaitLoaded(cubit);
 
-      expect((cubit.state as SessionDetailLoaded).pendingPermissions, isEmpty);
+      // The buffered permission event should have been replayed after load
+      expect((cubit.state as SessionDetailLoaded).pendingPermissions, [permission]);
     });
   });
 }
