@@ -41,37 +41,37 @@
       }
     }
   },
-   "projectListDefaultName": "Default Project",
-   "projectListRefreshSuccess": "Projects updated",
-   "projectListRefreshFailed": "Could not refresh projects",
-   "projectListErrorTitle": "Failed to load projects",
-   "projectListRetry": "Retry",
-   "projectListActiveSessions": "{count, plural, =1{1 active session} other{{count} active sessions}}",
-   "@projectListActiveSessions": {
-     "placeholders": {
-       "count": {
-         "type": "int"
-       }
-     }
-   },
-   "connectionLostTitle": "Connection Lost",
-   "connectionLostReconnect": "Reconnect",
-   "connectionLostDisconnect": "Disconnect",
-   "relayConnectionLost": "Bridge went offline",
-   "relayReconnecting": "Reconnecting to bridge...",
+  "projectListDefaultName": "Default Project",
+  "projectListRefreshSuccess": "Projects updated",
+  "projectListRefreshFailed": "Could not refresh projects",
+  "projectListErrorTitle": "Failed to load projects",
+  "projectListRetry": "Retry",
+  "projectListActiveSessions": "{count, plural, =1{1 active session} other{{count} active sessions}}",
+  "@projectListActiveSessions": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "connectionLostTitle": "Connection Lost",
+  "connectionLostReconnect": "Reconnect",
+  "connectionLostDisconnect": "Disconnect",
+  "relayConnectionLost": "Bridge went offline",
+  "relayReconnecting": "Reconnecting to bridge...",
   "bridgeOfflineTitle": "Bridge Offline",
-   "bridgeOfflineMessage": "Start sesori-bridge on your laptop",
-    "settingsTitle": "Settings",
-    "settingsLogout": "Log Out",
-   "notificationCategoryAiInteraction": "AI Interactions",
-   "notificationCategoryAiInteractionDescription": "Questions and permission requests from active AI sessions",
-   "notificationCategorySessionMessage": "Session Messages",
-   "notificationCategorySessionMessageDescription": "New assistant messages from running sessions",
-   "notificationCategoryConnectionStatus": "Connection Status",
-   "notificationCategoryConnectionStatusDescription": "Bridge online and offline status changes",
-   "notificationCategorySystemUpdate": "System Updates",
-   "notificationCategorySystemUpdateDescription": "App and bridge updates or maintenance notices",
-   "sessionListTitle": "Sessions",
+  "bridgeOfflineMessage": "Start sesori-bridge on your laptop",
+  "settingsTitle": "Settings",
+  "settingsLogout": "Log Out",
+  "notificationCategoryAiInteraction": "AI Interactions",
+  "notificationCategoryAiInteractionDescription": "Questions and permission requests from active AI sessions",
+  "notificationCategorySessionMessage": "Session Messages",
+  "notificationCategorySessionMessageDescription": "New assistant messages from running sessions",
+  "notificationCategoryConnectionStatus": "Connection Status",
+  "notificationCategoryConnectionStatusDescription": "Bridge online and offline status changes",
+  "notificationCategorySystemUpdate": "System Updates",
+  "notificationCategorySystemUpdateDescription": "App and bridge updates or maintenance notices",
+  "sessionListTitle": "Sessions",
   "sessionListTitleWithName": "{name} — Sessions",
   "@sessionListTitleWithName": {
     "placeholders": {
@@ -195,220 +195,228 @@
   "sessionListDeleteConfirmTitle": "Delete session?",
   "sessionListDeleteConfirmMessage": "This will permanently remove the session and all its messages. This cannot be undone.",
   "sessionListDeleteConfirmAction": "Delete",
-   "sessionListDeleteConfirmCancel": "Cancel",
+  "sessionListDeleteConfirmCancel": "Cancel",
   "loginTitle": "Sign In",
   "loginSubtitle": "Sign in to connect to your server",
-    "loginWithGithub": "Sign in with GitHub",
-    "appleIdTokenMissing": "Apple Sign-In failed. Please try again.",
-    "loginWithApple": "Sign in with Apple",
-    "loginWithGoogle": "Sign in with Google",
-    "continueWithEmail": "Continue with Email",
-   "emailLabel": "Email",
-   "emailHint": "you@example.com",
-   "emailRequired": "Email is required",
-   "emailInvalid": "Please enter a valid email",
-   "passwordLabel": "Password",
-   "passwordRequired": "Password is required",
-   "signIn": "Sign In",
-   "backToLogin": "Back to login",
-    "loginError": "Sign in failed. Please try again.",
-   "loginAuthenticating": "Signing in...",
-    "loginAwaitingCallback": "Waiting for authorization...",
-    "loginAwaitingConfirmation": "Confirm this code on the login page: {userCode}",
-    "@loginAwaitingConfirmation": {
-      "placeholders": {
-        "userCode": {
-          "type": "String"
-        }
+  "loginWithGithub": "Sign in with GitHub",
+  "appleIdTokenMissing": "Apple Sign-In failed. Please try again.",
+  "loginWithApple": "Sign in with Apple",
+  "loginWithGoogle": "Sign in with Google",
+  "continueWithEmail": "Continue with Email",
+  "emailLabel": "Email",
+  "emailHint": "you@example.com",
+  "emailRequired": "Email is required",
+  "emailInvalid": "Please enter a valid email",
+  "passwordLabel": "Password",
+  "passwordRequired": "Password is required",
+  "signIn": "Sign In",
+  "backToLogin": "Back to login",
+  "loginError": "Sign in failed. Please try again.",
+  "loginAuthenticating": "Signing in...",
+  "loginAwaitingCallback": "Waiting for authorization...",
+  "loginAwaitingConfirmation": "Confirm this code on the login page: {userCode}",
+  "@loginAwaitingConfirmation": {
+    "placeholders": {
+      "userCode": {
+        "type": "String"
       }
-    },
-    "loginPolling": "Confirming authorization...",
-    "loginTimeout": "Authorization timed out. Please try again.",
-   "loginBrowserOpenFailed": "Could not open browser",
-   "loginCallbackTimeout": "Authorization timed out. Please try again.",
-   "loginCallbackMissingParams": "Invalid authorization callback. Please try again.",
-   "loginStateMismatch": "Authorization state mismatch. Please try again.",
-   "loginPkceStateMissing": "Login session expired. Please start again.",
-    "sessionListRunning": "Running",
-    "@sessionListRunning": {
-      "description": "Label shown next to the green dot for sessions that are currently active"
-    },
-    "sessionListAwaitingInput": "Awaiting input",
-    "@sessionListAwaitingInput": {
-      "description": "Label shown next to the amber dot for sessions that are waiting for user input (question or permission)"
-    },
-    "sessionListBackgroundTasks": "{count, plural, =1{1 background task} other{{count} background tasks}}",
-    "@sessionListBackgroundTasks": {
-      "description": "Label showing the number of active background tasks for a session",
-      "placeholders": {
-        "count": {
-          "type": "int"
-        }
+    }
+  },
+  "loginPolling": "Confirming authorization...",
+  "loginTimeout": "Authorization timed out. Please try again.",
+  "loginBrowserOpenFailed": "Could not open browser",
+  "loginCallbackTimeout": "Authorization timed out. Please try again.",
+  "loginCallbackMissingParams": "Invalid authorization callback. Please try again.",
+  "loginStateMismatch": "Authorization state mismatch. Please try again.",
+  "loginPkceStateMissing": "Login session expired. Please start again.",
+  "sessionListRunning": "Running",
+  "@sessionListRunning": {
+    "description": "Label shown next to the green dot for sessions that are currently active"
+  },
+  "sessionListAwaitingInput": "Awaiting input",
+  "@sessionListAwaitingInput": {
+    "description": "Label shown next to the amber dot for sessions that are waiting for user input (question or permission)"
+  },
+  "sessionListBackgroundTasks": "{count, plural, =1{1 background task} other{{count} background tasks}}",
+  "@sessionListBackgroundTasks": {
+    "description": "Label showing the number of active background tasks for a session",
+    "placeholders": {
+      "count": {
+        "type": "int"
       }
-    },
-   "sessionListStaleProjectTitle": "Project directory not found",
-   "sessionListStaleProjectMessage": "The directory for this project no longer exists or has been renamed. Sessions cannot be loaded because the server can no longer resolve this project.",
-   "sessionListStaleProjectBack": "Go back",
-   "voiceRecord": "Record voice",
-   "voiceStopRecording": "Stop recording",
-   "voiceCancelTranscription": "Cancel transcription",
-   "voiceTranscribing": "Transcribing...",
-   "voiceRecording": "Recording...",
-   "voiceErrorPermission": "Microphone permission is required for voice input",
-   "voiceErrorRecording": "Recording failed. Please try again.",
-   "voiceErrorTranscription": "Transcription failed. Please try again.",
-   "voiceErrorNetwork": "Could not reach the server. Check your connection.",
-    "voiceErrorNotAuthenticated": "Sign in to use voice input",
-     "voiceRecordingLimitReached": "Recording limit reached (15 minutes)",
-     "addProject": "Add Project",
-     "projectNameHint": "Project name",
-      "createProjectButton": "Create",
-      "openAsProject": "Open as Project",
-      "emptyDirectory": "This directory is empty",
-       "fetchDirectoryFailed": "Could not load directory contents",
-       "fetchDirectoryRetry": "Retry",
-       "fetchDirectoryGoBack": "Go Back",
-      "gitRepoBadge": "git",
-     "projectHidden": "Project hidden",
-     "hideProject": "Hide Project",
-     "noProjects": "No projects",
-     "addProjectPrompt": "Add a project to get started",
-     "creatingProject": "Creating project...",
-     "discoveringProject": "Discovering project...",
-     "projectCreated": "Project created",
-     "projectDiscovered": "Project discovered",
-     "projectCreateFailed": "Failed to create project",
-      "projectDiscoverFailed": "Failed to discover project",
-       "questionReplyFailed": "Failed to send answer. Please try again.",
-       "questionRejectFailed": "Failed to reject question. Please try again.",
-       "permissionReplyFailed": "Failed to send permission response. Please try again.",
-       "permissionBannerSingle": "1 permission request pending",
-       "permissionBannerMultiple": "{count} permission requests pending",
-       "@permissionBannerMultiple": {
-         "placeholders": {
-           "count": {
-             "type": "int"
-           }
-         }
-       },
-      "rename": "Rename",
-      "renameSessionTitle": "Rename Session",
-      "renameProjectTitle": "Rename Project",
-      "renameSessionHint": "Session title",
-      "renameProjectHint": "Project name",
-      "renameSave": "Save",
-      "renameSessionSuccess": "Session renamed",
-      "renameProjectSuccess": "Project renamed",
-       "renameSessionFailed": "Failed to rename session",
-       "renameProjectFailed": "Failed to rename project",
-       "newSessionDedicatedWorktree": "Dedicated worktree",
-       "newSessionDedicatedWorktreeDescription": "Creates a dedicated git worktree and branch for this session",
-       "sessionListDeleteWorktreeCheckbox": "Delete worktree",
-       "sessionListDeleteBranchCheckbox": "Delete branch",
-       "sessionListArchiveConfirmTitle": "Archive session?",
-       "sessionListArchiveConfirmMessage": "This session will be archived and hidden from the active list.",
-       "sessionListArchiveConfirmAction": "Archive",
-       "sessionListForceDeleteTitle": "Force delete?",
-       "sessionListForceArchiveTitle": "Force archive?",
-       "sessionListForceMessage": "The following issues were found:",
-       "sessionListForceDeleteAction": "Force Delete",
-       "sessionListForceArchiveAction": "Force Archive",
-         "sessionListCleanupIssueUnstagedChanges": "Worktree has unstaged changes",
-         "sessionListCleanupIssueSharedWorktree": "Another active session uses this worktree",
-        "sessionListCleanupIssueBranchMismatch": "Worktree is on branch '{actual}' instead of expected '{expected}'",
-        "@sessionListCleanupIssueBranchMismatch": {
-          "placeholders": {
-            "actual": {
-              "type": "String"
-            },
-            "expected": {
-              "type": "String"
-            }
-          }
-        },
-         "sessionListDeleteFailed": "Failed to delete session",
-         "sessionListArchiveFailed": "Failed to archive session",
-         "prLabel": "PR #{number}",
-         "@prLabel": {
-           "placeholders": {
-             "number": {
-               "type": "int"
-             }
-           }
-         },
-         "prStateOpen": "Open",
-         "prStateMerged": "Merged",
-         "prStateClosed": "Closed",
-         "prReviewApproved": "Approved",
-         "prReviewChangesRequested": "Changes requested",
-         "prReviewRequired": "Review required",
-         "prChecksSuccess": "Checks passing",
-         "prChecksFailing": "Checks failing",
-         "prChecksPending": "Checks pending",
-         "prMergeable": "Ready to merge",
-          "prConflicting": "Has merge conflicts",
-          "diffPermissionRequestTitle": "Permission Request",
-          "diffPermissionReject": "Reject",
-          "diffPermissionOnce": "Once",
-          "diffPermissionAlwaysAllow": "Always Allow",
-          "diffFileChangesTitle": "File Changes",
-          "diffFilesChangedCount": "{count} file{count, plural, =1{} other{s}} changed  +{additions} -{deletions}",
-          "@diffFilesChangedCount": {
-            "placeholders": {
-              "count": {"type": "int"},
-              "additions": {"type": "int"},
-              "deletions": {"type": "int"}
-            }
-          },
-          "diffNoFileChanges": "No file changes in this session",
-          "diffErrorPrefix": "Error: {message}",
-          "@diffErrorPrefix": {
-            "placeholders": {
-              "message": {"type": "String"}
-            }
-          },
-          "diffRetry": "Retry",
-   "splashWelcomeTo": "Welcome to",
-   "splashTitle": "Sesori",
-    "newSessionLoadingSemantics": "Creating session",
-    "newSessionLoadingMessage1": "Warming up the engines…",
-    "newSessionLoadingMessage2": "Generating session telemetry…",
-    "newSessionLoadingMessage3": "Preparing for takeoff…",
-    "newSessionLaunchingInBackground": "Your new session will appear in the list once it's launched",
-    "commandSourceCommand": "Command",
-    "commandSourceMcp": "MCP",
-    "commandSourceSkill": "Skill",
-    "commandSourceCustom": "Custom",
-    "sessionDetailFileChangesTooltip": "File changes",
-    "diffBinaryFileChanged": "Binary file changed",
-    "diffFileTooLarge": "File diff too large to display",
-    "diffCouldNotReadFile": "Could not read file",
-    "timestampJustNow": "just now",
-    "timestampMinutesAgo": "{minutes}m ago",
-    "@timestampMinutesAgo": {
-      "placeholders": {
-        "minutes": {
-          "type": "int"
-        }
+    }
+  },
+  "sessionListStaleProjectTitle": "Project directory not found",
+  "sessionListStaleProjectMessage": "The directory for this project no longer exists or has been renamed. Sessions cannot be loaded because the server can no longer resolve this project.",
+  "sessionListStaleProjectBack": "Go back",
+  "voiceRecord": "Record voice",
+  "voiceStopRecording": "Stop recording",
+  "voiceCancelTranscription": "Cancel transcription",
+  "voiceTranscribing": "Transcribing...",
+  "voiceRecording": "Recording...",
+  "voiceErrorPermission": "Microphone permission is required for voice input",
+  "voiceErrorRecording": "Recording failed. Please try again.",
+  "voiceErrorTranscription": "Transcription failed. Please try again.",
+  "voiceErrorNetwork": "Could not reach the server. Check your connection.",
+  "voiceErrorNotAuthenticated": "Sign in to use voice input",
+  "voiceRecordingLimitReached": "Recording limit reached (15 minutes)",
+  "addProject": "Add Project",
+  "projectNameHint": "Project name",
+  "createProjectButton": "Create",
+  "openAsProject": "Open as Project",
+  "emptyDirectory": "This directory is empty",
+  "fetchDirectoryFailed": "Could not load directory contents",
+  "fetchDirectoryRetry": "Retry",
+  "fetchDirectoryGoBack": "Go Back",
+  "gitRepoBadge": "git",
+  "projectHidden": "Project hidden",
+  "hideProject": "Hide Project",
+  "noProjects": "No projects",
+  "addProjectPrompt": "Add a project to get started",
+  "creatingProject": "Creating project...",
+  "discoveringProject": "Discovering project...",
+  "projectCreated": "Project created",
+  "projectDiscovered": "Project discovered",
+  "projectCreateFailed": "Failed to create project",
+  "projectDiscoverFailed": "Failed to discover project",
+  "questionReplyFailed": "Failed to send answer. Please try again.",
+  "questionRejectFailed": "Failed to reject question. Please try again.",
+  "permissionReplyFailed": "Failed to send permission response. Please try again.",
+  "permissionBannerSingle": "1 permission request pending",
+  "permissionBannerMultiple": "{count} permission requests pending",
+  "@permissionBannerMultiple": {
+    "placeholders": {
+      "count": {
+        "type": "int"
       }
-    },
-    "timestampHoursAgo": "{hours}h ago",
-    "@timestampHoursAgo": {
-      "placeholders": {
-        "hours": {
-          "type": "int"
-        }
+    }
+  },
+  "rename": "Rename",
+  "renameSessionTitle": "Rename Session",
+  "renameProjectTitle": "Rename Project",
+  "renameSessionHint": "Session title",
+  "renameProjectHint": "Project name",
+  "renameSave": "Save",
+  "renameSessionSuccess": "Session renamed",
+  "renameProjectSuccess": "Project renamed",
+  "renameSessionFailed": "Failed to rename session",
+  "renameProjectFailed": "Failed to rename project",
+  "newSessionDedicatedWorktree": "Dedicated worktree",
+  "newSessionDedicatedWorktreeDescription": "Creates a dedicated git worktree and branch for this session",
+  "sessionListDeleteWorktreeCheckbox": "Delete worktree",
+  "sessionListDeleteBranchCheckbox": "Delete branch",
+  "sessionListArchiveConfirmTitle": "Archive session?",
+  "sessionListArchiveConfirmMessage": "This session will be archived and hidden from the active list.",
+  "sessionListArchiveConfirmAction": "Archive",
+  "sessionListForceDeleteTitle": "Force delete?",
+  "sessionListForceArchiveTitle": "Force archive?",
+  "sessionListForceMessage": "The following issues were found:",
+  "sessionListForceDeleteAction": "Force Delete",
+  "sessionListForceArchiveAction": "Force Archive",
+  "sessionListCleanupIssueUnstagedChanges": "Worktree has unstaged changes",
+  "sessionListCleanupIssueSharedWorktree": "Another active session uses this worktree",
+  "sessionListCleanupIssueBranchMismatch": "Worktree is on branch '{actual}' instead of expected '{expected}'",
+  "@sessionListCleanupIssueBranchMismatch": {
+    "placeholders": {
+      "actual": {
+        "type": "String"
+      },
+      "expected": {
+        "type": "String"
       }
-    },
-    "timestampDaysAgo": "{days}d ago",
-    "@timestampDaysAgo": {
-      "placeholders": {
-        "days": {
-          "type": "int"
-        }
+    }
+  },
+  "sessionListDeleteFailed": "Failed to delete session",
+  "sessionListArchiveFailed": "Failed to archive session",
+  "prLabel": "PR #{number}",
+  "@prLabel": {
+    "placeholders": {
+      "number": {
+        "type": "int"
       }
-    },
-    "sessionDetailModelFallback": "Model",
-    "sessionDetailAgentFallback": "Agent",
-    "sessionDetailRetryLabel": "Retry"
+    }
+  },
+  "prStateOpen": "Open",
+  "prStateMerged": "Merged",
+  "prStateClosed": "Closed",
+  "prReviewApproved": "Approved",
+  "prReviewChangesRequested": "Changes requested",
+  "prReviewRequired": "Review required",
+  "prChecksSuccess": "Checks passing",
+  "prChecksFailing": "Checks failing",
+  "prChecksPending": "Checks pending",
+  "prMergeable": "Ready to merge",
+  "prConflicting": "Has merge conflicts",
+  "diffPermissionRequestTitle": "Permission Request",
+  "diffPermissionReject": "Reject",
+  "diffPermissionOnce": "Once",
+  "diffPermissionAlwaysAllow": "Always Allow",
+  "diffFileChangesTitle": "File Changes",
+  "diffFilesChangedCount": "{count} file{count, plural, =1{} other{s}} changed  +{additions} -{deletions}",
+  "@diffFilesChangedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "additions": {
+        "type": "int"
+      },
+      "deletions": {
+        "type": "int"
+      }
+    }
+  },
+  "diffNoFileChanges": "No file changes in this session",
+  "diffErrorPrefix": "Error: {message}",
+  "@diffErrorPrefix": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "diffRetry": "Retry",
+  "splashWelcomeTo": "Welcome to",
+  "splashTitle": "Sesori",
+  "newSessionLoadingSemantics": "Creating session",
+  "newSessionLoadingMessage1": "Warming up the engines…",
+  "newSessionLoadingMessage2": "Generating session telemetry…",
+  "newSessionLoadingMessage3": "Preparing for takeoff…",
+  "newSessionLaunchingInBackground": "Your new session will appear in the list once it's launched",
+  "commandSourceCommand": "Command",
+  "commandSourceMcp": "MCP",
+  "commandSourceSkill": "Skill",
+  "commandSourceCustom": "Custom",
+  "sessionDetailFileChangesTooltip": "File changes",
+  "diffBinaryFileChanged": "Binary file changed",
+  "diffFileTooLarge": "File diff too large to display",
+  "diffCouldNotReadFile": "Could not read file",
+  "timestampJustNow": "just now",
+  "timestampMinutesAgo": "{minutes}m ago",
+  "@timestampMinutesAgo": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "timestampHoursAgo": "{hours}h ago",
+  "@timestampHoursAgo": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "timestampDaysAgo": "{days}d ago",
+  "@timestampDaysAgo": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionDetailModelFallback": "Model",
+  "sessionDetailAgentFallback": "Agent",
+  "sessionDetailRetryLabel": "Retry"
 }
