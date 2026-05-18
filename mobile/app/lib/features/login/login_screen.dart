@@ -13,7 +13,6 @@ import "package:theme_zyra/module_zyra.dart";
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/routing/app_router.dart";
-import "../../core/widgets/sesori_background_widget.dart";
 import "../../l10n/app_localizations.dart";
 import "email_login_form.dart";
 import "login_provider_buttons.dart";
