@@ -53,14 +53,25 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.3'
+          bundler-cache: true
+          working-directory: mobile/app/ios
+
+      - name: Install Android Fastlane gems
+        working-directory: mobile/app/android
+        run: bundle install --jobs 4 --retry 3
 
       - name: Compute next iOS build number
         id: ios
         working-directory: mobile/app/ios
         run: |
-          set -euo pipefail
+          set -uo pipefail
           output=$(bundle exec fastlane next_build_number 2>&1)
+          status=$?
           echo "$output"
+          if [ "$status" -ne 0 ]; then
+            echo "::error::iOS fastlane next_build_number exited with status $status"
+            exit "$status"
+          fi
           n=$(printf '%s\n' "$output" | grep -oE 'NEXT_BUILD_NUMBER=[0-9]+' | tail -n1 | cut -d= -f2)
           if [ -z "${n:-}" ]; then
             echo "::error::Failed to parse NEXT_BUILD_NUMBER from iOS fastlane output"
@@ -78,9 +89,14 @@ jobs:
         id: android
         working-directory: mobile/app/android
         run: |
-          set -euo pipefail
+          set -uo pipefail
           output=$(bundle exec fastlane next_version_code 2>&1)
+          status=$?
           echo "$output"
+          if [ "$status" -ne 0 ]; then
+            echo "::error::Android fastlane next_version_code exited with status $status"
+            exit "$status"
+          fi
           n=$(printf '%s\n' "$output" | grep -oE 'NEXT_VERSION_CODE=[0-9]+' | tail -n1 | cut -d= -f2)
           if [ -z "${n:-}" ]; then
             echo "::error::Failed to parse NEXT_VERSION_CODE from Android fastlane output"
