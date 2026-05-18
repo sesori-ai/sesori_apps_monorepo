@@ -74,7 +74,7 @@ dependencies:
       'sesoriBridge': {
         'bootstrapOnly': true,
         'managedRuntimeOwner': false,
-        'releaseTag': 'v$oldVersion',
+        'releaseTag': 'bridge-v$oldVersion',
         'runtimeBundleSource': 'github-release-assets',
       },
       'optionalDependencies': {
@@ -97,7 +97,7 @@ dependencies:
         'sesoriBridge': {
           'bootstrapOnly': true,
           'managedRuntimeOwner': false,
-          'releaseTag': 'v$oldVersion',
+          'releaseTag': 'bridge-v$oldVersion',
           'releaseArtifact': {
             'sesori-bridge-darwin-arm64': 'sesori-bridge-macos-arm64.tar.gz',
             'sesori-bridge-darwin-x64': 'sesori-bridge-macos-x64.tar.gz',
@@ -168,7 +168,7 @@ void main() {
       expect(wrapperPackage['version'], equals(fixture.newVersion));
       expect(
         (wrapperPackage['sesoriBridge'] as Map<String, dynamic>)['releaseTag'],
-        equals('v${fixture.newVersion}'),
+        equals('bridge-v${fixture.newVersion}'),
       );
 
       final optionalDependencies = wrapperPackage['optionalDependencies'] as Map<String, dynamic>;
@@ -186,7 +186,7 @@ void main() {
         expect(packageJson['version'], equals(fixture.newVersion), reason: 'failed for $package');
         expect(
           (packageJson['sesoriBridge'] as Map<String, dynamic>)['releaseTag'],
-          equals('v${fixture.newVersion}'),
+          equals('bridge-v${fixture.newVersion}'),
           reason: 'failed releaseTag update for $package',
         );
       }

@@ -40,7 +40,7 @@ void main() {
         equals({
           'bootstrapOnly': true,
           'managedRuntimeOwner': false,
-          'releaseTag': 'v$appVersion',
+          'releaseTag': 'bridge-v$appVersion',
           'runtimeBundleSource': 'github-release-assets',
         }),
       );
@@ -68,7 +68,7 @@ void main() {
           equals({
             'bootstrapOnly': true,
             'managedRuntimeOwner': false,
-            'releaseTag': 'v$appVersion',
+            'releaseTag': 'bridge-v$appVersion',
             'releaseArtifact': {
               '@sesori/bridge-darwin-arm64': 'sesori-bridge-macos-arm64.tar.gz',
               '@sesori/bridge-darwin-x64': 'sesori-bridge-macos-x64.tar.gz',

@@ -151,7 +151,8 @@ void main() {
       expect(script, contains('GITHUB_RELEASES_PER_PAGE=100'));
       expect(script, contains('GITHUB_RELEASES_MAX_PAGES=10'));
       expect(script, contains(r'?per_page=${GITHUB_RELEASES_PER_PAGE}&page=${page}'));
-      expect(script, contains('if not tag_name.startswith("v")'));
+      expect(script, contains('if tag_name.startswith("bridge-v"):'));
+      expect(script, contains('elif tag_name.startswith("v"):'));
       expect(script, contains('release.get("draft") or release.get("prerelease")'));
       expect(script, contains('eligible.sort('));
       expect(script, contains('asset_url = assets.get(filename)'));
@@ -268,7 +269,7 @@ void main() {
           equals({
             'bootstrapOnly': true,
             'managedRuntimeOwner': false,
-            'releaseTag': 'v$appVersion',
+            'releaseTag': 'bridge-v$appVersion',
             'releaseArtifact': workflowAssets[packageName],
             'runtimeBundlePath': 'lib/runtime',
           }),
@@ -280,7 +281,7 @@ void main() {
         equals({
           'bootstrapOnly': true,
           'managedRuntimeOwner': false,
-            'releaseTag': 'v$appVersion',
+            'releaseTag': 'bridge-v$appVersion',
           'runtimeBundleSource': 'github-release-assets',
         }),
       );

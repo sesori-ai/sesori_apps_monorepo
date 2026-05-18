@@ -65,7 +65,7 @@ To get diffs for each side:
 ```bash
 git diff v<previous>..HEAD -- bridge/
 git diff v<previous>..HEAD -- mobile/
-git show --oneline --name-only v<previous>..HEAD
+git log --oneline --name-only v<previous>..HEAD
 ```
 
 Categorize commits based on their prefixes:

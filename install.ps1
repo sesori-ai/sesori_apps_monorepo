@@ -69,14 +69,16 @@ function Resolve-BridgeRelease {
     $eligible = @()
     foreach ($release in $releases) {
         $tagName = [string]$release.tag_name
-        if (-not $tagName.StartsWith('v')) {
+        if ($tagName.StartsWith('bridge-v')) {
+            $versionText = $tagName.Substring(8)
+        } elseif ($tagName.StartsWith('v')) {
+            $versionText = $tagName.Substring(1)
+        } else {
             continue
         }
         if ($release.draft -or $release.prerelease) {
             continue
         }
-
-        $versionText = $tagName.Substring(1)
         $parsedVersion = $null
         if (-not [version]::TryParse($versionText, [ref]$parsedVersion)) {
             continue

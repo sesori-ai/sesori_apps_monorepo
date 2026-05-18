@@ -39,9 +39,10 @@ class _FixtureApp {
       .toList();
 }
 
-Future<_FixtureApp> _createFixtureApp({required String mobileVersion}) async {
+Future<_FixtureApp> _createFixtureApp({required String mobileVersion, String? bridgeVersion}) async {
   final tempDir = await Directory.systemTemp.createTemp('sync-versions-fixture-');
   final rootPath = tempDir.path;
+  final resolvedBridgeVersion = bridgeVersion ?? mobileVersion.split('+').first;
 
   for (final relativeDir in <List<String>>[
     ['tool'],
@@ -66,30 +67,30 @@ environment:
 
   await File(p.join(rootPath, 'bridge', 'app', 'pubspec.yaml')).writeAsString('''
 name: sesori_bridge
-version: 0.7.0
+version: $resolvedBridgeVersion
 publish_to: none
 resolution: workspace
 ''');
 
   await File(p.join(rootPath, 'bridge', 'app', 'lib', 'src', 'version.dart')).writeAsString(
-    "const String appVersion = '0.7.0';\n",
+    "const String appVersion = '$resolvedBridgeVersion';\n",
   );
 
   await _writeJsonFile(
     path: p.join(rootPath, 'bridge', 'app', 'npm', 'sesori-bridge', 'package.json'),
     json: <String, dynamic>{
       'name': '@sesori/bridge',
-      'version': '0.7.0',
+      'version': resolvedBridgeVersion,
       'optionalDependencies': <String, dynamic>{
-        '@sesori/bridge-darwin-arm64': '0.7.0',
-        '@sesori/bridge-darwin-x64': '0.7.0',
-        '@sesori/bridge-linux-arm64': '0.7.0',
-        '@sesori/bridge-linux-x64': '0.7.0',
-        '@sesori/bridge-win32-x64': '0.7.0',
+        '@sesori/bridge-darwin-arm64': resolvedBridgeVersion,
+        '@sesori/bridge-darwin-x64': resolvedBridgeVersion,
+        '@sesori/bridge-linux-arm64': resolvedBridgeVersion,
+        '@sesori/bridge-linux-x64': resolvedBridgeVersion,
+        '@sesori/bridge-win32-x64': resolvedBridgeVersion,
         '@sesori/not-bridge': '4.5.6',
       },
       'sesoriBridge': <String, dynamic>{
-        'releaseTag': 'v0.7.0',
+        'releaseTag': 'bridge-v$resolvedBridgeVersion',
         'runtimeBundleSource': 'github-release-assets',
       },
     },
@@ -100,9 +101,9 @@ resolution: workspace
       path: p.join(rootPath, 'bridge', 'app', 'npm', package, 'package.json'),
       json: <String, dynamic>{
         'name': '@sesori/${package.replaceFirst('sesori-bridge-', 'bridge-')}',
-        'version': '0.7.0',
+        'version': resolvedBridgeVersion,
         'sesoriBridge': <String, dynamic>{
-          'releaseTag': 'v0.7.0',
+          'releaseTag': 'bridge-v$resolvedBridgeVersion',
         },
       },
     );
@@ -151,9 +152,9 @@ void main() {
 
       final patchResult = await _runTool(fixture: currentFixture, args: <String>['--dry-run', '--type', 'patch']);
       expect(patchResult.exitCode, equals(0), reason: '${patchResult.stdout}\n${patchResult.stderr}');
-      expect(patchResult.stdout, contains('Target bridge version: 1.0.7')); 
+      expect(patchResult.stdout, contains('Target bridge version: 1.0.7'));
       expect(patchResult.stdout, contains('Target mobile version: 1.0.7+8'));
-      expect(patchResult.stdout, contains('Planned releaseTag: v1.0.7'));
+      expect(patchResult.stdout, contains('Planned releaseTag: bridge-v1.0.7'));
       expect(patchResult.stdout, contains('bridge/app/pubspec.yaml'));
       expect(patchResult.stdout, contains('mobile/app/pubspec.yaml'));
       expect(await File(currentFixture.bridgePubspecPath).readAsString(), equals(beforeBridgePubspec));
@@ -184,11 +185,11 @@ void main() {
       for (final testCase in cases) {
         await File(currentFixture.bridgePubspecPath).writeAsString('''
 name: sesori_bridge
-version: 0.7.0
+version: 1.0.6
 publish_to: none
 resolution: workspace
 ''');
-        await File(currentFixture.bridgeVersionPath).writeAsString("const String appVersion = '0.7.0';\n");
+        await File(currentFixture.bridgeVersionPath).writeAsString("const String appVersion = '1.0.6';\n");
         await File(currentFixture.mobilePubspecPath).writeAsString('''
 name: sesori_mobile
 version: 1.0.6+8
@@ -199,17 +200,17 @@ environment:
           path: currentFixture.wrapperPackagePath,
           json: <String, dynamic>{
             'name': '@sesori/bridge',
-            'version': '0.7.0',
+            'version': '1.0.6',
             'optionalDependencies': <String, dynamic>{
-              '@sesori/bridge-darwin-arm64': '0.7.0',
-              '@sesori/bridge-darwin-x64': '0.7.0',
-              '@sesori/bridge-linux-arm64': '0.7.0',
-              '@sesori/bridge-linux-x64': '0.7.0',
-              '@sesori/bridge-win32-x64': '0.7.0',
+              '@sesori/bridge-darwin-arm64': '1.0.6',
+              '@sesori/bridge-darwin-x64': '1.0.6',
+              '@sesori/bridge-linux-arm64': '1.0.6',
+              '@sesori/bridge-linux-x64': '1.0.6',
+              '@sesori/bridge-win32-x64': '1.0.6',
               '@sesori/not-bridge': '4.5.6',
             },
             'sesoriBridge': <String, dynamic>{
-              'releaseTag': 'v0.7.0',
+              'releaseTag': 'bridge-v1.0.6',
               'runtimeBundleSource': 'github-release-assets',
             },
           },
@@ -219,9 +220,9 @@ environment:
             path: packagePath,
             json: <String, dynamic>{
               'name': '@sesori/${p.basename(p.dirname(packagePath)).replaceFirst('sesori-bridge-', 'bridge-')}',
-              'version': '0.7.0',
+              'version': '1.0.6',
               'sesoriBridge': <String, dynamic>{
-                'releaseTag': 'v0.7.0',
+                'releaseTag': 'bridge-v1.0.6',
               },
             },
           );
@@ -240,7 +241,7 @@ environment:
         expect(bridgeVersion, equals("const String appVersion = '${testCase.bridgeVersion}';\n"));
         expect(mobilePubspec, contains('version: ${testCase.mobileVersion}'));
         expect((wrapperPackage['version'] as String), equals(testCase.bridgeVersion));
-        expect((wrapperPackage['sesoriBridge'] as Map<String, dynamic>)['releaseTag'], equals('v${testCase.bridgeVersion}'));
+        expect((wrapperPackage['sesoriBridge'] as Map<String, dynamic>)['releaseTag'], equals('bridge-v${testCase.bridgeVersion}'));
 
         final optionalDependencies = wrapperPackage['optionalDependencies'] as Map<String, dynamic>;
         expect(optionalDependencies['@sesori/bridge-darwin-arm64'], equals(testCase.bridgeVersion));
@@ -253,9 +254,29 @@ environment:
         for (final packagePath in currentFixture.packagePaths) {
           final package = await _readJson(path: packagePath);
           expect(package['version'], equals(testCase.bridgeVersion));
-          expect((package['sesoriBridge'] as Map<String, dynamic>)['releaseTag'], equals('v${testCase.bridgeVersion}'));
+          expect((package['sesoriBridge'] as Map<String, dynamic>)['releaseTag'], equals('bridge-v${testCase.bridgeVersion}'));
         }
       }
+    });
+
+    test('rejects diverged bridge and mobile versions', () async {
+      fixture = await _createFixtureApp(mobileVersion: '1.0.6+8', bridgeVersion: '1.0.5');
+      final currentFixture = fixture!;
+
+      final result = await _runTool(fixture: currentFixture, args: <String>['--dry-run', '--type', 'patch']);
+
+      expect(result.exitCode, isNot(0));
+      expect(result.stderr, contains('out of sync'));
+    });
+
+    test('works without mobile build number', () async {
+      fixture = await _createFixtureApp(mobileVersion: '1.0.6');
+      final currentFixture = fixture!;
+
+      final result = await _runTool(fixture: currentFixture, args: <String>['--dry-run', '--type', 'patch']);
+
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      expect(result.stdout, contains('Target mobile version: 1.0.7'));
     });
 
     test('rejects invalid inputs and malformed mobile versions', () async {
@@ -278,7 +299,7 @@ environment:
         expect(result.stderr, contains(testCase.stderr));
       }
 
-      for (final malformedVersion in <String>['1.2+8', '1.2.3', '1.2.3+abc']) {
+      for (final malformedVersion in <String>['1.2+8', '1.2.3+abc']) {
         fixture = await _createFixtureApp(mobileVersion: malformedVersion);
         final malformedResult = await _runTool(fixture: fixture!, args: <String>['--dry-run', '--type', 'patch']);
         expect(malformedResult.exitCode, isNot(0));

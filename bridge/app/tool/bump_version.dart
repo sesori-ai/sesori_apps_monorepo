@@ -89,8 +89,8 @@ Future<void> updatePackageJson({
 
   if (json.containsKey('sesoriBridge')) {
     final metadata = json['sesoriBridge'] as Map<String, dynamic>;
-    if (metadata['releaseTag'] == 'v$oldVersion') {
-      metadata['releaseTag'] = 'v$newVersion';
+    if (metadata['releaseTag'] == 'bridge-v$oldVersion') {
+      metadata['releaseTag'] = 'bridge-v$newVersion';
     }
   }
 

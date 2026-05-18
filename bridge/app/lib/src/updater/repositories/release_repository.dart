@@ -70,10 +70,19 @@ class ReleaseRepository {
 
   GitHubReleaseDto? _selectLatestBridgeRelease({required List<GitHubReleaseDto> releases}) {
     final filteredReleases = releases
-        .where((release) => !release.draft && !release.prerelease && release.tagName.startsWith('v'))
+        .where(
+          (release) =>
+              !release.draft &&
+              !release.prerelease &&
+              (release.tagName.startsWith('v') || release.tagName.startsWith('bridge-v')),
+        )
         .map(
           (release) {
-            final version = BridgeVersion.tryParse(value: release.tagName.replaceFirst('v', ''));
+            final tagName = release.tagName;
+            final versionString = tagName.startsWith('bridge-v')
+                ? tagName.replaceFirst('bridge-v', '')
+                : tagName.replaceFirst('v', '');
+            final version = BridgeVersion.tryParse(value: versionString);
             return version != null && version.isStable
                 ? (
                     release: release,
@@ -98,12 +107,15 @@ class ReleaseRepository {
 
   Future<ReleaseInfo?> _evaluateRelease({required GitHubReleaseDto release}) async {
     final tagName = release.tagName;
-    if (!tagName.startsWith('v')) {
+    if (!tagName.startsWith('v') && !tagName.startsWith('bridge-v')) {
       return null;
     }
 
+    final versionString = tagName.startsWith('bridge-v')
+        ? tagName.replaceFirst('bridge-v', '')
+        : tagName.replaceFirst('v', '');
     final BridgeVersion? latestVersion = BridgeVersion.tryParse(
-      value: tagName.replaceFirst('v', ''),
+      value: versionString,
     );
     if (latestVersion == null) {
       return null;

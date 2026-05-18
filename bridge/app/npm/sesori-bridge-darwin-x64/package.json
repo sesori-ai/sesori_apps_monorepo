@@ -14,7 +14,7 @@
   "sesoriBridge": {
     "bootstrapOnly": true,
     "managedRuntimeOwner": false,
-    "releaseTag": "v1.0.7",
+    "releaseTag": "bridge-v1.0.7",
     "releaseArtifact": "sesori-bridge-macos-x64.tar.gz",
     "runtimeBundlePath": "lib/runtime"
   },

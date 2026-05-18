@@ -1,6 +1,6 @@
 TOOL_VERSIONS := $(shell git rev-parse --show-toplevel)/.tool-versions
 FLUTTER_VERSION := $(shell grep '^flutter' $(TOOL_VERSIONS) | awk '{print $$2}')
-DART := $(HOME)/.asdf/installs/flutter/$(FLUTTER_VERSION)/bin/cache/dart-sdk/bin/dart
+DART ?= $(HOME)/.asdf/installs/flutter/$(FLUTTER_VERSION)/bin/cache/dart-sdk/bin/dart
 
 .PHONY: bump-version bump-version-check
 

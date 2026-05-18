@@ -149,11 +149,14 @@ releases = json.loads(os.environ["RELEASES_JSON"])
 eligible = []
 for release in releases:
     tag_name = release.get("tag_name", "")
-    if not tag_name.startswith("v"):
+    if tag_name.startswith("bridge-v"):
+        version = tag_name.replace("bridge-v", "", 1)
+    elif tag_name.startswith("v"):
+        version = tag_name.replace("v", "", 1)
+    else:
         continue
     if release.get("draft") or release.get("prerelease"):
         continue
-    version = tag_name.replace("v", "", 1)
     if not is_valid_stable_version(version):
         continue
     assets = {
