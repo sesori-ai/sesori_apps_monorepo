@@ -65,26 +65,32 @@ flutter --version
 ```
 Note the Dart version (e.g., "Dart 3.11.0") and Flutter version (e.g., "Flutter 3.41.0").
 
-For each pubspec.yaml below, read its `environment` section and update only the keys present:
+For each pubspec.yaml below, read its `environment` section and update only the keys present. **Preserve the existing constraint syntax per file** — do not normalize between caret and range forms.
 
-| File | Has `sdk` | Has `flutter` |
-|------|-----------|---------------|
-| `mobile/pubspec.yaml` | ✅ | ✅ |
-| `mobile/app/pubspec.yaml` | ✅ | — |
-| `mobile/module_auth/pubspec.yaml` | ✅ | — |
-| `mobile/module_core/pubspec.yaml` | ✅ | — |
-| `mobile/module_zyra/pubspec.yaml` | ✅ | — |
-| `bridge/pubspec.yaml` | ✅ | — |
-| `bridge/app/pubspec.yaml` | ✅ | — |
-| `bridge/sesori_plugin_interface/pubspec.yaml` | ✅ | — |
-| `bridge/sesori_plugin_opencode/pubspec.yaml` | ✅ | — |
-| `shared/sesori_shared/pubspec.yaml` | ✅ | — |
-| `shared/no_slop_linter/pubspec.yaml` | ✅ | — |
+| File | Has `sdk` | Has `flutter` | Constraint style |
+|------|-----------|---------------|------------------|
+| `mobile/pubspec.yaml` | ✅ | ✅ | caret (`^3.11.5`) + range (`">=3.41.7 <3.42.0"`) |
+| `mobile/app/pubspec.yaml` | ✅ | — | caret |
+| `mobile/module_auth/pubspec.yaml` | ✅ | — | caret |
+| `mobile/module_core/pubspec.yaml` | ✅ | — | caret |
+| `mobile/module_zyra/pubspec.yaml` | ✅ | — | caret |
+| `bridge/pubspec.yaml` | ✅ | — | caret |
+| `bridge/app/pubspec.yaml` | ✅ | — | caret |
+| `bridge/sesori_plugin_interface/pubspec.yaml` | ✅ | — | caret |
+| `bridge/sesori_plugin_opencode/pubspec.yaml` | ✅ | — | caret |
+| `shared/sesori_shared/pubspec.yaml` | ✅ | — | caret |
+| `shared/no_slop_linter/pubspec.yaml` | ✅ | — | **range with upper bound** (`">=3.11.0 <4.0.0"`) — intentional for analyzer-plugin compat across multiple analyzer majors; preserve the range form, only bump the lower bound |
 
+Examples by style:
 ```yaml
+# Caret form (used in 10 of 11 files):
 environment:
-  sdk: ">=DART_VERSION"
-  flutter: ">=FLUTTER_VERSION"   # only where present
+  sdk: ^DART_VERSION
+  flutter: ">=FLUTTER_VERSION <NEXT_MINOR"   # mobile/pubspec.yaml only
+
+# Range form (shared/no_slop_linter only — keep upper bound):
+environment:
+  sdk: ">=DART_VERSION <4.0.0"
 ```
 </step>
 
@@ -119,13 +125,13 @@ cd shared/sesori_shared && dart pub outdated && cd ../..
 cd shared/no_slop_linter && dart pub outdated && cd ../..
 ```
 
-**Mobile workspace** (one resolution covers all members, but run `outdated` per-member to see direct deps per package — use `flutter pub outdated` for Flutter packages):
+**Mobile workspace** (one resolution covers all members, but run `outdated` per-member to see direct deps per package — use `flutter pub outdated` for Flutter packages, `dart pub outdated` for pure-Dart members):
 ```bash
-cd mobile && dart pub get && cd ..
-cd mobile/module_auth && flutter pub outdated && cd ../..
-cd mobile/module_core && flutter pub outdated && cd ../..
-cd mobile/module_zyra && flutter pub outdated && cd ../..
-cd mobile/app && flutter pub outdated && cd ../..
+cd mobile && flutter pub get && cd ..
+cd mobile/module_auth && dart pub outdated && cd ../..       # pure Dart
+cd mobile/module_core && dart pub outdated && cd ../..       # pure Dart
+cd mobile/module_zyra && flutter pub outdated && cd ../..    # Flutter (flutter: sdk: flutter)
+cd mobile/app && flutter pub outdated && cd ../..            # Flutter app
 ```
 
 **Bridge workspace** (pure Dart):
@@ -185,9 +191,9 @@ cd shared/no_slop_linter && dart pub get && cd ../..
 cd bridge && dart pub get && cd ..
 ```
 
-**Mobile workspace** (single resolution from root):
+**Mobile workspace** (single resolution from root — use `flutter pub get` because the workspace contains Flutter packages with `flutter: sdk: flutter` deps):
 ```bash
-cd mobile && dart pub get && cd ..
+cd mobile && flutter pub get && cd ..
 ```
 </step>
 
@@ -224,12 +230,12 @@ cd bridge/sesori_plugin_opencode && dart analyze && cd ../..
 cd bridge/app && dart analyze && cd ../..
 ```
 
-**Mobile workspace:**
+**Mobile workspace** (use `flutter analyze` for Flutter packages to surface Flutter-specific lints; pure-Dart members use `dart analyze`):
 ```bash
-cd mobile/module_auth && dart analyze && cd ../..
-cd mobile/module_core && dart analyze && cd ../..
-cd mobile/module_zyra && dart analyze && cd ../..
-cd mobile/app && dart analyze && cd ../..
+cd mobile/module_auth && dart analyze && cd ../..        # pure Dart
+cd mobile/module_core && dart analyze && cd ../..        # pure Dart
+cd mobile/module_zyra && flutter analyze && cd ../..     # Flutter package
+cd mobile/app && flutter analyze && cd ../..             # Flutter app
 ```
 </step>
 
@@ -258,7 +264,12 @@ fi
 - Re-run until successful
 </step>
 
-<step name="4.4">Run code generation in every package that uses `build_runner`:
+<step name="4.4">Run code generation in every package that has active generators (freezed, json_serializable, drift_dev, injectable_generator).
+
+Skipped intentionally:
+- `shared/no_slop_linter` — no `build_runner` dev_dep
+- `mobile/module_zyra` — has `build_runner` but no generators registered (would be a no-op)
+
 ```bash
 cd shared/sesori_shared && dart run build_runner build --delete-conflicting-outputs && cd ../..
 cd bridge/sesori_plugin_interface && dart run build_runner build --delete-conflicting-outputs && cd ../..
@@ -266,10 +277,9 @@ cd bridge/sesori_plugin_opencode && dart run build_runner build --delete-conflic
 cd bridge/app && dart run build_runner build --delete-conflicting-outputs && cd ../..
 cd mobile/module_auth && dart run build_runner build --delete-conflicting-outputs && cd ../..
 cd mobile/module_core && dart run build_runner build --delete-conflicting-outputs && cd ../..
-cd mobile/module_zyra && dart run build_runner build --delete-conflicting-outputs && cd ../..
 cd mobile/app && dart run build_runner build --delete-conflicting-outputs && cd ../..
 ```
-Skip any package where `build_runner` is not a dev_dependency — the command will fail fast if so.
+If a generator dependency is later added to `no_slop_linter` or `module_zyra`, add them back to this list.
 </step>
 </phase>
 
