@@ -121,6 +121,7 @@ class SessionListCubit extends Cubit<SessionListState> {
             SesoriQuestionRejected() ||
             SesoriCommandExecuted() ||
             SesoriTodoUpdated() ||
+            SesoriSessionPromptDefaultsChanged() ||
             SesoriProjectsSummary() ||
             SesoriProjectUpdated() ||
             SesoriVcsBranchUpdated() ||

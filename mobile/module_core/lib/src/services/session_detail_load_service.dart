@@ -50,6 +50,7 @@ class SessionDetailLoadService {
         statusesResponse,
         agentsResponse,
         providersResponse,
+        sessionResponse,
       ) = await (
         _repository.getMessages(sessionId: sessionId),
         _repository.getPendingQuestions(sessionId: sessionId),
@@ -58,10 +59,18 @@ class SessionDetailLoadService {
         _repository.getSessionStatuses(),
         _repository.listAgents(),
         _repository.listProviders(projectId: projectId),
+        _repository.getSession(sessionId: sessionId),
       ).wait;
       final projectContext = await projectContextFuture;
       final effectiveProjectId = routeProjectId ?? projectContext?.projectId;
       final commandsResponse = await (commandsFuture ?? _listCommands(projectId: effectiveProjectId));
+      final promptDefaults = switch (sessionResponse) {
+        SuccessResponse(:final data) => data.promptDefaults,
+        ErrorResponse(:final error) => () {
+          logw("Failed to load session: ${error.toString()}");
+          return null;
+        }(),
+      };
 
       final messages = switch (messagesResponse) {
         SuccessResponse(:final data) => data.messages,
@@ -118,6 +127,7 @@ class SessionDetailLoadService {
           providerData: providerData,
           commands: commands,
           canonicalSessionTitle: projectContext?.sessionTitle,
+          promptDefaults: promptDefaults,
         ),
         isBridgeConnected: _connectionService.currentStatus is ConnectionConnected,
       );
@@ -158,6 +168,7 @@ class SessionDetailSnapshot {
   final ProviderListResponse? providerData;
   final List<CommandInfo> commands;
   final String? canonicalSessionTitle;
+  final SessionPromptDefaults? promptDefaults;
 
   const SessionDetailSnapshot({
     required this.projectId,
@@ -170,6 +181,7 @@ class SessionDetailSnapshot {
     required this.providerData,
     required this.commands,
     required this.canonicalSessionTitle,
+    required this.promptDefaults,
   });
 }
 

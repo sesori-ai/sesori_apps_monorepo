@@ -341,6 +341,9 @@ void main() {
       branchName: "feature/one",
       baseBranch: null,
       baseCommit: null,
+
+      lastAgent: null,
+      lastAgentModel: null,
     );
     await database.pullRequestDao.upsertPr(
       pullRequest: const PullRequestDto(
@@ -1484,6 +1487,28 @@ class _NoopSessionRepository implements SessionRepository {
   Future<String?> getProjectPath({required String projectId}) async => null;
   @override
   Future<SessionDto?> getStoredSession({required String sessionId}) async => null;
+
+  @override
+  Future<void> insertStoredSession({
+    required String sessionId,
+    required String projectId,
+    required bool isDedicated,
+    required int createdAt,
+    required String? worktreePath,
+    required String? branchName,
+    required String? baseBranch,
+    required String? baseCommit,
+    required String? agent,
+    required AgentModel? agentModel,
+  }) async {}
+
+  @override
+  Future<void> updatePromptDefaults({
+    required String sessionId,
+    required String? agent,
+    required AgentModel? agentModel,
+  }) async {}
+
   @override
   Future<String?> findProjectIdForSession({required String sessionId}) async => null;
   @override
@@ -1660,6 +1685,46 @@ class _DelayingSessionRepository implements SessionRepository {
   @override
   Future<SessionDto?> getStoredSession({required String sessionId}) async {
     return _base.getStoredSession(sessionId: sessionId);
+  }
+
+  @override
+  Future<void> insertStoredSession({
+    required String sessionId,
+    required String projectId,
+    required bool isDedicated,
+    required int createdAt,
+    required String? worktreePath,
+    required String? branchName,
+    required String? baseBranch,
+    required String? baseCommit,
+    required String? agent,
+    required AgentModel? agentModel,
+  }) {
+    return _base.insertStoredSession(
+      sessionId: sessionId,
+      projectId: projectId,
+      isDedicated: isDedicated,
+      createdAt: createdAt,
+      worktreePath: worktreePath,
+      branchName: branchName,
+      baseBranch: baseBranch,
+      baseCommit: baseCommit,
+      agent: agent,
+      agentModel: agentModel,
+    );
+  }
+
+  @override
+  Future<void> updatePromptDefaults({
+    required String sessionId,
+    required String? agent,
+    required AgentModel? agentModel,
+  }) {
+    return _base.updatePromptDefaults(
+      sessionId: sessionId,
+      agent: agent,
+      agentModel: agentModel,
+    );
   }
 
   @override

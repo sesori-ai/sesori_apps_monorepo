@@ -100,6 +100,8 @@ class SessionPersistenceService {
         branchName: branchName,
         baseBranch: baseBranch,
         baseCommit: baseCommit,
+        lastAgent: null,
+        lastAgentModel: null,
       );
     });
   }

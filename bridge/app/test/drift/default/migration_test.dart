@@ -12,6 +12,7 @@ import 'generated/schema_v2.dart' as v2;
 import 'generated/schema_v3.dart' as v3;
 import 'generated/schema_v4.dart' as v4;
 import 'generated/schema_v5.dart' as v5;
+import 'generated/schema_v6.dart' as v6;
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -501,6 +502,97 @@ void main() {
       throwsA(_isForeignKeyViolation),
     );
   });
+
+  test('migration v5 → v6 structural validation', () async {
+    final connection = await verifier.startAt(5);
+    final db = AppDatabase(connection);
+
+    await verifier.migrateAndValidate(db, 6);
+    await db.close();
+  });
+
+  test(
+    'migration v5 → v6 preserves sessions and defaults new fields to null',
+    () async {
+      const oldProjectsTableData = [
+        v5.ProjectsTableData(
+          projectId: 'project-1',
+          hidden: 0,
+          baseBranch: 'main',
+          worktreeCounter: 2,
+        ),
+      ];
+      const oldSessionsTableData = [
+        v5.SessionsTableData(
+          sessionId: 'session-1',
+          projectId: 'project-1',
+          worktreePath: '/tmp/worktrees/session-1',
+          branchName: 'feat/one',
+          isDedicated: 1,
+          archivedAt: null,
+          baseBranch: 'main',
+          baseCommit: 'abc123',
+          createdAt: 1700000000000,
+        ),
+        v5.SessionsTableData(
+          sessionId: 'session-2',
+          projectId: 'project-1',
+          worktreePath: null,
+          branchName: null,
+          isDedicated: 0,
+          archivedAt: 1700000001000,
+          baseBranch: null,
+          baseCommit: null,
+          createdAt: 1700000002000,
+        ),
+      ];
+
+      await verifier.testWithDataIntegrity(
+        oldVersion: 5,
+        newVersion: 6,
+        createOld: v5.DatabaseAtV5.new,
+        createNew: v6.DatabaseAtV6.new,
+        openTestedDatabase: AppDatabase.new,
+        createItems: (batch, oldDb) {
+          batch.insertAll(oldDb.projectsTable, oldProjectsTableData);
+          batch.insertAll(oldDb.sessionsTable, oldSessionsTableData);
+        },
+        validateItems: (newDb) async {
+          expect(
+            await newDb.select(newDb.sessionsTable).get(),
+            unorderedEquals(const [
+              v6.SessionsTableData(
+                sessionId: 'session-1',
+                projectId: 'project-1',
+                worktreePath: '/tmp/worktrees/session-1',
+                branchName: 'feat/one',
+                isDedicated: 1,
+                archivedAt: null,
+                baseBranch: 'main',
+                baseCommit: 'abc123',
+                lastAgent: null,
+                lastAgentModel: null,
+                createdAt: 1700000000000,
+              ),
+              v6.SessionsTableData(
+                sessionId: 'session-2',
+                projectId: 'project-1',
+                worktreePath: null,
+                branchName: null,
+                isDedicated: 0,
+                archivedAt: 1700000001000,
+                baseBranch: null,
+                baseCommit: null,
+                lastAgent: null,
+                lastAgentModel: null,
+                createdAt: 1700000002000,
+              ),
+            ]),
+          );
+        },
+      );
+    },
+  );
 
   test(
     'migration v4 → v5 deleting a project cascades to sessions and PRs',

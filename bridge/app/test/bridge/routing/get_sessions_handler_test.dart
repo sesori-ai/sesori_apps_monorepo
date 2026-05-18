@@ -343,6 +343,8 @@ void main() {
           archivedAt: 999,
           baseBranch: null,
           baseCommit: null,
+          lastAgent: null,
+          lastAgentModel: null,
           createdAt: 100,
         ),
       );
@@ -411,6 +413,8 @@ void main() {
           archivedAt: null,
           baseBranch: null,
           baseCommit: null,
+          lastAgent: null,
+          lastAgentModel: null,
           createdAt: 100,
         ),
       );
@@ -470,6 +474,8 @@ void main() {
           archivedAt: 999,
           baseBranch: null,
           baseCommit: null,
+          lastAgent: null,
+          lastAgentModel: null,
           createdAt: 100,
         ),
       );
@@ -483,6 +489,8 @@ void main() {
           archivedAt: null,
           baseBranch: null,
           baseCommit: null,
+          lastAgent: null,
+          lastAgentModel: null,
           createdAt: 100,
         ),
       );
@@ -524,6 +532,8 @@ void main() {
           archivedAt: null,
           baseBranch: null,
           baseCommit: null,
+          lastAgent: null,
+          lastAgentModel: null,
           createdAt: 100,
         ),
       );
@@ -562,6 +572,8 @@ void main() {
           archivedAt: null,
           baseBranch: null,
           baseCommit: null,
+          lastAgent: null,
+          lastAgentModel: null,
           createdAt: 100,
         ),
       );
@@ -672,6 +684,9 @@ void main() {
         branchName: "feature/preserved-pr",
         baseBranch: null,
         baseCommit: null,
+
+        lastAgent: null,
+        lastAgentModel: null,
       );
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(

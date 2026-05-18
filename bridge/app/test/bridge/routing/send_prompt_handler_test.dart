@@ -14,12 +14,13 @@ void main() {
   group("SendPromptHandler", () {
     late FakeBridgePlugin plugin;
     late AppDatabase db;
+    late SessionRepository sessionRepository;
     late SendPromptHandler handler;
 
     setUp(() {
       db = createTestDatabase();
       plugin = FakeBridgePlugin();
-      final sessionRepository = SessionRepository(
+      sessionRepository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         pullRequestRepository: PullRequestRepository(
@@ -117,6 +118,43 @@ void main() {
       expect(plugin.lastSendPromptAgent, equals("planner"));
       expect(plugin.lastSendPromptModel?.providerID, equals("openai"));
       expect(plugin.lastSendPromptModel?.modelID, equals("gpt-4o"));
+    });
+
+    test("successful prompt send updates stored defaults", () async {
+      await _insertStoredSession(
+        repository: sessionRepository,
+        sessionId: "s-defaults-prompt",
+        agent: "old-agent",
+        agentModel: const AgentModel(
+          providerID: "old-provider",
+          modelID: "old-model",
+          variant: "old-variant",
+        ),
+      );
+
+      final response = await handler.handle(
+        makeRequest("POST", "/session/prompt_async"),
+        body: const SendPromptRequest(
+          sessionId: "s-defaults-prompt",
+          parts: [PromptPart.text(text: "Hello")],
+          variant: SessionVariant(id: "xhigh"),
+          agent: "planner",
+          model: PromptModel(providerID: "openai", modelID: "gpt-5"),
+          command: null,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response, equals(const SuccessEmptyResponse()));
+      expect(plugin.lastSendPromptSessionId, equals("s-defaults-prompt"));
+      final dbSession = await db.sessionDao.getSession(sessionId: "s-defaults-prompt");
+      expect(dbSession, isNotNull);
+      expect(dbSession!.lastAgent, equals("planner"));
+      expect(dbSession.lastAgentModel?.providerID, equals("openai"));
+      expect(dbSession.lastAgentModel?.modelID, equals("gpt-5"));
+      expect(dbSession.lastAgentModel?.variant, equals("xhigh"));
     });
 
     test("records correct args", () async {
@@ -256,6 +294,178 @@ void main() {
       expect(plugin.lastSendCommandModel, equals((providerID: "openai", modelID: "gpt-5.4")));
     });
 
+    test("successful command send updates stored defaults", () async {
+      await _insertStoredSession(
+        repository: sessionRepository,
+        sessionId: "s-defaults-command",
+        agent: "old-agent",
+        agentModel: const AgentModel(
+          providerID: "old-provider",
+          modelID: "old-model",
+          variant: "old-variant",
+        ),
+      );
+
+      final response = await handler.handle(
+        makeRequest("POST", "/session/prompt_async"),
+        body: const SendPromptRequest(
+          sessionId: "s-defaults-command",
+          parts: [PromptPart.text(text: "review this")],
+          variant: SessionVariant(id: "high"),
+          agent: "reviewer",
+          model: PromptModel(providerID: "anthropic", modelID: "claude-sonnet"),
+          command: "review",
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response, equals(const SuccessEmptyResponse()));
+      expect(plugin.lastSendCommandSessionId, equals("s-defaults-command"));
+      final dbSession = await db.sessionDao.getSession(sessionId: "s-defaults-command");
+      expect(dbSession, isNotNull);
+      expect(dbSession!.lastAgent, equals("reviewer"));
+      expect(dbSession.lastAgentModel?.providerID, equals("anthropic"));
+      expect(dbSession.lastAgentModel?.modelID, equals("claude-sonnet"));
+      expect(dbSession.lastAgentModel?.variant, equals("high"));
+    });
+
+    test("plugin prompt failure leaves stored defaults unchanged", () async {
+      await _insertStoredSession(
+        repository: sessionRepository,
+        sessionId: "s-failing-prompt",
+        agent: "old-agent",
+        agentModel: const AgentModel(
+          providerID: "old-provider",
+          modelID: "old-model",
+          variant: "old-variant",
+        ),
+      );
+      final failingPlugin = _ThrowingSendPromptPlugin();
+      final localRepository = SessionRepository(
+        plugin: failingPlugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+      );
+      final localHandler = SendPromptHandler(
+        sessionPromptService: SessionPromptService(sessionRepository: localRepository),
+      );
+
+      await expectLater(
+        () => localHandler.handle(
+          makeRequest("POST", "/session/prompt_async"),
+          body: const SendPromptRequest(
+            sessionId: "s-failing-prompt",
+            parts: [PromptPart.text(text: "Hello")],
+            variant: SessionVariant(id: "new-variant"),
+            agent: "new-agent",
+            model: PromptModel(providerID: "new-provider", modelID: "new-model"),
+            command: null,
+          ),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<StateError>()),
+      );
+
+      final dbSession = await db.sessionDao.getSession(sessionId: "s-failing-prompt");
+      expect(dbSession, isNotNull);
+      expect(dbSession!.lastAgent, equals("old-agent"));
+      expect(dbSession.lastAgentModel?.providerID, equals("old-provider"));
+      expect(dbSession.lastAgentModel?.modelID, equals("old-model"));
+      expect(dbSession.lastAgentModel?.variant, equals("old-variant"));
+      await failingPlugin.close();
+    });
+
+    test("plugin command failure leaves stored defaults unchanged", () async {
+      await _insertStoredSession(
+        repository: sessionRepository,
+        sessionId: "s-failing-command",
+        agent: "old-agent",
+        agentModel: const AgentModel(
+          providerID: "old-provider",
+          modelID: "old-model",
+          variant: "old-variant",
+        ),
+      );
+      final failingPlugin = _ThrowingSendCommandPlugin();
+      final localRepository = SessionRepository(
+        plugin: failingPlugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+      );
+      final localHandler = SendPromptHandler(
+        sessionPromptService: SessionPromptService(sessionRepository: localRepository),
+      );
+
+      await expectLater(
+        () => localHandler.handle(
+          makeRequest("POST", "/session/prompt_async"),
+          body: const SendPromptRequest(
+            sessionId: "s-failing-command",
+            parts: [PromptPart.text(text: "review this")],
+            variant: SessionVariant(id: "new-variant"),
+            agent: "new-agent",
+            model: PromptModel(providerID: "new-provider", modelID: "new-model"),
+            command: "review",
+          ),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<StateError>()),
+      );
+
+      final dbSession = await db.sessionDao.getSession(sessionId: "s-failing-command");
+      expect(dbSession, isNotNull);
+      expect(dbSession!.lastAgent, equals("old-agent"));
+      expect(dbSession.lastAgentModel?.providerID, equals("old-provider"));
+      expect(dbSession.lastAgentModel?.modelID, equals("old-model"));
+      expect(dbSession.lastAgentModel?.variant, equals("old-variant"));
+      await failingPlugin.close();
+    });
+
+    test("prompt defaults update failure after plugin success still returns success", () async {
+      final throwingRepository = _ThrowingUpdateSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+      );
+      final localHandler = SendPromptHandler(
+        sessionPromptService: SessionPromptService(sessionRepository: throwingRepository),
+      );
+
+      final response = await localHandler.handle(
+        makeRequest("POST", "/session/prompt_async"),
+        body: const SendPromptRequest(
+          sessionId: "s-update-fails",
+          parts: [PromptPart.text(text: "Hello")],
+          variant: SessionVariant(id: "xhigh"),
+          agent: "planner",
+          model: PromptModel(providerID: "openai", modelID: "gpt-5"),
+          command: null,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response, equals(const SuccessEmptyResponse()));
+      expect(plugin.lastSendPromptSessionId, equals("s-update-fails"));
+      expect(throwingRepository.updatePromptDefaultsCallCount, equals(1));
+    });
+
     test("treats blank command as no command", () async {
       await handler.handle(
         makeRequest("POST", "/session/prompt_async"),
@@ -299,4 +509,71 @@ void main() {
       );
     });
   });
+}
+
+Future<void> _insertStoredSession({
+  required SessionRepository repository,
+  required String sessionId,
+  required String? agent,
+  required AgentModel? agentModel,
+}) {
+  return repository.insertStoredSession(
+    sessionId: sessionId,
+    projectId: "/repo",
+    isDedicated: false,
+    createdAt: 1,
+    worktreePath: null,
+    branchName: null,
+    baseBranch: null,
+    baseCommit: null,
+    agent: agent,
+    agentModel: agentModel,
+  );
+}
+
+class _ThrowingSendPromptPlugin extends FakeBridgePlugin {
+  @override
+  Future<void> sendPrompt({
+    required String sessionId,
+    required List<PluginPromptPart> parts,
+    required PluginSessionVariant? variant,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) {
+    throw StateError("sendPrompt failed");
+  }
+}
+
+class _ThrowingSendCommandPlugin extends FakeBridgePlugin {
+  @override
+  Future<void> sendCommand({
+    required String sessionId,
+    required String command,
+    required String arguments,
+    required PluginSessionVariant? variant,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) {
+    throw StateError("sendCommand failed");
+  }
+}
+
+class _ThrowingUpdateSessionRepository extends SessionRepository {
+  int updatePromptDefaultsCallCount = 0;
+
+  _ThrowingUpdateSessionRepository({
+    required super.plugin,
+    required super.sessionDao,
+    required super.pullRequestRepository,
+  });
+
+  @override
+  Future<void> updatePromptDefaults({
+    required String sessionId,
+    required String? agent,
+    required AgentModel? agentModel,
+  }) {
+    updatePromptDefaultsCallCount++;
+    throw StateError("updatePromptDefaults failed");
+  }
 }

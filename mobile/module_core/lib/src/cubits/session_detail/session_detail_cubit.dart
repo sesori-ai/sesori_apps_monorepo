@@ -294,6 +294,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           _onSessionUpdated(info);
         case SesoriCommandExecuted():
           _onDataMayBeStale();
+        case SesoriSessionPromptDefaultsChanged(:final promptDefaults):
+          _onPromptDefaultsChanged(promptDefaults);
         case SesoriSessionCreated() ||
             SesoriSessionDeleted() ||
             SesoriSessionDiff() ||
@@ -395,11 +397,11 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       SesoriTuiToastShow() ||
       SesoriWorktreeReady() ||
       SesoriWorktreeFailed() ||
+      SesoriSessionPromptDefaultsChanged() ||
       // Intentionally excluded: triggers a silent refresh, but during loading
       // we are already fetching the latest snapshot, so replaying it would
       // cause a redundant refresh immediately after load.
-      SesoriSessionsUpdated() =>
-        false,
+      SesoriSessionsUpdated() => false,
     };
   }
 
@@ -454,7 +456,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             SesoriWorkspaceFailed() ||
             SesoriTuiToastShow() ||
             SesoriWorktreeReady() ||
-            SesoriWorktreeFailed():
+            SesoriWorktreeFailed() ||
+            SesoriSessionPromptDefaultsChanged():
           break;
         case SesoriSessionsUpdated(:final projectID):
           if (projectID.isNotEmpty && projectID == _projectId) {
@@ -496,6 +499,32 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
     if (isClosed) return;
     emit(current.copyWith(sessionTitle: session.title));
+  }
+
+  void _onPromptDefaultsChanged(SessionPromptDefaults promptDefaults) {
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
+
+    final agents = current.availableAgents;
+    final providers = current.availableProviders;
+    final persistedAgent = promptDefaults.agent;
+    final persistedModel = promptDefaults.model;
+
+    final bool hasValidPersistedAgent = persistedAgent != null && agents.any((a) => a.name == persistedAgent);
+    final bool hasValidPersistedModel =
+        persistedModel != null &&
+        providers.any((p) => p.id == persistedModel.providerID && p.models.containsKey(persistedModel.modelID));
+
+    final newAgent = hasValidPersistedAgent ? persistedAgent : current.selectedAgent;
+    final newModel = hasValidPersistedModel ? persistedModel : current.selectedAgentModel;
+
+    if (isClosed) return;
+    emit(
+      current.copyWith(
+        selectedAgent: newAgent,
+        selectedAgentModel: newModel,
+      ),
+    );
   }
 
   void _onChildSessionCreated(Session child) {
@@ -1097,11 +1126,25 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         .where((a) => !a.hidden && a.mode != AgentMode.subagent)
         .toList();
     final providers = snapshot.providerData?.items ?? <ProviderInfo>[];
-    final defaultAgent = agents.isNotEmpty ? agents.first.name : "build";
-    final agentModel = agents.isNotEmpty ? agents.first.model : null;
+
+    final persistedDefaults = snapshot.promptDefaults;
+    final persistedAgent = persistedDefaults?.agent;
+    final persistedModel = persistedDefaults?.model;
+
+    final bool hasValidPersistedAgent = persistedAgent != null && agents.any((a) => a.name == persistedAgent);
+    final bool hasValidPersistedModel =
+        persistedModel != null &&
+        providers.any((p) => p.id == persistedModel.providerID && p.models.containsKey(persistedModel.modelID));
+
+    final String defaultAgent = hasValidPersistedAgent
+        ? persistedAgent
+        : (agents.isNotEmpty ? agents.first.name : "build");
+
     final AgentModel? defaultAgentModel;
-    if (agentModel != null) {
-      defaultAgentModel = agentModel;
+    if (hasValidPersistedModel) {
+      defaultAgentModel = persistedModel;
+    } else if (agents.isNotEmpty && agents.first.model != null) {
+      defaultAgentModel = agents.first.model;
     } else if (providers.isNotEmpty) {
       final firstProvider = providers.first;
       final defaultModelID = firstProvider.defaultModelID;

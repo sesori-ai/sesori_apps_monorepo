@@ -10,7 +10,6 @@ import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/create_session_handler.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -64,11 +63,6 @@ void main() {
           metadataService: metadataService,
           worktreeService: worktreeService,
           sessionRepository: sessionRepository,
-          sessionPersistenceService: SessionPersistenceService(
-            projectsDao: db.projectsDao,
-            sessionDao: db.sessionDao,
-            db: db,
-          ),
         ),
       );
     });
@@ -148,6 +142,42 @@ void main() {
       expect(dbSession.baseBranch, equals("main"));
       expect(dbSession.baseCommit, equals("abc123def456"));
       expect(dbSession.createdAt, greaterThan(0));
+    });
+
+    test("stores prompt defaults from creation request", () async {
+      plugin.createSessionResult = const PluginSession(
+        id: "defaults-1",
+        projectID: "p1",
+        directory: "/repo",
+        parentID: null,
+        title: "Defaults",
+        time: null,
+        summary: null,
+      );
+
+      final result = await handler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "/repo",
+          dedicatedWorktree: false,
+          parts: [PromptPart.text(text: "Start")],
+          variant: SessionVariant(id: "xhigh"),
+          agent: "architect",
+          model: PromptModel(providerID: "anthropic", modelID: "claude-sonnet"),
+          command: null,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.id, equals("defaults-1"));
+      final dbSession = await db.sessionDao.getSession(sessionId: "defaults-1");
+      expect(dbSession, isNotNull);
+      expect(dbSession!.lastAgent, equals("architect"));
+      expect(dbSession.lastAgentModel?.providerID, equals("anthropic"));
+      expect(dbSession.lastAgentModel?.modelID, equals("claude-sonnet"));
+      expect(dbSession.lastAgentModel?.variant, equals("xhigh"));
     });
 
     test("dedicated=false skips worktree prep and stores resolved base branch metadata", () async {
@@ -324,11 +354,6 @@ void main() {
           metadataService: metadataService,
           worktreeService: worktreeService,
           sessionRepository: localRepository,
-          sessionPersistenceService: SessionPersistenceService(
-            projectsDao: db.projectsDao,
-            sessionDao: db.sessionDao,
-            db: db,
-          ),
         ),
       );
       worktreeService.prepareResult = WorktreeSuccess(
@@ -800,11 +825,6 @@ void main() {
               projectsDao: db.projectsDao,
             ),
           ),
-          sessionPersistenceService: SessionPersistenceService(
-            projectsDao: db.projectsDao,
-            sessionDao: db.sessionDao,
-            db: db,
-          ),
         ),
       );
 
@@ -827,7 +847,51 @@ void main() {
       expect(orderedPlugin.hadStoredRowWhenCommandSent, isTrue);
       expect(orderedPlugin.lastSendCommandAgent, equals("coder"));
       expect(orderedPlugin.lastSendCommandModel, equals((providerID: "openai", modelID: "gpt-5")));
+      final dbSession = await db.sessionDao.getSession(sessionId: "ordered-session-1");
+      expect(dbSession, isNotNull);
+      expect(dbSession!.lastAgent, equals("coder"));
+      expect(dbSession.lastAgentModel?.providerID, equals("openai"));
+      expect(dbSession.lastAgentModel?.modelID, equals("gpt-5"));
       await orderedPlugin.close();
+    });
+
+    test("command-created session stores request defaults while plugin create receives null agent and model", () async {
+      plugin.createSessionResult = const PluginSession(
+        id: "cmd-defaults-1",
+        projectID: "p1",
+        directory: "/repo",
+        parentID: null,
+        title: "Command Defaults",
+        time: null,
+        summary: null,
+      );
+
+      await handler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "/repo",
+          dedicatedWorktree: false,
+          parts: [PromptPart.text(text: "Review this")],
+          variant: SessionVariant(id: "xhigh"),
+          agent: "reviewer",
+          model: PromptModel(providerID: "openai", modelID: "gpt-5"),
+          command: "review",
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(plugin.lastCreateSessionAgent, isNull);
+      expect(plugin.lastCreateSessionModel, isNull);
+      expect(plugin.lastSendCommandAgent, equals("reviewer"));
+      expect(plugin.lastSendCommandModel, equals((providerID: "openai", modelID: "gpt-5")));
+      final dbSession = await db.sessionDao.getSession(sessionId: "cmd-defaults-1");
+      expect(dbSession, isNotNull);
+      expect(dbSession!.lastAgent, equals("reviewer"));
+      expect(dbSession.lastAgentModel?.providerID, equals("openai"));
+      expect(dbSession.lastAgentModel?.modelID, equals("gpt-5"));
+      expect(dbSession.lastAgentModel?.variant, equals("xhigh"));
     });
 
     test("creates session for first-time project (no prior projects_table row)", () async {
@@ -955,11 +1019,6 @@ void main() {
               pullRequestDao: db.pullRequestDao,
               projectsDao: db.projectsDao,
             ),
-          ),
-          sessionPersistenceService: SessionPersistenceService(
-            projectsDao: db.projectsDao,
-            sessionDao: db.sessionDao,
-            db: db,
           ),
         ),
       );

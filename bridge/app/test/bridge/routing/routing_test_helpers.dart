@@ -388,6 +388,8 @@ class FakeSessionDao {
     required String? branchName,
     required String? baseBranch,
     required String? baseCommit,
+    required String? lastAgent,
+    required AgentModel? lastAgentModel,
   }) async {
     _sessions[sessionId] = SessionDto(
       sessionId: sessionId,
@@ -398,6 +400,8 @@ class FakeSessionDao {
       archivedAt: null,
       baseBranch: baseBranch,
       baseCommit: baseCommit,
+      lastAgent: lastAgent,
+      lastAgentModel: lastAgentModel,
       createdAt: createdAt,
     );
   }
@@ -672,6 +676,27 @@ class _NoopSessionRepository implements SessionRepository {
   Future<SessionDto?> getStoredSession({required String sessionId}) async => null;
 
   @override
+  Future<void> insertStoredSession({
+    required String sessionId,
+    required String projectId,
+    required bool isDedicated,
+    required int createdAt,
+    required String? worktreePath,
+    required String? branchName,
+    required String? baseBranch,
+    required String? baseCommit,
+    required String? agent,
+    required AgentModel? agentModel,
+  }) async {}
+
+  @override
+  Future<void> updatePromptDefaults({
+    required String sessionId,
+    required String? agent,
+    required AgentModel? agentModel,
+  }) async {}
+
+  @override
   Future<String?> findProjectIdForSession({required String sessionId}) async => null;
 
   @override
@@ -882,6 +907,40 @@ class FakeSessionRepository implements SessionRepository {
   Future<SessionDto?> getStoredSession({required String sessionId}) async {
     return _sessionDao.getSession(sessionId: sessionId);
   }
+
+  @override
+  Future<void> insertStoredSession({
+    required String sessionId,
+    required String projectId,
+    required bool isDedicated,
+    required int createdAt,
+    required String? worktreePath,
+    required String? branchName,
+    required String? baseBranch,
+    required String? baseCommit,
+    required String? agent,
+    required AgentModel? agentModel,
+  }) {
+    return _sessionDao.insertSession(
+      sessionId: sessionId,
+      projectId: projectId,
+      isDedicated: isDedicated,
+      createdAt: createdAt,
+      worktreePath: worktreePath,
+      branchName: branchName,
+      baseBranch: baseBranch,
+      baseCommit: baseCommit,
+      lastAgent: agent,
+      lastAgentModel: agentModel,
+    );
+  }
+
+  @override
+  Future<void> updatePromptDefaults({
+    required String sessionId,
+    required String? agent,
+    required AgentModel? agentModel,
+  }) async {}
 
   @override
   Future<String?> findProjectIdForSession({required String sessionId}) async => null;

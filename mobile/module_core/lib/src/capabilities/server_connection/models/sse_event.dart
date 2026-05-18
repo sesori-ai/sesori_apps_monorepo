@@ -55,7 +55,8 @@ class SseEvent {
     SesoriWorkspaceFailed() ||
     SesoriTuiToastShow() ||
     SesoriWorktreeReady() ||
-    SesoriWorktreeFailed() => null,
+    SesoriWorktreeFailed() ||
+    SesoriSessionPromptDefaultsChanged() => null,
   };
 
   SseEvent({required this.data, this.directory});

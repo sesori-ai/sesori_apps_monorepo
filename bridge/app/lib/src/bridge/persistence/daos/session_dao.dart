@@ -1,4 +1,5 @@
 import "package:drift/drift.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "../database.dart";
 import "../tables/session_table.dart";
@@ -18,6 +19,8 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     required String? branchName,
     required String? baseBranch,
     required String? baseCommit,
+    required String? lastAgent,
+    required AgentModel? lastAgentModel,
   }) async {
     await into(sessionTable).insert(
       SessionTableCompanion(
@@ -29,7 +32,22 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
         archivedAt: const Value(null),
         baseBranch: Value(baseBranch),
         baseCommit: Value(baseCommit),
+        lastAgent: Value(lastAgent),
+        lastAgentModel: Value(lastAgentModel),
         createdAt: Value(createdAt),
+      ),
+    );
+  }
+
+  Future<void> updatePromptDefaults({
+    required String sessionId,
+    required String? agent,
+    required AgentModel? agentModel,
+  }) async {
+    await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).write(
+      SessionTableCompanion(
+        lastAgent: Value(agent),
+        lastAgentModel: Value(agentModel),
       ),
     );
   }

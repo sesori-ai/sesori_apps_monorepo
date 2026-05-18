@@ -1,6 +1,8 @@
+import "package:drift/drift.dart" show Value;
 import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/daos/session_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:sqlite3/sqlite3.dart";
 import "package:test/test.dart";
 
@@ -38,6 +40,9 @@ void main() {
         branchName: "feat/my-feature",
         baseBranch: "main",
         baseCommit: "abc123",
+
+        lastAgent: null,
+        lastAgentModel: null,
       );
 
       final result = await dao.getSession(sessionId: "ses-1");
@@ -65,6 +70,9 @@ void main() {
         branchName: null,
         baseBranch: null,
         baseCommit: null,
+
+        lastAgent: null,
+        lastAgentModel: null,
       );
 
       final result = await dao.getSession(sessionId: "ses-simple");
@@ -76,6 +84,99 @@ void main() {
       expect(result.baseBranch, isNull);
       expect(result.baseCommit, isNull);
       expect(result.createdAt, equals(createdAt));
+    });
+
+    test("generated companion insert persists last default selection fields", () async {
+      await db
+          .into(db.sessionTable)
+          .insert(
+            SessionTableCompanion.insert(
+              sessionId: "ses-defaults",
+              projectId: "proj-1",
+              isDedicated: false,
+              createdAt: 1234,
+              lastAgent: const Value("opencode"),
+              lastAgentModel: const Value(
+                AgentModel(
+                  providerID: "anthropic",
+                  modelID: "claude-sonnet-4",
+                  variant: "standard",
+                ),
+              ),
+            ),
+          );
+
+      final result = await dao.getSession(sessionId: "ses-defaults");
+
+      expect(result, isNotNull);
+      expect(result!.lastAgent, equals("opencode"));
+      expect(result.lastAgentModel?.providerID, equals("anthropic"));
+      expect(result.lastAgentModel?.modelID, equals("claude-sonnet-4"));
+      expect(result.lastAgentModel?.variant, equals("standard"));
+    });
+
+    test("insertSession persists optional prompt defaults", () async {
+      await dao.insertSession(
+        sessionId: "ses-insert-defaults",
+        projectId: "proj-1",
+        isDedicated: false,
+        createdAt: 1234,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: "opencode",
+        lastAgentModel: const AgentModel(
+          providerID: "anthropic",
+          modelID: "claude-sonnet-4",
+          variant: "standard",
+        ),
+      );
+
+      final result = await dao.getSession(sessionId: "ses-insert-defaults");
+
+      expect(result, isNotNull);
+      expect(result!.lastAgent, equals("opencode"));
+      expect(result.lastAgentModel?.providerID, equals("anthropic"));
+      expect(result.lastAgentModel?.modelID, equals("claude-sonnet-4"));
+      expect(result.lastAgentModel?.variant, equals("standard"));
+    });
+
+    test("updatePromptDefaults overwrites all prompt default fields", () async {
+      await dao.insertSession(
+        sessionId: "ses-update-defaults",
+        projectId: "proj-1",
+        isDedicated: false,
+        createdAt: 1234,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: "old-agent",
+        lastAgentModel: const AgentModel(
+          providerID: "old-provider",
+          modelID: "old-model",
+          variant: "old-variant",
+        ),
+      );
+
+      await dao.updatePromptDefaults(
+        sessionId: "ses-update-defaults",
+        agent: null,
+        agentModel: const AgentModel(
+          providerID: "new-provider",
+          modelID: "new-model",
+          variant: null,
+        ),
+      );
+
+      final result = await dao.getSession(sessionId: "ses-update-defaults");
+
+      expect(result, isNotNull);
+      expect(result!.lastAgent, isNull);
+      expect(result.lastAgentModel?.providerID, equals("new-provider"));
+      expect(result.lastAgentModel?.modelID, equals("new-model"));
+      expect(result.lastAgentModel?.variant, isNull);
     });
 
     test("get non-existent sessionId returns null", () async {
@@ -94,6 +195,9 @@ void main() {
         branchName: "main",
         baseBranch: "main",
         baseCommit: null,
+
+        lastAgent: null,
+        lastAgentModel: null,
       );
 
       await dao.deleteSession(sessionId: "ses-2");
@@ -112,6 +216,9 @@ void main() {
         branchName: "develop",
         baseBranch: "develop",
         baseCommit: "commit-1",
+
+        lastAgent: null,
+        lastAgentModel: null,
       );
 
       await dao.deleteSession(sessionId: "does-not-exist");
@@ -130,6 +237,9 @@ void main() {
         branchName: null,
         baseBranch: null,
         baseCommit: null,
+
+        lastAgent: null,
+        lastAgentModel: null,
       );
 
       await dao.setArchived(sessionId: "ses-4", archivedAt: 1234567890);
@@ -151,6 +261,9 @@ void main() {
         branchName: "session-001",
         baseBranch: "main",
         baseCommit: "sha-a",
+
+        lastAgent: null,
+        lastAgentModel: null,
       );
       await dao.insertSession(
         sessionId: "ses-b",
@@ -161,6 +274,9 @@ void main() {
         branchName: null,
         baseBranch: null,
         baseCommit: null,
+
+        lastAgent: null,
+        lastAgentModel: null,
       );
       await dao.insertSession(
         sessionId: "ses-c",
@@ -171,6 +287,9 @@ void main() {
         branchName: "session-003",
         baseBranch: "develop",
         baseCommit: "sha-c",
+
+        lastAgent: null,
+        lastAgentModel: null,
       );
 
       final projectSessions = await dao.getSessionsByProject(projectId: "proj-x");
@@ -195,6 +314,9 @@ void main() {
           branchName: "branch-1",
           baseBranch: "main",
           baseCommit: null,
+
+          lastAgent: null,
+          lastAgentModel: null,
         );
 
         final result = await dao.getOtherActiveSessionsSharing(
@@ -217,6 +339,9 @@ void main() {
           branchName: "branch-a",
           baseBranch: "main",
           baseCommit: null,
+
+          lastAgent: null,
+          lastAgentModel: null,
         );
         await dao.insertSession(
           sessionId: "ses-b",
@@ -227,6 +352,9 @@ void main() {
           branchName: "branch-b",
           baseBranch: "main",
           baseCommit: null,
+
+          lastAgent: null,
+          lastAgentModel: null,
         );
 
         final result = await dao.getOtherActiveSessionsSharing(
@@ -250,6 +378,9 @@ void main() {
           branchName: "shared-branch",
           baseBranch: "main",
           baseCommit: null,
+
+          lastAgent: null,
+          lastAgentModel: null,
         );
         await dao.insertSession(
           sessionId: "ses-b",
@@ -260,6 +391,9 @@ void main() {
           branchName: "shared-branch",
           baseBranch: "main",
           baseCommit: null,
+
+          lastAgent: null,
+          lastAgentModel: null,
         );
 
         final result = await dao.getOtherActiveSessionsSharing(
@@ -283,6 +417,9 @@ void main() {
           branchName: "branch-a",
           baseBranch: "main",
           baseCommit: null,
+
+          lastAgent: null,
+          lastAgentModel: null,
         );
 
         final result = await dao.getOtherActiveSessionsSharing(
@@ -305,6 +442,9 @@ void main() {
           branchName: "branch-a",
           baseBranch: "main",
           baseCommit: null,
+
+          lastAgent: null,
+          lastAgentModel: null,
         );
         await dao.insertSession(
           sessionId: "ses-b",
@@ -315,6 +455,9 @@ void main() {
           branchName: "branch-b",
           baseBranch: "main",
           baseCommit: null,
+
+          lastAgent: null,
+          lastAgentModel: null,
         );
         await dao.setArchived(sessionId: "ses-b", archivedAt: 99999);
 
@@ -338,6 +481,9 @@ void main() {
           branchName: "branch-a",
           baseBranch: "main",
           baseCommit: null,
+
+          lastAgent: null,
+          lastAgentModel: null,
         );
         await dao.insertSession(
           sessionId: "ses-b",
@@ -348,6 +494,9 @@ void main() {
           branchName: "branch-other",
           baseBranch: "main",
           baseCommit: null,
+
+          lastAgent: null,
+          lastAgentModel: null,
         );
         await dao.insertSession(
           sessionId: "ses-c",
@@ -358,6 +507,9 @@ void main() {
           branchName: "branch-a",
           baseBranch: "main",
           baseCommit: null,
+
+          lastAgent: null,
+          lastAgentModel: null,
         );
 
         final result = await dao.getOtherActiveSessionsSharing(
@@ -383,6 +535,9 @@ void main() {
           branchName: "session-001",
           baseBranch: "main",
           baseCommit: null,
+
+          lastAgent: null,
+          lastAgentModel: null,
         );
         await dao.insertSession(
           sessionId: "ses-b",
@@ -393,6 +548,9 @@ void main() {
           branchName: "session-001",
           baseBranch: "main",
           baseCommit: null,
+
+          lastAgent: null,
+          lastAgentModel: null,
         );
 
         final result = await dao.getOtherActiveSessionsSharing(
@@ -464,6 +622,9 @@ void main() {
         branchName: "feature-x",
         baseBranch: "main",
         baseCommit: "abc123",
+
+        lastAgent: null,
+        lastAgentModel: null,
       );
 
       // insertSessionsIfMissing must be a no-op — must NOT clobber existing fields.
@@ -558,6 +719,9 @@ void main() {
             branchName: null,
             baseBranch: null,
             baseCommit: null,
+
+            lastAgent: null,
+            lastAgentModel: null,
           ),
           throwsA(isA<SqliteException>()),
         );

@@ -148,8 +148,9 @@ void main() {
           agents: <AgentInfo?>[],
           providerData: null,
           commands: <CommandInfo>[],
-          canonicalSessionTitle: null,
-        ),
+            canonicalSessionTitle: null,
+            promptDefaults: null,
+          ),
         isBridgeConnected: true,
       ),
     );
@@ -216,8 +217,9 @@ void main() {
         agents: <AgentInfo?>[],
         providerData: null,
         commands: <CommandInfo>[],
-        canonicalSessionTitle: null,
-      ),
+            canonicalSessionTitle: null,
+            promptDefaults: null,
+          ),
       isBridgeConnected: true,
     );
 

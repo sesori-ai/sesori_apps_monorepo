@@ -73,7 +73,6 @@ void main() {
         metadataService: metadataService,
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
-        sessionPersistenceService: sessionPersistenceService,
       );
       final sessionArchiveService = SessionArchiveService(
         worktreeService: worktreeService,
@@ -404,7 +403,6 @@ void main() {
           metadataService: metadataService,
           worktreeService: worktreeService,
           sessionRepository: sessionRepository,
-          sessionPersistenceService: sessionPersistenceService,
         ),
         sessionArchiveService: SessionArchiveService(
           worktreeService: worktreeService,

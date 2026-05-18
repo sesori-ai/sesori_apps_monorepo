@@ -50,6 +50,11 @@ _Session _$SessionFromJson(Map json) => _Session(
       : PullRequestInfo.fromJson(
           Map<String, dynamic>.from(json['pullRequest'] as Map),
         ),
+  promptDefaults: json['promptDefaults'] == null
+      ? null
+      : SessionPromptDefaults.fromJson(
+          Map<String, dynamic>.from(json['promptDefaults'] as Map),
+        ),
   hasWorktree: json['hasWorktree'] as bool? ?? false,
 );
 
@@ -62,7 +67,25 @@ Map<String, dynamic> _$SessionToJson(_Session instance) => <String, dynamic>{
   'time': instance.time?.toJson(),
   'summary': instance.summary?.toJson(),
   'pullRequest': instance.pullRequest?.toJson(),
+  'promptDefaults': instance.promptDefaults?.toJson(),
   'hasWorktree': instance.hasWorktree,
+};
+
+_SessionPromptDefaults _$SessionPromptDefaultsFromJson(Map json) =>
+    _SessionPromptDefaults(
+      agent: json['agent'] as String?,
+      model: json['model'] == null
+          ? null
+          : AgentModel.fromJson(
+              Map<String, dynamic>.from(json['model'] as Map),
+            ),
+    );
+
+Map<String, dynamic> _$SessionPromptDefaultsToJson(
+  _SessionPromptDefaults instance,
+) => <String, dynamic>{
+  'agent': instance.agent,
+  'model': instance.model?.toJson(),
 };
 
 _SessionTime _$SessionTimeFromJson(Map json) => _SessionTime(

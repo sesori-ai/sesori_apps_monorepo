@@ -25,7 +25,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -107,6 +107,10 @@ class AppDatabase extends _$AppDatabase {
             '${violations.map((row) => row.data).toList()}',
           );
         }
+      },
+      from5To6: (m, schema) async {
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.lastAgent);
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.lastAgentModel);
       },
     ),
     beforeOpen: (details) async {

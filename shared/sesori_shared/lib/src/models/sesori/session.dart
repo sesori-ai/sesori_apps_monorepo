@@ -1,5 +1,6 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "agent_info.dart";
 import "pull_request_info.dart";
 
 part "session.freezed.dart";
@@ -30,6 +31,7 @@ sealed class SessionListRequest with _$SessionListRequest {
 
 @Freezed(fromJson: true, toJson: true)
 sealed class Session with _$Session {
+  // ignore: no_slop_linter/prefer_required_named_parameters, optional nullable field must remain omittable for backward-compatible JSON.
   const factory Session({
     required String id,
     required String projectID,
@@ -39,10 +41,21 @@ sealed class Session with _$Session {
     required SessionTime? time,
     required SessionSummary? summary,
     required PullRequestInfo? pullRequest,
+    SessionPromptDefaults? promptDefaults,
     @Default(false) bool hasWorktree,
   }) = _Session;
 
   factory Session.fromJson(Map<String, dynamic> json) => _$SessionFromJson(json);
+}
+
+@Freezed(fromJson: true, toJson: true)
+sealed class SessionPromptDefaults with _$SessionPromptDefaults {
+  const factory SessionPromptDefaults({
+    required String? agent,
+    required AgentModel? model,
+  }) = _SessionPromptDefaults;
+
+  factory SessionPromptDefaults.fromJson(Map<String, dynamic> json) => _$SessionPromptDefaultsFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: true)

@@ -38,6 +38,9 @@ void main() {
         branchName: branchName,
         baseBranch: "main",
         baseCommit: "abc123",
+
+        lastAgent: null,
+        lastAgentModel: null,
       );
     }
 

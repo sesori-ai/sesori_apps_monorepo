@@ -80,6 +80,12 @@ void main() {
         branchName: "main",
         baseBranch: null,
         baseCommit: null,
+        lastAgent: "agent-1",
+        lastAgentModel: const AgentModel(
+          providerID: "provider-1",
+          modelID: "model-1",
+          variant: "variant-1",
+        ),
       );
 
       await service.persistSessionsForProject(
@@ -93,6 +99,10 @@ void main() {
       expect(row?.branchName, equals("main"));
       expect(row?.isDedicated, isTrue);
       expect(row?.createdAt, equals(123));
+      expect(row?.lastAgent, equals("agent-1"));
+      expect(row?.lastAgentModel?.providerID, equals("provider-1"));
+      expect(row?.lastAgentModel?.modelID, equals("model-1"));
+      expect(row?.lastAgentModel?.variant, equals("variant-1"));
     });
 
     test("createSession inserts a full session row with all fields and ensures project exists", () async {
@@ -181,6 +191,9 @@ void main() {
         branchName: null,
         baseBranch: null,
         baseCommit: null,
+
+        lastAgent: null,
+        lastAgentModel: null,
       );
 
       await service.deleteSession(sessionId: "sess-delete");
@@ -199,6 +212,9 @@ void main() {
         branchName: null,
         baseBranch: null,
         baseCommit: null,
+
+        lastAgent: null,
+        lastAgentModel: null,
       );
 
       await service.archiveSession(sessionId: "sess-archive", archivedAt: 777);
@@ -217,6 +233,9 @@ void main() {
         branchName: null,
         baseBranch: null,
         baseCommit: null,
+
+        lastAgent: null,
+        lastAgentModel: null,
       );
       await sessionDao.setArchived(sessionId: "sess-unarchive", archivedAt: 888);
 

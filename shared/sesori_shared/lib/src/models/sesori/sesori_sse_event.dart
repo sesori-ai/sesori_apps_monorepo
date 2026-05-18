@@ -84,6 +84,13 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
     required String sessionID,
   }) = SesoriSessionCompacted;
 
+  @FreezedUnionValue("session.prompt_defaults_changed")
+  @Implements<SesoriSessionEvent>()
+  const factory SesoriSseEvent.sessionPromptDefaultsChanged({
+    required String sessionID,
+    required SessionPromptDefaults promptDefaults,
+  }) = SesoriSessionPromptDefaultsChanged;
+
   @FreezedUnionValue("session.status")
   @Implements<SesoriSessionEvent>()
   const factory SesoriSseEvent.sessionStatus({
