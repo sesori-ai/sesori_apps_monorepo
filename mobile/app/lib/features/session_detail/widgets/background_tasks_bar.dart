@@ -302,11 +302,10 @@ class _TaskRow extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  Text(
-                    _statusLabel(loc: loc, status: status),
-                    style: zyra.textTheme.textXs.regular.copyWith(
-                      color: zyra.colors.textSecondary,
-                    ),
+                  _statusTextWidget(
+                    loc: loc,
+                    status: status,
+                    zyra: zyra,
                   ),
                 ],
               ),
@@ -323,18 +322,13 @@ class _TaskRow extends StatelessWidget {
   }
 
   Widget _statusIcon({required SessionStatus? status, required ZyraDesignSystem zyra}) => switch (status) {
-    SessionStatusBusy() => SizedBox(
+    SessionStatusBusy() || SessionStatusRetry() => SizedBox(
       width: 16,
       height: 16,
       child: CircularProgressIndicator(
         strokeWidth: 2,
         color: zyra.colors.bgBrandSolid,
       ),
-    ),
-    SessionStatusRetry() => Icon(
-      Icons.refresh,
-      size: 16,
-      color: zyra.colors.fgSuccessPrimary,
     ),
     SessionStatusIdle() => Icon(
       Icons.check_circle,
@@ -347,11 +341,48 @@ class _TaskRow extends StatelessWidget {
       color: zyra.colors.borderPrimary,
     ),
   };
-  String _statusLabel({required AppLocalizations loc, required SessionStatus? status}) => switch (status) {
-    SessionStatusBusy() => loc.backgroundTaskStatusBusy,
-    SessionStatusRetry() => loc.backgroundTaskStatusRetry,
-    SessionStatusIdle() => _completedLabel(loc),
-    null => _completedLabel(loc),
+
+  Widget _statusTextWidget({
+    required AppLocalizations loc,
+    required SessionStatus? status,
+    required ZyraDesignSystem zyra,
+  }) => switch (status) {
+    SessionStatusBusy() => Text(
+      loc.backgroundTaskStatusBusy,
+      style: zyra.textTheme.textXs.regular.copyWith(
+        color: zyra.colors.textSecondary,
+      ),
+    ),
+    SessionStatusRetry(:final message) => Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(
+            text: loc.backgroundTaskStatusRetry,
+            style: zyra.textTheme.textXs.regular.copyWith(
+              color: zyra.colors.textSecondary,
+            ),
+          ),
+          TextSpan(
+            text: ' ($message)',
+            style: zyra.textTheme.textXs.regular.copyWith(
+              color: zyra.colors.fgErrorPrimary,
+            ),
+          ),
+        ],
+      ),
+    ),
+    SessionStatusIdle() => Text(
+      _completedLabel(loc),
+      style: zyra.textTheme.textXs.regular.copyWith(
+        color: zyra.colors.textSecondary,
+      ),
+    ),
+    null => Text(
+      _completedLabel(loc),
+      style: zyra.textTheme.textXs.regular.copyWith(
+        color: zyra.colors.textSecondary,
+      ),
+    ),
   };
 
   String _completedLabel(AppLocalizations loc) {

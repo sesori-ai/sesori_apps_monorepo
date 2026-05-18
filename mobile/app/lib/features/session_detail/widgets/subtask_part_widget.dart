@@ -98,18 +98,13 @@ class SubtaskPartWidget extends StatelessWidget {
   }
 
   Widget _statusIcon({required SessionStatus? status, required ZyraDesignSystem zyra}) => switch (status) {
-    SessionStatusBusy() => SizedBox(
+    SessionStatusBusy() || SessionStatusRetry() => SizedBox(
       width: 16,
       height: 16,
       child: CircularProgressIndicator(
         strokeWidth: 2,
         color: zyra.colors.bgBrandSolid,
       ),
-    ),
-    SessionStatusRetry() => Icon(
-      Icons.refresh,
-      size: 16,
-      color: zyra.colors.fgSuccessPrimary,
     ),
     SessionStatusIdle() => Icon(
       Icons.check_circle,
