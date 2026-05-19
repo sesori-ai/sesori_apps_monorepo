@@ -41,6 +41,16 @@ def highest_build_number_across_all_versions(api_key:)
 end
 
 platform :ios do
+  # Reads the marketing version (e.g. "1.0.6") from pubspec.yaml two dirs up.
+  # The build-number suffix after `+` is intentionally ignored — store APIs
+  # own the build number, pubspec only owns the version name.
+  private_lane :_read_marketing_version do
+    pubspec_path = File.join(Dir.pwd, "..", "..", "pubspec.yaml")
+    pubspec_content = File.read(pubspec_path)
+    version_match = pubspec_content.match(/version:\s*(\d+\.\d+\.\d+)/)
+    version_match ? version_match[1] : "1.0.0"
+  end
+
   desc "Print the next TestFlight build number without building or uploading"
   lane :next_build_number do
     api_key = app_store_connect_api_key(
@@ -70,11 +80,7 @@ platform :ios do
       is_key_content_base64: false
     )
 
-    # Get version from pubspec.yaml
-    pubspec_path = File.join(Dir.pwd, "..", "..", "pubspec.yaml")
-    pubspec_content = File.read(pubspec_path)
-    version_match = pubspec_content.match(/version:\s*(\d+\.\d+\.\d+)/)
-    version = version_match ? version_match[1] : "1.0.0"
+    version = _read_marketing_version
 
     # Prefer a build number injected by the upstream "next build number" CI job
     # (cheap Linux runner). Fall back to querying ASC ourselves so standalone
@@ -170,10 +176,7 @@ platform :ios do
       is_key_content_base64: false
     )
 
-    pubspec_path = File.join(Dir.pwd, "..", "..", "pubspec.yaml")
-    pubspec_content = File.read(pubspec_path)
-    version_match = pubspec_content.match(/version:\s*(\d+\.\d+\.\d+)/)
-    version = version_match ? version_match[1] : "1.0.0"
+    version = _read_marketing_version
 
     UI.message("Submitting iOS build #{build_number} (v#{version}) to #{track}")
 
@@ -210,7 +213,7 @@ platform :ios do
         skip_submission: false,
         skip_waiting_for_build_processing: true,
         distribute_external: true,
-        groups: ENV.fetch("TESTFLIGHT_EXTERNAL_GROUPS", "External Beta").split(","),
+        groups: ENV.fetch("TESTFLIGHT_EXTERNAL_GROUPS", "External Beta").split(",").map(&:strip).reject(&:empty?),
         changelog: "Promoted build #{build_number} (v#{version}) to external beta"
       )
     end

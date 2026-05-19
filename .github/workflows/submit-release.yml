@@ -279,7 +279,8 @@ jobs:
 
       - name: Cleanup credentials
         if: always()
-        run: rm -f mobile/app/android/fastlane/service-account.json
+        # Path is relative to the job's working-directory (mobile/app/android).
+        run: rm -f fastlane/service-account.json
 
       - name: Summary
         if: success()
