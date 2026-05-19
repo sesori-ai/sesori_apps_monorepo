@@ -108,12 +108,7 @@ Future<void> clearTokens() async {
   final path = tokenPath();
   final file = File(path);
 
-  try {
+  if (await file.exists()) {
     await file.delete();
-  } on FileSystemException catch (e) {
-    // Ignore "file not found" errors
-    if (!e.message.contains('No such file or directory')) {
-      rethrow;
-    }
   }
 }
