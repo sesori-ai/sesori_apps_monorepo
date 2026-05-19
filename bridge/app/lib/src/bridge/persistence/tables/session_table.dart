@@ -1,10 +1,31 @@
 import "package:drift/drift.dart" hide JsonKey;
 import "package:freezed_annotation/freezed_annotation.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "../database.dart";
 import "projects_table.dart";
 
 part "session_table.freezed.dart";
+
+class AgentModelConverter extends TypeConverter<AgentModel, String> {
+  const AgentModelConverter();
+
+  @override
+  AgentModel fromSql(String fromDb) {
+    final parts = fromDb.split("|");
+    return AgentModel(
+      providerID: parts[0],
+      modelID: parts[1],
+      variant: parts.length > 2 ? parts[2] : null,
+    );
+  }
+
+  @override
+  String toSql(AgentModel value) {
+    final variant = value.variant;
+    return "${value.providerID}|${value.modelID}${variant != null ? "|$variant" : ""}";
+  }
+}
 
 @UseRowClass(SessionDto)
 class SessionTable extends Table {
@@ -19,6 +40,8 @@ class SessionTable extends Table {
   IntColumn get archivedAt => integer().nullable()();
   TextColumn get baseBranch => text().nullable()();
   TextColumn get baseCommit => text().nullable()();
+  TextColumn get lastAgent => text().nullable()();
+  TextColumn get lastAgentModel => text().nullable().map(const AgentModelConverter())();
   IntColumn get createdAt => integer()();
 
   @override
@@ -39,6 +62,8 @@ sealed class SessionDto with _$SessionDto, $SessionTableTableToColumns {
     required int? archivedAt,
     required String? baseBranch,
     required String? baseCommit,
+    required String? lastAgent,
+    required AgentModel? lastAgentModel,
     required int createdAt,
   }) = _SessionDto;
 

@@ -4,27 +4,24 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../metadata_service.dart";
 import "../models/session_metadata.dart" as bridge_metadata;
 import "../repositories/session_repository.dart";
-import "session_persistence_service.dart";
 import "worktree_service.dart";
 
 class SessionCreationService {
   final MetadataService _metadataService;
   final WorktreeService _worktreeService;
   final SessionRepository _sessionRepository;
-  final SessionPersistenceService _sessionPersistenceService;
 
   SessionCreationService({
     required MetadataService metadataService,
     required WorktreeService worktreeService,
     required SessionRepository sessionRepository,
-    required SessionPersistenceService sessionPersistenceService,
   }) : _metadataService = metadataService,
        _worktreeService = worktreeService,
-       _sessionRepository = sessionRepository,
-       _sessionPersistenceService = sessionPersistenceService;
+       _sessionRepository = sessionRepository;
 
   Future<Session> createSession({required CreateSessionRequest request}) async {
     final normalizedCommand = request.command?.normalize();
+    final agentModel = request.model;
     final firstText = _extractFirstText(parts: request.parts);
     final metadata = await _generateMetadata(firstText: firstText);
     final worktreeResult = await _prepareWorktree(request: request, metadata: metadata);
@@ -45,7 +42,7 @@ class SessionCreationService {
       dedicatedWorktree: request.dedicatedWorktree,
       worktreeResult: worktreeResult,
     );
-    await _sessionPersistenceService.createSession(
+    await _sessionRepository.insertStoredSession(
       sessionId: created.id,
       projectId: request.projectId,
       isDedicated: request.dedicatedWorktree,
@@ -54,6 +51,14 @@ class SessionCreationService {
       branchName: worktreeState.branchName,
       baseBranch: worktreeState.baseBranch,
       baseCommit: worktreeState.baseCommit,
+      agent: request.agent,
+      agentModel: agentModel != null
+          ? AgentModel(
+              providerID: agentModel.providerID,
+              modelID: agentModel.modelID,
+              variant: request.variant?.id,
+            )
+          : null,
     );
     await _maybeSendCommand(
       session: created,

@@ -95,6 +95,9 @@ void main() {
         branchName: "session-001",
         baseBranch: "main",
         baseCommit: "sha-parent",
+
+        lastAgent: null,
+        lastAgentModel: null,
       );
 
       final result = await service.prepareWorktreeForSession(
@@ -445,6 +448,9 @@ void main() {
         branchName: "session-001",
         baseBranch: "main",
         baseCommit: "sha-parent",
+
+        lastAgent: null,
+        lastAgentModel: null,
       );
 
       final result = await service.prepareWorktreeForSession(

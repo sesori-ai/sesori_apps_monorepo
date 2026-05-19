@@ -49,6 +49,7 @@ SessionDetailLoadResult _loadedResult() {
       providerData: null,
       commands: [],
       canonicalSessionTitle: null,
+      promptDefaults: null,
     ),
     isBridgeConnected: true,
   );
@@ -67,6 +68,7 @@ SessionDetailLoadResult _loadedResultWithCanonicalTitle(String title) {
       providerData: null,
       commands: const [],
       canonicalSessionTitle: title,
+      promptDefaults: null,
     ),
     isBridgeConnected: true,
   );

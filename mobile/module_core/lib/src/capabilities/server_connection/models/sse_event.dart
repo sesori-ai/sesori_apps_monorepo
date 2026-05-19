@@ -30,6 +30,7 @@ class SseEvent {
     SesoriQuestionRejected(:final sessionID) => sessionID,
     SesoriTodoUpdated(:final sessionID) => sessionID,
     SesoriPermissionReplied(:final sessionID) => sessionID,
+    SesoriSessionPromptDefaultsChanged(:final sessionID) => sessionID,
     SesoriServerConnected() ||
     SesoriServerHeartbeat() ||
     SesoriServerInstanceDisposed() ||

@@ -384,6 +384,9 @@ Future<void> _insertSession({
     branchName: branchName,
     baseBranch: null,
     baseCommit: null,
+
+    lastAgent: null,
+    lastAgentModel: null,
   );
 }
 

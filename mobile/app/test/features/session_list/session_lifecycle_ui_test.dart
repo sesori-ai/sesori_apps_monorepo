@@ -92,6 +92,7 @@ Session _testSessionWithPullRequest() {
       updated: 1700000000000,
       archived: null,
     ),
+    promptDefaults: null,
   );
 }
 

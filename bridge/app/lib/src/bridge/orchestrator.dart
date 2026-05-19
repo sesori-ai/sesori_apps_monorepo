@@ -100,7 +100,6 @@ class Orchestrator {
       metadataService: _metadataService,
       worktreeService: _worktreeService,
       sessionRepository: _sessionRepository,
-      sessionPersistenceService: _sessionPersistenceService,
     );
     final sessionArchiveService = SessionArchiveService(
       worktreeService: _worktreeService,
@@ -216,9 +215,12 @@ class OrchestratorSession {
          abortSessionHandler: AbortSessionHandler(sessionAbortService: sessionAbortService),
          sessionCreationService: sessionCreationService,
          sessionArchiveService: sessionArchiveService,
-         sendPromptHandler: SendPromptHandler(
-           sessionPromptService: SessionPromptService(sessionRepository: sessionRepository),
-         ),
+          sendPromptHandler: SendPromptHandler(
+            sessionPromptService: SessionPromptService(
+              sessionRepository: sessionRepository,
+              sseManager: sseManager,
+            ),
+          ),
          prSyncService: prSyncService,
          projectRepository: projectRepository,
          providerRepository: ProviderRepository(plugin: plugin),

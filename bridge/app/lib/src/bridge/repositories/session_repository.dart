@@ -1,7 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show BridgePluginApi, Log, PluginSession, PluginSessionVariant;
 import "package:sesori_shared/sesori_shared.dart"
-    show CommandListResponse, PrState, PromptModel, PromptPart, PullRequestInfo, Session, SessionVariant;
+    show AgentModel, CommandListResponse, PrState, PromptModel, PromptPart, PullRequestInfo, Session, SessionVariant;
 
 import "../api/database/tables/pull_requests_table.dart";
 import "../persistence/daos/session_dao.dart";
@@ -146,6 +146,11 @@ class SessionRepository {
   }
 
   Future<String?> findProjectIdForSession({required String sessionId}) async {
+    final storedSession = await _sessionDao.getSession(sessionId: sessionId);
+    if (storedSession != null) {
+      return storedSession.projectId;
+    }
+
     final projects = await _plugin.getProjects();
     for (final project in projects) {
       final projectId = project.id;
@@ -257,6 +262,48 @@ class SessionRepository {
 
   Future<SessionDto?> getStoredSession({required String sessionId}) {
     return _sessionDao.getSession(sessionId: sessionId);
+  }
+
+  Future<void> insertStoredSession({
+    required String sessionId,
+    required String projectId,
+    required bool isDedicated,
+    required int createdAt,
+    required String? worktreePath,
+    required String? branchName,
+    required String? baseBranch,
+    required String? baseCommit,
+    required String? agent,
+    required AgentModel? agentModel,
+  }) async {
+    final db = _sessionDao.attachedDatabase;
+    await db.transaction(() async {
+      await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
+      await _sessionDao.insertSession(
+        sessionId: sessionId,
+        projectId: projectId,
+        isDedicated: isDedicated,
+        createdAt: createdAt,
+        worktreePath: worktreePath,
+        branchName: branchName,
+        baseBranch: baseBranch,
+        baseCommit: baseCommit,
+        lastAgent: agent,
+        lastAgentModel: agentModel,
+      );
+    });
+  }
+
+  Future<void> updatePromptDefaults({
+    required String sessionId,
+    required String? agent,
+    required AgentModel? agentModel,
+  }) {
+    return _sessionDao.updatePromptDefaults(
+      sessionId: sessionId,
+      agent: agent,
+      agentModel: agentModel,
+    );
   }
 
   Future<PluginSession?> _getPluginSession({required String projectId, required String sessionId}) async {

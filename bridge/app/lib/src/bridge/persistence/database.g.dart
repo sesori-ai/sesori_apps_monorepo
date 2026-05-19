@@ -243,6 +243,8 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
   int? get archivedAt;
   String? get baseBranch;
   String? get baseCommit;
+  String? get lastAgent;
+  AgentModel? get lastAgentModel;
   int get createdAt;
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -264,6 +266,14 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
     }
     if (!nullToAbsent || baseCommit != null) {
       map['base_commit'] = Variable<String>(baseCommit);
+    }
+    if (!nullToAbsent || lastAgent != null) {
+      map['last_agent'] = Variable<String>(lastAgent);
+    }
+    if (!nullToAbsent || lastAgentModel != null) {
+      map['last_agent_model'] = Variable<String>(
+        $SessionTableTable.$converterlastAgentModeln.toSql(lastAgentModel),
+      );
     }
     map['created_at'] = Variable<int>(createdAt);
     return map;
@@ -370,6 +380,26 @@ class $SessionTableTable extends SessionTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _lastAgentMeta = const VerificationMeta(
+    'lastAgent',
+  );
+  @override
+  late final GeneratedColumn<String> lastAgent = GeneratedColumn<String>(
+    'last_agent',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<AgentModel?, String>
+  lastAgentModel = GeneratedColumn<String>(
+    'last_agent_model',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  ).withConverter<AgentModel?>($SessionTableTable.$converterlastAgentModeln);
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -391,6 +421,8 @@ class $SessionTableTable extends SessionTable
     archivedAt,
     baseBranch,
     baseCommit,
+    lastAgent,
+    lastAgentModel,
     createdAt,
   ];
   @override
@@ -465,6 +497,12 @@ class $SessionTableTable extends SessionTable
         baseCommit.isAcceptableOrUnknown(data['base_commit']!, _baseCommitMeta),
       );
     }
+    if (data.containsKey('last_agent')) {
+      context.handle(
+        _lastAgentMeta,
+        lastAgent.isAcceptableOrUnknown(data['last_agent']!, _lastAgentMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -514,6 +552,16 @@ class $SessionTableTable extends SessionTable
         DriftSqlType.string,
         data['${effectivePrefix}base_commit'],
       ),
+      lastAgent: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_agent'],
+      ),
+      lastAgentModel: $SessionTableTable.$converterlastAgentModeln.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}last_agent_model'],
+        ),
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}created_at'],
@@ -526,6 +574,10 @@ class $SessionTableTable extends SessionTable
     return $SessionTableTable(attachedDatabase, alias);
   }
 
+  static TypeConverter<AgentModel, String> $converterlastAgentModel =
+      const AgentModelConverter();
+  static TypeConverter<AgentModel?, String?> $converterlastAgentModeln =
+      NullAwareTypeConverter.wrap($converterlastAgentModel);
   @override
   bool get withoutRowId => true;
 }
@@ -539,6 +591,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
   final Value<int?> archivedAt;
   final Value<String?> baseBranch;
   final Value<String?> baseCommit;
+  final Value<String?> lastAgent;
+  final Value<AgentModel?> lastAgentModel;
   final Value<int> createdAt;
   const SessionTableCompanion({
     this.sessionId = const Value.absent(),
@@ -549,6 +603,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     this.archivedAt = const Value.absent(),
     this.baseBranch = const Value.absent(),
     this.baseCommit = const Value.absent(),
+    this.lastAgent = const Value.absent(),
+    this.lastAgentModel = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   SessionTableCompanion.insert({
@@ -560,6 +616,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     this.archivedAt = const Value.absent(),
     this.baseBranch = const Value.absent(),
     this.baseCommit = const Value.absent(),
+    this.lastAgent = const Value.absent(),
+    this.lastAgentModel = const Value.absent(),
     required int createdAt,
   }) : sessionId = Value(sessionId),
        projectId = Value(projectId),
@@ -574,6 +632,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Expression<int>? archivedAt,
     Expression<String>? baseBranch,
     Expression<String>? baseCommit,
+    Expression<String>? lastAgent,
+    Expression<String>? lastAgentModel,
     Expression<int>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -585,6 +645,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       if (archivedAt != null) 'archived_at': archivedAt,
       if (baseBranch != null) 'base_branch': baseBranch,
       if (baseCommit != null) 'base_commit': baseCommit,
+      if (lastAgent != null) 'last_agent': lastAgent,
+      if (lastAgentModel != null) 'last_agent_model': lastAgentModel,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -598,6 +660,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Value<int?>? archivedAt,
     Value<String?>? baseBranch,
     Value<String?>? baseCommit,
+    Value<String?>? lastAgent,
+    Value<AgentModel?>? lastAgentModel,
     Value<int>? createdAt,
   }) {
     return SessionTableCompanion(
@@ -609,6 +673,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       archivedAt: archivedAt ?? this.archivedAt,
       baseBranch: baseBranch ?? this.baseBranch,
       baseCommit: baseCommit ?? this.baseCommit,
+      lastAgent: lastAgent ?? this.lastAgent,
+      lastAgentModel: lastAgentModel ?? this.lastAgentModel,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -640,6 +706,16 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     if (baseCommit.present) {
       map['base_commit'] = Variable<String>(baseCommit.value);
     }
+    if (lastAgent.present) {
+      map['last_agent'] = Variable<String>(lastAgent.value);
+    }
+    if (lastAgentModel.present) {
+      map['last_agent_model'] = Variable<String>(
+        $SessionTableTable.$converterlastAgentModeln.toSql(
+          lastAgentModel.value,
+        ),
+      );
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
@@ -657,6 +733,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
           ..write('archivedAt: $archivedAt, ')
           ..write('baseBranch: $baseBranch, ')
           ..write('baseCommit: $baseCommit, ')
+          ..write('lastAgent: $lastAgent, ')
+          ..write('lastAgentModel: $lastAgentModel, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -1634,6 +1712,8 @@ typedef $$SessionTableTableCreateCompanionBuilder =
       Value<int?> archivedAt,
       Value<String?> baseBranch,
       Value<String?> baseCommit,
+      Value<String?> lastAgent,
+      Value<AgentModel?> lastAgentModel,
       required int createdAt,
     });
 typedef $$SessionTableTableUpdateCompanionBuilder =
@@ -1646,6 +1726,8 @@ typedef $$SessionTableTableUpdateCompanionBuilder =
       Value<int?> archivedAt,
       Value<String?> baseBranch,
       Value<String?> baseCommit,
+      Value<String?> lastAgent,
+      Value<AgentModel?> lastAgentModel,
       Value<int> createdAt,
     });
 
@@ -1718,6 +1800,17 @@ class $$SessionTableTableFilterComposer
   ColumnFilters<String> get baseCommit => $composableBuilder(
     column: $table.baseCommit,
     builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastAgent => $composableBuilder(
+    column: $table.lastAgent,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<AgentModel?, AgentModel, String>
+  get lastAgentModel => $composableBuilder(
+    column: $table.lastAgentModel,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
   ColumnFilters<int> get createdAt => $composableBuilder(
@@ -1793,6 +1886,16 @@ class $$SessionTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get lastAgent => $composableBuilder(
+    column: $table.lastAgent,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lastAgentModel => $composableBuilder(
+    column: $table.lastAgentModel,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -1864,6 +1967,15 @@ class $$SessionTableTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get lastAgent =>
+      $composableBuilder(column: $table.lastAgent, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<AgentModel?, String> get lastAgentModel =>
+      $composableBuilder(
+        column: $table.lastAgentModel,
+        builder: (column) => column,
+      );
+
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -1927,6 +2039,8 @@ class $$SessionTableTableTableManager
                 Value<int?> archivedAt = const Value.absent(),
                 Value<String?> baseBranch = const Value.absent(),
                 Value<String?> baseCommit = const Value.absent(),
+                Value<String?> lastAgent = const Value.absent(),
+                Value<AgentModel?> lastAgentModel = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
               }) => SessionTableCompanion(
                 sessionId: sessionId,
@@ -1937,6 +2051,8 @@ class $$SessionTableTableTableManager
                 archivedAt: archivedAt,
                 baseBranch: baseBranch,
                 baseCommit: baseCommit,
+                lastAgent: lastAgent,
+                lastAgentModel: lastAgentModel,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -1949,6 +2065,8 @@ class $$SessionTableTableTableManager
                 Value<int?> archivedAt = const Value.absent(),
                 Value<String?> baseBranch = const Value.absent(),
                 Value<String?> baseCommit = const Value.absent(),
+                Value<String?> lastAgent = const Value.absent(),
+                Value<AgentModel?> lastAgentModel = const Value.absent(),
                 required int createdAt,
               }) => SessionTableCompanion.insert(
                 sessionId: sessionId,
@@ -1959,6 +2077,8 @@ class $$SessionTableTableTableManager
                 archivedAt: archivedAt,
                 baseBranch: baseBranch,
                 baseCommit: baseCommit,
+                lastAgent: lastAgent,
+                lastAgentModel: lastAgentModel,
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0

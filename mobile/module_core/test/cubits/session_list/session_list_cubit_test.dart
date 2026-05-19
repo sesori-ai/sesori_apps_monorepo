@@ -921,6 +921,7 @@ void main() {
           summary: null,
           time: SessionTime(created: 1, updated: 2, archived: null),
           pullRequest: null,
+          promptDefaults: null,
         );
         when(() => mockProjectService.listSessions(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success(const SessionListResponse(items: [existing])),
@@ -941,6 +942,7 @@ void main() {
                 summary: null,
                 time: SessionTime(created: 3, updated: 4, archived: null),
                 pullRequest: null,
+                promptDefaults: null,
               ),
             ),
           ),
@@ -1050,6 +1052,7 @@ void main() {
                 summary: null,
                 time: SessionTime(created: 1, updated: 2, archived: null),
                 pullRequest: null,
+                promptDefaults: null,
               ),
             ),
           ),
@@ -1239,6 +1242,7 @@ void main() {
                 summary: null,
                 time: SessionTime(created: 1, updated: 2, archived: null),
                 pullRequest: null,
+                promptDefaults: null,
               ),
             ),
           ),
@@ -1274,6 +1278,7 @@ void main() {
                 summary: null,
                 time: SessionTime(created: 1, updated: 3, archived: null),
                 pullRequest: null,
+                promptDefaults: null,
               ),
             ),
           ),
@@ -1307,6 +1312,7 @@ void main() {
                 summary: null,
                 time: SessionTime(created: 1, updated: 2, archived: null),
                 pullRequest: null,
+                promptDefaults: null,
               ),
             ),
           ),
@@ -1334,6 +1340,7 @@ void main() {
             summary: null,
             time: SessionTime(created: 1, updated: 2, archived: null),
             pullRequest: null,
+            promptDefaults: null,
           ),
           Session(
             id: "s2",
@@ -1344,6 +1351,7 @@ void main() {
             summary: null,
             time: SessionTime(created: 3, updated: 4, archived: null),
             pullRequest: null,
+            promptDefaults: null,
           ),
         ];
         when(() => mockProjectService.listSessions(projectId: "global")).thenAnswer(

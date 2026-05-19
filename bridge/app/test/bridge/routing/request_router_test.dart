@@ -73,7 +73,6 @@ void main() {
         metadataService: metadataService,
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
-        sessionPersistenceService: sessionPersistenceService,
       );
       final sessionArchiveService = SessionArchiveService(
         worktreeService: worktreeService,
@@ -92,7 +91,10 @@ void main() {
         sessionCreationService: sessionCreationService,
         sessionArchiveService: sessionArchiveService,
         sendPromptHandler: SendPromptHandler(
-          sessionPromptService: SessionPromptService(sessionRepository: sessionRepository),
+          sessionPromptService: SessionPromptService(
+            sessionRepository: sessionRepository,
+            sseManager: FakeSSEManager(),
+          ),
         ),
         prSyncService: FakePrSyncService(),
         projectRepository: projectRepository,
@@ -404,7 +406,6 @@ void main() {
           metadataService: metadataService,
           worktreeService: worktreeService,
           sessionRepository: sessionRepository,
-          sessionPersistenceService: sessionPersistenceService,
         ),
         sessionArchiveService: SessionArchiveService(
           worktreeService: worktreeService,
@@ -412,7 +413,7 @@ void main() {
           sessionPersistenceService: sessionPersistenceService,
         ),
         sendPromptHandler: SendPromptHandler(
-          sessionPromptService: SessionPromptService(sessionRepository: sessionRepository),
+          sessionPromptService: SessionPromptService(sessionRepository: sessionRepository, sseManager: FakeSSEManager()),
         ),
         prSyncService: spyPrSyncService,
         projectRepository: projectRepository,

@@ -110,6 +110,9 @@ void main() {
         branchName: "feature/one",
         baseBranch: null,
         baseCommit: null,
+
+        lastAgent: null,
+        lastAgentModel: null,
       );
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(

@@ -27,6 +27,7 @@ void main() {
         summary: null,
         time: SessionTime(created: 1, updated: 1, archived: null),
         pullRequest: null,
+        promptDefaults: null,
       );
 
       when(

@@ -191,6 +191,14 @@ class SessionApi {
     );
   }
 
+  Future<ApiResponse<Session>> getSession({required String sessionId}) {
+    return _client.post(
+      "/session/detail",
+      fromJson: Session.fromJson,
+      body: SessionIdRequest(sessionId: sessionId),
+    );
+  }
+
   Future<ApiResponse<MessageWithPartsResponse>> getMessages({required String sessionId}) {
     return _client.post(
       "/session/messages",

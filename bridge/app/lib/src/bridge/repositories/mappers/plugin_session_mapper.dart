@@ -29,6 +29,7 @@ extension PluginSessionMapper on PluginSession {
         null => null,
       },
       pullRequest: null,
+      promptDefaults: null,
     );
   }
 }
@@ -58,6 +59,7 @@ Session enrichSharedSession({
     result = result.copyWith(
       time: mergedTime,
       hasWorktree: storedSession.worktreePath != null,
+      promptDefaults: _promptDefaultsFromStoredSession(storedSession),
     );
   }
 
@@ -66,6 +68,17 @@ Session enrichSharedSession({
   }
 
   return result;
+}
+
+SessionPromptDefaults? _promptDefaultsFromStoredSession(SessionDto storedSession) {
+  if (storedSession.lastAgent == null && storedSession.lastAgentModel == null) {
+    return null;
+  }
+
+  return SessionPromptDefaults(
+    agent: storedSession.lastAgent,
+    model: storedSession.lastAgentModel,
+  );
 }
 
 List<Session> enrichSharedSessions({

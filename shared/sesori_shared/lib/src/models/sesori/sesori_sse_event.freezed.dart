@@ -55,6 +55,10 @@ SesoriSseEvent _$SesoriSseEventFromJson(
           return SesoriSessionCompacted.fromJson(
             json
           );
+                case 'session.prompt_defaults_changed':
+          return SesoriSessionPromptDefaultsChanged.fromJson(
+            json
+          );
                 case 'session.status':
           return SesoriSessionStatus.fromJson(
             json
@@ -893,6 +897,90 @@ as String,
 }
 
 
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class SesoriSessionPromptDefaultsChanged implements SesoriSseEvent, SesoriSessionEvent {
+  const SesoriSessionPromptDefaultsChanged({required this.sessionID, required this.promptDefaults, final  String? $type}): $type = $type ?? 'session.prompt_defaults_changed';
+  factory SesoriSessionPromptDefaultsChanged.fromJson(Map<String, dynamic> json) => _$SesoriSessionPromptDefaultsChangedFromJson(json);
+
+ final  String sessionID;
+ final  SessionPromptDefaults promptDefaults;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SesoriSessionPromptDefaultsChangedCopyWith<SesoriSessionPromptDefaultsChanged> get copyWith => _$SesoriSessionPromptDefaultsChangedCopyWithImpl<SesoriSessionPromptDefaultsChanged>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SesoriSessionPromptDefaultsChangedToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionPromptDefaultsChanged&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.promptDefaults, promptDefaults) || other.promptDefaults == promptDefaults));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,sessionID,promptDefaults);
+
+@override
+String toString() {
+  return 'SesoriSseEvent.sessionPromptDefaultsChanged(sessionID: $sessionID, promptDefaults: $promptDefaults)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SesoriSessionPromptDefaultsChangedCopyWith<$Res> implements $SesoriSseEventCopyWith<$Res> {
+  factory $SesoriSessionPromptDefaultsChangedCopyWith(SesoriSessionPromptDefaultsChanged value, $Res Function(SesoriSessionPromptDefaultsChanged) _then) = _$SesoriSessionPromptDefaultsChangedCopyWithImpl;
+@useResult
+$Res call({
+ String sessionID, SessionPromptDefaults promptDefaults
+});
+
+
+$SessionPromptDefaultsCopyWith<$Res> get promptDefaults;
+
+}
+/// @nodoc
+class _$SesoriSessionPromptDefaultsChangedCopyWithImpl<$Res>
+    implements $SesoriSessionPromptDefaultsChangedCopyWith<$Res> {
+  _$SesoriSessionPromptDefaultsChangedCopyWithImpl(this._self, this._then);
+
+  final SesoriSessionPromptDefaultsChanged _self;
+  final $Res Function(SesoriSessionPromptDefaultsChanged) _then;
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? sessionID = null,Object? promptDefaults = null,}) {
+  return _then(SesoriSessionPromptDefaultsChanged(
+sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,promptDefaults: null == promptDefaults ? _self.promptDefaults : promptDefaults // ignore: cast_nullable_to_non_nullable
+as SessionPromptDefaults,
+  ));
+}
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$SessionPromptDefaultsCopyWith<$Res> get promptDefaults {
+  
+  return $SessionPromptDefaultsCopyWith<$Res>(_self.promptDefaults, (value) {
+    return _then(_self.copyWith(promptDefaults: value));
+  });
+}
 }
 
 /// @nodoc

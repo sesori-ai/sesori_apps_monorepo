@@ -419,6 +419,7 @@ class _FakeSessionRepository implements SessionRepository {
     time: null,
     summary: null,
     pullRequest: null,
+    promptDefaults: null,
   );
 
   @override
@@ -464,6 +465,27 @@ class _FakeSessionRepository implements SessionRepository {
   Future<SessionDto?> getStoredSession({required String sessionId}) async => null;
 
   @override
+  Future<void> insertStoredSession({
+    required String sessionId,
+    required String projectId,
+    required bool isDedicated,
+    required int createdAt,
+    required String? worktreePath,
+    required String? branchName,
+    required String? baseBranch,
+    required String? baseCommit,
+    required String? agent,
+    required AgentModel? agentModel,
+  }) async {}
+
+  @override
+  Future<void> updatePromptDefaults({
+    required String sessionId,
+    required String? agent,
+    required AgentModel? agentModel,
+  }) async {}
+
+  @override
   Future<String?> findProjectIdForSession({required String sessionId}) async => null;
 
   @override
@@ -507,5 +529,6 @@ class _FakeSessionRepository implements SessionRepository {
     time: null,
     summary: null,
     pullRequest: null,
+    promptDefaults: null,
   );
 }

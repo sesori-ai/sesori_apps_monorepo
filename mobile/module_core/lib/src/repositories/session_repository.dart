@@ -89,6 +89,10 @@ class SessionRepository {
     return _api.getSessionDiffs(sessionId: sessionId);
   }
 
+  Future<ApiResponse<Session>> getSession({required String sessionId}) {
+    return _api.getSession(sessionId: sessionId);
+  }
+
   Future<ApiResponse<Agents>> listAgents() {
     return _api.listAgents();
   }

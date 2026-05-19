@@ -41,6 +41,12 @@ void main() {
         branchName: "feature/one",
         baseBranch: null,
         baseCommit: null,
+        lastAgent: "agent-1",
+        lastAgentModel: const AgentModel(
+          providerID: "provider-1",
+          modelID: "model-1",
+          variant: "variant-1",
+        ),
       );
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(
@@ -98,6 +104,7 @@ void main() {
           time: SessionTime(created: 1, updated: 2, archived: null),
           summary: null,
           pullRequest: null,
+          promptDefaults: null,
         ),
       );
 
@@ -105,8 +112,58 @@ void main() {
       expect(result.time?.updated, equals(2));
       expect(result.time?.archived, isNull);
       expect(result.hasWorktree, isTrue);
+      expect(result.promptDefaults?.agent, equals("agent-1"));
+      expect(result.promptDefaults?.model?.providerID, equals("provider-1"));
+      expect(result.promptDefaults?.model?.modelID, equals("model-1"));
+      expect(result.promptDefaults?.model?.variant, equals("variant-1"));
       expect(result.pullRequest?.number, equals(11));
       expect(result.pullRequest?.state, equals(PrState.open));
+    });
+
+    test("enrichSession leaves promptDefaults null when stored defaults are all null", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+      );
+
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.sessionDao.insertSession(
+        sessionId: "s1",
+        projectId: "p1",
+        isDedicated: false,
+        createdAt: 10,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+
+      final result = await repository.enrichSession(
+        session: const Session(
+          id: "s1",
+          projectID: "p1",
+          directory: "/tmp/project",
+          parentID: null,
+          title: "session",
+          time: null,
+          summary: null,
+          pullRequest: null,
+          promptDefaults: null,
+        ),
+      );
+
+      expect(result.promptDefaults, isNull);
+      expect(result.hasWorktree, isFalse);
     });
 
     test("enrichSessions applies stored data only to matching sessions", () async {
@@ -133,6 +190,9 @@ void main() {
         branchName: "feature/one",
         baseBranch: null,
         baseCommit: null,
+
+        lastAgent: null,
+        lastAgentModel: null,
       );
       await db.sessionDao.setArchived(sessionId: "s1", archivedAt: 1234);
       await db.pullRequestDao.upsertPr(
@@ -162,6 +222,7 @@ void main() {
             time: null,
             summary: null,
             pullRequest: null,
+            promptDefaults: null,
           ),
           Session(
             id: "s2",
@@ -172,6 +233,7 @@ void main() {
             time: SessionTime(created: 3, updated: 4, archived: null),
             summary: null,
             pullRequest: null,
+            promptDefaults: null,
           ),
         ],
       );
@@ -185,6 +247,96 @@ void main() {
       expect(result[1].time?.updated, equals(4));
       expect(result[1].time?.archived, isNull);
       expect(result[1].pullRequest, isNull);
+    });
+
+    test("insertStoredSession ensures project and stores prompt defaults transactionally", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+      );
+
+      await repository.insertStoredSession(
+        sessionId: "s-created",
+        projectId: "p-created",
+        isDedicated: true,
+        createdAt: 123,
+        worktreePath: "/tmp/wt",
+        branchName: "feature/defaults",
+        baseBranch: "main",
+        baseCommit: "abc123",
+        agent: "agent-1",
+        agentModel: const AgentModel(
+          providerID: "provider-1",
+          modelID: "model-1",
+          variant: "variant-1",
+        ),
+      );
+
+      final projects = await db.select(db.projectsTable).get();
+      final row = await db.sessionDao.getSession(sessionId: "s-created");
+
+      expect(projects.map((project) => project.projectId), equals(["p-created"]));
+      expect(row, isNotNull);
+      expect(row!.lastAgent, equals("agent-1"));
+      expect(row.lastAgentModel?.providerID, equals("provider-1"));
+      expect(row.lastAgentModel?.modelID, equals("model-1"));
+      expect(row.lastAgentModel?.variant, equals("variant-1"));
+      expect(row.worktreePath, equals("/tmp/wt"));
+    });
+
+    test("updatePromptDefaults writes latest nullable prompt defaults", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+      );
+
+      await repository.insertStoredSession(
+        sessionId: "s-update",
+        projectId: "p-update",
+        isDedicated: false,
+        createdAt: 123,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        agent: "old-agent",
+        agentModel: const AgentModel(
+          providerID: "old-provider",
+          modelID: "old-model",
+          variant: "old-variant",
+        ),
+      );
+
+      await repository.updatePromptDefaults(
+        sessionId: "s-update",
+        agent: null,
+        agentModel: const AgentModel(
+          providerID: "new-provider",
+          modelID: "new-model",
+          variant: null,
+        ),
+      );
+
+      final row = await db.sessionDao.getSession(sessionId: "s-update");
+      expect(row, isNotNull);
+      expect(row!.lastAgent, isNull);
+      expect(row.lastAgentModel?.providerID, equals("new-provider"));
+      expect(row.lastAgentModel?.modelID, equals("new-model"));
+      expect(row.lastAgentModel?.variant, isNull);
     });
 
     test("renameSession delegates to plugin and returns enriched shared session", () async {
@@ -210,6 +362,9 @@ void main() {
         branchName: "feature/rename",
         baseBranch: null,
         baseCommit: null,
+
+        lastAgent: null,
+        lastAgentModel: null,
       );
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(
@@ -243,6 +398,39 @@ void main() {
       expect(result.title, equals("Renamed"));
       expect(result.hasWorktree, isTrue);
       expect(result.pullRequest?.number, equals(12));
+    });
+
+    test("findProjectIdForSession returns stored project id without scanning plugin", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+      );
+
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p-stored"]);
+      await db.sessionDao.insertSession(
+        sessionId: "s-target",
+        projectId: "p-stored",
+        isDedicated: true,
+        createdAt: 1,
+        worktreePath: "/tmp",
+        branchName: "main",
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+
+      final result = await repository.findProjectIdForSession(sessionId: "s-target");
+
+      expect(result, equals("p-stored"));
+      expect(plugin.projectsResult, isEmpty);
     });
 
     test("findProjectIdForSession scans projects until it finds the matching session", () async {

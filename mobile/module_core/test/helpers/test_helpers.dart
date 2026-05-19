@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
+import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/api/project_api.dart";
 import "package:sesori_dart_core/src/api/session_api.dart";
 import "package:sesori_dart_core/src/capabilities/project/project_service.dart";
@@ -150,6 +151,16 @@ void delegateSessionRepositoryToService({
   );
 }
 
+void stubSessionRepositoryGetSession({
+  required MockSessionRepository repository,
+  required String sessionId,
+  Session? session,
+}) {
+  when(() => repository.getSession(sessionId: sessionId)).thenAnswer(
+    (_) async => ApiResponse.success(session ?? testSession(id: sessionId)),
+  );
+}
+
 void registerAllFallbackValues() {
   registerFallbackValue(const ServerConnectionConfig(relayHost: "fake.example.com"));
   registerFallbackValue(FakeUri());
@@ -185,6 +196,7 @@ Session testSession({String? id, String? title, DateTime? archivedAt}) {
       updated: 1700000000000,
       archived: archivedAt?.millisecondsSinceEpoch,
     ),
+    promptDefaults: null,
   );
 }
 

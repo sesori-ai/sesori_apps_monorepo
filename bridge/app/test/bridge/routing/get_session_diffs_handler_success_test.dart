@@ -63,6 +63,9 @@ void main() {
         branchName: "session-001",
         baseBranch: "main",
         baseCommit: "main",
+
+        lastAgent: null,
+        lastAgentModel: null,
       );
 
       processRunner.responder = ({required List<String> arguments}) {
@@ -160,6 +163,9 @@ void main() {
         branchName: "session-001",
         baseBranch: "main",
         baseCommit: "main",
+
+        lastAgent: null,
+        lastAgentModel: null,
       );
 
       processRunner.responder = ({required List<String> arguments}) {
@@ -218,6 +224,9 @@ void main() {
         branchName: "session-001",
         baseBranch: "main",
         baseCommit: "main",
+
+        lastAgent: null,
+        lastAgentModel: null,
       );
 
       processRunner.responder = ({required List<String> arguments}) {
@@ -279,6 +288,9 @@ void main() {
         branchName: "session-001",
         baseBranch: "main",
         baseCommit: "main",
+
+        lastAgent: null,
+        lastAgentModel: null,
       );
 
       processRunner.responder = ({required List<String> arguments}) {

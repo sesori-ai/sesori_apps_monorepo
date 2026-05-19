@@ -24,6 +24,7 @@ import "get_project_questions_handler.dart";
 import "get_projects_handler.dart";
 import "get_providers_handler.dart";
 import "get_session_diffs_handler.dart";
+import "get_session_handler.dart";
 import "get_session_messages_handler.dart";
 import "get_session_questions_handler.dart";
 import "get_session_statuses_handler.dart";
@@ -68,22 +69,22 @@ class RequestRouter {
     required GetSessionDiffsHandler sessionDiffsHandler,
     required GetAgentsHandler getAgentsHandler,
   }) : _handlers = _buildHandlers(
-          plugin: plugin,
-          getCommandsHandler: getCommandsHandler,
-          sessionRepository: sessionRepository,
-          abortSessionHandler: abortSessionHandler,
-          sessionCreationService: sessionCreationService,
-          sessionArchiveService: sessionArchiveService,
-          sendPromptHandler: sendPromptHandler,
-          prSyncService: prSyncService,
-          projectRepository: projectRepository,
-          providerRepository: providerRepository,
-          permissionRepository: permissionRepository,
-          sessionPersistenceService: sessionPersistenceService,
-          worktreeService: worktreeService,
-          sessionDiffsHandler: sessionDiffsHandler,
-          getAgentsHandler: getAgentsHandler,
-        );
+         plugin: plugin,
+         getCommandsHandler: getCommandsHandler,
+         sessionRepository: sessionRepository,
+         abortSessionHandler: abortSessionHandler,
+         sessionCreationService: sessionCreationService,
+         sessionArchiveService: sessionArchiveService,
+         sendPromptHandler: sendPromptHandler,
+         prSyncService: prSyncService,
+         projectRepository: projectRepository,
+         providerRepository: providerRepository,
+         permissionRepository: permissionRepository,
+         sessionPersistenceService: sessionPersistenceService,
+         worktreeService: worktreeService,
+         sessionDiffsHandler: sessionDiffsHandler,
+         getAgentsHandler: getAgentsHandler,
+       );
 
   static List<RequestHandlerBase> _buildHandlers({
     required BridgePluginApi plugin,
@@ -109,6 +110,7 @@ class RequestRouter {
       getCommandsHandler,
       GetSessionStatusesHandler(plugin),
       GetChildSessionsHandler(sessionRepository: sessionRepository),
+      GetSessionHandler(sessionRepository),
       GetSessionMessagesHandler(plugin),
       GetSessionsHandler(
         sessionRepository: sessionRepository,

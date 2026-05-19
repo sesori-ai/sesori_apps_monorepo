@@ -295,7 +295,7 @@ as int?,
 /// @nodoc
 mixin _$Session {
 
- String get id; String get projectID; String get directory; String? get parentID; String? get title; SessionTime? get time; SessionSummary? get summary; PullRequestInfo? get pullRequest; bool get hasWorktree;
+ String get id; String get projectID; String get directory; String? get parentID; String? get title; SessionTime? get time; SessionSummary? get summary; PullRequestInfo? get pullRequest; SessionPromptDefaults? get promptDefaults; bool get hasWorktree;
 /// Create a copy of Session
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -308,16 +308,16 @@ $SessionCopyWith<Session> get copyWith => _$SessionCopyWithImpl<Session>(this as
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Session&&(identical(other.id, id) || other.id == id)&&(identical(other.projectID, projectID) || other.projectID == projectID)&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.parentID, parentID) || other.parentID == parentID)&&(identical(other.title, title) || other.title == title)&&(identical(other.time, time) || other.time == time)&&(identical(other.summary, summary) || other.summary == summary)&&(identical(other.pullRequest, pullRequest) || other.pullRequest == pullRequest)&&(identical(other.hasWorktree, hasWorktree) || other.hasWorktree == hasWorktree));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Session&&(identical(other.id, id) || other.id == id)&&(identical(other.projectID, projectID) || other.projectID == projectID)&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.parentID, parentID) || other.parentID == parentID)&&(identical(other.title, title) || other.title == title)&&(identical(other.time, time) || other.time == time)&&(identical(other.summary, summary) || other.summary == summary)&&(identical(other.pullRequest, pullRequest) || other.pullRequest == pullRequest)&&(identical(other.promptDefaults, promptDefaults) || other.promptDefaults == promptDefaults)&&(identical(other.hasWorktree, hasWorktree) || other.hasWorktree == hasWorktree));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,projectID,directory,parentID,title,time,summary,pullRequest,hasWorktree);
+int get hashCode => Object.hash(runtimeType,id,projectID,directory,parentID,title,time,summary,pullRequest,promptDefaults,hasWorktree);
 
 @override
 String toString() {
-  return 'Session(id: $id, projectID: $projectID, directory: $directory, parentID: $parentID, title: $title, time: $time, summary: $summary, pullRequest: $pullRequest, hasWorktree: $hasWorktree)';
+  return 'Session(id: $id, projectID: $projectID, directory: $directory, parentID: $parentID, title: $title, time: $time, summary: $summary, pullRequest: $pullRequest, promptDefaults: $promptDefaults, hasWorktree: $hasWorktree)';
 }
 
 
@@ -328,11 +328,11 @@ abstract mixin class $SessionCopyWith<$Res>  {
   factory $SessionCopyWith(Session value, $Res Function(Session) _then) = _$SessionCopyWithImpl;
 @useResult
 $Res call({
- String id, String projectID, String directory, String? parentID, String? title, SessionTime? time, SessionSummary? summary, PullRequestInfo? pullRequest, bool hasWorktree
+ String id, String projectID, String directory, String? parentID, String? title, SessionTime? time, SessionSummary? summary, PullRequestInfo? pullRequest, SessionPromptDefaults? promptDefaults, bool hasWorktree
 });
 
 
-$SessionTimeCopyWith<$Res>? get time;$SessionSummaryCopyWith<$Res>? get summary;$PullRequestInfoCopyWith<$Res>? get pullRequest;
+$SessionTimeCopyWith<$Res>? get time;$SessionSummaryCopyWith<$Res>? get summary;$PullRequestInfoCopyWith<$Res>? get pullRequest;$SessionPromptDefaultsCopyWith<$Res>? get promptDefaults;
 
 }
 /// @nodoc
@@ -345,7 +345,7 @@ class _$SessionCopyWithImpl<$Res>
 
 /// Create a copy of Session
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? projectID = null,Object? directory = null,Object? parentID = freezed,Object? title = freezed,Object? time = freezed,Object? summary = freezed,Object? pullRequest = freezed,Object? hasWorktree = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? projectID = null,Object? directory = null,Object? parentID = freezed,Object? title = freezed,Object? time = freezed,Object? summary = freezed,Object? pullRequest = freezed,Object? promptDefaults = freezed,Object? hasWorktree = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,projectID: null == projectID ? _self.projectID : projectID // ignore: cast_nullable_to_non_nullable
@@ -355,7 +355,8 @@ as String?,title: freezed == title ? _self.title : title // ignore: cast_nullabl
 as String?,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
 as SessionTime?,summary: freezed == summary ? _self.summary : summary // ignore: cast_nullable_to_non_nullable
 as SessionSummary?,pullRequest: freezed == pullRequest ? _self.pullRequest : pullRequest // ignore: cast_nullable_to_non_nullable
-as PullRequestInfo?,hasWorktree: null == hasWorktree ? _self.hasWorktree : hasWorktree // ignore: cast_nullable_to_non_nullable
+as PullRequestInfo?,promptDefaults: freezed == promptDefaults ? _self.promptDefaults : promptDefaults // ignore: cast_nullable_to_non_nullable
+as SessionPromptDefaults?,hasWorktree: null == hasWorktree ? _self.hasWorktree : hasWorktree // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -395,6 +396,18 @@ $PullRequestInfoCopyWith<$Res>? get pullRequest {
   return $PullRequestInfoCopyWith<$Res>(_self.pullRequest!, (value) {
     return _then(_self.copyWith(pullRequest: value));
   });
+}/// Create a copy of Session
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$SessionPromptDefaultsCopyWith<$Res>? get promptDefaults {
+    if (_self.promptDefaults == null) {
+    return null;
+  }
+
+  return $SessionPromptDefaultsCopyWith<$Res>(_self.promptDefaults!, (value) {
+    return _then(_self.copyWith(promptDefaults: value));
+  });
 }
 }
 
@@ -404,7 +417,7 @@ $PullRequestInfoCopyWith<$Res>? get pullRequest {
 @JsonSerializable()
 
 class _Session implements Session {
-  const _Session({required this.id, required this.projectID, required this.directory, required this.parentID, required this.title, required this.time, required this.summary, required this.pullRequest, this.hasWorktree = false});
+  const _Session({required this.id, required this.projectID, required this.directory, required this.parentID, required this.title, required this.time, required this.summary, required this.pullRequest, required this.promptDefaults, this.hasWorktree = false});
   factory _Session.fromJson(Map<String, dynamic> json) => _$SessionFromJson(json);
 
 @override final  String id;
@@ -415,6 +428,7 @@ class _Session implements Session {
 @override final  SessionTime? time;
 @override final  SessionSummary? summary;
 @override final  PullRequestInfo? pullRequest;
+@override final  SessionPromptDefaults? promptDefaults;
 @override@JsonKey() final  bool hasWorktree;
 
 /// Create a copy of Session
@@ -430,16 +444,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Session&&(identical(other.id, id) || other.id == id)&&(identical(other.projectID, projectID) || other.projectID == projectID)&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.parentID, parentID) || other.parentID == parentID)&&(identical(other.title, title) || other.title == title)&&(identical(other.time, time) || other.time == time)&&(identical(other.summary, summary) || other.summary == summary)&&(identical(other.pullRequest, pullRequest) || other.pullRequest == pullRequest)&&(identical(other.hasWorktree, hasWorktree) || other.hasWorktree == hasWorktree));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Session&&(identical(other.id, id) || other.id == id)&&(identical(other.projectID, projectID) || other.projectID == projectID)&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.parentID, parentID) || other.parentID == parentID)&&(identical(other.title, title) || other.title == title)&&(identical(other.time, time) || other.time == time)&&(identical(other.summary, summary) || other.summary == summary)&&(identical(other.pullRequest, pullRequest) || other.pullRequest == pullRequest)&&(identical(other.promptDefaults, promptDefaults) || other.promptDefaults == promptDefaults)&&(identical(other.hasWorktree, hasWorktree) || other.hasWorktree == hasWorktree));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,projectID,directory,parentID,title,time,summary,pullRequest,hasWorktree);
+int get hashCode => Object.hash(runtimeType,id,projectID,directory,parentID,title,time,summary,pullRequest,promptDefaults,hasWorktree);
 
 @override
 String toString() {
-  return 'Session(id: $id, projectID: $projectID, directory: $directory, parentID: $parentID, title: $title, time: $time, summary: $summary, pullRequest: $pullRequest, hasWorktree: $hasWorktree)';
+  return 'Session(id: $id, projectID: $projectID, directory: $directory, parentID: $parentID, title: $title, time: $time, summary: $summary, pullRequest: $pullRequest, promptDefaults: $promptDefaults, hasWorktree: $hasWorktree)';
 }
 
 
@@ -450,11 +464,11 @@ abstract mixin class _$SessionCopyWith<$Res> implements $SessionCopyWith<$Res> {
   factory _$SessionCopyWith(_Session value, $Res Function(_Session) _then) = __$SessionCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String projectID, String directory, String? parentID, String? title, SessionTime? time, SessionSummary? summary, PullRequestInfo? pullRequest, bool hasWorktree
+ String id, String projectID, String directory, String? parentID, String? title, SessionTime? time, SessionSummary? summary, PullRequestInfo? pullRequest, SessionPromptDefaults? promptDefaults, bool hasWorktree
 });
 
 
-@override $SessionTimeCopyWith<$Res>? get time;@override $SessionSummaryCopyWith<$Res>? get summary;@override $PullRequestInfoCopyWith<$Res>? get pullRequest;
+@override $SessionTimeCopyWith<$Res>? get time;@override $SessionSummaryCopyWith<$Res>? get summary;@override $PullRequestInfoCopyWith<$Res>? get pullRequest;@override $SessionPromptDefaultsCopyWith<$Res>? get promptDefaults;
 
 }
 /// @nodoc
@@ -467,7 +481,7 @@ class __$SessionCopyWithImpl<$Res>
 
 /// Create a copy of Session
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? projectID = null,Object? directory = null,Object? parentID = freezed,Object? title = freezed,Object? time = freezed,Object? summary = freezed,Object? pullRequest = freezed,Object? hasWorktree = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? projectID = null,Object? directory = null,Object? parentID = freezed,Object? title = freezed,Object? time = freezed,Object? summary = freezed,Object? pullRequest = freezed,Object? promptDefaults = freezed,Object? hasWorktree = null,}) {
   return _then(_Session(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,projectID: null == projectID ? _self.projectID : projectID // ignore: cast_nullable_to_non_nullable
@@ -477,7 +491,8 @@ as String?,title: freezed == title ? _self.title : title // ignore: cast_nullabl
 as String?,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
 as SessionTime?,summary: freezed == summary ? _self.summary : summary // ignore: cast_nullable_to_non_nullable
 as SessionSummary?,pullRequest: freezed == pullRequest ? _self.pullRequest : pullRequest // ignore: cast_nullable_to_non_nullable
-as PullRequestInfo?,hasWorktree: null == hasWorktree ? _self.hasWorktree : hasWorktree // ignore: cast_nullable_to_non_nullable
+as PullRequestInfo?,promptDefaults: freezed == promptDefaults ? _self.promptDefaults : promptDefaults // ignore: cast_nullable_to_non_nullable
+as SessionPromptDefaults?,hasWorktree: null == hasWorktree ? _self.hasWorktree : hasWorktree // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -517,6 +532,179 @@ $PullRequestInfoCopyWith<$Res>? get pullRequest {
 
   return $PullRequestInfoCopyWith<$Res>(_self.pullRequest!, (value) {
     return _then(_self.copyWith(pullRequest: value));
+  });
+}/// Create a copy of Session
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$SessionPromptDefaultsCopyWith<$Res>? get promptDefaults {
+    if (_self.promptDefaults == null) {
+    return null;
+  }
+
+  return $SessionPromptDefaultsCopyWith<$Res>(_self.promptDefaults!, (value) {
+    return _then(_self.copyWith(promptDefaults: value));
+  });
+}
+}
+
+
+/// @nodoc
+mixin _$SessionPromptDefaults {
+
+ String? get agent; AgentModel? get model;
+/// Create a copy of SessionPromptDefaults
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SessionPromptDefaultsCopyWith<SessionPromptDefaults> get copyWith => _$SessionPromptDefaultsCopyWithImpl<SessionPromptDefaults>(this as SessionPromptDefaults, _$identity);
+
+  /// Serializes this SessionPromptDefaults to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionPromptDefaults&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.model, model) || other.model == model));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,agent,model);
+
+@override
+String toString() {
+  return 'SessionPromptDefaults(agent: $agent, model: $model)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SessionPromptDefaultsCopyWith<$Res>  {
+  factory $SessionPromptDefaultsCopyWith(SessionPromptDefaults value, $Res Function(SessionPromptDefaults) _then) = _$SessionPromptDefaultsCopyWithImpl;
+@useResult
+$Res call({
+ String? agent, AgentModel? model
+});
+
+
+$AgentModelCopyWith<$Res>? get model;
+
+}
+/// @nodoc
+class _$SessionPromptDefaultsCopyWithImpl<$Res>
+    implements $SessionPromptDefaultsCopyWith<$Res> {
+  _$SessionPromptDefaultsCopyWithImpl(this._self, this._then);
+
+  final SessionPromptDefaults _self;
+  final $Res Function(SessionPromptDefaults) _then;
+
+/// Create a copy of SessionPromptDefaults
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? agent = freezed,Object? model = freezed,}) {
+  return _then(_self.copyWith(
+agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
+as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
+as AgentModel?,
+  ));
+}
+/// Create a copy of SessionPromptDefaults
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$AgentModelCopyWith<$Res>? get model {
+    if (_self.model == null) {
+    return null;
+  }
+
+  return $AgentModelCopyWith<$Res>(_self.model!, (value) {
+    return _then(_self.copyWith(model: value));
+  });
+}
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _SessionPromptDefaults implements SessionPromptDefaults {
+  const _SessionPromptDefaults({required this.agent, required this.model});
+  factory _SessionPromptDefaults.fromJson(Map<String, dynamic> json) => _$SessionPromptDefaultsFromJson(json);
+
+@override final  String? agent;
+@override final  AgentModel? model;
+
+/// Create a copy of SessionPromptDefaults
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$SessionPromptDefaultsCopyWith<_SessionPromptDefaults> get copyWith => __$SessionPromptDefaultsCopyWithImpl<_SessionPromptDefaults>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SessionPromptDefaultsToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionPromptDefaults&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.model, model) || other.model == model));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,agent,model);
+
+@override
+String toString() {
+  return 'SessionPromptDefaults(agent: $agent, model: $model)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$SessionPromptDefaultsCopyWith<$Res> implements $SessionPromptDefaultsCopyWith<$Res> {
+  factory _$SessionPromptDefaultsCopyWith(_SessionPromptDefaults value, $Res Function(_SessionPromptDefaults) _then) = __$SessionPromptDefaultsCopyWithImpl;
+@override @useResult
+$Res call({
+ String? agent, AgentModel? model
+});
+
+
+@override $AgentModelCopyWith<$Res>? get model;
+
+}
+/// @nodoc
+class __$SessionPromptDefaultsCopyWithImpl<$Res>
+    implements _$SessionPromptDefaultsCopyWith<$Res> {
+  __$SessionPromptDefaultsCopyWithImpl(this._self, this._then);
+
+  final _SessionPromptDefaults _self;
+  final $Res Function(_SessionPromptDefaults) _then;
+
+/// Create a copy of SessionPromptDefaults
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? agent = freezed,Object? model = freezed,}) {
+  return _then(_SessionPromptDefaults(
+agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
+as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
+as AgentModel?,
+  ));
+}
+
+/// Create a copy of SessionPromptDefaults
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$AgentModelCopyWith<$Res>? get model {
+    if (_self.model == null) {
+    return null;
+  }
+
+  return $AgentModelCopyWith<$Res>(_self.model!, (value) {
+    return _then(_self.copyWith(model: value));
   });
 }
 }
