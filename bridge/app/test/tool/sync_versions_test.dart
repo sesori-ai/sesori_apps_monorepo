@@ -269,6 +269,17 @@ environment:
       expect(result.stderr, contains('out of sync'));
     });
 
+    test('allows explicit --version to realign diverged versions', () async {
+      fixture = await _createFixtureApp(mobileVersion: '1.0.6+8', bridgeVersion: '1.0.5');
+      final currentFixture = fixture!;
+
+      final result = await _runTool(fixture: currentFixture, args: <String>['--dry-run', '--version', '1.0.7']);
+
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      expect(result.stdout, contains('Target mobile version: 1.0.7+8'));
+      expect(result.stdout, contains('Target bridge version: 1.0.7'));
+    });
+
     test('works without mobile build number', () async {
       fixture = await _createFixtureApp(mobileVersion: '1.0.6');
       final currentFixture = fixture!;

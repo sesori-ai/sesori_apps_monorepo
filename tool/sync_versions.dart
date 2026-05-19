@@ -80,7 +80,8 @@ Future<void> main(final List<String> args) async {
       await _readFile(path: bridgePubspecPath),
     );
 
-    if (mobileVersion.semver != bridgeCurrentVersion) {
+    // Only enforce sync guard for automatic bumps; explicit --version can realign.
+    if (parsed.version == null && mobileVersion.semver != bridgeCurrentVersion) {
       throw _CliError(
         'Error: Bridge ($bridgeCurrentVersion) and mobile (${mobileVersion.semver}) versions are out of sync. '
         'Run `make bump-version VERSION=${mobileVersion.semver}` to align them before bumping.',
