@@ -10,6 +10,26 @@
 
 - No changes
 
+## [1.0.7] - 2026-05-19
+
+### App
+
+#### Added
+- OAuth flow overhaul with backend callback and long polling (#161)
+- Persist agent, model & variant selection (#172)
+
+#### Fixed
+- Buffer SSE events during SessionDetailCubit loading to prevent race condition (#170)
+
+### Bridge
+
+#### Added
+- OAuth flow overhaul with backend callback and long polling (#161)
+- Persist agent, model & variant selection (#172)
+
+#### Changed
+- Minor log cleanup
+
 ## [1.0.6] - 2026-05-13
 
 ### App
