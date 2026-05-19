@@ -212,14 +212,38 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                         ],
                       ),
                     ),
-                    LoginPolling() => Padding(
+                    LoginPolling(:final userCode) => Padding(
                       padding: const EdgeInsetsDirectional.only(top: 16),
-                      child: Text(
-                        loc.loginPolling,
-                        style: zyra.textTheme.textSm.regular.copyWith(
-                          color: zyra.colors.textSecondary,
-                        ),
-                        textAlign: TextAlign.center,
+                      child: Column(
+                        children: [
+                          Text(
+                            loc.loginPolling,
+                            style: zyra.textTheme.textSm.regular.copyWith(
+                              color: zyra.colors.textSecondary,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          if (userCode != null) ...[
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: zyra.colors.bgBrandSolid.withAlpha(26),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: zyra.colors.bgBrandSolid.withAlpha(77),
+                                ),
+                              ),
+                              child: Text(
+                                userCode,
+                                style: zyra.textTheme.textXl.bold.copyWith(
+                                  color: zyra.colors.bgBrandSolid,
+                                  letterSpacing: 4,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                     LoginTimeout() => Padding(

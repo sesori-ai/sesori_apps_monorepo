@@ -190,18 +190,24 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
   }
 
   AuthSessionStatusResponse _parseSessionStatus(http.Response response) {
+    // Only trust the body on success (2xx) or the explicit 410 expired response.
+    final isSuccess = response.statusCode >= 200 && response.statusCode < 300;
+    final isExpired = response.statusCode == 410;
+
+    if (!isSuccess && !isExpired) {
+      _ensureSuccess(response, context: "OAuth session polling failed");
+      throw StateError("OAuth session polling failed");
+    }
+
     if (response.body.isNotEmpty) {
       try {
         return AuthSessionStatusResponse.fromJson(jsonDecodeMap(response.body));
       } on Object catch (e) {
-        if (response.statusCode >= 200 && response.statusCode < 300) {
-          throw Exception("Failed to parse auth session status response: ${e.toString()}");
-        }
+        throw Exception("Failed to parse auth session status response: ${e.toString()}");
       }
     }
 
-    _ensureSuccess(response, context: "OAuth session polling failed");
-    throw StateError("OAuth session polling failed");
+    throw StateError("OAuth session polling failed: empty response body");
   }
 
   @override

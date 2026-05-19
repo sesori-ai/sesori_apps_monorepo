@@ -16,6 +16,7 @@ class LoginCubit extends Cubit<LoginState> {
   final AuthSession _authSession;
   final LifecycleSource _lifecycleSource;
   StreamSubscription<LifecycleState>? _lifecycleSubscription;
+  bool _isPolling = false;
 
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
   LoginCubit(
@@ -42,12 +43,24 @@ class LoginCubit extends Cubit<LoginState> {
   }
 
   Future<void> _onAppResumed() async {
+    if (_isPolling) return;
     if (state is LoginAwaitingConfirmation || state is LoginPolling || state is LoginTimeout) {
       final hasActiveSession = await _oAuthFlowProvider.hasActiveOAuthSession();
       if (!hasActiveSession) return;
       if (isClosed) return;
 
-      emit(const LoginState.polling());
+      final currentUserCode = switch (state) {
+        LoginAwaitingConfirmation(:final userCode) => userCode,
+        LoginPolling(:final userCode) => userCode,
+        LoginTimeout() => null,
+        LoginIdle() => null,
+        LoginAuthenticating() => null,
+        LoginSuccess() => null,
+        LoginFailed() => null,
+      };
+
+      _isPolling = true;
+      emit(LoginState.polling(userCode: currentUserCode));
       try {
         await _oAuthFlowProvider.resumeOAuthFlow();
         if (isClosed) return;
@@ -60,6 +73,8 @@ class LoginCubit extends Cubit<LoginState> {
         loge("OAuth resumed but failed", e, st);
         if (isClosed) return;
         emit(const LoginState.failed(reason: LoginFailedReason.unknown));
+      } finally {
+        _isPolling = false;
       }
     }
   }
@@ -84,8 +99,13 @@ class LoginCubit extends Cubit<LoginState> {
         return false;
       }
 
-      emit(const LoginState.polling());
-      await _oAuthFlowProvider.pollForResult();
+      _isPolling = true;
+      emit(LoginState.polling(userCode: initResponse.userCode));
+      try {
+        await _oAuthFlowProvider.pollForResult();
+      } finally {
+        _isPolling = false;
+      }
 
       if (isClosed) return false;
       emit(const LoginState.success());
