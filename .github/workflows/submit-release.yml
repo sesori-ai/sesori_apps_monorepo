@@ -30,29 +30,12 @@ on:
           - both
           - ios
           - android
-      build_offset:
-        description: "Pick from recent builds (ignored if build_number_override is set)"
-        type: choice
-        required: true
-        default: latest
-        options:
-          - latest
-          - 2nd-latest
-          - 3rd-latest
-          - 4th-latest
-          - 5th-latest
-          - 6th-latest
-          - 7th-latest
-          - 8th-latest
-          - 9th-latest
-          - 10th-latest
-      build_number_override:
-        description: "Specific build number (overrides build_offset when non-empty)"
+      build_number:
+        description: "Build number to submit (must match an existing ios-build-<N> / android-build-<N> tag)"
         type: string
-        required: false
-        default: ""
+        required: true
 
-run-name: "submit · ${{ inputs.track }} · ${{ inputs.platforms }} · ${{ inputs.build_number_override != '' && inputs.build_number_override || inputs.build_offset }}"
+run-name: "submit · ${{ inputs.track }} · ${{ inputs.platforms }} · build ${{ inputs.build_number }}"
 
 concurrency:
   # Serialize submissions of the same track to avoid two operators racing
@@ -77,75 +60,16 @@ jobs:
       - name: Fetch tags
         run: git fetch --tags --force
 
-      - name: Show 10 most recent builds
-        run: |
-          set -euo pipefail
-          {
-            echo "## Recent builds"
-            echo
-            echo "| # | iOS build | Android build | Commit | Subject |"
-            echo "|---|-----------|---------------|--------|---------|"
-          } >> "$GITHUB_STEP_SUMMARY"
-          ios_tags=$(git tag --list 'ios-build-*'     --sort=-version:refname | head -10 | sed 's/ios-build-//')
-          and_tags=$(git tag --list 'android-build-*' --sort=-version:refname | head -10 | sed 's/android-build-//')
-          if [[ -z "$ios_tags" && -z "$and_tags" ]]; then
-            echo "| _no builds tagged yet — run release-all-platforms.yml first, or backfill tags manually_ | | | | |" >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-          # Print up to 10 rows; either column may be shorter than the other
-          # if iOS or Android failed for a given build.
-          paste <(printf '%s\n' "$ios_tags") <(printf '%s\n' "$and_tags") | nl -nln | while IFS=$'\t' read -r idx ios and; do
-            lookup_tag=""
-            [[ -n "$ios" ]] && lookup_tag="ios-build-${ios}"
-            [[ -z "$lookup_tag" && -n "$and" ]] && lookup_tag="android-build-${and}"
-            if [[ -n "$lookup_tag" ]]; then
-              sha=$(git rev-list -n1 "$lookup_tag" 2>/dev/null || echo "")
-              subj=$(git log -1 --format='%s' "$sha" 2>/dev/null || echo "")
-            else
-              sha=""; subj=""
-            fi
-            short="${sha:0:7}"
-            echo "| ${idx} | ${ios:--} | ${and:--} | \`${short:--}\` | ${subj:--} |" >> "$GITHUB_STEP_SUMMARY"
-          done
-
       - id: pick
         env:
-          OFFSET:    ${{ inputs.build_offset }}
-          OVERRIDE:  ${{ inputs.build_number_override }}
+          N:         ${{ inputs.build_number }}
           PLATFORMS: ${{ inputs.platforms }}
         run: |
           set -euo pipefail
-          # 1) Determine the build number.
-          if [[ -n "$OVERRIDE" ]]; then
-            if ! [[ "$OVERRIDE" =~ ^[0-9]+$ ]]; then
-              echo "::error::build_number_override must be a positive integer (got: $OVERRIDE)"
-              exit 1
-            fi
-            N="$OVERRIDE"
-          else
-            case "$OFFSET" in
-              latest)      IDX=1 ;;
-              2nd-latest)  IDX=2 ;;
-              3rd-latest)  IDX=3 ;;
-              4th-latest)  IDX=4 ;;
-              5th-latest)  IDX=5 ;;
-              6th-latest)  IDX=6 ;;
-              7th-latest)  IDX=7 ;;
-              8th-latest)  IDX=8 ;;
-              9th-latest)  IDX=9 ;;
-              10th-latest) IDX=10 ;;
-              *) echo "::error::Unknown build_offset: $OFFSET"; exit 1 ;;
-            esac
-            # Prefer iOS tags as the source; fall back to Android if no iOS
-            # tags exist (e.g. iOS submissions disabled for a stretch).
-            N=$(git tag --list 'ios-build-*'     --sort=-version:refname | sed 's/ios-build-//'     | sed -n "${IDX}p")
-            if [[ -z "$N" ]]; then
-              N=$(git tag --list 'android-build-*' --sort=-version:refname | sed 's/android-build-//' | sed -n "${IDX}p")
-            fi
-            if [[ -z "$N" ]]; then
-              echo "::error::No build tagged at offset ${OFFSET} — fewer than ${IDX} builds available. Push a new build via release-all-platforms.yml, or use build_number_override."
-              exit 1
-            fi
+          # 1) Validate build number.
+          if ! [[ "$N" =~ ^[0-9]+$ ]]; then
+            echo "::error::build_number must be a positive integer (got: $N)"
+            exit 1
           fi
 
           # 2) Verify the requested platforms have a tag for this build number.
@@ -169,8 +93,7 @@ jobs:
           fi
 
           # 3) Resolve commit SHA. When both platforms requested, iOS is canonical;
-          # warn (but don't fail) if iOS and Android tags point at different SHAs —
-          # operator can investigate via the job summary.
+          # warn (but don't fail) if iOS and Android tags point at different SHAs.
           SHA="${ios_sha:-$and_sha}"
           if $need_ios && $need_and && [[ "$ios_sha" != "$and_sha" ]]; then
             echo "::warning::iOS tag → ${ios_sha:0:7} but Android tag → ${and_sha:0:7}. Using iOS SHA for commit/tag."
@@ -189,7 +112,6 @@ jobs:
           echo "commit_sha=${SHA}"  >> "$GITHUB_OUTPUT"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           {
-            echo
             echo "### Resolved"
             echo "- **Build number**: \`${N}\`"
             echo "- **Commit**: \`${SHA}\`"
