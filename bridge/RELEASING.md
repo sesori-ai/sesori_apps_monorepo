@@ -4,21 +4,23 @@
 
 - **Enabled by default:** GitHub Releases
 - **Enabled by default:** npm publish via npm trusted publishing
-- **Release selector:** installers and updater only consider stable GitHub releases tagged `v*`. GitHub Actions trigger migration to shared tags is deferred.
+- **Release selector:** installers and updater accept stable GitHub releases tagged `bridge-v*` or `v*` during the shared-tag migration. GitHub Actions trigger migration to shared `v*` tags is deferred.
 
 ## Release tag
 
-Use tags in this format:
+Until the GitHub Actions trigger migration lands, use tags in this format:
 
 ```bash
-vX.Y.Z
+bridge-vX.Y.Z
 ```
 
 Example:
 
 ```bash
-v0.3.1
+bridge-v0.3.1
 ```
+
+After the workflow migration, use shared `vX.Y.Z` tags.
 
 ## Before release
 
