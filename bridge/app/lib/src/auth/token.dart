@@ -108,7 +108,7 @@ Future<void> clearTokens() async {
   final path = tokenPath();
   final file = File(path);
 
-  if (await file.exists()) {
+  if (file.existsSync()) {
     await file.delete();
   }
 }

@@ -143,11 +143,11 @@ class LoginOAuthService {
     final codePadding = " " * ((contentWidth - codeText.length) ~/ 2);
     final codeLine = "│$codePadding$codeText${" " * (contentWidth - codePadding.length - codeText.length)}│";
 
-    final confirmText = "Confirm this code on the web page";
+    const confirmText = "Confirm this code on the web page";
     final confirmPadding = " " * ((contentWidth - confirmText.length) ~/ 2);
     final confirmLine = "│$confirmPadding$confirmText${" " * (contentWidth - confirmPadding.length - confirmText.length)}│";
 
-    final beforeText = "before approving the login request.";
+    const beforeText = "before approving the login request.";
     final beforePadding = " " * ((contentWidth - beforeText.length) ~/ 2);
     final beforeLine = "│$beforePadding$beforeText${" " * (contentWidth - beforePadding.length - beforeText.length)}│";
 
