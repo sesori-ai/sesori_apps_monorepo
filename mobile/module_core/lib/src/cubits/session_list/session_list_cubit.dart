@@ -572,12 +572,16 @@ class SessionListCubit extends Cubit<SessionListState> {
   /// Concurrent calls are coalesced: if a refresh is already in-flight, the
   /// existing Future is returned instead of starting a second network request.
   Future<bool> refreshSessions() {
-    return _activeRefresh ??= _fetchSessions(silent: true).whenComplete(() => _activeRefresh = null);
+    return _activeRefresh ??=
+        _fetchSessions(silent: true, waitForPrData: true).whenComplete(() => _activeRefresh = null);
   }
 
-  Future<bool> _fetchSessions({bool silent = false}) async {
+  Future<bool> _fetchSessions({bool silent = false, bool waitForPrData = false}) async {
     final (sessionsResponse, baseBranchResponse) = await (
-      _projectService.listSessions(projectId: _projectId),
+      _projectService.listSessions(
+        projectId: _projectId,
+        waitForPrData: waitForPrData,
+      ),
       _projectService.getBaseBranch(projectId: _projectId),
     ).wait;
     if (isClosed) return false;

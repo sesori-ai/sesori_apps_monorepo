@@ -806,11 +806,24 @@ void main() {
       expect(result.items[1].pullRequest, isNull);
     });
 
-    test("triggers PR refresh with project path resolved from plugin.getProject", () async {
+    test("does not trigger PR refresh when waitForPrData is false", () async {
       plugin.currentProjectResult = const PluginProject(id: "/tmp/project");
       await handler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "project-1", start: null, limit: null),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(prSyncService.calls, isEmpty);
+    });
+
+    test("triggers PR refresh with project path resolved from plugin.getProject", () async {
+      plugin.currentProjectResult = const PluginProject(id: "/tmp/project");
+      await handler.handle(
+        makeRequest("POST", "/sessions"),
+        body: const SessionListRequest(projectId: "project-1", start: null, limit: null, waitForPrData: true),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -836,7 +849,7 @@ void main() {
 
       await handler.handle(
         makeRequest("POST", "/sessions"),
-        body: const SessionListRequest(projectId: "project-1", start: null, limit: null),
+        body: const SessionListRequest(projectId: "project-1", start: null, limit: null, waitForPrData: true),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -868,7 +881,7 @@ void main() {
 
       final result = await timeoutHandler.handle(
         makeRequest("POST", "/sessions"),
-        body: const SessionListRequest(projectId: "p1", start: null, limit: null),
+        body: const SessionListRequest(projectId: "p1", start: null, limit: null, waitForPrData: true),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -916,7 +929,7 @@ void main() {
 
       final result = await enrichedHandler.handle(
         makeRequest("POST", "/sessions"),
-        body: const SessionListRequest(projectId: "p1", start: null, limit: null),
+        body: const SessionListRequest(projectId: "p1", start: null, limit: null, waitForPrData: true),
         pathParams: {},
         queryParams: {},
         fragment: null,

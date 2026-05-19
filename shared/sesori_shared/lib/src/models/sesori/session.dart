@@ -24,6 +24,7 @@ sealed class SessionListRequest with _$SessionListRequest {
     required String projectId,
     required int? start,
     required int? limit,
+    @Default(false) bool waitForPrData,
   }) = _SessionListRequest;
 
   factory SessionListRequest.fromJson(Map<String, dynamic> json) => _$SessionListRequestFromJson(json);
