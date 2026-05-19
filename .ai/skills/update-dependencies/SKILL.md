@@ -54,12 +54,13 @@ Sesori iOS is **Swift Package Manager only** — there is no Podfile, and CocoaP
 ```bash
 flutter --version
 asdf install flutter latest
-asdf set flutter latest
+asdf set flutter latest   # asdf 0.16+ canonical form; equivalent to `asdf local` on older versions
 flutter --version
 ```
+If `flutter --version` still reports the old version after `asdf set`, run `asdf reshim flutter` (or open a new shell) and re-run `flutter --version`.
 </step>
 
-<step name="1.2">Check and update environment constraints in ALL pubspec.yaml files.
+<step name="1.2">Check and update environment constraints in all pubspec.yaml files **except `shared/no_slop_linter/pubspec.yaml`** (manually managed).
 
 Get the current Dart SDK version bundled with Flutter:
 ```bash
@@ -68,6 +69,8 @@ flutter --version
 Note the Dart version (e.g., "Dart 3.11.0") and Flutter version (e.g., "Flutter 3.41.0").
 
 For each pubspec.yaml below, read its `environment` section and update only the keys present. **Preserve the existing constraint syntax per file** — do not normalize between caret and range forms.
+
+**SKIP `shared/no_slop_linter/pubspec.yaml` entirely** — its env constraint (and all other deps) are managed manually by a human.
 
 | File | Has `sdk` | Has `flutter` | Constraint style |
 |------|-----------|---------------|------------------|
@@ -81,18 +84,12 @@ For each pubspec.yaml below, read its `environment` section and update only the 
 | `bridge/sesori_plugin_interface/pubspec.yaml` | ✅ | — | caret |
 | `bridge/sesori_plugin_opencode/pubspec.yaml` | ✅ | — | caret |
 | `shared/sesori_shared/pubspec.yaml` | ✅ | — | caret |
-| `shared/no_slop_linter/pubspec.yaml` | ✅ | — | **range with upper bound** (`">=3.11.0 <4.0.0"`) — intentional for analyzer-plugin compat across multiple analyzer majors; preserve the range form, only bump the lower bound |
 
-Examples by style:
+Example:
 ```yaml
-# Caret form (used in 10 of 11 files):
 environment:
   sdk: ^DART_VERSION
   flutter: ">=FLUTTER_VERSION <NEXT_MINOR"   # mobile/pubspec.yaml only
-
-# Range form (shared/no_slop_linter only — keep upper bound):
-environment:
-  sdk: ">=DART_VERSION <4.0.0"
 ```
 </step>
 
@@ -109,9 +106,12 @@ git commit -m "chore: update Flutter/Dart environment constraints
 Skip this commit if no environment changes were needed.
 </step>
 
-<step name="1.4">Delete all pubspec.lock files:
+<step name="1.4">Delete all pubspec.lock files except `shared/no_slop_linter/pubspec.lock` (the linter is excluded from this workflow — its lock must remain untouched so transitive resolution doesn't shift):
 ```bash
-find . -name "pubspec.lock" -not -path "./.worktrees/*" -delete
+find . -name "pubspec.lock" \
+  -not -path "./.worktrees/*" \
+  -not -path "./shared/no_slop_linter/*" \
+  -delete
 ```
 </step>
 </phase>
@@ -121,28 +121,28 @@ find . -name "pubspec.lock" -not -path "./.worktrees/*" -delete
 
 <step name="2.1">Run outdated check for each package. Workspaces resolve as a unit (run from workspace root); standalone packages resolve individually.
 
-**Standalone packages:**
+**Standalone (`shared/sesori_shared` only — `no_slop_linter` is excluded):**
 ```bash
-cd shared/sesori_shared && dart pub outdated && cd ../..
-# no_slop_linter — informational only; report findings but do NOT bump in Phase 3.
-cd shared/no_slop_linter && dart pub outdated && cd ../..
+(cd shared/sesori_shared && dart pub outdated)
 ```
 
-**Mobile workspace** (one resolution covers all members, but run `outdated` per-member to see direct deps per package — use `flutter pub outdated` for Flutter packages, `dart pub outdated` for pure-Dart members):
+**Mobile workspace** (one resolution covers all members; run `outdated` per-member to see direct deps per package — `flutter pub outdated` for Flutter packages, `dart pub outdated` for pure-Dart members):
 ```bash
-cd mobile && flutter pub get && cd ..
-cd mobile/module_auth && dart pub outdated && cd ../..       # pure Dart
-cd mobile/module_core && dart pub outdated && cd ../..       # pure Dart
-cd mobile/module_zyra && flutter pub outdated && cd ../..    # Flutter (flutter: sdk: flutter)
-cd mobile/app && flutter pub outdated && cd ../..            # Flutter app
+set -e
+(cd mobile && flutter pub get)
+(cd mobile/module_auth && dart pub outdated)       # pure Dart
+(cd mobile/module_core && dart pub outdated)       # pure Dart
+(cd mobile/module_zyra && flutter pub outdated)    # Flutter (flutter: sdk: flutter)
+(cd mobile/app && flutter pub outdated)            # Flutter app
 ```
 
 **Bridge workspace** (pure Dart):
 ```bash
-cd bridge && dart pub get && cd ..
-cd bridge/sesori_plugin_interface && dart pub outdated && cd ../..
-cd bridge/sesori_plugin_opencode && dart pub outdated && cd ../..
-cd bridge/app && dart pub outdated && cd ../..
+set -e
+(cd bridge && dart pub get)
+(cd bridge/sesori_plugin_interface && dart pub outdated)
+(cd bridge/sesori_plugin_opencode && dart pub outdated)
+(cd bridge/app && dart pub outdated)
 ```
 </step>
 
@@ -185,9 +185,10 @@ For each direct dependency listed in the `pub outdated` output from Phase 2:
 <step name="3.2">Run pub get for each resolution unit. Each top-level (`shared/`, `bridge/`, `mobile/`) has a `Makefile` with a `pub-get` target:
 
 ```bash
-make -C shared pub-get   # iterates sesori_shared + no_slop_linter (independent lockfiles)
-make -C bridge pub-get   # single workspace resolution
-make -C mobile pub-get   # single workspace resolution (uses dart from Flutter SDK)
+set -e
+(cd shared && make pub-get)   # iterates sesori_shared + no_slop_linter (independent lockfiles)
+(cd bridge && make pub-get)   # single workspace resolution
+(cd mobile && make pub-get)   # single workspace resolution (uses dart from Flutter SDK)
 ```
 </step>
 
@@ -212,18 +213,20 @@ git diff --name-only -- '*.yaml'
 <step name="4.1">Run analysis on every package via the Makefile targets — do **not** call `dart analyze` / `flutter analyze` per package by hand. Each top-level Makefile iterates its members in dependency order:
 
 ```bash
-make -C shared analyze   # sesori_shared + no_slop_linter
-make -C bridge analyze   # sesori_plugin_interface, sesori_plugin_opencode, app
-make -C mobile analyze   # module_auth, module_core, module_zyra, app (with --fatal-infos)
+set -e
+(cd shared && make analyze)   # sesori_shared + no_slop_linter
+(cd bridge && make analyze)   # sesori_plugin_interface, sesori_plugin_opencode, app
+(cd mobile && make analyze)   # module_auth, module_core, module_zyra, app (with --fatal-infos)
 ```
 </step>
 
 <step name="4.2">Run tests for every package via the Makefile targets. Each `test` target skips members without a `test/` dir and uses `flutter test` for the Flutter app:
 
 ```bash
-make -C shared test   # sesori_shared (no_slop_linter has tests too)
-make -C bridge test
-make -C mobile test
+set -e
+(cd shared && make test)
+(cd bridge && make test)
+(cd mobile && make test)
 ```
 </step>
 
@@ -234,12 +237,13 @@ make -C mobile test
 - Re-run until successful
 </step>
 
-<step name="4.4">Run code generation via the Makefile targets. Each Makefile only iterates members that have active generators (skipping `no_slop_linter` and `module_zyra`):
+<step name="4.4">Run code generation via the Makefile targets. Each Makefile only iterates members that have active generators (skipping `no_slop_linter`):
 
 ```bash
-make -C shared codegen   # sesori_shared
-make -C bridge codegen   # sesori_plugin_interface, sesori_plugin_opencode, app
-make -C mobile codegen   # module_auth, module_core, module_zyra, app
+set -e
+(cd shared && make codegen)   # sesori_shared
+(cd bridge && make codegen)   # sesori_plugin_interface, sesori_plugin_opencode, app
+(cd mobile && make codegen)   # module_auth, module_core, module_zyra, app
 ```
 If a generator dependency is later added to a currently-skipped package, update `CODEGEN_MODULES` in the matching Makefile rather than re-introducing per-package commands here.
 </step>
@@ -319,12 +323,12 @@ Report this list at the end of the update process for visibility.
 </conflict_tracking>
 
 <success_criteria>
-- Environment constraints (sdk, flutter) in ALL 11 pubspec.yaml files match the currently installed Flutter/Dart versions
-- Version constraints bumped to latest resolvable versions in every pubspec EXCEPT `shared/no_slop_linter/pubspec.yaml` (manual updates only)
+- Environment constraints (sdk, flutter) updated in 10 pubspec.yaml files (every pubspec EXCEPT `shared/no_slop_linter/pubspec.yaml`, which is excluded entirely)
+- Version constraints bumped to latest resolvable versions in every pubspec EXCEPT `shared/no_slop_linter/pubspec.yaml`
 - All pubspec.lock files regenerated (workspace roots + 2 standalone packages = 4 lockfiles)
-- `make -C shared analyze`, `make -C bridge analyze`, `make -C mobile analyze` all pass
-- `make -C shared test`, `make -C bridge test`, `make -C mobile test` all pass
-- `make -C shared codegen`, `make -C bridge codegen`, `make -C mobile codegen` all complete cleanly
+- `(cd shared && make analyze)`, `(cd bridge && make analyze)`, `(cd mobile && make analyze)` all pass
+- `(cd shared && make test)`, `(cd bridge && make test)`, `(cd mobile && make test)` all pass
+- `(cd shared && make codegen)`, `(cd bridge && make codegen)`, `(cd mobile && make codegen)` all complete cleanly
 - Fastlane and Gemfile.lock updated for both iOS and Android (no `cocoapods` bumps — SPM only)
 - Conflict list documented in commit message
 - No uncommitted changes remain
