@@ -62,6 +62,8 @@ class LoginOAuthService {
       sessionToken: sessionToken,
     );
 
+    _printUserCode(initResp.userCode);
+
     Log.i("Opening browser for ${provider.label} login...");
     try {
       await _browserLauncher(initResp.authUrl);
@@ -118,6 +120,37 @@ class LoginOAuthService {
     } finally {
       stopwatch.stop();
     }
+  }
+
+  void _printUserCode(String userCode) {
+    const line = "┌──────────────────────────────────────────┐";
+    const empty = "│                                          │";
+    const contentWidth = 42; // width inside the box borders
+
+    final codeText = "CODE:  $userCode";
+    final codePadding = " " * ((contentWidth - codeText.length) ~/ 2);
+    final codeLine = "│$codePadding$codeText${" " * (contentWidth - codePadding.length - codeText.length)}│";
+
+    final confirmText = "Confirm this code on the web page";
+    final confirmPadding = " " * ((contentWidth - confirmText.length) ~/ 2);
+    final confirmLine = "│$confirmPadding$confirmText${" " * (contentWidth - confirmPadding.length - confirmText.length)}│";
+
+    final beforeText = "before approving the login request.";
+    final beforePadding = " " * ((contentWidth - beforeText.length) ~/ 2);
+    final beforeLine = "│$beforePadding$beforeText${" " * (contentWidth - beforePadding.length - beforeText.length)}│";
+
+    const bottomLine = "└──────────────────────────────────────────┘";
+
+    Log.i("");
+    Log.i(line);
+    Log.i(empty);
+    Log.i(codeLine);
+    Log.i(empty);
+    Log.i(confirmLine);
+    Log.i(beforeLine);
+    Log.i(empty);
+    Log.i(bottomLine);
+    Log.i("");
   }
 
   String _generateSessionToken() {
