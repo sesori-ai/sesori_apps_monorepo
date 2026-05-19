@@ -28,10 +28,10 @@ Alternatively, the user may provide an explicit version: `make bump-version VERS
 
 ### Step 2: Find the Latest Release Tag
 
-Run the following to find the most recent shared release tag:
+Run the following to find the most recent release tag. Include both tag families while GitHub Actions still publishes bridge releases from `bridge-v*` tags:
 
 ```bash
-git tag -l "v*" --sort=-v:refname | head -n 1
+git tag -l "v*" "bridge-v*" --sort=-v:refname | head -n 1
 ```
 
 ### Step 3: Bump Versions
@@ -57,15 +57,15 @@ Stage the version-bumped files.
 Find commits since the last release tag:
 
 ```bash
-git log v<previous>..HEAD --oneline
+git log <previous-tag>..HEAD --oneline
 ```
 
 To get diffs for each side:
 
 ```bash
-git diff v<previous>..HEAD -- bridge/
-git diff v<previous>..HEAD -- mobile/
-git log --oneline --name-only v<previous>..HEAD
+git diff <previous-tag>..HEAD -- bridge/
+git diff <previous-tag>..HEAD -- mobile/
+git log --oneline --name-only <previous-tag>..HEAD
 ```
 
 Categorize commits based on their prefixes:
