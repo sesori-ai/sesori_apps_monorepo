@@ -15,8 +15,14 @@ class ProjectRepository {
     return _api.listProjects();
   }
 
-  Future<ApiResponse<SessionListResponse>> listSessions({required String projectId}) {
-    return _api.listSessions(projectId: projectId);
+  Future<ApiResponse<SessionListResponse>> listSessions({
+    required String projectId,
+    required bool waitForPrData,
+  }) {
+    return _api.listSessions(
+      projectId: projectId,
+      waitForPrData: waitForPrData,
+    );
   }
 
   Future<ProjectSessionContext?> findSessionContext({required String sessionId}) async {
@@ -28,7 +34,10 @@ class ProjectRepository {
         final projects = success.data.data;
         final sessionContexts = await Future.wait(
           projects.map((project) async {
-            final sessionsResponse = await _api.listSessions(projectId: project.id);
+            final sessionsResponse = await _api.listSessions(
+              projectId: project.id,
+              waitForPrData: false,
+            );
             final session = switch (sessionsResponse) {
               SuccessResponse(:final data) => data.items.firstWhereOrNull((item) => item.id == sessionId),
               ErrorResponse() => null,

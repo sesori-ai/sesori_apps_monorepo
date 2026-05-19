@@ -524,7 +524,10 @@ void main() {
       final session = _testSessionWithPullRequest();
 
       when(
-        () => mockProjectService.listSessions(projectId: session.projectID),
+        () => mockProjectService.listSessions(
+          projectId: session.projectID,
+          waitForPrData: any(named: "waitForPrData"),
+        ),
       ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [session])));
 
       getIt.registerSingleton<SessionService>(mockSessionService);
