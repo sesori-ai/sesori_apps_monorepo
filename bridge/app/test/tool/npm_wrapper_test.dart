@@ -257,7 +257,7 @@ Future<String> _serveReleaseAssets({
   final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
   addTearDown(() => server.close(force: true));
   server.listen((request) async {
-    final expectedPrefix = '/releases/download/v$version/';
+    final expectedPrefix = '/releases/download/bridge-v$version/';
     if (!request.uri.path.startsWith(expectedPrefix)) {
       request.response.statusCode = HttpStatus.notFound;
       await request.response.close();
@@ -285,7 +285,7 @@ Future<String> _serveInvalidRedirectReleaseAssets({required String version}) asy
   final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
   addTearDown(() => server.close(force: true));
   server.listen((request) async {
-    final expectedPrefix = '/releases/download/v$version/';
+    final expectedPrefix = '/releases/download/bridge-v$version/';
     if (!request.uri.path.startsWith(expectedPrefix)) {
       request.response.statusCode = HttpStatus.notFound;
       await request.response.close();
@@ -510,7 +510,7 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
       expect(result.exitCode, equals(1));
       expect(
         result.stderr,
-        contains('Failed to download managed runtime from GitHub release assets for v$wrapperVersion'),
+          contains('Failed to download managed runtime from GitHub release assets for bridge-v$wrapperVersion'),
       );
       expect(result.stderr, contains('Checksum mismatch for ${releaseAsset.assetName}'));
     });
@@ -531,7 +531,7 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
       expect(result.exitCode, equals(1));
       expect(
         result.stderr,
-        contains('Failed to download managed runtime from GitHub release assets for v$wrapperVersion'),
+          contains('Failed to download managed runtime from GitHub release assets for bridge-v$wrapperVersion'),
       );
       expect(result.stderr, contains('Invalid redirect URL'));
     });
