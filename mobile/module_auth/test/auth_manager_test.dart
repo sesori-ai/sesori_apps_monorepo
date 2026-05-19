@@ -40,6 +40,16 @@ void main() {
     mockTokenStorage = MockTokenStorageService();
     mockOAuthStorage = MockOAuthStorageService();
     authManager = AuthManager(mockHttpClient, mockTokenStorage, mockOAuthStorage);
+    when(
+      () => mockOAuthStorage.saveOAuthSession(
+        sessionToken: any(named: "sessionToken"),
+        expiresAt: any(named: "expiresAt"),
+      ),
+    ).thenAnswer((_) async {});
+    when(() => mockOAuthStorage.getOAuthSession()).thenAnswer(
+      (_) async => (sessionToken: null, expiresAt: null),
+    );
+    when(() => mockOAuthStorage.clearOAuthSession()).thenAnswer((_) async {});
   });
 
   group("getFreshAccessToken", () {
@@ -352,6 +362,7 @@ void main() {
       ).thenAnswer((_) async {});
       when(mockOAuthStorage.clearPkceVerifier).thenAnswer((_) async {});
       when(mockOAuthStorage.clearAuthProvider).thenAnswer((_) async {});
+      when(mockOAuthStorage.clearOAuthSession).thenAnswer((_) async {});
 
       final states = <AuthState>[];
       final sub = authManager.authStateStream.listen(states.add);
@@ -373,6 +384,7 @@ void main() {
       ).called(1);
       verify(mockOAuthStorage.clearPkceVerifier).called(1);
       verify(mockOAuthStorage.clearAuthProvider).called(1);
+      verify(mockOAuthStorage.clearOAuthSession).called(1);
       verify(
         () => mockHttpClient.get(
           Uri.parse("$authBaseUrl/auth/session/status"),
@@ -454,6 +466,16 @@ void main() {
             headers: any(named: "headers"),
           ),
         ).thenAnswer((_) async => statusResponse);
+        when(
+          () => mockOAuthStorage.saveOAuthSession(
+            sessionToken: any(named: "sessionToken"),
+            expiresAt: any(named: "expiresAt"),
+          ),
+        ).thenAnswer((_) async {});
+        when(mockOAuthStorage.clearOAuthSession).thenAnswer((_) async {});
+        when(mockOAuthStorage.getOAuthSession).thenAnswer(
+          (_) async => (sessionToken: null, expiresAt: null),
+        );
         await authManager.startOAuthFlow(provider: AuthProvider.github);
       }
 
@@ -579,6 +601,7 @@ void main() {
       when(mockTokenStorage.clearTokens).thenAnswer((_) async {});
       when(mockOAuthStorage.clearPkceVerifier).thenAnswer((_) async {});
       when(mockOAuthStorage.clearAuthProvider).thenAnswer((_) async {});
+      when(mockOAuthStorage.clearOAuthSession).thenAnswer((_) async {});
 
       final states = <AuthState>[];
       final sub = authManager.authStateStream.listen(states.add);
@@ -591,6 +614,7 @@ void main() {
       verify(mockTokenStorage.clearTokens).called(1);
       verify(mockOAuthStorage.clearPkceVerifier).called(1);
       verify(mockOAuthStorage.clearAuthProvider).called(1);
+      verify(mockOAuthStorage.clearOAuthSession).called(1);
       verifyNoMoreInteractions(mockOAuthStorage);
       expect(authManager.currentState, const AuthState.unauthenticated());
       expect(states.last, const AuthState.unauthenticated());
@@ -619,6 +643,7 @@ void main() {
       when(mockTokenStorage.clearTokens).thenAnswer((_) async {});
       when(mockOAuthStorage.clearPkceVerifier).thenAnswer((_) async {});
       when(mockOAuthStorage.clearAuthProvider).thenAnswer((_) async {});
+      when(mockOAuthStorage.clearOAuthSession).thenAnswer((_) async {});
 
       final states = <AuthState>[];
       final sub = authManager.authStateStream.listen(states.add);
@@ -631,6 +656,7 @@ void main() {
       verify(mockTokenStorage.clearTokens).called(1);
       verify(mockOAuthStorage.clearPkceVerifier).called(1);
       verify(mockOAuthStorage.clearAuthProvider).called(1);
+      verify(mockOAuthStorage.clearOAuthSession).called(1);
       verifyNever(
         () => mockHttpClient.post(
           Uri.parse("$authBaseUrl/auth/logout"),
@@ -674,6 +700,7 @@ void main() {
       ).thenAnswer((_) async {});
       when(mockOAuthStorage.clearPkceVerifier).thenAnswer((_) async {});
       when(mockOAuthStorage.clearAuthProvider).thenAnswer((_) async {});
+      when(mockOAuthStorage.clearOAuthSession).thenAnswer((_) async {});
 
       final states = <AuthState>[];
       final sub = authManager.authStateStream.listen(states.add);
@@ -707,6 +734,7 @@ void main() {
           refreshToken: "apple-refresh-token",
         ),
       ).called(1);
+      verify(mockOAuthStorage.clearOAuthSession).called(1);
     });
 
     test("throws when server returns non-2xx", () async {

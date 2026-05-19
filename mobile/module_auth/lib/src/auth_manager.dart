@@ -23,6 +23,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
   static const _mobileClientType = "app";
   static const _defaultPollInterval = Duration(milliseconds: 250);
   static const _defaultPollTimeout = Duration(minutes: 5);
+  static const _defaultRequestTimeout = Duration(seconds: 35);
 
   final http.Client _client;
   final TokenStorageService _tokenStorage;
@@ -90,36 +91,52 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
       );
       _ensureSuccess(response, context: "Failed to start ${provider.label} auth flow");
 
-      return AuthInitResponse.fromJson(jsonDecodeMap(response.body));
+      final initResponse = AuthInitResponse.fromJson(jsonDecodeMap(response.body));
+      final expiresAt = DateTime.now().add(Duration(seconds: initResponse.expiresIn));
+      await _oAuthStorage.saveOAuthSession(
+        sessionToken: sessionToken,
+        expiresAt: expiresAt,
+      );
+      return initResponse;
     } catch (_) {
       _oAuthSessionToken = null;
+      await _oAuthStorage.clearOAuthSession();
       rethrow;
     }
   }
 
   @override
   Future<AuthUser> pollForResult() async {
-    final sessionToken = _oAuthSessionToken;
+    final sessionToken = _oAuthSessionToken ?? (await _oAuthStorage.getOAuthSession()).sessionToken;
+    final expiresAt = (await _oAuthStorage.getOAuthSession()).expiresAt;
+
     if (sessionToken == null || sessionToken.isEmpty) {
       throw StateError("No OAuth flow is active");
     }
 
-    final stopwatch = Stopwatch()..start();
+    if (expiresAt != null && DateTime.now().isAfter(expiresAt)) {
+      await _oAuthStorage.clearOAuthSession();
+      _oAuthSessionToken = null;
+      throw TimeoutException("OAuth authorization expired");
+    }
+
     try {
-      while (stopwatch.elapsed < _pollTimeout) {
+      while (expiresAt == null || DateTime.now().isBefore(expiresAt)) {
+        final remaining = expiresAt?.difference(DateTime.now()) ?? _pollTimeout;
+        final requestTimeout = remaining < _defaultRequestTimeout ? remaining : _defaultRequestTimeout;
+        if (requestTimeout <= Duration.zero) break;
+
         final uri = Uri.parse("$authBaseUrl/auth/session/status");
-        final remaining = _pollTimeout - stopwatch.elapsed;
-        if (remaining <= Duration.zero) break;
         final response = await _get(
           uri,
           headers: {_sessionTokenHeader: sessionToken},
-        ).timeout(remaining);
+        ).timeout(requestTimeout);
 
         final status = _parseSessionStatus(response);
         switch (status) {
           case AuthSessionStatusResponsePending():
-            final remaining = _pollTimeout - stopwatch.elapsed;
-            final delay = _pollInterval < remaining ? _pollInterval : remaining;
+            final delayRemaining = expiresAt?.difference(DateTime.now()) ?? _pollTimeout;
+            final delay = _pollInterval < delayRemaining ? _pollInterval : delayRemaining;
             if (delay > Duration.zero) {
               await _delay(delay);
             }
@@ -135,17 +152,20 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
             );
             return user;
           case AuthSessionStatusResponseDenied():
+            await _oAuthStorage.clearOAuthSession();
             throw StateError("OAuth authorization was denied");
           case AuthSessionStatusResponseExpired():
+            await _oAuthStorage.clearOAuthSession();
             throw StateError("OAuth authorization expired");
           case AuthSessionStatusResponseError(:final message):
+            await _oAuthStorage.clearOAuthSession();
             throw StateError("OAuth authorization failed: $message");
         }
       }
 
-      throw TimeoutException("OAuth authorization timed out", _pollTimeout);
+      await _oAuthStorage.clearOAuthSession();
+      throw TimeoutException("OAuth authorization timed out");
     } finally {
-      stopwatch.stop();
       _oAuthSessionToken = null;
     }
   }
@@ -163,6 +183,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     await Future.wait([
       _oAuthStorage.clearPkceVerifier(),
       _oAuthStorage.clearAuthProvider(),
+      _oAuthStorage.clearOAuthSession(),
     ]);
 
     _authState.add(AuthState.authenticated(user: user));
@@ -181,6 +202,26 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
 
     _ensureSuccess(response, context: "OAuth session polling failed");
     throw StateError("OAuth session polling failed");
+  }
+
+  @override
+  Future<AuthUser> resumeOAuthFlow() async {
+    final session = await _oAuthStorage.getOAuthSession();
+    if (session.sessionToken == null) {
+      throw StateError("No OAuth flow is active");
+    }
+    return pollForResult();
+  }
+
+  @override
+  Future<bool> hasActiveOAuthSession() async {
+    final session = await _oAuthStorage.getOAuthSession();
+    if (session.sessionToken == null || session.expiresAt == null) {
+      return false;
+    }
+    final expiresAt = session.expiresAt;
+    if (expiresAt == null) return false;
+    return DateTime.now().isBefore(expiresAt);
   }
 
   @override
@@ -273,6 +314,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     await Future.wait([
       _oAuthStorage.clearPkceVerifier(),
       _oAuthStorage.clearAuthProvider(),
+      _oAuthStorage.clearOAuthSession(),
     ]);
 
     _authState.add(AuthState.authenticated(user: authResponse.user));
@@ -307,6 +349,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     await Future.wait([
       _oAuthStorage.clearPkceVerifier(),
       _oAuthStorage.clearAuthProvider(),
+      _oAuthStorage.clearOAuthSession(),
     ]);
 
     _authState.add(AuthState.authenticated(user: authResponse.user));
@@ -329,6 +372,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
       _tokenStorage.clearTokens(),
       _oAuthStorage.clearPkceVerifier(),
       _oAuthStorage.clearAuthProvider(),
+      _oAuthStorage.clearOAuthSession(),
     ]);
     _authState.add(const AuthState.unauthenticated());
   }
@@ -339,6 +383,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
       _tokenStorage.clearTokens(),
       _oAuthStorage.clearPkceVerifier(),
       _oAuthStorage.clearAuthProvider(),
+      _oAuthStorage.clearOAuthSession(),
     ]);
     _authState.add(const AuthState.unauthenticated());
   }

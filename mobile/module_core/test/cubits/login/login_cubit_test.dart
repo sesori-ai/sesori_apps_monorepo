@@ -2,9 +2,11 @@ import "dart:async";
 
 import "package:bloc_test/bloc_test.dart";
 import "package:mocktail/mocktail.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart" show AuthSession, OAuthFlowProvider;
 import "package:sesori_dart_core/src/cubits/login/login_cubit.dart";
 import "package:sesori_dart_core/src/cubits/login/login_state.dart";
+import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/platform/url_launcher.dart";
 import "package:sesori_dart_core/src/routing/app_routes.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -15,6 +17,8 @@ class MockOAuthFlowProvider extends Mock implements OAuthFlowProvider {}
 class MockUrlLauncher extends Mock implements UrlLauncher {}
 
 class MockAuthSession extends Mock implements AuthSession {}
+
+class MockLifecycleSource extends Mock implements LifecycleSource {}
 
 const testAuthInitResponse = AuthInitResponse(
   authUrl: "https://accounts.google.com/o/oauth2/auth",
@@ -41,27 +45,41 @@ void main() {
     late MockOAuthFlowProvider mockOAuthFlowProvider;
     late MockUrlLauncher mockUrlLauncher;
     late MockAuthSession mockAuthSession;
+    late MockLifecycleSource mockLifecycleSource;
 
     setUp(() {
       mockOAuthFlowProvider = MockOAuthFlowProvider();
       mockUrlLauncher = MockUrlLauncher();
       mockAuthSession = MockAuthSession();
+      mockLifecycleSource = MockLifecycleSource();
       when(() => mockUrlLauncher.launch(any())).thenAnswer((_) async => true);
       when(
         () => mockOAuthFlowProvider.startOAuthFlow(provider: any(named: "provider")),
       ).thenAnswer((_) async => testAuthInitResponse);
       when(() => mockOAuthFlowProvider.pollForResult()).thenAnswer((_) async => testAuthUser);
+      when(() => mockOAuthFlowProvider.hasActiveOAuthSession()).thenAnswer((_) async => false);
+      when(() => mockOAuthFlowProvider.resumeOAuthFlow()).thenAnswer((_) async => testAuthUser);
+      when(() => mockLifecycleSource.lifecycleStateStream).thenAnswer(
+        (_) => BehaviorSubject<LifecycleState>.seeded(LifecycleState.paused).stream,
+      );
     });
 
+    LoginCubit buildCubit() => LoginCubit(
+          mockOAuthFlowProvider,
+          mockUrlLauncher,
+          mockAuthSession,
+          mockLifecycleSource,
+        );
+
     test("initial state is LoginState.idle", () {
-      final cubit = LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession);
+      final cubit = buildCubit();
       expect(cubit.state, isA<LoginIdle>());
     });
 
     group("Google OAuth", () {
       blocTest<LoginCubit, LoginState>(
         "loginWithProvider(AuthProvider.google) starts OAuth flow with AuthProvider.google",
-        build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
+        build: buildCubit,
         act: (cubit) async => cubit.loginWithProvider(AuthProvider.google),
         expect: () => [
           isA<LoginAuthenticating>(),
@@ -79,7 +97,7 @@ void main() {
 
       blocTest<LoginCubit, LoginState>(
         "loginWithProvider(AuthProvider.google) emits user code before polling then success",
-        build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
+        build: buildCubit,
         act: (cubit) async => cubit.loginWithProvider(AuthProvider.google),
         expect: () => [
           isA<LoginAuthenticating>(),
@@ -94,7 +112,7 @@ void main() {
 
       blocTest<LoginCubit, LoginState>(
         "loginWithProvider(AuthProvider.google) emits the polling OAuth sequence without legacy callback state",
-        build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
+        build: buildCubit,
         act: (cubit) async => cubit.loginWithProvider(AuthProvider.google),
         expect: () => [
           isA<LoginAuthenticating>(),
@@ -106,7 +124,7 @@ void main() {
 
       blocTest<LoginCubit, LoginState>(
         "loginWithProvider(AuthProvider.google) emits failed when startOAuthFlow throws",
-        build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
+        build: buildCubit,
         act: (cubit) async {
           when(
             () => mockOAuthFlowProvider.startOAuthFlow(provider: any(named: "provider")),
@@ -121,7 +139,7 @@ void main() {
 
       blocTest<LoginCubit, LoginState>(
         "loginWithProvider(AuthProvider.google) emits failed when browser launch returns false",
-        build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
+        build: buildCubit,
         act: (cubit) async {
           when(() => mockUrlLauncher.launch(any())).thenAnswer((_) async => false);
           await cubit.loginWithProvider(AuthProvider.google);
@@ -138,7 +156,7 @@ void main() {
 
       blocTest<LoginCubit, LoginState>(
         "loginWithProvider(AuthProvider.google) emits timeout when polling times out",
-        build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
+        build: buildCubit,
         act: (cubit) async {
           when(() => mockOAuthFlowProvider.pollForResult()).thenThrow(TimeoutException("poll timeout"));
           await cubit.loginWithProvider(AuthProvider.google);
@@ -152,10 +170,77 @@ void main() {
       );
     });
 
+    group("Lifecycle resume", () {
+      test("resumes polling when app resumes and active OAuth session exists", () async {
+        final lifecycleSubject = BehaviorSubject<LifecycleState>.seeded(LifecycleState.paused);
+        when(() => mockLifecycleSource.lifecycleStateStream).thenAnswer((_) => lifecycleSubject.stream);
+        when(() => mockOAuthFlowProvider.hasActiveOAuthSession()).thenAnswer((_) async => true);
+
+        final cubit = buildCubit();
+        cubit.emit(LoginState.awaitingConfirmation(userCode: testAuthInitResponse.userCode));
+
+        final states = <LoginState>[];
+        final sub = cubit.stream.listen(states.add);
+
+        lifecycleSubject.add(LifecycleState.resumed);
+
+        await Future<void>.delayed(Duration.zero);
+        await cubit.close();
+        await sub.cancel();
+
+        expect(states, [
+          isA<LoginPolling>(),
+          isA<LoginSuccess>(),
+        ]);
+        verify(() => mockOAuthFlowProvider.resumeOAuthFlow()).called(1);
+      });
+
+      test("does not resume polling when app resumes but no active session", () async {
+        final lifecycleSubject = BehaviorSubject<LifecycleState>.seeded(LifecycleState.paused);
+        when(() => mockLifecycleSource.lifecycleStateStream).thenAnswer((_) => lifecycleSubject.stream);
+        when(() => mockOAuthFlowProvider.hasActiveOAuthSession()).thenAnswer((_) async => false);
+
+        final cubit = buildCubit();
+        cubit.emit(LoginState.awaitingConfirmation(userCode: testAuthInitResponse.userCode));
+
+        final states = <LoginState>[];
+        final sub = cubit.stream.listen(states.add);
+
+        lifecycleSubject.add(LifecycleState.resumed);
+
+        await Future<void>.delayed(Duration.zero);
+        await cubit.close();
+        await sub.cancel();
+
+        expect(states, isEmpty);
+        verifyNever(() => mockOAuthFlowProvider.resumeOAuthFlow());
+      });
+
+      test("does not resume polling when state is idle", () async {
+        final lifecycleSubject = BehaviorSubject<LifecycleState>.seeded(LifecycleState.paused);
+        when(() => mockLifecycleSource.lifecycleStateStream).thenAnswer((_) => lifecycleSubject.stream);
+        when(() => mockOAuthFlowProvider.hasActiveOAuthSession()).thenAnswer((_) async => true);
+
+        final cubit = buildCubit();
+
+        final states = <LoginState>[];
+        final sub = cubit.stream.listen(states.add);
+
+        lifecycleSubject.add(LifecycleState.resumed);
+
+        await Future<void>.delayed(Duration.zero);
+        await cubit.close();
+        await sub.cancel();
+
+        expect(states, isEmpty);
+        verifyNever(() => mockOAuthFlowProvider.resumeOAuthFlow());
+      });
+    });
+
     group("Email Login", () {
       blocTest<LoginCubit, LoginState>(
         "loginWithEmail calls AuthSession.loginWithEmail with correct email/password",
-        build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
+        build: buildCubit,
         act: (cubit) async {
           when(() => mockAuthSession.loginWithEmail(email: "test@example.com", password: "password123")).thenAnswer(
             (_) async => testAuthUser,
@@ -176,7 +261,7 @@ void main() {
 
       blocTest<LoginCubit, LoginState>(
         "loginWithEmail emits loading then success state on successful login",
-        build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
+        build: buildCubit,
         act: (cubit) async {
           when(() => mockAuthSession.loginWithEmail(email: any(named: "email"), password: any(named: "password"))).thenAnswer(
             (_) async => testAuthUser,
@@ -194,7 +279,7 @@ void main() {
 
       blocTest<LoginCubit, LoginState>(
         "loginWithEmail emits failed state on 401 error",
-        build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
+        build: buildCubit,
         act: (cubit) async {
           when(
             () => mockAuthSession.loginWithEmail(email: any(named: "email"), password: any(named: "password")),
@@ -212,7 +297,7 @@ void main() {
 
       blocTest<LoginCubit, LoginState>(
         "loginWithEmail shows validation error for empty email",
-        build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
+        build: buildCubit,
         act: (cubit) async {
           await cubit.loginWithEmail(
             email: "",
@@ -229,7 +314,7 @@ void main() {
 
       blocTest<LoginCubit, LoginState>(
         "loginWithEmail shows validation error for empty password",
-        build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession),
+        build: buildCubit,
         act: (cubit) async {
           await cubit.loginWithEmail(
             email: "test@example.com",

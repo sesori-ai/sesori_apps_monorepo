@@ -27,6 +27,7 @@ class LoginScreen extends StatelessWidget {
         getIt<OAuthFlowProvider>(),
         getIt<UrlLauncher>(),
         getIt<AuthSession>(),
+        getIt<LifecycleSource>(),
       ),
       child: const _LoginScreenBody(),
     );
