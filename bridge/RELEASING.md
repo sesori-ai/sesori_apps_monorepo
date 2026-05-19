@@ -99,8 +99,8 @@ git push
 ### 3. Tag and push
 
 ```bash
-git tag v0.3.1
-git push origin v0.3.1
+git tag bridge-v0.3.1
+git push origin bridge-v0.3.1
 ```
 
 ## What the workflow does on tag push
