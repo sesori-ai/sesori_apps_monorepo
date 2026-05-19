@@ -116,3 +116,25 @@ jobs:
           echo "- **Xcode**: ${{ env.XCODE_VERSION }}" >> $GITHUB_STEP_SUMMARY
           echo "- **CocoaPods**: ${{ env.COCOAPODS_VERSION }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+
+      # Tag the commit with the build number so the manual `submit-release.yml`
+      # workflow can later map a TestFlight build back to its originating
+      # commit. Using an annotated tag (-a) keeps the build metadata in git
+      # for inspection via `git show ios-build-<N>`. Tag is idempotent at the
+      # remote level: a re-run of the same commit's build is rejected by the
+      # remote when the tag already exists, which is the desired fail-loud.
+      - name: Tag commit with TestFlight build number
+        if: success()
+        run: |
+          set -euo pipefail
+          source mobile/app/ios/build_info.env
+          TAG="ios-build-${BUILD_NUMBER}"
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists locally — skipping"
+            exit 0
+          fi
+          git tag -a "$TAG" -m "iOS TestFlight build ${BUILD_NUMBER} (v${VERSION}) sha=${GITHUB_SHA}"
+          git push origin "refs/tags/${TAG}"
+          echo "- **Tag**: \`${TAG}\`" >> $GITHUB_STEP_SUMMARY

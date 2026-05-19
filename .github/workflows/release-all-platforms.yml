@@ -1,5 +1,7 @@
 name: Release All Platforms
 
+run-name: "release · build ${{ github.sha }}"
+
 on:
   workflow_dispatch:
   push:
@@ -25,6 +27,8 @@ jobs:
   ios:
     name: Deploy iOS to TestFlight
     needs: next-build-number
+    permissions:
+      contents: write
     uses: ./.github/workflows/_reusable-ios-testflight.yml
     with:
       runner: macos-latest
@@ -42,6 +46,8 @@ jobs:
   android:
     name: Deploy Android to Internal Track
     needs: next-build-number
+    permissions:
+      contents: write
     uses: ./.github/workflows/_reusable-android-internal.yml
     with:
       runner: ubuntu-latest
