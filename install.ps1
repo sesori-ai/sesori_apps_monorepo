@@ -173,7 +173,13 @@ try {
         exit 1
     }
 
-    $managedManifestJson = @{ version = $Release.TagName.Substring(1) } | ConvertTo-Json -Compress
+    $resolvedVersion = $Release.TagName
+    if ($resolvedVersion.StartsWith('bridge-v')) {
+        $resolvedVersion = $resolvedVersion.Substring(8)
+    } elseif ($resolvedVersion.StartsWith('v')) {
+        $resolvedVersion = $resolvedVersion.Substring(1)
+    }
+    $managedManifestJson = @{ version = $resolvedVersion } | ConvertTo-Json -Compress
     [System.IO.File]::WriteAllText(
         $ManagedManifest,
         $managedManifestJson,

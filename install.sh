@@ -353,7 +353,9 @@ main() {
     tar -xzf "${archive}" -C "${INSTALL_DIR}"
 
     chmod +x "${BINARY}"
-    printf '{"version":"%s"}\n' "${RESOLVED_RELEASE_TAG#v}" > "${MANAGED_MANIFEST}"
+    resolved_version="${RESOLVED_RELEASE_TAG#bridge-v}"
+    resolved_version="${resolved_version#v}"
+    printf '{"version":"%s"}\n' "${resolved_version}" > "${MANAGED_MANIFEST}"
 
     if [ "${os}" = "macos" ]; then
         xattr -dr com.apple.quarantine "${INSTALL_DIR}" 2>/dev/null || true

@@ -135,10 +135,10 @@ void main() {
   group('sync_versions.dart', () {
     _FixtureApp? fixture;
 
-    tearDown(() async {
+    tearDown(() {
       final currentFixture = fixture;
-      if (currentFixture != null && await Directory(currentFixture.rootPath).exists()) {
-        await Directory(currentFixture.rootPath).delete(recursive: true);
+      if (currentFixture != null && Directory(currentFixture.rootPath).existsSync()) {
+        Directory(currentFixture.rootPath).deleteSync(recursive: true);
       }
       fixture = null;
     });
@@ -240,7 +240,7 @@ environment:
         expect(bridgePubspec, contains('version: ${testCase.bridgeVersion}'));
         expect(bridgeVersion, equals("const String appVersion = '${testCase.bridgeVersion}';\n"));
         expect(mobilePubspec, contains('version: ${testCase.mobileVersion}'));
-        expect((wrapperPackage['version'] as String), equals(testCase.bridgeVersion));
+        expect(wrapperPackage['version'] as String, equals(testCase.bridgeVersion));
         expect((wrapperPackage['sesoriBridge'] as Map<String, dynamic>)['releaseTag'], equals('bridge-v${testCase.bridgeVersion}'));
 
         final optionalDependencies = wrapperPackage['optionalDependencies'] as Map<String, dynamic>;
