@@ -47,7 +47,12 @@ function currentAssetName() {
 
 function releaseTag(manifest) {
   var metadata = manifest.sesoriBridge || {};
-  return metadata.releaseTag || ("v" + manifest.version);
+  var tag = metadata.releaseTag || ("v" + manifest.version);
+  // Normalize bridge-v* tags to v* tags for backwards compatibility during transition
+  if (tag.indexOf("bridge-v") === 0) {
+    tag = "v" + tag.substring(8);
+  }
+  return tag;
 }
 
 function wrapperVersion() {
