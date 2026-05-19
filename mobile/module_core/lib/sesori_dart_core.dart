@@ -82,7 +82,6 @@ export "src/repositories/session_repository.dart";
 // Routing
 export "src/routing/app_routes.dart";
 export "src/routing/notification_open_dispatcher.dart";
-export "src/routing/oauth_callback_dispatcher.dart";
 // Services
 export "src/services/foreground_notification_dispatcher.dart";
 export "src/services/notification_registration_service.dart";

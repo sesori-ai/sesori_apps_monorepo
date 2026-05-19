@@ -4,7 +4,7 @@ import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 
 import 'package:sesori_shared/sesori_shared.dart';
 import '../../auth/login_email_repository.dart';
-import '../../auth/login_oauth_api.dart';
+import '../../auth/login_oauth_service.dart';
 import '../../auth/profile.dart';
 import '../../auth/token.dart';
 import '../../auth/validate.dart';
@@ -12,18 +12,18 @@ import 'bridge_cli_options.dart';
 
 class BridgeRuntimeAuthService {
   final LoginEmailRepository _loginEmailRepository;
-  final LoginOAuthApi _loginOAuthApi;
+  final LoginOAuthService _loginOAuthService;
 
   const BridgeRuntimeAuthService({
     required LoginEmailRepository loginEmailRepository,
-    required LoginOAuthApi loginOAuthApi,
+    required LoginOAuthService loginOAuthService,
   }) : _loginEmailRepository = loginEmailRepository,
-       _loginOAuthApi = loginOAuthApi;
+       _loginOAuthService = loginOAuthService;
 
   Future<AuthProvider> promptForProvider() async {
     while (true) {
-      stdout.writeln('Select login method: [1] GitHub [2] Google [3] Email');
-      stdout.write('Enter choice (1-3): ');
+      stdout.writeln('Select login method: [1] GitHub [2] Google [3] Apple [4] Email');
+      stdout.write('Enter choice (1-4): ');
       final input = stdin.readLineSync()?.trim();
 
       if (input == null) {
@@ -36,9 +36,11 @@ class BridgeRuntimeAuthService {
         case '2':
           return AuthProvider.google;
         case '3':
+          return AuthProvider.apple;
+        case '4':
           return AuthProvider.email;
         default:
-          stdout.writeln('Invalid choice. Please enter 1, 2, or 3.');
+          stdout.writeln('Invalid choice. Please enter 1, 2, 3, or 4.');
       }
     }
   }
@@ -122,7 +124,7 @@ class BridgeRuntimeAuthService {
     required AuthProvider provider,
   }) async {
     final TokenData tokens = await switch (provider) {
-      OAuthProvider() => _loginOAuthApi.performOAuthLogin(provider),
+      OAuthProvider() => _loginOAuthService.performOAuthLogin(provider),
       EmailAuthProvider() => _loginEmailRepository.performEmailLogin(),
     };
 
