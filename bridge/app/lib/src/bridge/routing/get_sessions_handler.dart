@@ -69,9 +69,11 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
       Log.w("GetSessionsHandler: persistSessionsForProject failed for projectId=$projectId: $e\n$st");
     }
 
+    final prRefreshFuture = _triggerPrRefresh(projectId: projectId, sessions: sessions);
+
     if (body.waitForPrData) {
       try {
-        await _triggerPrRefresh(projectId: projectId, sessions: sessions).timeout(_prRefreshTimeout);
+        await prRefreshFuture.timeout(_prRefreshTimeout);
         // Refresh succeeded within timeout — enrich the already-fetched sessions
         // with updated PR/CI metadata from the database (no extra plugin round-trip).
         final enrichedSessions = await _sessionRepository.enrichSessions(
@@ -87,6 +89,9 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
           st,
         );
       }
+    } else {
+      // Fire-and-forget: PR data will be available for the next request.
+      unawaited(prRefreshFuture);
     }
 
     return SessionListResponse(items: sessions);

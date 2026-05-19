@@ -806,7 +806,7 @@ void main() {
       expect(result.items[1].pullRequest, isNull);
     });
 
-    test("does not trigger PR refresh when waitForPrData is false", () async {
+    test("triggers PR refresh in background when waitForPrData is false", () async {
       plugin.currentProjectResult = const PluginProject(id: "/tmp/project");
       await handler.handle(
         makeRequest("POST", "/sessions"),
@@ -815,8 +815,11 @@ void main() {
         queryParams: {},
         fragment: null,
       );
+      // Allow the unawaited background refresh to run.
+      await Future<void>.delayed(Duration.zero);
 
-      expect(prSyncService.calls, isEmpty);
+      expect(prSyncService.calls, hasLength(1));
+      expect(prSyncService.calls.single, equals((projectId: "project-1", projectPath: "/tmp/project")));
     });
 
     test("triggers PR refresh with project path resolved from plugin.getProject", () async {
