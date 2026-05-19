@@ -79,7 +79,7 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
       return SessionListResponse(items: enrichedSessions);
     } catch (err, st) {
       Log.w(
-        "[GetSessionsHandler] PR refresh timed out after "
+        "PR refresh timed out after "
         "${_prRefreshTimeout.inSeconds}s for $projectId — "
         "returning current data; SSE will deliver updates when ready",
         err,
