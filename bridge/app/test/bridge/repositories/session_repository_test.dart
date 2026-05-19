@@ -400,6 +400,39 @@ void main() {
       expect(result.pullRequest?.number, equals(12));
     });
 
+    test("findProjectIdForSession returns stored project id without scanning plugin", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+      );
+
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p-stored"]);
+      await db.sessionDao.insertSession(
+        sessionId: "s-target",
+        projectId: "p-stored",
+        isDedicated: true,
+        createdAt: 1,
+        worktreePath: "/tmp",
+        branchName: "main",
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+
+      final result = await repository.findProjectIdForSession(sessionId: "s-target");
+
+      expect(result, equals("p-stored"));
+      expect(plugin.projectsResult, isEmpty);
+    });
+
     test("findProjectIdForSession scans projects until it finds the matching session", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
