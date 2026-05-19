@@ -22,8 +22,8 @@ class BridgeRuntimeAuthService {
 
   Future<AuthProvider> promptForProvider() async {
     while (true) {
-      stdout.writeln('Select login method: [1] GitHub [2] Google [3] Apple [4] Email');
-      stdout.write('Enter choice (1-4): ');
+      stdout.writeln('Select login method: [1] GitHub [2] Google [3] Email');
+      stdout.write('Enter choice (1-3): ');
       final input = stdin.readLineSync()?.trim();
 
       if (input == null) {
@@ -36,11 +36,9 @@ class BridgeRuntimeAuthService {
         case '2':
           return AuthProvider.google;
         case '3':
-          return AuthProvider.apple;
-        case '4':
           return AuthProvider.email;
         default:
-          stdout.writeln('Invalid choice. Please enter 1, 2, 3, or 4.');
+          stdout.writeln('Invalid choice. Please enter 1, 2, or 3.');
       }
     }
   }
