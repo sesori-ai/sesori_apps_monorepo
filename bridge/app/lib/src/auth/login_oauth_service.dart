@@ -10,9 +10,11 @@ import "package:sesori_shared/sesori_shared.dart";
 import "login_oauth_api.dart";
 import "token.dart";
 
-const int _loginTimeoutSeconds = 30;
+const int _totalLoginTimeoutSeconds = 300; // 5 minutes, matching server session expiry
+const int _perRequestTimeoutSeconds = 35;  // Slightly longer than server's 30s long poll
 const Duration _defaultPollInterval = Duration(milliseconds: 250);
-const Duration _defaultPollTimeout = Duration(seconds: _loginTimeoutSeconds);
+const Duration _defaultPollTimeout = Duration(seconds: _totalLoginTimeoutSeconds);
+const Duration _defaultPerRequestTimeout = Duration(seconds: _perRequestTimeoutSeconds);
 
 /// Opens the default browser to [url].
 ///
@@ -42,6 +44,7 @@ class LoginOAuthService {
   final Future<void> Function(String url) _browserLauncher;
   final Duration _pollInterval;
   final Duration _pollTimeout;
+  final Duration _perRequestTimeout;
   final Future<void> Function(Duration duration) _delay;
 
   LoginOAuthService({
@@ -49,11 +52,13 @@ class LoginOAuthService {
     required Future<void> Function(String url) browserLauncher,
     @visibleForTesting Duration pollInterval = _defaultPollInterval,
     @visibleForTesting Duration pollTimeout = _defaultPollTimeout,
+    @visibleForTesting Duration perRequestTimeout = _defaultPerRequestTimeout,
     @visibleForTesting Future<void> Function(Duration duration)? delay,
   }) : _api = api,
        _browserLauncher = browserLauncher,
        _pollInterval = pollInterval,
        _pollTimeout = pollTimeout,
+       _perRequestTimeout = perRequestTimeout,
        _delay = delay ?? Future<void>.delayed;
 
   /// Starts the OAuth login flow through the auth backend's pending-session API.
@@ -90,7 +95,8 @@ class LoginOAuthService {
       while (stopwatch.elapsed < _pollTimeout) {
         final remaining = _pollTimeout - stopwatch.elapsed;
         if (remaining <= Duration.zero) break;
-        final status = await _api.getOAuthSessionStatus(sessionToken: sessionToken).timeout(remaining);
+        final requestTimeout = remaining < _perRequestTimeout ? remaining : _perRequestTimeout;
+        final status = await _api.getOAuthSessionStatus(sessionToken: sessionToken).timeout(requestTimeout);
 
         switch (status) {
           case AuthSessionStatusResponsePending():
