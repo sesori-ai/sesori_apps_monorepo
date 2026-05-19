@@ -158,12 +158,28 @@ platform :android do
         UI.user_error!("AAB not found at #{aab_path} after build.")
       end
 
+      # Embed the short commit SHA in the Play Console release notes so the
+      # originating commit survives even if the matching `android-build-<N>`
+      # git tag is ever lost — operators can recover it from Play Console.
+      # Supply expects per-locale changelogs under
+      # `<metadata_path>/<lang>/changelogs/<versionCode>.txt`.
+      short_sha = ENV.fetch("GITHUB_SHA", `git rev-parse HEAD`.strip)[0, 7]
+      metadata_path = File.expand_path("metadata", __dir__)
+      changelog_dir = File.join(metadata_path, "android", "en-US", "changelogs")
+      FileUtils.mkdir_p(changelog_dir)
+      File.write(
+        File.join(changelog_dir, "#{new_build_number}.txt"),
+        "Internal build #{new_build_number} (v#{version_name})\ncommit: #{short_sha}\n"
+      )
+
       upload_to_play_store(
         track: "internal",
         aab: aab_path,
+        metadata_path: metadata_path,
         skip_upload_metadata: true,
         skip_upload_images: true,
         skip_upload_screenshots: true,
+        skip_upload_changelogs: false,
         release_status: "completed",
         version_name: version_name
       )
@@ -172,6 +188,48 @@ platform :android do
       File.write("../build_info.env", "VERSION=#{version_name}\nVERSION_CODE=#{new_build_number}\n")
 
       UI.success("Successfully uploaded version #{version_name} (#{new_build_number}) to Google Play Internal track!")
+    ensure
+      _cleanup_secret_files
+    end
+  end
+
+  desc "Promote an existing internal-track build to beta or production. " \
+       "Does NOT build — runs on Linux."
+  lane :submit_android do |options|
+    version_code = (options[:version_code] || ENV["VERSION_CODE"]).to_s.strip
+    UI.user_error!("VERSION_CODE is required") if version_code.empty?
+
+    track = (options[:track] || ENV["TRACK"] || "production").to_s.strip
+    UI.user_error!("TRACK must be 'beta' or 'production' (got: #{track.inspect})") \
+      unless %w[beta production].include?(track)
+
+    _materialize_secret_files
+
+    begin
+      target_track = track == "beta" ? "beta" : "production"
+      version_name = _read_version_name
+
+      UI.message("Promoting Android version code #{version_code} (v#{version_name}) " \
+                 "from internal → #{target_track}")
+
+      upload_to_play_store(
+        package_name: "com.sesori.app",
+        track: "internal",
+        track_promote_to: target_track,
+        track_promote_release_status: "completed",
+        version_code: version_code.to_i,
+        skip_upload_apk: true,
+        skip_upload_aab: true,
+        skip_upload_metadata: true,
+        skip_upload_changelogs: true,
+        skip_upload_images: true,
+        skip_upload_screenshots: true,
+        release_status: "completed",
+        rollout: "1"
+      )
+
+      UI.success("Promoted Android version code #{version_code} (v#{version_name}) " \
+                 "to #{target_track}")
     ensure
       _cleanup_secret_files
     end
