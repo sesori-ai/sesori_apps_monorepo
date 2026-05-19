@@ -70,7 +70,6 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
     }
 
     if (body.waitForPrData) {
-    if (body.waitForPrData) {
       try {
         await _triggerPrRefresh(projectId: projectId, sessions: sessions).timeout(_prRefreshTimeout);
         // Refresh succeeded within timeout — enrich the already-fetched sessions
@@ -88,8 +87,6 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
           st,
         );
       }
-    }
-    return SessionListResponse(items: sessions);
     }
 
     return SessionListResponse(items: sessions);
