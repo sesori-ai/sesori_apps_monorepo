@@ -42,7 +42,7 @@ class DeepLinkService {
         return;
       }
 
-      logd("Ignoring legacy OAuth deep link: $uri");
+      logd("Ignoring legacy OAuth deep link");
       _processing = true;
 
       try {

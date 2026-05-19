@@ -37,7 +37,12 @@ class LoginOAuthApi {
       throw Exception("init ${provider.label} auth failed: status ${response.statusCode}");
     }
 
-    final initResp = AuthInitResponse.fromJson(jsonDecodeMap(response.body));
+    final AuthInitResponse initResp;
+    try {
+      initResp = AuthInitResponse.fromJson(jsonDecodeMap(response.body));
+    } on Object catch (e) {
+      throw Exception("auth init response malformed: $e");
+    }
 
     if (initResp.authUrl.isEmpty || initResp.state.isEmpty || initResp.userCode.isEmpty) {
       throw Exception("auth init response missing authUrl/state/userCode");

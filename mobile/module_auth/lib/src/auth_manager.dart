@@ -108,10 +108,12 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     try {
       while (stopwatch.elapsed < _pollTimeout) {
         final uri = Uri.parse("$authBaseUrl/auth/session/status");
+        final remaining = _pollTimeout - stopwatch.elapsed;
+        if (remaining <= Duration.zero) break;
         final response = await _get(
           uri,
           headers: {_sessionTokenHeader: sessionToken},
-        ).timeout(_pollTimeout - stopwatch.elapsed);
+        ).timeout(remaining);
 
         final status = _parseSessionStatus(response);
         switch (status) {
@@ -136,8 +138,8 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
             throw StateError("OAuth authorization was denied");
           case AuthSessionStatusResponseExpired():
             throw StateError("OAuth authorization expired");
-          case AuthSessionStatusResponseError():
-            throw StateError("OAuth authorization failed");
+          case AuthSessionStatusResponseError(:final message):
+            throw StateError("OAuth authorization failed: $message");
         }
       }
 

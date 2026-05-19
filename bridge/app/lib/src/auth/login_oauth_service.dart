@@ -10,7 +10,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "login_oauth_api.dart";
 import "token.dart";
 
-const int _loginTimeoutSeconds = 120;
+const int _loginTimeoutSeconds = 30;
 const Duration _defaultPollInterval = Duration(milliseconds: 250);
 const Duration _defaultPollTimeout = Duration(seconds: _loginTimeoutSeconds);
 
@@ -21,14 +21,19 @@ const Duration _defaultPollTimeout = Duration(seconds: _loginTimeoutSeconds);
 /// - Linux: `xdg-open`
 /// - Windows: `cmd /c start`
 Future<void> openOAuthBrowser(String url) async {
+  late final ProcessResult result;
   if (Platform.isMacOS) {
-    await Process.run("open", [url]);
+    result = await Process.run("open", [url]);
   } else if (Platform.isLinux) {
-    await Process.run("xdg-open", [url]);
+    result = await Process.run("xdg-open", [url]);
   } else if (Platform.isWindows) {
-    await Process.run("cmd", ["/c", "start", url]);
+    result = await Process.run("cmd", ["/c", "start", url]);
   } else {
     throw UnsupportedError("Unsupported platform: ${Platform.operatingSystem}");
+  }
+
+  if (result.exitCode != 0) {
+    throw Exception("Browser launcher exited with code ${result.exitCode}: ${result.stderr}");
   }
 }
 
@@ -84,6 +89,7 @@ class LoginOAuthService {
     try {
       while (stopwatch.elapsed < _pollTimeout) {
         final remaining = _pollTimeout - stopwatch.elapsed;
+        if (remaining <= Duration.zero) break;
         final status = await _api.getOAuthSessionStatus(sessionToken: sessionToken).timeout(remaining);
 
         switch (status) {
