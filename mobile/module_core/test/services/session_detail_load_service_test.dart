@@ -220,6 +220,7 @@ void _stubRepositorySnapshot({
       ),
     ),
   );
+  stubSessionRepositoryGetSession(repository: repository, sessionId: "session-1");
   when(() => projectRepository.findSessionContext(sessionId: "session-1")).thenAnswer(
     (_) async => ProjectSessionContext(projectId: "project-1", sessionTitle: canonicalSessionTitle),
   );
