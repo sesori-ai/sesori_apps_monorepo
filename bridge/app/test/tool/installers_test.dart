@@ -114,47 +114,47 @@ void main() {
             ],
           },
           {
-            'tag_name': 'bridge-v0.4.0-beta.1',
+            'tag_name': 'v0.4.0-beta.1',
             'draft': false,
             'prerelease': true,
             'assets': [
               {
                 'name': 'sesori-bridge-macos-arm64.tar.gz',
-                'browser_download_url': 'https://example.com/bridge-v0.4.0-beta.1/sesori-bridge-macos-arm64.tar.gz',
+                'browser_download_url': 'https://example.com/v0.4.0-beta.1/sesori-bridge-macos-arm64.tar.gz',
               },
               {
                 'name': 'checksums.txt',
-                'browser_download_url': 'https://example.com/bridge-v0.4.0-beta.1/checksums.txt',
+                'browser_download_url': 'https://example.com/v0.4.0-beta.1/checksums.txt',
               },
             ],
           },
           {
-            'tag_name': 'bridge-v0.3.1',
+            'tag_name': 'v0.3.1',
             'draft': false,
             'prerelease': false,
             'assets': [
               {
                 'name': 'sesori-bridge-macos-arm64.tar.gz',
-                'browser_download_url': 'https://example.com/bridge-v0.3.1/sesori-bridge-macos-arm64.tar.gz',
+                'browser_download_url': 'https://example.com/v0.3.1/sesori-bridge-macos-arm64.tar.gz',
               },
               {
                 'name': 'checksums.txt',
-                'browser_download_url': 'https://example.com/bridge-v0.3.1/checksums.txt',
+                'browser_download_url': 'https://example.com/v0.3.1/checksums.txt',
               },
             ],
           },
           {
-            'tag_name': 'bridge-v0.4.0',
+            'tag_name': 'v0.4.0',
             'draft': false,
             'prerelease': false,
             'assets': [
               {
                 'name': 'sesori-bridge-macos-arm64.tar.gz',
-                'browser_download_url': 'https://example.com/bridge-v0.4.0/sesori-bridge-macos-arm64.tar.gz',
+                'browser_download_url': 'https://example.com/v0.4.0/sesori-bridge-macos-arm64.tar.gz',
               },
               {
                 'name': 'checksums.txt',
-                'browser_download_url': 'https://example.com/bridge-v0.4.0/checksums.txt',
+                'browser_download_url': 'https://example.com/v0.4.0/checksums.txt',
               },
             ],
           },
@@ -180,9 +180,9 @@ printf '%s\n%s\n%s\n' "\$RESOLVED_RELEASE_TAG" "\$RESOLVED_ARCHIVE_URL" "\$RESOL
         (result.stdout as String).trim(),
         equals(
           [
-            'bridge-v0.4.0',
-            'https://example.com/bridge-v0.4.0/sesori-bridge-macos-arm64.tar.gz',
-            'https://example.com/bridge-v0.4.0/checksums.txt',
+            'v0.4.0',
+            'https://example.com/v0.4.0/sesori-bridge-macos-arm64.tar.gz',
+            'https://example.com/v0.4.0/checksums.txt',
           ].join('\n'),
         ),
       );
@@ -199,17 +199,17 @@ printf '%s\n%s\n%s\n' "\$RESOLVED_RELEASE_TAG" "\$RESOLVED_ARCHIVE_URL" "\$RESOL
           List.generate(100, (index) {
             final version = '0.3.${index + 1}';
             return {
-              'tag_name': 'bridge-v$version',
+              'tag_name': 'v$version',
               'draft': false,
               'prerelease': false,
               'assets': [
                 {
                   'name': 'sesori-bridge-linux-x64.tar.gz',
-                  'browser_download_url': 'https://example.com/bridge-v$version/sesori-bridge-linux-x64.tar.gz',
+                    'browser_download_url': 'https://example.com/v$version/sesori-bridge-linux-x64.tar.gz',
                 },
                 {
                   'name': 'checksums.txt',
-                  'browser_download_url': 'https://example.com/bridge-v$version/checksums.txt',
+                    'browser_download_url': 'https://example.com/v$version/checksums.txt',
                 },
               ],
             };
@@ -219,17 +219,17 @@ printf '%s\n%s\n%s\n' "\$RESOLVED_RELEASE_TAG" "\$RESOLVED_ARCHIVE_URL" "\$RESOL
       await File(pageTwoPath).writeAsString(
         jsonEncode([
           {
-            'tag_name': 'bridge-v0.4.0',
+            'tag_name': 'v0.4.0',
             'draft': false,
             'prerelease': false,
             'assets': [
               {
                 'name': 'sesori-bridge-macos-arm64.tar.gz',
-                'browser_download_url': 'https://example.com/bridge-v0.4.0/sesori-bridge-macos-arm64.tar.gz',
+                'browser_download_url': 'https://example.com/v0.4.0/sesori-bridge-macos-arm64.tar.gz',
               },
               {
                 'name': 'checksums.txt',
-                'browser_download_url': 'https://example.com/bridge-v0.4.0/checksums.txt',
+                'browser_download_url': 'https://example.com/v0.4.0/checksums.txt',
               },
             ],
           },
@@ -261,9 +261,9 @@ printf '%s\n%s\n%s\n' "\$RESOLVED_RELEASE_TAG" "\$RESOLVED_ARCHIVE_URL" "\$RESOL
         (result.stdout as String).trim(),
         equals(
           [
-            'bridge-v0.4.0',
-            'https://example.com/bridge-v0.4.0/sesori-bridge-macos-arm64.tar.gz',
-            'https://example.com/bridge-v0.4.0/checksums.txt',
+            'v0.4.0',
+            'https://example.com/v0.4.0/sesori-bridge-macos-arm64.tar.gz',
+            'https://example.com/v0.4.0/checksums.txt',
           ].join('\n'),
         ),
       );
@@ -357,7 +357,20 @@ cat "\$HOME/.zprofile"
       final script = File(_installShPath()).readAsStringSync();
 
       expect(script, contains(r'MANAGED_MANIFEST="${INSTALL_DIR}/.managed-runtime.json"'));
-      expect(script, contains(r'"${RESOLVED_RELEASE_TAG#bridge-v}" > "${MANAGED_MANIFEST}"'));
+      expect(script, contains(r'resolved_version="${RESOLVED_RELEASE_TAG#bridge-v}"'));
+      expect(script, contains(r'resolved_version="${resolved_version#v}"'));
+      expect(script, contains('printf'));
+      expect(script, contains('"%s"'));
+      expect(script, contains(r'"${resolved_version}" > "${MANAGED_MANIFEST}"'));
+    });
+
+    test('accepts both bridge-v and v release tags for backwards compatibility', () {
+      final script = File(_installShPath()).readAsStringSync();
+
+      expect(script, contains('if tag_name.startswith("bridge-v"):'));
+      expect(script, contains('elif tag_name.startswith("v"):'));
+      expect(script, contains('version = tag_name.replace("bridge-v", "", 1)'));
+      expect(script, contains('version = tag_name.replace("v", "", 1)'));
     });
   });
 
@@ -381,7 +394,7 @@ cat "\$HOME/.zprofile"
     });
 
     test('resolves stable bridge-tagged release assets and checksum basenames', () {
-      expect(script, contains(r"$tagName.StartsWith('bridge-v')"));
+      expect(script, contains(r"$tagName.StartsWith('v')"));
       expect(script, contains(r'''$release.draft -or $release.prerelease'''));
       expect(script, contains(r'[version]::TryParse($versionText, [ref]$parsedVersion)'));
       expect(script, contains(r'$page -le $ReleasesMaxPages'));
@@ -407,12 +420,21 @@ cat "\$HOME/.zprofile"
 
     test('writes managed runtime manifest with resolved version', () {
       expect(script, contains(r"$ManagedManifest = Join-Path $InstallRoot '.managed-runtime.json'"));
-      expect(
-        script,
-        contains(r'$managedManifestJson = @{ version = $Release.TagName.Substring(8) } | ConvertTo-Json -Compress'),
-      );
+      expect(script, contains(r'$resolvedVersion = $Release.TagName'));
+      expect(script, contains(r"if ($resolvedVersion.StartsWith('bridge-v'))"));
+      expect(script, contains(r'$resolvedVersion = $resolvedVersion.Substring(8)'));
+      expect(script, contains(r"} elseif ($resolvedVersion.StartsWith('v')) {"));
+      expect(script, contains(r'$resolvedVersion = $resolvedVersion.Substring(1)'));
+      expect(script, contains(r'$managedManifestJson = @{ version = $resolvedVersion } | ConvertTo-Json -Compress'));
       expect(script, contains('[System.IO.File]::WriteAllText('));
       expect(script, contains(r'[System.Text.UTF8Encoding]::new($false)'));
+    });
+
+    test('accepts both bridge-v and v release tags for backwards compatibility', () {
+      expect(script, contains(r"if ($tagName.StartsWith('bridge-v')) {"));
+      expect(script, contains(r'$versionText = $tagName.Substring(8)'));
+      expect(script, contains(r"} elseif ($tagName.StartsWith('v')) {"));
+      expect(script, contains(r'$versionText = $tagName.Substring(1)'));
     });
   });
 }

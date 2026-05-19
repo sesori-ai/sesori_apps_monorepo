@@ -83,7 +83,7 @@ sesori-bridge
 - If `~/.local/bin` is not in your PATH on macOS/Linux, the installer adds it to your shell config. Open a new terminal if `sesori-bridge` is not immediately available.
 - Re-running either the shell installer or `npx @sesori/bridge` is the supported manual refresh path if you want to update immediately instead of waiting for automatic updates.
 - `npm uninstall @sesori/bridge` does not remove the managed install under `~/.local/share/sesori/` or `%LOCALAPPDATA%\sesori\`. Remove that directory manually if you want a full uninstall.
-- Installers resolve the newest non-prerelease GitHub release tagged `bridge-v*` that contains both the platform archive and `checksums.txt`
+- Installers resolve the newest non-prerelease GitHub release tagged `v*` that contains both the platform archive and `checksums.txt`
 - Release checksum manifests use archive basenames such as `sesori-bridge-macos-arm64.tar.gz`; installers match that basename instead of a temp download path
 - Startup auto-update only applies to managed installs under the Sesori install root (`~/.local/share/sesori/bin` on macOS/Linux, `%LOCALAPPDATA%\sesori\bin` on Windows)
 - Runtime auto-update also performs periodic polling every 4 hours while the managed bridge is running, and it is skipped in CI and when `SESORI_NO_UPDATE=1` is set

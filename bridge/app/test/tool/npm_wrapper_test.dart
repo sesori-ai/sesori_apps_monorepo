@@ -510,7 +510,7 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
       expect(result.exitCode, equals(1));
       expect(
         result.stderr,
-        contains('Failed to download managed runtime from GitHub release assets for bridge-v$wrapperVersion'),
+          contains('Failed to download managed runtime from GitHub release assets for bridge-v$wrapperVersion'),
       );
       expect(result.stderr, contains('Checksum mismatch for ${releaseAsset.assetName}'));
     });
@@ -531,7 +531,7 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
       expect(result.exitCode, equals(1));
       expect(
         result.stderr,
-        contains('Failed to download managed runtime from GitHub release assets for bridge-v$wrapperVersion'),
+          contains('Failed to download managed runtime from GitHub release assets for bridge-v$wrapperVersion'),
       );
       expect(result.stderr, contains('Invalid redirect URL'));
     });

@@ -149,11 +149,14 @@ releases = json.loads(os.environ["RELEASES_JSON"])
 eligible = []
 for release in releases:
     tag_name = release.get("tag_name", "")
-    if not tag_name.startswith("bridge-v"):
+    if tag_name.startswith("bridge-v"):
+        version = tag_name.replace("bridge-v", "", 1)
+    elif tag_name.startswith("v"):
+        version = tag_name.replace("v", "", 1)
+    else:
         continue
     if release.get("draft") or release.get("prerelease"):
         continue
-    version = tag_name.replace("bridge-v", "", 1)
     if not is_valid_stable_version(version):
         continue
     assets = {
@@ -350,7 +353,9 @@ main() {
     tar -xzf "${archive}" -C "${INSTALL_DIR}"
 
     chmod +x "${BINARY}"
-    printf '{"version":"%s"}\n' "${RESOLVED_RELEASE_TAG#bridge-v}" > "${MANAGED_MANIFEST}"
+    resolved_version="${RESOLVED_RELEASE_TAG#bridge-v}"
+    resolved_version="${resolved_version#v}"
+    printf '{"version":"%s"}\n' "${resolved_version}" > "${MANAGED_MANIFEST}"
 
     if [ "${os}" = "macos" ]; then
         xattr -dr com.apple.quarantine "${INSTALL_DIR}" 2>/dev/null || true

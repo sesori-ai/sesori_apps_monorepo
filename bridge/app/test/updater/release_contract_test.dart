@@ -88,7 +88,7 @@ void main() {
               ],
             ),
             _releaseFixture(
-              tagName: 'bridge-v0.4.0-beta.1',
+              tagName: 'v0.4.0-beta.1',
               draft: false,
               prerelease: true,
               assets: [
@@ -97,7 +97,7 @@ void main() {
               ],
             ),
             _releaseFixture(
-              tagName: 'bridge-v0.3.2',
+              tagName: 'v0.3.2',
               draft: false,
               prerelease: false,
               assets: [
@@ -106,7 +106,7 @@ void main() {
               ],
             ),
             _releaseFixture(
-              tagName: 'bridge-v0.3.1',
+              tagName: 'v0.3.1',
               draft: false,
               prerelease: false,
               assets: [
@@ -135,12 +135,12 @@ void main() {
       expect(
         release.assetUrl,
         equals(
-          'https://example.com/releases/download/bridge-v0.3.1/sesori-bridge-macos-arm64.tar.gz',
+          'https://example.com/releases/download/v0.3.1/sesori-bridge-macos-arm64.tar.gz',
         ),
       );
       expect(
         release.checksumsUrl,
-        equals('https://example.com/releases/download/bridge-v0.3.1/checksums.txt'),
+        equals('https://example.com/releases/download/v0.3.1/checksums.txt'),
       );
     });
 
@@ -151,7 +151,8 @@ void main() {
       expect(script, contains('GITHUB_RELEASES_PER_PAGE=100'));
       expect(script, contains('GITHUB_RELEASES_MAX_PAGES=10'));
       expect(script, contains(r'?per_page=${GITHUB_RELEASES_PER_PAGE}&page=${page}'));
-      expect(script, contains('bridge-v'));
+      expect(script, contains('if tag_name.startswith("bridge-v"):'));
+      expect(script, contains('elif tag_name.startswith("v"):'));
       expect(script, contains('release.get("draft") or release.get("prerelease")'));
       expect(script, contains('eligible.sort('));
       expect(script, contains('asset_url = assets.get(filename)'));
@@ -169,7 +170,7 @@ void main() {
       expect(script, contains(r'$ReleasesPerPage = 100'));
       expect(script, contains(r'$ReleasesMaxPages = 10'));
       expect(script, contains(r'"$ReleasesApiUrl?per_page=$ReleasesPerPage&page=$page"'));
-      expect(script, contains("StartsWith('bridge-v')"));
+      expect(script, contains("StartsWith('v')"));
       expect(script, contains(r'''$release.draft -or $release.prerelease'''));
       expect(script, contains('Sort-Object Version -Descending'));
       expect(script, contains(r'''Where-Object { $_.name -eq $ArchiveName }'''));
@@ -280,7 +281,7 @@ void main() {
         equals({
           'bootstrapOnly': true,
           'managedRuntimeOwner': false,
-          'releaseTag': 'bridge-v$appVersion',
+            'releaseTag': 'bridge-v$appVersion',
           'runtimeBundleSource': 'github-release-assets',
         }),
       );
