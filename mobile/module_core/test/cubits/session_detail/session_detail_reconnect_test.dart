@@ -76,6 +76,7 @@ void main() {
       ),
     ).thenAnswer((_) async => ApiResponse.success(null));
     delegateSessionRepositoryToService(repository: mockSessionRepository, service: mockSessionService);
+    stubSessionRepositoryGetSession(repository: mockSessionRepository, sessionId: _sessionId);
     when(() => mockProjectRepository.findSessionContext(sessionId: _sessionId)).thenAnswer(
       (_) async => const ProjectSessionContext(projectId: "project-1", sessionTitle: null),
     );
@@ -133,10 +134,20 @@ void main() {
         reply: any(named: "reply"),
       ),
     ).thenAnswer((_) async => ApiResponse.success(null));
-    when(() => mockLoadService.load(sessionId: _sessionId, projectId: any(named: "projectId"))).thenAnswer(
+    when(
+      () => mockLoadService.load(
+        sessionId: _sessionId,
+        projectId: any(named: "projectId"),
+      ),
+    ).thenAnswer(
       (_) async => const SessionDetailLoadResult.waitingForConnection(),
     );
-    when(() => mockLoadService.reload(sessionId: _sessionId, projectId: any(named: "projectId"))).thenAnswer(
+    when(
+      () => mockLoadService.reload(
+        sessionId: _sessionId,
+        projectId: any(named: "projectId"),
+      ),
+    ).thenAnswer(
       (_) async => const SessionDetailLoadResult.loaded(
         snapshot: SessionDetailSnapshot(
           projectId: "project-1",
@@ -148,9 +159,9 @@ void main() {
           agents: <AgentInfo?>[],
           providerData: null,
           commands: <CommandInfo>[],
-            canonicalSessionTitle: null,
-            promptDefaults: null,
-          ),
+          canonicalSessionTitle: null,
+          promptDefaults: null,
+        ),
         isBridgeConnected: true,
       ),
     );
@@ -217,9 +228,9 @@ void main() {
         agents: <AgentInfo?>[],
         providerData: null,
         commands: <CommandInfo>[],
-            canonicalSessionTitle: null,
-            promptDefaults: null,
-          ),
+        canonicalSessionTitle: null,
+        promptDefaults: null,
+      ),
       isBridgeConnected: true,
     );
 
@@ -276,15 +287,15 @@ void _stubLoadApis(MockSessionService service) {
   when(
     () => service.getMessages(sessionId: _sessionId),
   ).thenAnswer((_) async => ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()])));
-    when(
-      () => service.getPendingQuestions(sessionId: _sessionId),
-    ).thenAnswer((_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])));
-    when(
-      () => service.getPendingPermissions(),
-    ).thenAnswer((_) async => ApiResponse.success(const PendingPermissionResponse(data: <PendingPermission>[])));
-    when(
-      () => service.getChildren(sessionId: _sessionId),
-    ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: <Session>[])));
+  when(
+    () => service.getPendingQuestions(sessionId: _sessionId),
+  ).thenAnswer((_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])));
+  when(
+    () => service.getPendingPermissions(),
+  ).thenAnswer((_) async => ApiResponse.success(const PendingPermissionResponse(data: <PendingPermission>[])));
+  when(
+    () => service.getChildren(sessionId: _sessionId),
+  ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: <Session>[])));
   when(() => service.getSessionStatuses()).thenAnswer(
     (_) async => ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),
   );

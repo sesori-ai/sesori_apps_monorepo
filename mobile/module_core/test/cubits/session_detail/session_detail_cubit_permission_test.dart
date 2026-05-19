@@ -101,6 +101,7 @@ void main() {
       when(() => mockSessionService.listCommands(projectId: any(named: "projectId"))).thenAnswer(
         (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
       );
+      stubSessionRepositoryGetSession(repository: mockSessionRepository, sessionId: sessionId);
 
       _stubLoadApis(mockSessionService, sessionId: sessionId);
     });

@@ -81,6 +81,7 @@ void main() {
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
 
       delegateSessionRepositoryToService(repository: mockSessionRepository, service: mockSessionService);
+      stubSessionRepositoryGetSession(repository: mockSessionRepository, sessionId: sessionId);
       when(() => mockProjectRepository.findSessionContext(sessionId: any(named: "sessionId"))).thenAnswer(
         (_) async => const ProjectSessionContext(projectId: "test-project", sessionTitle: null),
       );
@@ -126,6 +127,7 @@ void main() {
         verify(() => mockSessionService.listAgents()).called(1);
         verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).called(1);
         verify(() => mockSessionService.listCommands(projectId: "project-1")).called(1);
+        verify(() => mockSessionRepository.getSession(sessionId: sessionId)).called(1);
         verify(() => mockConnectionService.sessionEvents(sessionId)).called(1);
         verify(() => mockConnectionService.events).called(1);
       },
@@ -183,6 +185,7 @@ void main() {
         verify(() => mockSessionService.listAgents()).called(2);
         verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).called(2);
         verify(() => mockSessionService.listCommands(projectId: "project-1")).called(2);
+        verify(() => mockSessionRepository.getSession(sessionId: sessionId)).called(2);
       },
     );
 

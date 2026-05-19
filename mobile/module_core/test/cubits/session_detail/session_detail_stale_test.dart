@@ -92,6 +92,7 @@ void main() {
       when(() => mockSessionService.listCommands(projectId: any(named: "projectId"))).thenAnswer(
         (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
       );
+      stubSessionRepositoryGetSession(repository: mockSessionRepository, sessionId: sessionId);
 
       _stubLoadApis(mockSessionService, sessionId: sessionId);
     });
@@ -337,7 +338,9 @@ void main() {
       when(
         () => mockSessionService.listAgents(),
       ).thenAnswer((_) async => ApiResponse.success(Agents(agents: _agents())));
-      when(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer((_) async => ApiResponse.success(_providers()));
+      when(
+        () => mockSessionService.listProviders(projectId: any(named: "projectId")),
+      ).thenAnswer((_) async => ApiResponse.success(_providers()));
 
       final emitted = <SessionDetailState>[];
       final sub = cubit.stream.listen(emitted.add);
@@ -388,7 +391,9 @@ void main() {
           MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-provider-fallback")]),
         ),
       );
-      when(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+      when(
+        () => mockSessionService.listProviders(projectId: any(named: "projectId")),
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
 
       mockConnectionService.emitDataMayBeStale();
       await Future<void>.delayed(const Duration(milliseconds: 20));
@@ -529,7 +534,9 @@ void main() {
       when(
         () => mockSessionService.listAgents(),
       ).thenAnswer((_) async => ApiResponse.success(Agents(agents: _agents())));
-      when(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer((_) async => ApiResponse.success(_providers()));
+      when(
+        () => mockSessionService.listProviders(projectId: any(named: "projectId")),
+      ).thenAnswer((_) async => ApiResponse.success(_providers()));
       when(() => mockSessionService.listCommands(projectId: any(named: "projectId"))).thenAnswer(
         (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
       );

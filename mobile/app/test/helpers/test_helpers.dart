@@ -222,6 +222,16 @@ void delegateSessionRepositoryToService({
   );
 }
 
+void stubSessionRepositoryGetSession({
+  required MockSessionRepository repository,
+  required String sessionId,
+  Session? session,
+}) {
+  when(() => repository.getSession(sessionId: sessionId)).thenAnswer(
+    (_) async => ApiResponse.success(session ?? testSession(id: sessionId)),
+  );
+}
+
 // ---------------------------------------------------------------------------
 // registerAllFallbackValues
 // ---------------------------------------------------------------------------
