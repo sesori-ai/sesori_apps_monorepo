@@ -31,7 +31,12 @@ class LoginCubit extends Cubit<LoginState> {
       super(const LoginState.idle()) {
     _lifecycleSubscription = _lifecycleSource.lifecycleStateStream.listen((state) {
       if (state == LifecycleState.resumed) {
-        _onAppResumed();
+        _onAppResumed().catchError((Object e, StackTrace st) {
+          loge("OAuth resume check failed", e, st);
+          if (!isClosed) {
+            emit(const LoginState.failed(reason: LoginFailedReason.unknown));
+          }
+        });
       }
     });
   }

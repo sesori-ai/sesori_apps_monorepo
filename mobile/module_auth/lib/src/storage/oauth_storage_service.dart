@@ -112,6 +112,8 @@ class OAuthStorageService {
       }
       final expiresAt = DateTime.tryParse(expiryString);
       if (expiresAt == null) {
+        await _storage.delete(key: _oauthSessionTokenKey);
+        await _storage.delete(key: _oauthSessionExpiryKey);
         return (sessionToken: null, expiresAt: null);
       }
       return (sessionToken: sessionToken, expiresAt: expiresAt);
