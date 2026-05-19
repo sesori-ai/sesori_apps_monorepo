@@ -278,5 +278,6 @@ Session _session({
     time: null,
     summary: null,
     pullRequest: null,
+    promptDefaults: null,
   );
 }

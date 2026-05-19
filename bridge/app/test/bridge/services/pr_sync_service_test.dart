@@ -419,6 +419,7 @@ class _FakeSessionRepository implements SessionRepository {
     time: null,
     summary: null,
     pullRequest: null,
+    promptDefaults: null,
   );
 
   @override
@@ -528,5 +529,6 @@ class _FakeSessionRepository implements SessionRepository {
     time: null,
     summary: null,
     pullRequest: null,
+    promptDefaults: null,
   );
 }

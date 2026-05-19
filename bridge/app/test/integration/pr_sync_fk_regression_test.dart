@@ -234,6 +234,7 @@ Session _session({
   time: SessionTime(created: createdAt, updated: createdAt, archived: null),
   summary: null,
   pullRequest: null,
+  promptDefaults: null,
 );
 
 /// Minimal [BridgePluginApi] fake that only implements [getProjects].

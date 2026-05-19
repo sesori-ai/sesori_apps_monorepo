@@ -261,6 +261,7 @@ Session _session({
     time: SessionTime(created: createdAt, updated: createdAt, archived: archivedAt),
     summary: null,
     pullRequest: null,
+    promptDefaults: null,
   );
 }
 

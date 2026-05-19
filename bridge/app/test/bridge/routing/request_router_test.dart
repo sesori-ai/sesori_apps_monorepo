@@ -91,7 +91,10 @@ void main() {
         sessionCreationService: sessionCreationService,
         sessionArchiveService: sessionArchiveService,
         sendPromptHandler: SendPromptHandler(
-          sessionPromptService: SessionPromptService(sessionRepository: sessionRepository),
+          sessionPromptService: SessionPromptService(
+            sessionRepository: sessionRepository,
+            sseManager: FakeSSEManager(),
+          ),
         ),
         prSyncService: FakePrSyncService(),
         projectRepository: projectRepository,
@@ -410,7 +413,7 @@ void main() {
           sessionPersistenceService: sessionPersistenceService,
         ),
         sendPromptHandler: SendPromptHandler(
-          sessionPromptService: SessionPromptService(sessionRepository: sessionRepository),
+          sessionPromptService: SessionPromptService(sessionRepository: sessionRepository, sseManager: FakeSSEManager()),
         ),
         prSyncService: spyPrSyncService,
         projectRepository: projectRepository,

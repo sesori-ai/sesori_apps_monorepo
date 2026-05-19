@@ -104,6 +104,7 @@ void main() {
           time: SessionTime(created: 1, updated: 2, archived: null),
           summary: null,
           pullRequest: null,
+          promptDefaults: null,
         ),
       );
 
@@ -157,6 +158,7 @@ void main() {
           time: null,
           summary: null,
           pullRequest: null,
+          promptDefaults: null,
         ),
       );
 
@@ -220,6 +222,7 @@ void main() {
             time: null,
             summary: null,
             pullRequest: null,
+            promptDefaults: null,
           ),
           Session(
             id: "s2",
@@ -230,6 +233,7 @@ void main() {
             time: SessionTime(created: 3, updated: 4, archived: null),
             summary: null,
             pullRequest: null,
+            promptDefaults: null,
           ),
         ],
       );

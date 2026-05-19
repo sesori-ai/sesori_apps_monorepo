@@ -18,6 +18,7 @@ import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.da
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
+import "package:sesori_bridge/src/bridge/sse/sse_manager.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
 
@@ -431,6 +432,33 @@ class FakeSessionDao {
   }
 }
 
+class FakeSSEManager extends SSEManager {
+  FakeSSEManager()
+    : super(
+        replayWindow: const Duration(seconds: 1),
+        onBytesSent: (_) {},
+        failureReporter: _FakeFailureReporter(),
+      );
+}
+
+class _FakeFailureReporter implements FailureReporter {
+  @override
+  void setGlobalKey({required String key, required Object value}) {}
+
+  @override
+  void log({required String message}) {}
+
+  @override
+  Future<void> recordFailure({
+    required Object error,
+    required StackTrace stackTrace,
+    required String uniqueIdentifier,
+    required bool fatal,
+    required String? reason,
+    required Iterable<Object> information,
+  }) async {}
+}
+
 /// Hand-written fake [MetadataService] for testing.
 class FakeMetadataService implements MetadataService {
   bridge_metadata.SessionMetadata? generateResult;
@@ -643,6 +671,7 @@ class _NoopSessionRepository implements SessionRepository {
     time: null,
     summary: null,
     pullRequest: null,
+    promptDefaults: null,
   );
   @override
   Future<List<Session>> getSessionsForProject({
@@ -740,6 +769,7 @@ class _NoopSessionRepository implements SessionRepository {
     time: null,
     summary: null,
     pullRequest: null,
+    promptDefaults: null,
   );
 }
 
@@ -778,6 +808,7 @@ class FakeSessionRepository implements SessionRepository {
     time: null,
     summary: null,
     pullRequest: null,
+    promptDefaults: null,
   );
 
   @override
@@ -1034,5 +1065,6 @@ class FakeSessionRepository implements SessionRepository {
     time: null,
     summary: null,
     pullRequest: null,
+    promptDefaults: null,
   );
 }

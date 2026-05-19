@@ -196,6 +196,7 @@ Session testSession({String? id, String? title, DateTime? archivedAt}) {
       updated: 1700000000000,
       archived: archivedAt?.millisecondsSinceEpoch,
     ),
+    promptDefaults: null,
   );
 }
 

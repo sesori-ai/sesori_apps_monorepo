@@ -278,6 +278,7 @@ Session testSession({
   int? createdAt,
   int? updatedAt,
   DateTime? archivedAt,
+  SessionPromptDefaults? promptDefaults,
 }) {
   return Session(
     id: id ?? "session-1",
@@ -287,6 +288,7 @@ Session testSession({
     title: title,
     summary: null,
     pullRequest: null,
+    promptDefaults: promptDefaults,
     time: SessionTime(
       created: createdAt ?? 1700000000000,
       updated: updatedAt ?? 1700000000000,

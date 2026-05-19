@@ -6,11 +6,11 @@ import "../sse/sse_manager.dart";
 
 class SessionPromptService {
   final SessionRepository _sessionRepository;
-  final SSEManager? _sseManager;
+  final SSEManager _sseManager;
 
   SessionPromptService({
     required SessionRepository sessionRepository,
-    SSEManager? sseManager,
+    required SSEManager sseManager,
   })  : _sessionRepository = sessionRepository,
         _sseManager = sseManager;
 
@@ -91,10 +91,7 @@ class SessionPromptService {
     required String? agent,
     required AgentModel? agentModel,
   }) {
-    final sseManager = _sseManager;
-    if (sseManager == null) return;
-
-    sseManager.enqueueEvent(
+    _sseManager.enqueueEvent(
       SesoriSseEvent.sessionPromptDefaultsChanged(
         sessionID: sessionId,
         promptDefaults: SessionPromptDefaults(

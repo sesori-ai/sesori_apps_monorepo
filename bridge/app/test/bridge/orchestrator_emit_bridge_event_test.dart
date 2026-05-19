@@ -1455,6 +1455,7 @@ class _NoopSessionRepository implements SessionRepository {
     time: null,
     summary: null,
     pullRequest: null,
+    promptDefaults: null,
   );
   @override
   Future<List<Session>> getSessionsForProject({
@@ -1552,6 +1553,7 @@ class _NoopSessionRepository implements SessionRepository {
     time: null,
     summary: null,
     pullRequest: null,
+    promptDefaults: null,
   );
 }
 

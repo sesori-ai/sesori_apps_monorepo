@@ -44,6 +44,7 @@ void main() {
         time: null,
         summary: null,
         pullRequest: null,
+        promptDefaults: null,
         hasWorktree: true,
       );
 

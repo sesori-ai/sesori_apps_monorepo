@@ -417,7 +417,7 @@ $SessionPromptDefaultsCopyWith<$Res>? get promptDefaults {
 @JsonSerializable()
 
 class _Session implements Session {
-  const _Session({required this.id, required this.projectID, required this.directory, required this.parentID, required this.title, required this.time, required this.summary, required this.pullRequest, this.promptDefaults, this.hasWorktree = false});
+  const _Session({required this.id, required this.projectID, required this.directory, required this.parentID, required this.title, required this.time, required this.summary, required this.pullRequest, required this.promptDefaults, this.hasWorktree = false});
   factory _Session.fromJson(Map<String, dynamic> json) => _$SessionFromJson(json);
 
 @override final  String id;

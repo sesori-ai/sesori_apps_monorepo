@@ -41,7 +41,7 @@ sealed class Session with _$Session {
     required SessionTime? time,
     required SessionSummary? summary,
     required PullRequestInfo? pullRequest,
-    SessionPromptDefaults? promptDefaults,
+    required SessionPromptDefaults? promptDefaults,
     @Default(false) bool hasWorktree,
   }) = _Session;
 

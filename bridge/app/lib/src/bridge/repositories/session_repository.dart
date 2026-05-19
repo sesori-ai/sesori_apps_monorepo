@@ -146,6 +146,11 @@ class SessionRepository {
   }
 
   Future<String?> findProjectIdForSession({required String sessionId}) async {
+    final storedSession = await _sessionDao.getSession(sessionId: sessionId);
+    if (storedSession != null) {
+      return storedSession.projectId;
+    }
+
     final projects = await _plugin.getProjects();
     for (final project in projects) {
       final projectId = project.id;

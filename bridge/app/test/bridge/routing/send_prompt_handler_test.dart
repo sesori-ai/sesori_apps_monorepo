@@ -31,6 +31,7 @@ void main() {
       handler = SendPromptHandler(
         sessionPromptService: SessionPromptService(
           sessionRepository: sessionRepository,
+          sseManager: FakeSSEManager(),
         ),
       );
     });
@@ -352,7 +353,7 @@ void main() {
         ),
       );
       final localHandler = SendPromptHandler(
-        sessionPromptService: SessionPromptService(sessionRepository: localRepository),
+        sessionPromptService: SessionPromptService(sessionRepository: localRepository, sseManager: FakeSSEManager()),
       );
 
       await expectLater(
@@ -403,7 +404,7 @@ void main() {
         ),
       );
       final localHandler = SendPromptHandler(
-        sessionPromptService: SessionPromptService(sessionRepository: localRepository),
+        sessionPromptService: SessionPromptService(sessionRepository: localRepository, sseManager: FakeSSEManager()),
       );
 
       await expectLater(
@@ -443,7 +444,7 @@ void main() {
         ),
       );
       final localHandler = SendPromptHandler(
-        sessionPromptService: SessionPromptService(sessionRepository: throwingRepository),
+        sessionPromptService: SessionPromptService(sessionRepository: throwingRepository, sseManager: FakeSSEManager()),
       );
 
       final response = await localHandler.handle(
