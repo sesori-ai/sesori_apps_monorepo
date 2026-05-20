@@ -410,6 +410,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get backToLogin => 'Back to login';
 
   @override
+  String get loginAuthenticationFailedTitle => 'Authentication failed';
+
+  @override
   String get loginError => 'Sign in failed. Please try again.';
 
   @override

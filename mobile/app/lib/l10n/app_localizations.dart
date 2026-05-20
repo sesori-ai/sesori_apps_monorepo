@@ -805,6 +805,12 @@ abstract class AppLocalizations {
   /// **'Back to login'**
   String get backToLogin;
 
+  /// No description provided for @loginAuthenticationFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Authentication failed'**
+  String get loginAuthenticationFailedTitle;
+
   /// No description provided for @loginError.
   ///
   /// In en, this message translates to:

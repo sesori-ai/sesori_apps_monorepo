@@ -212,6 +212,7 @@
   "passwordRequired": "Password is required",
   "signIn": "Sign In",
   "backToLogin": "Back to login",
+  "loginAuthenticationFailedTitle": "Authentication failed",
   "loginError": "Sign in failed. Please try again.",
   "loginAuthenticating": "Signing in...",
   "loginAwaitingCallback": "Waiting for authorization...",
