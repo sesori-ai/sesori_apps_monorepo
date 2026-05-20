@@ -125,199 +125,209 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
               fit: BoxFit.cover,
             ),
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Material(
-                type: MaterialType.transparency,
-                child: Column(
-                  mainAxisSize: .min,
-                  children: [
-                    Image.asset(
-                      "assets/images/sesori_icon_with_shadow.png",
-                      fit: .none,
-                    ),
-                    Text(
-                      loc.loginTitle,
-                      style: zyra.textTheme.textSm.regular,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      loc.loginSubtitle,
-                      style: zyra.textTheme.displaySm.bold,
-                    ),
-                  ],
-                ),
-              ),
-              SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(32, 86, 32, 24),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
                   child: Column(
                     mainAxisSize: .min,
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      const SizedBox(height: 24),
-                      LoginProviderButtons(
-                        isLoading: isLoading,
-                        showEmailForm: _showEmailForm,
-                        showApple: !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS,
-                        onGithubSelected: () => _loginWithProvider(AuthProvider.github),
-                        onAppleSelected: _loginWithApple,
-                        onGoogleSelected: () => _loginWithProvider(AuthProvider.google),
-                        onShowEmailForm: _showEmailLogin,
-                      ),
-                      if (_showEmailForm) ...[
-                        const SizedBox(height: 8),
-                        EmailLoginForm(
-                          key: ValueKey(_showEmailForm),
-                        ),
-                      ],
-                      switch (state) {
-                        LoginAuthenticating() => Padding(
-                          padding: const EdgeInsetsDirectional.only(top: 16),
-                          child: Text(
-                            loc.loginAuthenticating,
-                            style: zyra.textTheme.textSm.regular.copyWith(
-                              color: zyra.colors.textSecondary,
+                      Material(
+                        type: MaterialType.transparency,
+                        child: Column(
+                          mainAxisSize: .min,
+                          children: [
+                            Image.asset(
+                              "assets/images/sesori_icon_with_shadow.png",
+                              fit: .none,
                             ),
-                            textAlign: TextAlign.center,
-                          ),
+                            Text(
+                              loc.loginTitle,
+                              style: zyra.textTheme.textSm.regular,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              loc.loginSubtitle,
+                              style: zyra.textTheme.displaySm.bold,
+                            ),
+                          ],
                         ),
-                        LoginAwaitingConfirmation(:final userCode) => Padding(
-                          padding: const EdgeInsetsDirectional.only(top: 16),
+                      ),
+                      SafeArea(
+                        top: false,
+                        child: Padding(
+                          padding: const EdgeInsetsDirectional.fromSTEB(32, 86, 32, 24),
                           child: Column(
+                            mainAxisSize: .min,
                             children: [
-                              Text(
-                                loc.loginAwaitingConfirmation(userCode),
-                                style: zyra.textTheme.textSm.regular.copyWith(
-                                  color: zyra.colors.textSecondary,
-                                ),
-                                textAlign: TextAlign.center,
+                              const SizedBox(height: 24),
+                              LoginProviderButtons(
+                                isLoading: isLoading,
+                                showEmailForm: _showEmailForm,
+                                showApple: !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS,
+                                onGithubSelected: () => _loginWithProvider(AuthProvider.github),
+                                onAppleSelected: _loginWithApple,
+                                onGoogleSelected: () => _loginWithProvider(AuthProvider.google),
+                                onShowEmailForm: _showEmailLogin,
                               ),
-                              const SizedBox(height: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: zyra.colors.bgBrandSolid.withAlpha(26),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: zyra.colors.bgBrandSolid.withAlpha(77),
-                                  ),
-                                ),
-                                child: Text(
-                                  userCode,
-                                  style: zyra.textTheme.textXl.bold.copyWith(
-                                    color: zyra.colors.bgBrandSolid,
-                                    letterSpacing: 4,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        LoginPolling(:final userCode) => Padding(
-                          padding: const EdgeInsetsDirectional.only(top: 16),
-                          child: Column(
-                            children: [
-                              Text(
-                                loc.loginPolling,
-                                style: zyra.textTheme.textSm.regular.copyWith(
-                                  color: zyra.colors.textSecondary,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                              if (userCode != null) ...[
+                              if (_showEmailForm) ...[
                                 const SizedBox(height: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: zyra.colors.bgBrandSolid.withAlpha(26),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: zyra.colors.bgBrandSolid.withAlpha(77),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    userCode,
-                                    style: zyra.textTheme.textXl.bold.copyWith(
-                                      color: zyra.colors.bgBrandSolid,
-                                      letterSpacing: 4,
-                                    ),
-                                  ),
+                                EmailLoginForm(
+                                  key: ValueKey(_showEmailForm),
                                 ),
                               ],
-                            ],
-                          ),
-                        ),
-                        LoginTimeout() => Padding(
-                          padding: const EdgeInsetsDirectional.only(top: 16),
-                          child: Text(
-                            loc.loginTimeout,
-                            style: zyra.textTheme.textSm.regular.copyWith(
-                              color: zyra.colors.textSecondary,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                        LoginIdle() => const SizedBox.shrink(),
-                        LoginFailed() => const SizedBox.shrink(),
-                        LoginSuccess() => const SizedBox.shrink(),
-                      },
-                      switch (state) {
-                        LoginFailed(:final reason) => Padding(
-                          padding: const EdgeInsetsDirectional.only(top: 24),
-                          child: ZyraAlertsNotification(
-                            title: loc.loginAuthenticationFailedTitle,
-                            message: _getErrorMessage(loc: loc, reason: reason),
-                            onClose: () => context.read<LoginCubit>().resetError(),
-                          ),
-                        ),
-                        LoginTimeout() => Padding(
-                          padding: const EdgeInsetsDirectional.only(top: 24),
-                          child: Card(
-                            color: zyra.colors.bgErrorPrimary,
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.error_outline,
-                                    color: zyra.colors.fgErrorPrimary,
+                              switch (state) {
+                                LoginAuthenticating() => Padding(
+                                  padding: const EdgeInsetsDirectional.only(top: 16),
+                                  child: Text(
+                                    loc.loginAuthenticating,
+                                    style: zyra.textTheme.textSm.regular.copyWith(
+                                      color: zyra.colors.textSecondary,
+                                    ),
+                                    textAlign: TextAlign.center,
                                   ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      loc.loginTimeout,
-                                      style: zyra.textTheme.textSm.regular.copyWith(
-                                        color: zyra.colors.fgErrorPrimary,
+                                ),
+                                LoginAwaitingConfirmation(:final userCode) => Padding(
+                                  padding: const EdgeInsetsDirectional.only(top: 16),
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        loc.loginAwaitingConfirmation(userCode),
+                                        style: zyra.textTheme.textSm.regular.copyWith(
+                                          color: zyra.colors.textSecondary,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                        decoration: BoxDecoration(
+                                          color: zyra.colors.bgBrandSolid.withAlpha(26),
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: zyra.colors.bgBrandSolid.withAlpha(77),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          userCode,
+                                          style: zyra.textTheme.textXl.bold.copyWith(
+                                            color: zyra.colors.bgBrandSolid,
+                                            letterSpacing: 4,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                LoginPolling(:final userCode) => Padding(
+                                  padding: const EdgeInsetsDirectional.only(top: 16),
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        loc.loginPolling,
+                                        style: zyra.textTheme.textSm.regular.copyWith(
+                                          color: zyra.colors.textSecondary,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      if (userCode != null) ...[
+                                        const SizedBox(height: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                          decoration: BoxDecoration(
+                                            color: zyra.colors.bgBrandSolid.withAlpha(26),
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: Border.all(
+                                              color: zyra.colors.bgBrandSolid.withAlpha(77),
+                                            ),
+                                          ),
+                                          child: Text(
+                                            userCode,
+                                            style: zyra.textTheme.textXl.bold.copyWith(
+                                              color: zyra.colors.bgBrandSolid,
+                                              letterSpacing: 4,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                LoginTimeout() => Padding(
+                                  padding: const EdgeInsetsDirectional.only(top: 16),
+                                  child: Text(
+                                    loc.loginTimeout,
+                                    style: zyra.textTheme.textSm.regular.copyWith(
+                                      color: zyra.colors.textSecondary,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                                LoginIdle() => const SizedBox.shrink(),
+                                LoginFailed() => const SizedBox.shrink(),
+                                LoginSuccess() => const SizedBox.shrink(),
+                              },
+                              switch (state) {
+                                LoginFailed(:final reason) => Padding(
+                                  padding: const EdgeInsetsDirectional.only(top: 24),
+                                  child: ZyraAlertsNotification(
+                                    title: loc.loginAuthenticationFailedTitle,
+                                    message: _getErrorMessage(loc: loc, reason: reason),
+                                    onClose: () => context.read<LoginCubit>().resetError(),
+                                  ),
+                                ),
+                                LoginTimeout() => Padding(
+                                  padding: const EdgeInsetsDirectional.only(top: 24),
+                                  child: Card(
+                                    color: zyra.colors.bgErrorPrimary,
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.error_outline,
+                                            color: zyra.colors.fgErrorPrimary,
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Text(
+                                              loc.loginTimeout,
+                                              style: zyra.textTheme.textSm.regular.copyWith(
+                                                color: zyra.colors.fgErrorPrimary,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ),
-                                ],
+                                ),
+                                LoginIdle() => const SizedBox.shrink(),
+                                LoginAuthenticating() => const SizedBox.shrink(),
+                                LoginAwaitingConfirmation() => const SizedBox.shrink(),
+                                LoginPolling() => const SizedBox.shrink(),
+                                LoginSuccess() => const SizedBox.shrink(),
+                              },
+                              const SizedBox(height: 22),
+                              Text(
+                                // TODO: convert to markdown with links
+                                loc.loginAgreementText,
+                                style: zyra.textTheme.textSm.regular.copyWith(
+                                  color: zyra.colors.textSecondary,
+                                ),
+                                textAlign: TextAlign.center,
                               ),
-                            ),
+                            ],
                           ),
                         ),
-                        LoginIdle() => const SizedBox.shrink(),
-                        LoginAuthenticating() => const SizedBox.shrink(),
-                        LoginAwaitingConfirmation() => const SizedBox.shrink(),
-                        LoginPolling() => const SizedBox.shrink(),
-                        LoginSuccess() => const SizedBox.shrink(),
-                      },
-                      const SizedBox(height: 22),
-                      Text(
-                        // TODO: convert to markdown with links
-                        loc.loginAgreementText,
-                        style: zyra.textTheme.textSm.regular.copyWith(
-                          color: zyra.colors.textSecondary,
-                        ),
-                        textAlign: TextAlign.center,
                       ),
                     ],
                   ),
                 ),
-              ),
-            ],
+              );
+            },
           ),
         ),
       ),
