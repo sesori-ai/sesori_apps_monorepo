@@ -266,28 +266,10 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                       switch (state) {
                         LoginFailed(:final reason) => Padding(
                           padding: const EdgeInsetsDirectional.only(top: 24),
-                          child: Card(
-                            color: zyra.colors.bgErrorPrimary,
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.error_outline,
-                                    color: zyra.colors.fgErrorPrimary,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      _getErrorMessage(loc: loc, reason: reason),
-                                      style: zyra.textTheme.textSm.regular.copyWith(
-                                        color: zyra.colors.fgErrorPrimary,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                          child: ZyraAlertsNotification(
+                            title: loc.loginAuthenticationFailedTitle,
+                            message: _getErrorMessage(loc: loc, reason: reason),
+                            onClose: () => context.read<LoginCubit>().resetError(),
                           ),
                         ),
                         LoginTimeout() => Padding(
