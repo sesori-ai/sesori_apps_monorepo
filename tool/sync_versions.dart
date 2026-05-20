@@ -105,9 +105,9 @@ Future<void> main(final List<String> args) async {
     ];
 
     if (parsed.dryRun) {
-      stdout.writeln('Target bridge version: $targetBridgeVersion');
-      stdout.writeln('Target mobile version: $targetMobileVersion');
-      stdout.writeln('Planned releaseTag: bridge-v$targetBridgeVersion');
+    stdout.writeln('Target bridge version: $targetBridgeVersion');
+    stdout.writeln('Target mobile version: $targetMobileVersion');
+    stdout.writeln('Planned releaseTag: v$targetBridgeVersion');
       stdout.writeln('Files that would change:');
       for (final relativePath in plannedPaths) {
         stdout.writeln('  - $relativePath');
@@ -368,7 +368,7 @@ Future<void> _writePackageJson({
   final sesoriBridge = decoded['sesoriBridge'];
   if (sesoriBridge is Map<String, dynamic> &&
       sesoriBridge.containsKey('releaseTag')) {
-    sesoriBridge['releaseTag'] = 'bridge-v$newVersion';
+    sesoriBridge['releaseTag'] = 'v$newVersion';
   }
 
   final formatted = const JsonEncoder.withIndent('  ').convert(decoded);

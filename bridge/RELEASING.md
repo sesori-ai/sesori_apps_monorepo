@@ -4,23 +4,21 @@
 
 - **Enabled by default:** GitHub Releases
 - **Enabled by default:** npm publish via npm trusted publishing
-- **Release selector:** installers and updater accept stable GitHub releases tagged `bridge-v*` or `v*` during the shared-tag migration. GitHub Actions trigger migration to shared `v*` tags is deferred.
+- **Release selector:** installers and updater accept stable GitHub releases tagged `v*`.
 
 ## Release tag
 
-Until the GitHub Actions trigger migration lands, use tags in this format:
+Use shared `vX.Y.Z` tags:
 
 ```bash
-bridge-vX.Y.Z
+vX.Y.Z
 ```
 
 Example:
 
 ```bash
-bridge-v0.3.1
+v0.3.1
 ```
-
-After the workflow migration, use shared `vX.Y.Z` tags.
 
 ## Before release
 
@@ -101,11 +99,11 @@ git push
 ### 3. Tag and push
 
 ```bash
-git tag bridge-v0.3.1
-git push origin bridge-v0.3.1
+git tag v0.3.1
+git push origin v0.3.1
 ```
 
-## What the workflow does on tag push
+## What the workflow does on manual dispatch
 
 1. builds binaries for macOS arm64/x64, Linux x64/arm64, Windows x64
 2. renames `bridge` to `sesori-bridge`
@@ -236,4 +234,4 @@ Configure npm trusted publishing for all six packages in this repo against the e
 - `@sesori/bridge-linux-arm64`
 - `@sesori/bridge-win32-x64`
 
-Those trusted publisher entries must match the GitHub owner, repository, and workflow filename exactly. The tag-triggered workflow verifies the archived GitHub Release assets against `checksums.txt`, derives each platform npm payload from those exact release artifacts, and then publishes through npm trusted publishing on `ubuntu-latest`.
+Those trusted publisher entries must match the GitHub owner, repository, and workflow filename exactly. The workflow verifies the archived GitHub Release assets against `checksums.txt`, derives each platform npm payload from those exact release artifacts, and then publishes through npm trusted publishing on `ubuntu-latest`.

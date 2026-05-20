@@ -324,22 +324,6 @@ void main() {
         expect(await _makeRepository(httpClient: client).checkForNewerRelease(), isNull);
       });
 
-      test('bridge-v prefix is accepted during tag migration', () async {
-        final client = MockClient(
-          (_) async => http.Response(
-            jsonEncode([
-              _releaseJson(tagName: 'bridge-v0.3.0', version: '0.3.0'),
-            ]),
-            200,
-          ),
-        );
-
-        final result = await _makeRepository(httpClient: client).checkForNewerRelease();
-
-        expect(result, isNotNull);
-        expect(result!.version, equals('0.3.0'));
-      });
-
       test('generic exception from HTTP client → throws', () async {
         final client = MockClient((_) async => throw Exception('network error'));
 
