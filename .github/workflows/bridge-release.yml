@@ -215,7 +215,7 @@ jobs:
         id: version
         shell: bash
         run: |
-          VERSION="${RELEASE_TAG#bridge-v}"
+          VERSION="${RELEASE_TAG#v}"
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Download release assets
@@ -401,7 +401,7 @@ jobs:
         id: version
         shell: bash
         run: |
-          VERSION="${RELEASE_TAG#bridge-v}"
+          VERSION="${RELEASE_TAG#v}"
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Validate wrapper package metadata
