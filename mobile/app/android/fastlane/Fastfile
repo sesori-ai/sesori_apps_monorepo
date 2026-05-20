@@ -159,7 +159,7 @@ platform :android do
       end
 
       # Embed the short commit SHA in the Play Console release notes so the
-      # originating commit survives even if the matching `android-build-<N>`
+      # originating commit survives even if the matching `build-<N>`
       # git tag is ever lost — operators can recover it from Play Console.
       # Supply expects metadata_path to point directly at the directory
       # containing locale folders, i.e. `<metadata_path>/<lang>/changelogs/<versionCode>.txt`.

@@ -143,7 +143,7 @@ platform :ios do
     )
 
     # Upload to TestFlight. Embed the short commit SHA in the TestFlight
-    # "What to Test" notes so it survives even if the matching `ios-build-<N>`
+    # "What to Test" notes so it survives even if the matching `build-<N>`
     # git tag is ever lost — operators can recover the originating commit by
     # opening the build in App Store Connect.
     short_sha = ENV.fetch("GITHUB_SHA", `git rev-parse HEAD`.strip)[0, 7]

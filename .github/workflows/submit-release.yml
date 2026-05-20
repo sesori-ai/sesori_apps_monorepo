@@ -7,8 +7,8 @@ name: Submit Release
 # pure HTTPS API work against App Store Connect and Google Play.
 #
 # Required prerequisite: the build must have been uploaded by
-# release-all-platforms.yml, which pushes annotated tags
-# `ios-build-<N>` and `android-build-<N>` we use to map build → commit.
+# release-all-platforms.yml, which pushes a single annotated tag
+# `build-<N>` we use to map a build number → commit.
 
 on:
   workflow_dispatch:
@@ -31,7 +31,7 @@ on:
           - ios
           - android
       build_number:
-        description: "Build number to submit (must match an existing ios-build-<N> / android-build-<N> tag)"
+        description: "Build number to submit (must match an existing build-<N> tag)"
         type: string
         required: true
 
@@ -62,8 +62,7 @@ jobs:
 
       - id: pick
         env:
-          N:         ${{ inputs.build_number }}
-          PLATFORMS: ${{ inputs.platforms }}
+          N: ${{ inputs.build_number }}
         run: |
           set -euo pipefail
           # 1) Validate build number.
@@ -72,34 +71,15 @@ jobs:
             exit 1
           fi
 
-          # 2) Verify the requested platforms have a tag for this build number.
-          need_ios=false; need_and=false
-          case "$PLATFORMS" in
-            both)    need_ios=true; need_and=true ;;
-            ios)     need_ios=true ;;
-            android) need_and=true ;;
-          esac
-
-          ios_sha=""; and_sha=""
-          $need_ios && ios_sha=$(git rev-list -n1 "ios-build-${N}"     2>/dev/null || true)
-          $need_and && and_sha=$(git rev-list -n1 "android-build-${N}" 2>/dev/null || true)
-          if $need_ios && [[ -z "$ios_sha" ]]; then
-            echo "::error::No tag ios-build-${N} found. iOS build ${N} was either never uploaded or its tag was deleted."
-            exit 1
-          fi
-          if $need_and && [[ -z "$and_sha" ]]; then
-            echo "::error::No tag android-build-${N} found. Android version code ${N} was either never uploaded or its tag was deleted."
+          # 2) Resolve the originating commit from the build-<N> tag pushed by
+          # release-all-platforms.yml.
+          SHA=$(git rev-list -n1 "build-${N}" 2>/dev/null || true)
+          if [[ -z "$SHA" ]]; then
+            echo "::error::No tag build-${N} found. Build ${N} was either never created by release-all-platforms.yml or its tag was deleted."
             exit 1
           fi
 
-          # 3) Resolve commit SHA. When both platforms requested, iOS is canonical;
-          # warn (but don't fail) if iOS and Android tags point at different SHAs.
-          SHA="${ios_sha:-$and_sha}"
-          if $need_ios && $need_and && [[ "$ios_sha" != "$and_sha" ]]; then
-            echo "::warning::iOS tag → ${ios_sha:0:7} but Android tag → ${and_sha:0:7}. Using iOS SHA for commit/tag."
-          fi
-
-          # 4) Read marketing version from pubspec.yaml on the resolved commit
+          # 3) Read marketing version from pubspec.yaml on the resolved commit
           # (NOT current main) so the submit tag matches the binary's version.
           VERSION=$(git show "${SHA}:mobile/app/pubspec.yaml" \
             | awk '/^version:/{split($2,a,"+"); print a[1]; exit}')
@@ -249,21 +229,29 @@ jobs:
           SHA:     ${{ needs.resolve.outputs.commit_sha }}
         run: |
           set -euo pipefail
-          if [[ "$TRACK" == "production" ]]; then
-            TAG="v${VERSION}"
-          else
-            TAG="beta-v${VERSION}"
-          fi
+          TAG="v${VERSION}"
           git fetch --tags --force
-          if git rev-parse "refs/tags/${TAG}" >/dev/null 2>&1; then
-            echo "::error::Tag $TAG already exists. Bump version in mobile/app/pubspec.yaml and rebuild before re-submitting, or delete the stale tag if this is intentional."
+          # Idempotent: if the version tag already exists on the SAME commit
+          # (e.g. a beta submission tagged it earlier, now promoting to prod),
+          # there's nothing to do. A clash on a DIFFERENT commit means the
+          # version wasn't bumped — fail loudly.
+          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+            existing=$(git rev-list -n1 "refs/tags/${TAG}")
+            if [[ "$existing" == "$SHA" ]]; then
+              echo "Tag ${TAG} already points at ${SHA} — nothing to do"
+              echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+              echo "## Tagged" >> "$GITHUB_STEP_SUMMARY"
+              echo "- **Tag**: \`${TAG}\` → \`${SHA}\` (already present)" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "::error::Tag ${TAG} already exists on a different commit (${existing}). Bump the version in mobile/app/pubspec.yaml before submitting a different build."
             exit 1
           fi
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "$TAG" -m "Submitted ${TRACK} build ${BUILD} (v${VERSION})"
           git push origin "refs/tags/${TAG}"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "## Tagged" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Tag**: \`${TAG}\` → \`${SHA}\`" >> "$GITHUB_STEP_SUMMARY"
 

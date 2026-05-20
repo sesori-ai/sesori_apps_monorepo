@@ -27,8 +27,6 @@ jobs:
   ios:
     name: Deploy iOS to TestFlight
     needs: next-build-number
-    permissions:
-      contents: write
     uses: ./.github/workflows/_reusable-ios-testflight.yml
     with:
       runner: macos-latest
@@ -46,8 +44,6 @@ jobs:
   android:
     name: Deploy Android to Internal Track
     needs: next-build-number
-    permissions:
-      contents: write
     uses: ./.github/workflows/_reusable-android-internal.yml
     with:
       runner: ubuntu-latest
@@ -62,8 +58,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: [next-build-number, ios, android]
     if: always()
+    permissions:
+      contents: write
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
       - name: Generate Summary
         run: |
           echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
@@ -92,3 +93,27 @@ jobs:
           else
             echo "- **Android Internal**: ${{ needs.android.result }}" >> $GITHUB_STEP_SUMMARY
           fi
+
+      # Push a single `build-<N>` tag on the released commit. iOS and Android
+      # share the same aligned build number, so one tag is enough — the manual
+      # submit-release.yml workflow uses it to map a build number back to its
+      # commit. Tagged only when the build number resolved and at least one
+      # platform uploaded successfully (i.e. a build actually exists in a store).
+      - name: Tag commit with build number
+        if: >-
+          needs.next-build-number.result == 'success' &&
+          (needs.ios.result == 'success' || needs.android.result == 'success')
+        env:
+          BUILD_NUMBER: ${{ needs.next-build-number.outputs.build_number }}
+        run: |
+          set -euo pipefail
+          TAG="build-${BUILD_NUMBER}"
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -n "$(git ls-remote --tags origin "refs/tags/${TAG}")" ]; then
+            echo "Tag ${TAG} already exists on origin — skipping"
+          else
+            git tag -a "$TAG" -m "Build ${BUILD_NUMBER} sha=${GITHUB_SHA}"
+            git push origin "refs/tags/${TAG}"
+          fi
+          echo "- **Tag**: \`${TAG}\`" >> $GITHUB_STEP_SUMMARY

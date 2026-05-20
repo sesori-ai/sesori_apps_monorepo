@@ -86,22 +86,3 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Version**: ${VERSION} (${VERSION_CODE})" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-
-      # Tag the commit with the version code so the manual `submit-release.yml`
-      # workflow can later map a Play Store internal-track build back to its
-      # originating commit. See the iOS reusable workflow for the rationale.
-      - name: Tag commit with Play Store version code
-        if: success()
-        run: |
-          set -euo pipefail
-          source mobile/app/android/build_info.env
-          TAG="android-build-${VERSION_CODE}"
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG already exists locally — skipping"
-            exit 0
-          fi
-          git tag -a "$TAG" -m "Android internal track build ${VERSION_CODE} (v${VERSION}) sha=${GITHUB_SHA}"
-          git push origin "refs/tags/${TAG}"
-          echo "- **Tag**: \`${TAG}\`" >> $GITHUB_STEP_SUMMARY
