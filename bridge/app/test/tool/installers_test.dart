@@ -357,20 +357,18 @@ cat "\$HOME/.zprofile"
       final script = File(_installShPath()).readAsStringSync();
 
       expect(script, contains(r'MANAGED_MANIFEST="${INSTALL_DIR}/.managed-runtime.json"'));
-      expect(script, contains(r'resolved_version="${RESOLVED_RELEASE_TAG#bridge-v}"'));
-      expect(script, contains(r'resolved_version="${resolved_version#v}"'));
+      expect(script, contains(r'resolved_version="${RESOLVED_RELEASE_TAG#v}"'));
       expect(script, contains('printf'));
       expect(script, contains('"%s"'));
       expect(script, contains(r'"${resolved_version}" > "${MANAGED_MANIFEST}"'));
     });
 
-    test('accepts both bridge-v and v release tags for backwards compatibility', () {
+    test('accepts only v release tags', () {
       final script = File(_installShPath()).readAsStringSync();
 
-      expect(script, contains('if tag_name.startswith("bridge-v"):'));
-      expect(script, contains('elif tag_name.startswith("v"):'));
-      expect(script, contains('version = tag_name.replace("bridge-v", "", 1)'));
+      expect(script, contains('if tag_name.startswith("v"):'));
       expect(script, contains('version = tag_name.replace("v", "", 1)'));
+      expect(script, isNot(contains('bridge-v')));
     });
   });
 
@@ -421,20 +419,17 @@ cat "\$HOME/.zprofile"
     test('writes managed runtime manifest with resolved version', () {
       expect(script, contains(r"$ManagedManifest = Join-Path $InstallRoot '.managed-runtime.json'"));
       expect(script, contains(r'$resolvedVersion = $Release.TagName'));
-      expect(script, contains(r"if ($resolvedVersion.StartsWith('bridge-v'))"));
-      expect(script, contains(r'$resolvedVersion = $resolvedVersion.Substring(8)'));
-      expect(script, contains(r"} elseif ($resolvedVersion.StartsWith('v')) {"));
+      expect(script, contains(r"if ($resolvedVersion.StartsWith('v'))"));
       expect(script, contains(r'$resolvedVersion = $resolvedVersion.Substring(1)'));
       expect(script, contains(r'$managedManifestJson = @{ version = $resolvedVersion } | ConvertTo-Json -Compress'));
       expect(script, contains('[System.IO.File]::WriteAllText('));
       expect(script, contains(r'[System.Text.UTF8Encoding]::new($false)'));
     });
 
-    test('accepts both bridge-v and v release tags for backwards compatibility', () {
-      expect(script, contains(r"if ($tagName.StartsWith('bridge-v')) {"));
-      expect(script, contains(r'$versionText = $tagName.Substring(8)'));
-      expect(script, contains(r"} elseif ($tagName.StartsWith('v')) {"));
+    test('accepts only v release tags', () {
+      expect(script, contains(r"if ($tagName.StartsWith('v')) {"));
       expect(script, contains(r'$versionText = $tagName.Substring(1)'));
+      expect(script, isNot(contains('bridge-v')));
     });
   });
 }

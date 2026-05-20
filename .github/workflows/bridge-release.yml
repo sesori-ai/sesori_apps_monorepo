@@ -1,10 +1,12 @@
 name: Bridge Release
 
 on:
-  push:
-    tags: ["bridge-v*"]
   workflow_dispatch:
     inputs:
+      tag:
+        description: "Release tag (e.g., v1.0.0)"
+        required: true
+        type: string
       dry_run:
         description: "Dry run (build only, no publish)"
         required: false
@@ -60,11 +62,8 @@ jobs:
         id: version
         shell: bash
         run: |
-          if [[ "${GITHUB_REF_NAME}" == bridge-v* ]]; then
-            VERSION="${GITHUB_REF_NAME#bridge-v}"
-          else
-            VERSION=$(grep '^version:' bridge/app/pubspec.yaml | awk '{print $2}')
-          fi
+          RELEASE_TAG="${{ github.event.inputs.tag }}"
+          VERSION="${RELEASE_TAG#v}"
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Get dependencies
@@ -72,7 +71,7 @@ jobs:
         working-directory: bridge
 
       - name: Bump version
-        if: startsWith(github.ref_name, 'bridge-v')
+        if: github.event.inputs.tag != ''
         shell: bash
         run: |
           CURRENT_VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}')
@@ -163,7 +162,7 @@ jobs:
     name: Create GitHub Release
     needs: build
     runs-on: ubuntu-latest
-    if: github.event.inputs.dry_run != 'true' && startsWith(github.ref_name, 'bridge-v')
+    if: github.event.inputs.dry_run != 'true' && github.event.inputs.tag != ''
     permissions:
       contents: write
     steps:
@@ -183,8 +182,8 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: Bridge ${{ github.ref_name }}
+          tag_name: ${{ github.event.inputs.tag }}
+          name: Bridge ${{ github.event.inputs.tag }}
           make_latest: "true"
           generate_release_notes: true
           files: |
@@ -196,12 +195,12 @@ jobs:
     name: Publish platform npm packages
     needs: release
     runs-on: ubuntu-latest
-    if: github.event.inputs.dry_run != 'true' && startsWith(github.ref_name, 'bridge-v')
+    if: github.event.inputs.dry_run != 'true' && github.event.inputs.tag != ''
     permissions:
       contents: read
       id-token: write
     env:
-      RELEASE_TAG: ${{ github.ref_name }}
+      RELEASE_TAG: ${{ github.event.inputs.tag }}
     steps:
 
       - uses: actions/checkout@v4
@@ -216,7 +215,7 @@ jobs:
         id: version
         shell: bash
         run: |
-          VERSION="${RELEASE_TAG#bridge-v}"
+          VERSION="${RELEASE_TAG#v}"
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Download release assets
@@ -383,12 +382,12 @@ jobs:
     name: Publish wrapper npm package
     needs: publish-platform
     runs-on: ubuntu-latest
-    if: github.event.inputs.dry_run != 'true' && startsWith(github.ref_name, 'bridge-v')
+    if: github.event.inputs.dry_run != 'true' && github.event.inputs.tag != ''
     permissions:
       contents: read
       id-token: write
     env:
-      RELEASE_TAG: ${{ github.ref_name }}
+      RELEASE_TAG: ${{ github.event.inputs.tag }}
     steps:
       - uses: actions/checkout@v4
 
@@ -402,7 +401,7 @@ jobs:
         id: version
         shell: bash
         run: |
-          VERSION="${RELEASE_TAG#bridge-v}"
+          VERSION="${RELEASE_TAG#v}"
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Validate wrapper package metadata

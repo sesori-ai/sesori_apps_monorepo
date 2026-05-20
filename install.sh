@@ -149,9 +149,7 @@ releases = json.loads(os.environ["RELEASES_JSON"])
 eligible = []
 for release in releases:
     tag_name = release.get("tag_name", "")
-    if tag_name.startswith("bridge-v"):
-        version = tag_name.replace("bridge-v", "", 1)
-    elif tag_name.startswith("v"):
+    if tag_name.startswith("v"):
         version = tag_name.replace("v", "", 1)
     else:
         continue
@@ -353,8 +351,7 @@ main() {
     tar -xzf "${archive}" -C "${INSTALL_DIR}"
 
     chmod +x "${BINARY}"
-    resolved_version="${RESOLVED_RELEASE_TAG#bridge-v}"
-    resolved_version="${resolved_version#v}"
+    resolved_version="${RESOLVED_RELEASE_TAG#v}"
     printf '{"version":"%s"}\n' "${resolved_version}" > "${MANAGED_MANIFEST}"
 
     if [ "${os}" = "macos" ]; then

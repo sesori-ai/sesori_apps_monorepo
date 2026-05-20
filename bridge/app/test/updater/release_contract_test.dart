@@ -144,15 +144,14 @@ void main() {
       );
     });
 
-    test('install.sh encodes the same bridge-tagged asset and basename checksum contract', () async {
+    test('install.sh encodes the v-tagged asset and basename checksum contract', () async {
       final script = await _readRepoFile(relativePath: 'install.sh');
 
       expect(script, contains(r'GITHUB_RELEASES_API_URL="https://api.github.com/repos/${GITHUB_REPO}/releases"'));
       expect(script, contains('GITHUB_RELEASES_PER_PAGE=100'));
       expect(script, contains('GITHUB_RELEASES_MAX_PAGES=10'));
       expect(script, contains(r'?per_page=${GITHUB_RELEASES_PER_PAGE}&page=${page}'));
-      expect(script, contains('if tag_name.startswith("bridge-v"):'));
-      expect(script, contains('elif tag_name.startswith("v"):'));
+      expect(script, contains('if tag_name.startswith("v"):'));
       expect(script, contains('release.get("draft") or release.get("prerelease")'));
       expect(script, contains('eligible.sort('));
       expect(script, contains('asset_url = assets.get(filename)'));
@@ -163,7 +162,7 @@ void main() {
       );
     });
 
-    test('install.ps1 encodes the same bridge-tagged asset and basename checksum contract', () async {
+    test('install.ps1 encodes the v-tagged asset and basename checksum contract', () async {
       final script = await _readRepoFile(relativePath: 'install.ps1');
 
       expect(script, contains(r'$ReleasesApiUrl = "https://api.github.com/repos/$RepoOwner/$RepoName/releases"'));
@@ -182,14 +181,9 @@ void main() {
       final workflow = await _readRepoFile(relativePath: '.github/workflows/bridge-release.yml');
       final docs = await _readRepoFile(relativePath: 'bridge/RELEASING.md');
 
-      expect(workflow, contains('tags: ["bridge-v*"]'));
       expect(workflow, contains('workflow_dispatch:'));
       expect(workflow, contains('dry_run:'));
-      expect(
-        workflow,
-        contains("if: github.event.inputs.dry_run != 'true' && startsWith(github.ref_name, 'bridge-v')"),
-      );
-      expect(workflow, contains(r'RELEASE_TAG: ${{ github.ref_name }}'));
+      expect(workflow, contains('tag:'));
       expect(workflow, contains('needs: release'));
       expect(workflow, contains('id-token: write'));
       expect(workflow, contains('registry-url: "https://registry.npmjs.org"'));
@@ -208,14 +202,14 @@ void main() {
       expect(workflow, contains('Validate wrapper package metadata'));
       expect(workflow, isNot(contains('NPM_TOKEN')));
 
-      expect(docs, contains('## What the workflow does on tag push'));
+      expect(docs, contains('## What the workflow does on manual dispatch'));
       expect(docs, contains('6. publishes the five platform npm bootstrap packages from those tagged release assets'));
       expect(docs, contains('7. publishes the `@sesori/bridge` wrapper package through npm trusted publishing'));
       expect(docs, contains('gh workflow run bridge-release.yml -f dry_run=true'));
       expect(
         docs,
         contains(
-          'The tag-triggered workflow verifies the archived GitHub Release assets against `checksums.txt`, derives each platform npm payload from those exact release artifacts, and then publishes through npm trusted publishing on `ubuntu-latest`.',
+          'The workflow verifies the archived GitHub Release assets against `checksums.txt`, derives each platform npm payload from those exact release artifacts, and then publishes through npm trusted publishing on `ubuntu-latest`.',
         ),
       );
       expect(docs, contains('Use this sequence when you want to test the real packaged distribution flow end to end.'));
@@ -228,7 +222,7 @@ void main() {
       expect(
         docs,
         contains(
-          'The tag-triggered workflow verifies the archived GitHub Release assets against `checksums.txt`, derives each platform npm payload from those exact release artifacts, and then publishes through npm trusted publishing on `ubuntu-latest`.',
+          'The workflow verifies the archived GitHub Release assets against `checksums.txt`, derives each platform npm payload from those exact release artifacts, and then publishes through npm trusted publishing on `ubuntu-latest`.',
         ),
       );
     });
@@ -269,7 +263,7 @@ void main() {
           equals({
             'bootstrapOnly': true,
             'managedRuntimeOwner': false,
-            'releaseTag': 'bridge-v$appVersion',
+            'releaseTag': 'v$appVersion',
             'releaseArtifact': workflowAssets[packageName],
             'runtimeBundlePath': 'lib/runtime',
           }),
@@ -281,7 +275,7 @@ void main() {
         equals({
           'bootstrapOnly': true,
           'managedRuntimeOwner': false,
-            'releaseTag': 'bridge-v$appVersion',
+          'releaseTag': 'v$appVersion',
           'runtimeBundleSource': 'github-release-assets',
         }),
       );

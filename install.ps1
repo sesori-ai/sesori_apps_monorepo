@@ -69,9 +69,7 @@ function Resolve-BridgeRelease {
     $eligible = @()
     foreach ($release in $releases) {
         $tagName = [string]$release.tag_name
-        if ($tagName.StartsWith('bridge-v')) {
-            $versionText = $tagName.Substring(8)
-        } elseif ($tagName.StartsWith('v')) {
+        if ($tagName.StartsWith('v')) {
             $versionText = $tagName.Substring(1)
         } else {
             continue
@@ -174,9 +172,7 @@ try {
     }
 
     $resolvedVersion = $Release.TagName
-    if ($resolvedVersion.StartsWith('bridge-v')) {
-        $resolvedVersion = $resolvedVersion.Substring(8)
-    } elseif ($resolvedVersion.StartsWith('v')) {
+    if ($resolvedVersion.StartsWith('v')) {
         $resolvedVersion = $resolvedVersion.Substring(1)
     }
     $managedManifestJson = @{ version = $resolvedVersion } | ConvertTo-Json -Compress
