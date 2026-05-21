@@ -73,7 +73,7 @@ class CodexPlugin implements BridgePluginApi {
       rolloutReader: rolloutReader ?? SessionRolloutReader(),
       skillReader:
           skillReader ?? CodexSkillReader(projectCwd: resolvedProjectCwd),
-      eventMapper: eventMapper ?? const CodexEventMapper(),
+      eventMapper: eventMapper ?? CodexEventMapper(projectCwd: resolvedProjectCwd),
       projectCwd: resolvedProjectCwd,
     );
   }
@@ -136,8 +136,7 @@ class CodexPlugin implements BridgePluginApi {
   void _subscribeToNotifications(CodexAppServerClient client) {
     _notificationSubscription = client.notifications.listen((notification) {
       _maintainBookkeeping(notification);
-      final mapped = _eventMapper.map(notification);
-      if (mapped != null) _eventBuffer.add(mapped);
+      _eventMapper.map(notification).forEach(_eventBuffer.add);
     });
   }
 

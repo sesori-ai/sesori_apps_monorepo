@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart" as shared;
 
 import "codex_app_server_client.dart";
 
@@ -250,15 +251,17 @@ class ApprovalRegistry {
         ),
       );
     } else {
+      // BridgeSseQuestionAsked.questions must carry QuestionInfo-shaped maps
+      // (the bridge parses them via SesoriSseEvent.fromJson → QuestionInfo).
+      final reason =
+          (request.params["reason"] as String?) ??
+          _descriptionFallback(method, request.params);
       _emit(
         BridgeSseQuestionAsked(
           id: bridgeRequestId,
           sessionID: entry.sessionId,
           questions: [
-            {
-              "method": method,
-              "params": request.params,
-            },
+            shared.QuestionInfo(question: reason, header: method).toJson(),
           ],
         ),
       );

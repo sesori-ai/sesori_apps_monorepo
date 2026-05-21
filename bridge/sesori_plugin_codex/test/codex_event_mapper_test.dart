@@ -1,104 +1,336 @@
-// ignore_for_file: cast_nullable_to_non_nullable
-
 import "package:codex_plugin/codex_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
 
+/// These tests assert the mapper emits **sesori-schema** payloads — the maps
+/// carried on session/message/status events must round-trip through the same
+/// parsers the bridge core uses (`Session`/`Message`/`SessionStatus.fromJson`
+/// and `SesoriSseEvent.fromJson`). The previous mapper passed codex's raw
+/// JSON straight through, so every live event failed to parse on the bridge.
 void main() {
   group("CodexEventMapper", () {
-    const mapper = CodexEventMapper();
+    const projectCwd = "/repo/app";
+    const mapper = CodexEventMapper(projectCwd: projectCwd);
 
-    test("thread/started → BridgeSseSessionCreated carrying thread map", () {
-      final mapped = mapper.map(
+    /// Replicates `BridgeEventMapper`'s payload construction and runs the
+    /// bridge's `SesoriSseEvent.fromJson`. Throwing here is exactly the bug
+    /// being guarded against — it means the mobile client drops the event.
+    shared.SesoriSseEvent parseAsSesori(BridgeSseEvent event) {
+      final payload = switch (event) {
+        BridgeSseSessionCreated(:final info) => {"type": "session.created", "info": info},
+        BridgeSseSessionUpdated(:final info) => {"type": "session.updated", "info": info},
+        BridgeSseSessionDeleted(:final info) => {"type": "session.deleted", "info": info},
+        BridgeSseSessionStatus(:final sessionID, :final status) => {
+          "type": "session.status",
+          "sessionID": sessionID,
+          "status": status,
+        },
+        BridgeSseMessageUpdated(:final info) => {"type": "message.updated", "info": info},
+        _ => throw ArgumentError("parseAsSesori: unhandled ${event.runtimeType}"),
+      };
+      return shared.SesoriSseEvent.fromJson(payload);
+    }
+
+    test("thread/started → SessionCreated parseable as Session", () {
+      final events = mapper.map(
         const CodexServerNotification(
           method: "thread/started",
           params: {
-            "thread": {"id": "t-1", "cwd": "/repo/app"},
+            "thread": {
+              "id": "t-1",
+              "name": "Plan the theme",
+              "cwd": "/repo/app",
+              "createdAt": 1779293088,
+              "updatedAt": 1779293090,
+              "status": {"type": "idle"},
+              "modelProvider": "openai",
+              "cliVersion": "0.121.0",
+              "source": "vscode",
+            },
           },
         ),
       );
-      expect(mapped, isA<BridgeSseSessionCreated>());
-      final created = mapped as BridgeSseSessionCreated;
-      expect(created.info["id"], equals("t-1"));
+
+      expect(events, hasLength(1));
+      final created = events.single as BridgeSseSessionCreated;
+      final session = shared.Session.fromJson(created.info);
+      expect(session.id, "t-1");
+      expect(session.projectID, projectCwd);
+      expect(session.directory, "/repo/app");
+      expect(session.title, "Plan the theme");
+      expect(session.time?.created, 1779293088000);
+      expect(session.time?.updated, 1779293090000);
+      expect(parseAsSesori(created), isA<shared.SesoriSessionCreated>());
     });
 
-    test("turn/started → BridgeSseSessionStatus(running)", () {
-      final mapped = mapper.map(
+    test("thread/started without an id is dropped", () {
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "thread/started",
+          params: {
+            "thread": {"cwd": "/repo/app"},
+          },
+        ),
+      );
+      expect(events, isEmpty);
+    });
+
+    test("thread/name/updated → SessionUpdated parseable as Session", () {
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "thread/name/updated",
+          params: {"threadId": "t-1", "threadName": "Welcome session"},
+        ),
+      );
+
+      expect(events, hasLength(1));
+      final updated = events.single as BridgeSseSessionUpdated;
+      final session = shared.Session.fromJson(updated.info);
+      expect(session.id, "t-1");
+      expect(session.title, "Welcome session");
+      expect(session.projectID, projectCwd);
+      expect(parseAsSesori(updated), isA<shared.SesoriSessionUpdated>());
+    });
+
+    test("turn/started → SessionStatus(busy) parseable as SessionStatus", () {
+      final events = mapper.map(
         const CodexServerNotification(
           method: "turn/started",
-          params: {"threadId": "t-1", "turn": {"id": "u-1"}},
+          params: {
+            "threadId": "t-1",
+            "turn": {"id": "u-1"},
+          },
         ),
       );
-      expect(mapped, isA<BridgeSseSessionStatus>());
-      final status = mapped as BridgeSseSessionStatus;
-      expect(status.sessionID, equals("t-1"));
-      expect(status.status["state"], equals("running"));
+
+      expect(events, hasLength(1));
+      final status = events.single as BridgeSseSessionStatus;
+      expect(status.sessionID, "t-1");
+      expect(shared.SessionStatus.fromJson(status.status), isA<shared.SessionStatusBusy>());
+      expect(parseAsSesori(status), isA<shared.SesoriSessionStatus>());
     });
 
-    test("turn/completed → BridgeSseSessionIdle", () {
-      final mapped = mapper.map(
+    test("turn/completed → SessionIdle", () {
+      final events = mapper.map(
+        const CodexServerNotification(method: "turn/completed", params: {"threadId": "t-1"}),
+      );
+      expect(events, hasLength(1));
+      expect((events.single as BridgeSseSessionIdle).sessionID, "t-1");
+    });
+
+    test("thread/status/changed maps active→busy and idle→idle", () {
+      final active = mapper.map(
         const CodexServerNotification(
-          method: "turn/completed",
-          params: {"threadId": "t-1"},
+          method: "thread/status/changed",
+          params: {
+            "threadId": "t-1",
+            "status": {"type": "active", "activeFlags": <Object?>[]},
+          },
         ),
       );
-      expect(mapped, isA<BridgeSseSessionIdle>());
-      expect((mapped as BridgeSseSessionIdle).sessionID, equals("t-1"));
+      final idle = mapper.map(
+        const CodexServerNotification(
+          method: "thread/status/changed",
+          params: {
+            "threadId": "t-1",
+            "status": {"type": "idle"},
+          },
+        ),
+      );
+
+      expect(
+        shared.SessionStatus.fromJson((active.single as BridgeSseSessionStatus).status),
+        isA<shared.SessionStatusBusy>(),
+      );
+      expect(
+        shared.SessionStatus.fromJson((idle.single as BridgeSseSessionStatus).status),
+        isA<shared.SessionStatusIdle>(),
+      );
     });
 
-    test("item/agentMessage/delta → BridgeSseMessagePartDelta", () {
-      final mapped = mapper.map(
+    test("item userMessage → MessageUpdated + MessagePartUpdated", () {
+      final events = mapper.map(
         const CodexServerNotification(
-          method: "item/agentMessage/delta",
+          method: "item/completed",
           params: {
             "threadId": "t-1",
             "turnId": "u-1",
-            "itemId": "i-1",
-            "delta": "hello ",
+            "item": {
+              "type": "userMessage",
+              "id": "i-user",
+              "content": [
+                {"type": "text", "text": "hey", "text_elements": <Object?>[]},
+              ],
+            },
           },
         ),
       );
-      expect(mapped, isA<BridgeSseMessagePartDelta>());
-      final delta = mapped as BridgeSseMessagePartDelta;
-      expect(delta.sessionID, equals("t-1"));
-      expect(delta.messageID, equals("i-1"));
-      expect(delta.delta, equals("hello "));
-      expect(delta.field, equals("text"));
+
+      expect(events, hasLength(2));
+      final message = events[0] as BridgeSseMessageUpdated;
+      final parsed = shared.Message.fromJson(message.info);
+      expect(parsed, isA<shared.MessageUser>());
+      expect(parsed.id, "i-user");
+      expect(parsed.sessionID, "t-1");
+      expect(parseAsSesori(message), isA<shared.SesoriMessageUpdated>());
+
+      final part = (events[1] as BridgeSseMessagePartUpdated).part;
+      expect(part.type, PluginMessagePartType.text);
+      expect(part.messageID, "i-user");
+      expect(part.id, "i-user-text");
+      expect(part.text, "hey");
     });
 
-    test("error → BridgeSseSessionError", () {
-      final mapped = mapper.map(
+    test("item agentMessage → assistant message + text part", () {
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-1",
+            "turnId": "u-1",
+            "item": {
+              "type": "agentMessage",
+              "id": "i-agent",
+              "text": "Hi. What do you need changed?",
+              "phase": "final_answer",
+            },
+          },
+        ),
+      );
+
+      expect(events, hasLength(2));
+      expect(shared.Message.fromJson((events[0] as BridgeSseMessageUpdated).info), isA<shared.MessageAssistant>());
+      final part = (events[1] as BridgeSseMessagePartUpdated).part;
+      expect(part.type, PluginMessagePartType.text);
+      expect(part.text, "Hi. What do you need changed?");
+    });
+
+    test("item reasoning → assistant message + reasoning part", () {
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-1",
+            "turnId": "u-1",
+            "item": {
+              "type": "reasoning",
+              "id": "i-reason",
+              "summary": ["Thinking about it"],
+              "content": <Object?>[],
+            },
+          },
+        ),
+      );
+
+      expect(events, hasLength(2));
+      final part = (events[1] as BridgeSseMessagePartUpdated).part;
+      expect(part.type, PluginMessagePartType.reasoning);
+      expect(part.id, "i-reason-reasoning");
+      expect(part.text, "Thinking about it");
+    });
+
+    test("unrenderable item kinds (commandExecution) are dropped", () {
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/started",
+          params: {
+            "threadId": "t-1",
+            "item": {"type": "commandExecution", "id": "i-cmd"},
+          },
+        ),
+      );
+      expect(events, isEmpty);
+    });
+
+    test("item/agentMessage/delta → MessagePartDelta on the text part", () {
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/agentMessage/delta",
+          params: {"threadId": "t-1", "itemId": "i-1", "delta": "hello "},
+        ),
+      );
+      expect(events, hasLength(1));
+      final delta = events.single as BridgeSseMessagePartDelta;
+      expect(delta.messageID, "i-1");
+      expect(delta.partID, "i-1-text");
+      expect(delta.delta, "hello ");
+    });
+
+    test("error → SessionError", () {
+      final events = mapper.map(
         const CodexServerNotification(
           method: "error",
           params: {"threadId": "t-1", "error": {"message": "boom"}},
         ),
       );
-      expect(mapped, isA<BridgeSseSessionError>());
-      expect((mapped as BridgeSseSessionError).sessionID, equals("t-1"));
+      expect(events, hasLength(1));
+      expect((events.single as BridgeSseSessionError).sessionID, "t-1");
     });
 
-    test("unmapped notifications return null", () {
-      expect(
-        mapper.map(
-          const CodexServerNotification(
-            method: "account/rateLimits/updated",
-            params: {},
-          ),
-        ),
-        isNull,
-      );
+    test("notifications with no bridge analog are dropped", () {
+      for (final method in const [
+        "account/rateLimits/updated",
+        "thread/closed",
+        "thread/tokenUsage/updated",
+        "item/commandExecution/outputDelta",
+      ]) {
+        expect(
+          mapper.map(CodexServerNotification(method: method, params: const {})),
+          isEmpty,
+          reason: "$method should be dropped",
+        );
+      }
     });
 
-    test("notifications missing required fields return null", () {
-      expect(
-        mapper.map(
-          const CodexServerNotification(
-            method: "item/agentMessage/delta",
-            params: {"threadId": "t-1"},
-          ),
+    test("regression: real bug-log payloads parse cleanly", () {
+      // The exact thread/started payload from the bug report.
+      final created = mapper.map(
+        const CodexServerNotification(
+          method: "thread/started",
+          params: {
+            "thread": {
+              "id": "019e4621-e3d6-7213-acde-f23b8d02fb7e",
+              "forkedFromId": null,
+              "preview": "",
+              "ephemeral": false,
+              "modelProvider": "openai",
+              "createdAt": 1779293088,
+              "updatedAt": 1779293088,
+              "status": {"type": "idle"},
+              "path": "/Users/x/.codex/sessions/2026/05/20/rollout.jsonl",
+              "cwd": "/repo/app",
+              "cliVersion": "0.121.0",
+              "source": "vscode",
+              "agentNickname": null,
+              "agentRole": null,
+              "gitInfo": null,
+              "name": null,
+              "turns": <Object?>[],
+            },
+          },
         ),
-        isNull,
       );
+      expect(() => parseAsSesori(created.single), returnsNormally);
+
+      // The exact agentMessage item payload from the bug report.
+      final agent = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "019e4621-e3d6-7213-acde-f23b8d02fb7e",
+            "turnId": "019e4621-e9ea-7841-9ca0-9d787c4dcc3b",
+            "item": {
+              "type": "agentMessage",
+              "id": "msg_00b7dd45419ee7cb016a0ddbad6be481919f4a7dd4265c2287",
+              "text": "Hi. What do you need changed?",
+              "phase": "final_answer",
+              "memoryCitation": null,
+            },
+          },
+        ),
+      );
+      expect(() => parseAsSesori(agent[0]), returnsNormally);
     });
   });
 }
