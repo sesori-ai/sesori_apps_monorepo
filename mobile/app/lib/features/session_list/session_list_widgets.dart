@@ -61,7 +61,7 @@ class _SessionTile extends StatelessWidget {
           children: [
             if (updatedAt != null)
               Text(
-                loc.sessionListUpdated(_formatTimestamp(ms: updatedAt, loc: loc)),
+                loc.sessionListUpdated(context.formatTimestamp(updatedAt)),
                 style: context.zyra.textTheme.textXs.regular.copyWith(
                   color: context.zyra.colors.textSecondary,
                 ),
@@ -128,18 +128,6 @@ Widget _buildActivityRow({
       ],
     ],
   );
-}
-
-String _formatTimestamp({required int ms, required AppLocalizations loc}) {
-  final date = DateTime.fromMillisecondsSinceEpoch(ms);
-  final now = DateTime.now();
-  final diff = now.difference(date);
-
-  if (diff.inMinutes < 1) return loc.timestampJustNow;
-  if (diff.inHours < 1) return loc.timestampMinutesAgo(diff.inMinutes);
-  if (diff.inDays < 1) return loc.timestampHoursAgo(diff.inHours);
-  if (diff.inDays < 30) return loc.timestampDaysAgo(diff.inDays);
-  return "${date.year}-${date.month.toString().padLeft(2, "0")}-${date.day.toString().padLeft(2, "0")}";
 }
 
 class _StaleProjectView extends StatelessWidget {
