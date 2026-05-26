@@ -81,13 +81,8 @@ class LoginProviderButtons extends StatelessWidget {
           const SizedBox(height: 12),
           ZyraButtonsSolid(
             label: loc.signInWithEmail,
-            hierarchy: ZyraButtonsSolidHierarchy.primaryAlt,
+            hierarchy: ZyraButtonsSolidHierarchy.tertiary,
             size: ZyraButtonsSolidSize.xl,
-            leadingIcon: SvgPicture.asset(
-              "assets/svgs/email_icon.svg",
-              width: 20,
-              height: 20,
-            ),
             isLoading: isLoading,
             fullWidth: true,
             onPressed: isLoading ? null : onShowEmailForm,
