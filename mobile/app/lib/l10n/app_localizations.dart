@@ -1440,6 +1440,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your new session will appear in the list once it\'s launched'**
   String get newSessionLaunchingInBackground;
+
+  /// No description provided for @commandSourceCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Command'**
+  String get commandSourceCommand;
+
+  /// No description provided for @commandSourceMcp.
+  ///
+  /// In en, this message translates to:
+  /// **'MCP'**
+  String get commandSourceMcp;
+
+  /// No description provided for @commandSourceSkill.
+  ///
+  /// In en, this message translates to:
+  /// **'Skill'**
+  String get commandSourceSkill;
+
+  /// No description provided for @commandSourceCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get commandSourceCustom;
+
+  /// No description provided for @sessionDetailFileChangesTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'File changes'**
+  String get sessionDetailFileChangesTooltip;
+
+  /// No description provided for @diffBinaryFileChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Binary file changed'**
+  String get diffBinaryFileChanged;
+
+  /// No description provided for @diffFileTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'File diff too large to display'**
+  String get diffFileTooLarge;
+
+  /// No description provided for @diffCouldNotReadFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read file'**
+  String get diffCouldNotReadFile;
+
+  /// No description provided for @timestampJustNow.
+  ///
+  /// In en, this message translates to:
+  /// **'just now'**
+  String get timestampJustNow;
+
+  /// No description provided for @timestampMinutesAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes}m ago'**
+  String timestampMinutesAgo(int minutes);
+
+  /// No description provided for @timestampHoursAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours}h ago'**
+  String timestampHoursAgo(int hours);
+
+  /// No description provided for @timestampDaysAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{days}d ago'**
+  String timestampDaysAgo(int days);
+
+  /// No description provided for @sessionDetailModelFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Model'**
+  String get sessionDetailModelFallback;
+
+  /// No description provided for @sessionDetailAgentFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent'**
+  String get sessionDetailAgentFallback;
+
+  /// No description provided for @sessionDetailRetryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get sessionDetailRetryLabel;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

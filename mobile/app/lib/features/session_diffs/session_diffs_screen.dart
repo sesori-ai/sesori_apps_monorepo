@@ -225,10 +225,11 @@ class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
   }
 
   Widget _buildSkippedPlaceholder(FileDiffSkipReason reason) {
+    final loc = context.loc;
     final message = switch (reason) {
-      FileDiffSkipReason.binary => "Binary file changed",
-      FileDiffSkipReason.tooLarge => "File diff too large to display",
-      FileDiffSkipReason.readError => "Could not read file",
+      FileDiffSkipReason.binary => loc.diffBinaryFileChanged,
+      FileDiffSkipReason.tooLarge => loc.diffFileTooLarge,
+      FileDiffSkipReason.readError => loc.diffCouldNotReadFile,
     };
     return Padding(
       padding: const EdgeInsets.all(16),

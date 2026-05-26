@@ -374,5 +374,41 @@
     "newSessionLoadingMessage1": "Warming up the engines…",
     "newSessionLoadingMessage2": "Generating session telemetry…",
     "newSessionLoadingMessage3": "Preparing for takeoff…",
-    "newSessionLaunchingInBackground": "Your new session will appear in the list once it's launched"
+    "newSessionLaunchingInBackground": "Your new session will appear in the list once it's launched",
+    "commandSourceCommand": "Command",
+    "commandSourceMcp": "MCP",
+    "commandSourceSkill": "Skill",
+    "commandSourceCustom": "Custom",
+    "sessionDetailFileChangesTooltip": "File changes",
+    "diffBinaryFileChanged": "Binary file changed",
+    "diffFileTooLarge": "File diff too large to display",
+    "diffCouldNotReadFile": "Could not read file",
+    "timestampJustNow": "just now",
+    "timestampMinutesAgo": "{minutes}m ago",
+    "@timestampMinutesAgo": {
+      "placeholders": {
+        "minutes": {
+          "type": "int"
+        }
+      }
+    },
+    "timestampHoursAgo": "{hours}h ago",
+    "@timestampHoursAgo": {
+      "placeholders": {
+        "hours": {
+          "type": "int"
+        }
+      }
+    },
+    "timestampDaysAgo": "{days}d ago",
+    "@timestampDaysAgo": {
+      "placeholders": {
+        "days": {
+          "type": "int"
+        }
+      }
+    },
+    "sessionDetailModelFallback": "Model",
+    "sessionDetailAgentFallback": "Agent",
+    "sessionDetailRetryLabel": "Retry"
 }

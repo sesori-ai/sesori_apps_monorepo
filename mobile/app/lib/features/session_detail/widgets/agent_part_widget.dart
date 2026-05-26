@@ -1,6 +1,8 @@
 import "package:flutter/material.dart";
 import "package:theme_zyra/module_zyra.dart";
 
+import "../../../core/extensions/build_context_x.dart";
+
 class AgentPartWidget extends StatelessWidget {
   final String? agentName;
 
@@ -9,7 +11,8 @@ class AgentPartWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final zyra = context.zyra;
-    final label = agentName ?? "Agent";
+    final loc = context.loc;
+    final label = agentName ?? loc.sessionDetailAgentFallback;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
