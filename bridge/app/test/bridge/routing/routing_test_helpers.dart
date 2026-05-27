@@ -41,6 +41,7 @@ RelayRequest makeRequest(
 /// Hand-written fake [BridgePluginApi] used across routing handler tests.
 class FakeBridgePlugin implements BridgePluginApi {
   final _controller = StreamController<BridgeSseEvent>.broadcast();
+  String pluginId = "fake";
 
   // ── Configurable return values ───────────────────────────────────────────
 
@@ -120,7 +121,7 @@ class FakeBridgePlugin implements BridgePluginApi {
   // ── BridgePlugin implementation ──────────────────────────────────────────
 
   @override
-  String get id => "fake";
+  String get id => pluginId;
 
   @override
   Stream<BridgeSseEvent> get events => _controller.stream;

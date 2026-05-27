@@ -12,12 +12,14 @@ import "../auth/token_refresher.dart";
 import "../push/completion_push_listener.dart";
 import "../push/maintenance_push_listener.dart";
 import "../push/push_dispatcher.dart";
+import "api/codex_defaults_api.dart";
 import "foundation/process_runner.dart";
 import "key_exchange.dart";
 import "metadata_service.dart";
 import "models/bridge_config.dart";
 import "relay_client.dart";
 import "repositories/agent_repository.dart";
+import "repositories/message_repository.dart";
 import "repositories/permission_repository.dart";
 import "repositories/project_repository.dart";
 import "repositories/provider_repository.dart";
@@ -206,35 +208,48 @@ class OrchestratorSession {
        _failureReporter = failureReporter,
        _prSyncService = prSyncService,
        _sessionAbortService = sessionAbortService,
-       _router = RequestRouter(
-         plugin: plugin,
-         getCommandsHandler: GetCommandsHandler(
+       _router = (() {
+         final codexDefaultsApi = CodexDefaultsApi();
+         return RequestRouter(
+           plugin: plugin,
+           getCommandsHandler: GetCommandsHandler(
+             sessionRepository: sessionRepository,
+           ),
            sessionRepository: sessionRepository,
-         ),
-         sessionRepository: sessionRepository,
-         abortSessionHandler: AbortSessionHandler(sessionAbortService: sessionAbortService),
-         sessionCreationService: sessionCreationService,
-         sessionArchiveService: sessionArchiveService,
-          sendPromptHandler: SendPromptHandler(
-            sessionPromptService: SessionPromptService(
-              sessionRepository: sessionRepository,
-              sseManager: sseManager,
-            ),
-          ),
-         prSyncService: prSyncService,
-         projectRepository: projectRepository,
-         providerRepository: ProviderRepository(plugin: plugin),
-         getAgentsHandler: GetAgentsHandler(
-           AgentRepository(plugin: plugin),
-         ),
-         permissionRepository: permissionRepository,
-         sessionPersistenceService: sessionPersistenceService,
-         worktreeService: worktreeService,
-         sessionDiffsHandler: GetSessionDiffsHandler(
-           sessionRepository: sessionRepository,
-           processRunner: ProcessRunner(),
-         ),
-       ),
+           abortSessionHandler: AbortSessionHandler(sessionAbortService: sessionAbortService),
+           sessionCreationService: sessionCreationService,
+           sessionArchiveService: sessionArchiveService,
+           sendPromptHandler: SendPromptHandler(
+             sessionPromptService: SessionPromptService(
+               sessionRepository: sessionRepository,
+               sseManager: sseManager,
+             ),
+           ),
+           prSyncService: prSyncService,
+           projectRepository: projectRepository,
+           providerRepository: ProviderRepository(
+             plugin: plugin,
+             codexDefaultsApi: codexDefaultsApi,
+           ),
+           messageRepository: MessageRepository(
+             plugin: plugin,
+             codexDefaultsApi: codexDefaultsApi,
+           ),
+           getAgentsHandler: GetAgentsHandler(
+             AgentRepository(
+               plugin: plugin,
+               codexDefaultsApi: codexDefaultsApi,
+             ),
+           ),
+           permissionRepository: permissionRepository,
+           sessionPersistenceService: sessionPersistenceService,
+           worktreeService: worktreeService,
+           sessionDiffsHandler: GetSessionDiffsHandler(
+             sessionRepository: sessionRepository,
+             processRunner: ProcessRunner(),
+           ),
+         );
+       })(),
        _mapper = BridgeEventMapper(
          plugin: plugin,
          failureReporter: failureReporter,

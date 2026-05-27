@@ -1,6 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../repositories/message_repository.dart";
 import "../repositories/permission_repository.dart";
 import "../repositories/project_repository.dart";
 import "../repositories/provider_repository.dart";
@@ -63,6 +64,7 @@ class RequestRouter {
     required PrSyncService prSyncService,
     required ProjectRepository projectRepository,
     required ProviderRepository providerRepository,
+    required MessageRepository messageRepository,
     required PermissionRepository permissionRepository,
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
@@ -79,6 +81,7 @@ class RequestRouter {
          prSyncService: prSyncService,
          projectRepository: projectRepository,
          providerRepository: providerRepository,
+         messageRepository: messageRepository,
          permissionRepository: permissionRepository,
          sessionPersistenceService: sessionPersistenceService,
          worktreeService: worktreeService,
@@ -97,6 +100,7 @@ class RequestRouter {
     required PrSyncService prSyncService,
     required ProjectRepository projectRepository,
     required ProviderRepository providerRepository,
+    required MessageRepository messageRepository,
     required PermissionRepository permissionRepository,
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
@@ -111,7 +115,7 @@ class RequestRouter {
       GetSessionStatusesHandler(plugin),
       GetChildSessionsHandler(sessionRepository: sessionRepository),
       GetSessionHandler(sessionRepository),
-      GetSessionMessagesHandler(plugin),
+      GetSessionMessagesHandler(messageRepository),
       GetSessionsHandler(
         sessionRepository: sessionRepository,
         prSyncService: prSyncService,
