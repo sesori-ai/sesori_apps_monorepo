@@ -1,6 +1,6 @@
 import "package:flutter/material.dart";
-import "package:flutter_svg/svg.dart";
 import "package:theme_zyra/components/buttons/zyra_buttons_solid.dart";
+import "package:theme_zyra/icons/tabler_icons.g.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 
@@ -35,11 +35,7 @@ class LoginProviderButtons extends StatelessWidget {
           label: loc.loginWithGithub,
           hierarchy: ZyraButtonsSolidHierarchy.primaryAlt,
           size: ZyraButtonsSolidSize.xl,
-          leadingIcon: SvgPicture.asset(
-            "assets/svgs/github_icon.svg",
-            width: 20,
-            height: 20,
-          ),
+          leadingIcon: TablerOutline.brand_github,
           isLoading: isLoading,
           fullWidth: true,
           onPressed: isLoading ? null : onGithubSelected,
@@ -50,11 +46,7 @@ class LoginProviderButtons extends StatelessWidget {
             label: loc.loginWithApple,
             hierarchy: ZyraButtonsSolidHierarchy.primaryAlt,
             size: ZyraButtonsSolidSize.xl,
-            leadingIcon: SvgPicture.asset(
-              "assets/svgs/apple_icon.svg",
-              width: 20,
-              height: 20,
-            ),
+            leadingIcon: TablerOutline.brand_apple,
             isLoading: isLoading,
             fullWidth: true,
             onPressed: isLoading ? null : onAppleSelected,
@@ -65,14 +57,7 @@ class LoginProviderButtons extends StatelessWidget {
           label: loc.loginWithGoogle,
           hierarchy: ZyraButtonsSolidHierarchy.primaryAlt,
           size: ZyraButtonsSolidSize.xl,
-          // Closest Material approximation to the Figma "G" mark — the previous
-          // implementation used a styled Text("G"), which ZyraButtonsSolid does
-          // not support as a leading widget.
-          leadingIcon: SvgPicture.asset(
-            "assets/svgs/google_icon.svg",
-            width: 20,
-            height: 20,
-          ),
+          leadingIcon: TablerOutline.brand_google,
           isLoading: isLoading,
           fullWidth: true,
           onPressed: isLoading ? null : onGoogleSelected,

@@ -131,7 +131,7 @@ class ZyraButtonsSolid extends StatefulWidget {
   final VoidCallback? onPressed;
 
   /// Optional icon placed before the label.
-  final Widget? leadingIcon;
+  final IconData? leadingIcon;
 
   /// Optional icon placed after the label. Ignored when [iconOnly] is `true`.
   final IconData? trailingIcon;
@@ -274,7 +274,7 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
       children.add(labelWidget);
     } else {
       if (widget.leadingIcon != null) {
-        children.add(SizedBox(width: _resolveIconSize(), height: _resolveIconSize(), child: widget.leadingIcon));
+        children.add(Icon(widget.leadingIcon, size: _resolveIconSize(), color: iconColor));
         children.add(SizedBox(width: gap));
       }
       children.add(labelWidget);
@@ -307,7 +307,7 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
     if (widget.isLoading) {
       iconWidget = _LoadingSpinner(color: iconColor, size: _resolveIconSize());
     } else {
-      iconWidget = SizedBox(width: _resolveIconSize(), height: _resolveIconSize(), child: widget.leadingIcon);
+      iconWidget = Icon(widget.leadingIcon, size: _resolveIconSize(), color: iconColor);
     }
 
     return Padding(
