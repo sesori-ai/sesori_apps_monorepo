@@ -724,7 +724,7 @@ abstract class AppLocalizations {
   /// No description provided for @loginAgreementText.
   ///
   /// In en, this message translates to:
-  /// **'By signing, in you accept our Terms of use and Privacy policy.'**
+  /// **'By signing in, you accept our [Terms of Use](https://sesori.com/terms) and [Privacy Policy](https://sesori.com/privacy).'**
   String get loginAgreementText;
 
   /// No description provided for @loginWithGithub.

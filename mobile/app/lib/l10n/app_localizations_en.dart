@@ -368,7 +368,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginSubtitle => 'Sesori';
 
   @override
-  String get loginAgreementText => 'By signing, in you accept our Terms of use and Privacy policy.';
+  String get loginAgreementText =>
+      'By signing in, you accept our [Terms of Use](https://sesori.com/terms) and [Privacy Policy](https://sesori.com/privacy).';
 
   @override
   String get loginWithGithub => 'Sign in with GitHub';

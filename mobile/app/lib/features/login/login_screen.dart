@@ -5,6 +5,7 @@ import "package:crypto/crypto.dart";
 import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
+import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:sign_in_with_apple/sign_in_with_apple.dart";
@@ -13,6 +14,7 @@ import "package:theme_zyra/module_zyra.dart";
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/routing/app_router.dart";
+import "../../core/widgets/markdown_styles.dart";
 import "../../l10n/app_localizations.dart";
 import "email_login_form.dart";
 import "login_provider_buttons.dart";
@@ -306,13 +308,10 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                                     LoginSuccess() => const SizedBox.shrink(),
                                   },
                                   const SizedBox(height: 22),
-                                  Text(
-                                    // TODO: convert to markdown with links
-                                    loc.loginAgreementText,
-                                    style: zyra.textTheme.textSm.regular.copyWith(
-                                      color: zyra.colors.textSecondary,
-                                    ),
-                                    textAlign: TextAlign.center,
+                                  MarkdownBody(
+                                    data: loc.loginAgreementText,
+                                    onTapLink: handleMarkdownLinkTap,
+                                    styleSheet: buildAgreementMarkdownStyleSheet(zyra: zyra),
                                   ),
                                 ],
                               ),
