@@ -45,18 +45,12 @@ flutter:
         - asset: assets/fonts/SatoshiZyra/SatoshiZyra-BlackItalic.otf
           weight: 900
           style: italic
-    - family: FA6Thin
+    - family: TablerOutline
       fonts:
-        - asset: assets/fonts/FontAwesome6Pro/FA6Pro-Thin-100.otf
-    - family: FA6Light
+        - asset: assets/fonts/TablerIcons/tabler-icons.ttf
+    - family: TablerFilled
       fonts:
-        - asset: assets/fonts/FontAwesome6Pro/FA6Pro-Light-300.otf
-    - family: FA6Regular
-      fonts:
-        - asset: assets/fonts/FontAwesome6Pro/FA6Pro-Regular-400.otf
-    - family: FA6Solid
-      fonts:
-        - asset: assets/fonts/FontAwesome6Pro/FA6Pro-Solid-900.otf
+        - asset: assets/fonts/TablerIcons/tabler-icons-filled.ttf
     - family: VESPRLight
       fonts:
         - asset: assets/fonts/VESPRIcons/VESPRIcons-Light.ttf
