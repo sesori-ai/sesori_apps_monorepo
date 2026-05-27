@@ -9,6 +9,7 @@ on:
     paths:
       - 'mobile/**'
       - 'shared/**'
+      - 'bridge/**'
 
 concurrency:
   group: release-all-${{ github.ref }}
