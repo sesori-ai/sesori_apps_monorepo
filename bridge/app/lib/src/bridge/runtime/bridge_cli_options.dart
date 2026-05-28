@@ -1,33 +1,20 @@
 import "package:args/args.dart";
 
-/// Which coding-agent backend this bridge instance drives.
-///
-/// One backend per bridge process. The opencode plugin and codex plugin
-/// ship side-by-side as compiled-in modules; this flag selects which one
-/// `runBridgeApp` instantiates.
-enum BridgeBackend {
-  opencode,
-  codex;
-
-  static BridgeBackend parse(String raw) {
-    return switch (raw) {
-      "opencode" => BridgeBackend.opencode,
-      "codex" => BridgeBackend.codex,
-      _ => throw ArgumentError.value(raw, "backend", "unsupported backend"),
-    };
-  }
-}
-
 class BridgeCliOptions {
   final List<String> cliArgs;
   final String relayUrl;
-  final BridgeBackend backend;
+
+  /// Which coding-agent backend this bridge instance drives. One backend per
+  /// process; validated against the backend registry's ids via the
+  /// `--backend` allowed list at parse time.
+  final String backendId;
   final int? port;
   final bool noAutoStart;
   final String password;
   final String opencodeBin;
   final String codexBin;
   final int codexPort;
+  final String cursorBin;
   final String authBackendUrl;
   final bool forceLogin;
   final int? debugPort;
@@ -36,13 +23,14 @@ class BridgeCliOptions {
   const BridgeCliOptions({
     required this.cliArgs,
     required this.relayUrl,
-    required this.backend,
+    required this.backendId,
     required this.port,
     required this.noAutoStart,
     required this.password,
     required this.opencodeBin,
     required this.codexBin,
     required this.codexPort,
+    required this.cursorBin,
     required this.authBackendUrl,
     required this.forceLogin,
     required this.debugPort,
@@ -74,13 +62,14 @@ class BridgeCliOptions {
     return BridgeCliOptions(
       cliArgs: cliArgs,
       relayUrl: results["relay"] as String,
-      backend: BridgeBackend.parse(results["backend"] as String),
+      backendId: results["backend"] as String,
       port: portRaw == null || portRaw.isEmpty ? null : int.parse(portRaw),
       noAutoStart: noAutoStart,
       password: results["password"] as String,
       opencodeBin: results["opencode-bin"] as String,
       codexBin: results["codex-bin"] as String,
       codexPort: int.parse(results["codex-port"] as String),
+      cursorBin: results["cursor-bin"] as String,
       authBackendUrl: authBackendUrl,
       forceLogin: results["login"] as bool,
       debugPort: debugPortRaw.isNotEmpty ? int.tryParse(debugPortRaw) : null,

@@ -4,7 +4,7 @@ import "package:clock/clock.dart";
 import "package:http/http.dart" as http;
 import "package:path/path.dart" as path;
 import "package:rxdart/rxdart.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePluginApi, Log;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../../auth/login_email_api.dart";
 import "../../auth/login_email_repository.dart";
@@ -59,21 +59,20 @@ import "../persistence/database.dart";
 import "../repositories/opencode_db_repository.dart";
 import "../services/opencode_db_maintenance_service.dart";
 import "../sse/sse_manager.dart";
+import "backend_registry.dart";
 import "bridge_cli_options.dart";
 import "bridge_runtime.dart";
 import "bridge_runtime_auth.dart";
 import "bridge_runtime_server.dart";
 import "bridge_shutdown_coordinator.dart";
 
-typedef BridgePluginFactory = BridgePluginApi Function({required String serverUrl, required String? serverPassword});
-
 Future<int> runBridgeApp({
   required BridgeCliOptions options,
-  required BridgePluginFactory pluginFactory,
+  required BackendRegistry registry,
 }) {
   return BridgeRuntimeRunner.run(
     options: options,
-    pluginFactory: pluginFactory,
+    registry: registry,
   );
 }
 
@@ -82,8 +81,9 @@ class BridgeRuntimeRunner {
 
   static Future<int> run({
     required BridgeCliOptions options,
-    required BridgePluginFactory pluginFactory,
+    required BackendRegistry registry,
   }) async {
+    final descriptor = registry.descriptor(options.backendId);
     final shutdownCoordinator = BridgeShutdownCoordinator();
     final subscriptions = CompositeSubscription();
     shutdownCoordinator.add(disposable: subscriptions.cancel);
@@ -174,7 +174,7 @@ class BridgeRuntimeRunner {
         authBackendUrl: options.authBackendUrl,
         accessToken: authTokens.accessToken,
       );
-      if (options.backend == BridgeBackend.opencode) {
+      if (descriptor.optimizesOpenCodeDb) {
         _optimizeOpenCodeDbIfNeeded(environment: environment);
       }
 
@@ -210,6 +210,7 @@ class BridgeRuntimeRunner {
 
       final serverRuntime = await resolveServer(
         options: options,
+        descriptor: descriptor,
         currentBridgeIdentity: currentBridgeIdentity,
         ownerSessionId: ownerSessionId,
         startupMutexRepository: startupMutexRepository,
@@ -224,8 +225,9 @@ class BridgeRuntimeRunner {
           return openCodeServerService.stopOwnedServer(record: record);
         },
       );
-      registerCodexShutdown(
+      registerBackendProcessShutdown(
         shutdownCoordinator: shutdownCoordinator,
+        descriptor: descriptor,
         serverRuntime: serverRuntime,
       );
 
@@ -245,10 +247,7 @@ class BridgeRuntimeRunner {
           authBackendURL: options.authBackendUrl,
           sseReplayWindow: SSEManager.defaultReplayWindow,
         ),
-        plugin: pluginFactory(
-          serverUrl: serverRuntime.serverUrl,
-          serverPassword: serverRuntime.serverPassword,
-        ),
+        plugin: descriptor.createPlugin(serverRuntime),
         httpClient: httpClient,
         accessTokenProvider: tokenManager,
         tokenRefresher: tokenManager,
@@ -374,21 +373,24 @@ void registerOwnedOpenCodeShutdown({
   );
 }
 
-/// Registers a shutdown hook that terminates the codex `app-server` process
-/// when [serverRuntime] was started for the codex backend.
+/// Registers a shutdown hook that terminates a backend-owned spawned process
+/// (codex's `app-server`) when the descriptor declares ownership.
 ///
 /// The opencode backend reclaims its process via [registerOwnedOpenCodeShutdown]
-/// and an on-disk ownership record; codex has no such record, so its [Process]
-/// handle is signalled directly.
-void registerCodexShutdown({
+/// and an on-disk ownership record; ACP harnesses spawn and reap their own
+/// subprocess inside the plugin (via `dispose`), so neither needs this.
+void registerBackendProcessShutdown({
   required BridgeShutdownCoordinator shutdownCoordinator,
+  required BackendDescriptor descriptor,
   required BridgeServerRuntime serverRuntime,
 }) {
-  if (serverRuntime.backend != BridgeBackend.codex) {
+  if (!descriptor.ownsProcessShutdown) {
     return;
   }
-
   final process = serverRuntime.process;
+  if (process == null) {
+    return;
+  }
   shutdownCoordinator.add(
     disposable: () => stopCodexAppServer(process),
   );

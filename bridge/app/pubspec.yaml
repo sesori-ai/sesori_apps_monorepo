@@ -26,6 +26,10 @@ dependencies:
     path: ../sesori_plugin_opencode
   codex_plugin:
     path: ../sesori_plugin_codex
+  acp_plugin:
+    path: ../sesori_plugin_acp
+  cursor_plugin:
+    path: ../sesori_plugin_cursor
   meta: ^1.17.0
   drift: ^2.32.1
   sqlite3: ^3.2.0

@@ -1,13 +1,12 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
-import 'package:codex_plugin/codex_plugin.dart';
-import 'package:opencode_plugin/opencode_plugin.dart';
 import 'package:sesori_bridge/src/api/bridge_settings_api.dart';
 import 'package:sesori_bridge/src/api/default_editor_api.dart';
 import 'package:sesori_bridge/src/api/wake_lock_client.dart';
 import 'package:sesori_bridge/src/bridge/foundation/device_type_detector.dart';
 import 'package:sesori_bridge/src/bridge/foundation/process_runner.dart';
+import 'package:sesori_bridge/src/bridge/runtime/backends.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_cli_options.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_runtime_runner.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
@@ -16,32 +15,10 @@ import 'package:sesori_bridge/src/repositories/wake_lock_repository.dart';
 import 'package:sesori_bridge/src/services/bridge_config_service.dart';
 import 'package:sesori_bridge/src/services/sleep_prevention_service.dart';
 import 'package:sesori_bridge/src/version.dart';
-import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show BridgePluginApi, Log, LogLevel;
+import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log, LogLevel;
 
 const String _defaultRelayURL = 'wss://relay.sesori.com';
 const String _defaultAuthURL = 'https://api.sesori.com';
-
-OpenCodePlugin _createOpenCodePlugin({
-  required String serverUrl,
-  required String? serverPassword,
-}) {
-  return OpenCodePlugin(serverUrl: serverUrl, password: serverPassword);
-}
-
-CodexPlugin _createCodexPlugin({
-  required String serverUrl,
-  required String? serverPassword,
-}) {
-  return CodexPlugin(serverUrl: serverUrl, capabilityToken: serverPassword);
-}
-
-BridgePluginApi Function({required String serverUrl, required String? serverPassword})
-    _pluginFactoryFor(BridgeBackend backend) {
-  return switch (backend) {
-    BridgeBackend.opencode => _createOpenCodePlugin,
-    BridgeBackend.codex => _createCodexPlugin,
-  };
-}
 
 Future<void> main(List<String> args) async {
   if (!(Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
@@ -67,6 +44,8 @@ Future<void> main(List<String> args) async {
     exit(0);
   }
 
+  final registry = buildBackendRegistry();
+
   final parser = ArgParser()
     ..addFlag(
       'version',
@@ -77,8 +56,8 @@ Future<void> main(List<String> args) async {
     ..addOption(
       'backend',
       defaultsTo: 'opencode',
-      allowed: ['opencode', 'codex'],
-      help: 'Coding-agent backend to drive (opencode | codex)',
+      allowed: registry.ids,
+      help: 'Coding-agent backend to drive (${registry.ids.join(' | ')})',
     )
     ..addOption(
       'port',
@@ -108,6 +87,11 @@ Future<void> main(List<String> args) async {
       'codex-port',
       defaultsTo: '0',
       help: 'Port for codex app-server (0 = ephemeral, auto-discovered)',
+    )
+    ..addOption(
+      'cursor-bin',
+      defaultsTo: 'cursor-agent',
+      help: 'Path to cursor-agent binary (resolved on PATH if not absolute)',
     )
     ..addOption('auth-backend', defaultsTo: '', help: 'Auth backend URL')
     ..addFlag(
@@ -188,7 +172,7 @@ Future<void> main(List<String> args) async {
 
   final exitCode = await runBridgeApp(
     options: options,
-    pluginFactory: _pluginFactoryFor(options.backend),
+    registry: registry,
   );
   await sleepPreventionService.dispose();
   exit(exitCode);

@@ -4,6 +4,7 @@ import 'package:args/args.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 import 'package:sesori_shared/sesori_shared.dart';
 
+import '../../server/acp_binary_resolver.dart';
 import '../../server/codex_binary_resolver.dart';
 import '../../server/foundation/process_identity.dart';
 import '../../server/models/open_code_ownership_record.dart';
@@ -12,6 +13,7 @@ import '../../server/repositories/open_code_ownership_repository.dart';
 import '../../server/repositories/startup_mutex_repository.dart';
 import '../../server/services/bridge_instance_service.dart';
 import '../../server/services/open_code_server_service.dart';
+import 'backend_registry.dart';
 import 'bridge_cli_options.dart';
 
 const String defaultTargetHost = 'http://127.0.0.1';
@@ -30,6 +32,8 @@ const String defaultTargetHost = 'http://127.0.0.1';
 /// needs no auth (`--ws-auth` is only required for non-loopback listeners).
 Future<BridgeServerRuntime> resolveServer({
   required BridgeCliOptions options,
+  // Null defaults to the opencode resolution path (the historical default).
+  BackendDescriptor? descriptor,
   required ProcessIdentity currentBridgeIdentity,
   required String ownerSessionId,
   required StartupMutexRepository startupMutexRepository,
@@ -52,7 +56,10 @@ Future<BridgeServerRuntime> resolveServer({
       );
       switch (resolution.status) {
         case BridgeInstanceResolutionStatus.allowed:
-          if (options.backend == BridgeBackend.codex) {
+          if (descriptor != null && descriptor.isAcp) {
+            return _resolveAcpServer(options, descriptor);
+          }
+          if (descriptor?.id == "codex") {
             return _resolveCodexServer(options);
           }
           if (options.noAutoStart) {
@@ -146,7 +153,30 @@ Future<BridgeServerRuntime> _resolveCodexServer(BridgeCliOptions options) async 
     process: startup.process,
     ownedOpenCodeRecord: null,
     port: Uri.parse(startup.serverUrl).port,
-    backend: BridgeBackend.codex,
+  );
+}
+
+/// Resolves the binary for an ACP (stdio) harness. The plugin spawns and owns
+/// the agent subprocess itself, so this only resolves the binary path and
+/// carries it on the runtime — it does not start a server.
+Future<BridgeServerRuntime> _resolveAcpServer(
+  BridgeCliOptions options,
+  BackendDescriptor descriptor,
+) async {
+  final config = descriptor.acp!;
+  final flag = config.binaryFlag(options);
+  final binary =
+      AcpBinaryResolver(binaryFlag: flag.isEmpty ? config.defaultBinary : flag)
+          .resolve();
+  Log.i('${config.displayName} ACP backend using binary: $binary');
+  return BridgeServerRuntime(
+    // serverUrl is only used for a diagnostic log line for stdio backends.
+    serverUrl: binary,
+    serverPassword: null,
+    process: null,
+    ownedOpenCodeRecord: null,
+    port: 0,
+    acpBinaryPath: binary,
   );
 }
 
@@ -157,7 +187,7 @@ class BridgeServerRuntime {
     required this.process,
     required this.ownedOpenCodeRecord,
     required this.port,
-    this.backend = BridgeBackend.opencode,
+    this.acpBinaryPath,
   });
 
   factory BridgeServerRuntime.fromOpenCodeRuntime({
@@ -179,8 +209,9 @@ class BridgeServerRuntime {
   final OpenCodeOwnershipRecord? ownedOpenCodeRecord;
   final int port;
 
-  /// Which backend produced this runtime — drives backend-specific shutdown.
-  final BridgeBackend backend;
+  /// Resolved agent binary for ACP (stdio) backends — passed to the plugin,
+  /// which spawns and owns the subprocess. Null for socket/HTTP backends.
+  final String? acpBinaryPath;
 }
 
 class BridgeRuntimeServerException implements Exception {

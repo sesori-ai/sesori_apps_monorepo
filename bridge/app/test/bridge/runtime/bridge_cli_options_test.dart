@@ -40,6 +40,7 @@ BridgeCliOptions _parseOptions({required List<String> args}) {
     ..addOption("opencode-bin", defaultsTo: "opencode")
     ..addOption("codex-bin", defaultsTo: "codex")
     ..addOption("codex-port", defaultsTo: "0")
+    ..addOption("cursor-bin", defaultsTo: "cursor-agent")
     ..addOption("auth-backend", defaultsTo: "")
     ..addFlag("login", defaultsTo: false)
     ..addOption("debug-port", defaultsTo: "")
