@@ -6,6 +6,7 @@ import "package:theme_zyra/module_zyra.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/widgets/agent_model_buttons.dart";
+import "../../../l10n/app_localizations.dart";
 import "background_tasks_bar.dart";
 import "prompt_input.dart";
 import "session_detail_message_list.dart";
@@ -103,7 +104,7 @@ class SessionDetailLoadedView extends StatelessWidget {
             header: null,
             composerHeader: AgentModelButtons(
               availableVariants: state.availableVariants,
-              modelName: _resolveModelName(state),
+              modelName: _resolveModelName(state, loc: loc),
               selectedAgent: state.selectedAgent,
               selectedAgentModel: state.selectedAgentModel,
               onAgentTap: onOpenAgentPicker,
@@ -119,10 +120,10 @@ class SessionDetailLoadedView extends StatelessWidget {
     );
   }
 
-  String _resolveModelName(SessionDetailLoaded state) {
+  String _resolveModelName(SessionDetailLoaded state, {required AppLocalizations loc}) {
     final providerID = state.selectedAgentModel?.providerID;
     final modelID = state.selectedAgentModel?.modelID;
-    const fallback = 'Model';
+    final fallback = loc.sessionDetailModelFallback;
     if (providerID == null || modelID == null) return fallback;
     for (final provider in state.availableProviders) {
       if (provider.id == providerID) {

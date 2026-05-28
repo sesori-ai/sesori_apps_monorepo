@@ -753,4 +753,55 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get newSessionLaunchingInBackground => 'Your new session will appear in the list once it\'s launched';
+
+  @override
+  String get commandSourceCommand => 'Command';
+
+  @override
+  String get commandSourceMcp => 'MCP';
+
+  @override
+  String get commandSourceSkill => 'Skill';
+
+  @override
+  String get commandSourceCustom => 'Custom';
+
+  @override
+  String get sessionDetailFileChangesTooltip => 'File changes';
+
+  @override
+  String get diffBinaryFileChanged => 'Binary file changed';
+
+  @override
+  String get diffFileTooLarge => 'File diff too large to display';
+
+  @override
+  String get diffCouldNotReadFile => 'Could not read file';
+
+  @override
+  String get timestampJustNow => 'just now';
+
+  @override
+  String timestampMinutesAgo(int minutes) {
+    return '${minutes}m ago';
+  }
+
+  @override
+  String timestampHoursAgo(int hours) {
+    return '${hours}h ago';
+  }
+
+  @override
+  String timestampDaysAgo(int days) {
+    return '${days}d ago';
+  }
+
+  @override
+  String get sessionDetailModelFallback => 'Model';
+
+  @override
+  String get sessionDetailAgentFallback => 'Agent';
+
+  @override
+  String get sessionDetailRetryLabel => 'Retry';
 }

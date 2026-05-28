@@ -244,7 +244,7 @@ class _ProjectTile extends StatelessWidget {
           ),
           if (updatedAt != null)
             Text(
-              loc.projectListUpdated(_formatTimestamp(updatedAt)),
+              loc.projectListUpdated(context.formatTimestamp(updatedAt)),
               style: zyra.textTheme.textXs.regular.copyWith(
                 color: zyra.colors.textSecondary,
               ),
@@ -277,17 +277,6 @@ class _ProjectTile extends StatelessWidget {
     );
   }
 
-  String _formatTimestamp(int ms) {
-    final date = DateTime.fromMillisecondsSinceEpoch(ms);
-    final now = DateTime.now();
-    final diff = now.difference(date);
-
-    if (diff.inMinutes < 1) return "just now";
-    if (diff.inHours < 1) return "${diff.inMinutes}m ago";
-    if (diff.inDays < 1) return "${diff.inHours}h ago";
-    if (diff.inDays < 30) return "${diff.inDays}d ago";
-    return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
-  }
 }
 
 class _ErrorView extends StatelessWidget {

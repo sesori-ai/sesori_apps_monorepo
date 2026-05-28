@@ -3,6 +3,7 @@ import "package:go_router/go_router.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_zyra/module_zyra.dart";
 
+import "../../l10n/app_localizations.dart";
 import "../extensions/build_context_x.dart";
 import "app_modal_bottom_sheet.dart";
 
@@ -56,11 +57,11 @@ class _CommandPickerSheetState extends State<CommandPickerSheet> {
     }).toList();
   }
 
-  String _sourceLabel(CommandSource? source) => switch (source) {
-    CommandSource.command => "Command",
-    CommandSource.mcp => "MCP",
-    CommandSource.skill => "Skill",
-    CommandSource.unknown || null => "Custom",
+  String _sourceLabel(CommandSource? source, {required AppLocalizations loc}) => switch (source) {
+    CommandSource.command => loc.commandSourceCommand,
+    CommandSource.mcp => loc.commandSourceMcp,
+    CommandSource.skill => loc.commandSourceSkill,
+    CommandSource.unknown || null => loc.commandSourceCustom,
   };
 
   @override
@@ -166,7 +167,7 @@ class _CommandPickerSheetState extends State<CommandPickerSheet> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      _sourceLabel(command.source),
+                      _sourceLabel(command.source, loc: loc),
                       style: zyra.textTheme.textXs.medium.copyWith(
                         color: zyra.colors.textBrandPrimary,
                         fontWeight: FontWeight.w600,

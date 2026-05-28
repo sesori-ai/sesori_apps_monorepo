@@ -77,7 +77,7 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
         actions: [
           IconButton(
             icon: const Icon(Icons.difference_outlined),
-            tooltip: "File changes",
+            tooltip: loc.sessionDetailFileChangesTooltip,
             onPressed: () => context.pushRoute(
               AppRoute.sessionDiffs(
                 projectId: widget.projectId,
