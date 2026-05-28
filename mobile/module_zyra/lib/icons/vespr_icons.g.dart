@@ -30,7 +30,7 @@ class VESPRRegular {
 
 /// VESPRSolid icon font.
 ///
-/// 15 icons available.
+/// 16 icons available.
 class VESPRSolid {
   VESPRSolid._();
 
@@ -41,6 +41,7 @@ class VESPRSolid {
   static const IconData discord = IconData(0xE008, fontFamily: "VESPRSolid", fontPackage: "theme_zyra");
   static const IconData face_id = IconData(0xE000, fontFamily: "VESPRSolid", fontPackage: "theme_zyra");
   static const IconData gear = IconData(0xE001, fontFamily: "VESPRSolid", fontPackage: "theme_zyra");
+  static const IconData github = IconData(0xE015, fontFamily: "VESPRSolid", fontPackage: "theme_zyra");
   static const IconData google = IconData(0xE009, fontFamily: "VESPRSolid", fontPackage: "theme_zyra");
   static const IconData grok = IconData(0xE010, fontFamily: "VESPRSolid", fontPackage: "theme_zyra");
   static const IconData openai = IconData(0xE011, fontFamily: "VESPRSolid", fontPackage: "theme_zyra");

@@ -1,6 +1,6 @@
 import "package:flutter/material.dart";
 import "package:theme_zyra/components/buttons/zyra_buttons_solid.dart";
-import "package:theme_zyra/icons/tabler_icons.g.dart";
+import "package:theme_zyra/icons/vespr_icons.g.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 
@@ -35,7 +35,7 @@ class LoginProviderButtons extends StatelessWidget {
           label: loc.loginWithGithub,
           hierarchy: ZyraButtonsSolidHierarchy.primaryAlt,
           size: ZyraButtonsSolidSize.xl,
-          leadingIcon: TablerOutline.brand_github,
+          leadingIcon: VESPRSolid.github,
           isLoading: isLoading,
           fullWidth: true,
           onPressed: isLoading ? null : onGithubSelected,
@@ -46,7 +46,7 @@ class LoginProviderButtons extends StatelessWidget {
             label: loc.loginWithApple,
             hierarchy: ZyraButtonsSolidHierarchy.primaryAlt,
             size: ZyraButtonsSolidSize.xl,
-            leadingIcon: TablerOutline.brand_apple,
+            leadingIcon: VESPRSolid.apple,
             isLoading: isLoading,
             fullWidth: true,
             onPressed: isLoading ? null : onAppleSelected,
@@ -57,7 +57,7 @@ class LoginProviderButtons extends StatelessWidget {
           label: loc.loginWithGoogle,
           hierarchy: ZyraButtonsSolidHierarchy.primaryAlt,
           size: ZyraButtonsSolidSize.xl,
-          leadingIcon: TablerOutline.brand_google,
+          leadingIcon: VESPRSolid.google,
           isLoading: isLoading,
           fullWidth: true,
           onPressed: isLoading ? null : onGoogleSelected,
