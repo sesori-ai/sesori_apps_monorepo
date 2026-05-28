@@ -9,6 +9,7 @@ import "dart:convert";
 import "dart:io";
 
 import "package:codex_plugin/codex_plugin.dart";
+import "package:path/path.dart" as p;
 import "package:test/test.dart";
 import "package:web_socket_channel/web_socket_channel.dart";
 
@@ -51,8 +52,11 @@ void main() {
           rolloutReader: SessionRolloutReader(
             environment: {"CODEX_HOME": tempHome.path},
           ),
-          // Hermetic skill reader so the user's real ~/.codex/skills/
+          // Hermetic config/skill readers so the user's real ~/.codex/
           // doesn't leak into this test.
+          configReader: CodexConfigReader(
+            environment: {"CODEX_HOME": tempHome.path},
+          ),
           skillReader: CodexSkillReader(
             environment: {"CODEX_HOME": tempHome.path},
             projectCwd: tempHome.path,
@@ -61,10 +65,78 @@ void main() {
         );
         expect(await plugin.getSessions("/repo/example"), isEmpty);
         expect(await plugin.getCommands(projectId: "/repo/example"), isEmpty);
-        expect(await plugin.getAgents(), isEmpty);
         expect(await plugin.getSessionMessages("s-1"), isEmpty);
         expect(await plugin.getSessionStatuses(), isEmpty);
         expect(plugin.getActiveSessionsSummary(), isEmpty);
+        // With no config or rollout history, codex still surfaces its single
+        // agent (the harness identity) but with no resolvable model, and no
+        // providers.
+        final agents = await plugin.getAgents();
+        expect(agents.single.name, equals("codex"));
+        expect(agents.single.model, isNull);
+        expect(
+          (await plugin.getProviders(projectId: "/repo/example")).providers,
+          isEmpty,
+        );
+        await plugin.dispose();
+      } finally {
+        try {
+          tempHome.deleteSync(recursive: true);
+        } catch (_) {}
+      }
+    });
+
+    test("getAgents/getProviders synthesise from config + latest rollout", () async {
+      final tempHome = Directory.systemTemp.createTempSync("codex-home-syn-");
+      try {
+        File(p.join(tempHome.path, "config.toml"))
+            .writeAsStringSync('model = "gpt-5.5"\nmodel_provider = "openai"\n');
+        // A rollout whose turn_context model differs from the global config
+        // default — the per-session model must win.
+        final rollout = File(p.join(
+          tempHome.path,
+          "sessions/2026/05/27/rollout-2026-05-27T10-00-00-019a0000-1111-2222-3333-bbbbbbbbbbbb.jsonl",
+        ))..createSync(recursive: true);
+        rollout.writeAsStringSync(
+          "${jsonEncode({
+            "type": "session_meta",
+            "payload": {
+              "id": "019a0000-1111-2222-3333-bbbbbbbbbbbb",
+              "timestamp": "2026-05-27T10:00:00Z",
+              "cwd": "/repo/example",
+              "model_provider": "openai",
+            },
+          })}\n"
+          "${jsonEncode({
+            "type": "turn_context",
+            "payload": {"model": "gpt-5.4-codex"},
+          })}\n",
+        );
+
+        final plugin = CodexPlugin(
+          serverUrl: "ws://127.0.0.1:0",
+          rolloutReader: SessionRolloutReader(
+            environment: {"CODEX_HOME": tempHome.path},
+          ),
+          configReader: CodexConfigReader(
+            environment: {"CODEX_HOME": tempHome.path},
+          ),
+          skillReader: CodexSkillReader(
+            environment: {"CODEX_HOME": tempHome.path},
+            projectCwd: tempHome.path,
+          ),
+          projectCwd: "/repo/example",
+        );
+
+        final agent = (await plugin.getAgents()).single;
+        expect(agent.name, equals("codex"));
+        expect(agent.model?.modelID, equals("gpt-5.4-codex"));
+        expect(agent.model?.providerID, equals("openai"));
+
+        final providers =
+            (await plugin.getProviders(projectId: "/repo/example")).providers;
+        expect(providers.single.id, equals("openai"));
+        expect(providers.single.defaultModelID, equals("gpt-5.4-codex"));
         await plugin.dispose();
       } finally {
         try {

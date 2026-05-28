@@ -4,6 +4,7 @@
 // BridgePluginApi contract, mirroring the OpenCode plugin topology.
 export "src/approval_registry.dart";
 export "src/codex_app_server_client.dart";
+export "src/codex_config_reader.dart";
 export "src/codex_event_mapper.dart";
 export "src/codex_plugin_impl.dart";
 export "src/codex_skill_reader.dart";

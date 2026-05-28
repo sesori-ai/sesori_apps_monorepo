@@ -1,11 +1,9 @@
 import "dart:convert";
 
-import "package:sesori_bridge/src/bridge/api/codex_defaults_api.dart";
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/agent_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/message_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/provider_repository.dart";
@@ -49,15 +47,7 @@ void main() {
         pullRequestRepository: PullRequestRepository(pullRequestDao: db.pullRequestDao, projectsDao: db.projectsDao),
       );
       final projectRepository = ProjectRepository(plugin: plugin, projectsDao: db.projectsDao);
-      final codexDefaultsApi = CodexDefaultsApi(environment: const {});
-      final providerRepository = ProviderRepository(
-        plugin: plugin,
-        codexDefaultsApi: codexDefaultsApi,
-      );
-      final messageRepository = MessageRepository(
-        plugin: plugin,
-        codexDefaultsApi: codexDefaultsApi,
-      );
+      final providerRepository = ProviderRepository(plugin: plugin);
       final permissionRepository = PermissionRepository(plugin: plugin);
       final sessionPersistenceService = SessionPersistenceService(
         projectsDao: db.projectsDao,
@@ -109,13 +99,7 @@ void main() {
         prSyncService: FakePrSyncService(),
         projectRepository: projectRepository,
         providerRepository: providerRepository,
-        messageRepository: messageRepository,
-        getAgentsHandler: GetAgentsHandler(
-          AgentRepository(
-            plugin: plugin,
-            codexDefaultsApi: codexDefaultsApi,
-          ),
-        ),
+        getAgentsHandler: GetAgentsHandler(AgentRepository(plugin: plugin)),
         permissionRepository: permissionRepository,
         sessionPersistenceService: sessionPersistenceService,
         worktreeService: worktreeService,
@@ -379,15 +363,7 @@ void main() {
       );
 
       final projectRepository = ProjectRepository(plugin: plugin, projectsDao: db.projectsDao);
-      final codexDefaultsApi = CodexDefaultsApi(environment: const {});
-      final providerRepository = ProviderRepository(
-        plugin: plugin,
-        codexDefaultsApi: codexDefaultsApi,
-      );
-      final messageRepository = MessageRepository(
-        plugin: plugin,
-        codexDefaultsApi: codexDefaultsApi,
-      );
+      final providerRepository = ProviderRepository(plugin: plugin);
       final permissionRepository = PermissionRepository(plugin: plugin);
       final sessionPersistenceService = SessionPersistenceService(
         projectsDao: db.projectsDao,
@@ -445,13 +421,7 @@ void main() {
         prSyncService: spyPrSyncService,
         projectRepository: projectRepository,
         providerRepository: providerRepository,
-        messageRepository: messageRepository,
-        getAgentsHandler: GetAgentsHandler(
-          AgentRepository(
-            plugin: plugin,
-            codexDefaultsApi: codexDefaultsApi,
-          ),
-        ),
+        getAgentsHandler: GetAgentsHandler(AgentRepository(plugin: plugin)),
         permissionRepository: permissionRepository,
         sessionPersistenceService: sessionPersistenceService,
         worktreeService: worktreeService,

@@ -294,6 +294,116 @@ void main() {
       expect(messages[1].parts.first.text, equals("pong"));
       await plugin.dispose();
     });
+
+    test("readMeta extracts the model from turn_context", () {
+      final reader = SessionRolloutReader(
+        environment: {"CODEX_HOME": codexHome.path},
+      );
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/04/17/rollout-2026-04-17T10-00-00-019a0000-1111-2222-3333-cccccccccccc.jsonl",
+        sessionId: "019a0000-1111-2222-3333-cccccccccccc",
+        cwd: "/work/sample-app",
+        extraLines: [
+          jsonEncode({
+            "type": "turn_context",
+            "payload": {"model": "gpt-5.2-codex"},
+          }),
+        ],
+      );
+
+      final meta = reader.readMeta(path);
+      expect(meta?.modelProvider, equals("openai"));
+      expect(meta?.model, equals("gpt-5.2-codex"));
+    });
+
+    test("readMessages stamps assistant model from the active turn_context", () {
+      final reader = SessionRolloutReader(
+        environment: {"CODEX_HOME": codexHome.path},
+      );
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/04/17/rollout-2026-04-17T10-00-00-019a0000-1111-2222-3333-dddddddddddd.jsonl",
+        sessionId: "019a0000-1111-2222-3333-dddddddddddd",
+        cwd: "/work/sample-app",
+        extraLines: [
+          jsonEncode({
+            "type": "turn_context",
+            "payload": {"model": "gpt-5.2-codex"},
+          }),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "role": "assistant",
+              "content": [
+                {"type": "output_text", "text": "first"},
+              ],
+            },
+          }),
+          // Model switches mid-session — later assistant messages reflect it.
+          jsonEncode({
+            "type": "turn_context",
+            "payload": {"model": "gpt-5.4-codex"},
+          }),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "role": "assistant",
+              "content": [
+                {"type": "output_text", "text": "second"},
+              ],
+            },
+          }),
+        ],
+      );
+
+      final messages = reader.readMessages(
+        path,
+        "019a0000-1111-2222-3333-dddddddddddd",
+      );
+      expect(messages, hasLength(2));
+      final first = messages[0].info as PluginMessageAssistant;
+      final second = messages[1].info as PluginMessageAssistant;
+      expect(first.agent, equals("codex"));
+      expect(first.providerID, equals("openai"));
+      expect(first.modelID, equals("gpt-5.2-codex"));
+      expect(second.modelID, equals("gpt-5.4-codex"));
+    });
+
+    test("readMessages falls back to config model when no turn_context", () {
+      final reader = SessionRolloutReader(
+        environment: {"CODEX_HOME": codexHome.path},
+      );
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/04/17/rollout-2026-04-17T10-00-00-019a0000-1111-2222-3333-eeeeeeeeeeee.jsonl",
+        sessionId: "019a0000-1111-2222-3333-eeeeeeeeeeee",
+        cwd: "/work/sample-app",
+        extraLines: [
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "role": "assistant",
+              "content": [
+                {"type": "output_text", "text": "hi"},
+              ],
+            },
+          }),
+        ],
+      );
+
+      final messages = reader.readMessages(
+        path,
+        "019a0000-1111-2222-3333-eeeeeeeeeeee",
+        config: const CodexConfigDefaults(
+          model: "gpt-5.5",
+          modelProvider: "openai",
+        ),
+      );
+      final assistant = messages.single.info as PluginMessageAssistant;
+      expect(assistant.modelID, equals("gpt-5.5"));
+      expect(assistant.providerID, equals("openai"));
+    });
   });
 }
 

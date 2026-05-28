@@ -11,7 +11,7 @@ import "package:test/test.dart";
 void main() {
   group("CodexEventMapper", () {
     const projectCwd = "/repo/app";
-    const mapper = CodexEventMapper(projectCwd: projectCwd);
+    final mapper = CodexEventMapper(projectCwd: projectCwd);
 
     /// Replicates `BridgeEventMapper`'s payload construction and runs the
     /// bridge's `SesoriSseEvent.fromJson`. Throwing here is exactly the bug
@@ -204,6 +204,41 @@ void main() {
       final part = (events[1] as BridgeSseMessagePartUpdated).part;
       expect(part.type, PluginMessagePartType.text);
       expect(part.text, "Hi. What do you need changed?");
+    });
+
+    test("agentMessage stamps codex agent, thread provider, and config model", () {
+      final richMapper = CodexEventMapper(
+        projectCwd: projectCwd,
+        config: const CodexConfigDefaults(model: "gpt-5.5", modelProvider: "openai"),
+      );
+      // thread/started carries the provider; the mapper remembers it per thread.
+      richMapper.map(
+        const CodexServerNotification(
+          method: "thread/started",
+          params: {
+            "thread": {"id": "t-9", "modelProvider": "openai"},
+          },
+        ),
+      );
+
+      final events = richMapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-9",
+            "item": {"type": "agentMessage", "id": "i-1", "text": "hello"},
+          },
+        ),
+      );
+
+      final message = shared.Message.fromJson(
+        (events[0] as BridgeSseMessageUpdated).info,
+      );
+      expect(message, isA<shared.MessageAssistant>());
+      final assistant = message as shared.MessageAssistant;
+      expect(assistant.agent, equals("codex"));
+      expect(assistant.providerID, equals("openai"));
+      expect(assistant.modelID, equals("gpt-5.5"));
     });
 
     test("item reasoning → assistant message + reasoning part", () {

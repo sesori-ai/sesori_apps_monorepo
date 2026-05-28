@@ -2,6 +2,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 
 import "codex_app_server_client.dart";
+import "codex_config_reader.dart";
 
 /// Translates `codex app-server` `ServerNotification` frames into
 /// bridge-neutral [BridgeSseEvent]s.
@@ -20,12 +21,25 @@ import "codex_app_server_client.dart";
 /// has 50+ notification methods and only a subset has a mobile-facing
 /// representation today.
 class CodexEventMapper {
-  const CodexEventMapper({required this.projectCwd});
+  CodexEventMapper({
+    required this.projectCwd,
+    this.config = const CodexConfigDefaults.empty(),
+  });
 
   /// The bridge launch CWD — codex's single synthesised project id. Used as
   /// the `projectID` for sessions, and as the `directory` fallback when a
   /// notification does not carry the thread's own cwd.
   final String projectCwd;
+
+  /// Global model/provider fallback from `~/.codex/config.toml`. Live
+  /// `item`/`turn` notifications do not carry the model, so streaming
+  /// assistant messages are stamped with this until the session is re-fetched
+  /// from its rollout (the authoritative per-session source).
+  final CodexConfigDefaults config;
+
+  /// Per-thread provider captured from `thread/started.modelProvider`, used to
+  /// stamp streaming assistant messages.
+  final Map<String, String> _threadProvider = {};
 
   /// Maps a single notification to zero or more bridge events.
   List<BridgeSseEvent> map(CodexServerNotification notification) {
@@ -37,6 +51,10 @@ class CodexEventMapper {
         final thread = _asMap(params["thread"]);
         final id = thread?["id"] as String?;
         if (thread == null || id == null || id.isEmpty) return const [];
+        final provider = thread["modelProvider"] as String?;
+        if (provider != null && provider.isNotEmpty) {
+          _threadProvider[id] = provider;
+        }
         return [
           BridgeSseSessionCreated(info: _threadToSession(thread, id).toJson()),
         ];
@@ -164,13 +182,7 @@ class CodexEventMapper {
         return _messageEvents(
           threadId: threadId,
           itemId: itemId,
-          message: shared.Message.assistant(
-            id: itemId,
-            sessionID: threadId,
-            agent: null,
-            modelID: null,
-            providerID: null,
-          ),
+          message: _assistantMessage(itemId: itemId, threadId: threadId),
           partType: PluginMessagePartType.text,
           partSuffix: "text",
           text: item["text"] as String? ?? _extractContentText(item["content"]),
@@ -179,13 +191,7 @@ class CodexEventMapper {
         return _messageEvents(
           threadId: threadId,
           itemId: itemId,
-          message: shared.Message.assistant(
-            id: itemId,
-            sessionID: threadId,
-            agent: null,
-            modelID: null,
-            providerID: null,
-          ),
+          message: _assistantMessage(itemId: itemId, threadId: threadId),
           partType: PluginMessagePartType.reasoning,
           partSuffix: "reasoning",
           text: _extractReasoningText(item),
@@ -196,6 +202,25 @@ class CodexEventMapper {
         // surfaced as broken or empty messages.
         return const [];
     }
+  }
+
+  /// Builds an assistant message stamped with codex's agent/model/provider.
+  ///
+  /// Provider comes from the thread's `thread/started.modelProvider`; model
+  /// from the global config fallback (live notifications don't carry it). The
+  /// persisted rollout path is authoritative on re-fetch.
+  shared.Message _assistantMessage({
+    required String itemId,
+    required String threadId,
+  }) {
+    return shared.Message.assistant(
+      id: itemId,
+      sessionID: threadId,
+      agent: "codex",
+      modelID: config.model,
+      providerID:
+          _threadProvider[threadId] ?? config.modelProvider ?? "openai",
+    );
   }
 
   /// Emits the message envelope and its (single) content part. The part id

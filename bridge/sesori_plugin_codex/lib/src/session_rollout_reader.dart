@@ -9,6 +9,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginMessagePartType,
         PluginMessageWithParts;
 
+import "codex_config_reader.dart";
+
 /// One line of `~/.codex/session_index.jsonl`.
 ///
 /// Shape (observed on codex-cli 0.121.0):
@@ -55,6 +57,7 @@ class CodexSessionMeta {
     required this.cwd,
     required this.timestamp,
     required this.modelProvider,
+    required this.model,
     required this.cliVersion,
   });
 
@@ -62,6 +65,11 @@ class CodexSessionMeta {
   final String? cwd;
   final DateTime? timestamp;
   final String? modelProvider;
+
+  /// The session's model id, read from the latest `turn_context` record seen
+  /// in the header scan window. `session_meta` itself does not carry the
+  /// model — only the provider.
+  final String? model;
   final String? cliVersion;
 }
 
@@ -76,6 +84,7 @@ class CodexSessionRecord {
     required this.updatedAt,
     required this.cliVersion,
     required this.modelProvider,
+    required this.model,
   });
 
   final String id;
@@ -86,6 +95,7 @@ class CodexSessionRecord {
   final DateTime? updatedAt;
   final String? cliVersion;
   final String? modelProvider;
+  final String? model;
 }
 
 /// Reads codex's on-disk session history.
@@ -183,33 +193,57 @@ class SessionRolloutReader {
   CodexSessionMeta? readMeta(String rolloutPath) {
     final file = File(rolloutPath);
     if (!file.existsSync()) return null;
-    // Header is usually line 1, but we scan up to ~32 to tolerate any
-    // future prefix records that codex might add.
+    // The `session_meta` header is line 1, but the model lives in a
+    // `turn_context` record that follows it. Scan a bounded window so we can
+    // capture both without reading the whole transcript when all we need is
+    // the session header.
     final lines = file.readAsLinesSync();
     final scanLimit = lines.length < 32 ? lines.length : 32;
+
+    String? id;
+    String? cwd;
+    DateTime? timestamp;
+    String? modelProvider;
+    String? cliVersion;
+    String? model;
+
     for (var i = 0; i < scanLimit; i++) {
-      final line = lines[i];
       try {
-        final decoded = jsonDecode(line);
+        final decoded = jsonDecode(lines[i]);
         if (decoded is! Map) continue;
         final map = decoded.cast<String, dynamic>();
-        if (map["type"] != "session_meta") continue;
-        final payload = (map["payload"] as Map?)?.cast<String, dynamic>() ?? {};
-        final id = payload["id"];
-        if (id is! String || id.isEmpty) continue;
-        return CodexSessionMeta(
-          id: id,
-          cwd: payload["cwd"] as String?,
-          timestamp: _tryParseDate(payload["timestamp"]),
-          modelProvider: payload["model_provider"] as String?,
-          cliVersion: payload["cli_version"] as String?,
-        );
+        final type = map["type"];
+        if (type == "session_meta") {
+          final payload =
+              (map["payload"] as Map?)?.cast<String, dynamic>() ?? {};
+          final metaId = payload["id"];
+          if (metaId is! String || metaId.isEmpty) continue;
+          id = metaId;
+          cwd = payload["cwd"] as String?;
+          timestamp = _tryParseDate(payload["timestamp"]);
+          modelProvider = payload["model_provider"] as String?;
+          cliVersion = payload["cli_version"] as String?;
+        } else if (type == "turn_context") {
+          final payload = (map["payload"] as Map?)?.cast<String, dynamic>();
+          final m = payload?["model"];
+          // Latest within the window wins — the model can change mid-session.
+          if (m is String && m.isNotEmpty) model = m;
+        }
       } catch (_) {
-        // Try next line.
+        // Skip bad lines.
         continue;
       }
     }
-    return null;
+
+    if (id == null) return null;
+    return CodexSessionMeta(
+      id: id,
+      cwd: cwd,
+      timestamp: timestamp,
+      modelProvider: modelProvider,
+      model: model,
+      cliVersion: cliVersion,
+    );
   }
 
   /// Builds the merged view used by [CodexPlugin.getSessions].
@@ -244,6 +278,7 @@ class SessionRolloutReader {
           updatedAt: entry?.updatedAt ?? meta?.timestamp,
           cliVersion: meta?.cliVersion,
           modelProvider: meta?.modelProvider,
+          model: meta?.model,
         ),
       );
     }
@@ -259,24 +294,45 @@ class SessionRolloutReader {
   }
 
   /// Reads `response_item` records out of a rollout and maps each one to a
-  /// [PluginMessageWithParts]. Tool calls and reasoning are skipped for
-  /// Phase 3; later phases enrich the mapping.
+  /// [PluginMessageWithParts].
+  ///
+  /// Assistant messages are stamped with the session's model metadata so the
+  /// mobile UI can render the model in the session subtitle: the provider
+  /// comes from the `session_meta` header, the model id from the most recent
+  /// `turn_context` seen *before* the message (the model can change
+  /// mid-session). [config] supplies the global fallback for either field when
+  /// the rollout itself doesn't carry it.
   List<PluginMessageWithParts> readMessages(
     String rolloutPath,
-    String sessionId,
-  ) {
+    String sessionId, {
+    CodexConfigDefaults config = const CodexConfigDefaults.empty(),
+  }) {
     final file = File(rolloutPath);
     if (!file.existsSync()) return const [];
 
     final out = <PluginMessageWithParts>[];
     var messageCounter = 0;
+    String? sessionProvider;
+    String? currentModel;
     for (final line in file.readAsLinesSync()) {
       if (line.trim().isEmpty) continue;
       try {
         final decoded = jsonDecode(line);
         if (decoded is! Map) continue;
         final map = decoded.cast<String, dynamic>();
-        if (map["type"] != "response_item") continue;
+        final type = map["type"];
+        if (type == "session_meta") {
+          final payload = (map["payload"] as Map?)?.cast<String, dynamic>();
+          sessionProvider ??= payload?["model_provider"] as String?;
+          continue;
+        }
+        if (type == "turn_context") {
+          final payload = (map["payload"] as Map?)?.cast<String, dynamic>();
+          final m = payload?["model"];
+          if (m is String && m.isNotEmpty) currentModel = m;
+          continue;
+        }
+        if (type != "response_item") continue;
         final payload = (map["payload"] as Map?)?.cast<String, dynamic>();
         if (payload == null) continue;
         final role = payload["role"] as String?;
@@ -307,9 +363,10 @@ class SessionRolloutReader {
             : PluginMessage.assistant(
                 id: messageId,
                 sessionID: sessionId,
-                agent: null,
-                modelID: null,
-                providerID: null,
+                agent: "codex",
+                modelID: currentModel ?? config.model,
+                providerID:
+                    sessionProvider ?? config.modelProvider ?? "openai",
               );
         final parts = <PluginMessagePart>[
           for (var i = 0; i < texts.length; i++)

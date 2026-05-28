@@ -1,9 +1,5 @@
 import "dart:convert";
-import "dart:io";
 
-import "package:path/path.dart" as p;
-import "package:sesori_bridge/src/bridge/api/codex_defaults_api.dart";
-import "package:sesori_bridge/src/bridge/repositories/message_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/get_session_messages_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -15,25 +11,13 @@ void main() {
   group("GetSessionMessagesHandler", () {
     late FakeBridgePlugin plugin;
     late GetSessionMessagesHandler handler;
-    late Directory codexHome;
 
     setUp(() {
       plugin = FakeBridgePlugin();
-      codexHome = Directory.systemTemp.createTempSync("codex-home-messages-");
-      handler = GetSessionMessagesHandler(
-        MessageRepository(
-          plugin: plugin,
-          codexDefaultsApi: CodexDefaultsApi(environment: {"CODEX_HOME": codexHome.path}),
-        ),
-      );
+      handler = GetSessionMessagesHandler(plugin);
     });
 
-    tearDown(() {
-      plugin.close();
-      try {
-        codexHome.deleteSync(recursive: true);
-      } catch (_) {}
-    });
+    tearDown(() => plugin.close());
 
     test("canHandle POST /session/messages", () {
       expect(handler.canHandle(makeRequest("POST", "/session/messages")), isTrue);
@@ -126,44 +110,6 @@ void main() {
       expect(response.messages.length, equals(2));
     });
 
-    test("fills missing Codex assistant agent and model defaults", () async {
-      plugin.pluginId = "codex";
-      _writeCodexDefaults(codexHome);
-      plugin.messagesResult = [
-        const PluginMessageWithParts(
-          info: PluginMessage.assistant(
-            id: "m2",
-            sessionID: "s1",
-            agent: null,
-            modelID: null,
-            providerID: null,
-          ),
-          parts: [],
-        ),
-      ];
-
-      final response = await handler.handle(
-        makeRequest("POST", "/session/messages"),
-        body: const SessionIdRequest(sessionId: "s1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
-      );
-
-      expect(
-        response.messages.single.info,
-        equals(
-          const Message.assistant(
-            id: "m2",
-            sessionID: "s1",
-            agent: "codex",
-            modelID: "gpt-5.4",
-            providerID: "openai",
-          ),
-        ),
-      );
-    });
-
     test("handleInternal returns 502 for upstream incompatibility", () async {
       plugin.throwOnGetMessagesError = PluginApiException("GET /session/s1/message", 502);
 
@@ -182,17 +128,4 @@ void main() {
       expect(response.body, contains("PluginApiException"));
     });
   });
-}
-
-void _writeCodexDefaults(Directory codexHome) {
-  File(p.join(codexHome.path, "config.toml")).writeAsStringSync('model = "gpt-5.4"');
-  final rollout = File(
-    p.join(
-      codexHome.path,
-      "sessions/2026/05/27/rollout-2026-05-27T10-00-00-s1.jsonl",
-    ),
-  )..createSync(recursive: true);
-  rollout.writeAsStringSync(
-    '{"timestamp":"2026-05-27T10:00:00Z","type":"session_meta","payload":{"id":"s1","timestamp":"2026-05-27T10:00:00Z","cwd":"/repo","model_provider":"openai"}}\n',
-  );
 }

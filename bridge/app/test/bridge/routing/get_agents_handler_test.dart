@@ -1,7 +1,3 @@
-import "dart:io";
-
-import "package:path/path.dart" as p;
-import "package:sesori_bridge/src/bridge/api/codex_defaults_api.dart";
 import "package:sesori_bridge/src/bridge/repositories/agent_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/get_agents_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -15,24 +11,14 @@ void main() {
     late FakeBridgePlugin plugin;
     late AgentRepository repository;
     late GetAgentsHandler handler;
-    late Directory codexHome;
 
     setUp(() {
       plugin = FakeBridgePlugin();
-      codexHome = Directory.systemTemp.createTempSync("codex-home-agents-");
-      repository = AgentRepository(
-        plugin: plugin,
-        codexDefaultsApi: CodexDefaultsApi(environment: {"CODEX_HOME": codexHome.path}),
-      );
+      repository = AgentRepository(plugin: plugin);
       handler = GetAgentsHandler(repository);
     });
 
-    tearDown(() {
-      plugin.close();
-      try {
-        codexHome.deleteSync(recursive: true);
-      } catch (_) {}
-    });
+    tearDown(() => plugin.close());
 
     test("canHandle GET /agent", () {
       expect(handler.canHandle(makeRequest("GET", "/agent")), isTrue);
@@ -124,37 +110,5 @@ void main() {
       expect(response.agents[0].model, isNotNull);
       expect(response.agents[1].model, isNull);
     });
-
-    test("synthesizes a Codex agent when the plugin does not enumerate any", () async {
-      plugin.pluginId = "codex";
-      plugin.projectsResult = const [PluginProject(id: "/repo/project")];
-      _writeCodexDefaults(codexHome, projectId: "/repo/project");
-
-      final response = await handler.handle(
-        makeRequest("GET", "/agent"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
-      );
-
-      expect(response.agents.single.name, equals("codex"));
-      expect(
-        response.agents.single.model,
-        equals(const AgentModel(modelID: "gpt-5.4", providerID: "openai", variant: null)),
-      );
-    });
   });
-}
-
-void _writeCodexDefaults(Directory codexHome, {required String projectId}) {
-  File(p.join(codexHome.path, "config.toml")).writeAsStringSync('model = "gpt-5.4"');
-  final rollout = File(
-    p.join(
-      codexHome.path,
-      "sessions/2026/05/27/rollout-2026-05-27T10-00-00-s1.jsonl",
-    ),
-  )..createSync(recursive: true);
-  rollout.writeAsStringSync(
-    '{"timestamp":"2026-05-27T10:00:00Z","type":"session_meta","payload":{"id":"s1","timestamp":"2026-05-27T10:00:00Z","cwd":"$projectId","model_provider":"openai"}}\n',
-  );
 }

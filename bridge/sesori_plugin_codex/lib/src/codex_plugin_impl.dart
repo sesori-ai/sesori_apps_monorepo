@@ -6,6 +6,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "approval_registry.dart";
 import "codex_app_server_client.dart";
+import "codex_config_reader.dart";
 import "codex_event_mapper.dart";
 import "codex_skill_reader.dart";
 import "session_rollout_reader.dart";
@@ -34,6 +35,7 @@ class CodexPlugin implements BridgePluginApi {
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
   final CodexAppServerClient Function() _clientFactory;
   final SessionRolloutReader _rolloutReader;
+  final CodexConfigReader _configReader;
   final CodexSkillReader _skillReader;
   final CodexEventMapper _eventMapper;
   final String _projectCwd;
@@ -56,11 +58,13 @@ class CodexPlugin implements BridgePluginApi {
     String? capabilityToken,
     CodexAppServerClient Function()? clientFactory,
     SessionRolloutReader? rolloutReader,
+    CodexConfigReader? configReader,
     CodexSkillReader? skillReader,
     CodexEventMapper? eventMapper,
     String? projectCwd,
   }) {
     final resolvedProjectCwd = projectCwd ?? Directory.current.path;
+    final resolvedConfigReader = configReader ?? CodexConfigReader();
     return CodexPlugin._(
       serverUrl: serverUrl,
       capabilityToken: capabilityToken,
@@ -71,9 +75,15 @@ class CodexPlugin implements BridgePluginApi {
             capabilityToken: capabilityToken,
           ),
       rolloutReader: rolloutReader ?? SessionRolloutReader(),
+      configReader: resolvedConfigReader,
       skillReader:
           skillReader ?? CodexSkillReader(projectCwd: resolvedProjectCwd),
-      eventMapper: eventMapper ?? CodexEventMapper(projectCwd: resolvedProjectCwd),
+      eventMapper:
+          eventMapper ??
+          CodexEventMapper(
+            projectCwd: resolvedProjectCwd,
+            config: resolvedConfigReader.readDefaults(),
+          ),
       projectCwd: resolvedProjectCwd,
     );
   }
@@ -83,6 +93,7 @@ class CodexPlugin implements BridgePluginApi {
     required String? capabilityToken,
     required CodexAppServerClient Function() clientFactory,
     required SessionRolloutReader rolloutReader,
+    required CodexConfigReader configReader,
     required CodexSkillReader skillReader,
     required CodexEventMapper eventMapper,
     required String projectCwd,
@@ -90,6 +101,7 @@ class CodexPlugin implements BridgePluginApi {
        _capabilityToken = capabilityToken,
        _clientFactory = clientFactory,
        _rolloutReader = rolloutReader,
+       _configReader = configReader,
        _skillReader = skillReader,
        _eventMapper = eventMapper,
        _projectCwd = projectCwd,
@@ -522,11 +534,62 @@ class CodexPlugin implements BridgePluginApi {
   ) async {
     final path = _rolloutReader.findRolloutPath(sessionId);
     if (path == null) return const [];
-    return _rolloutReader.readMessages(path, sessionId);
+    return _rolloutReader.readMessages(
+      path,
+      sessionId,
+      config: _configReader.readDefaults(),
+    );
   }
 
   @override
-  Future<List<PluginAgent>> getAgents() async => const [];
+  Future<List<PluginAgent>> getAgents() async {
+    final (:modelID, :providerID) = _resolveModelDefaults();
+    return [
+      PluginAgent(
+        name: "codex",
+        description: "Codex CLI session",
+        model: modelID == null
+            ? null
+            : PluginAgentModel(
+                modelID: modelID,
+                providerID: providerID,
+                variant: null,
+              ),
+        mode: PluginAgentMode.primary,
+        hidden: false,
+      ),
+    ];
+  }
+
+  /// Resolves the configured model/provider for codex.
+  ///
+  /// Codex exposes no agent/provider API, so we derive it from local state:
+  /// the most recent session's rollout (per-session accurate) wins, then the
+  /// global `config.toml`, then `openai` as a last-resort provider.
+  ({String? modelID, String providerID}) _resolveModelDefaults() {
+    final config = _configReader.readDefaults();
+    final sessions = _rolloutReader.listSessions();
+    final latest = sessions.isEmpty ? null : sessions.first;
+    return (
+      modelID: latest?.model ?? config.model,
+      providerID: latest?.modelProvider ?? config.modelProvider ?? "openai",
+    );
+  }
+
+  static String _providerDisplayName(String providerId) {
+    return switch (providerId.toLowerCase()) {
+      "openai" => "OpenAI",
+      "anthropic" => "Anthropic",
+      "google" => "Google",
+      "mistral" => "Mistral",
+      "groq" => "Groq",
+      "xai" => "xAI",
+      "deepseek" => "DeepSeek",
+      "azure" => "Azure OpenAI",
+      "amazon-bedrock" || "bedrock" => "Amazon Bedrock",
+      _ => providerId,
+    };
+  }
 
   @override
   Future<List<PluginPendingQuestion>> getPendingQuestions({
@@ -573,7 +636,30 @@ class CodexPlugin implements BridgePluginApi {
 
   @override
   Future<PluginProvidersResult> getProviders({required String projectId}) async {
-    return const PluginProvidersResult(providers: []);
+    final (:modelID, :providerID) = _resolveModelDefaults();
+    if (modelID == null) {
+      return const PluginProvidersResult(providers: []);
+    }
+    return PluginProvidersResult(
+      providers: [
+        PluginProvider.custom(
+          id: providerID,
+          name: _providerDisplayName(providerID),
+          authType: PluginProviderAuthType.unknown,
+          models: [
+            PluginModel(
+              id: modelID,
+              name: modelID,
+              variants: const [],
+              family: null,
+              isAvailable: true,
+              releaseDate: null,
+            ),
+          ],
+          defaultModelID: modelID,
+        ),
+      ],
+    );
   }
 
   @override
