@@ -16,6 +16,7 @@ import "../../core/extensions/build_context_x.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/widgets/markdown_styles.dart";
 import "../../core/widgets/sesori_background_widget.dart";
+import "../../core/widgets/sesori_logo.dart";
 import "../../l10n/app_localizations.dart";
 import "email_login_form.dart";
 import "login_provider_buttons.dart";
@@ -138,10 +139,7 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                             child: Column(
                               mainAxisSize: .min,
                               children: [
-                                Image.asset(
-                                  "assets/images/sesori_icon_with_shadow.png",
-                                  fit: .none,
-                                ),
+                                const SesoriLogo(),
                                 Text(
                                   loc.loginTitle,
                                   style: zyra.textTheme.textSm.regular,
