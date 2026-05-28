@@ -15,6 +15,7 @@ import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/widgets/markdown_styles.dart";
+import "../../core/widgets/sesori_background_widget.dart";
 import "../../l10n/app_localizations.dart";
 import "email_login_form.dart";
 import "login_provider_buttons.dart";
@@ -122,16 +123,10 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
         },
         child: Stack(
           children: [
-            Container(
-              decoration: const BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage("assets/images/bkg_webp/light_mode_portrait_splash.webp"),
-                  fit: BoxFit.cover,
-                ),
-              ),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  return SingleChildScrollView(
+            const Positioned.fill(child: SesoriBackgroundWidget()),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
                     child: ConstrainedBox(
                       constraints: BoxConstraints(minHeight: constraints.maxHeight),
                       child: Column(
@@ -323,7 +318,6 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                   );
                 },
               ),
-            ),
             PositionedDirectional(
               top: 0,
               start: 0,
