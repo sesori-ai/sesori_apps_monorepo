@@ -36,14 +36,12 @@ MarkdownStyleSheet buildSessionMarkdownStyleSheet({
 
 MarkdownStyleSheet buildAgreementMarkdownStyleSheet({required ZyraDesignSystem zyra}) {
   final paragraph = zyra.textTheme.textSm.regular.copyWith(
-    color: zyra.colors.textSecondary,
+    color: zyra.colors.textPrimary,
   );
   return MarkdownStyleSheet(
     p: paragraph,
     a: paragraph.copyWith(
-      color: zyra.colors.fgBrandPrimary,
       decoration: TextDecoration.underline,
-      decorationColor: zyra.colors.fgBrandPrimary,
     ),
     textAlign: WrapAlignment.center,
     pPadding: EdgeInsets.zero,
