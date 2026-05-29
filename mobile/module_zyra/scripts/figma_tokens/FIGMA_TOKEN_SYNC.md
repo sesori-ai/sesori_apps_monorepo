@@ -107,8 +107,8 @@ This reads `scripts/figma_tokens/figma_tokens.json` and generates:
 
 | File | Purpose |
 |---|---|
-| `lib/design_language/zyra/theme/primitives/zyra_color_primitives.g.dart` | Mode-invariant base palette (`ZyraColorPrimitives`) |
-| `lib/design_language/zyra/theme/primitives/zyra_colors.g.dart` | Dark/Light semantic tokens (`ZyraColorsDark`, `ZyraColorsLight`, `ZyraColors`) |
+| `lib/theme/primitives/zyra_color_primitives.g.dart` | Mode-invariant base palette (`ZyraColorPrimitives`) |
+| `lib/theme/primitives/zyra_colors.g.dart` | Dark/Light semantic tokens (`ZyraColorsDark`, `ZyraColorsLight`, `ZyraColors`) |
 
 ## Expected JSON structure
 
