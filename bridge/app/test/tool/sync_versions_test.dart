@@ -90,7 +90,7 @@ resolution: workspace
         '@sesori/not-bridge': '4.5.6',
       },
       'sesoriBridge': <String, dynamic>{
-        'releaseTag': 'bridge-v$resolvedBridgeVersion',
+        'releaseTag': 'v$resolvedBridgeVersion',
         'runtimeBundleSource': 'github-release-assets',
       },
     },
@@ -103,7 +103,7 @@ resolution: workspace
         'name': '@sesori/${package.replaceFirst('sesori-bridge-', 'bridge-')}',
         'version': resolvedBridgeVersion,
         'sesoriBridge': <String, dynamic>{
-          'releaseTag': 'bridge-v$resolvedBridgeVersion',
+          'releaseTag': 'v$resolvedBridgeVersion',
         },
       },
     );
@@ -154,7 +154,7 @@ void main() {
       expect(patchResult.exitCode, equals(0), reason: '${patchResult.stdout}\n${patchResult.stderr}');
       expect(patchResult.stdout, contains('Target bridge version: 1.0.7'));
       expect(patchResult.stdout, contains('Target mobile version: 1.0.7+8'));
-      expect(patchResult.stdout, contains('Planned releaseTag: bridge-v1.0.7'));
+      expect(patchResult.stdout, contains('Planned releaseTag: v1.0.7'));
       expect(patchResult.stdout, contains('bridge/app/pubspec.yaml'));
       expect(patchResult.stdout, contains('mobile/app/pubspec.yaml'));
       expect(await File(currentFixture.bridgePubspecPath).readAsString(), equals(beforeBridgePubspec));
@@ -209,10 +209,10 @@ environment:
               '@sesori/bridge-win32-x64': '1.0.6',
               '@sesori/not-bridge': '4.5.6',
             },
-            'sesoriBridge': <String, dynamic>{
-              'releaseTag': 'bridge-v1.0.6',
-              'runtimeBundleSource': 'github-release-assets',
-            },
+        'sesoriBridge': <String, dynamic>{
+          'releaseTag': 'v1.0.6',
+          'runtimeBundleSource': 'github-release-assets',
+        },
           },
         );
         for (final packagePath in currentFixture.packagePaths) {
@@ -222,8 +222,8 @@ environment:
               'name': '@sesori/${p.basename(p.dirname(packagePath)).replaceFirst('sesori-bridge-', 'bridge-')}',
               'version': '1.0.6',
               'sesoriBridge': <String, dynamic>{
-                'releaseTag': 'bridge-v1.0.6',
-              },
+              'releaseTag': 'v1.0.6',
+            },
             },
           );
         }
@@ -241,7 +241,7 @@ environment:
         expect(bridgeVersion, equals("const String appVersion = '${testCase.bridgeVersion}';\n"));
         expect(mobilePubspec, contains('version: ${testCase.mobileVersion}'));
         expect(wrapperPackage['version'] as String, equals(testCase.bridgeVersion));
-        expect((wrapperPackage['sesoriBridge'] as Map<String, dynamic>)['releaseTag'], equals('bridge-v${testCase.bridgeVersion}'));
+        expect((wrapperPackage['sesoriBridge'] as Map<String, dynamic>)['releaseTag'], equals('v${testCase.bridgeVersion}'));
 
         final optionalDependencies = wrapperPackage['optionalDependencies'] as Map<String, dynamic>;
         expect(optionalDependencies['@sesori/bridge-darwin-arm64'], equals(testCase.bridgeVersion));
@@ -254,7 +254,7 @@ environment:
         for (final packagePath in currentFixture.packagePaths) {
           final package = await _readJson(path: packagePath);
           expect(package['version'], equals(testCase.bridgeVersion));
-          expect((package['sesoriBridge'] as Map<String, dynamic>)['releaseTag'], equals('bridge-v${testCase.bridgeVersion}'));
+          expect((package['sesoriBridge'] as Map<String, dynamic>)['releaseTag'], equals('v${testCase.bridgeVersion}'));
         }
       }
     });

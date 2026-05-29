@@ -22,6 +22,8 @@ mixin _$AuthUser {
 @pragma('vm:prefer-inline')
 $AuthUserCopyWith<AuthUser> get copyWith => _$AuthUserCopyWithImpl<AuthUser>(this as AuthUser, _$identity);
 
+  /// Serializes this AuthUser to a JSON map.
+  Map<String, dynamic> toJson();
 
 
 @override
@@ -78,7 +80,7 @@ as String?,
 
 
 /// @nodoc
-@JsonSerializable(createToJson: false)
+@JsonSerializable()
 
 class _AuthUser implements AuthUser {
   const _AuthUser({required this.id, required this.provider, required this.providerUserId, required this.providerUsername});
@@ -95,7 +97,10 @@ class _AuthUser implements AuthUser {
 @pragma('vm:prefer-inline')
 _$AuthUserCopyWith<_AuthUser> get copyWith => __$AuthUserCopyWithImpl<_AuthUser>(this, _$identity);
 
-
+@override
+Map<String, dynamic> toJson() {
+  return _$AuthUserToJson(this, );
+}
 
 @override
 bool operator ==(Object other) {

@@ -25,7 +25,7 @@ import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/platform/notification_canceller.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
-import "package:sesori_dart_core/src/routing/oauth_callback_dispatcher.dart";
+
 import "package:sesori_mobile/capabilities/voice/audio_format_config.dart";
 import "package:sesori_mobile/capabilities/voice/recording_file_provider.dart";
 import "package:sesori_mobile/capabilities/voice/wake_lock_service.dart";
@@ -83,8 +83,6 @@ class MockRecordingFileProvider extends Mock implements RecordingFileProvider {}
 class MockWakeLockService extends Mock implements WakeLockService {}
 
 class MockAudioFormatConfig extends Mock implements AudioFormatConfig {}
-
-class MockOAuthCallbackDispatcher extends Mock implements OAuthCallbackDispatcher {}
 
 class MockDeepLinkSource extends Mock implements DeepLinkSource {}
 

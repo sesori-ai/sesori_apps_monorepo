@@ -7,6 +7,7 @@ import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/widgets/sesori_background_widget.dart";
+import "../../core/widgets/sesori_logo.dart";
 
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
@@ -54,17 +55,10 @@ class _SplashView extends StatelessWidget {
             child: Column(
               mainAxisSize: .min,
               children: [
-                Image.asset(
-                  "assets/images/sesori_icon_with_shadow.png",
-                  fit: .none,
-                ),
+                const SesoriLogo(),
                 // Image has some embedded "bottom padding"
                 // caused by the shadow
                 const SizedBox(height: 13),
-                Text(
-                  context.loc.splashWelcomeTo,
-                  style: zyra.textTheme.textSm.regular,
-                ),
                 Text(
                   context.loc.splashTitle,
                   style: zyra.textTheme.textMd.bold,

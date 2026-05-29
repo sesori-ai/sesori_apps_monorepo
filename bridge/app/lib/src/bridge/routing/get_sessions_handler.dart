@@ -69,24 +69,32 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
       Log.w("GetSessionsHandler: persistSessionsForProject failed for projectId=$projectId: $e\n$st");
     }
 
-    try {
-      await _triggerPrRefresh(projectId: projectId, sessions: sessions).timeout(_prRefreshTimeout);
-      // Refresh succeeded within timeout — enrich the already-fetched sessions
-      // with updated PR/CI metadata from the database (no extra plugin round-trip).
-      final enrichedSessions = await _sessionRepository.enrichSessions(
-        sessions: sessions,
-      );
-      return SessionListResponse(items: enrichedSessions);
-    } catch (err, st) {
-      Log.w(
-        "[GetSessionsHandler] PR refresh timed out after "
-        "${_prRefreshTimeout.inSeconds}s for $projectId — "
-        "returning current data; SSE will deliver updates when ready",
-        err,
-        st,
-      );
-      return SessionListResponse(items: sessions);
+    final prRefreshFuture = _triggerPrRefresh(projectId: projectId, sessions: sessions);
+
+    if (body.waitForPrData) {
+      try {
+        await prRefreshFuture.timeout(_prRefreshTimeout);
+        // Refresh succeeded within timeout — enrich the already-fetched sessions
+        // with updated PR/CI metadata from the database (no extra plugin round-trip).
+        final enrichedSessions = await _sessionRepository.enrichSessions(
+          sessions: sessions,
+        );
+        return SessionListResponse(items: enrichedSessions);
+      } catch (err, st) {
+        Log.w(
+          "PR refresh timed out after "
+          "${_prRefreshTimeout.inSeconds}s for $projectId — "
+          "returning current data; SSE will deliver updates when ready",
+          err,
+          st,
+        );
+      }
+    } else {
+      // Fire-and-forget: PR data will be available for the next request.
+      unawaited(prRefreshFuture);
     }
+
+    return SessionListResponse(items: sessions);
   }
 
   Future<void> _triggerPrRefresh({

@@ -6,6 +6,7 @@ import "package:firebase_crashlytics/firebase_crashlytics.dart";
 import "package:firebase_messaging/firebase_messaging.dart";
 import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
+import "package:flutter/services.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_zyra/module_zyra.dart";
 
@@ -24,6 +25,13 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // The native splash runs in fullscreen, which leaves the status/nav bars
+  // hidden on iOS until the engine is told otherwise. Restore them and let
+  // content draw behind them so the background image still reaches the edges.
+  await SystemChrome.setEnabledSystemUIMode(
+    SystemUiMode.edgeToEdge,
+    overlays: SystemUiOverlay.values,
+  );
   if (_shouldInitializeFirebase) {
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);

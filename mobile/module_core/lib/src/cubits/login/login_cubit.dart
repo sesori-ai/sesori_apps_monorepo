@@ -1,10 +1,12 @@
+import "dart:async";
+
 import "package:bloc/bloc.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../logging/logging.dart";
+import "../../platform/lifecycle_source.dart";
 import "../../platform/url_launcher.dart";
-import "../../routing/app_routes.dart";
 import "login_failed_reason.dart";
 import "login_state.dart";
 
@@ -12,27 +14,88 @@ class LoginCubit extends Cubit<LoginState> {
   final OAuthFlowProvider _oAuthFlowProvider;
   final UrlLauncher _urlLauncher;
   final AuthSession _authSession;
+  final LifecycleSource _lifecycleSource;
+  StreamSubscription<LifecycleState>? _lifecycleSubscription;
+  bool _isPolling = false;
 
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
   LoginCubit(
     OAuthFlowProvider oAuthFlowProvider,
     UrlLauncher urlLauncher,
     AuthSession authSession,
+    LifecycleSource lifecycleSource,
   ) : _oAuthFlowProvider = oAuthFlowProvider,
       _urlLauncher = urlLauncher,
       _authSession = authSession,
-      super(const LoginState.idle());
+      _lifecycleSource = lifecycleSource,
+      super(const LoginState.idle()) {
+    _lifecycleSubscription = _lifecycleSource.lifecycleStateStream.listen((state) {
+      if (state == LifecycleState.resumed) {
+        _onAppResumed().catchError((Object e, StackTrace st) {
+          loge("OAuth resume check failed", e, st);
+          if (!isClosed) {
+            emit(const LoginState.failed(reason: LoginFailedReason.unknown));
+          }
+        });
+      }
+    });
+  }
+
+  @override
+  Future<void> close() async {
+    await _lifecycleSubscription?.cancel();
+    return super.close();
+  }
+
+  Future<void> _onAppResumed() async {
+    if (_isPolling) return;
+    if (state is LoginAwaitingConfirmation || state is LoginPolling || state is LoginTimeout) {
+      final hasActiveSession = await _oAuthFlowProvider.hasActiveOAuthSession();
+      if (!hasActiveSession) return;
+      if (isClosed) return;
+
+      final currentUserCode = switch (state) {
+        LoginAwaitingConfirmation(:final userCode) => userCode,
+        LoginPolling(:final userCode) => userCode,
+        LoginTimeout() => null,
+        LoginIdle() => null,
+        LoginAuthenticating() => null,
+        LoginSuccess() => null,
+        LoginFailed() => null,
+      };
+
+      _isPolling = true;
+      emit(LoginState.polling(userCode: currentUserCode));
+      try {
+        await _oAuthFlowProvider.resumeOAuthFlow();
+        if (isClosed) return;
+        emit(const LoginState.success());
+      } on TimeoutException catch (e, st) {
+        loge("OAuth resumed but timed out", e, st);
+        if (isClosed) return;
+        emit(const LoginState.timeout());
+      } catch (e, st) {
+        loge("OAuth resumed but failed", e, st);
+        if (isClosed) return;
+        emit(const LoginState.failed(reason: LoginFailedReason.unknown));
+      } finally {
+        _isPolling = false;
+      }
+    }
+  }
 
   Future<bool> loginWithProvider(OAuthProvider provider) async {
     emit(const LoginState.authenticating());
 
     try {
-      final authUrl = await _oAuthFlowProvider.getAuthorizationUrl(provider, redirectUri);
+      final initResponse = await _oAuthFlowProvider.startOAuthFlow(provider: provider);
       if (isClosed) return false;
+
+      emit(LoginState.awaitingConfirmation(userCode: initResponse.userCode));
 
       logd("Opening ${provider.label} auth URL in browser");
 
-      final launched = await _urlLauncher.launch(Uri.parse(authUrl));
+      final launched = await _urlLauncher.launch(Uri.parse(initResponse.authUrl));
 
       if (isClosed) return false;
 
@@ -41,9 +104,22 @@ class LoginCubit extends Cubit<LoginState> {
         return false;
       }
 
-      // Browser opened — OAuth callback will be handled by GoRouter redirect
-      emit(const LoginState.awaitingCallback());
-      return false; // Don't navigate — GoRouter handles it on callback
+      _isPolling = true;
+      emit(LoginState.polling(userCode: initResponse.userCode));
+      try {
+        await _oAuthFlowProvider.pollForResult();
+      } finally {
+        _isPolling = false;
+      }
+
+      if (isClosed) return false;
+      emit(const LoginState.success());
+      return true;
+    } on TimeoutException catch (e, st) {
+      loge("${provider.label} login timed out", e, st);
+      if (isClosed) return false;
+      emit(const LoginState.timeout());
+      return false;
     } catch (e, st) {
       loge("${provider.label} login failed", e, st);
       if (isClosed) return false;
@@ -54,6 +130,14 @@ class LoginCubit extends Cubit<LoginState> {
 
   void onMissingFormKey() {
     emit(const LoginState.failed(reason: LoginFailedReason.unknown));
+  }
+
+  /// Clears the [LoginFailed] state and returns to idle. Used when the user
+  /// dismisses the login failure error notification on the login screen.
+  void onDismissedLoginFailureError() {
+    if (state is LoginFailed) {
+      emit(const LoginState.idle());
+    }
   }
 
   void onMissingAppleIdToken() {

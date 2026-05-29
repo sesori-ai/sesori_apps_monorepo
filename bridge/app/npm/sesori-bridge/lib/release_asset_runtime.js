@@ -47,7 +47,7 @@ function currentAssetName() {
 
 function releaseTag(manifest) {
   var metadata = manifest.sesoriBridge || {};
-  return metadata.releaseTag || ("bridge-v" + manifest.version);
+  return metadata.releaseTag || ("v" + manifest.version);
 }
 
 function wrapperVersion() {

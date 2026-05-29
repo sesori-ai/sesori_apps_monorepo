@@ -429,7 +429,7 @@ void main() {
         makeRequest(
           "POST",
           "/sessions",
-          body: jsonEncode({"projectId": "/tmp/project", "start": null, "limit": null}),
+          body: jsonEncode({"projectId": "/tmp/project", "start": null, "limit": null, "waitForPrData": true}),
         ),
       );
 

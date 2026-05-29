@@ -28,10 +28,10 @@ Alternatively, the user may provide an explicit version: `make bump-version VERS
 
 ### Step 2: Find the Latest Release Tag
 
-Run the following to find the most recent release tag. Include both tag families while GitHub Actions still publishes bridge releases from `bridge-v*` tags:
+Run the following to find the most recent release tag:
 
 ```bash
-git tag -l "v*" "bridge-v*" --sort=-v:refname | head -n 1
+git tag -l "v*" --sort=-v:refname | head -n 1
 ```
 
 ### Step 3: Bump Versions

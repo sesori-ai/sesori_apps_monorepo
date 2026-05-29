@@ -712,14 +712,20 @@ abstract class AppLocalizations {
   /// No description provided for @loginTitle.
   ///
   /// In en, this message translates to:
-  /// **'Sign In'**
+  /// **'Welcome to'**
   String get loginTitle;
 
   /// No description provided for @loginSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Sign in to connect to your server'**
+  /// **'Sesori'**
   String get loginSubtitle;
+
+  /// No description provided for @loginAgreementText.
+  ///
+  /// In en, this message translates to:
+  /// **'By signing in, you accept our [Terms of Use](https://sesori.com/terms) and [Privacy Policy](https://sesori.com/privacy).'**
+  String get loginAgreementText;
 
   /// No description provided for @loginWithGithub.
   ///
@@ -745,11 +751,11 @@ abstract class AppLocalizations {
   /// **'Sign in with Google'**
   String get loginWithGoogle;
 
-  /// No description provided for @continueWithEmail.
+  /// No description provided for @signInWithEmail.
   ///
   /// In en, this message translates to:
-  /// **'Continue with Email'**
-  String get continueWithEmail;
+  /// **'Sign in with Email'**
+  String get signInWithEmail;
 
   /// No description provided for @emailLabel.
   ///
@@ -799,6 +805,12 @@ abstract class AppLocalizations {
   /// **'Back to login'**
   String get backToLogin;
 
+  /// No description provided for @loginAuthenticationFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Authentication failed'**
+  String get loginAuthenticationFailedTitle;
+
   /// No description provided for @loginError.
   ///
   /// In en, this message translates to:
@@ -816,6 +828,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Waiting for authorization...'**
   String get loginAwaitingCallback;
+
+  /// No description provided for @loginAwaitingConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm this code on the login page: {userCode}'**
+  String loginAwaitingConfirmation(String userCode);
+
+  /// No description provided for @loginPolling.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirming authorization...'**
+  String get loginPolling;
+
+  /// No description provided for @loginTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Authorization timed out. Please try again.'**
+  String get loginTimeout;
 
   /// No description provided for @loginBrowserOpenFailed.
   ///
@@ -1381,12 +1411,6 @@ abstract class AppLocalizations {
   /// **'Retry'**
   String get diffRetry;
 
-  /// No description provided for @splashWelcomeTo.
-  ///
-  /// In en, this message translates to:
-  /// **'Welcome to'**
-  String get splashWelcomeTo;
-
   /// No description provided for @splashTitle.
   ///
   /// In en, this message translates to:
@@ -1422,6 +1446,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your new session will appear in the list once it\'s launched'**
   String get newSessionLaunchingInBackground;
+
+  /// No description provided for @commandSourceCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Command'**
+  String get commandSourceCommand;
+
+  /// No description provided for @commandSourceMcp.
+  ///
+  /// In en, this message translates to:
+  /// **'MCP'**
+  String get commandSourceMcp;
+
+  /// No description provided for @commandSourceSkill.
+  ///
+  /// In en, this message translates to:
+  /// **'Skill'**
+  String get commandSourceSkill;
+
+  /// No description provided for @commandSourceCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get commandSourceCustom;
+
+  /// No description provided for @sessionDetailFileChangesTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'File changes'**
+  String get sessionDetailFileChangesTooltip;
+
+  /// No description provided for @diffBinaryFileChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Binary file changed'**
+  String get diffBinaryFileChanged;
+
+  /// No description provided for @diffFileTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'File diff too large to display'**
+  String get diffFileTooLarge;
+
+  /// No description provided for @diffCouldNotReadFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read file'**
+  String get diffCouldNotReadFile;
+
+  /// No description provided for @timestampJustNow.
+  ///
+  /// In en, this message translates to:
+  /// **'just now'**
+  String get timestampJustNow;
+
+  /// No description provided for @timestampMinutesAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes}m ago'**
+  String timestampMinutesAgo(int minutes);
+
+  /// No description provided for @timestampHoursAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours}h ago'**
+  String timestampHoursAgo(int hours);
+
+  /// No description provided for @timestampDaysAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{days}d ago'**
+  String timestampDaysAgo(int days);
+
+  /// No description provided for @sessionDetailModelFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Model'**
+  String get sessionDetailModelFallback;
+
+  /// No description provided for @sessionDetailAgentFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent'**
+  String get sessionDetailAgentFallback;
+
+  /// No description provided for @sessionDetailRetryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get sessionDetailRetryLabel;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

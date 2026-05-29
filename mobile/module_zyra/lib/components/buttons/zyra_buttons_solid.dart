@@ -31,6 +31,13 @@ enum ZyraButtonsSolidHierarchy {
   /// Filled brand-blue background with white text. Skeuomorphic border + shadow.
   primary,
 
+  /// Filled with `fg-primary (900)` — the contrast-inverted foreground token
+  /// (dark fill in light mode, light fill in dark mode) — with text and icon
+  /// in `text-primary_on-white`. Shares the skeuomorphic border + shadow
+  /// treatment as [primary]. Figma does not expose a destructive variant for
+  /// this hierarchy.
+  primaryAlt,
+
   /// Outlined button with secondary border and secondary text.
   secondary,
 
@@ -85,7 +92,12 @@ class ZyraButtonsSolid extends StatefulWidget {
     this.trailingIcon,
     this.isLoading = false,
     this.destructive = false,
-  }) : iconOnly = false;
+    this.fullWidth = false,
+  }) : assert(
+         hierarchy != ZyraButtonsSolidHierarchy.primaryAlt || !destructive,
+         'destructive=true is not supported for primaryAlt — Figma does not define this variant.',
+       ),
+       iconOnly = false;
 
   /// Icon-only variant — renders a square button with a single centred icon.
   const ZyraButtonsSolid.iconOnly({
@@ -96,7 +108,12 @@ class ZyraButtonsSolid extends StatefulWidget {
     required this.onPressed,
     this.isLoading = false,
     this.destructive = false,
-  }) : iconOnly = true,
+  }) : assert(
+         hierarchy != ZyraButtonsSolidHierarchy.primaryAlt || !destructive,
+         'destructive=true is not supported for primaryAlt — Figma does not define this variant.',
+       ),
+       iconOnly = true,
+       fullWidth = false,
        label = null,
        trailingIcon = null;
 
@@ -130,6 +147,13 @@ class ZyraButtonsSolid extends StatefulWidget {
 
   /// Whether the button renders in icon-only mode (square, no label).
   final bool iconOnly;
+
+  /// When `true`, the button expands to fill its parent's width and centres
+  /// the icon + label horizontally. Requires the parent to provide bounded
+  /// width constraints (e.g. via [SizedBox], [Expanded], or a [Column] with
+  /// `crossAxisAlignment: CrossAxisAlignment.stretch`). Ignored when
+  /// [iconOnly] is `true`.
+  final bool fullWidth;
 
   @override
   State<ZyraButtonsSolid> createState() => _ZyraButtonsSolidState();
@@ -180,7 +204,8 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
           // Tertiary and link: never shown.
           final isDisabled = state.contains(WidgetState.disabled);
           final showSkeuomorphicOverlay = switch (widget.hierarchy) {
-            ZyraButtonsSolidHierarchy.primary => !_isFocused && (!isDisabled || widget.isLoading),
+            ZyraButtonsSolidHierarchy.primary ||
+            ZyraButtonsSolidHierarchy.primaryAlt => !_isFocused && (!isDisabled || widget.isLoading),
             ZyraButtonsSolidHierarchy.secondary =>
               widget.destructive ? ((!isHovered && !isPressed) || isDisabled) : true,
             ZyraButtonsSolidHierarchy.tertiary || ZyraButtonsSolidHierarchy.link => false,
@@ -215,9 +240,12 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
     );
 
     // Secondary, tertiary, and link use 0.8 opacity for the disabled state rather
-    // than the dedicated disabled-colour tokens used by primary.
+    // than the dedicated disabled-colour tokens used by primary / primaryAlt.
     final isNonPrimaryDisabled =
-        widget.onPressed == null && !widget.isLoading && widget.hierarchy != ZyraButtonsSolidHierarchy.primary;
+        widget.onPressed == null &&
+        !widget.isLoading &&
+        widget.hierarchy != ZyraButtonsSolidHierarchy.primary &&
+        widget.hierarchy != ZyraButtonsSolidHierarchy.primaryAlt;
 
     return isNonPrimaryDisabled ? Opacity(opacity: 0.8, child: button) : button;
   }
@@ -259,7 +287,10 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
     return Padding(
       padding: padding,
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        // [fullWidth] stretches the Row to fill the parent so the centered
+        // alignment below actually has spare space to centre into. The default
+        // min-size collapses the Row to its content (existing behaviour).
+        mainAxisSize: widget.fullWidth ? MainAxisSize.max : MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: children,
@@ -301,6 +332,10 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
   Color _resolveHoverOverlayColor({required ZyraColors colors}) {
     return switch (widget.hierarchy) {
       ZyraButtonsSolidHierarchy.primary => widget.destructive ? colors.bgDestructiveHover : colors.bgBrandHover,
+      // Primary Alt uses a translucent alpha overlay (alpha-white-10) that darkens
+      // in light mode and lightens in dark mode — Figma does not define dedicated
+      // hover/press background tokens for this hierarchy.
+      ZyraButtonsSolidHierarchy.primaryAlt => colors.alphaWhite10,
       ZyraButtonsSolidHierarchy.secondary => widget.destructive ? Colors.transparent : colors.bgGrayHover,
       ZyraButtonsSolidHierarchy.tertiary || ZyraButtonsSolidHierarchy.link => Colors.transparent,
     };
@@ -316,6 +351,8 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
   Color _resolvePressOverlayColor({required ZyraColors colors}) {
     return switch (widget.hierarchy) {
       ZyraButtonsSolidHierarchy.primary => widget.destructive ? colors.bgDestructivePressed : colors.bgBrandPressed,
+      // Stronger alpha overlay on press for Primary Alt (alpha-white-20).
+      ZyraButtonsSolidHierarchy.primaryAlt => colors.alphaWhite20,
       ZyraButtonsSolidHierarchy.secondary => widget.destructive ? Colors.transparent : colors.bgGrayPressed,
       // Tertiary: bg handles pressed state directly (no overlay needed).
       ZyraButtonsSolidHierarchy.tertiary || ZyraButtonsSolidHierarchy.link => Colors.transparent,
@@ -331,7 +368,8 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
   double _resolveOverlayInset() {
     if (widget.onPressed == null || widget.isLoading) return 0.0;
     return switch (widget.hierarchy) {
-      ZyraButtonsSolidHierarchy.primary => 2.0,
+      // Both Primary and Primary Alt have a 2px translucent border at rest.
+      ZyraButtonsSolidHierarchy.primary || ZyraButtonsSolidHierarchy.primaryAlt => 2.0,
       ZyraButtonsSolidHierarchy.secondary => 1.0,
       ZyraButtonsSolidHierarchy.tertiary || ZyraButtonsSolidHierarchy.link => 0.0,
     };
@@ -348,6 +386,10 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
 
     return switch (widget.hierarchy) {
       ZyraButtonsSolidHierarchy.primary => _primaryBgColor(
+        colors: colors,
+        isEnabled: isEnabled,
+      ),
+      ZyraButtonsSolidHierarchy.primaryAlt => _primaryAltBgColor(
         colors: colors,
         isEnabled: isEnabled,
       ),
@@ -378,6 +420,17 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
     // Enabled, hover, and loading all use the same base bg.
     // Hover/press darkening is handled by ZyraTappable overlay.
     return widget.destructive ? colors.bgErrorSolid : colors.bgBrandSolid;
+  }
+
+  Color _primaryAltBgColor({required ZyraColors colors, required bool isEnabled}) {
+    // Disabled: bg-disabled (matches primary's disabled treatment).
+    if (!isEnabled) return colors.bgDisabled;
+    // Enabled / hover / pressed / loading all share the same base bg.
+    // Figma uses `Colors/Foreground/fg-primary (900)` as the background fill
+    // for this hierarchy — the contrast-inverted foreground token, not a
+    // brand-tinted bg. Hover/press tinting is handled by the alphaWhite10/20
+    // overlays in ZyraTappable rather than a bg colour swap.
+    return colors.fgPrimary;
   }
 
   Color _secondaryBgColor({
@@ -445,6 +498,7 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
 
   Border? _resolveBorder({required ZyraColors colors, required Set<WidgetState> state}) {
     final isDisabled = state.contains(WidgetState.disabled);
+    final isPressed = state.contains(WidgetState.pressed);
     if (isDisabled && !widget.isLoading) {
       return switch (widget.hierarchy) {
         ZyraButtonsSolidHierarchy.primary =>
@@ -453,6 +507,9 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
               ? Border.all(color: colors.fgDisabledSubtle, width: 1)
               // Regular primary disabled: border-disabled.
               : Border.all(color: colors.borderDisabled, width: 1),
+        // Primary Alt disabled: border-disabled (matches primary regular disabled).
+        // No destructive variant exists for primaryAlt.
+        ZyraButtonsSolidHierarchy.primaryAlt => Border.all(color: colors.borderDisabled, width: 1),
         ZyraButtonsSolidHierarchy.secondary =>
           widget.destructive
               // Destructive secondary disabled: border-disabled_subtle.
@@ -466,6 +523,12 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
     return switch (widget.hierarchy) {
       // Primary: 2px semi-transparent white border (rgba(255,255,255,0.12) = alpha-white-10).
       ZyraButtonsSolidHierarchy.primary => Border.all(color: colors.alphaWhite10, width: 2),
+      // Primary Alt: 2px alpha-white-10 at rest/hover; the pressed Figma variant
+      // swaps the stroke to a solid border-primary stroke for stronger feedback.
+      ZyraButtonsSolidHierarchy.primaryAlt => Border.all(
+        color: isPressed ? colors.borderPrimary : colors.alphaWhite10,
+        width: 2,
+      ),
       ZyraButtonsSolidHierarchy.secondary =>
         widget.destructive
             // Destructive secondary: border-error_subtle for all active states.
@@ -503,9 +566,12 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
     }
 
     // Drop shadow: shadow-xs for default/disabled/secondary-hover.
-    // Primary hover uses shadow-skeumorphic (a semantically distinct token that
-    // happens to be visually near-identical today, but may diverge in future).
-    final shadowColor = state.contains(WidgetState.hovered) && widget.hierarchy == ZyraButtonsSolidHierarchy.primary
+    // Primary and Primary Alt hover use shadow-skeumorphic (a semantically distinct
+    // token that happens to be visually near-identical today, but may diverge later).
+    final isPrimaryFamily =
+        widget.hierarchy == ZyraButtonsSolidHierarchy.primary ||
+        widget.hierarchy == ZyraButtonsSolidHierarchy.primaryAlt;
+    final shadowColor = state.contains(WidgetState.hovered) && isPrimaryFamily
         ? colors.skeuomorphicShadow
         : colors.shadowXs;
     return [BoxShadow(color: shadowColor, offset: const Offset(0, 1), blurRadius: 2)];
@@ -534,6 +600,8 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
       return switch (widget.hierarchy) {
         // Primary disabled: fg-disabled for both regular and destructive.
         ZyraButtonsSolidHierarchy.primary => colors.fgDisabled,
+        // Primary Alt disabled: fg-disabled (matches primary's disabled treatment).
+        ZyraButtonsSolidHierarchy.primaryAlt => colors.fgDisabled,
         // Secondary disabled: text-disabled (regular), text-disabled (destructive).
         ZyraButtonsSolidHierarchy.secondary => colors.textDisabled,
         // Tertiary disabled: fg-disabled.
@@ -547,6 +615,8 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
       return switch (widget.hierarchy) {
         // Destructive primary: always text-white.
         ZyraButtonsSolidHierarchy.primary => colors.textWhite,
+        // Unreachable — assertion in constructor blocks primaryAlt + destructive.
+        ZyraButtonsSolidHierarchy.primaryAlt => colors.textPrimaryOnWhite,
         // Destructive secondary: text-error-primary at rest, text-error-primary_hover on hover.
         ZyraButtonsSolidHierarchy.secondary => isHovered ? colors.textErrorPrimaryHover : colors.textErrorPrimary,
         // Destructive tertiary: text-error-primary at rest, text-error-primary_hover on hover.
@@ -558,6 +628,9 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
 
     return switch (widget.hierarchy) {
       ZyraButtonsSolidHierarchy.primary => colors.textWhite,
+      // Primary Alt: text-primary_on-white (dark on a brand-tinted/light bg).
+      // No hover change — overlay handles the hover/press feedback.
+      ZyraButtonsSolidHierarchy.primaryAlt => colors.textPrimaryOnWhite,
       // Secondary text colour does not change on hover (only background does).
       ZyraButtonsSolidHierarchy.secondary => colors.textSecondary,
       ZyraButtonsSolidHierarchy.tertiary => colors.textTertiary,
@@ -573,6 +646,7 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
       // fg-disabled for tertiary/link.
       return switch (widget.hierarchy) {
         ZyraButtonsSolidHierarchy.primary => colors.fgDisabled,
+        ZyraButtonsSolidHierarchy.primaryAlt => colors.fgDisabled,
         ZyraButtonsSolidHierarchy.secondary => colors.textDisabled,
         ZyraButtonsSolidHierarchy.tertiary || ZyraButtonsSolidHierarchy.link => colors.fgDisabled,
       };
@@ -581,6 +655,8 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
     if (widget.destructive) {
       return switch (widget.hierarchy) {
         ZyraButtonsSolidHierarchy.primary => colors.textWhite,
+        // Unreachable — assertion in constructor blocks primaryAlt + destructive.
+        ZyraButtonsSolidHierarchy.primaryAlt => colors.textPrimaryOnWhite,
         ZyraButtonsSolidHierarchy.secondary => isHovered ? colors.textErrorPrimaryHover : colors.textErrorPrimary,
         ZyraButtonsSolidHierarchy.tertiary => isHovered ? colors.textErrorPrimaryHover : colors.textErrorPrimary,
         ZyraButtonsSolidHierarchy.link => isHovered ? colors.textErrorPrimaryHover : colors.textErrorPrimary,
@@ -590,6 +666,8 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
     return switch (widget.hierarchy) {
       // Primary (regular) always uses text-white for the icon.
       ZyraButtonsSolidHierarchy.primary => colors.textWhite,
+      // Primary Alt: icon matches the dark text colour (text-primary_on-white).
+      ZyraButtonsSolidHierarchy.primaryAlt => colors.textPrimaryOnWhite,
       // Secondary and tertiary icon color is static across all active states (no hover change).
       ZyraButtonsSolidHierarchy.secondary => colors.textSecondary,
       ZyraButtonsSolidHierarchy.tertiary => colors.textTertiary,

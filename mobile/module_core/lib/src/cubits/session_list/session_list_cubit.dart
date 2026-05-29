@@ -571,13 +571,22 @@ class SessionListCubit extends Cubit<SessionListState> {
   /// Re-fetches sessions without showing the full-screen loading indicator.
   /// Concurrent calls are coalesced: if a refresh is already in-flight, the
   /// existing Future is returned instead of starting a second network request.
-  Future<bool> refreshSessions() {
-    return _activeRefresh ??= _fetchSessions(silent: true).whenComplete(() => _activeRefresh = null);
+  ///
+  /// When [waitForPrData] is true the bridge will wait up to 5 s for
+  /// GitHub PR metadata before returning. This is appropriate only for
+  /// explicit user-initiated pull-to-refresh; background triggers such as
+  /// reconnects, route navigation, or SSE events should leave it false.
+  Future<bool> refreshSessions({bool waitForPrData = false}) {
+    return _activeRefresh ??=
+        _fetchSessions(silent: true, waitForPrData: waitForPrData).whenComplete(() => _activeRefresh = null);
   }
 
-  Future<bool> _fetchSessions({bool silent = false}) async {
+  Future<bool> _fetchSessions({bool silent = false, bool waitForPrData = false}) async {
     final (sessionsResponse, baseBranchResponse) = await (
-      _projectService.listSessions(projectId: _projectId),
+      _projectService.listSessions(
+        projectId: _projectId,
+        waitForPrData: waitForPrData,
+      ),
       _projectService.getBaseBranch(projectId: _projectId),
     ).wait;
     if (isClosed) return false;

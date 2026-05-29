@@ -155,7 +155,7 @@ as List<Session>,
 /// @nodoc
 mixin _$SessionListRequest {
 
- String get projectId; int? get start; int? get limit;
+ String get projectId; int? get start; int? get limit; bool get waitForPrData;
 /// Create a copy of SessionListRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -168,16 +168,16 @@ $SessionListRequestCopyWith<SessionListRequest> get copyWith => _$SessionListReq
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionListRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.start, start) || other.start == start)&&(identical(other.limit, limit) || other.limit == limit));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionListRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.start, start) || other.start == start)&&(identical(other.limit, limit) || other.limit == limit)&&(identical(other.waitForPrData, waitForPrData) || other.waitForPrData == waitForPrData));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projectId,start,limit);
+int get hashCode => Object.hash(runtimeType,projectId,start,limit,waitForPrData);
 
 @override
 String toString() {
-  return 'SessionListRequest(projectId: $projectId, start: $start, limit: $limit)';
+  return 'SessionListRequest(projectId: $projectId, start: $start, limit: $limit, waitForPrData: $waitForPrData)';
 }
 
 
@@ -188,7 +188,7 @@ abstract mixin class $SessionListRequestCopyWith<$Res>  {
   factory $SessionListRequestCopyWith(SessionListRequest value, $Res Function(SessionListRequest) _then) = _$SessionListRequestCopyWithImpl;
 @useResult
 $Res call({
- String projectId, int? start, int? limit
+ String projectId, int? start, int? limit, bool waitForPrData
 });
 
 
@@ -205,12 +205,13 @@ class _$SessionListRequestCopyWithImpl<$Res>
 
 /// Create a copy of SessionListRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? projectId = null,Object? start = freezed,Object? limit = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? projectId = null,Object? start = freezed,Object? limit = freezed,Object? waitForPrData = null,}) {
   return _then(_self.copyWith(
 projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
 as String,start: freezed == start ? _self.start : start // ignore: cast_nullable_to_non_nullable
 as int?,limit: freezed == limit ? _self.limit : limit // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,waitForPrData: null == waitForPrData ? _self.waitForPrData : waitForPrData // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -222,12 +223,13 @@ as int?,
 @JsonSerializable()
 
 class _SessionListRequest implements SessionListRequest {
-  const _SessionListRequest({required this.projectId, required this.start, required this.limit});
+  const _SessionListRequest({required this.projectId, required this.start, required this.limit, this.waitForPrData = false});
   factory _SessionListRequest.fromJson(Map<String, dynamic> json) => _$SessionListRequestFromJson(json);
 
 @override final  String projectId;
 @override final  int? start;
 @override final  int? limit;
+@override@JsonKey() final  bool waitForPrData;
 
 /// Create a copy of SessionListRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -242,16 +244,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionListRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.start, start) || other.start == start)&&(identical(other.limit, limit) || other.limit == limit));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionListRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.start, start) || other.start == start)&&(identical(other.limit, limit) || other.limit == limit)&&(identical(other.waitForPrData, waitForPrData) || other.waitForPrData == waitForPrData));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projectId,start,limit);
+int get hashCode => Object.hash(runtimeType,projectId,start,limit,waitForPrData);
 
 @override
 String toString() {
-  return 'SessionListRequest(projectId: $projectId, start: $start, limit: $limit)';
+  return 'SessionListRequest(projectId: $projectId, start: $start, limit: $limit, waitForPrData: $waitForPrData)';
 }
 
 
@@ -262,7 +264,7 @@ abstract mixin class _$SessionListRequestCopyWith<$Res> implements $SessionListR
   factory _$SessionListRequestCopyWith(_SessionListRequest value, $Res Function(_SessionListRequest) _then) = __$SessionListRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String projectId, int? start, int? limit
+ String projectId, int? start, int? limit, bool waitForPrData
 });
 
 
@@ -279,12 +281,13 @@ class __$SessionListRequestCopyWithImpl<$Res>
 
 /// Create a copy of SessionListRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? projectId = null,Object? start = freezed,Object? limit = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? projectId = null,Object? start = freezed,Object? limit = freezed,Object? waitForPrData = null,}) {
   return _then(_SessionListRequest(
 projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
 as String,start: freezed == start ? _self.start : start // ignore: cast_nullable_to_non_nullable
 as int?,limit: freezed == limit ? _self.limit : limit // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,waitForPrData: null == waitForPrData ? _self.waitForPrData : waitForPrData // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

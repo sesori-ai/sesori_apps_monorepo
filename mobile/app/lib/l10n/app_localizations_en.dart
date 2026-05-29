@@ -362,10 +362,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListDeleteConfirmCancel => 'Cancel';
 
   @override
-  String get loginTitle => 'Sign In';
+  String get loginTitle => 'Welcome to';
 
   @override
-  String get loginSubtitle => 'Sign in to connect to your server';
+  String get loginSubtitle => 'Sesori';
+
+  @override
+  String get loginAgreementText =>
+      'By signing in, you accept our [Terms of Use](https://sesori.com/terms) and [Privacy Policy](https://sesori.com/privacy).';
 
   @override
   String get loginWithGithub => 'Sign in with GitHub';
@@ -380,7 +384,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginWithGoogle => 'Sign in with Google';
 
   @override
-  String get continueWithEmail => 'Continue with Email';
+  String get signInWithEmail => 'Sign in with Email';
 
   @override
   String get emailLabel => 'Email';
@@ -407,6 +411,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get backToLogin => 'Back to login';
 
   @override
+  String get loginAuthenticationFailedTitle => 'Authentication failed';
+
+  @override
   String get loginError => 'Sign in failed. Please try again.';
 
   @override
@@ -414,6 +421,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get loginAwaitingCallback => 'Waiting for authorization...';
+
+  @override
+  String loginAwaitingConfirmation(String userCode) {
+    return 'Confirm this code on the login page: $userCode';
+  }
+
+  @override
+  String get loginPolling => 'Confirming authorization...';
+
+  @override
+  String get loginTimeout => 'Authorization timed out. Please try again.';
 
   @override
   String get loginBrowserOpenFailed => 'Could not open browser';
@@ -723,9 +741,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get diffRetry => 'Retry';
 
   @override
-  String get splashWelcomeTo => 'Welcome to';
-
-  @override
   String get splashTitle => 'Sesori';
 
   @override
@@ -742,4 +757,55 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get newSessionLaunchingInBackground => 'Your new session will appear in the list once it\'s launched';
+
+  @override
+  String get commandSourceCommand => 'Command';
+
+  @override
+  String get commandSourceMcp => 'MCP';
+
+  @override
+  String get commandSourceSkill => 'Skill';
+
+  @override
+  String get commandSourceCustom => 'Custom';
+
+  @override
+  String get sessionDetailFileChangesTooltip => 'File changes';
+
+  @override
+  String get diffBinaryFileChanged => 'Binary file changed';
+
+  @override
+  String get diffFileTooLarge => 'File diff too large to display';
+
+  @override
+  String get diffCouldNotReadFile => 'Could not read file';
+
+  @override
+  String get timestampJustNow => 'just now';
+
+  @override
+  String timestampMinutesAgo(int minutes) {
+    return '${minutes}m ago';
+  }
+
+  @override
+  String timestampHoursAgo(int hours) {
+    return '${hours}h ago';
+  }
+
+  @override
+  String timestampDaysAgo(int days) {
+    return '${days}d ago';
+  }
+
+  @override
+  String get sessionDetailModelFallback => 'Model';
+
+  @override
+  String get sessionDetailAgentFallback => 'Agent';
+
+  @override
+  String get sessionDetailRetryLabel => 'Retry';
 }

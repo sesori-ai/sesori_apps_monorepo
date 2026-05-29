@@ -12,3 +12,10 @@ _AuthUser _$AuthUserFromJson(Map json) => _AuthUser(
   providerUserId: json['providerUserId'] as String,
   providerUsername: json['providerUsername'] as String?,
 );
+
+Map<String, dynamic> _$AuthUserToJson(_AuthUser instance) => <String, dynamic>{
+  'id': instance.id,
+  'provider': instance.provider,
+  'providerUserId': instance.providerUserId,
+  'providerUsername': instance.providerUsername,
+};

@@ -30,12 +30,24 @@ class VESPRRegular {
 
 /// VESPRSolid icon font.
 ///
-/// 4 icons available.
+/// 16 icons available.
 class VESPRSolid {
   VESPRSolid._();
 
+  static const IconData anthopic = IconData(0xE004, fontFamily: "VESPRSolid", fontPackage: "theme_zyra");
+  static const IconData apple = IconData(0xE005, fontFamily: "VESPRSolid", fontPackage: "theme_zyra");
+  static const IconData codex = IconData(0xE006, fontFamily: "VESPRSolid", fontPackage: "theme_zyra");
+  static const IconData cursor = IconData(0xE007, fontFamily: "VESPRSolid", fontPackage: "theme_zyra");
+  static const IconData discord = IconData(0xE008, fontFamily: "VESPRSolid", fontPackage: "theme_zyra");
   static const IconData face_id = IconData(0xE000, fontFamily: "VESPRSolid", fontPackage: "theme_zyra");
   static const IconData gear = IconData(0xE001, fontFamily: "VESPRSolid", fontPackage: "theme_zyra");
+  static const IconData github = IconData(0xE015, fontFamily: "VESPRSolid", fontPackage: "theme_zyra");
+  static const IconData google = IconData(0xE009, fontFamily: "VESPRSolid", fontPackage: "theme_zyra");
+  static const IconData grok = IconData(0xE010, fontFamily: "VESPRSolid", fontPackage: "theme_zyra");
+  static const IconData openai = IconData(0xE011, fontFamily: "VESPRSolid", fontPackage: "theme_zyra");
+  static const IconData opencode = IconData(0xE012, fontFamily: "VESPRSolid", fontPackage: "theme_zyra");
   static const IconData qr_scan = IconData(0xE002, fontFamily: "VESPRSolid", fontPackage: "theme_zyra");
+  static const IconData sesori = IconData(0xE013, fontFamily: "VESPRSolid", fontPackage: "theme_zyra");
   static const IconData wallet = IconData(0xE003, fontFamily: "VESPRSolid", fontPackage: "theme_zyra");
+  static const IconData windows = IconData(0xE014, fontFamily: "VESPRSolid", fontPackage: "theme_zyra");
 }

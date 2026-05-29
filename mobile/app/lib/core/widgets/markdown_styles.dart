@@ -33,3 +33,18 @@ MarkdownStyleSheet buildSessionMarkdownStyleSheet({
     ),
   );
 }
+
+MarkdownStyleSheet buildAgreementMarkdownStyleSheet({required ZyraDesignSystem zyra}) {
+  final paragraph = zyra.textTheme.textSm.regular.copyWith(
+    color: zyra.colors.textPrimary,
+  );
+  return MarkdownStyleSheet(
+    p: paragraph,
+    a: paragraph.copyWith(
+      decoration: TextDecoration.underline,
+    ),
+    textAlign: WrapAlignment.center,
+    pPadding: EdgeInsets.zero,
+    blockSpacing: 0,
+  );
+}

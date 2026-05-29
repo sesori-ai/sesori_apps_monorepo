@@ -3,7 +3,7 @@ import "package:freezed_annotation/freezed_annotation.dart";
 part "auth_user.freezed.dart";
 part "auth_user.g.dart";
 
-@Freezed(fromJson: true, toJson: false)
+@Freezed(fromJson: true, toJson: true)
 sealed class AuthUser with _$AuthUser {
   const factory AuthUser({
     required String id,

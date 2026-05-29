@@ -161,7 +161,7 @@ class _SessionListBody extends StatelessWidget {
             Expanded(
               child: RefreshIndicator(
                 onRefresh: () async {
-                  final success = await context.read<SessionListCubit>().refreshSessions();
+                  final success = await context.read<SessionListCubit>().refreshSessions(waitForPrData: true);
                   if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(

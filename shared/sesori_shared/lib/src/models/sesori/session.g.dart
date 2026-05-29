@@ -22,6 +22,7 @@ _SessionListRequest _$SessionListRequestFromJson(Map json) =>
       projectId: json['projectId'] as String,
       start: (json['start'] as num?)?.toInt(),
       limit: (json['limit'] as num?)?.toInt(),
+      waitForPrData: json['waitForPrData'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$SessionListRequestToJson(_SessionListRequest instance) =>
@@ -29,6 +30,7 @@ Map<String, dynamic> _$SessionListRequestToJson(_SessionListRequest instance) =>
       'projectId': instance.projectId,
       'start': instance.start,
       'limit': instance.limit,
+      'waitForPrData': instance.waitForPrData,
     };
 
 _Session _$SessionFromJson(Map json) => _Session(

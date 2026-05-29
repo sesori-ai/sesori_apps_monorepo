@@ -14,11 +14,19 @@ class ProjectApi {
     return _client.get("/projects", fromJson: Projects.fromJson);
   }
 
-  Future<ApiResponse<SessionListResponse>> listSessions({required String projectId}) {
+  Future<ApiResponse<SessionListResponse>> listSessions({
+    required String projectId,
+    required bool waitForPrData,
+  }) {
     return _client.post(
       "/sessions",
       fromJson: SessionListResponse.fromJson,
-      body: SessionListRequest(projectId: projectId, start: null, limit: null),
+      body: SessionListRequest(
+        projectId: projectId,
+        start: null,
+        limit: null,
+        waitForPrData: waitForPrData,
+      ),
     );
   }
 }
